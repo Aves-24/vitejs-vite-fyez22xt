@@ -972,7 +972,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         {/* BUILD TIMESTAMP */}
         <div className="text-center mt-1">
-          <span className="text-[9px] text-gray-300 tracking-wide">build: 17.04.2026 · 14:28</span>
+          <span className="text-[9px] text-gray-300 tracking-wide">build: {__BUILD_TIME__}</span>
         </div>
 
       </div>

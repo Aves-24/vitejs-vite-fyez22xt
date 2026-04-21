@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 -c ':*)",
+      "Bash(node -e ':*)",
+      "Bash(grep -v \"//\")",
+      "mcp__79fbd0e4-9c8b-4729-af61-3643345f954c__read_file_content",
+      "Bash(npm install *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const p=JSON.parse\\(fs.readFileSync\\('package.json','utf8'\\)\\); p.scripts.lint='eslint src --ext .ts,.tsx --max-warnings 0'; p.scripts['lint:fix']='eslint src --ext .ts,.tsx --fix'; p['lint-staged']={'src/**/*.{ts,tsx}':['eslint --max-warnings 0']}; fs.writeFileSync\\('package.json',JSON.stringify\\(p,null,2\\)\\); console.log\\('OK'\\)\")",
+      "Bash(npx husky *)",
+      "Bash(npx eslint *)",
+      "Bash(del \"C:\\\\Users\\\\Lager 1\\\\OneDrive\\\\Desktop\\\\G-X\\\\.eslintrc.cjs\")",
+      "Bash(grep -E \"\\\\.tsx|\\\\.ts$\")",
+      "Bash(node -e \"const d=require\\('fs'\\).readFileSync\\('/dev/stdin','utf8'\\); const r=JSON.parse\\(d.match\\(/\\\\[.*\\\\]/s\\)[0]\\); r.forEach\\(f=>{f.messages.filter\\(m=>m.severity===2\\).forEach\\(m=>console.log\\(f.filePath.split\\('src\\\\\\\\\\\\\\\\'\\)[1]+':'+m.line+' '+m.message\\)\\)}\\)\")",
+      "Bash(node -e \"const fs=require\\('fs'\\); const p=JSON.parse\\(fs.readFileSync\\('package.json','utf8'\\)\\); p.type='module'; fs.writeFileSync\\('package.json',JSON.stringify\\(p,null,2\\)\\); console.log\\('OK'\\)\")",
+      "Read(//tmp/**)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

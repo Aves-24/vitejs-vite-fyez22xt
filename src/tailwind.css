@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Blokuje sztuczne powiększanie czcionki przez Safari na iPhonie */
+    -webkit-text-size-adjust: 100%;
+    
+    /* Blokuje sztuczne powiększanie na innych przeglądarkach */
+    text-size-adjust: 100%;
+  }
+
+  /* Opcjonalnie: wyłącza zaznaczanie tekstu (jak w prawdziwej instalowanej apce) */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Pozwala na wpisywanie tekstu w formularzach (żebyśmy mogli dodawać wydarzenia!) */
+  input, textarea, select {
+    -webkit-user-select: auto;
+    user-select: auto;
+  }
+}

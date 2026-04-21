@@ -1,0 +1,220 @@
+import React, { useState, useEffect } from 'react';
+import { db, auth } from './firebase'; 
+import { onAuthStateChanged, User } from 'firebase/auth'; 
+import { doc, onSnapshot, collection, query, getDocs, deleteDoc } from 'firebase/firestore';
+import { useTranslation } from 'react-i18next';
+
+import HomeView from './views/HomeView';
+import ScoringView from './views/ScoringView';
+import SessionSetup from './components/SessionSetup';
+import SettingsView from './views/SettingsView';
+import CalendarView from './views/CalendarView';
+import SmartSeasonUpdater from './components/SmartSeasonUpdater';
+import AuthView from './views/AuthView'; 
+import BattleLobbyView from './views/BattleLobbyView'; 
+import BattleHistoryView from './views/BattleHistoryView'; 
+import AnnouncementsView from './views/AnnouncementsView';
+
+type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS';
+
+export default function App() {
+  const { t } = useTranslation();
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(true); 
+  const [isDataReady, setIsDataReady] = useState(false);
+  const [fadeOutSplash, setFadeOutSplash] = useState(false);
+
+  const [currentView, setCurrentView] = useState<AppView>('HOME');
+  const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>('PROFIL');
+  const [sessionDistance, setSessionDistance] = useState<string>('70m');
+  const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
+  const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
+  const [userDistances, setUserDistances] = useState<any[]>([]);
+  
+  const [activeBattleId, setActiveBattleId] = useState<string | null>(null); 
+  const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+    }, 1800); 
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthLoading(false);
+      if (!currentUser) setIsDataReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        if (data.userDistances) setUserDistances(data.userDistances);
+        if (!data.firstName) {
+          setAutoStartWizard(true);
+          setCurrentView('SETTINGS');
+        } else {
+          setAutoStartWizard(false);
+        }
+      } else {
+        setAutoStartWizard(true);
+        setCurrentView('SETTINGS');
+      }
+      setIsDataReady(true);
+    }, (error) => {
+      console.error("Błąd pobierania profilu:", error);
+      setIsDataReady(true);
+    });
+    return () => unsub();
+  }, [user]);
+
+  useEffect(() => {
+    if (isDataReady && !showSplash && !isAuthLoading) {
+      setTimeout(() => {
+        setFadeOutSplash(true);
+      }, 100);
+    }
+  }, [isDataReady, showSplash, isAuthLoading]);
+
+  // POPRAWIONA NAWIGACJA OBSŁUGUJĄCA TABY
+  const handleNavigate = (view: AppView, tab?: string) => {
+    setCurrentView(view);
+    if (view === 'SETTINGS') {
+      if (tab) {
+        setSettingsTab(tab as any);
+      } else {
+        setSettingsTab('PROFIL'); 
+      }
+    }
+  };
+
+  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null) => {
+    if (!user) return;
+    try {
+      if (forceClear) {
+        const q = query(collection(db, `users/${user.uid}/scores`));
+        const s = await getDocs(q);
+        const deletePromises = s.docs.map(d => deleteDoc(doc(db, `users/${user.uid}/scores`, d.id)));
+        await Promise.all(deletePromises);
+      }
+      
+      setSessionDistance(distance);
+      setSessionTargetType(targetType);
+      setActiveBattleId(battleId); 
+      setCurrentView('SCORING');
+    } catch (error) {
+      console.error("Błąd startu sesji:", error);
+    }
+  };
+
+  const renderBottomNav = () => {
+    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS'];
+    if (hiddenViews.includes(currentView)) return null;
+
+    return (
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 h-20 shadow-[0_-15px_40px_rgba(0,0,0,0.08)] z-[100] px-4 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex justify-around items-center h-full w-full relative">
+          <button onClick={() => handleNavigate('HOME')} className={`flex flex-col items-center ${currentView === 'HOME' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <span className="material-symbols-outlined text-[26px] font-bold">home</span>
+            <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.home')}</span>
+          </button>
+          <button onClick={() => { setFocusedEventId(null); handleNavigate('CALENDAR'); }} className={`flex flex-col items-center ${currentView === 'CALENDAR' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
+            <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>
+          </button>
+          
+          <div className="relative -top-7 w-20 flex flex-col items-center">
+            <button onClick={() => handleNavigate('SETUP')} className="w-16 h-16 bg-[#F2C94C] rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute w-8 h-8 bg-white/20 rounded-full top-[-10%] left-[-10%] animate-pulse"></div>
+                    <div className="absolute w-6 h-6 bg-white/10 rounded-full bottom-0 right-0 animate-bounce" style={{animationDuration: '3s'}}></div>
+                </div>
+                <span className="material-symbols-outlined text-white text-3xl font-black relative z-10">target</span>
+            </button>
+            <span className="text-[9px] font-black text-[#8B6508] uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm">Trening</span>
+          </div>
+
+          <button onClick={() => handleNavigate('STATS')} className={`flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
+            <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>
+          </button>
+          <button onClick={() => handleNavigate('SETTINGS')} className={`flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
+            <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  if (!isAuthLoading && !user) return <AuthView />;
+
+  return (
+    <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-hidden max-w-md mx-auto shadow-2xl">
+      
+      {(!isDataReady || !fadeOutSplash) && (
+        <div className={`fixed inset-0 z-[100000] bg-[#fcfdfe] flex flex-col items-center justify-center transition-opacity duration-700 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+           <div className="flex items-baseline relative h-20">
+              <div className="animate-grot-train flex items-baseline">
+                <span className="text-5xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-</span>
+              </div>
+              <div className="animate-x-train flex items-baseline">
+                <span className="text-5xl font-black text-[#0a3a2a] tracking-tighter leading-none">X</span>
+                <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.48em] shadow-sm"></div>
+              </div>
+           </div>
+           <style>{`
+              @keyframes trainMove {
+                0% { transform: translateX(-150vw); opacity: 0; }
+                20% { opacity: 1; }
+                70% { transform: translateX(10px); }
+                100% { transform: translateX(0); opacity: 1; }
+              }
+              .animate-x-train { animation: trainMove 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+              .animate-grot-train { animation: trainMove 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; animation-delay: 0.2s; }
+              @keyframes pulse-slow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+              .animate-pulse-slow { animation: pulse-slow 2.5s infinite ease-in-out; }
+           `}</style>
+        </div>
+      )}
+
+      <SmartSeasonUpdater />
+      
+      {(currentView !== 'HOME' && currentView !== 'SCORING' && currentView !== 'ANNOUNCEMENTS') && (
+        <button onClick={() => handleNavigate('HOME')} className="absolute top-5 left-5 z-[110] p-2.5 bg-white/90 backdrop-blur-md rounded-2xl shadow-md border border-gray-100 text-gray-500 active:scale-90 transition-all">
+          <span className="material-symbols-outlined text-xl font-bold">arrow_back_ios_new</span>
+        </button>
+      )}
+      
+      <main className={`w-full min-h-screen pb-24 transition-all duration-500 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
+        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => { if(id) setFocusedEventId(id); handleNavigate('CALENDAR'); }} onGoToStats={() => handleNavigate('STATS')} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} />}
+        {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} />}
+        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} targetType={sessionTargetType} battleId={activeBattleId} onNavigate={handleNavigate} />}
+        {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate} />}
+        
+        {currentView === 'BATTLE_LOBBY' && (
+          <BattleLobbyView 
+            userId={user?.uid || ''} 
+            distance={sessionDistance} 
+            targetType={sessionTargetType} 
+            onStartBattle={(battleId) => handleStartSession(sessionDistance, sessionTargetType, true, battleId)} 
+          />
+        )}
+        
+        {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} />}
+        {currentView === 'STATS' && <div className="p-10 text-center font-black text-[#0a3a2a] pt-32 uppercase tracking-widest">{t('nav.stats')}<br/><span className="text-gray-300 text-xs">{t('common.comingSoon')}... 📈</span></div>}
+        {currentView === 'ANNOUNCEMENTS' && <AnnouncementsView onNavigate={(view) => handleNavigate(view as AppView)} />}
+      </main>
+      
+      {renderBottomNav()}
+    </div>
+  );
+}

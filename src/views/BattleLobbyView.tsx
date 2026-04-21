@@ -366,6 +366,38 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
     }
   }, [isScanning, isGameCreated, battleId, isPremium, participants]);
 
+  // [SYNC] Synchronizuj lokalną listę gości z Firestore po utworzeniu gry.
+  // Debounce 400ms — żeby nie pisać przy każdym wpisanym znaku.
+  useEffect(() => {
+    if (!isGameCreated || !battleId || battleData?.hostId !== userId) return;
+    const timer = setTimeout(() => {
+      const validGuests = guestNames.filter(n => n.trim());
+      const guestsPayload = validGuests.map((name, i) => ({
+        guestId: `guest_${battleId}_${i}`,
+        name: name.trim()
+      }));
+      // Scal liveScores: zachowaj istniejące wyniki, usuń dla zniknietych gości,
+      // dodaj 0 dla nowych.
+      const existingLiveScores = (battleData?.liveScores || {}) as Record<string, number>;
+      const newGuestIds = new Set(guestsPayload.map(g => g.guestId));
+      const merged: Record<string, number> = {};
+      Object.keys(existingLiveScores).forEach(k => {
+        if (!k.startsWith(`guest_${battleId}_`) || newGuestIds.has(k)) {
+          merged[k] = existingLiveScores[k];
+        }
+      });
+      guestsPayload.forEach(g => {
+        if (merged[g.guestId] === undefined) merged[g.guestId] = 0;
+      });
+      updateDoc(doc(db, 'battles', battleId), {
+        guests: guestsPayload,
+        liveScores: merged
+      }).catch(e => console.error('Sync guests failed:', e));
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guestNames, isGameCreated, battleId, userId]);
+
   const isWorldOnCooldown = (): boolean => {
     if (isPremium) return false;
     if (!lastWorldBattleAt) return false;

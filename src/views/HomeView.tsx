@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, serverTimestamp, Timestamp, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
@@ -101,9 +101,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
   const [userHandicap, setUserHandicap] = useState<number | null>(null);
 
+  // [FIX] Ref do śledzenia mount state + timera toast, żeby nie robić setState
+  // na odmontowanym komponencie (React 17 ostrzega, React 18 cicho ignoruje).
+  const isMountedRef = useRef(true);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3500);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) setToastMessage(null);
+    }, 3500);
   };
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 // Nowe importy dla najnowszego standardu Firebase
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
@@ -36,11 +36,15 @@ initializeAppCheck(app, {
 
 // --- NOWA TARCZA OCHRONNA PRZED "DUCHAMI" (Zastępuje przekreślone enableIndexedDbPersistence) ---
 // Ten sposób jest oficjalnym standardem Firebase V10.
-// Pozwala na zapis offline i współdzielenie cache'u między wieloma kartami przeglądarki!
+// DEV: singleTab — eliminuje WebSocket "CLOSING/CLOSED" szum podczas HMR Vite.
+// PROD: multipleTab — pełne współdzielenie cache między kartami (offline support).
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
+    tabManager: import.meta.env.DEV
+      ? persistentSingleTabManager({})
+      : persistentMultipleTabManager()
   })
 });
 
 export const auth = getAuth(app);
+

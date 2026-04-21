@@ -1,0 +1,284 @@
+rules_version = '2';
+
+// ═══════════════════════════════════════════════════════════════════
+//  GROT-X — Firestore Security Rules
+//  Zero-trust client. All privileged ops validated server-side.
+//
+//  Threat model covered here:
+//   T1  Privilege escalation  (isPremium/role/coachLimit via client write)
+//   T2  Relation spoofing     (coach↔student without mutual consent)
+//   T3  Data mining           (world_queue enumeration, other users' sessions)
+//   T4  Ranking fraud         (arbitrary worldXP/worldWins increments)
+//   T5  Battle tampering      (non-host mutating participants, cross-player score edit)
+//   T6  Cross-tenant writes   (writes to other users' subcollections)
+//   T7  Admin impersonation   (non-admin writing announcements, clubs, stats)
+//
+//  TODO (Faza B, when Cloud Functions land):
+//   - Move world_stats writes to server; block client writes entirely.
+//   - Move premium grants to callable function (Stripe webhook).
+//   - Move coach-student add to callable (server writes both sides atomically).
+// ═══════════════════════════════════════════════════════════════════
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helpers ────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    function isAdmin() {
+      // NOTE: app does not enforce email verification currently, so we rely on
+      // Firebase's "one email = one account" invariant. Migrate to custom claims
+      // (request.auth.token.admin == true) when Cloud Functions land.
+      return isSignedIn()
+        && request.auth.token.email in [
+             'info@aves-24.de',
+             'rafal.woropaj@googlemail.com'
+           ];
+    }
+    // Fields NEVER writable by the client on /users/{uid}
+    function protectedUserFields() {
+      return [
+        'isPremium', 'isPremiumPromo', 'trialEndsAt',
+        'coachLimit', 'role', 'level',
+        'worldWins', 'worldLosses', 'worldXP',
+        'students', 'coaches'  // relations — only via invite flows below
+      ];
+    }
+    // affectedKeys subset check helper
+    function onlyAffects(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+    function noneAffected(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+    // Size check
+    function listLen(data, field) {
+      return data.get(field, []).size();
+    }
+    // Accepted coach invite exists
+    function coachInviteExists(coachId, studentId) {
+      return exists(/databases/$(database)/documents/coachInvites/$(coachId + '_' + studentId));
+    }
+
+    // ─── /users/{uid} ───────────────────────────────────────────
+    match /users/{uid} {
+      allow read: if isSignedIn();
+
+      allow create: if isSelf(uid)
+        && !request.resource.data.keys().hasAny(protectedUserFields());
+
+      // Path A — admin full
+      allow update: if isAdmin();
+
+      // Path B — self-edit profile (no protected fields, no relations)
+      allow update: if isSelf(uid)
+        && noneAffected(protectedUserFields());
+
+      // Path C — student accepting invite: own doc, diff = ['coaches'],
+      //          +1 entry, last entry has matching coachInvite.
+      allow update: if isSelf(uid)
+        && onlyAffects(['coaches'])
+        && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') + 1
+        && coachInviteExists(
+             request.resource.data.coaches[listLen(request.resource.data, 'coaches') - 1],
+             uid
+           );
+
+      // Path D — student removing a coach from own list: diff ['coaches'], size -1
+      allow update: if isSelf(uid)
+        && onlyAffects(['coaches'])
+        && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') - 1;
+
+      // Path E — student writes to COACH's doc, adding self to students[]
+      //          requires coachInvite(uid, self) exists.
+      allow update: if isSignedIn()
+        && !isSelf(uid)
+        && onlyAffects(['students'])
+        && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') + 1
+        && request.resource.data.students[listLen(request.resource.data, 'students') - 1]
+             == request.auth.uid
+        && coachInviteExists(uid, request.auth.uid);
+
+      // Path F — student self-removes from coach's students[]
+      allow update: if isSignedIn()
+        && !isSelf(uid)
+        && onlyAffects(['students'])
+        && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') - 1
+        && !(request.auth.uid in request.resource.data.students)
+        && (request.auth.uid in resource.data.get('students', []));
+
+      // Path G — coach removes a student (coach = self, own doc)
+      allow update: if isSelf(uid)
+        && onlyAffects(['students'])
+        && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') - 1;
+
+      // Path H — coach removes OWN uid from student's coaches[] (when cutting off a student)
+      allow update: if isSignedIn()
+        && !isSelf(uid)
+        && onlyAffects(['coaches'])
+        && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') - 1
+        && !(request.auth.uid in request.resource.data.coaches)
+        && (request.auth.uid in resource.data.get('coaches', []));
+
+      // DELETE: admin only
+      allow delete: if isAdmin();
+    }
+
+    // ─── /users/{uid}/sessions/{sessionId} ──────────────────────
+    //  Owner full. Coach read-only if in user.coaches AND isNotePublic != false.
+    match /users/{uid}/sessions/{sessionId} {
+      allow read: if isSelf(uid)
+        || isAdmin()
+        || (isSignedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+            && resource.data.get('isNotePublic', true) != false);
+      allow create, update, delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── Legacy subcol users/{uid}/scores — owner only ──────────
+    match /users/{uid}/scores/{scoreId} {
+      allow read, write: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── /users/{uid}/tournaments/{eventId} ─────────────────────
+    match /users/{uid}/tournaments/{eventId} {
+      allow read, write: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── /coachInvites/{inviteId}  (doc id = "{coachId}_{studentId}") ─
+    match /coachInvites/{inviteId} {
+      allow read: if isSignedIn() && (
+        request.auth.uid == resource.data.coachId ||
+        request.auth.uid == resource.data.studentId
+      );
+      allow create: if isSignedIn()
+        && request.resource.data.coachId == request.auth.uid
+        && inviteId == request.resource.data.coachId + '_' + request.resource.data.studentId
+        && request.resource.data.studentId is string
+        && request.resource.data.studentId != request.auth.uid;
+      allow update: if false;
+      allow delete: if isSignedIn() && (
+        request.auth.uid == resource.data.coachId ||
+        request.auth.uid == resource.data.studentId
+      );
+    }
+
+    // ─── /battles/{battleId} ────────────────────────────────────
+    match /battles/{battleId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSignedIn()
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants
+        && request.resource.data.status in ['LOBBY', 'ACTIVE', 'START'];
+
+      // Host full control of own battle
+      allow update: if isSignedIn()
+        && resource.data.hostId == request.auth.uid;
+
+      // Participant — ONLY own liveScore changes
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.get('participants', [])
+        && onlyAffects(['liveScores'])
+        && request.resource.data.liveScores.diff(resource.data.get('liveScores', {}))
+             .affectedKeys().hasOnly([request.auth.uid]);
+
+      // Invited — ACCEPT: diff keys ⊆ [participants, pendingInvites, liveScores];
+      //                    self is in pendingInvites; self will be in participants; self not yet
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.get('pendingInvites', [])
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['participants', 'pendingInvites', 'liveScores'])
+        && !(request.auth.uid in resource.data.get('participants', []))
+        && request.auth.uid in request.resource.data.get('participants', [])
+        && !(request.auth.uid in request.resource.data.get('pendingInvites', []));
+
+      // Invited — REJECT
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.get('pendingInvites', [])
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['pendingInvites', 'participantsData'])
+        && !(request.auth.uid in request.resource.data.get('pendingInvites', []));
+
+      allow delete: if isSignedIn()
+        && resource.data.hostId == request.auth.uid
+        && resource.data.status in ['LOBBY', 'START'];
+    }
+
+    // ─── /world_queue/{userId} — private matchmaking entry ──────
+    match /world_queue/{entryId} {
+      allow read: if isSelf(entryId) || isAdmin();
+      allow create: if isSelf(entryId)
+        && request.resource.data.userId == request.auth.uid;
+      allow update: if isSelf(entryId);
+      allow delete: if isSelf(entryId) || isAdmin();
+    }
+
+    // ─── /world_stats/{userId} — public leaderboard, bounded writes ─
+    match /world_stats/{userId} {
+      allow read: if isSignedIn();
+
+      allow create: if isSelf(userId)
+        && request.resource.data.get('worldWins', 0) == 0
+        && request.resource.data.get('worldLosses', 0) == 0
+        && request.resource.data.get('worldXP', 0) == 0;
+
+      // Per-update bounds: at most +1 win, +1 loss, +100 XP, no decrements.
+      allow update: if isSelf(userId)
+        && request.resource.data.get('worldWins', 0)
+             >= resource.data.get('worldWins', 0)
+        && request.resource.data.get('worldWins', 0)
+             <= resource.data.get('worldWins', 0) + 1
+        && request.resource.data.get('worldLosses', 0)
+             >= resource.data.get('worldLosses', 0)
+        && request.resource.data.get('worldLosses', 0)
+             <= resource.data.get('worldLosses', 0) + 1
+        && request.resource.data.get('worldXP', 0)
+             >= resource.data.get('worldXP', 0)
+        && request.resource.data.get('worldXP', 0)
+             <= resource.data.get('worldXP', 0) + 100;
+
+      allow delete: if isAdmin();
+    }
+
+    // ─── /clubs/{clubId} ────────────────────────────────────────
+    match /clubs/{clubId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 80
+        && request.resource.data.keys().hasOnly(
+             ['name', 'city', 'country', 'placeId', 'createdAt', 'createdBy']
+           );
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── /announcements/{id} ────────────────────────────────────
+    match /announcements/{id} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.get('type', '') == 'coach'
+        && request.resource.data.get('authorId', '') == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
+    }
+
+    // ─── /admin_stats_history/{id} ──────────────────────────────
+    match /admin_stats_history/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Default deny ───────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

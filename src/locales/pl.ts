@@ -681,7 +681,6 @@ export const views = {
     techSessionTitle: "Trening Techniczny",
     techHistory: "Historia Techniki",
     techHistoryDesc: "Ostatnie 3 sesje bez tarczy",
-    yourNotes: "Twoje notatki",
     noSessionNotes: "Brak notatek z tego treningu.",
     sessionInfo: {
       solo: "Sesja Treningowa",

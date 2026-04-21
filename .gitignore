@@ -8,3 +8,9 @@ dist-ssr/
 .DS_Store
 Thumbs.db
 vite.config.ts.timestamp-*
+
+# Firebase CLI
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log

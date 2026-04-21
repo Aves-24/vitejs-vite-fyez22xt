@@ -681,7 +681,6 @@ export const views = {
     techSessionTitle: "Technical Training",
     techHistory: "Technique History",
     techHistoryDesc: "Last 3 off-target sessions",
-    yourNotes: "Your notes",
     noSessionNotes: "No notes for this session.",
     sessionInfo: {
       solo: "Training Session",

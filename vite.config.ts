@@ -16,4 +16,9 @@ export default defineConfig({
     __BUILD_TIME__: JSON.stringify(buildStamp),
   },
   plugins: [react()],
+  build: {
+    // Vendor.js (~1.5 MB) jest duży bo Firebase SDK jest ciężki.
+    // Docelowo: code splitting (TODO #6). Na razie podnosimy limit ostrzeżenia.
+    chunkSizeWarningLimit: 1600,
+  },
 })

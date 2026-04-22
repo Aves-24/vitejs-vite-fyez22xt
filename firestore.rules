@@ -43,9 +43,11 @@ service cloud.firestore {
     function protectedUserFields() {
       return [
         'isPremium', 'isPremiumPromo', 'trialEndsAt',
-        'coachLimit', 'role', 'level',
+        'coachLimit', 'role',
         'worldWins', 'worldLosses', 'worldXP',
         'students', 'coaches'  // relations — only via invite flows below
+        // NOTE: 'level' removed — it is derived from client-controlled 'xp'
+        // and written by ScoringView on every training save.
       ];
     }
     // affectedKeys subset check helper
@@ -136,7 +138,19 @@ service cloud.firestore {
         || (isSignedIn()
             && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
             && resource.data.get('isNotePublic', true) != false);
-      allow create, update, delete: if isSelf(uid) || isAdmin();
+
+      // Self/Admin create/delete, update with length limits
+      allow create, delete: if isSelf(uid) || isAdmin();
+
+      allow update: if (isSelf(uid) || isAdmin())
+        && request.resource.data.get('note', '').size() <= 2000
+        && request.resource.data.get('coachNote', '').size() <= 500;
+
+      // Coach writes coachNote + coachEditCount (length limited)
+      allow update: if isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && onlyAffects(['coachNote', 'coachEditCount'])
+        && request.resource.data.coachNote.size() <= 500;
     }
 
     // ─── Legacy subcol users/{uid}/scores — owner only ──────────

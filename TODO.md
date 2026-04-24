@@ -185,6 +185,56 @@ Live kamera z opóźnieniem 15s — uczeń widzi swój strzał 15s po jego wykon
 - Zapis do Photos/Gallery telefonu (Web Share API / File System Access API)
 - Eksport klipu z nakładką (wynik sesji, data, szczegóły strzału)
 
+### 📤 Native Share z Kontekstem Treningowym (KILLER FEATURE)
+**Status:** 💡 Idea — część Delay Mirror v0.1  
+**Koncept user'a:** ✨ Klip wysyłany przez WhatsApp z automatycznym opisem serii
+
+**Technologia:** Web Share API Level 2 (`navigator.share({ files, text, title })`)
+- Natywny share sheet telefonu (WhatsApp, Telegram, email, Messages)
+- Zero integracji z konkretnym serwisem — jedno API → wszystkie platformy
+- Zero kosztów backendu (MVP)
+
+**Kompatybilność:** Chrome Android ✅ · Safari iOS 15+ ✅ · Samsung Browser ✅ · Edge ✅ · Firefox ⚠️ (fallback: download)
+
+**Auto-generowane metadata (z `sessions/{id}`):**
+```
+🎯 GROT-X · Trening 24.04.2026, 17:32
+📍 Dystans: 18m · Cel: 40cm · Łuk: Recurve 36#
+━━━ SERIA 3/8 ━━━
+Strzał 1: 9 | Strzał 2: 8 | Strzał 3: 10 ✨
+Suma: 27/30 (śr. 9.0)
+Średnia sesji: 8.2 → 9.0 (+0.8)
+#GROTX #Lucznictwo
+```
+
+**Filename convention:** `GROTX_Seria-3_27-30_2026-04-24.mp4`  
+→ Wizualizuje się jako tytuł wiadomości w WhatsApp
+
+**Dwa tryby (strategia staged):**
+
+**Tryb 1 — MVP v0.1: Native Share (szybki)**
+- Przycisk "📤 Udostępnij" na końcu zapisanej serii
+- Native share sheet → user wybiera WhatsApp / Telegram / email
+- Zero kosztu storage/backendu
+- Koszt wdrożenia: ~4 godziny kodu
+
+**Tryb 2 — v2.0: Direct-to-Coach (monetyzowalne)**
+- Przycisk "👨‍🏫 Wyślij do trenera" — direct do coach'a z `coaches[]`
+- Upload do Firebase Storage (prywatny bucket per-coach)
+- Record w Firestore: `/coaches/{uid}/clips/{clipId}` z metadata
+- Coach widzi notification w Coach Dashboard: "Nowy klip od Jana — Seria 3"
+- Privacy: tylko ten coach widzi
+- Koszty: ~40 PLN/mies przy 100 PRO userach (20 MB × 5 klipów/tydz)
+- Kiedy zrobić: gdy 50+ userów PRO płaci aktywnie
+
+**Dlaczego to gamechanger:**
+- Konkurencja (BaM Video Delay itp.) = standalone apps bez kontekstu
+- Workflow konkurencji: 9 kroków, user manualnie opisuje kontekst
+- Workflow GROT-X: 4 kroki, kontekst auto-generowany z bazy
+- **To NIE jest feature — to jest przewaga konkurencyjna**
+
+**Walidacja:** Warto sprawdzić z 2-3 realnymi trenerami czy ten flow faktycznie by ich zaangażował — bo to pivotuje Delay Mirror z "nice to have" na "muszę mieć dla mojej drużyny".
+
 **Wyzwania:**
 1. **Kompatybilność:** iOS <14.3 nie ma MediaRecorder → fallback lub minimum iOS 14.3
 2. **Bateria:** ~15-25% na godzinę w trybie active — należy ostrzec usera

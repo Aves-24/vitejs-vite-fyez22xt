@@ -1,7 +1,7 @@
 # TODO — GROT-X Security Hardening — Pozostałe Prace
 
 **Data startu:** 2026-04-22  
-**Status:** ⏳ W przerwaniu — Wznawiamy jutro
+**Status:** ✅ Fix A + Fix B ukończone — zostało tylko optymalizacja bundla
 
 ---
 
@@ -156,10 +156,12 @@ git push origin main
 - [ ] **Deploy rules** — `npx firebase deploy --only firestore:rules`
 - [ ] **Test coach-note** — weryfikacja w przeglądarce
 - [ ] **Implement Fix B** — `renderWithLinks()` rewrite
-- [x] **Build check** — `npm run build` ✅ (2026-04-22)
-- [ ] **Git commit** — dodaj wszystkie zmiany
-- [ ] **Git push** — push do main
-- [ ] **Fix B** — link preview UI w `StatsView.tsx`
+- [x] **Build check** — `npm run build` ✅
+- [x] **Git commit** — wszystkie zmiany zacommitowane ✅
+- [x] **Git push** — wypchnięte do main ✅
+- [x] **Fix B** — SafeLink preview w `StatsView.tsx` ✅
+- [x] **Firebase deploy** — rules live ✅
+- [x] **Vercel fix** — `.npmrc` + Install Command ✅
 - [ ] **Optymalizacja bundla** — code splitting + manualChunks (niski priorytet)
 
 ---

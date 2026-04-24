@@ -192,11 +192,36 @@ Live kamera z opóźnieniem 15s — uczeń widzi swój strzał 15s po jego wykon
 4. **UX tripod mount:** landscape + auto-rotation lock
 5. **Stare telefony:** drop klatek przy 1080p@30fps — opcja downgrade do 720p
 
-**Battery Saving Strategy (user's idea ✨):**
-- Max buffer limit (60s - 5 min) jako hard stop
-- Po osiągnięciu limitu → MediaRecorder.stop() + clear Blob references → GC oczyszcza RAM
-- Modal z akcją: zapisz / kontynuuj / zakończ
-- W trybie idle (czeka na decyzję usera) — zużycie baterii spada do poziomu "app otwarta" (~2-3%/h vs. 15-25%/h active)
+**Battery Saving Strategy (intent-based, user's refined idea ✨):**
+
+Dopasowanie do **naturalnego rytmu treningu łuczniczego**:
+```
+Seria 3-6 strzał (2-3 min) → idę po strzały (1-2 min) → wróciłem → powtórz
+```
+
+**Workflow:**
+1. **Recording mode:** czerwony dot + timer + mały przycisk "⏸ po strzały" zawsze widoczny
+2. **User klika "po strzały"** → MediaRecorder.stop() + kamera fizycznie zwolniona (getTracks().stop()) + Blob refs cleared → GC
+3. **Paused mode:**
+   - Screen auto-dim do 20% jasności (dodatkowa oszczędność)
+   - Modal: [💾 Zapisz serię] [🗑 Odrzuć] [▶ Przejrzyj ostatnią]
+   - Tap w dowolne miejsce = "Wróciłem" (szybko)
+4. **Wróciłem** → MediaRecorder.start() nowa sesja
+
+**Safety net (gdy user zapomni):**
+- Max buffer hard limit (3 min default, config: 60s / 3min / 5min)
+- 15s przed limitem: toast "Bufor prawie pełny" + przycisk "wydłuż o 1 min"
+- Auto-stop → taki sam modal jak manual stop
+
+**Battery savings per godzinę treningu:**
+- Naive approach (continuous): ~25% zużycia
+- Intent-based (user's): ~10-12% — bo 50-60% czasu to chodzenie z kamerą off
+- **~2× lepiej** niż auto-stop time-based
+
+**Why user's approach wygrywa:**
+- Trafia w **świadome decyzje usera** (on wie kiedy seria się skończyła)
+- Eliminuje marnowanie baterii podczas chodzenia
+- Natural UX — łucznik robi to instynktownie (robi pauzę po serii, żeby iść po strzały)
 
 **Monetyzacja:**
 - Feature gate: `isPremium == true`

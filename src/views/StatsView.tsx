@@ -166,27 +166,101 @@ function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// NOWOŚĆ: FUNKCJA DO KLIKALNYCH LINKÓW (Wyłapuje URL i renderuje tag <a>)
+// BEZPIECZNE LINKI: parser wyłapuje http(s) URL i renderuje je jako
+// SafeLink — "chip" pokazujący domenę + ostrzeżenia dla URL shortenerów
+// (cel ukryty) oraz domen Unicode/IDN (homograph attack — podszywanie).
+// Ochrona: rel=noopener (tabnabbing), nofollow (SEO), click.stopPropagation.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// Znane URL shortenery — cel linku jest ukryty, podwyższone ryzyko phishingu.
+const URL_SHORTENERS: Set<string> = new Set([
+  'bit.ly', 'tinyurl.com', 't.co', 'is.gd', 'goo.gl', 'ow.ly',
+  'buff.ly', 'tiny.cc', 'rb.gy', 'cutt.ly', 'short.io', 's.id',
+  'shorturl.at', 'lnkd.in', 'rebrand.ly', 'bl.ink', 'tr.im',
+]);
+
+type LinkSafety = {
+  domain: string;
+  isShortener: boolean;
+  isIDN: boolean;
+  isValid: boolean;
+};
+
+const analyzeLink = (url: string): LinkSafety => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { domain: '', isShortener: false, isIDN: false, isValid: false };
+    }
+    const domain = parsed.hostname.toLowerCase();
+    // IDN: non-ASCII chars w oryginalnym URL LUB punycode prefix po parse.
+    // (iterujemy po codePoints, bez kontrolnych znaków w regex — ESLint-friendly)
+    const hasUnicode = [...url].some(ch => ch.charCodeAt(0) > 127);
+    const isPunycode = domain.split('.').some(part => part.startsWith('xn--'));
+    return {
+      domain,
+      isShortener: URL_SHORTENERS.has(domain),
+      isIDN: hasUnicode || isPunycode,
+      isValid: true,
+    };
+  } catch {
+    return { domain: '', isShortener: false, isIDN: false, isValid: false };
+  }
+};
+
+const SafeLink = ({ url }: { url: string }) => {
+  const { domain, isShortener, isIDN, isValid } = analyzeLink(url);
+
+  // Niepoprawny URL — wyświetl jako zwykły tekst (nie linkuj).
+  if (!isValid) {
+    return (
+      <span className="text-gray-500 break-words" title="Nieprawidłowy URL">
+        {url}
+      </span>
+    );
+  }
+
+  const hasWarning = isShortener || isIDN;
+  const chipClass = hasWarning
+    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+    : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100';
+
+  return (
+    <span className="inline-flex flex-col gap-0.5 my-1 align-middle max-w-full">
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        onClick={e => e.stopPropagation()}
+        title={url}
+        className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border text-sm font-bold no-underline transition-colors break-all ${chipClass}`}
+      >
+        <span>{hasWarning ? '⚠️' : '🔗'}</span>
+        <span className="font-mono">{domain}</span>
+        <span className="text-[10px] opacity-60">↗</span>
+      </a>
+      {isShortener && (
+        <span className="text-[10px] text-amber-700 font-medium pl-1">
+          ⚠ Skracany link — cel ukryty, sprawdź przed kliknięciem
+        </span>
+      )}
+      {isIDN && (
+        <span className="text-[10px] text-red-700 font-medium pl-1">
+          ⚠ Domena Unicode — ryzyko podszywania (homograph)
+        </span>
+      )}
+    </span>
+  );
+};
+
 const renderWithLinks = (text: string) => {
   if (!text) return null;
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
-  return parts.map((part, i) => 
-    part.match(urlRegex) ? (
-      <a 
-        key={i} 
-        href={part} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        className="text-blue-600 font-bold underline break-words hover:text-blue-800 transition-colors" 
-        onClick={e => e.stopPropagation()}
-      >
-        {part}
-      </a>
-    ) : (
-      <span key={i}>{part}</span>
-    )
+  return parts.map((part, i) =>
+    part.match(urlRegex)
+      ? <SafeLink key={i} url={part} />
+      : <span key={i}>{part}</span>
   );
 };
 

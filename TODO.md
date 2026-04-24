@@ -271,24 +271,59 @@ async function exportTargetMap(roundId, seriesId): Promise<File> {
 ```
 Backward-compatible — starsze sesje po prostu nie będą miały timestampów w share (i to OK).
 
-**Caption template (przykład — 70m, 6 strzał):**
+**⚠️ CORRECTION (user's insight):**
+~~Numeracja strzał na target map ≠ kolejność fizyczna strzał.~~
+User tapuje pozycje w dowolnej kolejności (od lewej, od środka, losowo).
+Śledzenie kolejności to **sztuczny obowiązek** dla usera — nie warty tego.
+
+**Re-frame: target map to GROUPING ANALYSIS, nie sekwencja.**
+
+Trener analizuje:
+- **Skupienie** strzał (konsystencja techniki)
+- **Środek grupy** (offset celownika)
+- **Outliers** (pojedyncze problemy z release)
+
+Kolejność nie ma znaczenia dla żadnej z tych analiz.
+
+**Uproszczony Caption template (bez timestampów, 70m, 6 strzał):**
 ```
 🎯 GROT-X · Trening 24.04.2026, 17:32
 📍 70m · FITA 122cm · Recurve 36#
+
 ━━━ RUNDA 2 · SERIA P4 ━━━
-1️⃣  9  (prawa, 3 o'clock)   @0:08
-2️⃣  8  (dół, near X)         @0:19
-3️⃣  7  (lewa, 9 o'clock)    @0:28
-4️⃣  8  (dół, yellow)         @0:37
-5️⃣  M  (miss)                @0:45
-6️⃣  6  (prawa, blue)         @0:54
-Suma P4: 38/54 · Runda 2: 218/270
-💬 [user's message]
+Strzały: 9, 8, 7, 8, M, 6
+Suma: 38/54 (śr. 6.3)
+
+📊 Analiza skupienia:
+• Rozkład: 3× żółty, 2× czerwony, 1× miss
+• Grupa: dolna połowa tarczy (5/6 strzał)
+• Sugestia: sprawdź celownik ↑ (+1-2 klik)
+
+Runda 2 total: 218/270
+💬 [user's wiadomość]
 ```
+
+**Data model — uproszczenie:**
+Timestamp per shot **NIE jest potrzebny** dla MVP.
+Użyjemy istniejących {x, y, spotId, value} bez żadnych zmian schematu. ✅
+
+**Opcjonalny tryb "Track Shot Order" (v2.0, dla power users):**
+- Settings toggle (default OFF)
+- Kiedy ON: po każdym fizycznym strzale user klika popup "Strzał oddany"
+- Potem na tarczy: drag&drop pozycji do dopasowania do kolejności
+- Use case: zawody halowe 18m gdzie sekwencja bywa analizowana
+- **Niepotrzebne dla 95% users** — nie blokuje MVP
 
 **Workflow porównanie:**
 - Konkurencja: 9 kroków, trener musi manualnie pytać o kontekst
-- GROT-X: 4 kroki, kontekst jest w screen pierwszym rzucie oka
+- GROT-X: 4 kroki, kontekst (dystans, wynik, grupa, sugestia) + video auto-doklejone
+
+**Lesson learned (2026-04-24):**
+Założyłem "tap order = shoot order" — logiczne z perspektywy developer'a
+ale nie pasuje do workflow łucznika. User wpisuje gdzie mu wygodniej
+bo pamięć przestrzenna > pamięć sekwencyjna. **Walidacja z realnym
+userem (user sam siebie) odkryła błąd przed napisaniem kodu.**
+Confirmed value: najpierw pytaj jak ludzie realnie używają, dopiero potem koduj.
 
 **Wyzwania:**
 1. **Kompatybilność:** iOS <14.3 nie ma MediaRecorder → fallback lub minimum iOS 14.3

@@ -669,7 +669,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('home.commander')}</p>
         </div>
         <div className="flex items-center gap-2">
-          
+
+          <button
+            onClick={() => onNavigate?.('DELAY_MIRROR')}
+            className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all shadow-sm active:scale-90 opacity-70"
+          >
+            <span className="material-symbols-outlined text-[#0a3a2a] text-[24px] font-bold">slow_motion_video</span>
+          </button>
+
           <button
             onClick={() => onNavigate?.('ANNOUNCEMENTS')}
             className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${

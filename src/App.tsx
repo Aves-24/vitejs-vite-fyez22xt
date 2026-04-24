@@ -27,6 +27,7 @@ const StatsView           = React.lazy(() => import('./views/StatsView'));
 const AdminDashboardView  = React.lazy(() => import('./views/AdminDashboardView'));
 const CoachDashboardView  = React.lazy(() => import('./views/CoachDashboardView'));
 const StudentProfileView  = React.lazy(() => import('./views/StudentProfileView'));
+const DelayMirrorView     = React.lazy(() => import('./views/DelayMirrorView'));
 
 // Fallback pokazywany podczas ładowania chunka (zwykle <100ms).
 const ViewFallback = () => (
@@ -35,7 +36,7 @@ const ViewFallback = () => (
   </div>
 );
 
-type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD';
+type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD' | 'DELAY_MIRROR';
 
 export default function App() {
   const { t } = useTranslation();
@@ -189,6 +190,7 @@ export default function App() {
               'COACH',
               'STUDENT_PROFILE',
               'ANNOUNCEMENTS',
+              'DELAY_MIRROR',
             ];
             if (protectedViews.includes(prev)) return prev;
             if (prev === 'SETTINGS') return prev;
@@ -274,7 +276,7 @@ export default function App() {
   };
 
   const renderBottomNav = () => {
-    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD'];
+    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
 
     return (
@@ -376,7 +378,7 @@ export default function App() {
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
 
-      {(currentView !== 'HOME' && currentView !== 'SCORING' && currentView !== 'ANNOUNCEMENTS' && currentView !== 'COACH' && currentView !== 'STUDENT_PROFILE' && currentView !== 'ADMIN' && currentView !== 'BATTLE_LOBBY') && (
+      {(currentView !== 'HOME' && currentView !== 'SCORING' && currentView !== 'ANNOUNCEMENTS' && currentView !== 'COACH' && currentView !== 'STUDENT_PROFILE' && currentView !== 'ADMIN' && currentView !== 'BATTLE_LOBBY' && currentView !== 'DELAY_MIRROR') && (
         <button 
           onClick={() => handleNavigate('HOME')} 
           className="absolute top-5 left-4 z-[110] px-3 py-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 text-gray-600 active:scale-95 transition-all flex items-center gap-1.5 hover:bg-gray-50"
@@ -440,6 +442,7 @@ export default function App() {
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} />}
+        {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
       </Suspense>
       </main>
       

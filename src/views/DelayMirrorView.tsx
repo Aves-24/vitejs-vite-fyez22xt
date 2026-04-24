@@ -2,9 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const DELAY_S = 15;
-const CHUNK_MS = 500;
-const MAX_BUFFER_S = 90; // trim buffer beyond this
+const DELAY_MS = 15_000;
 
 type MirrorState = 'idle' | 'requesting' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error';
 
@@ -20,11 +18,33 @@ function getCodec(): string | null {
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
     'video/webm',
+    'video/mp4',
   ];
   for (const c of candidates) {
-    if (MediaRecorder.isTypeSupported(c) && MediaSource.isTypeSupported(c)) return c;
+    if (MediaRecorder.isTypeSupported(c)) return c;
   }
   return null;
+}
+
+function recordSegment(stream: MediaStream, mimeType: string, ms: number): Promise<{ blob: Blob; recorder: MediaRecorder }> {
+  return new Promise((resolve, reject) => {
+    try {
+      const chunks: BlobPart[] = [];
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_500_000 });
+      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+      recorder.onerror = (e) => reject(e);
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
+        resolve({ blob, recorder });
+      };
+      recorder.start();
+      setTimeout(() => {
+        if (recorder.state !== 'inactive') recorder.stop();
+      }, ms);
+    } catch (err) {
+      reject(err);
+    }
+  });
 }
 
 export default function DelayMirrorView({ onBack }: Props) {
@@ -33,7 +53,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [mirrorState, setMirrorState] = useState<MirrorState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [recSeconds, setRecSeconds] = useState(0);
-  const [bufferPct, setBufferPct] = useState(0); // 0-100 during buffering phase
+  const [bufferMs, setBufferMs] = useState(0);
   const [isPortrait, setIsPortrait] = useState(
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
   );
@@ -41,18 +61,13 @@ export default function DelayMirrorView({ onBack }: Props) {
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const mediaSourceRef = useRef<MediaSource | null>(null);
-  const sourceBufferRef = useRef<SourceBuffer | null>(null);
-  const appendQueueRef = useRef<ArrayBuffer[]>([]);
-  const isAppendingRef = useRef(false);
-  const initChunkRef = useRef<ArrayBuffer | null>(null);
-  const totalBufferedRef = useRef(0); // seconds appended so far
-  const blobUrlRef = useRef<string | null>(null);
+  const activeRecorderRef = useRef<MediaRecorder | null>(null);
+  const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const codecRef = useRef<string | null>(null);
+  const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const currentBlobUrlRef = useRef<string | null>(null);
 
-  // Load isPremium from Firestore
+  // PRO gate
   useEffect(() => {
     const user = auth.currentUser;
     if (!user) { setPremiumLoading(false); return; }
@@ -69,7 +84,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     return () => unsub();
   }, []);
 
-  // Orientation listener
+  // Orientation
   useEffect(() => {
     const update = () => setIsPortrait(window.innerHeight > window.innerWidth);
     window.addEventListener('resize', update);
@@ -80,47 +95,94 @@ export default function DelayMirrorView({ onBack }: Props) {
     };
   }, []);
 
-  // Auto-pause when app goes to background
+  const cleanup = useCallback(() => {
+    isPausedRef.current = true;
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (bufferTimerRef.current) clearInterval(bufferTimerRef.current);
+    timerRef.current = null;
+    bufferTimerRef.current = null;
+    try {
+      if (activeRecorderRef.current && activeRecorderRef.current.state !== 'inactive') {
+        activeRecorderRef.current.stop();
+      }
+    } catch { /* ignore */ }
+    activeRecorderRef.current = null;
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
+    if (delayedVideoRef.current) {
+      delayedVideoRef.current.pause();
+      delayedVideoRef.current.removeAttribute('src');
+      delayedVideoRef.current.load();
+    }
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => () => cleanup(), [cleanup]);
+
+  // Auto-pause on background
   useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden && mirrorState === 'live') {
+      if (document.hidden && (mirrorState === 'live' || mirrorState === 'buffering')) {
         pauseMirror();
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
     return () => document.removeEventListener('visibilitychange', onVisibility);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mirrorState]);
 
-  const cleanup = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    recorderRef.current?.stop();
-    streamRef.current?.getTracks().forEach(t => t.stop());
-    streamRef.current = null;
-    if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
-    if (delayedVideoRef.current) delayedVideoRef.current.pause();
+  const playBlob = useCallback((blob: Blob) => {
+    const vid = delayedVideoRef.current;
+    if (!vid) return;
+    const url = URL.createObjectURL(blob);
+    const oldUrl = currentBlobUrlRef.current;
+    currentBlobUrlRef.current = url;
+    vid.src = url;
+    vid.loop = true;
+    vid.play().catch(() => { /* autoplay may fail silently */ });
+    // Revoke old URL after a tick to avoid interrupting playback
+    if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+  }, []);
+
+  const runLoop = useCallback(async (stream: MediaStream, mimeType: string) => {
+    // FIRST segment = buffering phase
+    setMirrorState('buffering');
+    setBufferMs(0);
+    bufferTimerRef.current = setInterval(() => {
+      setBufferMs(b => Math.min(DELAY_MS, b + 100));
+    }, 100);
+
     try {
-      if (mediaSourceRef.current?.readyState === 'open') {
-        mediaSourceRef.current.endOfStream();
+      const firstRec = recordSegment(stream, mimeType, DELAY_MS);
+      const { blob: firstBlob } = await firstRec;
+      if (isPausedRef.current) return;
+
+      if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
+
+      // Start next recording IMMEDIATELY, then play the just-finished one
+      let nextPromise = recordSegment(stream, mimeType, DELAY_MS);
+      playBlob(firstBlob);
+      setMirrorState('live');
+
+      // Continuous loop
+      while (!isPausedRef.current) {
+        const { blob } = await nextPromise;
+        if (isPausedRef.current) break;
+        nextPromise = recordSegment(stream, mimeType, DELAY_MS);
+        playBlob(blob);
       }
-    } catch { /* ignore */ }
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
+    } catch (err: unknown) {
+      if (!isPausedRef.current) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setErrorMsg(`Błąd nagrywania: ${msg}`);
+        setMirrorState('error');
+      }
     }
-    appendQueueRef.current = [];
-    isAppendingRef.current = false;
-    initChunkRef.current = null;
-    totalBufferedRef.current = 0;
-  }, []);
-
-  useEffect(() => () => cleanup(), [cleanup]);
-
-  const processQueue = useCallback(() => {
-    const sb = sourceBufferRef.current;
-    if (!sb || isAppendingRef.current || appendQueueRef.current.length === 0) return;
-    isAppendingRef.current = true;
-    sb.appendBuffer(appendQueueRef.current.shift()!);
-  }, []);
+  }, [playBlob]);
 
   const startRecording = useCallback(async () => {
     setMirrorState('requesting');
@@ -131,127 +193,59 @@ export default function DelayMirrorView({ onBack }: Props) {
       setMirrorState('unsupported');
       return;
     }
-    codecRef.current = codec;
 
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
-    } catch (err: any) {
-      setErrorMsg(err.name === 'NotAllowedError' ? 'Brak zgody na kamerę.' : `Błąd kamery: ${err.message}`);
+    } catch (err: unknown) {
+      const e = err as { name?: string; message?: string };
+      setErrorMsg(e.name === 'NotAllowedError' ? 'Brak zgody na kamerę.' : `Błąd kamery: ${e.message || 'nieznany'}`);
       setMirrorState('error');
       return;
     }
 
     streamRef.current = stream;
+    isPausedRef.current = false;
+
     if (liveVideoRef.current) {
       liveVideoRef.current.srcObject = stream;
-      liveVideoRef.current.play().catch(() => {});
+      liveVideoRef.current.play().catch(() => { /* ignore */ });
     }
 
-    // Setup MediaSource for delayed playback
-    const ms = new MediaSource();
-    mediaSourceRef.current = ms;
-    const blobUrl = URL.createObjectURL(ms);
-    blobUrlRef.current = blobUrl;
-    if (delayedVideoRef.current) {
-      delayedVideoRef.current.src = blobUrl;
-    }
+    setRecSeconds(0);
+    timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
-    ms.addEventListener('sourceopen', () => {
-      const sb = ms.addSourceBuffer(codec);
-      sourceBufferRef.current = sb;
-
-      sb.addEventListener('updateend', () => {
-        isAppendingRef.current = false;
-
-        // Trim old buffer to prevent memory growth
-        if (sb.buffered.length > 0) {
-          const buffStart = sb.buffered.start(0);
-          const buffEnd = sb.buffered.end(0);
-          if (buffEnd - buffStart > MAX_BUFFER_S) {
-            try { sb.remove(buffStart, buffEnd - MAX_BUFFER_S + 30); } catch { /* ignore */ }
-            return;
-          }
-        }
-
-        // Adjust delayed video playback position
-        const vid = delayedVideoRef.current;
-        if (vid && sb.buffered.length > 0) {
-          const buffEnd = sb.buffered.end(0);
-          const target = buffEnd - DELAY_S;
-          if (target > 0) {
-            if (vid.paused || Math.abs(vid.currentTime - target) > 1.5) {
-              vid.currentTime = target;
-              vid.play().catch(() => {});
-            }
-            if (mirrorState !== 'live' && totalBufferedRef.current >= DELAY_S) {
-              setMirrorState('live');
-            }
-          }
-        }
-
-        processQueue();
-      });
-
-      // Start MediaRecorder
-      const recorder = new MediaRecorder(stream, { mimeType: codec, videoBitsPerSecond: 1_500_000 });
-      recorderRef.current = recorder;
-
-      recorder.ondataavailable = (e) => {
-        if (e.data.size === 0) return;
-        e.data.arrayBuffer().then((buf) => {
-          totalBufferedRef.current += CHUNK_MS / 1000;
-          const pct = Math.min(100, Math.round((totalBufferedRef.current / DELAY_S) * 100));
-          setBufferPct(pct);
-
-          if (!initChunkRef.current) {
-            initChunkRef.current = buf;
-          }
-          appendQueueRef.current.push(buf);
-          processQueue();
-        });
-      };
-
-      recorder.start(CHUNK_MS);
-      setMirrorState('buffering');
-      setRecSeconds(0);
-      timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
-    });
-  }, [mirrorState, processQueue]);
+    runLoop(stream, codec);
+  }, [runLoop]);
 
   const pauseMirror = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    recorderRef.current?.stop();
+    isPausedRef.current = true;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
+    try {
+      if (activeRecorderRef.current && activeRecorderRef.current.state !== 'inactive') {
+        activeRecorderRef.current.stop();
+      }
+    } catch { /* ignore */ }
+    activeRecorderRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     delayedVideoRef.current?.pause();
-    // Close MediaSource so it can't be appended to
-    try {
-      if (mediaSourceRef.current?.readyState === 'open') {
-        mediaSourceRef.current.endOfStream();
-      }
-    } catch { /* ignore */ }
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
-    }
-    appendQueueRef.current = [];
-    isAppendingRef.current = false;
-    initChunkRef.current = null;
-    totalBufferedRef.current = 0;
-    sourceBufferRef.current = null;
-    mediaSourceRef.current = null;
     setMirrorState('paused');
   }, []);
 
   const resumeMirror = useCallback(() => {
     setMirrorState('idle');
-    setBufferPct(0);
+    setBufferMs(0);
     setRecSeconds(0);
+    if (currentBlobUrlRef.current) {
+      URL.revokeObjectURL(currentBlobUrlRef.current);
+      currentBlobUrlRef.current = null;
+    }
     startRecording();
   }, [startRecording]);
 
@@ -265,6 +259,8 @@ export default function DelayMirrorView({ onBack }: Props) {
     const sec = s % 60;
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
+
+  const bufferPct = Math.round((bufferMs / DELAY_MS) * 100);
 
   // ─── PRO Gate ───────────────────────────────────────────────────────────────
   if (premiumLoading) {
@@ -293,7 +289,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         </p>
         <div className="w-full max-w-xs">
           <div className="bg-white/5 rounded-2xl p-4 mb-4 space-y-2">
-            {['15s opóźnienie — idealny czas "po strzałach"', 'Kamera tylna, tryb pejzaż', 'Pauza "Po strzały" — oszcza baterię', 'Zero uploadu — wideo tylko w RAM'].map(f => (
+            {['15s opóźnienie — "po strzałach" widzisz samego siebie', 'Przednia kamera — ustaw telefon i strzelaj', 'Pauza "Po strzały" — oszczędza baterię', 'Zero uploadu — wideo tylko w RAM'].map(f => (
               <div key={f} className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#fed33e] text-base">check_circle</span>
                 <span className="text-white/70 text-xs">{f}</span>
@@ -311,7 +307,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // ─── Unsupported browser ────────────────────────────────────────────────────
   if (mirrorState === 'unsupported') {
     return (
       <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50 px-8">
@@ -330,7 +325,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // ─── Error ──────────────────────────────────────────────────────────────────
   if (mirrorState === 'error') {
     return (
       <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50 px-8">
@@ -347,7 +341,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // ─── Idle — start screen ────────────────────────────────────────────────────
   if (mirrorState === 'idle') {
     return (
       <div className="fixed inset-0 bg-[#050f0a] flex flex-col items-center justify-center z-50 px-8">
@@ -363,7 +356,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         </p>
         <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-8">
           <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-          <span className="text-[#fed33e] text-xs font-bold">15s opóźnienie · kamera tylna</span>
+          <span className="text-[#fed33e] text-xs font-bold">15s opóźnienie · przednia kamera</span>
         </div>
         {isPortrait && (
           <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 mb-4">
@@ -381,27 +374,25 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // ─── Main mirror UI (buffering + live + paused) ──────────────────────────────
   return (
     <div className="fixed inset-0 bg-black z-50 overflow-hidden select-none">
 
-      {/* Delayed video — main view */}
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: 'scaleX(-1)' }}
         playsInline
         muted
       />
 
-      {/* Buffering overlay */}
       {mirrorState === 'buffering' && (
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
           <div className="w-16 h-16 rounded-full border-4 border-white/10 border-t-[#fed33e] animate-spin mb-4" />
           <p className="text-white font-bold text-base mb-2">Buforowanie…</p>
-          <p className="text-white/50 text-xs mb-4">Czekaj {DELAY_S}s zanim pojawi się opóźniony obraz</p>
+          <p className="text-white/50 text-xs mb-4">Czekaj 15s zanim pojawi się opóźniony obraz</p>
           <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#fed33e] rounded-full transition-all duration-500"
+              className="h-full bg-[#fed33e] rounded-full transition-all duration-100"
               style={{ width: `${bufferPct}%` }}
             />
           </div>
@@ -409,7 +400,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
       )}
 
-      {/* Paused overlay */}
       {mirrorState === 'paused' && (
         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20"
              onClick={resumeMirror}>
@@ -433,13 +423,13 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
       )}
 
-      {/* Live preview PiP — top right */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className="absolute top-4 right-4 z-30 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
              style={{ width: '25vw', maxWidth: 120, aspectRatio: '16/9' }}>
           <video
             ref={liveVideoRef}
             className="w-full h-full object-cover"
+            style={{ transform: 'scaleX(-1)' }}
             playsInline
             muted
           />
@@ -449,7 +439,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
       )}
 
-      {/* Top status bar */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
@@ -459,13 +448,12 @@ export default function DelayMirrorView({ onBack }: Props) {
           {mirrorState === 'live' && (
             <div className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5">
               <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">-{DELAY_S}s</span>
+              <span className="text-[#fed33e] text-xs font-bold">-15s</span>
             </div>
           )}
         </div>
       )}
 
-      {/* Bottom controls */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center gap-3 px-8">
           <button

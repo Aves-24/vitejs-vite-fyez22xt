@@ -657,7 +657,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+0.5rem)]">
+    <div className="flex flex-col h-full bg-[#fcfdfe] px-5 pb-24 pt-[max(calc(env(safe-area-inset-top)+0.5rem),2.5rem)]">
       
       {/* HEADER */}
       <div className="mb-4 flex items-center justify-between">

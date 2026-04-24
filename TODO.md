@@ -162,7 +162,11 @@ git push origin main
 - [x] **Fix B** — SafeLink preview w `StatsView.tsx` ✅
 - [x] **Firebase deploy** — rules live ✅
 - [x] **Vercel fix** — `.npmrc` + Install Command ✅
-- [ ] **Optymalizacja bundla** — code splitting + manualChunks (niski priorytet)
+- [x] **Optymalizacja bundla** — code splitting + manualChunks ✅ (-54% initial load)
+- [x] **E2E tests T1-T6** — wszystkie reguły przeszły ✅ (2026-04-24)
+- [ ] **Memory leak AuthView.tsx:51** — minor, niepilne
+- [ ] **App Check debug token dla Edge** — kosmetyczne
+- [ ] **T7 UI test** — student odpina trenera (przyszła sesja)
 
 ---
 

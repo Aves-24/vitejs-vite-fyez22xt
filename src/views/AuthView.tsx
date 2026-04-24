@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { auth } from '../firebase';
 import { 
@@ -20,21 +20,45 @@ export default function AuthView() {
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Ref do śledzenia czy komponent jest nadal zamontowany.
+  // Po signIn/signUp auth state listener unmountuje AuthView (zastępuje HomeView),
+  // więc setIsLoading(false) w finally musi być ograniczone do żywych instancji.
+  const isMountedRef = useRef(true);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    };
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = setTimeout(() => {
+      if (isMountedRef.current) setToastMessage(null);
+    }, 4000);
+  };
+
+  const safeSetIsLoading = (v: boolean) => {
+    if (isMountedRef.current) setIsLoading(v);
+  };
+  const safeSetError = (v: string) => {
+    if (isMountedRef.current) setError(v);
   };
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setIsLoading(true);
-    
+    safeSetError('');
+    safeSetIsLoading(true);
+
     try {
       if (isForgotPassword) {
         await sendPasswordResetEmail(auth, email);
         showToast(t('auth.resetSuccess'));
-        setIsForgotPassword(false);
+        if (isMountedRef.current) setIsForgotPassword(false);
       } else if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -43,26 +67,26 @@ export default function AuthView() {
     } catch (err: any) {
       console.error(err);
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError(t('auth.errorInvalid'));
+        safeSetError(t('auth.errorInvalid'));
       } else {
-        setError(t('auth.errorGeneral'));
+        safeSetError(t('auth.errorGeneral'));
       }
     } finally {
-      setIsLoading(false);
+      safeSetIsLoading(false);
     }
   };
 
   const handleGoogleAuth = async () => {
-    setError('');
-    setIsLoading(true);
+    safeSetError('');
+    safeSetIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (err: any) {
       console.error(err);
-      setError(t('auth.googleError'));
+      safeSetError(t('auth.googleError'));
     } finally {
-      setIsLoading(false);
+      safeSetIsLoading(false);
     }
   };
 

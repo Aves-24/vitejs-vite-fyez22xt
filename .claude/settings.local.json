@@ -17,7 +17,8 @@
       "Bash(node -e ' *)",
       "Bash(npm run *)",
       "Bash(npx firebase *)",
-      "Bash(firebase --version)"
+      "Bash(firebase --version)",
+      "Bash(npx tsc *)"
     ]
   }
 }

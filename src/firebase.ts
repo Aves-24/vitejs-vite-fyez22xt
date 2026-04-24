@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 // Nowe importy dla najnowszego standardu Firebase
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, doc, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
@@ -47,4 +47,13 @@ export const db = initializeFirestore(app, {
 });
 
 export const auth = getAuth(app);
+
+// --- DEV-ONLY: wystaw Firebase na window dla testów w DevTools Console ---
+// W produkcji ten blok jest usuwany przez tree-shaking (import.meta.env.DEV = false).
+if (import.meta.env.DEV) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__fb = { db, auth, doc, getDoc, getDocs, collection, updateDoc };
+  // eslint-disable-next-line no-console
+  console.log('[DEV] Firebase expose na window.__fb');
+}
 

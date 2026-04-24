@@ -57,6 +57,11 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [isPortrait, setIsPortrait] = useState(
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
   );
+  // Fizyczny kąt obrotu urządzenia (0 / 90 / 180 / 270). Potrzebny żeby
+  // rotować UI gdy user ma zablokowaną rotację w systemie ale fizycznie
+  // obrócił telefon — screen.orientation.angle odczytuje rzeczywistą
+  // orientację niezależnie od blokady przeglądarki.
+  const [deviceAngle, setDeviceAngle] = useState(0);
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
@@ -86,12 +91,20 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   // Orientation
   useEffect(() => {
-    const update = () => setIsPortrait(window.innerHeight > window.innerWidth);
+    const update = () => {
+      setIsPortrait(window.innerHeight > window.innerWidth);
+      const so = (screen as Screen & { orientation?: { angle: number } }).orientation;
+      if (so && typeof so.angle === 'number') setDeviceAngle(so.angle);
+    };
+    update();
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
+    const so = (screen as Screen & { orientation?: EventTarget }).orientation;
+    so?.addEventListener?.('change', update);
     return () => {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
+      so?.removeEventListener?.('change', update);
     };
   }, []);
 
@@ -380,8 +393,25 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
+  // Jeśli browser myśli że jest w portrait ale urządzenie fizycznie obrócone
+  // (system rotation lock), wymuszamy rotację całego UI w CSS żeby pasowało
+  // do rzeczywistej orientacji telefonu.
+  const deviceLandscape = deviceAngle === 90 || deviceAngle === 270;
+  const forceRotate = isPortrait && deviceLandscape;
+  const containerStyle: React.CSSProperties = forceRotate
+    ? {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        width: '100vh',
+        height: '100vw',
+        transform: `translate(-50%, -50%) rotate(${deviceAngle === 90 ? -90 : 90}deg)`,
+        transformOrigin: 'center center',
+      }
+    : { position: 'fixed', inset: 0 };
+
   return (
-    <div className="fixed inset-0 bg-black z-50 overflow-hidden select-none">
+    <div className="bg-black z-50 overflow-hidden select-none" style={containerStyle}>
 
       <video
         ref={delayedVideoRef}
@@ -440,7 +470,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             muted
           />
           <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white text-center py-0.5 font-bold uppercase tracking-widest">
-            Na żywo
+            LIVE
           </div>
         </div>
       )}
@@ -470,10 +500,11 @@ export default function DelayMirrorView({ onBack }: Props) {
             Po strzały
           </button>
           <button
-            onClick={stopMirror}
+            onClick={pauseMirror}
             className="py-3.5 px-5 bg-white/10 backdrop-blur-sm text-white/60 rounded-2xl font-bold text-sm active:scale-95 transition-all border border-white/10"
+            title="Pauza"
           >
-            <span className="material-symbols-outlined text-xl">stop</span>
+            <span className="material-symbols-outlined text-xl">pause</span>
           </button>
         </div>
       )}

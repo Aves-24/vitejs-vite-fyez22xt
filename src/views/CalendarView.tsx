@@ -293,7 +293,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const openInGoogleMaps = (address: string) => {
     const encodedAddress = encodeURIComponent(address);
-    window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank');
+    // noopener,noreferrer — ochrona przed tabnabbing (opened tab nie ma
+    // dostępu do window.opener i nie może nas zredirectować).
+    window.open(
+      `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   };
 
   const dayNames = t('calendar.days', { returnObjects: true }) as string[];

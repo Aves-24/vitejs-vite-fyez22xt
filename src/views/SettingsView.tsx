@@ -15,7 +15,7 @@ import CoachSection from '../components/settings/CoachSection';
 import TournamentSection from '../components/settings/TournamentSection';
 import BowSection from '../components/settings/BowSection'; 
 
-type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'ADMIN';
+type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
 interface SettingsViewProps {
   userId: string;
@@ -316,7 +316,8 @@ export default function SettingsView({
         {[
           { id: 'PRO', label: t('settings.tabPro'), icon: 'diamond', color: 'text-[#F2C94C]' },
           { id: 'TRENER', label: t('settings.tabCoach'), icon: 'qr_code_scanner', color: 'text-blue-500' },
-          { id: 'ZAWODY', label: t('settings.tabTournament'), icon: 'emoji_events', color: 'text-fuchsia-500' }
+          { id: 'ZAWODY', label: t('settings.tabTournament'), icon: 'emoji_events', color: 'text-fuchsia-500' },
+          { id: 'SHARE', label: 'SHARE', icon: 'qr_code_2', color: 'text-[#0a3a2a]' }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as SettingsTab)} className={`px-2.5 py-2.5 rounded-xl text-[9px] font-black tracking-widest transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === tab.id ? 'bg-white border border-gray-100 text-[#0a3a2a] shadow-sm z-10' : 'text-gray-400 bg-transparent'}`}>
             {tab.label} <span className={`material-symbols-outlined text-[13px] ${tab.color}`}>{tab.icon}</span>
@@ -415,6 +416,32 @@ export default function SettingsView({
         {activeTab === 'PRO' && <ProSection isPremium={isPremium} />}
         {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
+        {activeTab === 'SHARE' && (
+          <div className="flex flex-col items-center justify-center py-6">
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-1">Udostępnij GROT-X</h2>
+            <p className="text-xs text-gray-500 text-center mb-5 px-4">
+              Zeskanuj kod aparatem telefonu — otworzy aplikację w przeglądarce i pozwoli ją zainstalować.
+            </p>
+            <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
+              <QRCodeCanvas
+                value="https://vitejs-vite-fyez22xt.vercel.app/"
+                size={240}
+                bgColor="#ffffff"
+                fgColor="#0a3a2a"
+                level="M"
+                includeMargin={false}
+              />
+            </div>
+            <a
+              href="https://vitejs-vite-fyez22xt.vercel.app/"
+              className="mt-5 text-xs text-gray-500 break-all text-center px-6"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              vitejs-vite-fyez22xt.vercel.app
+            </a>
+          </div>
+        )}
       </div>
 
       {['PROFIL', 'VISIER', 'PFEILE', 'BOGEN', 'JEZYK'].includes(activeTab) && (

@@ -133,6 +133,93 @@ if (import.meta.env.DEV) {
 
 ---
 
+## 🎯 Phase C — PRO Features (Przyszłość)
+
+### 🎥 Delay Mirror (Instant Replay Kamera)
+**Status:** 💡 Idea — do zaplanowania  
+**Priorytet:** Flagowa PRO feature  
+**Inspiracja:** BaM Video Delay, Delay Mirror, Coach's Eye  
+**Konkurencja:** $4-15/mies albo $10-40 one-time
+
+**Koncept:**
+Live kamera z opóźnieniem 15s — uczeń widzi swój strzał 15s po jego wykonaniu. Dla łuczników to game-changer: mogą obserwować własną technikę natychmiast, bez trenera, bez zewnętrznej aplikacji.
+
+**Stack (local-first, brak backendu):**
+- `navigator.mediaDevices.getUserMedia()` — dostęp do kamery
+- `MediaRecorder` z `timeslice: 1000ms` — chunking
+- Circular buffer Blob'ów w RAM (FIFO, ~15-30s)
+- `MediaSource` + `SourceBuffer` — playback z delay
+- `<video>` × 2 (live preview + delayed view)
+- Wake Lock API — screen zawsze on
+- **Firebase NIE używany** — tylko feature gate przez `isPremium`
+
+**Dlaczego NIE Firebase/cloud:**
+1. Latencja 2-5s (uploads + downloads)
+2. Koszt egressu (HD wideo × czas)
+3. Prywatność (RODO — wideo uczniów)
+4. Offline — strzelnica często bez zasięgu
+5. Bateria — upload zabija
+
+**MVP v0.1 (1-2 tygodnie):**
+- Przycisk "Delay Mirror" w ScoringView (PRO gate)
+- Fullscreen landscape, mirror mode
+- Stały delay 15s
+- Kamera tylna
+- Stop button
+- Auto-pause gdy app w tle
+
+**v0.2 (+1 tydz):**
+- Konfigurowalny delay: 5/10/15/30s
+- Konfigurowalny max buffer czasu:
+  - **Quick Review:** 60s (słabe telefony, minimalne zużycie)
+  - **Training Flow:** 3 min (default, ~6-8 strzałów)
+  - **Endurance:** 5 min (mocne telefony)
+- Auto-stop po max buffer → modal "Zapisz klip / Kontynuuj / Stop"
+- Jednoklik "Kontynuuj" = reset bufora + nowa sesja
+- Tagi/markery (tap = zaznacz moment)
+
+**v0.3 (zaawansowane):**
+- Auto-pause gdy brak ruchu 30s (bateria)
+- Audio detection strzału (peak wypuszczenia strzały → auto-marker)
+- Side-by-side slow-mo compare
+- Zapis do Photos/Gallery telefonu (Web Share API / File System Access API)
+- Eksport klipu z nakładką (wynik sesji, data, szczegóły strzału)
+
+**Wyzwania:**
+1. **Kompatybilność:** iOS <14.3 nie ma MediaRecorder → fallback lub minimum iOS 14.3
+2. **Bateria:** ~15-25% na godzinę w trybie active — należy ostrzec usera
+3. **RAM:** 3 min buffer HD ≈ 30-60 MB, akceptowalne
+4. **UX tripod mount:** landscape + auto-rotation lock
+5. **Stare telefony:** drop klatek przy 1080p@30fps — opcja downgrade do 720p
+
+**Battery Saving Strategy (user's idea ✨):**
+- Max buffer limit (60s - 5 min) jako hard stop
+- Po osiągnięciu limitu → MediaRecorder.stop() + clear Blob references → GC oczyszcza RAM
+- Modal z akcją: zapisz / kontynuuj / zakończ
+- W trybie idle (czeka na decyzję usera) — zużycie baterii spada do poziomu "app otwarta" (~2-3%/h vs. 15-25%/h active)
+
+**Monetyzacja:**
+- Feature gate: `isPremium == true`
+- Free tier: teaser (screen z "Upgrade to PRO")
+- Trial 14 dni PRO po rejestracji (już istnieje infrastruktura `trialEndsAt`)
+- Pricing propozycja: 9-15 PLN/mies albo 99 PLN/rok
+- Platform: Stripe (web) + ewentualnie In-App Purchase (iOS/Android apps)
+
+**Research do zrobienia przed kodem:**
+1. Test MediaRecorder na iOS Safari (realny iPhone)
+2. Benchmark RAM/bateria dla 3 typowych telefonów (flagship / mid-range / 3-letni)
+3. Konkurencja — pobrać BaM Video Delay, zobaczyć UX
+4. Prawo — czy nagrywanie wideo w PWA w UE wymaga specjalnego disclaimera?
+5. Legalność nagrywania na strzelnicach (prywatne tereny, zgoda trenera)
+
+**Pytania otwarte:**
+- Target: PWA only, czy dodatkowo natywne appki (iOS/Android)?
+- Czy warto obsłużyć scenariusz "trener filmuje ucznia zdalnie" (WebRTC P2P)? Czy tylko self-view?
+- Save clips: v0.1 czy odroczyć?
+- Audio: czy nagrywamy dźwięk też (wypuszczenie strzały słyszalne) czy tylko wideo?
+
+---
+
 ## 🎯 Finalna Wizja — OSIĄGNIĘTA ✅
 
 Aplikacja GROT-X ma:

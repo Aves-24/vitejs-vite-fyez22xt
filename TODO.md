@@ -356,6 +356,86 @@ olympijczycy trenują. Value: apka = narzędzie rozwoju, nie tylko notatnik.
 Stały — żaden nowy field. Używamy `dots[0..5]` array — index już jest
 "numerem" strzały w Sequence Mode. W Simple Mode = tylko pozycja.
 
+---
+
+### 🤖 Phase 4 — Pose Estimation / Form Analysis (PRO PRO)
+**Status:** 💡 Ambicja — daleka przyszłość  
+**Priorytet:** Po udowodnieniu Phase 1-3 z płacącymi userami  
+**Czas wdrożenia:** 2-4 miesiące  
+**Inspiracja:** User's idea — tracking dłoni, łokci, głowy podczas strzału
+
+**Technologia (dostępna dziś, w przeglądarce):**
+- **TensorFlow.js + MoveNet** (Google): 17 keypointów na ciele, ~30 FPS na 2020+ phones
+- **MediaPipe Hands** (Meta): 21 keypointów na dłoniach, bardzo precyzyjne
+- **TensorFlow.js WebGL backend**: GPU acceleration
+- Bundle: ~3-4 MB lazy-loaded po aktywacji feature
+- **Zero backendu** — inference 100% lokalnie
+
+**Co może robić:**
+
+**Level 1 — Skeleton overlay na delayed replay**
+Szkielet narysowany na wideo — trener widzi jak łucznik się ustawia, wizualnie.
+
+**Level 2 — Real-time kąty**
+```
+Draw arm elbow: 87° ⚠ (cel 90°)
+Bow shoulder: -12° ✓
+Head tilt: 3° ✓
+Anchor consistency: stabilna
+```
+
+**Level 3 — Shot phase detection**
+Prep → raise → draw → anchor → aim → release → follow-through
+Per-phase analysis, nie ogólny wynik.
+
+**Level 4 — Porównanie z ideałem / z samym sobą**
+"Łokieć w release 5° wyżej niż miesiąc temu"
+"W strzałach 10-punktowych niższa ramię vs słabe strzały"
+
+**Synergia z Delay Mirror (killer combination):**
+```
+1. Nagrywasz serię
+2. Klikasz "po strzały"
+3. W tle apka ANALIZUJE (5s podczas gdy idziesz)
+4. Wracasz → dostaniesz analizę formy per strzał
+   + auto-wykryte problemy (fatigue, forward lean, drop ramienia)
+5. Share do trenera: video z skeleton + caption z kątami
+```
+
+**Realistyczne ograniczenia:**
+1. **Kamera side view, 3-5m od łucznika** — inne pozycje = słabe wyniki
+2. **Łuk + strzała = occlusion** — model może mieć problem przy draw
+3. **Światło** — backlight (słońce w plecy) = porażka, hala OK
+4. **Hardware floor**: iPhone 12+/Samsung S20+ = smooth. iPhone 8- = drop lub fallback
+5. **"Dobry form" to nie obiektywna koncepcja** — Recurve ≠ Compound ≠ Barebow, tylko pokazujemy liczby, nie "ocenę"
+
+**Staged roadmap:**
+- v0.1 (2-3 tyg): Skeleton overlay only (wizualizacja)
+- v0.2 (2 tyg): Basic angles (draw, bow, head, shoulders)
+- v0.3 (3 tyg): Shot phase auto-detection
+- v0.4 (2 tyg): Trend analysis (fatigue, historical)
+- v1.0: Reference shot comparison, coach feedback loop
+
+**Konkurencja:**
+- TechnieShot — iOS only, drogie, niezintegrowane z scoring
+- Archery AI apps — zwykle cloud (slow, privacy issues)
+- **Web-based solution w ekosystemie treningowym: nie istnieje**
+- To jest potencjalna "moat" dla GROT-X
+
+**Kiedy budować:**
+**NIE W MVP.** Najpierw:
+- Phase 1-3 (Delay Mirror + Share + Sequence) wdrożone
+- 50+ PRO users płacących aktywnie
+- Analytics pokazują że ludzie REALNIE używają Delay Mirror
+
+Dopiero wtedy — Phase 4. Inaczej: 6 miesięcy pracy, zero release'ów, konkurencja ucieka.
+
+**Pytania do przemyślenia przed startem:**
+1. Hardware userów (analytics: który % ma ≥iPhone 12/Samsung S20)?
+2. Czy jest popyt? (Ankieta wśród PRO users: "zapłaciłbyś +5 PLN/mies za analizę formy?")
+3. Maintenance burden — modele AI się starzeją, trzeba aktualizować co 1-2 lata
+4. Czy mamy kompetencje in-house (ML model fine-tuning może być potrzebny)
+
 **Workflow porównanie:**
 - Konkurencja: 9 kroków, trener musi manualnie pytać o kontekst
 - GROT-X: 4 kroki, kontekst (dystans, wynik, grupa, sugestia) + video auto-doklejone

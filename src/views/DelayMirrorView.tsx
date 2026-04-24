@@ -380,22 +380,8 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // Gdy telefon w pionie — wymuszamy poziomy układ przez rotację o 90°,
-  // żeby obraz z kamery (16:9) i wszystkie UI były zawsze w "landscape".
-  const rotateStyle: React.CSSProperties = isPortrait
-    ? {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        width: '100vh',
-        height: '100vw',
-        transform: 'translate(-50%, -50%) rotate(90deg)',
-        transformOrigin: 'center center',
-      }
-    : { position: 'fixed', inset: 0 };
-
   return (
-    <div className="bg-black z-50 overflow-hidden select-none" style={rotateStyle}>
+    <div className="fixed inset-0 bg-black z-50 overflow-hidden select-none">
 
       <video
         ref={delayedVideoRef}

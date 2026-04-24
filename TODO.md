@@ -307,12 +307,54 @@ Runda 2 total: 218/270
 Timestamp per shot **NIE jest potrzebny** dla MVP.
 Użyjemy istniejących {x, y, spotId, value} bez żadnych zmian schematu. ✅
 
-**Opcjonalny tryb "Track Shot Order" (v2.0, dla power users):**
-- Settings toggle (default OFF)
-- Kiedy ON: po każdym fizycznym strzale user klika popup "Strzał oddany"
-- Potem na tarczy: drag&drop pozycji do dopasowania do kolejności
-- Use case: zawody halowe 18m gdzie sekwencja bywa analizowana
-- **Niepotrzebne dla 95% users** — nie blokuje MVP
+**Opcjonalny tryb "Sequence Analysis" (v2.0, user's idea refined):**
+
+**Koncept (user's):** Ponumeruj strzały 1-6, strzelaj zawsze w tej kolejności,
+wpisuj pozycje w tej samej kolejności w ScoringView. Wtedy numer na target
+map = numer strzały = kolejność oddania = timestamp z video.
+
+**To jest realne:**
+- Większość łuczników już numeruje strzały (do spine tracking)
+- Pro/olympic archers tak trenują rutynowo
+- Wymaga trochę dyscypliny ale nie nowego sprzętu
+
+**Settings toggle (default OFF):**
+```
+○ Prosty (bez kolejności) ← domyślne dla 95% users
+○ Śledzę kolejność strzał (numerowane) ← power users
+```
+
+**Features odblokowane w Sequence Mode:**
+1. **Podpowiedź podczas scoring:** "Wpisujesz strzał 1 z 6 (pierwszy oddany)"
+2. **Sequence analytics auto-generated:**
+   - Pierwsze 3 strzały vs ostatnie 3 (fatigue detection)
+   - Trend liniowy w serii (spadek/wzrost)
+   - Najlepszy i najgorszy strzał w kontekście czasu
+3. **Rich share caption z sekwencją:**
+   ```
+   Strzał 1: 9 (górny żółty)    @0:08
+   Strzał 2: 8 (dolny żółty)    @0:19
+   ...
+   📉 Trend: 9-8-7-8-M-6 (spadek w drugiej połowie)
+   ```
+
+**Onboarding tutorial:**
+Krótki 4-stepowy explainer przy włączeniu toggle — uczy user'a jak
+olympijczycy trenują. Value: apka = narzędzie rozwoju, nie tylko notatnik.
+
+**Minusy (świadomie zaakceptowane):**
+- Cognitive load podczas strzelania (opt-in, power users OK)
+- Dyscyplina w kolejności (łatwo złamana przez zły strzał)
+- Target reading at 70m (numer na nocku widoczny z 20cm — OK blisko tarczy)
+
+**Dlaczego opt-in, nie default:**
+- 95% userów nie potrzebuje tego (casual shooting)
+- Zmiana nawyków budzi resistance
+- Lepiej "odblokuj więcej analiz" niż "zmień jak trenujesz"
+
+**Data model:**
+Stały — żaden nowy field. Używamy `dots[0..5]` array — index już jest
+"numerem" strzały w Sequence Mode. W Simple Mode = tylko pozycja.
 
 **Workflow porównanie:**
 - Konkurencja: 9 kroków, trener musi manualnie pytać o kontekst

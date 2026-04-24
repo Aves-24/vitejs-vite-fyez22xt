@@ -235,6 +235,61 @@ Suma: 27/30 (śr. 9.0)
 
 **Walidacja:** Warto sprawdzić z 2-3 realnymi trenerami czy ten flow faktycznie by ich zaangażował — bo to pivotuje Delay Mirror z "nice to have" na "muszę mieć dla mojej drużyny".
 
+**CRITICAL insight (70m+ distance):**
+Na dużych dystansach (70m, 90m) w video NIE widać gdzie strzała uderzyła.
+Sam klip = "jakiś facet strzela". **Rozwiązanie: share target map razem z video.**
+
+```javascript
+navigator.share({
+  files: [videoFile, targetMapImage],  // ← oba naraz!
+  text: captionWithShotTimestamps
+});
+```
+
+WhatsApp wyświetla jako galerię → trener ma:
+- **Slide 1:** video (technika)
+- **Slide 2:** tarcza z ponumerowanymi strzałami (wynik)
+- **Caption:** timestampy strzałów @0:08, @0:19 itd. → można przewinąć do konkretnego
+
+**Target map generator** — użyć istniejący `FokusanalyseView` rendering:
+```typescript
+async function exportTargetMap(roundId, seriesId): Promise<File> {
+  const canvas = document.createElement('canvas');
+  drawFitaTarget(ctx);
+  shots.forEach((shot, i) =>
+    drawNumberedDot(ctx, shot.x, shot.y, i + 1, getZoneColor(shot.value))
+  );
+  return new File([canvas.toBlob()], `GROTX_${seriesId}_tarcza.png`);
+}
+```
+
+**Data model change needed:**
+`ScoringView.tsx:357` — `addScoreFromTarget(v, x, y, spotId)` musi zapisywać też `timestamp`:
+```typescript
+// Before: { x, y, spotId }
+// After:  { x, y, spotId, t: Date.now() }
+```
+Backward-compatible — starsze sesje po prostu nie będą miały timestampów w share (i to OK).
+
+**Caption template (przykład — 70m, 6 strzał):**
+```
+🎯 GROT-X · Trening 24.04.2026, 17:32
+📍 70m · FITA 122cm · Recurve 36#
+━━━ RUNDA 2 · SERIA P4 ━━━
+1️⃣  9  (prawa, 3 o'clock)   @0:08
+2️⃣  8  (dół, near X)         @0:19
+3️⃣  7  (lewa, 9 o'clock)    @0:28
+4️⃣  8  (dół, yellow)         @0:37
+5️⃣  M  (miss)                @0:45
+6️⃣  6  (prawa, blue)         @0:54
+Suma P4: 38/54 · Runda 2: 218/270
+💬 [user's message]
+```
+
+**Workflow porównanie:**
+- Konkurencja: 9 kroków, trener musi manualnie pytać o kontekst
+- GROT-X: 4 kroki, kontekst jest w screen pierwszym rzucie oka
+
 **Wyzwania:**
 1. **Kompatybilność:** iOS <14.3 nie ma MediaRecorder → fallback lub minimum iOS 14.3
 2. **Bateria:** ~15-25% na godzinę w trybie active — należy ostrzec usera

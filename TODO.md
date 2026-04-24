@@ -166,7 +166,7 @@ git push origin main
 - [x] **E2E tests T1-T6** — wszystkie reguły przeszły ✅ (2026-04-24)
 - [ ] **Memory leak AuthView.tsx:51** — minor, niepilne
 - [ ] **App Check debug token dla Edge** — kosmetyczne
-- [ ] **T7 UI test** — student odpina trenera (przyszła sesja)
+- [x] **T7 UI test** — student odpina trenera ✅ PASS (non-admin, pełna walidacja Path D + F)
 
 ---
 

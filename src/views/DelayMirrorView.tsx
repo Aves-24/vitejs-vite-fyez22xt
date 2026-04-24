@@ -72,6 +72,13 @@ export default function DelayMirrorView({ onBack }: Props) {
   const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentBlobUrlRef = useRef<string | null>(null);
   const lastBlobRef = useRef<Blob | null>(null);
+  // Drugi, ciągły recorder — nagrywa całą sesję od startu do pauzy/stopu
+  // równolegle z segmentowym loopem. Dzięki temu "Udostępnij" daje pełny
+  // filmik, nie tylko ostatnie 15s.
+  const fullRecorderRef = useRef<MediaRecorder | null>(null);
+  const fullChunksRef = useRef<BlobPart[]>([]);
+  const fullMimeRef = useRef<string>('video/webm');
+  const [hasFullBlob, setHasFullBlob] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
 
   // PRO gate
@@ -122,6 +129,13 @@ export default function DelayMirrorView({ onBack }: Props) {
       }
     } catch { /* ignore */ }
     activeRecorderRef.current = null;
+    try {
+      const fr = fullRecorderRef.current;
+      if (fr && fr.state !== 'inactive') fr.stop();
+    } catch { /* ignore */ }
+    fullRecorderRef.current = null;
+    fullChunksRef.current = [];
+    lastBlobRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
@@ -162,7 +176,6 @@ export default function DelayMirrorView({ onBack }: Props) {
   }, [mirrorState]);
 
   const playBlob = useCallback((blob: Blob) => {
-    lastBlobRef.current = blob;
     const vid = delayedVideoRef.current;
     if (!vid) return;
     const url = URL.createObjectURL(blob);
@@ -281,6 +294,18 @@ export default function DelayMirrorView({ onBack }: Props) {
     streamRef.current = stream;
     isPausedRef.current = false;
 
+    // Start pełnego nagrywania całej sesji — chunki zbieramy co 1s żeby
+    // uniknąć jednego gigantycznego buforu w pamięci.
+    try {
+      fullChunksRef.current = [];
+      fullMimeRef.current = codec.split(';')[0];
+      const fullRec = new MediaRecorder(stream, { mimeType: codec, videoBitsPerSecond: 1_500_000 });
+      fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
+      fullRec.start(1000);
+      fullRecorderRef.current = fullRec;
+      setHasFullBlob(false);
+    } catch { /* ignore — segmenty nadal działają */ }
+
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
@@ -297,6 +322,20 @@ export default function DelayMirrorView({ onBack }: Props) {
       }
     } catch { /* ignore */ }
     activeRecorderRef.current = null;
+    // Zatrzymaj pełny recorder — po onstop scalimy chunki w jeden blob
+    try {
+      const fr = fullRecorderRef.current;
+      if (fr && fr.state !== 'inactive') {
+        fr.onstop = () => {
+          if (fullChunksRef.current.length > 0) {
+            lastBlobRef.current = new Blob(fullChunksRef.current, { type: fullMimeRef.current });
+            setHasFullBlob(true);
+          }
+        };
+        fr.stop();
+      }
+    } catch { /* ignore */ }
+    fullRecorderRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
@@ -496,7 +535,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             >
               Wróciłem
             </button>
-            {lastBlobRef.current && (
+            {hasFullBlob && (
               <button
                 onClick={(e) => { e.stopPropagation(); shareVideo(); }}
                 disabled={shareState === 'sharing'}
@@ -508,7 +547,7 @@ export default function DelayMirrorView({ onBack }: Props) {
                 {shareState === 'sharing' && 'Udostępnianie…'}
                 {shareState === 'saved' && 'Zapisano na dysku'}
                 {shareState === 'error' && 'Błąd — spróbuj ponownie'}
-                {shareState === 'idle' && 'Udostępnij ostatnie 15s'}
+                {shareState === 'idle' && 'Udostępnij całą sesję'}
               </button>
             )}
             <button

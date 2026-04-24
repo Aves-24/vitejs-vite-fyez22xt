@@ -71,6 +71,8 @@ export default function DelayMirrorView({ onBack }: Props) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentBlobUrlRef = useRef<string | null>(null);
+  const lastBlobRef = useRef<Blob | null>(null);
+  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
 
   // PRO gate
   useEffect(() => {
@@ -160,6 +162,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   }, [mirrorState]);
 
   const playBlob = useCallback((blob: Blob) => {
+    lastBlobRef.current = blob;
     const vid = delayedVideoRef.current;
     if (!vid) return;
     const url = URL.createObjectURL(blob);
@@ -170,6 +173,50 @@ export default function DelayMirrorView({ onBack }: Props) {
     vid.play().catch(() => { /* autoplay may fail silently */ });
     // Revoke old URL after a tick to avoid interrupting playback
     if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+  }, []);
+
+  const shareVideo = useCallback(async () => {
+    const blob = lastBlobRef.current;
+    if (!blob) return;
+    setShareState('sharing');
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const today = new Date().toISOString().slice(0, 10);
+    const filename = `GROTX_DelayMirror_${today}.${ext}`;
+    try {
+      const nav = navigator as Navigator & {
+        canShare?: (data: { files: File[] }) => boolean;
+        share?: (data: { files?: File[]; title?: string; text?: string }) => Promise<void>;
+      };
+      const file = new File([blob], filename, { type: blob.type });
+      if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
+        await nav.share({
+          files: [file],
+          title: 'GROT-X Delay Mirror',
+          text: `Mój strzał – ${today}`,
+        });
+        setShareState('idle');
+        return;
+      }
+      // Fallback – pobranie na dysk
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      setShareState('saved');
+      setTimeout(() => setShareState('idle'), 2500);
+    } catch (err: unknown) {
+      const e = err as { name?: string };
+      if (e.name === 'AbortError') {
+        setShareState('idle');
+        return;
+      }
+      setShareState('error');
+      setTimeout(() => setShareState('idle'), 2500);
+    }
   }, []);
 
   const runLoop = useCallback(async (stream: MediaStream, mimeType: string) => {
@@ -449,6 +496,21 @@ export default function DelayMirrorView({ onBack }: Props) {
             >
               Wróciłem
             </button>
+            {lastBlobRef.current && (
+              <button
+                onClick={(e) => { e.stopPropagation(); shareVideo(); }}
+                disabled={shareState === 'sharing'}
+                className="px-10 py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center gap-2 mx-auto mb-3 border border-white/20 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-lg">
+                  {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+                </span>
+                {shareState === 'sharing' && 'Udostępnianie…'}
+                {shareState === 'saved' && 'Zapisano na dysku'}
+                {shareState === 'error' && 'Błąd — spróbuj ponownie'}
+                {shareState === 'idle' && 'Udostępnij ostatnie 15s'}
+              </button>
+            )}
             <button
               onClick={(e) => { e.stopPropagation(); stopMirror(); }}
               className="px-10 py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all"

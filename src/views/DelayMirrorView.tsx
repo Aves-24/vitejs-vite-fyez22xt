@@ -123,6 +123,17 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   useEffect(() => () => cleanup(), [cleanup]);
 
+  // Przypisz strumień do live video ZA KAŻDYM RAZEM gdy video się
+  // zrenderuje (np. po zmianie stanu na 'buffering'/'live', albo
+  // po rotacji która remontuje drzewo). Bez tego ref jest null w momencie
+  // wywołania getUserMedia i PiP pozostaje czarny.
+  useEffect(() => {
+    if ((mirrorState === 'buffering' || mirrorState === 'live') && liveVideoRef.current && streamRef.current) {
+      liveVideoRef.current.srcObject = streamRef.current;
+      liveVideoRef.current.play().catch(() => { /* autoplay może odmówić */ });
+    }
+  }, [mirrorState, isPortrait]);
+
   // Auto-pause on background
   useEffect(() => {
     const onVisibility = () => {
@@ -209,11 +220,6 @@ export default function DelayMirrorView({ onBack }: Props) {
 
     streamRef.current = stream;
     isPausedRef.current = false;
-
-    if (liveVideoRef.current) {
-      liveVideoRef.current.srcObject = stream;
-      liveVideoRef.current.play().catch(() => { /* ignore */ });
-    }
 
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);

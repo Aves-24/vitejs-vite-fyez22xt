@@ -17,8 +17,25 @@ export default defineConfig({
   },
   plugins: [react()],
   build: {
-    // Vendor.js (~1.5 MB) jest duży bo Firebase SDK jest ciężki.
-    // Docelowo: code splitting (TODO #6). Na razie podnosimy limit ostrzeżenia.
+    // Podniesiony limit (1600 KiB) — vendor.js wyjątkowo duży przez Firebase SDK.
     chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      output: {
+        // Code splitting: osobne chunki dla ciężkich bibliotek.
+        // Przeglądarka cachuje je niezależnie od kodu aplikacji — deploye
+        // appki nie invaliduja cache'u Firebase/React.
+        manualChunks: {
+          'firebase-vendor': [
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/app-check',
+          ],
+          'react-vendor': ['react', 'react-dom'],
+          'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
+          'pdf-vendor': ['jspdf', 'jspdf-autotable'],
+        },
+      },
+    },
   },
 })

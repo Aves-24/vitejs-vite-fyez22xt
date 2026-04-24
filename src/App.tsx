@@ -1,27 +1,39 @@
-import React, { useState, useEffect } from 'react';
-import { db, auth } from './firebase'; 
-import { onAuthStateChanged, User } from 'firebase/auth'; 
+import React, { useState, useEffect, Suspense } from 'react';
+import { db, auth } from './firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { getRecommendation, BowType } from './config/archeryRules';
 import { useTranslation } from 'react-i18next';
 
+// EAGER: widoki potrzebne przy pierwszym renderze (HOME / AUTH) oraz
+// komponenty-helpery, które muszą być dostępne od razu.
 import HomeView from './views/HomeView';
-import ScoringView from './views/ScoringView';
 import SessionSetup from './components/SessionSetup';
-import SettingsView from './views/SettingsView';
-import CalendarView from './views/CalendarView';
 import SmartSeasonUpdater from './components/SmartSeasonUpdater';
-import AuthView from './views/AuthView'; 
-import BattleLobbyView from './views/BattleLobbyView'; 
-import BattleHistoryView from './views/BattleHistoryView';
-import WorldLeaderboardView from './views/WorldLeaderboardView';
-import AnnouncementsView from './views/AnnouncementsView';
-import StatsView from './views/StatsView';
-import AdminDashboardView from './views/AdminDashboardView';
-import CoachDashboardView from './views/CoachDashboardView';
-import StudentProfileView from './views/StudentProfileView';
+import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import BattleInvitePopup from './components/BattleInvitePopup';
+
+// LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
+// Każdy widok = osobny chunk JS pobierany w tle (code splitting).
+const ScoringView         = React.lazy(() => import('./views/ScoringView'));
+const SettingsView        = React.lazy(() => import('./views/SettingsView'));
+const CalendarView        = React.lazy(() => import('./views/CalendarView'));
+const BattleLobbyView     = React.lazy(() => import('./views/BattleLobbyView'));
+const BattleHistoryView   = React.lazy(() => import('./views/BattleHistoryView'));
+const WorldLeaderboardView = React.lazy(() => import('./views/WorldLeaderboardView'));
+const AnnouncementsView   = React.lazy(() => import('./views/AnnouncementsView'));
+const StatsView           = React.lazy(() => import('./views/StatsView'));
+const AdminDashboardView  = React.lazy(() => import('./views/AdminDashboardView'));
+const CoachDashboardView  = React.lazy(() => import('./views/CoachDashboardView'));
+const StudentProfileView  = React.lazy(() => import('./views/StudentProfileView'));
+
+// Fallback pokazywany podczas ładowania chunka (zwykle <100ms).
+const ViewFallback = () => (
+  <div className="flex items-center justify-center min-h-[60vh]">
+    <div className="w-10 h-10 border-4 border-[#0a3a2a] border-t-transparent rounded-full animate-spin" />
+  </div>
+);
 
 type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD';
 
@@ -375,6 +387,7 @@ export default function App() {
       )}
       
       <main className={`w-full min-h-screen pb-24 transition-all duration-500 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
+      <Suspense fallback={<ViewFallback />}>
         {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} />}
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
@@ -427,6 +440,7 @@ export default function App() {
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} />}
+      </Suspense>
       </main>
       
       {renderBottomNav()}

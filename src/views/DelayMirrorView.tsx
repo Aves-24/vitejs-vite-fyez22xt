@@ -3,7 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const DELAY_MS = 15_000;
+const DEFAULT_DELAY_S = 15;
+const MIN_DELAY_S = 1;
+const MAX_DELAY_S = 25;
+const STORAGE_KEY = 'delayMirror.delaySeconds';
 
 type MirrorState = 'idle' | 'requesting' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error' | 'freeLive';
 
@@ -51,6 +54,17 @@ function recordSegment(stream: MediaStream, mimeType: string, ms: number): Promi
 export default function DelayMirrorView({ onBack }: Props) {
   const { t } = useTranslation();
   const [isPremium, setIsPremium] = useState(false);
+  const [delaySeconds, setDelaySeconds] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const n = parseInt(saved, 10);
+        if (!isNaN(n) && n >= MIN_DELAY_S && n <= MAX_DELAY_S) return n;
+      }
+    } catch { /* ignore */ }
+    return DEFAULT_DELAY_S;
+  });
+  const delayMsRef = useRef<number>(delaySeconds * 1000);
   const [premiumLoading, setPremiumLoading] = useState(true);
   const [mirrorState, setMirrorState] = useState<MirrorState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -82,6 +96,12 @@ export default function DelayMirrorView({ onBack }: Props) {
   const fullMimeRef = useRef<string>('video/webm');
   const [hasFullBlob, setHasFullBlob] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
+
+  // Persist delay setting + sync ref
+  useEffect(() => {
+    delayMsRef.current = delaySeconds * 1000;
+    try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
+  }, [delaySeconds]);
 
   // PRO gate
   useEffect(() => {
@@ -239,18 +259,18 @@ export default function DelayMirrorView({ onBack }: Props) {
     setMirrorState('buffering');
     setBufferMs(0);
     bufferTimerRef.current = setInterval(() => {
-      setBufferMs(b => Math.min(DELAY_MS, b + 100));
+      setBufferMs(b => Math.min(delayMsRef.current, b + 100));
     }, 100);
 
     try {
-      const firstRec = recordSegment(stream, mimeType, DELAY_MS);
+      const firstRec = recordSegment(stream, mimeType, delayMsRef.current);
       const { blob: firstBlob } = await firstRec;
       if (isPausedRef.current) return;
 
       if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
 
       // Start next recording IMMEDIATELY, then play the just-finished one
-      let nextPromise = recordSegment(stream, mimeType, DELAY_MS);
+      let nextPromise = recordSegment(stream, mimeType, delayMsRef.current);
       playBlob(firstBlob);
       setMirrorState('live');
 
@@ -258,7 +278,7 @@ export default function DelayMirrorView({ onBack }: Props) {
       while (!isPausedRef.current) {
         const { blob } = await nextPromise;
         if (isPausedRef.current) break;
-        nextPromise = recordSegment(stream, mimeType, DELAY_MS);
+        nextPromise = recordSegment(stream, mimeType, delayMsRef.current);
         playBlob(blob);
       }
     } catch (err: unknown) {
@@ -390,7 +410,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
   };
 
-  const bufferPct = Math.round((bufferMs / DELAY_MS) * 100);
+  const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
   // ─── PRO Gate ───────────────────────────────────────────────────────────────
   if (premiumLoading) {
@@ -412,14 +432,14 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
         <h2 className="text-2xl font-black text-white text-center mb-2">{t('delayMirror.title')}</h2>
         <p className="text-gray-400 text-center text-sm mb-1 leading-relaxed">
-          {t('delayMirror.description')}
+          {t('delayMirror.description', { seconds: delaySeconds })}
         </p>
         <p className="text-[#fed33e]/80 text-center text-xs mb-8 leading-relaxed">
           {t('delayMirror.proRequired')}
         </p>
         <div className="w-full max-w-xs">
           <div className="bg-white/5 rounded-2xl p-4 mb-4 space-y-2">
-            {[t('delayMirror.feature1'), t('delayMirror.feature2'), t('delayMirror.feature3'), t('delayMirror.feature4')].map(f => (
+            {[t('delayMirror.feature1', { seconds: delaySeconds }), t('delayMirror.feature2'), t('delayMirror.feature3'), t('delayMirror.feature4')].map(f => (
               <div key={f} className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[#fed33e] text-base">check_circle</span>
                 <span className="text-white/70 text-xs">{f}</span>
@@ -489,12 +509,34 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
         <h2 className="text-3xl font-black text-white mb-1">{t('delayMirror.title')}</h2>
         <p className="text-gray-400 text-center text-sm mb-2 leading-relaxed">
-          {t('delayMirror.idleDescription')}
+          {t('delayMirror.idleDescription', { seconds: delaySeconds })}
         </p>
-        <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-8">
+        <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-6">
           <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-          <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge')}</span>
+          <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
         </div>
+
+        <div className="w-full max-w-xs mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
+            <span className="text-[#fed33e] text-lg font-black tabular-nums">{delaySeconds}s</span>
+          </div>
+          <input
+            type="range"
+            min={MIN_DELAY_S}
+            max={MAX_DELAY_S}
+            step={1}
+            value={delaySeconds}
+            onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
+            className="w-full accent-[#fed33e]"
+            style={{ height: 24 }}
+          />
+          <div className="flex justify-between text-[10px] text-white/40 mt-1 font-bold">
+            <span>{MIN_DELAY_S}s</span>
+            <span>{MAX_DELAY_S}s</span>
+          </div>
+        </div>
+
         {isPortrait && (
           <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 mb-4">
             <span className="material-symbols-outlined text-white/50 text-base">screen_rotation</span>
@@ -576,7 +618,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
           <div className="w-16 h-16 rounded-full border-4 border-white/10 border-t-[#fed33e] animate-spin mb-4" />
           <p className="text-white font-bold text-base mb-2">{t('delayMirror.buffering')}</p>
-          <p className="text-white/50 text-xs mb-4">{t('delayMirror.bufferingHint')}</p>
+          <p className="text-white/50 text-xs mb-4">{t('delayMirror.bufferingHint', { seconds: delaySeconds })}</p>
           <div className="w-48 h-1.5 bg-white/10 rounded-full overflow-hidden">
             <div
               className="h-full bg-[#fed33e] rounded-full transition-all duration-100"
@@ -650,7 +692,7 @@ export default function DelayMirrorView({ onBack }: Props) {
           {mirrorState === 'live' && (
             <div className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5">
               <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">-15s</span>
+              <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
             </div>
           )}
         </div>

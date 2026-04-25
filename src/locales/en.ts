@@ -964,5 +964,7 @@ export const views = {
     replayBack5: "-5s",
     replayFwd5: "+5s",
     replayRestart: "Restart",
+    toLandscape: "Landscape mode",
+    toPortrait: "Portrait mode",
   },
 };

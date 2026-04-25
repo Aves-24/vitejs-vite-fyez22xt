@@ -964,5 +964,7 @@ export const views = {
     replayBack5: "-5s",
     replayFwd5: "+5s",
     replayRestart: "Od początku",
+    toLandscape: "Tryb poziomy",
+    toPortrait: "Tryb pionowy",
   },
 };

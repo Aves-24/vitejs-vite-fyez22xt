@@ -481,6 +481,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   const _useManualLandscape = manualLandscape && isPortrait && !_autoForceRotate;
   const _forceRotate = _autoForceRotate || _useManualLandscape;
   const _rotateDeg = _useManualLandscape ? -90 : (deviceAngle === 90 ? -90 : 90);
+  // Czy UI jest aktualnie wyświetlane jako poziome (landscape).
+  // Dotyczy aspectRatio podglądu live (PiP), żeby ramka pasowała do orientacji telefonu.
+  const _displayAsLandscape = !isPortrait || _forceRotate;
+  const liveAspect = _displayAsLandscape ? '16/9' : '9/16';
   const screenStyle: React.CSSProperties = _forceRotate
     ? {
         position: 'fixed',
@@ -659,7 +663,7 @@ export default function DelayMirrorView({ onBack }: Props) {
       <div style={screenStyle} className="bg-black flex flex-col items-center justify-center px-8">
         {orientationToggle}
         <div className="rounded-2xl overflow-hidden border-2 border-[#fed33e]/40 shadow-2xl mb-6 relative"
-             style={{ width: '60vw', maxWidth: 280, aspectRatio: '16/9' }}>
+             style={{ width: _displayAsLandscape ? '60vw' : '50vw', maxWidth: _displayAsLandscape ? 280 : 200, aspectRatio: liveAspect }}>
           <video
             ref={liveVideoRef}
             className="w-full h-full object-cover"
@@ -812,7 +816,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className="absolute top-[68px] right-4 z-30 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
-             style={{ width: '25vw', maxWidth: 120, aspectRatio: '16/9' }}>
+             style={{ width: _displayAsLandscape ? '25vw' : '20vw', maxWidth: _displayAsLandscape ? 120 : 80, aspectRatio: liveAspect }}>
           <video
             ref={liveVideoRef}
             className="w-full h-full object-cover"

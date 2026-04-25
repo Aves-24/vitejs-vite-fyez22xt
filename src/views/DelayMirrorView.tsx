@@ -30,6 +30,15 @@ function getCodec(): string | null {
   return null;
 }
 
+// Na iOS 13+ DeviceOrientationEvent wymaga zgody użytkownika wywołanej
+// w odpowiedzi na gest. Wołamy to przy "Uruchom" / "Live preview".
+async function ensureOrientationPermission(): Promise<void> {
+  const D = (window as unknown as { DeviceOrientationEvent?: { requestPermission?: () => Promise<string> } }).DeviceOrientationEvent;
+  if (D && typeof D.requestPermission === 'function') {
+    try { await D.requestPermission(); } catch { /* user odrzucił — trudno */ }
+  }
+}
+
 function recordSegment(stream: MediaStream, mimeType: string, ms: number): Promise<{ blob: Blob; recorder: MediaRecorder }> {
   return new Promise((resolve, reject) => {
     try {
@@ -136,10 +145,37 @@ export default function DelayMirrorView({ onBack }: Props) {
     window.addEventListener('orientationchange', update);
     const so = (screen as Screen & { orientation?: EventTarget }).orientation;
     so?.addEventListener?.('change', update);
+
+    // Fallback przez akcelerometr — gdy system ma blokadę rotacji,
+    // screen.orientation.angle zostaje 0, więc dodatkowo czytamy
+    // fizyczny kąt pochylenia z DeviceOrientationEvent.
+    // gamma ∈ [-90, 90]: tilt lewo-prawo (rotacja wokół osi pionowej ekranu)
+    let lastTiltAngle = 0;
+    const onTilt = (e: DeviceOrientationEvent) => {
+      const gamma = e.gamma;
+      const beta = e.beta;
+      if (gamma == null || beta == null) return;
+      let next = lastTiltAngle;
+      // hysteresis — zmieniamy dopiero przy mocniejszym przechyleniu, żeby
+      // nie migać przy delikatnym ruchu
+      if (gamma > 50) next = 270;          // przechylenie w prawo
+      else if (gamma < -50) next = 90;     // przechylenie w lewo
+      else if (Math.abs(gamma) < 25 && Math.abs(beta) > 45) next = 0;
+      if (next !== lastTiltAngle) {
+        lastTiltAngle = next;
+        // Tylko gdy system jest zablokowany w portrait (browser nie obraca);
+        // jeżeli browser sam się obrócił, screen.orientation.angle to obsłuży.
+        const so2 = (screen as Screen & { orientation?: { angle: number } }).orientation;
+        if (!so2 || so2.angle === 0) setDeviceAngle(next);
+      }
+    };
+    window.addEventListener('deviceorientation', onTilt);
+
     return () => {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
       so?.removeEventListener?.('change', update);
+      window.removeEventListener('deviceorientation', onTilt);
     };
   }, []);
 
@@ -323,6 +359,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const startRecording = useCallback(async () => {
     setMirrorState('requesting');
     setErrorMsg('');
+    await ensureOrientationPermission();
 
     const codec = getCodec();
     if (!codec) {
@@ -368,6 +405,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const startFreeLive = useCallback(async () => {
     setMirrorState('requesting');
     setErrorMsg('');
+    await ensureOrientationPermission();
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({

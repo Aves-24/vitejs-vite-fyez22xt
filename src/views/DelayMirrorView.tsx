@@ -466,10 +466,29 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
+  // ─── Rotation wrapper ──────────────────────────────────────────────────────
+  // Każdy ekran (idle / paused / pro-gate / freeLive / error / unsupported)
+  // używa tego stylu zamiast fixed inset-0, dzięki czemu przy zablokowanej
+  // rotacji systemowej całe UI obraca się razem z fizycznym kątem telefonu.
+  const _deviceLandscape = deviceAngle === 90 || deviceAngle === 270;
+  const _forceRotate = isPortrait && _deviceLandscape;
+  const screenStyle: React.CSSProperties = _forceRotate
+    ? {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        width: '100vh',
+        height: '100vw',
+        transform: `translate(-50%, -50%) rotate(${deviceAngle === 90 ? -90 : 90}deg)`,
+        transformOrigin: 'center center',
+        zIndex: 50,
+      }
+    : { position: 'fixed', inset: 0, zIndex: 50 };
+
   // ─── PRO Gate ───────────────────────────────────────────────────────────────
   if (premiumLoading) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center z-50">
+      <div style={screenStyle} className="bg-black flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
       </div>
     );
@@ -477,7 +496,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   if (!isPremium && mirrorState !== 'freeLive' && mirrorState !== 'requesting' && mirrorState !== 'error') {
     return (
-      <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50 px-8">
+      <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -520,7 +539,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   if (mirrorState === 'unsupported') {
     return (
-      <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50 px-8">
+      <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -538,7 +557,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   if (mirrorState === 'error') {
     return (
-      <div className="fixed inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-50 px-8">
+      <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -554,7 +573,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   if (mirrorState === 'idle') {
     return (
-      <div className="fixed inset-0 bg-[#050f0a] flex flex-col items-center justify-center z-50 px-8">
+      <div style={screenStyle} className="bg-[#050f0a] flex flex-col items-center justify-center px-8 overflow-y-auto">
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -610,7 +629,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   // Tryb FREE — czarne tło, tylko mała kamerka live + CTA upgrade
   if (mirrorState === 'freeLive') {
     return (
-      <div className="fixed inset-0 bg-black z-50 flex flex-col items-center justify-center px-8">
+      <div style={screenStyle} className="bg-black flex flex-col items-center justify-center px-8">
         <div className="rounded-2xl overflow-hidden border-2 border-[#fed33e]/40 shadow-2xl mb-6 relative"
              style={{ width: '60vw', maxWidth: 280, aspectRatio: '16/9' }}>
           <video
@@ -640,25 +659,8 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // Jeśli browser myśli że jest w portrait ale urządzenie fizycznie obrócone
-  // (system rotation lock), wymuszamy rotację całego UI w CSS żeby pasowało
-  // do rzeczywistej orientacji telefonu.
-  const deviceLandscape = deviceAngle === 90 || deviceAngle === 270;
-  const forceRotate = isPortrait && deviceLandscape;
-  const containerStyle: React.CSSProperties = forceRotate
-    ? {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        width: '100vh',
-        height: '100vw',
-        transform: `translate(-50%, -50%) rotate(${deviceAngle === 90 ? -90 : 90}deg)`,
-        transformOrigin: 'center center',
-      }
-    : { position: 'fixed', inset: 0 };
-
   return (
-    <div className="bg-black z-50 overflow-hidden select-none" style={containerStyle}>
+    <div className="bg-black overflow-hidden select-none" style={screenStyle}>
 
       <video
         ref={delayedVideoRef}

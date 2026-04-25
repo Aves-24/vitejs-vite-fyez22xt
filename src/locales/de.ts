@@ -959,5 +959,10 @@ export const views = {
     shareError: "Fehler — erneut versuchen",
     afterShots: "Zum Ziel",
     pauseTooltip: "Pause",
+    replayTitle: "Aufnahme abspielen",
+    replaySpeed: "Geschwindigkeit",
+    replayBack5: "-5s",
+    replayFwd5: "+5s",
+    replayRestart: "Neu starten",
   },
 };

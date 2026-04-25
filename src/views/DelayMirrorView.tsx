@@ -81,6 +81,9 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
+  const replayVideoRef = useRef<HTMLVideoElement>(null);
+  const replayBlobUrlRef = useRef<string | null>(null);
+  const [replayRate, setReplayRate] = useState<number>(1);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -170,6 +173,10 @@ export default function DelayMirrorView({ onBack }: Props) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
     }
+    if (replayBlobUrlRef.current) {
+      URL.revokeObjectURL(replayBlobUrlRef.current);
+      replayBlobUrlRef.current = null;
+    }
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
@@ -184,6 +191,28 @@ export default function DelayMirrorView({ onBack }: Props) {
       liveVideoRef.current.play().catch(() => { /* autoplay może odmówić */ });
     }
   }, [mirrorState, isPortrait]);
+
+  // Po pauzie — ustaw src playera replay z pełnego nagrania, żeby user mógł
+  // przewijać i oglądać slow-motion. Blob URL zwalniamy przy resume/cleanup.
+  useEffect(() => {
+    if (mirrorState !== 'paused' || !hasFullBlob || !lastBlobRef.current) return;
+    const url = URL.createObjectURL(lastBlobRef.current);
+    if (replayBlobUrlRef.current) URL.revokeObjectURL(replayBlobUrlRef.current);
+    replayBlobUrlRef.current = url;
+    const v = replayVideoRef.current;
+    if (v) {
+      v.src = url;
+      v.playbackRate = replayRate;
+      v.currentTime = 0;
+      v.play().catch(() => { /* autoplay may fail */ });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mirrorState, hasFullBlob]);
+
+  // Sync playback rate
+  useEffect(() => {
+    if (replayVideoRef.current) replayVideoRef.current.playbackRate = replayRate;
+  }, [replayRate]);
 
   // Auto-pause on background
   useEffect(() => {
@@ -392,9 +421,19 @@ export default function DelayMirrorView({ onBack }: Props) {
     setMirrorState('idle');
     setBufferMs(0);
     setRecSeconds(0);
+    setReplayRate(1);
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
+    }
+    if (replayBlobUrlRef.current) {
+      URL.revokeObjectURL(replayBlobUrlRef.current);
+      replayBlobUrlRef.current = null;
+    }
+    if (replayVideoRef.current) {
+      replayVideoRef.current.pause();
+      replayVideoRef.current.removeAttribute('src');
+      replayVideoRef.current.load();
     }
     startRecording();
   }, [startRecording]);
@@ -403,6 +442,21 @@ export default function DelayMirrorView({ onBack }: Props) {
     cleanup();
     onBack();
   }, [cleanup, onBack]);
+
+  const replaySeek = useCallback((delta: number) => {
+    const v = replayVideoRef.current;
+    if (!v) return;
+    const dur = isFinite(v.duration) ? v.duration : 0;
+    const t = Math.max(0, Math.min(dur || 1e9, v.currentTime + delta));
+    v.currentTime = t;
+  }, []);
+
+  const replayRestart = useCallback(() => {
+    const v = replayVideoRef.current;
+    if (!v) return;
+    v.currentTime = 0;
+    v.play().catch(() => { /* ignore */ });
+  }, []);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -630,23 +684,81 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
       {mirrorState === 'paused' && (
-        <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20"
-             onClick={resumeMirror}>
-          <div className="text-center px-8">
-            <span className="material-symbols-outlined text-white/30 text-7xl mb-4 block">pause_circle</span>
-            <p className="text-white font-black text-xl mb-1">{t('delayMirror.pauseTitle')}</p>
-            <p className="text-white/50 text-sm mb-8">{t('delayMirror.pauseHint')}</p>
+        <div className="absolute inset-0 bg-black/95 flex flex-col items-center z-20 overflow-y-auto py-4 px-4">
+          <p className="text-white font-black text-lg mb-1 mt-2">{t('delayMirror.pauseTitle')}</p>
+          <p className="text-white/50 text-xs mb-4">{t('delayMirror.pauseHint')}</p>
+
+          {hasFullBlob ? (
+            <>
+              <div className="w-full max-w-md rounded-2xl overflow-hidden border border-white/15 bg-black mb-3">
+                <video
+                  ref={replayVideoRef}
+                  className="w-full bg-black"
+                  style={{ transform: 'scaleX(-1)', maxHeight: '40vh' }}
+                  playsInline
+                  controls
+                  loop
+                />
+              </div>
+
+              <div className="w-full max-w-md mb-3">
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2 text-center">
+                  {t('delayMirror.replaySpeed')}
+                </p>
+                <div className="flex justify-center gap-2 mb-3">
+                  {[0.25, 0.5, 1, 2].map(rate => (
+                    <button
+                      key={rate}
+                      onClick={() => setReplayRate(rate)}
+                      className={`px-3 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
+                        replayRate === rate
+                          ? 'bg-[#fed33e] text-[#0a3a2a] shadow-lg shadow-[#fed33e]/20'
+                          : 'bg-white/10 text-white/70 border border-white/15'
+                      }`}
+                    >
+                      {rate}x
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={() => replaySeek(-5)}
+                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-base">replay_5</span>
+                  </button>
+                  <button
+                    onClick={replayRestart}
+                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
+                    title={t('delayMirror.replayRestart')}
+                  >
+                    <span className="material-symbols-outlined text-base">restart_alt</span>
+                  </button>
+                  <button
+                    onClick={() => replaySeek(5)}
+                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-base">forward_5</span>
+                  </button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <span className="material-symbols-outlined text-white/30 text-6xl mb-4 mt-4 block">pause_circle</span>
+          )}
+
+          <div className="w-full max-w-md flex flex-col items-center gap-2 mt-2">
             <button
-              onClick={(e) => { e.stopPropagation(); resumeMirror(); }}
-              className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20 block mx-auto mb-3"
+              onClick={resumeMirror}
+              className="w-full max-w-xs py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20"
             >
               {t('delayMirror.resumeBtn')}
             </button>
             {hasFullBlob && (
               <button
-                onClick={(e) => { e.stopPropagation(); shareVideo(); }}
+                onClick={shareVideo}
                 disabled={shareState === 'sharing'}
-                className="px-10 py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center gap-2 mx-auto mb-3 border border-white/20 disabled:opacity-50"
+                className="w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-lg">
                   {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
@@ -658,8 +770,8 @@ export default function DelayMirrorView({ onBack }: Props) {
               </button>
             )}
             <button
-              onClick={(e) => { e.stopPropagation(); stopMirror(); }}
-              className="px-10 py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all"
+              onClick={stopMirror}
+              className="w-full max-w-xs py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all"
             >
               {t('delayMirror.endSession')}
             </button>

@@ -149,24 +149,58 @@ export default function DelayMirrorView({ onBack }: Props) {
     // Fallback przez akcelerometr — gdy system ma blokadę rotacji,
     // screen.orientation.angle zostaje 0, więc dodatkowo czytamy
     // fizyczny kąt pochylenia z DeviceOrientationEvent.
-    // gamma ∈ [-90, 90]: tilt lewo-prawo (rotacja wokół osi pionowej ekranu)
+    //
+    // gamma ∈ [-90, 90] = tilt lewo-prawo (roll wokół osi pionowej ekranu)
+    // beta  ∈ [-180, 180] = tilt przód-tył (pitch)
+    //
+    // Trzymanie portretowo: beta ≈ 70-90, gamma ≈ 0
+    // Pełny landscape: beta ≈ 0, |gamma| ≈ 70-90
+    //
+    // Żeby uniknąć obracania się przy lekkim przechyleniu, używamy:
+    // - wysoki próg WEJŚCIA w landscape (|gamma|>70 + |beta|<35)
+    // - niski próg WYJŚCIA z landscape (|gamma|<25)
+    // - debouncing 400ms — kąt musi się utrzymać zanim flipniemy UI
     let lastTiltAngle = 0;
+    let pendingAngle: number | null = null;
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+    const commitTilt = (next: number) => {
+      lastTiltAngle = next;
+      const so2 = (screen as Screen & { orientation?: { angle: number } }).orientation;
+      if (!so2 || so2.angle === 0) setDeviceAngle(next);
+    };
     const onTilt = (e: DeviceOrientationEvent) => {
       const gamma = e.gamma;
       const beta = e.beta;
       if (gamma == null || beta == null) return;
+
       let next = lastTiltAngle;
-      // hysteresis — zmieniamy dopiero przy mocniejszym przechyleniu, żeby
-      // nie migać przy delikatnym ruchu
-      if (gamma > 50) next = 270;          // przechylenie w prawo
-      else if (gamma < -50) next = 90;     // przechylenie w lewo
-      else if (Math.abs(gamma) < 25 && Math.abs(beta) > 45) next = 0;
-      if (next !== lastTiltAngle) {
-        lastTiltAngle = next;
-        // Tylko gdy system jest zablokowany w portrait (browser nie obraca);
-        // jeżeli browser sam się obrócił, screen.orientation.angle to obsłuży.
-        const so2 = (screen as Screen & { orientation?: { angle: number } }).orientation;
-        if (!so2 || so2.angle === 0) setDeviceAngle(next);
+      const absG = Math.abs(gamma);
+      const absB = Math.abs(beta);
+
+      if (lastTiltAngle === 0) {
+        // jesteśmy w portrait — wejdziemy w landscape tylko przy mocnym i czystym przechyleniu
+        if (absG > 70 && absB < 35) next = gamma > 0 ? 270 : 90;
+      } else {
+        // jesteśmy w landscape — wracamy do portrait gdy gamma blisko zera
+        if (absG < 25) next = 0;
+        // pozwól flipnąć między landscape-left a landscape-right tylko przy bardzo wyraźnym ruchu
+        else if (absG > 70 && absB < 35) next = gamma > 0 ? 270 : 90;
+      }
+
+      if (next === lastTiltAngle) {
+        // brak zmiany — anuluj ewentualne pending
+        if (pendingTimer) { clearTimeout(pendingTimer); pendingTimer = null; pendingAngle = null; }
+        return;
+      }
+      // mamy nową propozycję — odpalamy debounce 400ms zanim faktycznie flipniemy
+      if (pendingAngle !== next) {
+        if (pendingTimer) clearTimeout(pendingTimer);
+        pendingAngle = next;
+        pendingTimer = setTimeout(() => {
+          if (pendingAngle !== null) commitTilt(pendingAngle);
+          pendingAngle = null;
+          pendingTimer = null;
+        }, 400);
       }
     };
     window.addEventListener('deviceorientation', onTilt);

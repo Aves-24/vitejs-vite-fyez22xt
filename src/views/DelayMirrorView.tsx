@@ -73,11 +73,6 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [isPortrait, setIsPortrait] = useState(
     typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
   );
-  // Fizyczny kąt obrotu urządzenia (0 / 90 / 180 / 270). Potrzebny żeby
-  // rotować UI gdy user ma zablokowaną rotację w systemie ale fizycznie
-  // obrócił telefon — screen.orientation.angle odczytuje rzeczywistą
-  // orientację niezależnie od blokady przeglądarki.
-  const [deviceAngle, setDeviceAngle] = useState(0);
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
@@ -124,23 +119,17 @@ export default function DelayMirrorView({ onBack }: Props) {
     return () => unsub();
   }, []);
 
-  // Orientation
+  // Orientation — tylko portrait/landscape z rozmiaru viewportu
   useEffect(() => {
     const update = () => {
       setIsPortrait(window.innerHeight > window.innerWidth);
-      const so = (screen as Screen & { orientation?: { angle: number } }).orientation;
-      if (so && typeof so.angle === 'number') setDeviceAngle(so.angle);
     };
     update();
     window.addEventListener('resize', update);
     window.addEventListener('orientationchange', update);
-    const so = (screen as Screen & { orientation?: EventTarget }).orientation;
-    so?.addEventListener?.('change', update);
-
     return () => {
       window.removeEventListener('resize', update);
       window.removeEventListener('orientationchange', update);
-      so?.removeEventListener?.('change', update);
     };
   }, []);
 
@@ -472,17 +461,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
   // ─── Rotation wrapper ──────────────────────────────────────────────────────
-  // Rotacja w trzech sytuacjach:
-  // 1) browser sam obrócił stronę (rotacja systemu odblokowana) → naturalnie
-  // 2) browser w portrait, ale screen.orientation.angle pokazuje 90/270 → forceRotate
-  // 3) user wcisnął przycisk pion/poziom → manualLandscape
-  const _deviceLandscape = deviceAngle === 90 || deviceAngle === 270;
-  const _autoForceRotate = isPortrait && _deviceLandscape;
-  const _useManualLandscape = manualLandscape && isPortrait && !_autoForceRotate;
-  const _forceRotate = _autoForceRotate || _useManualLandscape;
-  const _rotateDeg = _useManualLandscape ? -90 : (deviceAngle === 90 ? -90 : 90);
-  // Czy UI jest aktualnie wyświetlane jako poziome (landscape).
-  // Dotyczy aspectRatio podglądu live (PiP), żeby ramka pasowała do orientacji telefonu.
+  // Tylko ręczny toggle pion/poziom. W landscape obracamy o +90deg (clockwise),
+  // żeby kamera frontowa (fizycznie u góry telefonu) była po PRAWEJ stronie
+  // poziomego UI — naturalna pozycja kiedy łucznik trzyma telefon w prawej ręce.
+  const _forceRotate = manualLandscape && isPortrait;
   const _displayAsLandscape = !isPortrait || _forceRotate;
   const liveAspect = _displayAsLandscape ? '16/9' : '9/16';
   const screenStyle: React.CSSProperties = _forceRotate
@@ -492,18 +474,19 @@ export default function DelayMirrorView({ onBack }: Props) {
         left: '50%',
         width: '100vh',
         height: '100vw',
-        transform: `translate(-50%, -50%) rotate(${_rotateDeg}deg)`,
+        transform: 'translate(-50%, -50%) rotate(90deg)',
         transformOrigin: 'center center',
         zIndex: 50,
       }
     : { position: 'fixed', inset: 0, zIndex: 50 };
 
-  // Toggle pion/poziom — wstawiamy w każdym ekranie wewnątrz rotującego
-  // kontenera, żeby przycisk siedział w "logicznym" prawym górnym rogu UI.
+  // Toggle pion/poziom — renderowany POZA rotującym kontenerem (jako sibling
+  // w fragmencie), dzięki czemu zawsze siedzi w tym samym fizycznym rogu
+  // ekranu (top-right viewportu), niezależnie od obrotu UI.
   const orientationToggle = (
     <button
       onClick={() => setManualLandscape(v => !v)}
-      className="absolute top-4 right-4 z-[60] w-11 h-11 bg-black/60 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center active:scale-90 transition-all"
+      className="fixed top-4 right-4 z-[70] w-11 h-11 bg-black/60 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center active:scale-90 transition-all"
       title={manualLandscape ? t('delayMirror.toPortrait') : t('delayMirror.toLandscape')}
     >
       <span className="material-symbols-outlined text-white text-xl">
@@ -515,16 +498,20 @@ export default function DelayMirrorView({ onBack }: Props) {
   // ─── PRO Gate ───────────────────────────────────────────────────────────────
   if (premiumLoading) {
     return (
-      <div style={screenStyle} className="bg-black flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
-      </div>
+      <>
+        {orientationToggle}
+        <div style={screenStyle} className="bg-black flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
+        </div>
+      </>
     );
   }
 
   if (!isPremium && mirrorState !== 'freeLive' && mirrorState !== 'requesting' && mirrorState !== 'error') {
     return (
+      <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        {orientationToggle}
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -562,13 +549,15 @@ export default function DelayMirrorView({ onBack }: Props) {
           </button>
         </div>
       </div>
+      </>
     );
   }
 
   if (mirrorState === 'unsupported') {
     return (
+      <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        {orientationToggle}
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -581,13 +570,15 @@ export default function DelayMirrorView({ onBack }: Props) {
           {t('delayMirror.back')}
         </button>
       </div>
+      </>
     );
   }
 
   if (mirrorState === 'error') {
     return (
+      <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        {orientationToggle}
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -598,13 +589,15 @@ export default function DelayMirrorView({ onBack }: Props) {
           {t('delayMirror.back')}
         </button>
       </div>
+      </>
     );
   }
 
   if (mirrorState === 'idle') {
     return (
+      <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-[#050f0a] flex flex-col items-center justify-center px-8 overflow-y-auto">
-        {orientationToggle}
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
@@ -654,14 +647,16 @@ export default function DelayMirrorView({ onBack }: Props) {
           {t('delayMirror.start')}
         </button>
       </div>
+      </>
     );
   }
 
   // Tryb FREE — czarne tło, tylko mała kamerka live + CTA upgrade
   if (mirrorState === 'freeLive') {
     return (
+      <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-black flex flex-col items-center justify-center px-8">
-        {orientationToggle}
         <div className="rounded-2xl overflow-hidden border-2 border-[#fed33e]/40 shadow-2xl mb-6 relative"
              style={{ width: _displayAsLandscape ? '60vw' : '50vw', maxWidth: _displayAsLandscape ? 280 : 200, aspectRatio: liveAspect }}>
           <video
@@ -688,13 +683,14 @@ export default function DelayMirrorView({ onBack }: Props) {
           {t('delayMirror.stop')}
         </button>
       </div>
+      </>
     );
   }
 
   return (
+    <>
+    {orientationToggle}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
-      {orientationToggle}
-
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
@@ -906,5 +902,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
       )}
     </div>
+    </>
   );
 }

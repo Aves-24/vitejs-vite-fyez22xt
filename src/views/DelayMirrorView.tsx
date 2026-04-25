@@ -84,6 +84,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBlobUrlRef = useRef<string | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
+  const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -804,10 +805,15 @@ export default function DelayMirrorView({ onBack }: Props) {
             <span className="text-white text-xs font-bold">{formatTime(recSeconds)}</span>
           </div>
           {mirrorState === 'live' && (
-            <div className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5">
+            <button
+              onClick={() => setShowDelayPicker(true)}
+              className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
+              title={t('delayMirror.delayLabel')}
+            >
               <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
               <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
-            </div>
+              <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+            </button>
           )}
         </div>
       )}
@@ -828,6 +834,43 @@ export default function DelayMirrorView({ onBack }: Props) {
           >
             <span className="material-symbols-outlined text-xl">pause</span>
           </button>
+        </div>
+      )}
+
+      {showDelayPicker && (
+        <div
+          className="absolute inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-40 px-8"
+          onClick={() => setShowDelayPicker(false)}
+        >
+          <div
+            className="bg-[#0a0a0a] border border-white/15 rounded-3xl p-6 w-full max-w-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
+              <span className="text-[#fed33e] text-2xl font-black tabular-nums">{delaySeconds}s</span>
+            </div>
+            <input
+              type="range"
+              min={MIN_DELAY_S}
+              max={MAX_DELAY_S}
+              step={1}
+              value={delaySeconds}
+              onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
+              className="w-full accent-[#fed33e]"
+              style={{ height: 24 }}
+            />
+            <div className="flex justify-between text-[10px] text-white/40 mt-1 mb-5 font-bold">
+              <span>{MIN_DELAY_S}s</span>
+              <span>{MAX_DELAY_S}s</span>
+            </div>
+            <button
+              onClick={() => setShowDelayPicker(false)}
+              className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
     </div>

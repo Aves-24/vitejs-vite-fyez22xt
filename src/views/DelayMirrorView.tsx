@@ -461,9 +461,9 @@ export default function DelayMirrorView({ onBack }: Props) {
   const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
   // ─── Rotation wrapper ──────────────────────────────────────────────────────
-  // Tylko ręczny toggle pion/poziom. W landscape obracamy o +90deg (clockwise),
-  // żeby kamera frontowa (fizycznie u góry telefonu) była po PRAWEJ stronie
-  // poziomego UI — naturalna pozycja kiedy łucznik trzyma telefon w prawej ręce.
+  // Tylko ręczny toggle pion/poziom. W landscape obracamy o -90deg (CCW),
+  // żeby kamera frontowa (fizycznie u góry telefonu) była po LEWEJ stronie
+  // poziomego UI.
   const _forceRotate = manualLandscape && isPortrait;
   const _displayAsLandscape = !isPortrait || _forceRotate;
   const liveAspect = _displayAsLandscape ? '16/9' : '9/16';
@@ -474,7 +474,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         left: '50%',
         width: '100vh',
         height: '100vw',
-        transform: 'translate(-50%, -50%) rotate(90deg)',
+        transform: 'translate(-50%, -50%) rotate(-90deg)',
         transformOrigin: 'center center',
         zIndex: 50,
       }

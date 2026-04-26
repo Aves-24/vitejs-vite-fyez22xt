@@ -139,6 +139,8 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   // Manualny override rotacji — przycisk pion/poziom
   const [manualLandscape, setManualLandscape] = useState(false);
+  // Czy user wybral juz orientacje na ekranie idle (warunek odblokowania Start)
+  const [orientationConfirmed, setOrientationConfirmed] = useState(false);
 
   const cleanup = useCallback(() => {
     isPausedRef.current = true;
@@ -603,24 +605,20 @@ export default function DelayMirrorView({ onBack }: Props) {
   if (mirrorState === 'idle') {
     return (
       <>
-      {orientationToggle}
       <div style={screenStyle} className="bg-[#050f0a] flex flex-col items-center justify-center px-8 overflow-y-auto">
         <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
-        <div className="w-20 h-20 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-6">
+        <div className="w-20 h-20 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-4">
           <span className="material-symbols-outlined text-[#fed33e] text-5xl">slow_motion_video</span>
         </div>
-        <h2 className="text-3xl font-black text-white mb-1">{t('delayMirror.title')}</h2>
-        <p className="text-gray-400 text-center text-sm mb-2 leading-relaxed">
-          {t('delayMirror.idleDescription', { seconds: delaySeconds })}
-        </p>
-        <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-6">
+        <h2 className="text-3xl font-black text-white mb-3">{t('delayMirror.title')}</h2>
+        <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-5">
           <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
           <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
         </div>
 
-        <div className="w-full max-w-xs mb-6">
+        <div className="w-full max-w-xs mb-5">
           <div className="flex items-center justify-between mb-2">
             <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
             <span className="text-[#fed33e] text-lg font-black tabular-nums">{delaySeconds}s</span>
@@ -641,18 +639,56 @@ export default function DelayMirrorView({ onBack }: Props) {
           </div>
         </div>
 
-        {isPortrait && (
-          <div className="flex items-center gap-2 bg-white/5 rounded-xl px-4 py-2 mb-4">
-            <span className="material-symbols-outlined text-white/50 text-base">screen_rotation</span>
-            <span className="text-white/50 text-xs">{t('delayMirror.rotateHint')}</span>
+        {/* Wybór orientacji — wymagany przed Start */}
+        <div className="w-full max-w-xs mb-4">
+          <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-2 text-center">
+            {t('delayMirror.chooseOrientation')}
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setManualLandscape(false); setOrientationConfirmed(true); }}
+              className={`flex-1 py-3 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
+                orientationConfirmed && !manualLandscape
+                  ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
+                  : 'bg-white/5 text-white/70 border-white/15'
+              }`}
+            >
+              <span className="material-symbols-outlined text-2xl">stay_current_portrait</span>
+              {t('delayMirror.orientationPortrait')}
+            </button>
+            <button
+              onClick={() => { setManualLandscape(true); setOrientationConfirmed(true); }}
+              className={`flex-1 py-3 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
+                orientationConfirmed && manualLandscape
+                  ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
+                  : 'bg-white/5 text-white/70 border-white/15'
+              }`}
+            >
+              <span className="material-symbols-outlined text-2xl">stay_current_landscape</span>
+              {t('delayMirror.orientationLandscape')}
+            </button>
           </div>
-        )}
+        </div>
+
         <button
           onClick={startRecording}
-          className="w-full max-w-xs py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20"
+          disabled={!orientationConfirmed}
+          className={`w-full max-w-xs py-4 rounded-2xl font-black text-base uppercase tracking-widest transition-all mb-3 ${
+            orientationConfirmed
+              ? 'bg-[#fed33e] text-[#0a3a2a] active:scale-95 shadow-lg shadow-[#fed33e]/20'
+              : 'bg-white/10 text-white/30 cursor-not-allowed'
+          }`}
         >
           {t('delayMirror.start')}
         </button>
+
+        {/* Privacy note */}
+        <div className="w-full max-w-xs flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2">
+          <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
+          <p className="text-white/50 text-[11px] leading-snug">
+            {t('delayMirror.privacyNote')}
+          </p>
+        </div>
       </div>
       </>
     );

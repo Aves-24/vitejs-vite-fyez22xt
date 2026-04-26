@@ -16,13 +16,17 @@ interface Props {
 
 function getCodec(): string | null {
   if (typeof MediaRecorder === 'undefined') return null;
+  // mp4 najpierw — kompatybilny z WhatsApp/iOS share. webm dopiero jako fallback.
   const candidates = [
+    'video/mp4;codecs=h264,aac',
+    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+    'video/mp4;codecs=h264',
+    'video/mp4',
     'video/webm;codecs=vp9,opus',
     'video/webm;codecs=vp8,opus',
     'video/webm;codecs=vp9',
     'video/webm;codecs=vp8',
     'video/webm',
-    'video/mp4',
   ];
   for (const c of candidates) {
     if (MediaRecorder.isTypeSupported(c)) return c;
@@ -751,7 +755,7 @@ export default function DelayMirrorView({ onBack }: Props) {
                 <video
                   ref={replayVideoRef}
                   className="w-full bg-black"
-                  style={{ maxHeight: _displayAsLandscape ? '85vh' : '40vh' }}
+                  style={{ maxHeight: _uiForceRotate ? '70vw' : (_displayAsLandscape ? '60vh' : '40vh') }}
                   playsInline
                   controls
                   loop

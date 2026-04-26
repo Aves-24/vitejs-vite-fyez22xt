@@ -751,11 +751,14 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
           {hasFullBlob ? (
             <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0' : 'w-full max-w-md'}`}>
-              <div className={`${_displayAsLandscape ? 'w-full' : 'w-full mb-3'} rounded-2xl overflow-hidden border border-white/15 bg-black`}>
+              <div
+                className={`${_displayAsLandscape ? 'w-full' : 'w-full mb-3'} rounded-2xl overflow-hidden border border-white/15 bg-black relative`}
+                style={_displayAsLandscape ? { aspectRatio: '16/9', maxHeight: _uiForceRotate ? '80vw' : '70vh' } : undefined}
+              >
                 <video
                   ref={replayVideoRef}
-                  className="w-full bg-black"
-                  style={{ maxHeight: _uiForceRotate ? '70vw' : (_displayAsLandscape ? '60vh' : '40vh') }}
+                  className={_displayAsLandscape ? 'w-full h-full bg-black' : 'w-full bg-black'}
+                  style={_displayAsLandscape ? { objectFit: 'cover' } : { maxHeight: '40vh' }}
                   playsInline
                   controls
                   loop
@@ -774,19 +777,19 @@ export default function DelayMirrorView({ onBack }: Props) {
               ? 'w-[42%] max-w-sm flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
               : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
           }`}>
-            <p className={`text-white font-black ${_displayAsLandscape ? 'text-base text-center mb-0' : 'text-lg mb-1 mt-2'}`}>
+            <p className={`text-white font-black ${_displayAsLandscape ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>
               {t('delayMirror.pauseTitle')}
             </p>
-            <p className={`text-white/50 text-xs ${_displayAsLandscape ? 'text-center mb-2' : 'mb-4'}`}>
+            <p className={`text-white/50 text-xs text-center ${_displayAsLandscape ? 'mb-1' : 'mb-2'}`}>
               {t('delayMirror.pauseHint')}
             </p>
 
             {hasFullBlob && (
               <div className="w-full">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2 text-center">
+                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1 text-center">
                   {t('delayMirror.replaySpeed')}
                 </p>
-                <div className="flex justify-center gap-2 mb-3">
+                <div className="flex justify-center gap-2 mb-2">
                   {[0.25, 0.5, 1, 2].map(rate => (
                     <button
                       key={rate}

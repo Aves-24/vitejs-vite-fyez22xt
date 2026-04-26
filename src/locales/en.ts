@@ -953,7 +953,7 @@ export const views = {
     pauseHint: "Camera off · saving battery",
     resumeBtn: "I'm back",
     endSession: "End session",
-    shareIdle: "Share whole session",
+    shareIdle: "Share video",
     shareSharing: "Sharing…",
     shareSaved: "Saved to disk",
     shareError: "Error — try again",

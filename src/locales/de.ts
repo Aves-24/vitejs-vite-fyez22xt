@@ -953,7 +953,7 @@ export const views = {
     pauseHint: "Kamera aus · Akku wird geschont",
     resumeBtn: "Bin zurück",
     endSession: "Session beenden",
-    shareIdle: "Ganze Session teilen",
+    shareIdle: "Video teilen",
     shareSharing: "Teilen…",
     shareSaved: "Auf Gerät gespeichert",
     shareError: "Fehler — erneut versuchen",

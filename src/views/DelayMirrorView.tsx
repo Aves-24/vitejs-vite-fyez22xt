@@ -461,16 +461,27 @@ export default function DelayMirrorView({ onBack }: Props) {
   const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
   // ─── Rotation wrapper ──────────────────────────────────────────────────────
-  // Toggle pion/poziom zmienia TYLKO layout (flex-row vs flex-col, aspect ratio),
-  // bez CSS rotation całego ekranu. Dlaczego: rotacja przez transform powoduje że
-  // stream kamery (fizycznie portretowy gdy telefon jest pionowo) wygląda zniekształcony
-  // w obróconej ramce. Lepsze UX: użytkownik fizycznie obraca telefon — wtedy kamera
-  // natywnie łapie landscape, a my dopasowujemy layout. Toggle jest pomocniczy dla
-  // sytuacji gdy browser ma zablokowaną rotację — wtedy layout wymusza landscape mimo
-  // portretowego viewportu.
+  // Strategia: kamera (background <video>) NIE rotuje się — zostaje w natywnej
+  // orientacji żeby stream nie był zniekształcony. UI overlays (zegar, przyciski,
+  // PiP, pause menu) rotują się gdy user wcisnął landscape w portretowym viewporcie.
+  // Dzięki temu po obróceniu telefonu fizycznie (browser zablokowany w portrait)
+  // user widzi UI poprawnie zorientowane, a kamera pokazuje to co fizycznie widzi.
+  const _uiForceRotate = manualLandscape && isPortrait;
   const _displayAsLandscape = !isPortrait || manualLandscape;
   const liveAspect = _displayAsLandscape ? '16/9' : '9/16';
   const screenStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 50 };
+  // Wrapper na UI overlays — opcjonalnie rotowany.
+  const uiRotateStyle: React.CSSProperties = _uiForceRotate
+    ? {
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        width: '100vh',
+        height: '100vw',
+        transform: 'translate(-50%, -50%) rotate(-90deg)',
+        transformOrigin: 'center center',
+      }
+    : { position: 'absolute', inset: 0 };
 
   // Toggle pion/poziom — renderowany POZA rotującym kontenerem (jako sibling
   // w fragmencie), dzięki czemu zawsze siedzi w tym samym fizycznym rogu
@@ -683,6 +694,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     <>
     {orientationToggle}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
+      {/* Camera video — natywna orientacja, NIE rotuje się z togglem */}
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
@@ -690,6 +702,9 @@ export default function DelayMirrorView({ onBack }: Props) {
         playsInline
         muted
       />
+
+      {/* UI overlays — opcjonalnie rotowane dla manual landscape */}
+      <div style={uiRotateStyle}>
 
       {mirrorState === 'buffering' && (
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
@@ -911,6 +926,7 @@ export default function DelayMirrorView({ onBack }: Props) {
           </div>
         </div>
       )}
+      </div>{/* /uiRotateStyle */}
     </div>
     </>
   );

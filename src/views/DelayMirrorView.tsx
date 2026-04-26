@@ -693,10 +693,11 @@ export default function DelayMirrorView({ onBack }: Props) {
   return (
     <>
     {orientationToggle}
-    {/* PiP live — zawsze w fizycznym top-right, NIE rotuje się z UI */}
+    {/* PiP live — zawsze w tym samym miejscu i kształcie (portrait 9/16),
+        niezależnie od orientacji UI */}
     {(mirrorState === 'buffering' || mirrorState === 'live') && (
       <div className="fixed top-[68px] right-4 z-[65] rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
-           style={{ width: _displayAsLandscape ? '25vw' : '20vw', maxWidth: _displayAsLandscape ? 120 : 80, aspectRatio: liveAspect }}>
+           style={{ width: '20vw', maxWidth: 80, aspectRatio: '9/16' }}>
         <video
           ref={liveVideoRef}
           className="w-full h-full object-cover"
@@ -853,7 +854,7 @@ export default function DelayMirrorView({ onBack }: Props) {
 
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+        <div className={`absolute top-4 z-30 flex items-center gap-2 ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-white text-xs font-bold">{formatTime(recSeconds)}</span>

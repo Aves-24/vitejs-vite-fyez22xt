@@ -605,14 +605,20 @@ export default function DelayMirrorView({ onBack }: Props) {
   if (mirrorState === 'idle') {
     return (
       <>
-      <div style={screenStyle} className="bg-[#050f0a] flex flex-col items-center justify-center px-8 overflow-y-auto">
-        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
+      <div style={screenStyle} className="bg-[#050f0a]">
+        <div style={uiRotateStyle} className="flex flex-col items-center justify-center px-8 overflow-y-auto">
+        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all z-10">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
-        <div className="w-20 h-20 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-[#fed33e] text-5xl">slow_motion_video</span>
+        {/* Logo GROT-X */}
+        <div className="flex items-baseline gap-1 mb-4">
+          <h1 className="text-4xl font-black text-[#fed33e] tracking-tighter leading-none">GROT</h1>
+          <h1 className="text-4xl font-black text-white tracking-tighter leading-none">-X</h1>
         </div>
-        <h2 className="text-3xl font-black text-white mb-3">{t('delayMirror.title')}</h2>
+        <div className="w-16 h-16 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-3">
+          <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>
+        </div>
+        <h2 className="text-2xl font-black text-white mb-3">{t('delayMirror.title')}</h2>
         <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-5">
           <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
           <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
@@ -689,6 +695,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             {t('delayMirror.privacyNote')}
           </p>
         </div>
+        </div>{/* /uiRotateStyle */}
       </div>
       </>
     );
@@ -789,7 +796,11 @@ export default function DelayMirrorView({ onBack }: Props) {
             <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0' : 'w-full max-w-md'}`}>
               <div
                 className={`${_displayAsLandscape ? 'w-full' : 'w-full mb-3'} rounded-2xl overflow-hidden border border-white/15 bg-black relative`}
-                style={_displayAsLandscape ? { aspectRatio: '16/9', maxHeight: _uiForceRotate ? '80vw' : '70vh' } : undefined}
+                style={
+                  _uiForceRotate
+                    ? { aspectRatio: '9/16', maxHeight: '80vw' }   // rotated by +90 → wizualnie 16/9
+                    : (_displayAsLandscape ? { aspectRatio: '16/9', maxHeight: '70vh' } : undefined)
+                }
               >
                 <video
                   ref={replayVideoRef}

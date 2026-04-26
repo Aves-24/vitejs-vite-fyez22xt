@@ -715,24 +715,46 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
       {mirrorState === 'paused' && (
-        <div className="absolute inset-0 bg-black/95 flex flex-col items-center z-20 overflow-y-auto py-4 px-4">
-          <p className="text-white font-black text-lg mb-1 mt-2">{t('delayMirror.pauseTitle')}</p>
-          <p className="text-white/50 text-xs mb-4">{t('delayMirror.pauseHint')}</p>
-
+        <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
+          _displayAsLandscape && hasFullBlob
+            ? 'flex flex-row items-center gap-4'
+            : 'flex flex-col items-center'
+        }`}>
+          {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
           {hasFullBlob ? (
-            <>
-              <div className="w-full max-w-md rounded-2xl overflow-hidden border border-white/15 bg-black mb-3">
+            <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0' : 'w-full max-w-md'}`}>
+              <div className={`${_displayAsLandscape ? 'w-full' : 'w-full mb-3'} rounded-2xl overflow-hidden border border-white/15 bg-black`}>
                 <video
                   ref={replayVideoRef}
                   className="w-full bg-black"
-                  style={{ transform: 'scaleX(-1)', maxHeight: '40vh' }}
+                  style={{ transform: 'scaleX(-1)', maxHeight: _displayAsLandscape ? '85vh' : '40vh' }}
                   playsInline
                   controls
                   loop
                 />
               </div>
+            </div>
+          ) : (
+            !_displayAsLandscape && (
+              <span className="material-symbols-outlined text-white/30 text-6xl mb-4 mt-4 block">pause_circle</span>
+            )
+          )}
 
-              <div className="w-full max-w-md mb-3">
+          {/* Prawa kolumna w landscape = menu/kontrolki. W portrait = poniżej filmiku. */}
+          <div className={`${
+            _displayAsLandscape
+              ? 'w-[42%] max-w-sm flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
+              : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
+          }`}>
+            <p className={`text-white font-black ${_displayAsLandscape ? 'text-base text-center mb-0' : 'text-lg mb-1 mt-2'}`}>
+              {t('delayMirror.pauseTitle')}
+            </p>
+            <p className={`text-white/50 text-xs ${_displayAsLandscape ? 'text-center mb-2' : 'mb-4'}`}>
+              {t('delayMirror.pauseHint')}
+            </p>
+
+            {hasFullBlob && (
+              <div className="w-full">
                 <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-2 text-center">
                   {t('delayMirror.replaySpeed')}
                 </p>
@@ -751,7 +773,7 @@ export default function DelayMirrorView({ onBack }: Props) {
                     </button>
                   ))}
                 </div>
-                <div className="flex justify-center gap-2">
+                <div className="flex justify-center gap-2 mb-3">
                   <button
                     onClick={() => replaySeek(-5)}
                     className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
@@ -773,15 +795,11 @@ export default function DelayMirrorView({ onBack }: Props) {
                   </button>
                 </div>
               </div>
-            </>
-          ) : (
-            <span className="material-symbols-outlined text-white/30 text-6xl mb-4 mt-4 block">pause_circle</span>
-          )}
+            )}
 
-          <div className="w-full max-w-md flex flex-col items-center gap-2 mt-2">
             <button
               onClick={resumeMirror}
-              className="w-full max-w-xs py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20"
+              className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
             >
               {t('delayMirror.resumeBtn')}
             </button>
@@ -789,7 +807,7 @@ export default function DelayMirrorView({ onBack }: Props) {
               <button
                 onClick={shareVideo}
                 disabled={shareState === 'sharing'}
-                className="w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50"
+                className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
               >
                 <span className="material-symbols-outlined text-lg">
                   {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
@@ -802,7 +820,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             )}
             <button
               onClick={stopMirror}
-              className="w-full max-w-xs py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all"
+              className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
             >
               {t('delayMirror.endSession')}
             </button>

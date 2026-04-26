@@ -478,7 +478,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         left: '50%',
         width: '100vh',
         height: '100vw',
-        transform: 'translate(-50%, -50%) rotate(-90deg)',
+        transform: 'translate(-50%, -50%) rotate(90deg)',
         transformOrigin: 'center center',
       }
     : { position: 'absolute', inset: 0 };
@@ -693,6 +693,22 @@ export default function DelayMirrorView({ onBack }: Props) {
   return (
     <>
     {orientationToggle}
+    {/* PiP live — zawsze w fizycznym top-right, NIE rotuje się z UI */}
+    {(mirrorState === 'buffering' || mirrorState === 'live') && (
+      <div className="fixed top-[68px] right-4 z-[65] rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
+           style={{ width: _displayAsLandscape ? '25vw' : '20vw', maxWidth: _displayAsLandscape ? 120 : 80, aspectRatio: liveAspect }}>
+        <video
+          ref={liveVideoRef}
+          className="w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+          playsInline
+          muted
+        />
+        <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white text-center py-0.5 font-bold uppercase tracking-widest">
+          LIVE
+        </div>
+      </div>
+    )}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
       {/* Camera video — natywna orientacja, NIE rotuje się z togglem */}
       <video
@@ -734,7 +750,7 @@ export default function DelayMirrorView({ onBack }: Props) {
                 <video
                   ref={replayVideoRef}
                   className="w-full bg-black"
-                  style={{ transform: 'scaleX(-1)', maxHeight: _displayAsLandscape ? '85vh' : '40vh' }}
+                  style={{ maxHeight: _displayAsLandscape ? '85vh' : '40vh' }}
                   playsInline
                   controls
                   loop
@@ -835,21 +851,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         </div>
       )}
 
-      {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute top-[68px] right-4 z-30 rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
-             style={{ width: _displayAsLandscape ? '25vw' : '20vw', maxWidth: _displayAsLandscape ? 120 : 80, aspectRatio: liveAspect }}>
-          <video
-            ref={liveVideoRef}
-            className="w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
-            playsInline
-            muted
-          />
-          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white text-center py-0.5 font-bold uppercase tracking-widest">
-            LIVE
-          </div>
-        </div>
-      )}
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className="absolute top-4 left-4 z-30 flex items-center gap-2">

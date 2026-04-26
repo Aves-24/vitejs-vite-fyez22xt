@@ -461,24 +461,16 @@ export default function DelayMirrorView({ onBack }: Props) {
   const bufferPct = Math.round((bufferMs / delayMsRef.current) * 100);
 
   // ─── Rotation wrapper ──────────────────────────────────────────────────────
-  // Tylko ręczny toggle pion/poziom. W landscape obracamy o -90deg (CCW),
-  // żeby kamera frontowa (fizycznie u góry telefonu) była po LEWEJ stronie
-  // poziomego UI.
-  const _forceRotate = manualLandscape && isPortrait;
-  const _displayAsLandscape = !isPortrait || _forceRotate;
+  // Toggle pion/poziom zmienia TYLKO layout (flex-row vs flex-col, aspect ratio),
+  // bez CSS rotation całego ekranu. Dlaczego: rotacja przez transform powoduje że
+  // stream kamery (fizycznie portretowy gdy telefon jest pionowo) wygląda zniekształcony
+  // w obróconej ramce. Lepsze UX: użytkownik fizycznie obraca telefon — wtedy kamera
+  // natywnie łapie landscape, a my dopasowujemy layout. Toggle jest pomocniczy dla
+  // sytuacji gdy browser ma zablokowaną rotację — wtedy layout wymusza landscape mimo
+  // portretowego viewportu.
+  const _displayAsLandscape = !isPortrait || manualLandscape;
   const liveAspect = _displayAsLandscape ? '16/9' : '9/16';
-  const screenStyle: React.CSSProperties = _forceRotate
-    ? {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        width: '100vh',
-        height: '100vw',
-        transform: 'translate(-50%, -50%) rotate(-90deg)',
-        transformOrigin: 'center center',
-        zIndex: 50,
-      }
-    : { position: 'fixed', inset: 0, zIndex: 50 };
+  const screenStyle: React.CSSProperties = { position: 'fixed', inset: 0, zIndex: 50 };
 
   // Toggle pion/poziom — renderowany POZA rotującym kontenerem (jako sibling
   // w fragmencie), dzięki czemu zawsze siedzi w tym samym fizycznym rogu

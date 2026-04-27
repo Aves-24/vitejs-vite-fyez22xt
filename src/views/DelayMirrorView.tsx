@@ -319,14 +319,17 @@ export default function DelayMirrorView({ onBack }: Props) {
           pump();
         }).catch(() => { /* ignore */ });
       };
-      recorder.start(200); // chunki co 200ms — plynny pump
+      // 500ms timeslice — Android Chrome MSE preferuje wieksze chunki,
+      // mniej updateend events = mniej szansy na decoder hiccup.
+      recorder.start(500);
       activeRecorderRef.current = recorder;
     };
     ms.addEventListener('sourceopen', onSourceOpen, { once: true });
 
-    // Petla utrzymujaca delay: trzymaj video.currentTime ~ liveEnd - delay.
-    // Drift +/-0.25s koryguj playbackRate (mikro-szybciej/wolniej, niewidocznie).
-    // Drift > 1.5s = hard reseek (rzadkie, np. po pauzie OS).
+    // Inicjalny seek raz: gdy buffer >= delay, ustaw currentTime = liveEnd-delay
+    // i zacznij play. Pozniej NIE ruszamy playbackRate ani currentTime —
+    // decoder gra 1x, recorder produkuje 1x, delay sam sie utrzymuje.
+    // Korekta drftu byla zrodlem mikro-cofniec na Android.
     const tick = () => {
       mseRafRef.current = requestAnimationFrame(tick);
       if (stopped || isPausedRef.current || !sb || !delayedVideoRef.current) return;
@@ -351,17 +354,7 @@ export default function DelayMirrorView({ onBack }: Props) {
         return;
       }
 
-      const drift = (endB - vid.currentTime) - delaySec;
-      if (Math.abs(drift) > 1.5) {
-        vid.currentTime = Math.max(startB, endB - delaySec);
-        vid.playbackRate = 1.0;
-      } else if (drift > 0.25) {
-        vid.playbackRate = 1.05;
-      } else if (drift < -0.25) {
-        vid.playbackRate = 0.97;
-      } else {
-        vid.playbackRate = 1.0;
-      }
+      // Po przejsciu na live tylko pilnuj autoplay (gdyby system zatrzymal).
       if (vid.paused) {
         const p = vid.play();
         if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
@@ -369,8 +362,36 @@ export default function DelayMirrorView({ onBack }: Props) {
     };
     mseRafRef.current = requestAnimationFrame(tick);
 
+    // Twardy fallback: gdy video naprawde stalluje (waiting > 1.5s),
+    // przeskocz na live edge - delay. Nie ruszamy w innych sytuacjach.
+    let waitingTimer: ReturnType<typeof setTimeout> | null = null;
+    const onWaiting = () => {
+      if (waitingTimer) return;
+      waitingTimer = setTimeout(() => {
+        waitingTimer = null;
+        if (stopped || !sb || !delayedVideoRef.current) return;
+        const vid2 = delayedVideoRef.current;
+        try {
+          if (sb.buffered.length === 0) return;
+          const endB2 = sb.buffered.end(sb.buffered.length - 1);
+          const startB2 = sb.buffered.start(0);
+          vid2.currentTime = Math.max(startB2, endB2 - delayMsRef.current / 1000);
+          const p = vid2.play();
+          if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
+        } catch { /* ignore */ }
+      }, 1500);
+    };
+    const onPlaying = () => {
+      if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
+    };
+    video.addEventListener('waiting', onWaiting);
+    video.addEventListener('playing', onPlaying);
+
     mseCleanupRef.current = () => {
       stopped = true;
+      if (waitingTimer) { clearTimeout(waitingTimer); waitingTimer = null; }
+      try { video.removeEventListener('waiting', onWaiting); } catch { /* ignore */ }
+      try { video.removeEventListener('playing', onPlaying); } catch { /* ignore */ }
       try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch { /* ignore */ }
       recorder = null;
       try { if (sb) sb.removeEventListener('updateend', onUpdateEnd); } catch { /* ignore */ }

@@ -966,6 +966,7 @@ export const views = {
     endSession: "Session beenden",
     shareIdle: "Video teilen",
     shareSharing: "Teilen…",
+    shareProcessing: "Video wird vorbereitet…",
     shareSaved: "Auf Gerät gespeichert",
     shareError: "Fehler — erneut versuchen",
     afterShots: "Zum Ziel",

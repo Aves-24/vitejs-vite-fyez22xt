@@ -117,9 +117,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   const fullChunksRef = useRef<BlobPart[]>([]);
   const fullMimeRef = useRef<string>('video/webm');
   const [hasFullBlob, setHasFullBlob] = useState(false);
-  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
-  const fullCanvasRafRef = useRef<number | null>(null);
-  const fullSrcVideoRef = useRef<HTMLVideoElement | null>(null);
+  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'processing' | 'saved' | 'error'>('idle');
+  // Orientacja w momencie nagrywania — uzywana do post-processingu pliku
+  // przed udostepnianiem (zeby WhatsApp nie pokazywal przekreconego wideo).
+  const recordedNeedsRotateRef = useRef(false);
 
   // Persist delay setting + sync ref
   useEffect(() => {
@@ -201,14 +202,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     fullRecorderRef.current = null;
     fullChunksRef.current = [];
     lastBlobRef.current = null;
-    if (fullCanvasRafRef.current !== null) {
-      cancelAnimationFrame(fullCanvasRafRef.current);
-      fullCanvasRafRef.current = null;
-    }
-    if (fullSrcVideoRef.current) {
-      fullSrcVideoRef.current.srcObject = null;
-      fullSrcVideoRef.current = null;
-    }
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (mseRafRef.current !== null) {
@@ -446,9 +439,111 @@ export default function DelayMirrorView({ onBack }: Props) {
     };
   }, []);
 
+  // Post-processing surowego nagrania: mirror (scaleX -1) + opcjonalna rotacja
+  // 90° gdy nagrywano w manual landscape. Bez tego WhatsApp pokazuje
+  // przekrecone/lustrzane wideo. Dziala 4x szybciej niz real-time dzieki
+  // wysokiej playbackRate.
+  const processVideoForShare = useCallback((blob: Blob): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.muted = true;
+      video.playsInline = true;
+      const srcUrl = URL.createObjectURL(blob);
+      video.src = srcUrl;
+
+      const cleanup = () => { try { URL.revokeObjectURL(srcUrl); } catch { /* ignore */ } };
+
+      video.onloadedmetadata = () => {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        if (!vw || !vh) { cleanup(); reject(new Error('No video dimensions')); return; }
+
+        const needsRotate = recordedNeedsRotateRef.current;
+        const canvas = document.createElement('canvas');
+        canvas.width  = needsRotate ? vh : vw;
+        canvas.height = needsRotate ? vw : vh;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) { cleanup(); reject(new Error('No canvas context')); return; }
+
+        // Mime: webm zawsze dziala, mp4 tylko jezeli MediaRecorder go wspiera
+        let mimeType = blob.type.includes('mp4') && MediaRecorder.isTypeSupported('video/mp4')
+          ? 'video/mp4'
+          : 'video/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
+
+        const canvasStream = canvas.captureStream(30);
+        const recorder = new MediaRecorder(canvasStream, mimeType ? {
+          mimeType,
+          videoBitsPerSecond: 1_500_000,
+        } : { videoBitsPerSecond: 1_500_000 });
+
+        const chunks: BlobPart[] = [];
+        recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+          cleanup();
+          const outType = mimeType || 'video/webm';
+          resolve(new Blob(chunks, { type: outType }));
+        };
+        recorder.onerror = () => { cleanup(); reject(new Error('Recorder error')); };
+
+        let raf = 0;
+        let stopped = false;
+
+        const drawFrame = () => {
+          if (stopped) return;
+          ctx.save();
+          if (needsRotate) {
+            // Translate to center, rotate 90°, mirror, draw
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(Math.PI / 2);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
+          } else {
+            ctx.translate(canvas.width, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, vw, vh);
+          }
+          ctx.restore();
+          raf = requestAnimationFrame(drawFrame);
+        };
+
+        const onEnded = () => {
+          stopped = true;
+          if (raf) cancelAnimationFrame(raf);
+          try { recorder.stop(); } catch { /* ignore */ }
+        };
+
+        video.onended = onEnded;
+        // Safety timeout — jezeli onended sie nie wywola (zdarza sie na blob URL)
+        const safetyMs = (video.duration || 60) * 1000 / 4 + 5000;
+        setTimeout(() => { if (!stopped) onEnded(); }, safetyMs);
+
+        // 4x szybsze przetwarzanie. Niektore przegladarki nie wspieraja >4
+        try { video.playbackRate = 4; } catch { /* ignore */ }
+
+        recorder.start(500);
+        video.play().then(() => {
+          raf = requestAnimationFrame(drawFrame);
+        }).catch((err) => { cleanup(); reject(err); });
+      };
+
+      video.onerror = () => { cleanup(); reject(new Error('Video load error')); };
+    });
+  }, []);
+
   const shareVideo = useCallback(async () => {
-    const blob = lastBlobRef.current;
-    if (!blob) return;
+    const rawBlob = lastBlobRef.current;
+    if (!rawBlob) return;
+    setShareState('processing');
+
+    let blob: Blob;
+    try {
+      blob = await processVideoForShare(rawBlob);
+    } catch {
+      // Fallback do surowego blob — lepiej cos niz nic
+      blob = rawBlob;
+    }
+
     setShareState('sharing');
     const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
     const now = new Date();
@@ -490,7 +585,7 @@ export default function DelayMirrorView({ onBack }: Props) {
       setShareState('error');
       setTimeout(() => setShareState('idle'), 2500);
     }
-  }, []);
+  }, [processVideoForShare]);
 
   // Zoom capability detection — sprawdz czy track obsluguje zoom < 1
   // (= ultra-wide na froncie). Wsparcie: Chrome Android, niektore flagowce.
@@ -581,6 +676,8 @@ export default function DelayMirrorView({ onBack }: Props) {
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
+      // Zapamietaj orientacje — uzywana w post-processingu przy udostepnianiu
+      recordedNeedsRotateRef.current = manualLandscape && isPortrait;
       const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
       fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
       fullRec.start(1000);
@@ -659,8 +756,6 @@ export default function DelayMirrorView({ onBack }: Props) {
       }
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
-    if (fullCanvasRafRef.current !== null) { cancelAnimationFrame(fullCanvasRafRef.current); fullCanvasRafRef.current = null; }
-    if (fullSrcVideoRef.current) { fullSrcVideoRef.current.srcObject = null; fullSrcVideoRef.current = null; }
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
@@ -1349,12 +1444,13 @@ export default function DelayMirrorView({ onBack }: Props) {
             {hasFullBlob && (
               <button
                 onClick={shareVideo}
-                disabled={shareState === 'sharing'}
+                disabled={shareState === 'sharing' || shareState === 'processing'}
                 className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
               >
                 <span className="material-symbols-outlined text-lg">
-                  {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+                  {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : shareState === 'processing' ? 'hourglass_top' : 'share'}
                 </span>
+                {shareState === 'processing' && t('delayMirror.shareProcessing')}
                 {shareState === 'sharing' && t('delayMirror.shareSharing')}
                 {shareState === 'saved' && t('delayMirror.shareSaved')}
                 {shareState === 'error' && t('delayMirror.shareError')}

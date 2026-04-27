@@ -617,7 +617,7 @@ export default function DelayMirrorView({ onBack }: Props) {
           <div className="flex items-baseline gap-0.5 mb-3">
             <h1 className="text-4xl font-black text-[#fed33e] tracking-tighter leading-none">GROT</h1>
             <h1 className="text-4xl font-black text-white tracking-tighter leading-none">-X</h1>
-            <div className="w-2 h-2 bg-[#fed33e] rounded-full ml-1 mb-1 animate-pulse" />
+            <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm" />
           </div>
           <div className="w-14 h-14 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-2">
             <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>

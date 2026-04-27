@@ -8,7 +8,7 @@ const MIN_DELAY_S = 1;
 const MAX_DELAY_S = 25;
 const STORAGE_KEY = 'delayMirror.delaySeconds';
 
-type MirrorState = 'idle' | 'requesting' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error' | 'freeLive';
+type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error' | 'freeLive';
 
 interface Props {
   onBack: () => void;
@@ -196,7 +196,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   // po rotacji która remontuje drzewo). Bez tego ref jest null w momencie
   // wywołania getUserMedia i PiP pozostaje czarny.
   useEffect(() => {
-    if ((mirrorState === 'buffering' || mirrorState === 'live' || mirrorState === 'freeLive') && liveVideoRef.current && streamRef.current) {
+    if ((mirrorState === 'positioning' || mirrorState === 'freeLive') && liveVideoRef.current && streamRef.current) {
       liveVideoRef.current.srcObject = streamRef.current;
       liveVideoRef.current.play().catch(() => { /* autoplay może odmówić */ });
     }
@@ -444,6 +444,10 @@ export default function DelayMirrorView({ onBack }: Props) {
     }
   }, []);
 
+  // Krok 1: pobierz kamere i pokaz live preview (positioning).
+  // Druga klatka <video> z liveVideoRef jest aktywna TYLKO w tym kroku
+  // — pozniej ja wylaczamy zeby nie konkurowala z MSE decoderem (na
+  // Androidzie dwa <video> z tym samym streamem powodowaly klatkowanie).
   const startRecording = useCallback(async () => {
     setMirrorState('requesting');
     setErrorMsg('');
@@ -470,10 +474,28 @@ export default function DelayMirrorView({ onBack }: Props) {
 
     streamRef.current = stream;
     isPausedRef.current = false;
+    setMirrorState('positioning');
+  }, [t]);
 
-    // Pelny recorder dla "Udostepnij" — niezalezny od MSE pipeline. Uzywa
-    // codec preferowany dla share (mp4 dla WhatsApp/iOS), ktory niekoniecznie
-    // jest tym samym co MSE (np. iOS Safari woli mp4, ale MSE tez go obsluguje).
+  // Krok 2: po kliknieciu "Start" w positioning — odlacz live preview,
+  // odpal pelny recorder i MSE pipeline.
+  const beginDelayedRecording = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const streamCodec = getStreamCodec();
+    const fullCodec = getFullCodec();
+    if (!streamCodec || !fullCodec) {
+      setMirrorState('unsupported');
+      return;
+    }
+
+    // Odepnij live preview <video> ZANIM odpalimy MSE — zeby decoder
+    // mial stream tylko dla siebie.
+    if (liveVideoRef.current) {
+      liveVideoRef.current.pause();
+      liveVideoRef.current.srcObject = null;
+    }
+
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
@@ -488,7 +510,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
     runMSE(stream, streamCodec);
-  }, [runMSE, t]);
+  }, [runMSE]);
 
   // Tryb FREE — samo getUserMedia, bez MediaRecorder, bez delay
   const startFreeLive = useCallback(async () => {
@@ -747,6 +769,52 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
+  if (mirrorState === 'positioning') {
+    return (
+      <>
+      {orientationToggle}
+      <div style={screenStyle} className="bg-black">
+        {/* Live preview pelnoekranowy — uzywany TYLKO do ustawienia urzadzenia.
+            Po starcie nagrywania ten <video> jest odpinany (srcObject=null) zeby
+            nie konkurowal z MSE decoderem na Android. */}
+        <video
+          ref={liveVideoRef}
+          className="absolute inset-0 w-full h-full object-cover"
+          style={{ transform: 'scaleX(-1)' }}
+          playsInline
+          muted
+        />
+        <div style={uiRotateStyle}>
+          {/* Gora: tytul + hint */}
+          <div className="absolute top-6 inset-x-0 px-6 z-10">
+            <div className="bg-black/55 backdrop-blur-sm rounded-2xl px-4 py-3 max-w-md mx-auto border border-white/10">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="material-symbols-outlined text-[#fed33e] text-lg">center_focus_strong</span>
+                <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.positioningTitle')}</p>
+              </div>
+              <p className="text-white/70 text-xs leading-snug">{t('delayMirror.positioningHint')}</p>
+            </div>
+          </div>
+          {/* Dol: start button */}
+          <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex justify-center">
+            <button
+              onClick={beginDelayedRecording}
+              className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl">play_arrow</span>
+              {t('delayMirror.positioningStart')}
+            </button>
+          </div>
+          {/* Back button */}
+          <button onClick={stopMirror} className="absolute top-6 left-5 text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2">
+            <span className="material-symbols-outlined text-2xl">arrow_back</span>
+          </button>
+        </div>
+      </div>
+      </>
+    );
+  }
+
   if (mirrorState === 'idle') {
     return (
       <>
@@ -902,23 +970,6 @@ export default function DelayMirrorView({ onBack }: Props) {
   return (
     <>
     {orientationToggle}
-    {/* PiP live — zawsze w tym samym miejscu i kształcie (portrait 9/16),
-        niezależnie od orientacji UI */}
-    {(mirrorState === 'buffering' || mirrorState === 'live') && (
-      <div className="fixed top-[68px] right-4 z-[65] rounded-xl overflow-hidden border-2 border-white/20 shadow-lg"
-           style={{ width: '20vw', maxWidth: 80, aspectRatio: '9/16' }}>
-        <video
-          ref={liveVideoRef}
-          className="w-full h-full object-cover"
-          style={{ transform: 'scaleX(-1)' }}
-          playsInline
-          muted
-        />
-        <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[8px] text-white text-center py-0.5 font-bold uppercase tracking-widest">
-          LIVE
-        </div>
-      </div>
-    )}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
       {/* Camera video — natywna orientacja, NIE rotuje się z togglem.
           MSE pipeline: jeden ciagly stream, zero segmentow = brak migania. */}

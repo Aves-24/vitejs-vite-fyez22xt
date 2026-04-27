@@ -977,5 +977,8 @@ export const views = {
     replayRestart: "Restart",
     toLandscape: "Landscape mode",
     toPortrait: "Portrait mode",
+    positioningTitle: "Position your device",
+    positioningHint: "Place the phone at shoulder height, an arm's length from the shooting line. When you're ready — start.",
+    positioningStart: "Start recording",
   },
 };

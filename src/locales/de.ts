@@ -977,5 +977,8 @@ export const views = {
     replayRestart: "Neu starten",
     toLandscape: "Querformat",
     toPortrait: "Hochformat",
+    positioningTitle: "Gerät positionieren",
+    positioningStart: "Aufnahme starten",
+    positioningHint: "Platziere das Handy auf Schulterhöhe, eine Armlänge von der Schießlinie entfernt. Wenn du bereit bist — Start.",
   },
 };

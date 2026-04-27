@@ -977,5 +977,8 @@ export const views = {
     replayRestart: "Od początku",
     toLandscape: "Tryb poziomy",
     toPortrait: "Tryb pionowy",
+    positioningTitle: "Ustaw urządzenie",
+    positioningHint: "Ustaw telefon na wysokości ramion, na długość ramienia od linii strzału. Gdy będziesz gotów — start.",
+    positioningStart: "Start nagrywania",
   },
 };

@@ -440,9 +440,9 @@ export default function DelayMirrorView({ onBack }: Props) {
   }, []);
 
   // Post-processing surowego nagrania: mirror (scaleX -1) + opcjonalna rotacja
-  // 90° gdy nagrywano w manual landscape. Bez tego WhatsApp pokazuje
-  // przekrecone/lustrzane wideo. Dziala 4x szybciej niz real-time dzieki
-  // wysokiej playbackRate.
+  // -90° (CCW) gdy nagrywano w manual landscape. Real-time playback (1x) zeby
+  // mobilki nie klampowaly speed do 2x. Robust na Infinity duration (typowy
+  // bug w MediaRecorder output gdy plik nie jest finalized).
   const processVideoForShare = useCallback((blob: Blob): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const video = document.createElement('video');
@@ -451,7 +451,8 @@ export default function DelayMirrorView({ onBack }: Props) {
       const srcUrl = URL.createObjectURL(blob);
       video.src = srcUrl;
 
-      const cleanup = () => { try { URL.revokeObjectURL(srcUrl); } catch { /* ignore */ } };
+      let cleaned = false;
+      const cleanup = () => { if (cleaned) return; cleaned = true; try { URL.revokeObjectURL(srcUrl); } catch { /* ignore */ } };
 
       video.onloadedmetadata = () => {
         const vw = video.videoWidth;
@@ -465,35 +466,66 @@ export default function DelayMirrorView({ onBack }: Props) {
         const ctx = canvas.getContext('2d');
         if (!ctx) { cleanup(); reject(new Error('No canvas context')); return; }
 
-        // Mime: webm zawsze dziala, mp4 tylko jezeli MediaRecorder go wspiera
-        let mimeType = blob.type.includes('mp4') && MediaRecorder.isTypeSupported('video/mp4')
-          ? 'video/mp4'
-          : 'video/webm';
-        if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = '';
+        // Mime — webm bezpieczny fallback. Sprawdz support recordera.
+        const candidates = [
+          'video/mp4;codecs=h264',
+          'video/mp4',
+          'video/webm;codecs=vp9',
+          'video/webm;codecs=vp8',
+          'video/webm',
+        ];
+        let mimeType = '';
+        for (const c of candidates) {
+          if (MediaRecorder.isTypeSupported(c)) { mimeType = c; break; }
+        }
 
-        const canvasStream = canvas.captureStream(30);
-        const recorder = new MediaRecorder(canvasStream, mimeType ? {
-          mimeType,
-          videoBitsPerSecond: 1_500_000,
-        } : { videoBitsPerSecond: 1_500_000 });
+        let recorder: MediaRecorder;
+        try {
+          const canvasStream = canvas.captureStream(30);
+          recorder = mimeType
+            ? new MediaRecorder(canvasStream, { mimeType, videoBitsPerSecond: 1_500_000 })
+            : new MediaRecorder(canvasStream, { videoBitsPerSecond: 1_500_000 });
+        } catch (e) {
+          cleanup();
+          reject(e);
+          return;
+        }
 
         const chunks: BlobPart[] = [];
+        let raf = 0;
+        let stopped = false;
+        let safetyTimer: ReturnType<typeof setTimeout> | null = null;
+
         recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = () => {
           cleanup();
-          const outType = mimeType || 'video/webm';
+          if (chunks.length === 0) {
+            reject(new Error('No frames captured'));
+            return;
+          }
+          const outType = mimeType.split(';')[0] || 'video/webm';
           resolve(new Blob(chunks, { type: outType }));
         };
-        recorder.onerror = () => { cleanup(); reject(new Error('Recorder error')); };
+        recorder.onerror = () => {
+          if (safetyTimer) clearTimeout(safetyTimer);
+          if (raf) cancelAnimationFrame(raf);
+          stopped = true;
+          cleanup();
+          reject(new Error('Recorder error'));
+        };
 
-        let raf = 0;
-        let stopped = false;
+        const stopAll = () => {
+          if (stopped) return;
+          stopped = true;
+          if (safetyTimer) { clearTimeout(safetyTimer); safetyTimer = null; }
+          if (raf) cancelAnimationFrame(raf);
+          try { recorder.stop(); } catch { /* ignore */ }
+        };
 
         const drawFrame = () => {
           if (stopped) return;
           ctx.save();
           if (needsRotate) {
-            // Rotacja -90° (CCW) — zeby zgadzala sie z trybem manual landscape
             ctx.translate(canvas.width / 2, canvas.height / 2);
             ctx.rotate(-Math.PI / 2);
             ctx.scale(-1, 1);
@@ -507,24 +539,17 @@ export default function DelayMirrorView({ onBack }: Props) {
           raf = requestAnimationFrame(drawFrame);
         };
 
-        const onEnded = () => {
-          stopped = true;
-          if (raf) cancelAnimationFrame(raf);
-          try { recorder.stop(); } catch { /* ignore */ }
-        };
+        video.onended = stopAll;
+        // Cap duration na 90s — Infinity/NaN to bug MediaRecorder przy blob URL
+        const safeDur = (isFinite(video.duration) && video.duration > 0) ? Math.min(video.duration, 90) : 60;
+        safetyTimer = setTimeout(stopAll, safeDur * 1000 + 8000);
 
-        video.onended = onEnded;
-        // Safety timeout — jezeli onended sie nie wywola (zdarza sie na blob URL)
-        const safetyMs = (video.duration || 60) * 1000 + 5000;
-        setTimeout(() => { if (!stopped) onEnded(); }, safetyMs);
-
-        // 1x — playbackRate >1 byl klampowany na mobilkach do 2x i psul speed.
         try { video.playbackRate = 1; } catch { /* ignore */ }
 
         recorder.start(500);
         video.play().then(() => {
           raf = requestAnimationFrame(drawFrame);
-        }).catch((err) => { cleanup(); reject(err); });
+        }).catch((err) => { stopAll(); reject(err); });
       };
 
       video.onerror = () => { cleanup(); reject(new Error('Video load error')); };

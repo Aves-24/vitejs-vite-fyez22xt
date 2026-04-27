@@ -240,9 +240,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   }, [mirrorState]);
 
   const playBlob = useCallback((blob: Blob) => {
-    // Double-buffering: laduj nowy segment na nieaktywnym <video>, poczekaj az
-    // bedzie gotowy do odtwarzania, potem zamien widocznosc — eliminuje
-    // klatke czerni przy zmianie src.
+    // Double-buffering: laduj nowy segment na nieaktywnym <video>, poczekaj
+    // az pierwsza klatka zostanie naprawde wyrenderowana (rVFC), dopiero
+    // wtedy zamien widocznosc instant. Eliminuje czarna klatke przy
+    // zmianie src — canplay nie wystarcza, bo strzela zanim GPU narysuje.
     const vidA = delayedVideoRef.current;
     const vidB = delayedVideoRefB.current;
     if (!vidA || !vidB) return;
@@ -254,15 +255,31 @@ export default function DelayMirrorView({ onBack }: Props) {
     const oldUrl = oldUrlRef.current;
     oldUrlRef.current = url;
     target.loop = true;
-    const onReady = () => {
-      target.removeEventListener('canplay', onReady);
-      target.play().catch(() => { /* autoplay may fail */ });
+    const swap = () => {
       target.style.opacity = '1';
       other.style.opacity = '0';
       activeIsARef.current = useA;
-      if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 800);
+      if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 1500);
     };
-    target.addEventListener('canplay', onReady);
+    const onLoadedData = () => {
+      target.removeEventListener('loadeddata', onLoadedData);
+      const playP = target.play();
+      if (playP && typeof playP.catch === 'function') playP.catch(() => { /* ignore */ });
+      // requestVideoFrameCallback — odpalany gdy nowa klatka jest gotowa
+      // do prezentacji. Brak fallbacku: jesli nieobsluguwane, swap od razu.
+      const tgt = target as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number };
+      if (typeof tgt.requestVideoFrameCallback === 'function') {
+        tgt.requestVideoFrameCallback(swap);
+      } else {
+        // fallback: poczekaj na 'playing' event
+        const onPlaying = () => {
+          target.removeEventListener('playing', onPlaying);
+          swap();
+        };
+        target.addEventListener('playing', onPlaying);
+      }
+    };
+    target.addEventListener('loadeddata', onLoadedData);
     target.src = url;
     target.load();
   }, []);
@@ -822,14 +839,14 @@ export default function DelayMirrorView({ onBack }: Props) {
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)', opacity: 1, transition: 'opacity 60ms linear' }}
+        style={{ transform: 'scaleX(-1)', opacity: 1 }}
         playsInline
         muted
       />
       <video
         ref={delayedVideoRefB}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)', opacity: 0, transition: 'opacity 60ms linear' }}
+        style={{ transform: 'scaleX(-1)', opacity: 0 }}
         playsInline
         muted
       />

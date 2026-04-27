@@ -805,7 +805,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
 
           {/* 3. Wykres + etykiety */}
-          <button onClick={() => recentSessions.length >= 2 && setShowTrendModal(true)} className="flex-1 flex items-center justify-center px-2 py-2 min-w-0 overflow-hidden active:opacity-70 transition-opacity">
+          <button onClick={() => recentScores.length >= 2 && setShowTrendModal(true)} className="flex-1 flex items-center justify-center px-2 py-2 min-w-0 overflow-hidden active:opacity-70 transition-opacity">
             {recentScores.length >= 2 ? (() => {
               const W = 100, H = 40, pad = 6;
               const minS = Math.min(...recentScores);
@@ -1499,7 +1499,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       )}
 
       {/* ─── MODAL: Krzywa ostatnich 10 treningów ─────────────────────────── */}
-      {showTrendModal && recentSessions.length >= 2 && typeof document !== 'undefined' && createPortal(
+      {showTrendModal && recentScores.length >= 2 && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[200000] bg-black/70 backdrop-blur-sm flex items-end justify-center p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in-up"
           onClick={() => setShowTrendModal(false)}
@@ -1520,7 +1520,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
             {(() => {
               const W = 300, H = 100, pad = 12;
-              const scores = recentSessions.map(s => s.score);
+              const sessionsForModal = recentSessions.length >= 2 ? recentSessions : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 }));
+              const scores = sessionsForModal.map(s => s.score);
               const minS = Math.min(...scores);
               const maxS = Math.max(...scores);
               const range = maxS - minS || 1;
@@ -1566,7 +1567,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   </div>
 
                   <div className="space-y-1.5">
-                    {[...recentSessions].reverse().map((sess, i) => {
+                    {[...sessionsForModal].reverse().map((sess, i) => {
                       const isTurniej = sess.type === 'Turniej';
                       const dot = isTurniej ? 'bg-[#0a3a2a]' : 'bg-[#fed33e]';
                       const label = isTurniej ? 'Turniej' : 'Trening';

@@ -91,6 +91,12 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [replayTime, setReplayTime] = useState(0);
   const [replayDuration, setReplayDuration] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
+  // Zoom (szerokokat 0.5x na frontowej) — zalezy od track capabilities.
+  // Wsparcie: Chrome Android na flagowcach z front ultra-wide. iOS Safari i
+  // wiekszosc telefonow bez ultra-wide po prostu nie wystawi zoom < 1 i UI
+  // sie nie pokaze.
+  const [zoomCaps, setZoomCaps] = useState<{ min: number; max: number; step: number } | null>(null);
+  const [cameraZoom, setCameraZoom] = useState<number>(1);
   // Wrapper na video w replay landscape — mierzymy aby dac pixele do video
   // (vw/vh nie dziala w manual landscape bo outer container jest rotowany).
   const replayBoxRef = useRef<HTMLDivElement>(null);
@@ -473,6 +479,28 @@ export default function DelayMirrorView({ onBack }: Props) {
     }
   }, []);
 
+  // Zoom capability detection — sprawdz czy track obsluguje zoom < 1
+  // (= ultra-wide na froncie). Wsparcie: Chrome Android, niektore flagowce.
+  const detectZoomCaps = useCallback((stream: MediaStream) => {
+    try {
+      const track = stream.getVideoTracks()[0];
+      if (!track || !('getCapabilities' in track)) {
+        setZoomCaps(null);
+        return;
+      }
+      const caps = track.getCapabilities() as MediaTrackCapabilities & { zoom?: { min: number; max: number; step: number } };
+      const settings = track.getSettings() as MediaTrackSettings & { zoom?: number };
+      if (caps.zoom && typeof caps.zoom.min === 'number' && caps.zoom.min < 1) {
+        setZoomCaps({ min: caps.zoom.min, max: caps.zoom.max, step: caps.zoom.step || 0.1 });
+        setCameraZoom(settings.zoom ?? 1);
+      } else {
+        setZoomCaps(null);
+      }
+    } catch {
+      setZoomCaps(null);
+    }
+  }, []);
+
   // Krok 1: pobierz kamere i pokaz live preview (positioning).
   // Druga klatka <video> z liveVideoRef jest aktywna TYLKO w tym kroku
   // — pozniej ja wylaczamy zeby nie konkurowala z MSE decoderem (na
@@ -503,8 +531,20 @@ export default function DelayMirrorView({ onBack }: Props) {
 
     streamRef.current = stream;
     isPausedRef.current = false;
+    detectZoomCaps(stream);
     setMirrorState('positioning');
-  }, [t]);
+  }, [t, detectZoomCaps]);
+
+  const applyZoom = useCallback(async (value: number) => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const track = stream.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      await track.applyConstraints({ advanced: [{ zoom: value } as MediaTrackConstraintSet] });
+      setCameraZoom(value);
+    } catch { /* ignore — niektore telefony odrzucaja srodkowe wartosci */ }
+  }, []);
 
   // Krok 2: po kliknieciu "Start" w positioning — odlacz live preview,
   // odpal pelny recorder i MSE pipeline.
@@ -571,10 +611,11 @@ export default function DelayMirrorView({ onBack }: Props) {
     }
     streamRef.current = stream;
     isPausedRef.current = false;
+    detectZoomCaps(stream);
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
     setMirrorState('freeLive');
-  }, [t]);
+  }, [t, detectZoomCaps]);
 
   const pauseMirror = useCallback(() => {
     isPausedRef.current = true;
@@ -839,8 +880,28 @@ export default function DelayMirrorView({ onBack }: Props) {
               <p className="text-white/70 text-xs leading-snug">{t('delayMirror.positioningHint')}</p>
             </div>
           </div>
-          {/* Dol: start button */}
-          <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex justify-center">
+          {/* Dol: zoom switcher (jezeli wsparte) + start button */}
+          <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex flex-col items-center gap-3">
+            {zoomCaps && (
+              <div className="flex gap-2 bg-black/55 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10">
+                {[
+                  { v: zoomCaps.min, label: `${zoomCaps.min}x` },
+                  { v: 1, label: '1x' },
+                ].map(opt => (
+                  <button
+                    key={opt.label}
+                    onClick={() => applyZoom(opt.v)}
+                    className={`px-4 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
+                      Math.abs(cameraZoom - opt.v) < 0.05
+                        ? 'bg-[#fed33e] text-[#0a3a2a]'
+                        : 'text-white/70'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               onClick={beginDelayedRecording}
               className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
@@ -998,6 +1059,26 @@ export default function DelayMirrorView({ onBack }: Props) {
             {formatTime(recSeconds)}
           </div>
         </div>
+        {zoomCaps && (
+          <div className="flex gap-2 bg-black/55 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10 mb-3">
+            {[
+              { v: zoomCaps.min, label: `${zoomCaps.min}x` },
+              { v: 1, label: '1x' },
+            ].map(opt => (
+              <button
+                key={opt.label}
+                onClick={() => applyZoom(opt.v)}
+                className={`px-4 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
+                  Math.abs(cameraZoom - opt.v) < 0.05
+                    ? 'bg-[#fed33e] text-[#0a3a2a]'
+                    : 'text-white/70'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
         <p className="text-[#fed33e]/90 text-center text-xs font-bold mb-1">{t('delayMirror.proRequired')}</p>
         <p className="text-white/50 text-center text-xs mb-6 px-4 leading-relaxed">{t('delayMirror.livePreviewInfo')}</p>
         <button

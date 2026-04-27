@@ -197,6 +197,13 @@ export const views = {
       unlockTrend: "Jahrestrend freischalten",
       buyPro: "GROT-X PRO freischalten"
     },
+    trendModal: {
+      subtitle: "Letzte Einheiten",
+      title: "Ergebniskurve",
+      typeTraining: "Training",
+      typeTournament: "Turnier",
+      typeArena: "Arena",
+    },
     arenaDeleted: "Arena wurde gelöscht.",
     arenaDeleteError: "Fehler beim Löschen.",
     rankTooFar: "Rang zu weit entfernt (Du: {{myLevel}}, Host: {{hostLevel}}). Max. ±1 Stufe.",

@@ -1517,8 +1517,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           >
             <div className="flex items-center justify-between mb-5">
               <div>
-                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">Ostatnie sesje</span>
-                <h2 className="text-xl font-black text-[#0a3a2a] leading-tight">Krzywa wyników</h2>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">{t('home.trendModal.subtitle')}</span>
+                <h2 className="text-xl font-black text-[#0a3a2a] leading-tight">{t('home.trendModal.title')}</h2>
               </div>
               <button onClick={() => setShowTrendModal(false)} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-90 transition-all">
                 <span className="material-symbols-outlined text-lg">close</span>
@@ -1527,7 +1527,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
             {(() => {
               const W = 300, H = 100, pad = 12;
-              const sessionsForModal = recentSessions.length >= 2 ? recentSessions : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 }));
+              const sessionsForModal = recentSessions.length >= 2
+                ? recentSessions
+                : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 }));
               const scores = sessionsForModal.map(s => s.score);
               const minS = Math.min(...scores);
               const maxS = Math.max(...scores);
@@ -1575,20 +1577,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
                   <div className="space-y-1.5">
                     {[...sessionsForModal].reverse().map((sess, i) => {
-                      const isTurniej = sess.type === 'Turniej';
-                      const dot = isTurniej ? 'bg-[#0a3a2a]' : 'bg-[#fed33e]';
-                      const label = isTurniej ? 'Turniej' : 'Trening';
-                      const d = new Date(sess.ts);
-                      const dateStr = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                      const typeKey = sess.type === 'Turniej' ? 'typeTournament' : sess.type === 'Arena' ? 'typeArena' : 'typeTraining';
+                      const dot = sess.type === 'Turniej' ? 'bg-[#0a3a2a]' : sess.type === 'Arena' ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const dateStr = sess.ts
+                        ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()
+                        : '';
                       return (
                         <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
                           <div className="flex items-center gap-2">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                            <span className="text-[9px] font-black text-gray-400 uppercase">{label}</span>
+                            <span className="text-[9px] font-black text-gray-400 uppercase">{t(`home.trendModal.${typeKey}`)}</span>
                             <span className="text-[9px] font-bold text-gray-300">{sess.distance}</span>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>
+                            {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
                             <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                           </div>
                         </div>

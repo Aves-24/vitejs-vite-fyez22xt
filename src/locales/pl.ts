@@ -197,6 +197,13 @@ export const views = {
       unlockTrend: "Odblokuj Trend Roczny",
       buyPro: "Odblokuj GROT-X PRO"
     },
+    trendModal: {
+      subtitle: "Ostatnie sesje",
+      title: "Krzywa wyników",
+      typeTraining: "Trening",
+      typeTournament: "Turniej",
+      typeArena: "Arena",
+    },
     arenaDeleted: "Arena została usunięta.",
     arenaDeleteError: "Błąd podczas usuwania.",
     rankTooFar: "Ranga zbyt odległa (Ty: {{myLevel}}, Host: {{hostLevel}}). Różnica max ±1 poziom.",

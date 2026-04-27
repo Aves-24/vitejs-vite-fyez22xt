@@ -858,17 +858,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           className="flex flex-col items-center justify-center px-4 py-3 shrink-0 bg-[#fed33e] rounded-[24px] shadow-sm active:bg-[#ffc800] transition-all text-center"
           onClick={() => {
             if (realLastSession) {
-              let passDate = realLastSession.date;
-              if (realLastSession.timestamp) {
-                const ts = typeof realLastSession.timestamp === 'number'
-                  ? realLastSession.timestamp
-                  : realLastSession.timestamp?.toMillis
-                    ? realLastSession.timestamp.toMillis()
-                    : Date.now();
-                const d = new Date(ts);
-                passDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+              const tsRaw = realLastSession.timestamp;
+              let isoDate = '';
+              if (tsRaw) {
+                const ms = typeof tsRaw === 'number'
+                  ? tsRaw
+                  : tsRaw.toMillis
+                    ? tsRaw.toMillis()
+                    : tsRaw.seconds
+                      ? tsRaw.seconds * 1000
+                      : 0;
+                if (ms) {
+                  const d = new Date(ms);
+                  isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                }
               }
-              onGoToStats?.(passDate);
+              if (!isoDate && realLastSession.date) {
+                const p = realLastSession.date.split('.');
+                if (p.length === 3) isoDate = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
+              }
+              onGoToStats?.(isoDate || undefined);
             } else {
               onGoToStats?.();
             }
@@ -878,15 +887,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <span className="text-[9px] font-bold text-[#725b00]/70 leading-none mt-1 whitespace-nowrap block">{realLastSession ? realLastSession.distance : '--'}</span>
           <span className="text-[9px] font-bold text-[#725b00]/60 leading-none mt-0.5 whitespace-nowrap block">
             {realLastSession
-              ? (() => {
-                  const ts = realLastSession.timestamp
-                    ? (typeof realLastSession.timestamp === 'number'
-                        ? realLastSession.timestamp
-                        : realLastSession.timestamp?.toMillis?.() ?? Date.now())
-                    : Date.now();
-                  const d = new Date(ts);
+              ? (realLastSession.date || (() => {
+                  const tsRaw = realLastSession.timestamp;
+                  const ms = typeof tsRaw === 'number' ? tsRaw : tsRaw?.toMillis ? tsRaw.toMillis() : tsRaw?.seconds ? tsRaw.seconds * 1000 : 0;
+                  if (!ms) return '--';
+                  const d = new Date(ms);
                   return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
-                })()
+                })())
               : '--'}
           </span>
         </button>

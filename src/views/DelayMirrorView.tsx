@@ -493,9 +493,9 @@ export default function DelayMirrorView({ onBack }: Props) {
           if (stopped) return;
           ctx.save();
           if (needsRotate) {
-            // Translate to center, rotate 90°, mirror, draw
+            // Rotacja -90° (CCW) — zeby zgadzala sie z trybem manual landscape
             ctx.translate(canvas.width / 2, canvas.height / 2);
-            ctx.rotate(Math.PI / 2);
+            ctx.rotate(-Math.PI / 2);
             ctx.scale(-1, 1);
             ctx.drawImage(video, -vw / 2, -vh / 2, vw, vh);
           } else {
@@ -515,11 +515,11 @@ export default function DelayMirrorView({ onBack }: Props) {
 
         video.onended = onEnded;
         // Safety timeout — jezeli onended sie nie wywola (zdarza sie na blob URL)
-        const safetyMs = (video.duration || 60) * 1000 / 4 + 5000;
+        const safetyMs = (video.duration || 60) * 1000 + 5000;
         setTimeout(() => { if (!stopped) onEnded(); }, safetyMs);
 
-        // 4x szybsze przetwarzanie. Niektore przegladarki nie wspieraja >4
-        try { video.playbackRate = 4; } catch { /* ignore */ }
+        // 1x — playbackRate >1 byl klampowany na mobilkach do 2x i psul speed.
+        try { video.playbackRate = 1; } catch { /* ignore */ }
 
         recorder.start(500);
         video.play().then(() => {

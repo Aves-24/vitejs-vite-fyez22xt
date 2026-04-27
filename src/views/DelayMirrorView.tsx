@@ -118,6 +118,8 @@ export default function DelayMirrorView({ onBack }: Props) {
   const fullMimeRef = useRef<string>('video/webm');
   const [hasFullBlob, setHasFullBlob] = useState(false);
   const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
+  const fullCanvasRafRef = useRef<number | null>(null);
+  const fullSrcVideoRef = useRef<HTMLVideoElement | null>(null);
 
   // Persist delay setting + sync ref
   useEffect(() => {
@@ -199,6 +201,14 @@ export default function DelayMirrorView({ onBack }: Props) {
     fullRecorderRef.current = null;
     fullChunksRef.current = [];
     lastBlobRef.current = null;
+    if (fullCanvasRafRef.current !== null) {
+      cancelAnimationFrame(fullCanvasRafRef.current);
+      fullCanvasRafRef.current = null;
+    }
+    if (fullSrcVideoRef.current) {
+      fullSrcVideoRef.current.srcObject = null;
+      fullSrcVideoRef.current = null;
+    }
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (mseRafRef.current !== null) {
@@ -441,8 +451,11 @@ export default function DelayMirrorView({ onBack }: Props) {
     if (!blob) return;
     setShareState('sharing');
     const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const today = new Date().toISOString().slice(0, 10);
-    const filename = `GROTX_DelayMirror_${today}.${ext}`;
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10);
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+    const filename = `GROTX_DelayMirror_${dateStr}_${hh}${mm}.${ext}`;
     try {
       const nav = navigator as Navigator & {
         canShare?: (data: { files: File[] }) => boolean;
@@ -453,7 +466,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         await nav.share({
           files: [file],
           title: 'GROT-X Delay Mirror',
-          text: `Mój strzał – ${today}`,
         });
         setShareState('idle');
         return;
@@ -569,7 +581,48 @@ export default function DelayMirrorView({ onBack }: Props) {
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
-      const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
+
+      // Canvas pipeline — nagrywa z mirror (scaleX -1) i ewentualną rotacją
+      // gdy UI jest w trybie manual landscape (telefon pionowo, UI obrócone).
+      // Bez canvas plik wychodzi z surowego sensora: lustrzany i/lub przekręcony.
+      const track = stream.getVideoTracks()[0];
+      const settings = track?.getSettings() ?? {};
+      const vw = settings.width || 720;
+      const vh = settings.height || 1280;
+      const needsRotate = manualLandscape && isPortrait;
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = needsRotate ? vh : vw;
+      canvas.height = needsRotate ? vw : vh;
+      const ctx = canvas.getContext('2d')!;
+
+      const srcVideo = document.createElement('video');
+      srcVideo.srcObject = stream;
+      srcVideo.muted = true;
+      srcVideo.playsInline = true;
+      srcVideo.play().catch(() => {});
+      fullSrcVideoRef.current = srcVideo;
+
+      const drawFrame = () => {
+        fullCanvasRafRef.current = requestAnimationFrame(drawFrame);
+        if (srcVideo.readyState < 2) return;
+        ctx.save();
+        if (needsRotate) {
+          ctx.translate(canvas.width / 2, canvas.height / 2);
+          ctx.rotate(Math.PI / 2);
+          ctx.scale(-1, 1);
+          ctx.drawImage(srcVideo, -vh / 2, -vw / 2, vh, vw);
+        } else {
+          ctx.translate(canvas.width, 0);
+          ctx.scale(-1, 1);
+          ctx.drawImage(srcVideo, 0, 0, vw, vh);
+        }
+        ctx.restore();
+      };
+      drawFrame();
+
+      const canvasStream = canvas.captureStream(30);
+      const fullRec = new MediaRecorder(canvasStream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
       fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
       fullRec.start(1000);
       fullRecorderRef.current = fullRec;
@@ -584,7 +637,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     pendingMSERef.current = { stream, codec: streamCodec };
     setMirrorState('buffering');
     setBufferMs(0);
-  }, []);
+  }, [manualLandscape, isPortrait]);
 
   useEffect(() => {
     if (mirrorState === 'buffering' && pendingMSERef.current && delayedVideoRef.current) {
@@ -647,6 +700,8 @@ export default function DelayMirrorView({ onBack }: Props) {
       }
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
+    if (fullCanvasRafRef.current !== null) { cancelAnimationFrame(fullCanvasRafRef.current); fullCanvasRafRef.current = null; }
+    if (fullSrcVideoRef.current) { fullSrcVideoRef.current.srcObject = null; fullSrcVideoRef.current = null; }
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;

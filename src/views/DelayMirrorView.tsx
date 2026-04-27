@@ -91,6 +91,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [replayTime, setReplayTime] = useState(0);
   const [replayDuration, setReplayDuration] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
+  // Wrapper na video w replay landscape — mierzymy aby dac pixele do video
+  // (vw/vh nie dziala w manual landscape bo outer container jest rotowany).
+  const replayBoxRef = useRef<HTMLDivElement>(null);
+  const [replayBox, setReplayBox] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
@@ -113,6 +117,25 @@ export default function DelayMirrorView({ onBack }: Props) {
     delayMsRef.current = delaySeconds * 1000;
     try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
   }, [delaySeconds]);
+
+  // Mierz wrapper replay video — wymagane bo vw/vh nie dziala wewnatrz manual
+  // landscape (outer wrapper jest rotowany przez transform).
+  useEffect(() => {
+    const el = replayBoxRef.current;
+    if (!el) return;
+    const update = () => {
+      // offsetWidth/Height = layout dims, niezalezne od transform parenta
+      setReplayBox({ w: el.offsetWidth, h: el.offsetHeight });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  });
 
   // PRO gate
   useEffect(() => {
@@ -1042,6 +1065,7 @@ export default function DelayMirrorView({ onBack }: Props) {
               return (
                 <div className={`${_displayAsLandscape ? 'flex-1 flex flex-col items-center justify-center min-w-0 gap-2' : 'w-full max-w-md'}`}>
                   <div
+                    ref={replayBoxRef}
                     className={`${_displayAsLandscape ? 'relative' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
                     style={
                       _displayAsLandscape
@@ -1067,8 +1091,10 @@ export default function DelayMirrorView({ onBack }: Props) {
                         ref={replayVideoRef}
                         className="block bg-black"
                         style={{
-                          width: needsRotate ? '90vh' : undefined,
-                          height: needsRotate ? '65vw' : undefined,
+                          // Pre-rotate: width = visual height, height = visual width.
+                          // Uzywamy zmierzonego boxa parenta (px) zamiast vw/vh.
+                          width: needsRotate ? `${replayBox.h}px` : undefined,
+                          height: needsRotate ? `${replayBox.w}px` : undefined,
                           maxWidth: needsRotate ? undefined : '100%',
                           maxHeight: needsRotate ? undefined : '40vh',
                           objectFit: 'contain',

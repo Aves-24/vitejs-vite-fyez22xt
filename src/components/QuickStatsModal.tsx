@@ -73,7 +73,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
 
         const [sessSnap, techSnap] = await Promise.all([
           getDocs(query(collection(db, `users/${userId}/sessions`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc'))),
-          getDocs(query(collection(db, `users/${userId}/techShots`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc')))
+          getDocs(query(collection(db, `users/${userId}/techShots`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc'))).catch(() => ({ forEach: () => {} } as any)),
         ]);
 
         const now = new Date();

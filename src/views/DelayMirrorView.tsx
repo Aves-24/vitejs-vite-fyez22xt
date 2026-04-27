@@ -84,6 +84,9 @@ export default function DelayMirrorView({ onBack }: Props) {
   const replayBlobUrlRef = useRef<string | null>(null);
   const mseCleanupRef = useRef<(() => void) | null>(null);
   const mseRafRef = useRef<number | null>(null);
+  // Pending MSE — czekamy az DOM zamontuje delayedVideoRef po przejsciu
+  // ze stanu 'positioning' do 'buffering', dopiero potem odpalamy pipeline.
+  const pendingMSERef = useRef<{ stream: MediaStream; codec: string } | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
@@ -509,8 +512,20 @@ export default function DelayMirrorView({ onBack }: Props) {
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
-    runMSE(stream, streamCodec);
-  }, [runMSE]);
+    // Stan -> buffering, runMSE odpalamy w useEffect po commit (delayedVideoRef
+    // dopiero wtedy bedzie zamontowany).
+    pendingMSERef.current = { stream, codec: streamCodec };
+    setMirrorState('buffering');
+    setBufferMs(0);
+  }, []);
+
+  useEffect(() => {
+    if (mirrorState === 'buffering' && pendingMSERef.current && delayedVideoRef.current) {
+      const { stream, codec } = pendingMSERef.current;
+      pendingMSERef.current = null;
+      runMSE(stream, codec);
+    }
+  }, [mirrorState, runMSE]);
 
   // Tryb FREE — samo getUserMedia, bez MediaRecorder, bez delay
   const startFreeLive = useCallback(async () => {

@@ -88,10 +88,9 @@ export default function DelayMirrorView({ onBack }: Props) {
   // ze stanu 'positioning' do 'buffering', dopiero potem odpalamy pipeline.
   const pendingMSERef = useRef<{ stream: MediaStream; codec: string } | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
-  // Niektore urzadzenia (Android) zapisuja blob w natywnej orientacji sensora
-  // bez metadanych rotacji. Wykrywamy natywny aspect i counter-rotate gdy
-  // nie pasuje do display orientation.
-  const [replayNativeIsLandscape, setReplayNativeIsLandscape] = useState<boolean | null>(null);
+  const [replayTime, setReplayTime] = useState(0);
+  const [replayDuration, setReplayDuration] = useState(0);
+  const [replayPlaying, setReplayPlaying] = useState(false);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
@@ -595,7 +594,9 @@ export default function DelayMirrorView({ onBack }: Props) {
     setBufferMs(0);
     setRecSeconds(0);
     setReplayRate(1);
-    setReplayNativeIsLandscape(null);
+    setReplayTime(0);
+    setReplayDuration(0);
+    setReplayPlaying(false);
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
@@ -1029,16 +1030,22 @@ export default function DelayMirrorView({ onBack }: Props) {
           {hasFullBlob ? (
             (() => {
               // W widoku poziomym blob nie ma metadanych rotacji — wymuszamy
-              // +90deg cw na video. Robimy to przez wrapper div (nie sam <video>)
-              // zeby uniknac problemow z controls/aspect na rotowanym elemencie.
+              // +90deg cw na wrapper div. Custom scrubber ponizej (nie rotowany)
+              // zeby pasek postepu byl na dole zamiast po prawej.
               const needsRotate = _displayAsLandscape;
+              const fmtT = (s: number) => {
+                if (!isFinite(s)) return '0:00';
+                const m = Math.floor(s / 60);
+                const sec = Math.floor(s % 60);
+                return `${m}:${String(sec).padStart(2, '0')}`;
+              };
               return (
-                <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0 overflow-hidden' : 'w-full max-w-md'}`}>
+                <div className={`${_displayAsLandscape ? 'flex-1 flex flex-col items-center justify-center min-w-0 gap-2' : 'w-full max-w-md'}`}>
                   <div
-                    className={`${_displayAsLandscape ? '' : 'w-full mb-3'} rounded-2xl overflow-hidden bg-black relative flex items-center justify-center`}
+                    className={`${_displayAsLandscape ? '' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black relative flex items-center justify-center`}
                     style={
                       _displayAsLandscape
-                        ? { width: '100%', maxHeight: '70vh' }
+                        ? { width: '100%', flex: '1 1 auto', minHeight: 0 }
                         : undefined
                     }
                   >
@@ -1047,22 +1054,68 @@ export default function DelayMirrorView({ onBack }: Props) {
                         transform: needsRotate ? 'rotate(90deg)' : undefined,
                         transformOrigin: 'center center',
                         display: 'inline-block',
+                        lineHeight: 0,
                       }}
                     >
                       <video
                         ref={replayVideoRef}
                         className="block bg-black"
                         style={{
-                          maxWidth: needsRotate ? '70vh' : '100%',
-                          maxHeight: needsRotate ? '70vw' : (_displayAsLandscape ? '70vh' : '40vh'),
+                          maxWidth: needsRotate ? '88vh' : '100%',
+                          maxHeight: needsRotate ? '55vw' : '40vh',
                           objectFit: 'contain',
                           display: 'block',
                         }}
+                        onLoadedMetadata={(e) => {
+                          const v = e.currentTarget;
+                          setReplayDuration(v.duration || 0);
+                        }}
+                        onTimeUpdate={(e) => setReplayTime(e.currentTarget.currentTime)}
+                        onPlay={() => setReplayPlaying(true)}
+                        onPause={() => setReplayPlaying(false)}
+                        onClick={() => {
+                          const v = replayVideoRef.current;
+                          if (!v) return;
+                          if (v.paused) v.play().catch(() => { /* ignore */ });
+                          else v.pause();
+                        }}
                         playsInline
-                        controls
                         loop
                       />
                     </div>
+                  </div>
+
+                  {/* Custom scrubber + play/pause + czas — na dole w landscape,
+                      zawsze niezaleznie od rotacji video */}
+                  <div className={`${_displayAsLandscape ? 'w-full flex items-center gap-2 px-2' : 'w-full flex items-center gap-2 px-2 mt-2 mb-3'}`}>
+                    <button
+                      onClick={() => {
+                        const v = replayVideoRef.current;
+                        if (!v) return;
+                        if (v.paused) v.play().catch(() => { /* ignore */ });
+                        else v.pause();
+                      }}
+                      className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
+                    >
+                      <span className="material-symbols-outlined text-xl">{replayPlaying ? 'pause' : 'play_arrow'}</span>
+                    </button>
+                    <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={replayDuration || 1}
+                      step={0.05}
+                      value={Math.min(replayTime, replayDuration || 1)}
+                      onChange={(e) => {
+                        const v = replayVideoRef.current;
+                        if (!v) return;
+                        const t = parseFloat(e.target.value);
+                        v.currentTime = t;
+                        setReplayTime(t);
+                      }}
+                      className="flex-1 accent-[#fed33e]"
+                    />
+                    <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayDuration)}</span>
                   </div>
                 </div>
               );

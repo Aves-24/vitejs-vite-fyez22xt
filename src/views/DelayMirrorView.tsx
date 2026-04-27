@@ -908,11 +908,35 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Setup instructions button */}
           <button
             onClick={() => setShowSetupInstructions(true)}
-            className="absolute top-6 inset-x-0 mx-auto w-fit z-20 flex items-center gap-2 bg-black text-white rounded-2xl px-5 py-2.5 active:scale-95 transition-all border border-white/30 animate-pulse shadow-lg"
+            className="absolute top-4 inset-x-0 mx-auto w-fit z-20 flex items-center gap-1.5 bg-black/80 text-white rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/30 animate-pulse shadow-md"
           >
-            <span className="material-symbols-outlined text-lg">info</span>
-            <span className="text-sm font-black">{t('delayMirror.setupInstructionsTitle')}</span>
+            <span className="material-symbols-outlined text-base">info</span>
+            <span className="text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
           </button>
+
+          {/* Modal instrukcji — musi byc w tym samym return co przycisk */}
+          {showSetupInstructions && (
+            <div
+              className="absolute inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-40 px-6"
+              onClick={() => setShowSetupInstructions(false)}
+            >
+              <div
+                className="bg-[#0a0a0a] border border-white/15 rounded-3xl p-6 w-full max-w-xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h2 className="text-white font-black text-lg mb-4 text-center">{t('delayMirror.setupInstructionsTitle')}</h2>
+                <div className="text-white/80 text-sm leading-relaxed whitespace-pre-line mb-5 max-h-80 overflow-y-auto">
+                  {t('delayMirror.setupInstructions')}
+                </div>
+                <button
+                  onClick={() => setShowSetupInstructions(false)}
+                  className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+                >
+                  {t('delayMirror.setupInstructionsClose')}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
       </>

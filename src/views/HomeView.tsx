@@ -58,6 +58,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [avg14Days, setAvg14Days] = useState<string>('0.0');
   const [recentScores, setRecentScores] = useState<number[]>([]);
+  const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
+  const [showTrendModal, setShowTrendModal] = useState(false);
   const [weekStreak, setWeekStreak] = useState<number>(0);
   
   const [firstName, setFirstName] = useState('');
@@ -404,6 +406,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setYearlyTotal(cached.yearly);
         setAvg14Days(cached.avg14);
         if (cached.recentScores) setRecentScores(cached.recentScores);
+        if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weekStreak !== undefined) setWeekStreak(cached.weekStreak);
         return;
       }
@@ -437,10 +440,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         // ─── SPARKLINE: ostatnie 6 sesji z wynikiem > 0 ──────────────────────
         const sessionList = snapYear.docs
-          .map(d => ({ score: d.data().score || 0, ts: getSafeTime(d.data().timestamp) }))
+          .map(d => {
+            const dd = d.data();
+            return { score: dd.score || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening' };
+          })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
         const recent = sessionList.slice(-6).map(s => s.score);
+        const recentFull = sessionList.slice(-10);
 
         // ─── STREAK TYGODNIOWY: ile tygodni z rzędu (min. 1 sesja/tydzień) ──
         const getWeekStart = (ts: number) => {
@@ -468,9 +475,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setYearlyTotal(y);
         setAvg14Days(avg14);
         setRecentScores(recent);
+        setRecentSessions(recentFull);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { monthly: m, yearly: y, avg14, recentScores: recent, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { monthly: m, yearly: y, avg14, recentScores: recent, recentSessions: recentFull, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -797,7 +805,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
 
           {/* 3. Wykres + etykiety */}
-          <div className="flex-1 flex items-center justify-center px-2 py-2 min-w-0 overflow-hidden">
+          <button onClick={() => recentSessions.length >= 2 && setShowTrendModal(true)} className="flex-1 flex items-center justify-center px-2 py-2 min-w-0 overflow-hidden active:opacity-70 transition-opacity">
             {recentScores.length >= 2 ? (() => {
               const W = 100, H = 40, pad = 6;
               const minS = Math.min(...recentScores);
@@ -841,7 +849,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             })() : (
               <span className="material-symbols-outlined text-gray-200 text-2xl">monitoring</span>
             )}
-          </div>
+          </button>
 
         </div>
 
@@ -1485,6 +1493,103 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </div>{/* koniec px-4 pb-4 */}
 
             </div>{/* koniec overflow-y-auto */}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ─── MODAL: Krzywa ostatnich 10 treningów ─────────────────────────── */}
+      {showTrendModal && recentSessions.length >= 2 && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[200000] bg-black/70 backdrop-blur-sm flex items-end justify-center p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in-up"
+          onClick={() => setShowTrendModal(false)}
+        >
+          <div
+            className="bg-[#fcfdfe] w-full max-w-md rounded-[32px] shadow-2xl p-6"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">Ostatnie sesje</span>
+                <h2 className="text-xl font-black text-[#0a3a2a] leading-tight">Krzywa wyników</h2>
+              </div>
+              <button onClick={() => setShowTrendModal(false)} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {(() => {
+              const W = 300, H = 100, pad = 12;
+              const scores = recentSessions.map(s => s.score);
+              const minS = Math.min(...scores);
+              const maxS = Math.max(...scores);
+              const range = maxS - minS || 1;
+              const pts = scores.map((s, i) => ({
+                x: pad + (i / (scores.length - 1)) * (W - pad * 2),
+                y: H - pad - ((s - minS) / range) * (H - pad * 2),
+                s,
+              }));
+              const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+              const maxIdx = scores.indexOf(maxS);
+              const minIdx = scores.lastIndexOf(minS);
+              return (
+                <>
+                  <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
+                    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+                      <defs>
+                        <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fed33e" stopOpacity="0.2" />
+                          <stop offset="100%" stopColor="#fed33e" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <polygon
+                        points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`}
+                        fill="url(#trendGrad)"
+                      />
+                      <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => {
+                        const isMax = i === maxIdx;
+                        const isMin = i === minIdx;
+                        const isLast = i === pts.length - 1;
+                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'rgba(255,255,255,0.4)';
+                        const r = (isMax || isMin || isLast) ? 5 : 3;
+                        return (
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.y} r={r} fill={color} />
+                            {(isMax || isMin || isLast) && (
+                              <text x={p.x} y={p.y - 9} fontSize="8" fontWeight="bold" textAnchor="middle" fill={color}>{p.s}</text>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {[...recentSessions].reverse().map((sess, i) => {
+                      const isTurniej = sess.type === 'Turniej';
+                      const dot = isTurniej ? 'bg-[#0a3a2a]' : 'bg-[#fed33e]';
+                      const label = isTurniej ? 'Turniej' : 'Trening';
+                      const d = new Date(sess.ts);
+                      const dateStr = `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`;
+                      return (
+                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                            <span className="text-[9px] font-black text-gray-400 uppercase">{label}</span>
+                            <span className="text-[9px] font-bold text-gray-300">{sess.distance}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>
+                            <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>,
         document.body

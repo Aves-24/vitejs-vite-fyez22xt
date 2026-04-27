@@ -837,6 +837,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           tournamentName={viewingEvent.title}
           distance={viewingEvent.distance || '70m'}
           onClose={() => setShowScoreInput(false)}
+          onNavigate={onNavigate}
         />
       )}
 

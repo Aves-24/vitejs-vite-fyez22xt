@@ -10,9 +10,10 @@ interface TournamentScoreInputProps {
   tournamentName: string;
   distance: string;
   onClose: () => void;
+  onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
-export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, onClose }: TournamentScoreInputProps) {
+export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, onClose, onNavigate }: TournamentScoreInputProps) {
   const { t } = useTranslation();
   const [inputMode, setInputMode] = useState<'DETAILED' | 'SUMMARY'>('DETAILED');
 
@@ -32,6 +33,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
   const [summary10_2, setSummary10_2] = useState('');
   const [summary9_2, setSummary9_2] = useState('');
 
+  const [practiceArrows, setPracticeArrows] = useState(0);
   const [aiNote, setAiNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showKeyboard, setShowKeyboard] = useState(true);
@@ -129,7 +131,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     const finalEnds = currentEnd.length > 0 ? [...ends, currentEnd] : ends;
     const todayStr = new Date().toLocaleDateString('pl-PL');
     const todayISO = new Date().toISOString().split('T')[0];
-    const arrowCount = 72; 
+    const arrowCount = 72 + practiceArrows;
 
     // Konwersja formatu 'ends' dla trybu DETAILED (aby StatsView widziało strzały)
     const archivedEnds = finalEnds.map(end => ({
@@ -170,7 +172,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
       await setDoc(dailyRef, { arrows: increment(arrowCount) }, { merge: true });
       
-      onClose(); 
+      onClose();
+      if (onNavigate) {
+        onNavigate('STATS', undefined, todayISO);
+      }
     } catch (e) { console.error(e); } finally { setIsSaving(false); }
   };
 
@@ -313,7 +318,19 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           </>
         )}
 
-        <div className="relative mb-2 mt-1">
+        <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 mb-2 mt-1 shadow-sm">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Strzały próbne</span>
+            <span className="text-lg font-black text-[#0a3a2a] leading-none">{practiceArrows}</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button onClick={() => setPracticeArrows(p => Math.max(0, p - 1))} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 font-black text-sm shadow-sm active:scale-90 transition-all">−1</button>
+            <button onClick={() => setPracticeArrows(p => p + 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 font-black text-sm shadow-sm active:scale-90 transition-all">+1</button>
+            <button onClick={() => setPracticeArrows(p => p + 6)} className="w-10 h-8 rounded-lg bg-[#0a3a2a] border border-[#0a3a2a] flex items-center justify-center text-white font-black text-sm shadow-sm active:scale-90 transition-all">+6</button>
+          </div>
+        </div>
+
+        <div className="relative mb-2">
           <input type="text" maxLength={50} value={aiNote} onChange={e => setAiNote(e.target.value)} placeholder={t('tournamentInput.aiPlaceholder')} className="w-full bg-yellow-50/50 border border-yellow-200/60 rounded-xl p-3 text-[10px] font-bold text-[#0a3a2a] focus:outline-none focus:border-yellow-400 pr-10 shadow-inner" />
           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500 text-[18px]">psychology</span>
         </div>

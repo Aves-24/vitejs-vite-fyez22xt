@@ -91,6 +91,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [replayTime, setReplayTime] = useState(0);
   const [replayDuration, setReplayDuration] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
+  const [showSetupInstructions, setShowSetupInstructions] = useState(false);
   // Zoom (szerokokat 0.5x na frontowej) — zalezy od track capabilities.
   // Wsparcie: Chrome Android na flagowcach z front ultra-wide. iOS Safari i
   // wiekszosc telefonow bez ultra-wide po prostu nie wystawi zoom < 1 i UI
@@ -1349,6 +1350,16 @@ export default function DelayMirrorView({ onBack }: Props) {
               <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
             </button>
           )}
+          {mirrorState === 'live' && (
+            <button
+              onClick={() => setShowSetupInstructions(true)}
+              className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
+              title={t('delayMirror.setupInstructionsTitle')}
+            >
+              <span className="material-symbols-outlined text-white text-sm">info</span>
+              <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -1403,6 +1414,29 @@ export default function DelayMirrorView({ onBack }: Props) {
               className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
             >
               OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSetupInstructions && (
+        <div
+          className="absolute inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-40 px-6 overflow-y-auto py-8"
+          onClick={() => setShowSetupInstructions(false)}
+        >
+          <div
+            className="bg-[#0a0a0a] border border-white/15 rounded-3xl p-8 w-full max-w-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-white font-black text-2xl mb-6 text-center">{t('delayMirror.setupInstructionsTitle')}</h2>
+            <div className="text-white/80 text-sm leading-relaxed whitespace-pre-line mb-6 max-h-96 overflow-y-auto">
+              {t('delayMirror.setupInstructions')}
+            </div>
+            <button
+              onClick={() => setShowSetupInstructions(false)}
+              className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+            >
+              {t('delayMirror.setupInstructionsClose')}
             </button>
           </div>
         </div>

@@ -980,5 +980,8 @@ export const views = {
     positioningTitle: "Position your device",
     positioningHint: "Place the phone at shoulder height, an arm's length from the shooting line. When you're ready — start.",
     positioningStart: "Start recording",
+    setupInstructionsTitle: "Device Setup Instructions",
+    setupInstructions: "1. HEIGHT\nPosition your device so the camera lens is exactly at your shoulder height. This prevents image distortion and provides the most natural view of your archery geometry.\n\n2. DISTANCE AND PLACEMENT\nPlace the device on the line where you stand, at arm's length (measured to fingertips).\n\n3. OBSERVATION POSITION\nChoose the angle based on what you want to analyze:\n\nBehind you: to monitor scapula movement and elbow line.\n\nFrom chest side: to monitor release hand movement and release moment.\n\n4. TIP\nRemember to position the device perpendicular to you — this will help you avoid errors in posture assessment.",
+    setupInstructionsClose: "Close",
   },
 };

@@ -980,5 +980,8 @@ export const views = {
     positioningTitle: "Ustaw urządzenie",
     positioningHint: "Ustaw telefon na wysokości ramion, na długość ramienia od linii strzału. Gdy będziesz gotów — start.",
     positioningStart: "Start nagrywania",
+    setupInstructionsTitle: "Instrukcja ustawienia urządzenia",
+    setupInstructions: "1. WYSOKOŚĆ\nUstaw urządzenie tak, aby obiektyw znajdował się dokładnie na wysokości Twojego barku. Pozwala to uniknąć zniekształceń obrazu i daje najbardziej naturalny podgląd Twojej geometrii łuczniczej.\n\n2. ODLEGŁOŚĆ I MIEJSCE\nUstaw urządzenie na linii, na której stoisz, w odległości wyciągniętej ręki (mierzonej do końców palców).\n\n3. POZYCJA OBSERWACJI\nWybierz stronę w zależności od tego, co chcesz analizować:\n\nZa plecami: aby kontrolować pracę łopatek i linię łokcia.\n\nOd strony klatki piersiowej: aby kontrolować pracę dłoni cięciwnej i moment zwolnienia (release).\n\n4. WSKAZÓWKA\nPamiętaj, aby urządzenie było skierowane prostopadle do Ciebie — dzięki temu unikniesz błędów w ocenie postawy.",
+    setupInstructionsClose: "Zamknij",
   },
 };

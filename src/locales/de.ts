@@ -978,7 +978,10 @@ export const views = {
     toLandscape: "Querformat",
     toPortrait: "Hochformat",
     positioningTitle: "Gerät positionieren",
-    positioningStart: "Aufnahme starten",
     positioningHint: "Platziere das Handy auf Schulterhöhe, eine Armlänge von der Schießlinie entfernt. Wenn du bereit bist — Start.",
+    positioningStart: "Aufnahme starten",
+    setupInstructionsTitle: "Anleitung zum Geräteplatzierung",
+    setupInstructions: "1. HÖHE\nPositioniere dein Gerät so, dass die Kamera genau auf Schulterhöhe ist. Dies verhindert Bildverzerrung und bietet die natürlichste Ansicht deiner Schießtechnik.\n\n2. ABSTAND UND PLATZIERUNG\nPlatziere das Gerät auf der Linie, auf der du stehst, in Armlänge Entfernung (bis zu den Fingerspitzen gemessen).\n\n3. BEOBACHTUNGSPOSITION\nWähle den Winkel basierend auf dem, was du analysieren möchtest:\n\nVon hinten: um die Scapula-Bewegung und die Ellbogenlinie zu kontrollieren.\n\nVon der Brustseite: um die Handbewegung und den Freigabemoment zu kontrollieren.\n\n4. TIPP\nDenk daran, das Gerät senkrecht zu dir zu positionieren — dies hilft dir, Fehler bei der Haltungsbewertung zu vermeiden.",
+    setupInstructionsClose: "Schließen",
   },
 };

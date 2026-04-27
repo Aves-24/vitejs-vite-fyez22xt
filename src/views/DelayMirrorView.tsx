@@ -80,6 +80,9 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
+  const delayedVideoRefB = useRef<HTMLVideoElement>(null);
+  const activeIsARef = useRef<boolean>(true);
+  const currentBlobUrlBRef = useRef<string | null>(null);
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBlobUrlRef = useRef<string | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
@@ -169,10 +172,20 @@ export default function DelayMirrorView({ onBack }: Props) {
       delayedVideoRef.current.removeAttribute('src');
       delayedVideoRef.current.load();
     }
+    if (delayedVideoRefB.current) {
+      delayedVideoRefB.current.pause();
+      delayedVideoRefB.current.removeAttribute('src');
+      delayedVideoRefB.current.load();
+    }
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
     }
+    if (currentBlobUrlBRef.current) {
+      URL.revokeObjectURL(currentBlobUrlBRef.current);
+      currentBlobUrlBRef.current = null;
+    }
+    activeIsARef.current = true;
     if (replayBlobUrlRef.current) {
       URL.revokeObjectURL(replayBlobUrlRef.current);
       replayBlobUrlRef.current = null;
@@ -227,16 +240,31 @@ export default function DelayMirrorView({ onBack }: Props) {
   }, [mirrorState]);
 
   const playBlob = useCallback((blob: Blob) => {
-    const vid = delayedVideoRef.current;
-    if (!vid) return;
+    // Double-buffering: laduj nowy segment na nieaktywnym <video>, poczekaj az
+    // bedzie gotowy do odtwarzania, potem zamien widocznosc — eliminuje
+    // klatke czerni przy zmianie src.
+    const vidA = delayedVideoRef.current;
+    const vidB = delayedVideoRefB.current;
+    if (!vidA || !vidB) return;
+    const useA = !activeIsARef.current;
+    const target = useA ? vidA : vidB;
+    const other = useA ? vidB : vidA;
     const url = URL.createObjectURL(blob);
-    const oldUrl = currentBlobUrlRef.current;
-    currentBlobUrlRef.current = url;
-    vid.src = url;
-    vid.loop = true;
-    vid.play().catch(() => { /* autoplay may fail silently */ });
-    // Revoke old URL after a tick to avoid interrupting playback
-    if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 1000);
+    const oldUrlRef = useA ? currentBlobUrlRef : currentBlobUrlBRef;
+    const oldUrl = oldUrlRef.current;
+    oldUrlRef.current = url;
+    target.loop = true;
+    const onReady = () => {
+      target.removeEventListener('canplay', onReady);
+      target.play().catch(() => { /* autoplay may fail */ });
+      target.style.opacity = '1';
+      other.style.opacity = '0';
+      activeIsARef.current = useA;
+      if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 800);
+    };
+    target.addEventListener('canplay', onReady);
+    target.src = url;
+    target.load();
   }, []);
 
   const shareVideo = useCallback(async () => {
@@ -442,6 +470,19 @@ export default function DelayMirrorView({ onBack }: Props) {
     cleanup();
     onBack();
   }, [cleanup, onBack]);
+
+  // End session — zostan w DelayMirror, wroc do menu idle (zachowaj
+  // wybrana orientacje, zeby user nie musial znow klikac).
+  const endSession = useCallback(() => {
+    cleanup();
+    setHasFullBlob(false);
+    setBufferMs(0);
+    setRecSeconds(0);
+    setReplayRate(1);
+    setShareState('idle');
+    isPausedRef.current = false;
+    setMirrorState('idle');
+  }, [cleanup]);
 
   const replaySeek = useCallback((delta: number) => {
     const v = replayVideoRef.current;
@@ -775,11 +816,20 @@ export default function DelayMirrorView({ onBack }: Props) {
       </div>
     )}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
-      {/* Camera video — natywna orientacja, NIE rotuje się z togglem */}
+      {/* Camera video — natywna orientacja, NIE rotuje się z togglem.
+          Double-buffering: dwa <video> alternuja, opacity zamienia widoczne
+          zeby nie bylo migania przy zmianie segmentu. */}
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)' }}
+        style={{ transform: 'scaleX(-1)', opacity: 1, transition: 'opacity 60ms linear' }}
+        playsInline
+        muted
+      />
+      <video
+        ref={delayedVideoRefB}
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ transform: 'scaleX(-1)', opacity: 0, transition: 'opacity 60ms linear' }}
         playsInline
         muted
       />
@@ -914,7 +964,7 @@ export default function DelayMirrorView({ onBack }: Props) {
               </button>
             )}
             <button
-              onClick={stopMirror}
+              onClick={endSession}
               className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
             >
               {t('delayMirror.endSession')}

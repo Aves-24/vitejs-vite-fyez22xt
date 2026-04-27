@@ -908,11 +908,10 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Setup instructions button */}
           <button
             onClick={() => setShowSetupInstructions(true)}
-            className="absolute top-6 right-5 z-20 flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
-            title={t('delayMirror.setupInstructionsTitle')}
+            className="absolute top-6 inset-x-0 mx-auto w-fit z-20 flex items-center gap-2 bg-black text-white rounded-2xl px-5 py-2.5 active:scale-95 transition-all border border-white/30 animate-pulse shadow-lg"
           >
-            <span className="material-symbols-outlined text-white text-sm">info</span>
-            <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
+            <span className="material-symbols-outlined text-lg">info</span>
+            <span className="text-sm font-black">{t('delayMirror.setupInstructionsTitle')}</span>
           </button>
         </div>
       </div>

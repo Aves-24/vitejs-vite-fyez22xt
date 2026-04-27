@@ -398,7 +398,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v4_${userId}`;
+      const cacheKey = `grotX_stats_v5_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -488,7 +488,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v4_${userId}`);
+      localStorage.removeItem(`grotX_stats_v5_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);

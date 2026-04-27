@@ -1099,6 +1099,9 @@ export default function DelayMirrorView({ onBack }: Props) {
                           maxHeight: needsRotate ? undefined : '40vh',
                           objectFit: 'contain',
                           display: 'block',
+                          // Mirror — live preview ma scaleX(-1), recording surowy.
+                          // Replay tez musi byc mirrored zeby zgadzal sie z tym co user widzial.
+                          transform: 'scaleX(-1)',
                         }}
                         onLoadedMetadata={(e) => {
                           const v = e.currentTarget;

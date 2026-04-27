@@ -14,9 +14,9 @@ interface Props {
   onBack: () => void;
 }
 
-function getCodec(): string | null {
+// Pelny codec do "Udostepnij" (kompletny plik) — preferuj mp4 dla WhatsApp/iOS.
+function getFullCodec(): string | null {
   if (typeof MediaRecorder === 'undefined') return null;
-  // mp4 najpierw — kompatybilny z WhatsApp/iOS share. webm dopiero jako fallback.
   const candidates = [
     'video/mp4;codecs=h264,aac',
     'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
@@ -34,25 +34,25 @@ function getCodec(): string | null {
   return null;
 }
 
-function recordSegment(stream: MediaStream, mimeType: string, ms: number): Promise<{ blob: Blob; recorder: MediaRecorder }> {
-  return new Promise((resolve, reject) => {
-    try {
-      const chunks: BlobPart[] = [];
-      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_500_000 });
-      recorder.ondataavailable = (e) => { if (e.data && e.data.size > 0) chunks.push(e.data); };
-      recorder.onerror = (e) => reject(e);
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType.split(';')[0] });
-        resolve({ blob, recorder });
-      };
-      recorder.start();
-      setTimeout(() => {
-        if (recorder.state !== 'inactive') recorder.stop();
-      }, ms);
-    } catch (err) {
-      reject(err);
-    }
-  });
+// Codec dla MSE pipeline — musi byc obslugiwany przez MediaRecorder I MediaSource.
+function getStreamCodec(): string | null {
+  if (typeof MediaRecorder === 'undefined') return null;
+  const w = window as unknown as { ManagedMediaSource?: typeof MediaSource; MediaSource?: typeof MediaSource };
+  const MS = w.ManagedMediaSource || w.MediaSource;
+  if (!MS || typeof MS.isTypeSupported !== 'function') return null;
+  const candidates = [
+    'video/mp4;codecs="avc1.42E01E"',
+    'video/mp4;codecs="avc1.4D401E"',
+    'video/mp4;codecs=h264',
+    'video/mp4',
+    'video/webm;codecs="vp9"',
+    'video/webm;codecs="vp8"',
+    'video/webm',
+  ];
+  for (const c of candidates) {
+    if (MediaRecorder.isTypeSupported(c) && MS.isTypeSupported(c)) return c;
+  }
+  return null;
 }
 
 export default function DelayMirrorView({ onBack }: Props) {
@@ -80,11 +80,10 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
-  const delayedVideoRefB = useRef<HTMLVideoElement>(null);
-  const activeIsARef = useRef<boolean>(true);
-  const currentBlobUrlBRef = useRef<string | null>(null);
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBlobUrlRef = useRef<string | null>(null);
+  const mseCleanupRef = useRef<(() => void) | null>(null);
+  const mseRafRef = useRef<number | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
@@ -166,26 +165,24 @@ export default function DelayMirrorView({ onBack }: Props) {
     lastBlobRef.current = null;
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
+    if (mseRafRef.current !== null) {
+      cancelAnimationFrame(mseRafRef.current);
+      mseRafRef.current = null;
+    }
+    if (mseCleanupRef.current) {
+      try { mseCleanupRef.current(); } catch { /* ignore */ }
+      mseCleanupRef.current = null;
+    }
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     if (delayedVideoRef.current) {
       delayedVideoRef.current.pause();
       delayedVideoRef.current.removeAttribute('src');
       delayedVideoRef.current.load();
     }
-    if (delayedVideoRefB.current) {
-      delayedVideoRefB.current.pause();
-      delayedVideoRefB.current.removeAttribute('src');
-      delayedVideoRefB.current.load();
-    }
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
     }
-    if (currentBlobUrlBRef.current) {
-      URL.revokeObjectURL(currentBlobUrlBRef.current);
-      currentBlobUrlBRef.current = null;
-    }
-    activeIsARef.current = true;
     if (replayBlobUrlRef.current) {
       URL.revokeObjectURL(replayBlobUrlRef.current);
       replayBlobUrlRef.current = null;
@@ -239,49 +236,147 @@ export default function DelayMirrorView({ onBack }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mirrorState]);
 
-  const playBlob = useCallback((blob: Blob) => {
-    // Double-buffering: laduj nowy segment na nieaktywnym <video>, poczekaj
-    // az pierwsza klatka zostanie naprawde wyrenderowana (rVFC), dopiero
-    // wtedy zamien widocznosc instant. Eliminuje czarna klatke przy
-    // zmianie src — canplay nie wystarcza, bo strzela zanim GPU narysuje.
-    const vidA = delayedVideoRef.current;
-    const vidB = delayedVideoRefB.current;
-    if (!vidA || !vidB) return;
-    const useA = !activeIsARef.current;
-    const target = useA ? vidA : vidB;
-    const other = useA ? vidB : vidA;
-    const url = URL.createObjectURL(blob);
-    const oldUrlRef = useA ? currentBlobUrlRef : currentBlobUrlBRef;
-    const oldUrl = oldUrlRef.current;
-    oldUrlRef.current = url;
-    target.loop = true;
-    const swap = () => {
-      target.style.opacity = '1';
-      other.style.opacity = '0';
-      activeIsARef.current = useA;
-      if (oldUrl) setTimeout(() => URL.revokeObjectURL(oldUrl), 1500);
+  // MSE pipeline — jeden ciagly stream, brak segmentow.
+  const runMSE = useCallback((stream: MediaStream, mimeType: string) => {
+    const video = delayedVideoRef.current;
+    if (!video) return;
+
+    setMirrorState('buffering');
+    setBufferMs(0);
+
+    const w = window as unknown as { ManagedMediaSource?: typeof MediaSource; MediaSource?: typeof MediaSource };
+    const MSCtor = w.ManagedMediaSource || w.MediaSource;
+    if (!MSCtor) {
+      setErrorMsg('MediaSource API niedostepny');
+      setMirrorState('error');
+      return;
+    }
+    const ms = new MSCtor();
+    const objUrl = URL.createObjectURL(ms);
+    if (currentBlobUrlRef.current) URL.revokeObjectURL(currentBlobUrlRef.current);
+    currentBlobUrlRef.current = objUrl;
+
+    // disableRemotePlayback — wymagane przez ManagedMediaSource (iOS 17.1+)
+    const v = video as HTMLVideoElement & { disableRemotePlayback?: boolean };
+    v.disableRemotePlayback = true;
+    video.src = objUrl;
+    video.muted = true;
+
+    let sb: SourceBuffer | null = null;
+    let recorder: MediaRecorder | null = null;
+    let stopped = false;
+    let switchedToLive = false;
+    const queue: ArrayBuffer[] = [];
+
+    const pump = () => {
+      if (stopped || !sb || sb.updating || queue.length === 0) return;
+      const chunk = queue.shift()!;
+      try { sb.appendBuffer(chunk); } catch { /* QuotaExceeded — drop */ }
     };
-    const onLoadedData = () => {
-      target.removeEventListener('loadeddata', onLoadedData);
-      const playP = target.play();
-      if (playP && typeof playP.catch === 'function') playP.catch(() => { /* ignore */ });
-      // requestVideoFrameCallback — odpalany gdy nowa klatka jest gotowa
-      // do prezentacji. Brak fallbacku: jesli nieobsluguwane, swap od razu.
-      const tgt = target as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => number };
-      if (typeof tgt.requestVideoFrameCallback === 'function') {
-        tgt.requestVideoFrameCallback(swap);
+
+    const onUpdateEnd = () => {
+      if (stopped || !sb) return;
+      // Eviction: trzymaj okno ~ delay + 10s, usuwaj starsze.
+      try {
+        if (sb.buffered.length > 0) {
+          const startB = sb.buffered.start(0);
+          const endB = sb.buffered.end(sb.buffered.length - 1);
+          const keep = (delayMsRef.current / 1000) + 10;
+          if (endB - startB > keep + 5 && !sb.updating) {
+            sb.remove(startB, endB - keep);
+            return; // dalszy pump po kolejnym updateend
+          }
+        }
+      } catch { /* ignore */ }
+      pump();
+    };
+
+    const onSourceOpen = () => {
+      try {
+        sb = ms.addSourceBuffer(mimeType);
+        sb.mode = 'sequence';
+        sb.addEventListener('updateend', onUpdateEnd);
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err);
+        setErrorMsg(`SourceBuffer: ${m}`);
+        setMirrorState('error');
+        return;
+      }
+
+      try {
+        recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_500_000 });
+      } catch (err) {
+        const m = err instanceof Error ? err.message : String(err);
+        setErrorMsg(`MediaRecorder: ${m}`);
+        setMirrorState('error');
+        return;
+      }
+      recorder.ondataavailable = (e) => {
+        if (!e.data || e.data.size === 0 || stopped) return;
+        e.data.arrayBuffer().then((buf) => {
+          if (stopped) return;
+          queue.push(buf);
+          pump();
+        }).catch(() => { /* ignore */ });
+      };
+      recorder.start(200); // chunki co 200ms — plynny pump
+      activeRecorderRef.current = recorder;
+    };
+    ms.addEventListener('sourceopen', onSourceOpen, { once: true });
+
+    // Petla utrzymujaca delay: trzymaj video.currentTime ~ liveEnd - delay.
+    // Drift +/-0.25s koryguj playbackRate (mikro-szybciej/wolniej, niewidocznie).
+    // Drift > 1.5s = hard reseek (rzadkie, np. po pauzie OS).
+    const tick = () => {
+      mseRafRef.current = requestAnimationFrame(tick);
+      if (stopped || isPausedRef.current || !sb || !delayedVideoRef.current) return;
+      const vid = delayedVideoRef.current;
+      let buffered: TimeRanges;
+      try { buffered = sb.buffered; } catch { return; }
+      if (buffered.length === 0) return;
+      const endB = buffered.end(buffered.length - 1);
+      const startB = buffered.start(0);
+      const delaySec = delayMsRef.current / 1000;
+      setBufferMs(Math.min(delayMsRef.current, Math.round(endB * 1000)));
+
+      if (!switchedToLive) {
+        if (endB >= delaySec) {
+          const tgt = Math.max(startB, endB - delaySec);
+          vid.currentTime = tgt;
+          const p = vid.play();
+          if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
+          switchedToLive = true;
+          setMirrorState('live');
+        }
+        return;
+      }
+
+      const drift = (endB - vid.currentTime) - delaySec;
+      if (Math.abs(drift) > 1.5) {
+        vid.currentTime = Math.max(startB, endB - delaySec);
+        vid.playbackRate = 1.0;
+      } else if (drift > 0.25) {
+        vid.playbackRate = 1.05;
+      } else if (drift < -0.25) {
+        vid.playbackRate = 0.97;
       } else {
-        // fallback: poczekaj na 'playing' event
-        const onPlaying = () => {
-          target.removeEventListener('playing', onPlaying);
-          swap();
-        };
-        target.addEventListener('playing', onPlaying);
+        vid.playbackRate = 1.0;
+      }
+      if (vid.paused) {
+        const p = vid.play();
+        if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
       }
     };
-    target.addEventListener('loadeddata', onLoadedData);
-    target.src = url;
-    target.load();
+    mseRafRef.current = requestAnimationFrame(tick);
+
+    mseCleanupRef.current = () => {
+      stopped = true;
+      try { if (recorder && recorder.state !== 'inactive') recorder.stop(); } catch { /* ignore */ }
+      recorder = null;
+      try { if (sb) sb.removeEventListener('updateend', onUpdateEnd); } catch { /* ignore */ }
+      try { if (ms.readyState === 'open') ms.endOfStream(); } catch { /* ignore */ }
+      sb = null;
+    };
   }, []);
 
   const shareVideo = useCallback(async () => {
@@ -328,48 +423,13 @@ export default function DelayMirrorView({ onBack }: Props) {
     }
   }, []);
 
-  const runLoop = useCallback(async (stream: MediaStream, mimeType: string) => {
-    // FIRST segment = buffering phase
-    setMirrorState('buffering');
-    setBufferMs(0);
-    bufferTimerRef.current = setInterval(() => {
-      setBufferMs(b => Math.min(delayMsRef.current, b + 100));
-    }, 100);
-
-    try {
-      const firstRec = recordSegment(stream, mimeType, delayMsRef.current);
-      const { blob: firstBlob } = await firstRec;
-      if (isPausedRef.current) return;
-
-      if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
-
-      // Start next recording IMMEDIATELY, then play the just-finished one
-      let nextPromise = recordSegment(stream, mimeType, delayMsRef.current);
-      playBlob(firstBlob);
-      setMirrorState('live');
-
-      // Continuous loop
-      while (!isPausedRef.current) {
-        const { blob } = await nextPromise;
-        if (isPausedRef.current) break;
-        nextPromise = recordSegment(stream, mimeType, delayMsRef.current);
-        playBlob(blob);
-      }
-    } catch (err: unknown) {
-      if (!isPausedRef.current) {
-        const msg = err instanceof Error ? err.message : String(err);
-        setErrorMsg(`Błąd nagrywania: ${msg}`);
-        setMirrorState('error');
-      }
-    }
-  }, [playBlob]);
-
   const startRecording = useCallback(async () => {
     setMirrorState('requesting');
     setErrorMsg('');
 
-    const codec = getCodec();
-    if (!codec) {
+    const streamCodec = getStreamCodec();
+    const fullCodec = getFullCodec();
+    if (!streamCodec || !fullCodec) {
       setMirrorState('unsupported');
       return;
     }
@@ -390,23 +450,24 @@ export default function DelayMirrorView({ onBack }: Props) {
     streamRef.current = stream;
     isPausedRef.current = false;
 
-    // Start pełnego nagrywania całej sesji — chunki zbieramy co 1s żeby
-    // uniknąć jednego gigantycznego buforu w pamięci.
+    // Pelny recorder dla "Udostepnij" — niezalezny od MSE pipeline. Uzywa
+    // codec preferowany dla share (mp4 dla WhatsApp/iOS), ktory niekoniecznie
+    // jest tym samym co MSE (np. iOS Safari woli mp4, ale MSE tez go obsluguje).
     try {
       fullChunksRef.current = [];
-      fullMimeRef.current = codec.split(';')[0];
-      const fullRec = new MediaRecorder(stream, { mimeType: codec, videoBitsPerSecond: 1_500_000 });
+      fullMimeRef.current = fullCodec.split(';')[0];
+      const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
       fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
       fullRec.start(1000);
       fullRecorderRef.current = fullRec;
       setHasFullBlob(false);
-    } catch { /* ignore — segmenty nadal działają */ }
+    } catch { /* ignore — MSE delay nadal dziala */ }
 
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
-    runLoop(stream, codec);
-  }, [runLoop, t]);
+    runMSE(stream, streamCodec);
+  }, [runMSE, t]);
 
   // Tryb FREE — samo getUserMedia, bez MediaRecorder, bez delay
   const startFreeLive = useCallback(async () => {
@@ -435,6 +496,11 @@ export default function DelayMirrorView({ onBack }: Props) {
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
+    if (mseRafRef.current !== null) { cancelAnimationFrame(mseRafRef.current); mseRafRef.current = null; }
+    if (mseCleanupRef.current) {
+      try { mseCleanupRef.current(); } catch { /* ignore */ }
+      mseCleanupRef.current = null;
+    }
     try {
       if (activeRecorderRef.current && activeRecorderRef.current.state !== 'inactive') {
         activeRecorderRef.current.stop();
@@ -834,19 +900,11 @@ export default function DelayMirrorView({ onBack }: Props) {
     )}
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
       {/* Camera video — natywna orientacja, NIE rotuje się z togglem.
-          Double-buffering: dwa <video> alternuja, opacity zamienia widoczne
-          zeby nie bylo migania przy zmianie segmentu. */}
+          MSE pipeline: jeden ciagly stream, zero segmentow = brak migania. */}
       <video
         ref={delayedVideoRef}
         className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)', opacity: 1 }}
-        playsInline
-        muted
-      />
-      <video
-        ref={delayedVideoRefB}
-        className="absolute inset-0 w-full h-full object-cover"
-        style={{ transform: 'scaleX(-1)', opacity: 0 }}
+        style={{ transform: 'scaleX(-1)' }}
         playsInline
         muted
       />

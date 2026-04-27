@@ -912,6 +912,15 @@ export default function DelayMirrorView({ onBack }: Props) {
           <button onClick={stopMirror} className={`absolute text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
           </button>
+          {/* Setup instructions button */}
+          <button
+            onClick={() => setShowSetupInstructions(true)}
+            className="absolute top-6 right-5 z-20 flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
+            title={t('delayMirror.setupInstructionsTitle')}
+          >
+            <span className="material-symbols-outlined text-white text-sm">info</span>
+            <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
+          </button>
         </div>
       </div>
       </>
@@ -1351,17 +1360,6 @@ export default function DelayMirrorView({ onBack }: Props) {
             </button>
           )}
         </div>
-      )}
-
-      {mirrorState === 'positioning' && (
-        <button
-          onClick={() => setShowSetupInstructions(true)}
-          className="absolute top-6 right-5 z-20 flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
-          title={t('delayMirror.setupInstructionsTitle')}
-        >
-          <span className="material-symbols-outlined text-white text-sm">info</span>
-          <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
-        </button>
       )}
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (

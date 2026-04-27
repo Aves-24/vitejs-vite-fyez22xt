@@ -1028,11 +1028,10 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
           {hasFullBlob ? (
             (() => {
-              // W widoku poziomym blob z Android Chrome wyswietla sie "na boku"
-              // bo plik nie ma metadanych rotacji — wymuszamy +90deg cw.
-              // W _uiForceRotate (manual landscape na portretowym viewport)
-              // wrapper UI juz jest rotowany, wiec tu pomijamy.
-              const needsRotate = _displayAsLandscape && !_uiForceRotate;
+              // W widoku poziomym blob nie ma metadanych rotacji — wymuszamy
+              // +90deg cw na video. Robimy to przez wrapper div (nie sam <video>)
+              // zeby uniknac problemow z controls/aspect na rotowanym elemencie.
+              const needsRotate = _displayAsLandscape;
               return (
                 <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0 overflow-hidden' : 'w-full max-w-md'}`}>
                   <div
@@ -1043,20 +1042,27 @@ export default function DelayMirrorView({ onBack }: Props) {
                         : undefined
                     }
                   >
-                    <video
-                      ref={replayVideoRef}
-                      className="block bg-black"
+                    <div
                       style={{
-                        maxWidth: needsRotate ? '70vh' : '100%',
-                        maxHeight: needsRotate ? '70vw' : (_displayAsLandscape ? '70vh' : '40vh'),
                         transform: needsRotate ? 'rotate(90deg)' : undefined,
                         transformOrigin: 'center center',
-                        objectFit: 'contain',
+                        display: 'inline-block',
                       }}
-                      playsInline
-                      controls
-                      loop
-                    />
+                    >
+                      <video
+                        ref={replayVideoRef}
+                        className="block bg-black"
+                        style={{
+                          maxWidth: needsRotate ? '70vh' : '100%',
+                          maxHeight: needsRotate ? '70vw' : (_displayAsLandscape ? '70vh' : '40vh'),
+                          objectFit: 'contain',
+                          display: 'block',
+                        }}
+                        playsInline
+                        controls
+                        loop
+                      />
+                    </div>
                   </div>
                 </div>
               );

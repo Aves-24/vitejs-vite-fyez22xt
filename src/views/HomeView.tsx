@@ -1508,7 +1508,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       {/* ─── MODAL: Krzywa ostatnich 10 treningów ─────────────────────────── */}
       {showTrendModal && recentScores.length >= 2 && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-[200000] bg-black/70 backdrop-blur-sm flex items-end justify-center p-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] animate-fade-in-up"
+          className="fixed inset-0 z-[200000] bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,env(safe-area-inset-top))] animate-fade-in-up overflow-y-auto"
           onClick={() => setShowTrendModal(false)}
         >
           <div

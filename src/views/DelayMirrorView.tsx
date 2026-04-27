@@ -1042,27 +1042,35 @@ export default function DelayMirrorView({ onBack }: Props) {
               return (
                 <div className={`${_displayAsLandscape ? 'flex-1 flex flex-col items-center justify-center min-w-0 gap-2' : 'w-full max-w-md'}`}>
                   <div
-                    className={`${_displayAsLandscape ? '' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black relative flex items-center justify-center`}
+                    className={`${_displayAsLandscape ? 'relative' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
                     style={
                       _displayAsLandscape
-                        ? { width: '100%', flex: '1 1 auto', minHeight: 0 }
+                        ? { width: '100%', flex: '1 1 auto', minHeight: 0, alignSelf: 'stretch' }
                         : undefined
                     }
                   >
                     <div
-                      style={{
-                        transform: needsRotate ? 'rotate(90deg)' : undefined,
-                        transformOrigin: 'center center',
-                        display: 'inline-block',
-                        lineHeight: 0,
-                      }}
+                      style={
+                        needsRotate
+                          ? {
+                              position: 'absolute',
+                              top: '50%',
+                              left: '50%',
+                              transform: 'translate(-50%, -50%) rotate(90deg)',
+                              transformOrigin: 'center center',
+                              lineHeight: 0,
+                            }
+                          : { display: 'inline-block', lineHeight: 0 }
+                      }
                     >
                       <video
                         ref={replayVideoRef}
                         className="block bg-black"
                         style={{
-                          maxWidth: needsRotate ? '88vh' : '100%',
-                          maxHeight: needsRotate ? '55vw' : '40vh',
+                          width: needsRotate ? '90vh' : undefined,
+                          height: needsRotate ? '65vw' : undefined,
+                          maxWidth: needsRotate ? undefined : '100%',
+                          maxHeight: needsRotate ? undefined : '40vh',
                           objectFit: 'contain',
                           display: 'block',
                         }}
@@ -1129,7 +1137,7 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Prawa kolumna w landscape = menu/kontrolki. W portrait = poniżej filmiku. */}
           <div className={`${
             _displayAsLandscape
-              ? 'w-[42%] max-w-sm flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
+              ? 'w-[30%] max-w-xs flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
               : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
           }`}>
             <p className={`text-white font-black ${_displayAsLandscape ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>

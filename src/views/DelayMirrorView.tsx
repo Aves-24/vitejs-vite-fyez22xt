@@ -871,13 +871,6 @@ export default function DelayMirrorView({ onBack }: Props) {
           muted
         />
         <div style={uiRotateStyle}>
-          {/* Gora: tytul + hint */}
-          <div className="absolute top-6 inset-x-0 px-6 z-10">
-            <div className="bg-white rounded-2xl px-4 py-3 max-w-md mx-auto border border-white/20">
-              <p className="text-black font-black text-sm uppercase tracking-widest mb-1">{t('delayMirror.positioningTitle')}</p>
-              <p className="text-black/60 text-xs leading-snug">{t('delayMirror.positioningHint')}</p>
-            </div>
-          </div>
           {/* Dol: zoom switcher (jezeli wsparte) + start button */}
           <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex flex-col items-center gap-3">
             {zoomCaps && (

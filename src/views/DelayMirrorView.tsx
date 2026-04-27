@@ -88,6 +88,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   // ze stanu 'positioning' do 'buffering', dopiero potem odpalamy pipeline.
   const pendingMSERef = useRef<{ stream: MediaStream; codec: string } | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
+  // Niektore urzadzenia (Android) zapisuja blob w natywnej orientacji sensora
+  // bez metadanych rotacji. Wykrywamy natywny aspect i counter-rotate gdy
+  // nie pasuje do display orientation.
+  const [replayNativeIsLandscape, setReplayNativeIsLandscape] = useState<boolean | null>(null);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
@@ -591,6 +595,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     setBufferMs(0);
     setRecSeconds(0);
     setReplayRate(1);
+    setReplayNativeIsLandscape(null);
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
@@ -1022,25 +1027,46 @@ export default function DelayMirrorView({ onBack }: Props) {
         }`}>
           {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
           {hasFullBlob ? (
-            <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0' : 'w-full max-w-md'}`}>
-              <div
-                className={`${_displayAsLandscape ? 'w-full' : 'w-full mb-3'} rounded-2xl overflow-hidden border border-white/15 bg-black relative`}
-                style={
-                  _uiForceRotate
-                    ? { aspectRatio: '9/16', maxHeight: '80vw' }   // rotated by +90 → wizualnie 16/9
-                    : (_displayAsLandscape ? { aspectRatio: '16/9', maxHeight: '70vh' } : undefined)
-                }
-              >
-                <video
-                  ref={replayVideoRef}
-                  className={_displayAsLandscape ? 'w-full h-full bg-black' : 'w-full bg-black'}
-                  style={_displayAsLandscape ? { objectFit: 'cover' } : { maxHeight: '40vh' }}
-                  playsInline
-                  controls
-                  loop
-                />
-              </div>
-            </div>
+            (() => {
+              // Czy musimy obrocic video bo natywna orientacja blob nie pasuje
+              // do display orientation (typowe na Android — sensor portrait,
+              // user trzyma landscape, brak metadanych rotacji w pliku).
+              const wantLandscape = _displayAsLandscape && !_uiForceRotate;
+              const needsRotate = replayNativeIsLandscape !== null && replayNativeIsLandscape !== wantLandscape;
+              return (
+                <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0 overflow-hidden' : 'w-full max-w-md'}`}>
+                  <div
+                    className={`${_displayAsLandscape ? '' : 'w-full mb-3'} rounded-2xl overflow-hidden bg-black relative flex items-center justify-center`}
+                    style={
+                      _displayAsLandscape
+                        ? { width: '100%', maxHeight: '70vh' }
+                        : undefined
+                    }
+                  >
+                    <video
+                      ref={replayVideoRef}
+                      onLoadedMetadata={(e) => {
+                        const v = e.currentTarget;
+                        if (v.videoWidth && v.videoHeight) {
+                          setReplayNativeIsLandscape(v.videoWidth >= v.videoHeight);
+                        }
+                      }}
+                      className="block bg-black"
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: _displayAsLandscape ? '70vh' : '40vh',
+                        transform: needsRotate ? 'rotate(-90deg)' : undefined,
+                        transformOrigin: 'center center',
+                        objectFit: 'contain',
+                      }}
+                      playsInline
+                      controls
+                      loop
+                    />
+                  </div>
+                </div>
+              );
+            })()
           ) : (
             !_displayAsLandscape && (
               <span className="material-symbols-outlined text-white/30 text-6xl mb-4 mt-4 block">pause_circle</span>

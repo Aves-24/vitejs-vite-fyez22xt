@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
-const MAX_DELAY_S = 25;
+const MAX_DELAY_S = 30;
 const STORAGE_KEY = 'delayMirror.delaySeconds';
 
 type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error' | 'freeLive';
@@ -872,12 +872,9 @@ export default function DelayMirrorView({ onBack }: Props) {
         <div style={uiRotateStyle}>
           {/* Gora: tytul + hint */}
           <div className="absolute top-6 inset-x-0 px-6 z-10">
-            <div className="bg-black/55 backdrop-blur-sm rounded-2xl px-4 py-3 max-w-md mx-auto border border-white/10">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="material-symbols-outlined text-[#fed33e] text-lg">center_focus_strong</span>
-                <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.positioningTitle')}</p>
-              </div>
-              <p className="text-white/70 text-xs leading-snug">{t('delayMirror.positioningHint')}</p>
+            <div className="bg-white rounded-2xl px-4 py-3 max-w-md mx-auto border border-white/20">
+              <p className="text-black font-black text-sm uppercase tracking-widest mb-1">{t('delayMirror.positioningTitle')}</p>
+              <p className="text-black/60 text-xs leading-snug">{t('delayMirror.positioningHint')}</p>
             </div>
           </div>
           {/* Dol: zoom switcher (jezeli wsparte) + start button */}
@@ -911,7 +908,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             </button>
           </div>
           {/* Back button */}
-          <button onClick={stopMirror} className="absolute top-6 left-5 text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2">
+          <button onClick={stopMirror} className={`absolute text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
             <span className="material-symbols-outlined text-2xl">arrow_back</span>
           </button>
         </div>
@@ -923,9 +920,10 @@ export default function DelayMirrorView({ onBack }: Props) {
   if (mirrorState === 'idle') {
     return (
       <>
+      {orientationToggle}
       <div style={screenStyle} className="bg-[#050f0a]">
         <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? 'flex flex-row items-center justify-center gap-8 px-10 py-4' : 'flex flex-col items-center justify-center px-8 py-6'}`}>
-        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all z-10">
+        <button onClick={onBack} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
 

@@ -13,26 +13,16 @@ const firebaseConfig = {
   appId: '1:639521703891:web:b8e9befdefd9b016591126',
 };
 
-// --- TRYB DEBUG APP CHECK DLA DEVELOPMENTU ---
-// Na localhost reCAPTCHA v3 często nie działa poprawnie. Firebase udostępnia
-// "debug token" — samopodpisany token który trzeba raz zarejestrować
-// w Firebase Console (App Check → Apps → Manage debug tokens).
-// Włączamy go TYLKO w dev — w produkcji pozostaje pełna walidacja reCAPTCHA.
-if (import.meta.env.DEV) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (self as any).FIREBASE_APPCHECK_DEBUG_TOKEN = true;
-}
-
 const app = initializeApp(firebaseConfig);
 
-// --- APP CHECK — ochrona przed requestami z obcych originów ---
-// reCAPTCHA v3 sprawdza niewidzialnie czy request pochodzi z prawdziwej
-// przeglądarki odwiedzającej twoją domenę. Site key jest publiczny —
-// to normalne, ochrona polega na weryfikacji domeny przez Google.
-initializeAppCheck(app, {
-  provider: new ReCaptchaV3Provider('6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp'),
-  isTokenAutoRefreshEnabled: true,
-});
+// App Check aktywny tylko w produkcji — w DEV reCAPTCHA v3 i tak nie działa
+// poprawnie na localhost, a debug token wymaga ręcznej rejestracji w Console.
+if (!import.meta.env.DEV) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp'),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
 
 // --- NOWA TARCZA OCHRONNA PRZED "DUCHAMI" (Zastępuje przekreślone enableIndexedDbPersistence) ---
 // Ten sposób jest oficjalnym standardem Firebase V10.

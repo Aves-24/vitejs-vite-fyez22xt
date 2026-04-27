@@ -12,6 +12,13 @@ const buildStamp =
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  server: {
+    headers: {
+      // signInWithPopup wymaga aby popup mógł komunikować się z openerem.
+      // Vite dev server domyślnie wysyła 'same-origin' co to blokuje.
+      'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
+    },
+  },
   define: {
     __BUILD_TIME__: JSON.stringify(buildStamp),
   },

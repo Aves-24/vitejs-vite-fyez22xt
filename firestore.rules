@@ -153,6 +153,21 @@ service cloud.firestore {
         && request.resource.data.coachNote.size() <= 500;
     }
 
+    // ─── /users/{uid}/techShots/{shotId} ────────────────────────
+    match /users/{uid}/techShots/{shotId} {
+      allow read: if isSelf(uid)
+        || isAdmin()
+        || (isSignedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []));
+      allow create, delete: if isSelf(uid) || isAdmin();
+      allow update: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── /users/{uid}/dailyStats/{day} ──────────────────────────
+    match /users/{uid}/dailyStats/{day} {
+      allow read, write: if isSelf(uid) || isAdmin();
+    }
+
     // ─── Legacy subcol users/{uid}/scores — owner only ──────────
     match /users/{uid}/scores/{scoreId} {
       allow read, write: if isSelf(uid) || isAdmin();

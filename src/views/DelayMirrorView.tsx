@@ -1046,7 +1046,7 @@ export default function DelayMirrorView({ onBack }: Props) {
       {mirrorState === 'paused' && (
         <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
           _displayAsLandscape && hasFullBlob
-            ? 'flex flex-row items-center gap-4'
+            ? 'flex flex-row items-stretch gap-4'
             : 'flex flex-col items-center'
         }`}>
           {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}

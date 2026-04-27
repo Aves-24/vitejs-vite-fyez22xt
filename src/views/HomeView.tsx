@@ -992,9 +992,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </div>
         </div>
 
-        {/* BUILD TIMESTAMP */}
-        <div className="text-center mt-1">
-          <span className="text-[9px] text-gray-300 tracking-wide">build: {__BUILD_TIME__}</span>
+        {/* BUILD TIMESTAMP + CURRENT TIME */}
+        <div className="text-center mt-1 space-y-0.5">
+          <span className="text-[9px] text-gray-300 tracking-wide block">build: {__BUILD_TIME__}</span>
+          <span className="text-[9px] text-[#fed33e] font-bold tracking-wide block">now: {new Date().toLocaleTimeString('pl-PL')}</span>
         </div>
 
       </div>

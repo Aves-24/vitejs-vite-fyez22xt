@@ -581,48 +581,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
-
-      // Canvas pipeline — nagrywa z mirror (scaleX -1) i ewentualną rotacją
-      // gdy UI jest w trybie manual landscape (telefon pionowo, UI obrócone).
-      // Bez canvas plik wychodzi z surowego sensora: lustrzany i/lub przekręcony.
-      const track = stream.getVideoTracks()[0];
-      const settings = track?.getSettings() ?? {};
-      const vw = settings.width || 720;
-      const vh = settings.height || 1280;
-      const needsRotate = manualLandscape && isPortrait;
-
-      const canvas = document.createElement('canvas');
-      canvas.width  = needsRotate ? vh : vw;
-      canvas.height = needsRotate ? vw : vh;
-      const ctx = canvas.getContext('2d')!;
-
-      const srcVideo = document.createElement('video');
-      srcVideo.srcObject = stream;
-      srcVideo.muted = true;
-      srcVideo.playsInline = true;
-      srcVideo.play().catch(() => {});
-      fullSrcVideoRef.current = srcVideo;
-
-      const drawFrame = () => {
-        fullCanvasRafRef.current = requestAnimationFrame(drawFrame);
-        if (srcVideo.readyState < 2) return;
-        ctx.save();
-        if (needsRotate) {
-          ctx.translate(canvas.width / 2, canvas.height / 2);
-          ctx.rotate(Math.PI / 2);
-          ctx.scale(-1, 1);
-          ctx.drawImage(srcVideo, -vh / 2, -vw / 2, vh, vw);
-        } else {
-          ctx.translate(canvas.width, 0);
-          ctx.scale(-1, 1);
-          ctx.drawImage(srcVideo, 0, 0, vw, vh);
-        }
-        ctx.restore();
-      };
-      drawFrame();
-
-      const canvasStream = canvas.captureStream(30);
-      const fullRec = new MediaRecorder(canvasStream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
+      const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
       fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
       fullRec.start(1000);
       fullRecorderRef.current = fullRec;

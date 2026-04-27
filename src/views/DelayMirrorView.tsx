@@ -1333,39 +1333,35 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
 
-      {mirrorState === 'buffering' && (
+      {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className={`absolute top-4 z-30 flex items-center gap-2 ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
           <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
             <span className="text-white text-xs font-bold">{formatTime(recSeconds)}</span>
           </div>
+          {mirrorState === 'live' && (
+            <button
+              onClick={() => setShowDelayPicker(true)}
+              className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
+              title={t('delayMirror.delayLabel')}
+            >
+              <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
+              <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
+              <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+            </button>
+          )}
         </div>
       )}
 
-      {mirrorState === 'live' && (
-        <div className={`absolute top-4 z-30 flex items-center gap-2 ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white text-xs font-bold">{formatTime(recSeconds)}</span>
-          </div>
-          <button
-            onClick={() => setShowDelayPicker(true)}
-            className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
-            title={t('delayMirror.delayLabel')}
-          >
-            <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
-            <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
-            <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
-          </button>
-          <button
-            onClick={() => setShowSetupInstructions(true)}
-            className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
-            title={t('delayMirror.setupInstructionsTitle')}
-          >
-            <span className="material-symbols-outlined text-white text-sm">info</span>
-            <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
-          </button>
-        </div>
+      {mirrorState === 'positioning' && (
+        <button
+          onClick={() => setShowSetupInstructions(true)}
+          className="absolute top-6 right-5 z-20 flex items-center gap-1.5 bg-white/10 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-white/20 animate-pulse"
+          title={t('delayMirror.setupInstructionsTitle')}
+        >
+          <span className="material-symbols-outlined text-white text-sm">info</span>
+          <span className="text-white text-xs font-bold">{t('delayMirror.setupInstructionsTitle')}</span>
+        </button>
       )}
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (

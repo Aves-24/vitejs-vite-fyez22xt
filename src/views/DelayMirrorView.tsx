@@ -1028,11 +1028,11 @@ export default function DelayMirrorView({ onBack }: Props) {
           {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
           {hasFullBlob ? (
             (() => {
-              // Czy musimy obrocic video bo natywna orientacja blob nie pasuje
-              // do display orientation (typowe na Android — sensor portrait,
-              // user trzyma landscape, brak metadanych rotacji w pliku).
-              const wantLandscape = _displayAsLandscape && !_uiForceRotate;
-              const needsRotate = replayNativeIsLandscape !== null && replayNativeIsLandscape !== wantLandscape;
+              // W widoku poziomym blob z Android Chrome wyswietla sie "na boku"
+              // bo plik nie ma metadanych rotacji — wymuszamy +90deg cw.
+              // W _uiForceRotate (manual landscape na portretowym viewport)
+              // wrapper UI juz jest rotowany, wiec tu pomijamy.
+              const needsRotate = _displayAsLandscape && !_uiForceRotate;
               return (
                 <div className={`${_displayAsLandscape ? 'flex-1 flex items-center justify-center min-w-0 overflow-hidden' : 'w-full max-w-md'}`}>
                   <div
@@ -1045,17 +1045,11 @@ export default function DelayMirrorView({ onBack }: Props) {
                   >
                     <video
                       ref={replayVideoRef}
-                      onLoadedMetadata={(e) => {
-                        const v = e.currentTarget;
-                        if (v.videoWidth && v.videoHeight) {
-                          setReplayNativeIsLandscape(v.videoWidth >= v.videoHeight);
-                        }
-                      }}
                       className="block bg-black"
                       style={{
-                        maxWidth: '100%',
-                        maxHeight: _displayAsLandscape ? '70vh' : '40vh',
-                        transform: needsRotate ? 'rotate(-90deg)' : undefined,
+                        maxWidth: needsRotate ? '70vh' : '100%',
+                        maxHeight: needsRotate ? '70vw' : (_displayAsLandscape ? '70vh' : '40vh'),
+                        transform: needsRotate ? 'rotate(90deg)' : undefined,
                         transformOrigin: 'center center',
                         objectFit: 'contain',
                       }}

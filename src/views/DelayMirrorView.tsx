@@ -95,6 +95,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [cameraZoom, setCameraZoom] = useState<number>(1);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -554,8 +555,23 @@ export default function DelayMirrorView({ onBack }: Props) {
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     delayedVideoRef.current?.pause();
+    setRecordingPaused(false);
     setMirrorState('paused');
   }, []);
+
+  const toggleRecordingPause = useCallback(() => {
+    if (!recordingPaused) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      delayedVideoRef.current?.pause();
+      try { fullRecorderRef.current?.pause(); } catch { /* nie wszystkie przegladarki wspieraja */ }
+      setRecordingPaused(true);
+    } else {
+      delayedVideoRef.current?.play().catch(() => { /* ignore */ });
+      try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+      timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+      setRecordingPaused(false);
+    }
+  }, [recordingPaused]);
 
   const resumeMirror = useCallback(() => {
     setMirrorState('idle');
@@ -1154,22 +1170,29 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center gap-3 px-8">
+        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center items-center gap-3 px-8">
+          {/* STOP → idzie do powtórki */}
           <button
             onClick={pauseMirror}
-            className="flex-1 max-w-[160px] py-3.5 bg-white/15 backdrop-blur-sm text-white rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20"
+            className="py-4 px-7 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-500/40 shadow-lg shadow-red-900/30"
           >
-            <span className="material-symbols-outlined text-lg">directions_walk</span>
-            {t('delayMirror.afterShots')}
+            <span className="material-symbols-outlined text-2xl">stop</span>
           </button>
+          {/* PAUSE — chwilowe zamrożenie bez kończenia sesji */}
+          <button
+            onClick={toggleRecordingPause}
+            className={`py-4 px-7 backdrop-blur-sm rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center border ${
+              recordingPaused
+                ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
+                : 'bg-white/10 text-white/70 border-white/15'
+            }`}
+          >
+            <span className="material-symbols-outlined text-2xl">
+              {recordingPaused ? 'play_arrow' : 'pause'}
+            </span>
+          </button>
+          {/* GRID toggle */}
           {gridToggleBtn}
-          <button
-            onClick={pauseMirror}
-            className="py-3.5 px-5 bg-white/10 backdrop-blur-sm text-white/60 rounded-2xl font-bold text-sm active:scale-95 transition-all border border-white/10"
-            title={t('delayMirror.pauseTooltip')}
-          >
-            <span className="material-symbols-outlined text-xl">pause</span>
-          </button>
         </div>
       )}
 

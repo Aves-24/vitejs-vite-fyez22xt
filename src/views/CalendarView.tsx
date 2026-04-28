@@ -944,6 +944,31 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   </div>
                 )}
 
+                {viewingEvent.category === 'Trener' && viewingEvent.coachStudents && (
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-blue-400">
+                      <span className="material-symbols-outlined text-[16px]">group</span>
+                    </div>
+                    <div className="flex flex-col flex-1 mt-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Podopieczni</span>
+                      {viewingEvent.coachStudents === 'all' ? (
+                        <span className="text-xs font-black text-blue-700">Wszyscy</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(viewingEvent.coachStudents as string[]).map(sid => {
+                            const s = coachStudentsList.find(cs => cs.id === sid);
+                            return s ? (
+                              <span key={sid} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-black">
+                                {s.firstName} {s.lastName}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {viewingEvent.note && (
                   <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-gray-400">

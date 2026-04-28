@@ -20,7 +20,9 @@
       "Bash(firebase --version)",
       "Bash(npx tsc *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

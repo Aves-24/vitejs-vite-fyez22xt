@@ -41,6 +41,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [dayPickerEvents, setDayPickerEvents] = useState<Event[]>([]);
+  const [dayPickerDate, setDayPickerDate] = useState<string>('');
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -199,12 +200,17 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const handleDayClick = (dateStr: string, dayEvents: Event[]) => {
     if (dayEvents.length === 0) {
+      setDayPickerEvents([]);
+      setDayPickerDate('');
       resetForm(dateStr);
       setShowForm(true);
     } else if (dayEvents.length === 1) {
+      setDayPickerEvents([]);
+      setDayPickerDate('');
       setViewingEvent(dayEvents[0]);
     } else {
       setDayPickerEvents(dayEvents);
+      setDayPickerDate(dateStr);
     }
   };
 
@@ -845,9 +851,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-black text-[#0a3a2a]">
-                {new Date(dayPickerEvents[0].date).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
+                {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
               </h2>
-              <button onClick={() => setDayPickerEvents([])} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); }} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
                 <span className="material-symbols-outlined text-lg">close</span>
               </button>
             </div>
@@ -855,7 +861,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               {dayPickerEvents.map(ev => (
                 <button
                   key={ev.id}
-                  onClick={() => { setDayPickerEvents([]); setViewingEvent(ev); }}
+                  onClick={() => { setViewingEvent(ev); }}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl border active:scale-[0.98] transition-all text-left"
                   style={{
                     background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#eff6ff' : '#f0fdf4',
@@ -881,7 +887,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       )}
 
       {viewingEvent && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-start justify-center pt-24 px-4">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up relative max-h-[85vh] overflow-y-auto">
              
              <div className="flex justify-between items-start mb-4">

@@ -40,6 +40,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
+  const [dayPickerEvents, setDayPickerEvents] = useState<Event[]>([]);
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -197,11 +198,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
 
   const handleDayClick = (dateStr: string, dayEvents: Event[]) => {
-    if (dayEvents.length > 0) {
-      setViewingEvent(dayEvents[0]);
-    } else {
+    if (dayEvents.length === 0) {
       resetForm(dateStr);
       setShowForm(true);
+    } else if (dayEvents.length === 1) {
+      setViewingEvent(dayEvents[0]);
+    } else {
+      setDayPickerEvents(dayEvents);
     }
   };
 
@@ -833,6 +836,46 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  {isSaving ? t('calendar.formSaving') : t('calendar.formSave')}
                </button>
              </div>
+          </div>
+        </div>
+      )}
+
+      {dayPickerEvents.length > 0 && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-base font-black text-[#0a3a2a]">
+                {new Date(dayPickerEvents[0].date).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
+              </h2>
+              <button onClick={() => setDayPickerEvents([])} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+            <div className="space-y-2">
+              {dayPickerEvents.map(ev => (
+                <button
+                  key={ev.id}
+                  onClick={() => { setDayPickerEvents([]); setViewingEvent(ev); }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl border active:scale-[0.98] transition-all text-left"
+                  style={{
+                    background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#eff6ff' : '#f0fdf4',
+                    borderColor: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#bfdbfe' : '#bbf7d0',
+                  }}
+                >
+                  <span className={`material-symbols-outlined text-xl ${ev.category === 'Turniej' ? 'text-white' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                    {ev.category === 'Turniej' ? 'emoji_events' : ev.category === 'Trener' ? 'group' : 'event'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-black text-sm leading-tight truncate ${ev.category === 'Turniej' ? 'text-white' : 'text-[#0a3a2a]'}`}>{ev.title}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ev.category === 'Turniej' ? 'text-white/60' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                      {ev.category === 'Turniej' ? t('calendar.tabTournament') : ev.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
+                      {ev.time ? ` • ${ev.time}` : ''}
+                    </p>
+                  </div>
+                  <span className={`material-symbols-outlined text-lg ${ev.category === 'Turniej' ? 'text-white/50' : 'text-gray-300'}`}>chevron_right</span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}

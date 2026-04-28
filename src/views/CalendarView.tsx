@@ -593,7 +593,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {upcomingTrainer.length > 0 && (
               <div className="space-y-1">
                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-2">
-                  TRENER
+                  {t('calendar.tabTrainer')}
                 </div>
 
                 {visibleTrainer.map((event, index) => {
@@ -643,7 +643,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     onClick={() => setShowAllTrainer(false)}
                     className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
                   >
-                    {t('calendar.collapseOthers')}
+                    {t('calendar.collapseTrainer')}
                   </button>
                 )}
               </div>
@@ -674,7 +674,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     </div>
                     <div className="flex-1 pr-2">
                       <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
-                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? 'TURNIERE' : event.category === 'Trener' ? 'TRENER' : 'KALENDAR'}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? 'TURNIERE' : event.category === 'Trener' ? t('calendar.tabTrainer') : 'KALENDAR'}</p>
                     </div>
                   </div>
 
@@ -741,12 +741,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                <button onClick={() => setNewCategory('Turniej')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Turniej' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTournament')}</button>
                <button onClick={() => setNewCategory('Inne')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Inne' ? 'bg-emerald-100 text-emerald-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabOther')}</button>
                {isCoach && (
-                 <button onClick={() => setNewCategory('Trener')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Trener' ? 'bg-blue-100 text-blue-700 shadow-md' : 'text-gray-400'}`}>Trener</button>
+                 <button onClick={() => setNewCategory('Trener')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Trener' ? 'bg-blue-100 text-blue-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTrainer')}</button>
                )}
              </div>
              
              <div className="space-y-4">
-               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : t('calendar.formOtherName')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : newCategory === 'Trener' ? t('calendar.formTrainerName') : t('calendar.formOtherName')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
                
                {newCategory === 'Turniej' && (
                  <div className="space-y-1.5">
@@ -761,13 +761,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
                {newCategory === 'Trener' && coachStudentsList.length > 0 && (
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">Podopieczni</label>
+                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.trainerStudents')}</label>
                    <div className="flex flex-wrap gap-1.5">
                      <button
                        onClick={() => setNewCoachStudents('all')}
                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${newCoachStudents === 'all' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
                      >
-                       Wszyscy
+                       {t('calendar.trainerAllStudents')}
                      </button>
                      {coachStudentsList.map(s => {
                        const isSelected = Array.isArray(newCoachStudents) && newCoachStudents.includes(s.id);
@@ -844,7 +844,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              <div className="flex justify-between items-start mb-4">
                 <div>
                   <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? 'Trener' : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
+                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
@@ -950,9 +950,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <span className="material-symbols-outlined text-[16px]">group</span>
                     </div>
                     <div className="flex flex-col flex-1 mt-1">
-                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Podopieczni</span>
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">{t('calendar.trainerStudents')}</span>
                       {viewingEvent.coachStudents === 'all' ? (
-                        <span className="text-xs font-black text-blue-700">Wszyscy</span>
+                        <span className="text-xs font-black text-blue-700">{t('calendar.trainerAllStudents')}</span>
                       ) : (
                         <div className="flex flex-wrap gap-1 mt-0.5">
                           {(viewingEvent.coachStudents as string[]).map(sid => {

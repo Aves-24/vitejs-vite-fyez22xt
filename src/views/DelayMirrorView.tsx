@@ -728,6 +728,58 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
+  const gridPositions = [16.7, 33.3, 50, 66.7, 83.3];
+  const gridColors = [
+    'rgba(239,68,68,0.8)',
+    'rgba(250,204,21,0.8)',
+    'rgba(74,222,128,0.9)',
+    'rgba(250,204,21,0.8)',
+    'rgba(239,68,68,0.8)',
+  ];
+  const gridOverlay = showGrid ? (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 15 }}>
+      {gridPositions.map((y, yi) =>
+        gridPositions.map((x, xi) => (
+          <div
+            key={`dot-${xi}-${yi}`}
+            style={{
+              position: 'absolute',
+              left: `${x}%`,
+              top: `${y}%`,
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              backgroundColor: gridColors[yi],
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        ))
+      )}
+      {[
+        { top: 0, left: 0, borderTop: `2px solid ${gridColors[0]}`, borderLeft: `2px solid ${gridColors[0]}` },
+        { top: 0, right: 0, borderTop: `2px solid ${gridColors[0]}`, borderRight: `2px solid ${gridColors[0]}` },
+        { bottom: 0, left: 0, borderBottom: `2px solid ${gridColors[0]}`, borderLeft: `2px solid ${gridColors[0]}` },
+        { bottom: 0, right: 0, borderBottom: `2px solid ${gridColors[0]}`, borderRight: `2px solid ${gridColors[0]}` },
+      ].map((style, i) => (
+        <div key={`corner-${i}`} style={{ position: 'absolute', width: 50, height: 50, ...style }} />
+      ))}
+    </div>
+  ) : null;
+
+  const gridToggleBtn = (
+    <button
+      onClick={() => setShowGrid(v => !v)}
+      className={`py-3.5 px-5 backdrop-blur-sm rounded-2xl font-bold text-sm active:scale-95 transition-all border ${
+        showGrid
+          ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+          : 'bg-white/10 text-white/60 border-white/10'
+      }`}
+      title="Siatka"
+    >
+      <span className="material-symbols-outlined text-xl">grid_on</span>
+    </button>
+  );
+
   if (mirrorState === 'positioning') {
     return (
       <>
@@ -743,8 +795,9 @@ export default function DelayMirrorView({ onBack }: Props) {
           playsInline
           muted
         />
+        {gridOverlay}
         <div style={uiRotateStyle}>
-          {/* Dol: zoom switcher (jezeli wsparte) + start button */}
+          {/* Dol: zoom switcher (jezeli wsparte) + start button + grid toggle */}
           <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex flex-col items-center gap-3">
             {zoomCaps && (
               <div className="flex gap-2 bg-black/55 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10">
@@ -766,13 +819,16 @@ export default function DelayMirrorView({ onBack }: Props) {
                 ))}
               </div>
             )}
-            <button
-              onClick={beginDelayedRecording}
-              className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-xl">play_arrow</span>
-              {t('delayMirror.positioningStart')}
-            </button>
+            <div className="flex gap-3 items-center">
+              {gridToggleBtn}
+              <button
+                onClick={beginDelayedRecording}
+                className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-xl">play_arrow</span>
+                {t('delayMirror.positioningStart')}
+              </button>
+            </div>
           </div>
           {/* Back button */}
           <button onClick={stopMirror} className={`absolute text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
@@ -1006,26 +1062,8 @@ export default function DelayMirrorView({ onBack }: Props) {
       {/* UI overlays — opcjonalnie rotowane dla manual landscape */}
       <div style={uiRotateStyle}>
 
-      {/* Grid overlay — 5 linii poziomych + 5 pionowych (czerwona/żółta/zielona/żółta/czerwona) */}
-      {showGrid && (mirrorState === 'live' || mirrorState === 'buffering') && (() => {
-        const lines = [
-          { pos: 16.7, color: 'rgba(239,68,68,0.7)' },
-          { pos: 33.3, color: 'rgba(250,204,21,0.7)' },
-          { pos: 50,   color: 'rgba(74,222,128,0.85)' },
-          { pos: 66.7, color: 'rgba(250,204,21,0.7)' },
-          { pos: 83.3, color: 'rgba(239,68,68,0.7)' },
-        ];
-        return (
-          <div className="absolute inset-0 z-10 pointer-events-none">
-            {lines.map(({ pos, color }) => (
-              <React.Fragment key={pos}>
-                <div style={{ position: 'absolute', top: `${pos}%`, left: 0, right: 0, height: 1, backgroundColor: color }} />
-                <div style={{ position: 'absolute', left: `${pos}%`, top: 0, bottom: 0, width: 1, backgroundColor: color }} />
-              </React.Fragment>
-            ))}
-          </div>
-        );
-      })()}
+      {/* Grid overlay — minimalist dot grid + corner brackets */}
+      {(mirrorState === 'live' || mirrorState === 'buffering') && gridOverlay}
 
       {mirrorState === 'buffering' && (
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
@@ -1081,17 +1119,7 @@ export default function DelayMirrorView({ onBack }: Props) {
             <span className="material-symbols-outlined text-lg">directions_walk</span>
             {t('delayMirror.afterShots')}
           </button>
-          <button
-            onClick={() => setShowGrid(v => !v)}
-            className={`py-3.5 px-5 backdrop-blur-sm rounded-2xl font-bold text-sm active:scale-95 transition-all border ${
-              showGrid
-                ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
-                : 'bg-white/10 text-white/60 border-white/10'
-            }`}
-            title="Siatka"
-          >
-            <span className="material-symbols-outlined text-xl">grid_on</span>
-          </button>
+          {gridToggleBtn}
           <button
             onClick={pauseMirror}
             className="py-3.5 px-5 bg-white/10 backdrop-blur-sm text-white/60 rounded-2xl font-bold text-sm active:scale-95 transition-all border border-white/10"

@@ -206,7 +206,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
           <span className="material-symbols-outlined text-[80px] text-[#fed33e] mb-4 animate-bounce-subtle">auto_awesome</span>
           <h1 className="text-3xl font-black text-white mb-2 text-center flex flex-col items-center leading-snug">
             <span>{t('settings.wizard.welcomeTitle1')}</span>
-            <span>{t('settings.wizard.welcomeTitle2')}</span>
+            <span className="flex items-baseline gap-1.5">
+              <span>{t('settings.wizard.welcomeTitle2')}</span>
+              <span className="inline-flex items-baseline">
+                <span>Grot-X</span>
+                <span className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm"></span>
+              </span>
+              <span>.</span>
+            </span>
           </h1>
           <p className="text-base font-black text-[#fed33e] text-center mb-4 uppercase tracking-wide">
             {t('settings.wizard.assistantTitle', { steps: totalSteps })}

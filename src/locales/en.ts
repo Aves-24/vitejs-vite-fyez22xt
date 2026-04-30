@@ -584,7 +584,7 @@ export const views = {
       laterNote: "You can fill in missing data later in Settings, but we encourage you to do it now — it only takes a moment.",
       completionNote: "Carefully completing the assistant is the key to full GROT-X functionality — don't skip any step!",
       welcomeTitle1: "Welcome,",
-      welcomeTitle2: "to GROT-X.",
+      welcomeTitle2: "to",
       welcomeBtn: "GOT IT, LET'S START"
     },
     sight: {

@@ -584,7 +584,7 @@ export const views = {
       laterNote: "Możesz uzupełnić brakujące dane później w Ustawieniach, ale zachęcamy do wypełnienia teraz — zajmie to tylko chwilę.",
       completionNote: "Skrupulatne wypełnienie asystenta to klucz do pełnej funkcjonalności GROT-X — nie pomijaj żadnego kroku!",
       welcomeTitle1: "Witaj,",
-      welcomeTitle2: "w GROT-X.",
+      welcomeTitle2: "w",
       welcomeBtn: "ROZUMIEM, ZACZYNAMY"
     },
     sight: {

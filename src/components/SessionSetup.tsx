@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 
@@ -61,17 +61,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     if (count <= 0) { updateCounter('0'); return; }
     setIsSavingCounter(true);
     try {
-      await addDoc(collection(db, `users/${userId}/sessions`), {
-        userId,
-        distance: 'TECH',
-        targetType: 'TECHNICAL',
-        arrows: count,
-        totalArrows: count,
-        note: '',
-        createdAt: serverTimestamp(),
-        type: 'TECHNICAL',
-        timestamp: Timestamp.fromDate(new Date()),
-        date: new Date().toLocaleDateString('pl-PL'),
+      const now = new Date();
+      const monthKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+      await updateDoc(doc(db, 'users', userId), {
+        [`pfeilzaehler.${monthKey}`]: increment(count),
       });
       setTechArrows('0');
       localStorage.removeItem(`grotX_techCounter_${userId}`);

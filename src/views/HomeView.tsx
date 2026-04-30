@@ -437,6 +437,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += arr; s14 += sc; }
         });
 
+        // Pfeilzähler: strzały zapisane na profilu (nie tworzą sesji)
+        const profileSnap = await getDoc(doc(db, 'users', userId));
+        if (!cancelled && profileSnap.exists()) {
+          const pz = profileSnap.data().pfeilzaehler || {};
+          const yearStr = String(now.getFullYear());
+          const monthKey = `${yearStr}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+          Object.entries(pz).forEach(([key, val]) => {
+            if (key.startsWith(yearStr)) {
+              y += (val as number);
+              if (key === monthKey) m += (val as number);
+            }
+          });
+        }
+
         const avg14 = a14 > 0 ? (s14 / a14).toFixed(1) : '0.0';
 
         // ─── SPARKLINE: ostatnie 6 sesji z wynikiem > 0 ──────────────────────

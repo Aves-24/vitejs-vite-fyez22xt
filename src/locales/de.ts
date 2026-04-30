@@ -631,7 +631,10 @@ export const views = {
       resetAI: "KI-Begrüßungen zurücksetzen",
       activeAlert: "GROT-X PRO AKTIV! ◆",
       deactiveAlert: "Kostenlose Version wiederhergestellt.",
-      resetAlert: "Erfolgreich zurückgesetzt!"
+      resetAlert: "Erfolgreich zurückgesetzt!",
+      trialActive: "Kostenloser PRO-Testzeitraum",
+      trialDaysLeft: "Tage verbleibend",
+      trialStatus: "PRO-TEST AKTIV"
     },
     shareProfile: "Profil teilen",
     coach: {

@@ -631,7 +631,10 @@ export const views = {
       resetAI: "Zresetuj powitania AI",
       activeAlert: "GROT-X PRO AKTYWNE! ◆",
       deactiveAlert: "Wersja darmowa przywrócona.",
-      resetAlert: "Zresetowano!"
+      resetAlert: "Zresetowano!",
+      trialActive: "Bezpłatny okres próbny PRO",
+      trialDaysLeft: "dni pozostało",
+      trialStatus: "TRIAL PRO AKTYWNY"
     },
     shareProfile: "Udostępnij Profil",
     coach: {

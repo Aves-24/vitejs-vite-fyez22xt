@@ -423,7 +423,7 @@ export default function SettingsView({
           </div>
         )}
 
-        {activeTab === 'PRO' && <ProSection isPremium={isPremium} />}
+        {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} />}
         {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (

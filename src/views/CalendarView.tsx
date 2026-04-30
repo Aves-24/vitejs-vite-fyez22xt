@@ -809,26 +809,26 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
                <div className="space-y-2">
                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('calendar.modalDateTime')}</label>
-                 <div className="flex gap-2">
+                 <div className="flex gap-1.5 items-end">
                    <div className="flex-1 flex flex-col gap-1">
-                     <input type="number" placeholder="DD" className={`w-full bg-gray-50 border rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputDay} onChange={e => { setInputDay(e.target.value.slice(0,2)); setDateError(''); }} />
+                     <input type="number" placeholder="DD" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputDay} onChange={e => { setInputDay(e.target.value.slice(0,2)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                    </div>
                    <div className="flex-1 flex flex-col gap-1">
-                     <input type="number" placeholder="MM" className={`w-full bg-gray-50 border rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputMonth} onChange={e => { setInputMonth(e.target.value.slice(0,2)); setDateError(''); }} />
+                     <input type="number" placeholder="MM" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputMonth} onChange={e => { setInputMonth(e.target.value.slice(0,2)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                    </div>
                    <div className="flex-[1.5] flex flex-col gap-1">
-                     <input type="number" placeholder="YYYY" className={`w-full bg-gray-50 border rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputYear} onChange={e => { setInputYear(e.target.value.slice(0,4)); setDateError(''); }} />
+                     <input type="number" placeholder="YYYY" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputYear} onChange={e => { setInputYear(e.target.value.slice(0,4)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                    </div>
                    <div className="flex-[1.5] flex flex-col gap-1">
-                     <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={newTime} onChange={e => setNewTime(e.target.value)} />
+                     <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-2.5 text-center font-black text-base text-[#5d4a00] outline-none" value={newTime} onChange={e => setNewTime(e.target.value)} />
                      <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
                    </div>
-                   <div className="flex flex-col gap-1 pb-4">
-                     <button type="button" onClick={() => calendarPickerRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
-                       <span className="material-symbols-outlined text-xl">calendar_today</span>
+                   <div className="flex flex-col gap-1 mb-4">
+                     <button type="button" onClick={() => calendarPickerRef.current?.click()} className="w-10 h-10 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                       <span className="material-symbols-outlined text-lg">calendar_today</span>
                      </button>
                      <input ref={calendarPickerRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setInputYear(y); setInputMonth(m); setInputDay(d); setDateError(''); } }} />
                    </div>

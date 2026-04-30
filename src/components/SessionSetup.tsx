@@ -51,7 +51,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   const invalidateStatsCache = () => {
-    localStorage.removeItem(`grotX_stats_v4_${userId}`);
+    localStorage.removeItem(`grotX_stats_v5_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
   };

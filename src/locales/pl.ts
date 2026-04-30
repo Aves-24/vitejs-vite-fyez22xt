@@ -95,7 +95,7 @@ export const components = {
     comingSoon: "Wkrótce dostępne",
     noClubsFound: "Brak pasujących klubów",
     clubNameWarning: "Tej nazwy nie ma w bazie. Podaj nazwę klubu jak najdokładniej, aby mogła zostać poprawnie dodana i żeby inni członkowie nie wpisali tego samego klubu pod inną nazwą.",
-    firstClubInCity: "Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy.",
+    firstClubInCity: "Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy. Wpisz nazwę klubu jak najdokładniej, żeby inni członkowie nie dodali tego samego klubu pod inną nazwą.",
     noClubManual: "Nie ma mojego klubu? Wpisz ręcznie",
     arrows: "strzał",
     day: "Dzień",

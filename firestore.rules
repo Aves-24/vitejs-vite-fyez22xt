@@ -77,8 +77,15 @@ service cloud.firestore {
       allow update: if isAdmin();
 
       // Path B — self-edit profile (no protected fields, no relations)
+      // trialEndsAt may be written once on first-time init (when not previously set);
+      // once present it is locked — client cannot change it (matches code comment).
       allow update: if isSelf(uid)
-        && noneAffected(protectedUserFields());
+        && noneAffected(['isPremium', 'isPremiumPromo',
+                         'coachLimit', 'role',
+                         'worldWins', 'worldLosses', 'worldXP',
+                         'students', 'coaches'])
+        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trialEndsAt'])
+            || !resource.data.keys().hasAny(['trialEndsAt']));
 
       // Path C — student accepting invite: own doc, diff = ['coaches'],
       //          +1 entry, last entry has matching coachInvite.

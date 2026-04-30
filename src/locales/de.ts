@@ -94,9 +94,12 @@ export const components = {
   common: {
     comingSoon: "In Kürze verfügbar",
     noClubsFound: "Kein passender Verein gefunden",
-    clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte überprüfe die Schreibweise.",
-    firstClubInCity: "Du bist die erste Person aus dieser Stadt/diesem Verein — er wird der Datenbank hinzugefügt.",
+    clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte gib den Vereinsnamen so genau wie möglich ein, damit er korrekt hinzugefügt werden kann und andere Mitglieder ihn nicht unter einem anderen Namen eintragen.",
+    firstClubInCity: "Du bist die erste Person aus dieser Stadt/diesem Verein — er wird der Datenbank hinzugefügt. Bitte gib den Vereinsnamen so genau wie möglich ein, damit andere Mitglieder denselben Verein nicht unter einem anderen Namen eintragen.",
     noClubManual: "Kein Verein gefunden? Manuell eingeben",
+    clubCityPlaceholder: "Stadt des Vereins",
+    selectCityFirst: "Zuerst Stadt auswählen",
+    clubNamePlaceholder: "Vereinsname",
     arrows: "Pfeile",
     day: "Tag",
     confirm: "Bestätigen",
@@ -237,7 +240,9 @@ export const views = {
     trialWarningTitle: "Kostenloser PRO-Zugang läuft in {{days}} {{unit}} ab! 🚀",
     trialWarningDay: "Tag",
     trialWarningDays: "Tagen",
-    trialWarningContent: "Danach kehrt dein Konto zur FREE-Version zurück. Wenn dir GROT-X gefällt, behalte den Zugang zu allen Funktionen mit PRO."
+    trialWarningContent: "Danach kehrt dein Konto zur FREE-Version zurück. Wenn dir GROT-X gefällt, behalte den Zugang zu allen Funktionen mit PRO.",
+    trialWelcomeTitle: "Du hast 30 Tage GROT-X Pro kostenlos erhalten! 🎉",
+    trialWelcomeContent: "Entdecke alle PRO-Funktionen ohne Einschränkungen. Genieße deinen kostenlosen Testzeitraum!"
   },
   setup: {
     title: "Vorbereitung",
@@ -381,6 +386,11 @@ export const views = {
     seeResult: "ERGEBNIS ANSEHEN",
     tabTournament: "TURNIER",
     tabOther: "SONSTIGES",
+    tabTrainer: "TRAINER",
+    trainerStudents: "Schützlinge",
+    trainerAllStudents: "Alle",
+    formTrainerName: "Name der Einheit",
+    collapseTrainer: "Trainerliste einklappen",
     noEvents: "Keine kommenden Termine",
     upcomingTournaments: "Kommende Turniere",
     trainingsAndOthers: "Trainingseinheiten & Sonstiges",
@@ -544,6 +554,7 @@ export const views = {
       bowType: "Bogenart",
       step5Title: "Deine Visiermarken",
       step5Desc: "Ich habe eine Liste von Distanzen vorbereitet. Es lohnt sich, deine Visiermarken hier zu speichern.",
+      step5Note: "Fehlende Abstände können jederzeit später in den Einstellungen hinzugefügt werden.",
       distTarget: "Distanz / Auflage",
       ext: "Auszugslänge",
       ud: "Höhe",
@@ -574,7 +585,8 @@ export const views = {
       benefit2: "Visiereinstellungen immer griffbereit",
       laterNote: "Du kannst fehlende Daten später in den Einstellungen ergänzen, aber wir empfehlen, es jetzt auszufüllen — es dauert nur einen Moment.",
       completionNote: "Das sorgfältige Ausfüllen des Assistenten ist der Schlüssel zur vollen Funktionalität von GROT-X — überspringe keinen Schritt!",
-      welcomeTitle: "Willkommen bei GROT-X!",
+      welcomeTitle1: "Willkommen,",
+      welcomeTitle2: "bei",
       welcomeBtn: "VERSTANDEN, LOS GEHT'S"
     },
     sight: {
@@ -619,7 +631,10 @@ export const views = {
       resetAI: "KI-Begrüßungen zurücksetzen",
       activeAlert: "GROT-X PRO AKTIV! ◆",
       deactiveAlert: "Kostenlose Version wiederhergestellt.",
-      resetAlert: "Erfolgreich zurückgesetzt!"
+      resetAlert: "Erfolgreich zurückgesetzt!",
+      trialActive: "Kostenloser PRO-Testzeitraum",
+      trialDaysLeft: "Tage verbleibend",
+      trialStatus: "PRO-TEST AKTIV"
     },
     shareProfile: "Profil teilen",
     coach: {

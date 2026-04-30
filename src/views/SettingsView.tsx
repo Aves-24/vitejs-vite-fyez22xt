@@ -100,6 +100,10 @@ export default function SettingsView({
   };
 
   useEffect(() => { if (initialTab) setActiveTab(initialTab as SettingsTab); }, [initialTab]);
+  // Functional update: start wizard only from step 0. Prevents Firestore's
+  // optimistic-then-rejected onSnapshot cycle from resetting wizardStep to 1
+  // while the user is already mid-wizard (e.g. on step 7 clicking Finish).
+  useEffect(() => { if (autoStartWizard) setWizardStep(s => s === 0 ? 1 : s); }, [autoStartWizard]);
 
   // Rozpakowanie birthDate → bDay/bMonth/bYear JEDNORAZOWO (przy pierwszym
   // przyjściu daty z Firestore). Potem synchronizacja idzie tylko w drugą
@@ -136,18 +140,30 @@ export default function SettingsView({
         const docSnap = await getDoc(doc(db, 'users', userId)); 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          setFirstName(data.firstName || ''); setLastName(data.lastName || ''); setNickname(data.nickname || ''); 
-          setClub(data.club || ''); setClubCity(data.clubCity || ''); setPlaceId(data.placeId || '');
-          setTrialEndsAt(data.trialEndsAt || null); setGender(data.gender || 'M'); setBirthDate(data.birthDate || ''); 
-          setCountry(data.country || 'Niemcy (DSB/WA)'); setHeight(data.height || ''); setHandedness(data.handedness || 'RH');
-          
+          // Guard: only overwrite state when Firestore has an actual value.
+          // Without this, an async getDoc that resolves mid-wizard would reset
+          // every field the user just typed back to '' (new-user doc has no
+          // profile fields yet, so `data.firstName || ''` === '').
+          if (data.firstName) setFirstName(data.firstName);
+          if (data.lastName) setLastName(data.lastName);
+          if (data.nickname) setNickname(data.nickname);
+          if (data.club) setClub(data.club);
+          if (data.clubCity) setClubCity(data.clubCity);
+          if (data.placeId) setPlaceId(data.placeId);
+          if (data.trialEndsAt !== undefined) setTrialEndsAt(data.trialEndsAt || null);
+          if (data.gender) setGender(data.gender || 'M');
+          if (data.birthDate) setBirthDate(data.birthDate);
+          if (data.country) setCountry(data.country);
+          if (data.height) setHeight(data.height);
+          if (data.handedness) setHandedness(data.handedness || 'RH');
+
           // Wczytywanie danych sprzętowych
-          setBowType((data.bowType as BowType) || 'Klasyczny (Recurve)'); 
-          setLbs(data.lbs || 32);
-          setRiser(data.riser || '');
-          setLimbs(data.limbs || '');
-          setStabilizers(data.stabilizers || '');
-          setSight(data.sight || '');
+          if (data.bowType) setBowType(data.bowType as BowType);
+          if (data.lbs) setLbs(data.lbs);
+          if (data.riser) setRiser(data.riser);
+          if (data.limbs) setLimbs(data.limbs);
+          if (data.stabilizers) setStabilizers(data.stabilizers);
+          if (data.sight) setSight(data.sight);
 
           setIsPremium(data.isPremium || false);
           setShowFullName(data.showFullName !== undefined ? data.showFullName : true);
@@ -200,17 +216,11 @@ export default function SettingsView({
         }
       }
 
-      let finalTrialEndsAt = trialEndsAt;
-      if (!finalTrialEndsAt) {
-        const trialDate = new Date(); trialDate.setDate(trialDate.getDate() + 30);
-        finalTrialEndsAt = trialDate.toISOString(); setTrialEndsAt(finalTrialEndsAt);
-      }
-
-      // Zapisujemy nowe pola sprzętowe w bazie
-      // [BEZPIECZEŃSTWO] `isPremium` NIE jest tu zapisywane — to pole chronione,
-      // zmieniane tylko przez admina lub backend (po zakupie). Klient tylko je czyta.
-      // `trialEndsAt` zapisujemy tylko przy pierwszej inicjalizacji (gdy było null) —
-      // reguła pozwala na to jednorazowo, potem lock.
+      // [BEZPIECZEŃSTWO] `isPremium` NIE jest tu zapisywane — to pole chronione.
+      // `trialEndsAt` NIE jest tu zapisywane — ustawiane jednorazowo przez App.tsx
+      // przy tworzeniu konta; reguła Firestore blokuje jakąkolwiek zmianę tego pola
+      // gdy jest już obecne w dokumencie. Stare konta bez trialEndsAt obsługuje
+      // osobny fallback w App.tsx (onSnapshot handler).
       const payload: any = {
         firstName, lastName, nickname, club, clubName: club, clubCity, placeId, countryCode: cCode,
         gender, birthDate, country, height, handedness,
@@ -218,14 +228,14 @@ export default function SettingsView({
         startYear, competitionLevel, userDistances: finalDistances,
         showFullName, showClub, showRegion
       };
-      // Trial tylko przy pierwszym zapisie (gdy wcześniej null)
-      if (!trialEndsAt && finalTrialEndsAt) {
-        payload.trialEndsAt = finalTrialEndsAt;
-      }
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
-      
-      setIsSaving(false); if (wizardStep === 0) showToast(t('settings.successSave'));
-    } catch (error) { console.error("Save error:", error); setIsSaving(false); }
+      if (wizardStep === 0) showToast(t('settings.successSave'));
+    } catch (error) {
+      console.error("Save error:", error);
+      throw error; // propagate so finishWizard knows the save failed
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRevokeCoach = (coachId: string) => {
@@ -413,7 +423,7 @@ export default function SettingsView({
           </div>
         )}
 
-        {activeTab === 'PRO' && <ProSection isPremium={isPremium} />}
+        {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} />}
         {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (

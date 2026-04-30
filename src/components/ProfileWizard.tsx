@@ -53,16 +53,20 @@ interface ProfileWizardProps {
 export default function ProfileWizard(props: ProfileWizardProps) {
   const { t } = useTranslation();
   
-  // [POPRAWKA] Twarde wywołanie ekranu powitalnego dla nowych kont
   const [showWelcome, setShowWelcome] = useState(false);
+  const prevWizardStepRef = React.useRef(0);
   useEffect(() => {
-    if (props.autoStartWizard && props.wizardStep === 1) {
+    const prev = prevWizardStepRef.current;
+    prevWizardStepRef.current = props.wizardStep;
+    if (props.wizardStep === 1 && prev === 0) {
       setShowWelcome(true);
     }
-  }, [props.autoStartWizard, props.wizardStep]);
+  }, [props.wizardStep]);
 
   const [isSavingLocal, setIsSavingLocal] = useState(false);
   const [wizardDistances, setWizardDistances] = useState<any[]>([]);
+  const tDateRef = React.useRef<HTMLInputElement>(null);
+  const pDateRef = React.useRef<HTMLInputElement>(null);
 
   const countryOptions = t('settings.lists.countries', { returnObjects: true }) as string[];
   const competitionLevels = t('settings.lists.compLevels', { returnObjects: true }) as string[];
@@ -167,7 +171,17 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
     // Przekaż dystanse tylko jeśli zostały wygenerowane (krok 5 był odwiedzony)
     // Puste wizardDistances [] nie powinny nadpisać istniejących ustawień wizjera
-    await props.onSaveSettings(wizardDistances.length > 0 ? wizardDistances : undefined);
+    try {
+      await props.onSaveSettings(wizardDistances.length > 0 ? wizardDistances : undefined);
+    } catch (e) {
+      // Save failed (e.g. Firestore permission denied). Keep the wizard open
+      // so the user doesn't lose their data — do NOT call setWizardStep(0)
+      // here, because that would unmount the form and leave autoStartWizard=true
+      // in App state, which causes the guard to restart the wizard on the next
+      // snapshot event.
+      setIsSavingLocal(false);
+      return;
+    }
     props.setWizardStep(0);
     if (props.onNavigate) props.onNavigate('HOME');
   };
@@ -200,7 +214,17 @@ export default function ProfileWizard(props: ProfileWizardProps) {
         <div className="absolute inset-0 bg-emerald-900/20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
         <div className="relative z-10 flex flex-col items-center">
           <span className="material-symbols-outlined text-[80px] text-[#fed33e] mb-4 animate-bounce-subtle">auto_awesome</span>
-          <h1 className="text-3xl font-black text-white mb-2 text-center">{t('settings.wizard.welcomeTitle', 'Witaj w GROT-X!')}</h1>
+          <h1 className="text-3xl font-black text-white mb-2 text-center flex flex-col items-center leading-snug">
+            <span>{t('settings.wizard.welcomeTitle1')}</span>
+            <span className="flex items-baseline gap-1.5">
+              <span>{t('settings.wizard.welcomeTitle2')}</span>
+              <span className="inline-flex items-baseline">
+                <span>Grot-X</span>
+                <span className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm"></span>
+              </span>
+              <span>.</span>
+            </span>
+          </h1>
           <p className="text-base font-black text-[#fed33e] text-center mb-4 uppercase tracking-wide">
             {t('settings.wizard.assistantTitle', { steps: totalSteps })}
           </p>
@@ -304,7 +328,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                  
                  <div className="relative">
                     <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.clubCity')}</label>
-                    <input list="wizard-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder="np. Sankt Tönis" className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
+                    <input list="wizard-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder={t('common.clubCityPlaceholder')} className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
                     <datalist id="wizard-cities">
                        {props.availableCities.map((c) => <option key={`city-${c}`} value={c} />)}
                     </datalist>
@@ -493,6 +517,10 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 </div>
               ))}
             </div>
+            <p className="text-[10px] font-bold text-gray-400 text-center px-2 pt-1">
+              <span className="material-symbols-outlined text-[12px] align-middle mr-0.5">info</span>
+              {t('settings.wizard.step5Note')}
+            </p>
           </div>
         )}
 
@@ -539,7 +567,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
                 
                 <div className="space-y-2 mt-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
                       <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
@@ -553,8 +581,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
+                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 pb-4">
+                      <button type="button" onClick={() => tDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                        <span className="material-symbols-outlined text-xl">calendar_today</span>
+                      </button>
+                      <input ref={tDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
                     </div>
                   </div>
                 </div>
@@ -591,7 +625,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
                 
                 <div className="space-y-2 mt-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
                       <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
@@ -605,8 +639,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
+                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 pb-4">
+                      <button type="button" onClick={() => pDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                        <span className="material-symbols-outlined text-xl">calendar_today</span>
+                      </button>
+                      <input ref={pDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
                     </div>
                   </div>
                 </div>

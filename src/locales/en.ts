@@ -94,9 +94,12 @@ export const components = {
   common: {
     comingSoon: "Coming soon",
     noClubsFound: "No matching clubs found",
-    clubNameWarning: "This name is not in the database. Please verify it is correct.",
-    firstClubInCity: "You are the first person from this city/club — it will be added to the database.",
+    clubNameWarning: "This name is not in the database. Please enter the club name as accurately as possible so it can be added correctly and prevent other members from registering the same club under a different name.",
+    firstClubInCity: "You are the first person from this city/club — it will be added to the database. Please enter the club name as accurately as possible so other members don't add the same club under a different name.",
     noClubManual: "Club not found? Enter manually",
+    clubCityPlaceholder: "Club city",
+    selectCityFirst: "Select a city first",
+    clubNamePlaceholder: "Club name",
     arrows: "arrows",
     day: "Day",
     confirm: "Confirm",
@@ -237,7 +240,9 @@ export const views = {
     trialWarningTitle: "Free PRO expires in {{days}} {{unit}}! 🚀",
     trialWarningDay: "day",
     trialWarningDays: "days",
-    trialWarningContent: "After this time your account will return to FREE version. If you enjoy GROT-X, keep access to all features by upgrading to PRO."
+    trialWarningContent: "After this time your account will return to FREE version. If you enjoy GROT-X, keep access to all features by upgrading to PRO.",
+    trialWelcomeTitle: "You have received 30 days of GROT-X Pro for free! 🎉",
+    trialWelcomeContent: "Explore all PRO features without any restrictions. Enjoy your free trial!"
   },
   setup: {
     title: "Setup",
@@ -381,6 +386,11 @@ export const views = {
     seeResult: "SEE RESULT",
     tabTournament: "TOURNAMENT",
     tabOther: "OTHER",
+    tabTrainer: "COACH",
+    trainerStudents: "Students",
+    trainerAllStudents: "All",
+    formTrainerName: "Session name",
+    collapseTrainer: "Collapse coach list",
     noEvents: "No upcoming events",
     upcomingTournaments: "Upcoming Tournaments",
     trainingsAndOthers: "Training Sessions & Other",
@@ -544,6 +554,7 @@ export const views = {
       bowType: "Bow Type",
       step5Title: "Your Sight Marks",
       step5Desc: "I've prepared a list of distances. It's worth saving your sight marks here.",
+      step5Note: "Missing distances can be added at any time later in Settings.",
       distTarget: "Distance / Face",
       ext: "Extension",
       ud: "Elevation",
@@ -574,7 +585,8 @@ export const views = {
       benefit2: "Sight settings always at hand",
       laterNote: "You can fill in missing data later in Settings, but we encourage you to do it now — it only takes a moment.",
       completionNote: "Carefully completing the assistant is the key to full GROT-X functionality — don't skip any step!",
-      welcomeTitle: "Welcome to GROT-X!",
+      welcomeTitle1: "Welcome,",
+      welcomeTitle2: "to",
       welcomeBtn: "GOT IT, LET'S START"
     },
     sight: {
@@ -619,7 +631,10 @@ export const views = {
       resetAI: "Reset AI greetings",
       activeAlert: "GROT-X PRO ACTIVE! ◆",
       deactiveAlert: "Free version restored.",
-      resetAlert: "Reset successful!"
+      resetAlert: "Reset successful!",
+      trialActive: "Free PRO trial",
+      trialDaysLeft: "days remaining",
+      trialStatus: "PRO TRIAL ACTIVE"
     },
     shareProfile: "Share Profile",
     coach: {

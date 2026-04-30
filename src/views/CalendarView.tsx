@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
 import { createPortal } from 'react-dom'; 
 
@@ -15,9 +15,16 @@ interface Event {
   address: string;
   note: string;
   type: string;
-  category: 'Turniej' | 'Inne';
-  distance?: string; 
-  hasScore?: boolean; 
+  category: 'Turniej' | 'Inne' | 'Trener';
+  distance?: string;
+  hasScore?: boolean;
+  coachStudents?: 'all' | string[];
+}
+
+interface CoachStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
 }
 
 interface CalendarViewProps {
@@ -33,6 +40,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
+  const [dayPickerEvents, setDayPickerEvents] = useState<Event[]>([]);
+  const [dayPickerDate, setDayPickerDate] = useState<string>('');
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -41,7 +50,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [calendarDate, setCalendarDate] = useState(new Date());
 
-  const [newCategory, setNewCategory] = useState<'Turniej' | 'Inne'>('Turniej');
+  const [isCoach, setIsCoach] = useState(false);
+  const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
+  const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>('all');
+
+  const [newCategory, setNewCategory] = useState<'Turniej' | 'Inne' | 'Trener'>('Turniej');
   const [newTitle, setNewTitle] = useState('');
   const [newDate, setNewDate] = useState('');
   
@@ -60,6 +73,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [showAllTournaments, setShowAllTournaments] = useState(false);
   const [showAllOthers, setShowAllOthers] = useState(false);
+  const [showAllTrainer, setShowAllTrainer] = useState(false);
   const [showAllPast, setShowAllPast] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -81,8 +95,26 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         if (profileSnap.exists() && isMounted) {
           const data = profileSnap.data();
           userIsPremium = data.isPremium || false;
-          setUserSightMarks(data.userDistances || []); 
+          setUserSightMarks(data.userDistances || []);
           setIsPremium(userIsPremium);
+          const coachFlag = data.isCoach || false;
+          setIsCoach(coachFlag);
+          if (coachFlag) {
+            const studentIds: string[] = data.students || [];
+            if (studentIds.length > 0) {
+              const loaded: CoachStudent[] = [];
+              for (let i = 0; i < studentIds.length; i += 10) {
+                const chunk = studentIds.slice(i, i + 10);
+                const sq = query(collection(db, 'users'), where('__name__', 'in', chunk));
+                const snap = await getDocs(sq);
+                snap.docs.forEach(d => {
+                  const sd = d.data();
+                  loaded.push({ id: d.id, firstName: sd.firstName || '', lastName: sd.lastName || '' });
+                });
+              }
+              setCoachStudentsList(loaded);
+            }
+          }
         }
       } catch (e) { console.error("Błąd sprawdzania profilu:", e); }
       
@@ -156,8 +188,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewTime(''); 
     setNewAddress(''); 
     setNewNote(''); 
-    setNewDistance('70m'); 
+    setNewDistance('70m');
     setNewCategory('Turniej');
+    setNewCoachStudents('all');
   };
 
   const handleOpenNewForm = () => {
@@ -166,11 +199,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
 
   const handleDayClick = (dateStr: string, dayEvents: Event[]) => {
-    if (dayEvents.length > 0) {
-      setViewingEvent(dayEvents[0]);
-    } else {
+    if (dayEvents.length === 0) {
+      setDayPickerEvents([]);
+      setDayPickerDate('');
       resetForm(dateStr);
       setShowForm(true);
+    } else if (dayEvents.length === 1) {
+      setDayPickerEvents([]);
+      setDayPickerDate('');
+      setViewingEvent(dayEvents[0]);
+    } else {
+      setDayPickerEvents(dayEvents);
+      setDayPickerDate(dateStr);
     }
   };
 
@@ -187,8 +227,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewTime(viewingEvent.time);
     setNewAddress(viewingEvent.address);
     setNewNote(viewingEvent.note);
-    if (viewingEvent.distance) setNewDistance(viewingEvent.distance); 
-    
+    if (viewingEvent.distance) setNewDistance(viewingEvent.distance);
+    setNewCoachStudents(viewingEvent.coachStudents || 'all');
+
     setViewingEvent(null);
     setShowForm(true);    
   };
@@ -226,16 +267,23 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     if (!newTitle || !userId) return;
     setIsSaving(true);
     
-    const eventData = {
-      category: newCategory, 
-      title: newTitle, 
-      date: finalDate, 
+    const eventData: Record<string, unknown> = {
+      category: newCategory,
+      title: newTitle,
+      date: finalDate,
       time: newTime,
-      address: newAddress, 
-      note: newNote, 
-      distance: newCategory === 'Turniej' ? newDistance : null, 
-      type: newCategory === 'Turniej' ? `${t('calendar.upcomingTournaments')} ${newDistance}` : t('calendar.trainingsAndOthers') 
+      address: newAddress,
+      note: newNote,
+      distance: newCategory === 'Turniej' ? newDistance : null,
+      type: newCategory === 'Turniej'
+        ? `${t('calendar.upcomingTournaments')} ${newDistance}`
+        : newCategory === 'Trener'
+        ? 'Trener'
+        : t('calendar.trainingsAndOthers'),
     };
+    if (newCategory === 'Trener') {
+      eventData.coachStudents = newCoachStudents;
+    }
 
     try {
       if (editingEventId) {
@@ -284,11 +332,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const upcomingTournaments = upcomingEvents.filter(e => e.category === 'Turniej' || !e.category);
   const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne');
+  const upcomingTrainer = upcomingEvents.filter(e => e.category === 'Trener');
 
   const nextTournamentId = upcomingTournaments.length > 0 ? upcomingTournaments[0].id : null;
 
   const visibleTournaments = showAllTournaments ? upcomingTournaments : upcomingTournaments.slice(0, 1);
   const visibleOthers = showAllOthers ? upcomingOthers : upcomingOthers.slice(0, 1);
+  const visibleTrainer = showAllTrainer ? upcomingTrainer : upcomingTrainer.slice(0, 1);
   const visiblePast = showAllPast ? pastEvents : pastEvents.slice(0, 3);
 
   const openInGoogleMaps = (address: string) => {
@@ -356,25 +406,49 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 
                 const hasTournament = dayEvents.some(e => e.category === 'Turniej' || !e.category);
                 const hasOther = dayEvents.some(e => e.category === 'Inne');
+                const hasTrainer = dayEvents.some(e => e.category === 'Trener');
                 const isToday = dateStr === todayStr;
+                const typeCount = [hasTournament, hasOther, hasTrainer].filter(Boolean).length;
+
+                if (typeCount > 1) {
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => handleDayClick(dateStr, dayEvents)}
+                      className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
+                    >
+                      <div className="w-full h-full rounded-[10px] overflow-hidden flex flex-col relative">
+                        {hasTournament && <div className="bg-[#0a3a2a] flex-1" />}
+                        {hasOther && <div className="bg-emerald-300 flex-1" />}
+                        {hasTrainer && <div className="bg-blue-400 flex-1" />}
+                        <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[11px] drop-shadow">
+                          {day}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                }
 
                 let bgClass = "bg-gray-50/50";
                 let textClass = "text-gray-500";
-                
+
                 if (hasTournament) {
                   bgClass = "bg-[#0a3a2a] shadow-sm";
                   textClass = "text-white font-black";
                 } else if (hasOther) {
                   bgClass = "bg-emerald-100";
                   textClass = "text-emerald-800 font-black";
+                } else if (hasTrainer) {
+                  bgClass = "bg-blue-500 shadow-sm";
+                  textClass = "text-white font-black";
                 } else if (isToday) {
                   bgClass = "bg-white border-2 border-[#fed33e] shadow-sm";
                   textClass = "text-[#725b00] font-black";
                 }
 
                 return (
-                  <button 
-                    key={day} 
+                  <button
+                    key={day}
                     onClick={() => handleDayClick(dateStr, dayEvents)}
                     className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                   >
@@ -515,11 +589,70 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 })}
 
                 {showAllOthers && upcomingOthers.length > 1 && (
-                  <button 
+                  <button
                     onClick={() => setShowAllOthers(false)}
                     className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
                   >
                     {t('calendar.collapseOthers')}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {upcomingTrainer.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-2">
+                  {t('calendar.tabTrainer')}
+                </div>
+
+                {visibleTrainer.map((event, index) => {
+                  const isLastVisible = !showAllTrainer && index === visibleTrainer.length - 1;
+                  const hiddenCount = upcomingTrainer.length - visibleTrainer.length;
+
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => setViewingEvent(event)}
+                      className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-blue-50 border-blue-100 text-[#0a3a2a]"
+                    >
+                      <div className="flex-1 p-4 flex items-start gap-3">
+                        <div className="p-2.5 rounded-2xl text-center min-w-[56px] border bg-white shadow-sm">
+                          <span className="block text-[9px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-xl font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                        </div>
+                        <div className="flex-1 pr-2 mt-0.5">
+                          <h3 className="font-black text-base leading-tight mb-1">{event.title}</h3>
+                          <div className="flex flex-col gap-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
+                            <div className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[12px]">schedule</span> {event.time || t('calendar.wholeDay')}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {isLastVisible && hiddenCount > 0 ? (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowAllTrainer(true); }}
+                          className="w-[84px] bg-blue-600/10 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-blue-600/20 active:bg-blue-600/30 transition-colors shrink-0 border-l border-blue-900/5"
+                        >
+                          <span className="material-symbols-outlined text-blue-600/70 text-[24px] mb-0.5">calendar_month</span>
+                          <span className="text-blue-800 font-black text-2xl leading-none">+{hiddenCount}</span>
+                        </button>
+                      ) : (
+                        <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
+                          <span className="material-symbols-outlined">chevron_right</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {showAllTrainer && upcomingTrainer.length > 1 && (
+                  <button
+                    onClick={() => setShowAllTrainer(false)}
+                    className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
+                  >
+                    {t('calendar.collapseTrainer')}
                   </button>
                 )}
               </div>
@@ -550,7 +683,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     </div>
                     <div className="flex-1 pr-2">
                       <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
-                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? 'TURNIERE' : 'KALENDAR'}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? 'TURNIERE' : event.category === 'Trener' ? t('calendar.tabTrainer') : 'KALENDAR'}</p>
                     </div>
                   </div>
 
@@ -616,10 +749,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              <div className="flex p-1 bg-gray-100 rounded-2xl mb-4">
                <button onClick={() => setNewCategory('Turniej')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Turniej' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTournament')}</button>
                <button onClick={() => setNewCategory('Inne')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Inne' ? 'bg-emerald-100 text-emerald-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabOther')}</button>
+               {isCoach && (
+                 <button onClick={() => setNewCategory('Trener')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Trener' ? 'bg-blue-100 text-blue-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTrainer')}</button>
+               )}
              </div>
              
              <div className="space-y-4">
-               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : t('calendar.formOtherName')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : newCategory === 'Trener' ? t('calendar.formTrainerName') : t('calendar.formOtherName')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
                
                {newCategory === 'Turniej' && (
                  <div className="space-y-1.5">
@@ -628,6 +764,44 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                      {availableDistances.map(d => (
                        <button key={d} onClick={() => setNewDistance(d)} className={`py-2 rounded-xl text-[10px] font-black border transition-all ${newDistance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>{d}</button>
                      ))}
+                   </div>
+                 </div>
+               )}
+
+               {newCategory === 'Trener' && coachStudentsList.length > 0 && (
+                 <div className="space-y-1.5">
+                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.trainerStudents')}</label>
+                   <div className="flex flex-wrap gap-1.5">
+                     <button
+                       onClick={() => setNewCoachStudents('all')}
+                       className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${newCoachStudents === 'all' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                     >
+                       {t('calendar.trainerAllStudents')}
+                     </button>
+                     {coachStudentsList.map(s => {
+                       const isSelected = Array.isArray(newCoachStudents) && newCoachStudents.includes(s.id);
+                       return (
+                         <button
+                           key={s.id}
+                           onClick={() => {
+                             if (newCoachStudents === 'all') {
+                               setNewCoachStudents([s.id]);
+                             } else {
+                               const arr = newCoachStudents as string[];
+                               if (arr.includes(s.id)) {
+                                 const next = arr.filter(id => id !== s.id);
+                                 setNewCoachStudents(next.length === 0 ? 'all' : next);
+                               } else {
+                                 setNewCoachStudents([...arr, s.id]);
+                               }
+                             }
+                           }}
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${isSelected ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                         >
+                           {s.firstName} {s.lastName}
+                         </button>
+                       );
+                     })}
                    </div>
                  </div>
                )}
@@ -672,14 +846,54 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       )}
 
-      {viewingEvent && (
+      {dayPickerEvents.length > 0 && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-base font-black text-[#0a3a2a]">
+                {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
+              </h2>
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); }} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+            <div className="space-y-2">
+              {dayPickerEvents.map(ev => (
+                <button
+                  key={ev.id}
+                  onClick={() => { setViewingEvent(ev); }}
+                  className="w-full flex items-center gap-3 p-3 rounded-2xl border active:scale-[0.98] transition-all text-left"
+                  style={{
+                    background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#eff6ff' : '#f0fdf4',
+                    borderColor: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#bfdbfe' : '#bbf7d0',
+                  }}
+                >
+                  <span className={`material-symbols-outlined text-xl ${ev.category === 'Turniej' ? 'text-white' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                    {ev.category === 'Turniej' ? 'emoji_events' : ev.category === 'Trener' ? 'group' : 'event'}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-black text-sm leading-tight truncate ${ev.category === 'Turniej' ? 'text-white' : 'text-[#0a3a2a]'}`}>{ev.title}</p>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ev.category === 'Turniej' ? 'text-white/60' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                      {ev.category === 'Turniej' ? t('calendar.tabTournament') : ev.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
+                      {ev.time ? ` • ${ev.time}` : ''}
+                    </p>
+                  </div>
+                  <span className={`material-symbols-outlined text-lg ${ev.category === 'Turniej' ? 'text-white/50' : 'text-gray-300'}`}>chevron_right</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewingEvent && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[120] flex items-start justify-center pt-24 px-4">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up relative max-h-[85vh] overflow-y-auto">
              
              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : 'bg-emerald-100 text-emerald-700'}`}>
-                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
+                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
@@ -775,6 +989,31 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       >
                         <span className="material-symbols-outlined text-lg">directions_car</span>
                       </button>
+                    </div>
+                  </div>
+                )}
+
+                {viewingEvent.category === 'Trener' && viewingEvent.coachStudents && (
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-blue-400">
+                      <span className="material-symbols-outlined text-[16px]">group</span>
+                    </div>
+                    <div className="flex flex-col flex-1 mt-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">{t('calendar.trainerStudents')}</span>
+                      {viewingEvent.coachStudents === 'all' ? (
+                        <span className="text-xs font-black text-blue-700">{t('calendar.trainerAllStudents')}</span>
+                      ) : (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {(viewingEvent.coachStudents as string[]).map(sid => {
+                            const s = coachStudentsList.find(cs => cs.id === sid);
+                            return s ? (
+                              <span key={sid} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-black">
+                                {s.firstName} {s.lastName}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}

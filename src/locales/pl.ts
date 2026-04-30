@@ -94,9 +94,12 @@ export const components = {
   common: {
     comingSoon: "Wkrótce dostępne",
     noClubsFound: "Brak pasujących klubów",
-    clubNameWarning: "Tej nazwy nie ma w bazie. Upewnij się, że jest poprawna.",
-    firstClubInCity: "Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy.",
+    clubNameWarning: "Tej nazwy nie ma w bazie. Podaj nazwę klubu jak najdokładniej, aby mogła zostać poprawnie dodana i żeby inni członkowie nie wpisali tego samego klubu pod inną nazwą.",
+    firstClubInCity: "Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy. Wpisz nazwę klubu jak najdokładniej, żeby inni członkowie nie dodali tego samego klubu pod inną nazwą.",
     noClubManual: "Nie ma mojego klubu? Wpisz ręcznie",
+    clubCityPlaceholder: "Miasto klubu",
+    selectCityFirst: "Najpierw wybierz miasto",
+    clubNamePlaceholder: "Nazwa klubu",
     arrows: "strzał",
     day: "Dzień",
     confirm: "Potwierdź",
@@ -237,7 +240,9 @@ export const views = {
     trialWarningTitle: "Darmowy PRO wygasa za {{days}} {{unit}}! 🚀",
     trialWarningDay: "dzień",
     trialWarningDays: "dni",
-    trialWarningContent: "Po tym czasie Twoje konto wróci do wersji FREE. Jeśli podoba Ci się Grot-X, zachowaj dostęp do wszystkich funkcji wykupując PRO."
+    trialWarningContent: "Po tym czasie Twoje konto wróci do wersji FREE. Jeśli podoba Ci się Grot-X, zachowaj dostęp do wszystkich funkcji wykupując PRO.",
+    trialWelcomeTitle: "Otrzymałeś 30 dni GROT-X Pro za darmo! 🎉",
+    trialWelcomeContent: "Odkryj wszystkie funkcje PRO bez ograniczeń. Ciesz się darmowym okresem próbnym!"
   },
   setup: {
     title: "Przygotowanie",
@@ -381,6 +386,11 @@ export const views = {
     seeResult: "ZOBACZ WYNIK",
     tabTournament: "ZAWODY",
     tabOther: "INNE",
+    tabTrainer: "TRENER",
+    trainerStudents: "Podopieczni",
+    trainerAllStudents: "Wszyscy",
+    formTrainerName: "Nazwa zajęć",
+    collapseTrainer: "Zwiń listę trenerską",
     noEvents: "Brak nadchodzących planów",
     upcomingTournaments: "Nadchodzące Zawody",
     trainingsAndOthers: "Treningi i Inne",
@@ -544,6 +554,7 @@ export const views = {
       bowType: "Rodzaj Łuku",
       step5Title: "Twoje Nastawy Wizjera",
       step5Desc: "Przygotowałem listę dystansów. Warto zapisać tutaj ustawienia celownika.",
+      step5Note: "Brakujące dystanse możesz dodać w dowolnym momencie w Ustawieniach.",
       distTarget: "Dystans / Tarcza",
       ext: "Wysięg",
       ud: "Wysokość",
@@ -574,7 +585,8 @@ export const views = {
       benefit2: "Ustawienia wizjera zawsze pod ręką",
       laterNote: "Możesz uzupełnić brakujące dane później w Ustawieniach, ale zachęcamy do wypełnienia teraz — zajmie to tylko chwilę.",
       completionNote: "Skrupulatne wypełnienie asystenta to klucz do pełnej funkcjonalności GROT-X — nie pomijaj żadnego kroku!",
-      welcomeTitle: "Witaj w GROT-X!",
+      welcomeTitle1: "Witaj,",
+      welcomeTitle2: "w",
       welcomeBtn: "ROZUMIEM, ZACZYNAMY"
     },
     sight: {
@@ -619,7 +631,10 @@ export const views = {
       resetAI: "Zresetuj powitania AI",
       activeAlert: "GROT-X PRO AKTYWNE! ◆",
       deactiveAlert: "Wersja darmowa przywrócona.",
-      resetAlert: "Zresetowano!"
+      resetAlert: "Zresetowano!",
+      trialActive: "Bezpłatny okres próbny PRO",
+      trialDaysLeft: "dni pozostało",
+      trialStatus: "TRIAL PRO AKTYWNY"
     },
     shareProfile: "Udostępnij Profil",
     coach: {

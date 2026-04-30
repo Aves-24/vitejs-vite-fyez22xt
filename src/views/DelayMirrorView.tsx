@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import DelayMirrorReplay from './DelayMirrorReplay';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -80,17 +81,11 @@ export default function DelayMirrorView({ onBack }: Props) {
 
   const liveVideoRef = useRef<HTMLVideoElement>(null);
   const delayedVideoRef = useRef<HTMLVideoElement>(null);
-  const replayVideoRef = useRef<HTMLVideoElement>(null);
-  const replayBlobUrlRef = useRef<string | null>(null);
   const mseCleanupRef = useRef<(() => void) | null>(null);
   const mseRafRef = useRef<number | null>(null);
   // Pending MSE — czekamy az DOM zamontuje delayedVideoRef po przejsciu
   // ze stanu 'positioning' do 'buffering', dopiero potem odpalamy pipeline.
   const pendingMSERef = useRef<{ stream: MediaStream; codec: string } | null>(null);
-  const [replayRate, setReplayRate] = useState<number>(1);
-  const [replayTime, setReplayTime] = useState(0);
-  const [replayDuration, setReplayDuration] = useState(0);
-  const [replayPlaying, setReplayPlaying] = useState(false);
   const [showSetupInstructions, setShowSetupInstructions] = useState(false);
   // Zoom (szerokokat 0.5x na frontowej) — zalezy od track capabilities.
   // Wsparcie: Chrome Android na flagowcach z front ultra-wide. iOS Safari i
@@ -98,51 +93,28 @@ export default function DelayMirrorView({ onBack }: Props) {
   // sie nie pokaze.
   const [zoomCaps, setZoomCaps] = useState<{ min: number; max: number; step: number } | null>(null);
   const [cameraZoom, setCameraZoom] = useState<number>(1);
-  // Wrapper na video w replay landscape — mierzymy aby dac pixele do video
-  // (vw/vh nie dziala w manual landscape bo outer container jest rotowany).
-  const replayBoxRef = useRef<HTMLDivElement>(null);
-  const [replayBox, setReplayBox] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [showDelayPicker, setShowDelayPicker] = useState(false);
+  const [showGrid, setShowGrid] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentBlobUrlRef = useRef<string | null>(null);
-  const lastBlobRef = useRef<Blob | null>(null);
   // Drugi, ciągły recorder — nagrywa całą sesję od startu do pauzy/stopu
   // równolegle z segmentowym loopem. Dzięki temu "Udostępnij" daje pełny
   // filmik, nie tylko ostatnie 15s.
   const fullRecorderRef = useRef<MediaRecorder | null>(null);
   const fullChunksRef = useRef<BlobPart[]>([]);
   const fullMimeRef = useRef<string>('video/webm');
-  const [hasFullBlob, setHasFullBlob] = useState(false);
-  const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
+  const [lastBlob, setLastBlob] = useState<Blob | null>(null);
 
   // Persist delay setting + sync ref
   useEffect(() => {
     delayMsRef.current = delaySeconds * 1000;
     try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
   }, [delaySeconds]);
-
-  // Mierz wrapper replay video — wymagane bo vw/vh nie dziala wewnatrz manual
-  // landscape (outer wrapper jest rotowany przez transform).
-  useEffect(() => {
-    const el = replayBoxRef.current;
-    if (!el) return;
-    const update = () => {
-      // offsetWidth/Height = layout dims, niezalezne od transform parenta
-      setReplayBox({ w: el.offsetWidth, h: el.offsetHeight });
-    };
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener('resize', update);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', update);
-    };
-  });
 
   // PRO gate
   useEffect(() => {
@@ -198,7 +170,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
     fullChunksRef.current = [];
-    lastBlobRef.current = null;
+    setLastBlob(null);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (mseRafRef.current !== null) {
@@ -219,10 +191,6 @@ export default function DelayMirrorView({ onBack }: Props) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
     }
-    if (replayBlobUrlRef.current) {
-      URL.revokeObjectURL(replayBlobUrlRef.current);
-      replayBlobUrlRef.current = null;
-    }
   }, []);
 
   useEffect(() => () => cleanup(), [cleanup]);
@@ -237,28 +205,6 @@ export default function DelayMirrorView({ onBack }: Props) {
       liveVideoRef.current.play().catch(() => { /* autoplay może odmówić */ });
     }
   }, [mirrorState, isPortrait]);
-
-  // Po pauzie — ustaw src playera replay z pełnego nagrania, żeby user mógł
-  // przewijać i oglądać slow-motion. Blob URL zwalniamy przy resume/cleanup.
-  useEffect(() => {
-    if (mirrorState !== 'paused' || !hasFullBlob || !lastBlobRef.current) return;
-    const url = URL.createObjectURL(lastBlobRef.current);
-    if (replayBlobUrlRef.current) URL.revokeObjectURL(replayBlobUrlRef.current);
-    replayBlobUrlRef.current = url;
-    const v = replayVideoRef.current;
-    if (v) {
-      v.src = url;
-      v.playbackRate = replayRate;
-      v.currentTime = 0;
-      v.play().catch(() => { /* autoplay may fail */ });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mirrorState, hasFullBlob]);
-
-  // Sync playback rate
-  useEffect(() => {
-    if (replayVideoRef.current) replayVideoRef.current.playbackRate = replayRate;
-  }, [replayRate]);
 
   // Auto-pause on background
   useEffect(() => {
@@ -436,52 +382,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     };
   }, []);
 
-  const shareVideo = useCallback(async () => {
-    const blob = lastBlobRef.current;
-    if (!blob) return;
-    setShareState('sharing');
-    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
-    const now = new Date();
-    const dateStr = now.toISOString().slice(0, 10);
-    const hh = String(now.getHours()).padStart(2, '0');
-    const mm = String(now.getMinutes()).padStart(2, '0');
-    const filename = `GROTX_DelayMirror_${dateStr}_${hh}${mm}.${ext}`;
-    try {
-      const nav = navigator as Navigator & {
-        canShare?: (data: { files: File[] }) => boolean;
-        share?: (data: { files?: File[]; title?: string; text?: string }) => Promise<void>;
-      };
-      const file = new File([blob], filename, { type: blob.type });
-      if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
-        await nav.share({
-          files: [file],
-          title: 'GROT-X Delay Mirror',
-        });
-        setShareState('idle');
-        return;
-      }
-      // Fallback – pobranie na dysk
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-      setShareState('saved');
-      setTimeout(() => setShareState('idle'), 2500);
-    } catch (err: unknown) {
-      const e = err as { name?: string };
-      if (e.name === 'AbortError') {
-        setShareState('idle');
-        return;
-      }
-      setShareState('error');
-      setTimeout(() => setShareState('idle'), 2500);
-    }
-  }, []);
-
   // Zoom capability detection — sprawdz czy track obsluguje zoom < 1
   // (= ultra-wide na froncie). Wsparcie: Chrome Android, niektore flagowce.
   const detectZoomCaps = useCallback((stream: MediaStream) => {
@@ -573,9 +473,12 @@ export default function DelayMirrorView({ onBack }: Props) {
       fullMimeRef.current = fullCodec.split(';')[0];
       const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
       fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
-      fullRec.start(1000);
+      // Brak timeslice — encoder produkuje jeden kompletny plik z prawidlowym
+      // moov/duration zamiast fragmentow fMP4. Rozwiazuje problem iOS/WhatsApp
+      // gdzie timeslice=1000ms dawalo moov z duration ~3s.
+      fullRec.start();
       fullRecorderRef.current = fullRec;
-      setHasFullBlob(false);
+      setLastBlob(null);
     } catch { /* ignore — MSE delay nadal dziala */ }
 
     setRecSeconds(0);
@@ -641,8 +544,7 @@ export default function DelayMirrorView({ onBack }: Props) {
       if (fr && fr.state !== 'inactive') {
         fr.onstop = () => {
           if (fullChunksRef.current.length > 0) {
-            lastBlobRef.current = new Blob(fullChunksRef.current, { type: fullMimeRef.current });
-            setHasFullBlob(true);
+            setLastBlob(new Blob(fullChunksRef.current, { type: fullMimeRef.current }));
           }
         };
         fr.stop();
@@ -653,29 +555,32 @@ export default function DelayMirrorView({ onBack }: Props) {
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     delayedVideoRef.current?.pause();
+    setRecordingPaused(false);
     setMirrorState('paused');
   }, []);
+
+  const toggleRecordingPause = useCallback(() => {
+    if (!recordingPaused) {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      delayedVideoRef.current?.pause();
+      try { fullRecorderRef.current?.pause(); } catch { /* nie wszystkie przegladarki wspieraja */ }
+      setRecordingPaused(true);
+    } else {
+      delayedVideoRef.current?.play().catch(() => { /* ignore */ });
+      try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+      timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+      setRecordingPaused(false);
+    }
+  }, [recordingPaused]);
 
   const resumeMirror = useCallback(() => {
     setMirrorState('idle');
     setBufferMs(0);
     setRecSeconds(0);
-    setReplayRate(1);
-    setReplayTime(0);
-    setReplayDuration(0);
-    setReplayPlaying(false);
+    setLastBlob(null);
     if (currentBlobUrlRef.current) {
       URL.revokeObjectURL(currentBlobUrlRef.current);
       currentBlobUrlRef.current = null;
-    }
-    if (replayBlobUrlRef.current) {
-      URL.revokeObjectURL(replayBlobUrlRef.current);
-      replayBlobUrlRef.current = null;
-    }
-    if (replayVideoRef.current) {
-      replayVideoRef.current.pause();
-      replayVideoRef.current.removeAttribute('src');
-      replayVideoRef.current.load();
     }
     startRecording();
   }, [startRecording]);
@@ -689,29 +594,11 @@ export default function DelayMirrorView({ onBack }: Props) {
   // wybrana orientacje, zeby user nie musial znow klikac).
   const endSession = useCallback(() => {
     cleanup();
-    setHasFullBlob(false);
     setBufferMs(0);
     setRecSeconds(0);
-    setReplayRate(1);
-    setShareState('idle');
     isPausedRef.current = false;
     setMirrorState('idle');
   }, [cleanup]);
-
-  const replaySeek = useCallback((delta: number) => {
-    const v = replayVideoRef.current;
-    if (!v) return;
-    const dur = isFinite(v.duration) ? v.duration : 0;
-    const t = Math.max(0, Math.min(dur || 1e9, v.currentTime + delta));
-    v.currentTime = t;
-  }, []);
-
-  const replayRestart = useCallback(() => {
-    const v = replayVideoRef.current;
-    if (!v) return;
-    v.currentTime = 0;
-    v.play().catch(() => { /* ignore */ });
-  }, []);
 
   const formatTime = (s: number) => {
     const m = Math.floor(s / 60);
@@ -857,6 +744,101 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
+  const gridPositions = [16.7, 33.3, 50, 66.7, 83.3];
+  // Kolory od środka na zewnątrz: zielony (centrum) → żółty → czerwony
+  const gridColors = [
+    'rgba(239,68,68,0.85)',   // red   — krawędź
+    'rgba(250,204,21,0.85)',  // yellow
+    'rgba(74,222,128,0.95)',  // green — środek
+    'rgba(250,204,21,0.85)',  // yellow
+    'rgba(239,68,68,0.85)',   // red   — krawędź
+  ];
+  const DOT = 6;          // średnica kropki px
+  const ARM = DOT * 2;    // długość ramienia krzyzyka = 2x średnica
+
+  const gridOverlay = showGrid ? (
+    <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 15 }}>
+
+      {/* Cienkie linie poziome — kolor zalezy od wiersza */}
+      {gridPositions.map((y, yi) => (
+        <div key={`hl-${yi}`} style={{
+          position: 'absolute', top: `${y}%`, left: 0, right: 0,
+          height: 1, backgroundColor: gridColors[yi], opacity: 0.45,
+          transform: 'translateY(-50%)',
+        }} />
+      ))}
+
+      {/* Cienkie linie pionowe — kolor zalezy od kolumny */}
+      {gridPositions.map((x, xi) => (
+        <div key={`vl-${xi}`} style={{
+          position: 'absolute', left: `${x}%`, top: 0, bottom: 0,
+          width: 1, backgroundColor: gridColors[xi], opacity: 0.45,
+          transform: 'translateX(-50%)',
+        }} />
+      ))}
+
+      {/* Kropki + krzyzyki na każdym przecięciu */}
+      {gridPositions.map((y, yi) =>
+        gridPositions.map((x, xi) => {
+          // Kolor = ciemniejszy z wiersza i kolumny (dalej od środka wygrywa)
+          const distY = Math.abs(yi - 2);
+          const distX = Math.abs(xi - 2);
+          const color = gridColors[Math.max(distY, distX) === 0 ? 2 : Math.max(distY, distX) === 1 ? 1 : 0];
+          return (
+            <React.Fragment key={`cross-${xi}-${yi}`}>
+              {/* Poziome ramię krzyzyka */}
+              <div style={{
+                position: 'absolute', left: `${x}%`, top: `${y}%`,
+                width: ARM * 2, height: 1,
+                backgroundColor: color,
+                transform: `translate(-50%, -50%)`,
+              }} />
+              {/* Pionowe ramię krzyzyka */}
+              <div style={{
+                position: 'absolute', left: `${x}%`, top: `${y}%`,
+                width: 1, height: ARM * 2,
+                backgroundColor: color,
+                transform: `translate(-50%, -50%)`,
+              }} />
+              {/* Kropka */}
+              <div style={{
+                position: 'absolute', left: `${x}%`, top: `${y}%`,
+                width: DOT, height: DOT,
+                borderRadius: '50%',
+                backgroundColor: color,
+                transform: 'translate(-50%, -50%)',
+              }} />
+            </React.Fragment>
+          );
+        })
+      )}
+
+      {/* Corner brackets */}
+      {[
+        { top: 0, left: 0, borderTop: `2px solid ${gridColors[0]}`, borderLeft: `2px solid ${gridColors[0]}` },
+        { top: 0, right: 0, borderTop: `2px solid ${gridColors[0]}`, borderRight: `2px solid ${gridColors[0]}` },
+        { bottom: 0, left: 0, borderBottom: `2px solid ${gridColors[0]}`, borderLeft: `2px solid ${gridColors[0]}` },
+        { bottom: 0, right: 0, borderBottom: `2px solid ${gridColors[0]}`, borderRight: `2px solid ${gridColors[0]}` },
+      ].map((style, i) => (
+        <div key={`corner-${i}`} style={{ position: 'absolute', width: 50, height: 50, ...style }} />
+      ))}
+    </div>
+  ) : null;
+
+  const gridToggleBtn = (
+    <button
+      onClick={() => setShowGrid(v => !v)}
+      className={`py-3.5 px-5 backdrop-blur-sm rounded-2xl font-bold text-sm active:scale-95 transition-all border ${
+        showGrid
+          ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+          : 'bg-white/10 text-white/60 border-white/10'
+      }`}
+      title="Siatka"
+    >
+      <span className="material-symbols-outlined text-xl">grid_on</span>
+    </button>
+  );
+
   if (mirrorState === 'positioning') {
     return (
       <>
@@ -872,8 +854,9 @@ export default function DelayMirrorView({ onBack }: Props) {
           playsInline
           muted
         />
+        {gridOverlay}
         <div style={uiRotateStyle}>
-          {/* Dol: zoom switcher (jezeli wsparte) + start button */}
+          {/* Dol: zoom switcher (jezeli wsparte) + start button + grid toggle */}
           <div className="absolute bottom-8 inset-x-0 px-6 z-10 flex flex-col items-center gap-3">
             {zoomCaps && (
               <div className="flex gap-2 bg-black/55 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10">
@@ -895,13 +878,16 @@ export default function DelayMirrorView({ onBack }: Props) {
                 ))}
               </div>
             )}
-            <button
-              onClick={beginDelayedRecording}
-              className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-xl">play_arrow</span>
-              {t('delayMirror.positioningStart')}
-            </button>
+            <div className="flex gap-3 items-center">
+              {gridToggleBtn}
+              <button
+                onClick={beginDelayedRecording}
+                className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-xl">play_arrow</span>
+                {t('delayMirror.positioningStart')}
+              </button>
+            </div>
           </div>
           {/* Back button */}
           <button onClick={stopMirror} className={`absolute text-white active:scale-90 transition-all z-10 bg-black/40 backdrop-blur-sm rounded-full p-2 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
@@ -1135,6 +1121,9 @@ export default function DelayMirrorView({ onBack }: Props) {
       {/* UI overlays — opcjonalnie rotowane dla manual landscape */}
       <div style={uiRotateStyle}>
 
+      {/* Grid overlay — minimalist dot grid + corner brackets */}
+      {(mirrorState === 'live' || mirrorState === 'buffering') && gridOverlay}
+
       {mirrorState === 'buffering' && (
         <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-10">
           <div className="w-16 h-16 rounded-full border-4 border-white/10 border-t-[#fed33e] animate-spin mb-4" />
@@ -1151,212 +1140,12 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
       {mirrorState === 'paused' && (
-        <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
-          _displayAsLandscape && hasFullBlob
-            ? 'flex flex-row items-stretch gap-4'
-            : 'flex flex-col items-center'
-        }`}>
-          {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
-          {hasFullBlob ? (
-            (() => {
-              // W widoku poziomym blob nie ma metadanych rotacji — wymuszamy
-              // +90deg cw na wrapper div. Custom scrubber ponizej (nie rotowany)
-              // zeby pasek postepu byl na dole zamiast po prawej.
-              const needsRotate = _displayAsLandscape;
-              const fmtT = (s: number) => {
-                if (!isFinite(s)) return '0:00';
-                const m = Math.floor(s / 60);
-                const sec = Math.floor(s % 60);
-                return `${m}:${String(sec).padStart(2, '0')}`;
-              };
-              return (
-                <div className={`${_displayAsLandscape ? 'flex-1 flex flex-col items-center justify-center min-w-0 gap-2' : 'w-full max-w-md'}`}>
-                  <div
-                    ref={replayBoxRef}
-                    className={`${_displayAsLandscape ? 'relative' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
-                    style={
-                      _displayAsLandscape
-                        ? { width: '100%', flex: '1 1 auto', minHeight: 0, alignSelf: 'stretch' }
-                        : undefined
-                    }
-                  >
-                    <div
-                      style={
-                        needsRotate
-                          ? {
-                              position: 'absolute',
-                              top: '50%',
-                              left: '50%',
-                              transform: 'translate(-50%, -50%) rotate(90deg)',
-                              transformOrigin: 'center center',
-                              lineHeight: 0,
-                            }
-                          : { display: 'inline-block', lineHeight: 0 }
-                      }
-                    >
-                      <video
-                        ref={replayVideoRef}
-                        className="block bg-black"
-                        style={{
-                          // Pre-rotate: width = visual height, height = visual width.
-                          // Uzywamy zmierzonego boxa parenta (px) zamiast vw/vh.
-                          width: needsRotate ? `${replayBox.h}px` : undefined,
-                          height: needsRotate ? `${replayBox.w}px` : undefined,
-                          maxWidth: needsRotate ? undefined : '100%',
-                          maxHeight: needsRotate ? undefined : '40vh',
-                          objectFit: 'contain',
-                          display: 'block',
-                          // Mirror — live preview ma scaleX(-1), recording surowy.
-                          // Po parent rotate(90deg) scaleY(-1) na childu = poziomy flip
-                          // wizualny. W portrait (bez rotate) potrzeba scaleX(-1).
-                          transform: needsRotate ? 'scaleY(-1)' : 'scaleX(-1)',
-                        }}
-                        onLoadedMetadata={(e) => {
-                          const v = e.currentTarget;
-                          setReplayDuration(v.duration || 0);
-                        }}
-                        onTimeUpdate={(e) => setReplayTime(e.currentTarget.currentTime)}
-                        onPlay={() => setReplayPlaying(true)}
-                        onPause={() => setReplayPlaying(false)}
-                        onClick={() => {
-                          const v = replayVideoRef.current;
-                          if (!v) return;
-                          if (v.paused) v.play().catch(() => { /* ignore */ });
-                          else v.pause();
-                        }}
-                        playsInline
-                        loop
-                      />
-                    </div>
-                  </div>
-
-                  {/* Custom scrubber + play/pause + czas — na dole w landscape,
-                      zawsze niezaleznie od rotacji video */}
-                  <div className={`${_displayAsLandscape ? 'w-full flex items-center gap-2 px-2' : 'w-full flex items-center gap-2 px-2 mt-2 mb-3'}`}>
-                    <button
-                      onClick={() => {
-                        const v = replayVideoRef.current;
-                        if (!v) return;
-                        if (v.paused) v.play().catch(() => { /* ignore */ });
-                        else v.pause();
-                      }}
-                      className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
-                    >
-                      <span className="material-symbols-outlined text-xl">{replayPlaying ? 'pause' : 'play_arrow'}</span>
-                    </button>
-                    <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
-                    <input
-                      type="range"
-                      min={0}
-                      max={replayDuration || 1}
-                      step={0.05}
-                      value={Math.min(replayTime, replayDuration || 1)}
-                      onChange={(e) => {
-                        const v = replayVideoRef.current;
-                        if (!v) return;
-                        const t = parseFloat(e.target.value);
-                        v.currentTime = t;
-                        setReplayTime(t);
-                      }}
-                      className="flex-1 accent-[#fed33e]"
-                    />
-                    <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayDuration)}</span>
-                  </div>
-                </div>
-              );
-            })()
-          ) : (
-            !_displayAsLandscape && (
-              <span className="material-symbols-outlined text-white/30 text-6xl mb-4 mt-4 block">pause_circle</span>
-            )
-          )}
-
-          {/* Prawa kolumna w landscape = menu/kontrolki. W portrait = poniżej filmiku. */}
-          <div className={`${
-            _displayAsLandscape
-              ? 'w-[30%] max-w-xs flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
-              : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
-          }`}>
-            <p className={`text-white font-black ${_displayAsLandscape ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>
-              {t('delayMirror.pauseTitle')}
-            </p>
-            <p className={`text-white/50 text-xs text-center ${_displayAsLandscape ? 'mb-1' : 'mb-2'}`}>
-              {t('delayMirror.pauseHint')}
-            </p>
-
-            {hasFullBlob && (
-              <div className="w-full">
-                <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1 text-center">
-                  {t('delayMirror.replaySpeed')}
-                </p>
-                <div className="flex justify-center gap-2 mb-2">
-                  {[0.25, 0.5, 1, 2].map(rate => (
-                    <button
-                      key={rate}
-                      onClick={() => setReplayRate(rate)}
-                      className={`px-3 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
-                        replayRate === rate
-                          ? 'bg-[#fed33e] text-[#0a3a2a] shadow-lg shadow-[#fed33e]/20'
-                          : 'bg-white/10 text-white/70 border border-white/15'
-                      }`}
-                    >
-                      {rate}x
-                    </button>
-                  ))}
-                </div>
-                <div className="flex justify-center gap-2 mb-3">
-                  <button
-                    onClick={() => replaySeek(-5)}
-                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-base">replay_5</span>
-                  </button>
-                  <button
-                    onClick={replayRestart}
-                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
-                    title={t('delayMirror.replayRestart')}
-                  >
-                    <span className="material-symbols-outlined text-base">restart_alt</span>
-                  </button>
-                  <button
-                    onClick={() => replaySeek(5)}
-                    className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"
-                  >
-                    <span className="material-symbols-outlined text-base">forward_5</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            <button
-              onClick={resumeMirror}
-              className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
-            >
-              {t('delayMirror.resumeBtn')}
-            </button>
-            {hasFullBlob && (
-              <button
-                onClick={shareVideo}
-                disabled={shareState === 'sharing'}
-                className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-                </span>
-                {shareState === 'sharing' && t('delayMirror.shareSharing')}
-                {shareState === 'saved' && t('delayMirror.shareSaved')}
-                {shareState === 'error' && t('delayMirror.shareError')}
-                {shareState === 'idle' && t('delayMirror.shareIdle')}
-              </button>
-            )}
-            <button
-              onClick={endSession}
-              className={`${_displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
-            >
-              {t('delayMirror.endSession')}
-            </button>
-          </div>
-        </div>
+        <DelayMirrorReplay
+          blob={lastBlob}
+          displayAsLandscape={_displayAsLandscape}
+          onResume={resumeMirror}
+          onEndSession={endSession}
+        />
       )}
 
 
@@ -1381,21 +1170,29 @@ export default function DelayMirrorView({ onBack }: Props) {
       )}
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center gap-3 px-8">
+        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center items-center gap-3 px-8">
+          {/* STOP → idzie do powtórki */}
           <button
             onClick={pauseMirror}
-            className="flex-1 max-w-[160px] py-3.5 bg-white/15 backdrop-blur-sm text-white rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20"
+            className="py-4 px-7 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-500/40 shadow-lg shadow-red-900/30"
           >
-            <span className="material-symbols-outlined text-lg">directions_walk</span>
-            {t('delayMirror.afterShots')}
+            <span className="material-symbols-outlined text-2xl">stop</span>
           </button>
+          {/* PAUSE — chwilowe zamrożenie bez kończenia sesji */}
           <button
-            onClick={pauseMirror}
-            className="py-3.5 px-5 bg-white/10 backdrop-blur-sm text-white/60 rounded-2xl font-bold text-sm active:scale-95 transition-all border border-white/10"
-            title={t('delayMirror.pauseTooltip')}
+            onClick={toggleRecordingPause}
+            className={`py-4 px-7 backdrop-blur-sm rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center border ${
+              recordingPaused
+                ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
+                : 'bg-white/10 text-white/70 border-white/15'
+            }`}
           >
-            <span className="material-symbols-outlined text-xl">pause</span>
+            <span className="material-symbols-outlined text-2xl">
+              {recordingPaused ? 'play_arrow' : 'pause'}
+            </span>
           </button>
+          {/* GRID toggle */}
+          {gridToggleBtn}
         </div>
       )}
 

@@ -602,7 +602,16 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       if (trialEndsAt && !rawIsPremium) {
         const daysLeft = Math.ceil((trialEndsAt - Date.now()) / (1000 * 3600 * 24));
-        if (daysLeft === 7 || daysLeft === 1) {
+        if (daysLeft >= 28) {
+          myAnnouncements.unshift({
+            id: 'sys_trial_welcome',
+            title: t('home.trialWelcomeTitle'),
+            content: t('home.trialWelcomeContent'),
+            target: 'USER',
+            lang: i18n.language,
+            isSystemGenerated: true
+          });
+        } else if (daysLeft === 7 || daysLeft === 1) {
           const trialMsg = {
             id: `sys_trial_warning_${daysLeft}`,
             title: t('home.trialWarningTitle', { days: daysLeft, unit: daysLeft === 1 ? t('home.trialWarningDay') : t('home.trialWarningDays') }),

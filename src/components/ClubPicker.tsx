@@ -104,7 +104,7 @@ export default function ClubPicker({ value, onChange, availableClubs, citySelect
         <div className="mt-1.5 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-xl px-3 py-2">
           <span className="material-symbols-outlined text-orange-500 text-[16px] shrink-0 mt-0.5">warning</span>
           <p className="text-[10px] font-bold text-orange-700 leading-snug">
-            {t('common.clubNameWarning', 'Tej nazwy nie ma w bazie. Upewnij się, że jest poprawna.')}
+            {t('common.clubNameWarning', 'Tej nazwy nie ma w bazie. Podaj nazwę klubu jak najdokładniej, aby mogła zostać poprawnie dodana i żeby inni członkowie nie wpisali tego samego klubu pod inną nazwą.')}
           </p>
         </div>
       )}
@@ -114,7 +114,7 @@ export default function ClubPicker({ value, onChange, availableClubs, citySelect
         <div className="mt-1.5 flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
           <span className="material-symbols-outlined text-blue-500 text-[16px] shrink-0 mt-0.5">info</span>
           <p className="text-[10px] font-bold text-blue-700 leading-snug">
-            {t('common.firstClubInCity', 'Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy.')}
+            {t('common.firstClubInCity', 'Jesteś pierwszą osobą z tego miasta/klubu — zostanie dodany do bazy. Wpisz nazwę klubu jak najdokładniej, żeby inni członkowie nie dodali tego samego klubu pod inną nazwą.')}
           </p>
         </div>
       )}

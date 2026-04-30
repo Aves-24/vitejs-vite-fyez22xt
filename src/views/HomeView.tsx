@@ -585,6 +585,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
   useEffect(() => {
     if (!userId) return;
+    let cancelled = false;
 
     const fetchAnnouncements = async () => {
       const cacheKey = `grotX_announcements_${userId}_${i18n.language}`;
@@ -644,6 +645,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const visibleAnnouncements = myAnnouncements.filter((a: any) => !dismissedIds.includes(a.id));
 
       const lastSeenId = localStorage.getItem(`last_seen_ann_${userId}`);
+      if (cancelled) return;
       if (visibleAnnouncements.length > 0 && visibleAnnouncements[0].id !== lastSeenId) {
         const hasCoach = visibleAnnouncements.some((a: any) => !!a.senderId);
         setNewAnnouncementType(hasCoach ? 'coach' : 'system');
@@ -653,6 +655,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     };
 
     fetchAnnouncements();
+    return () => { cancelled = true; };
   }, [userId, userClub, i18n.language, trialEndsAt, rawIsPremium]);
 
   const validClubBattles = activeClubBattles.filter(b => {

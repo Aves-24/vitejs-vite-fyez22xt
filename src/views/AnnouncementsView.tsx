@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 
 interface AnnouncementsViewProps {
@@ -25,10 +25,11 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
       setIsLoading(true);
 
       try {
-        // Pobieramy ostatnie 20 ogłoszeń z Firebase (tyle samo co HomeView)
-        const snap = await getDocs(
-          query(collection(db, 'announcements'), orderBy('timestamp', 'desc'), limit(20))
-        );
+        const [snap, userSnap] = await Promise.all([
+          getDocs(query(collection(db, 'announcements'), orderBy('timestamp', 'desc'), limit(20))),
+          getDoc(doc(db, 'users', userId)),
+        ]);
+
         const allAnn = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // Filtrujemy – ten sam algorytm co w HomeView
@@ -42,12 +43,38 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
           );
         });
 
+        // Ten sam algorytm co w HomeView – syntetyczne powiadomienie o trialu
+        if (userSnap.exists()) {
+          const ud = userSnap.data();
+          const trialEndsAt = ud.trialEndsAt ? new Date(ud.trialEndsAt).getTime() : null;
+          const rawIsPremium = ud.isPremium || ud.isPremiumPromo || false;
+          if (trialEndsAt && !rawIsPremium) {
+            const daysLeft = Math.ceil((trialEndsAt - Date.now()) / (1000 * 3600 * 24));
+            if (daysLeft >= 28) {
+              myAnnouncements.unshift({
+                id: 'sys_trial_welcome',
+                title: t('home.trialWelcomeTitle'),
+                content: t('home.trialWelcomeContent'),
+                target: 'USER',
+                lang: i18n.language,
+                isSystemGenerated: true,
+              });
+            } else if (daysLeft === 7 || daysLeft === 1) {
+              myAnnouncements.unshift({
+                id: `sys_trial_warning_${daysLeft}`,
+                title: t('home.trialWarningTitle', { days: daysLeft, unit: daysLeft === 1 ? t('home.trialWarningDay') : t('home.trialWarningDays') }),
+                content: t('home.trialWarningContent'),
+                target: 'USER',
+                lang: i18n.language,
+                isSystemGenerated: true,
+              });
+            }
+          }
+        }
+
         setAnnouncements(myAnnouncements);
 
         // ─── MARK AS SEEN ────────────────────────────────────────────────────
-        // Zapisujemy ID pierwszego (najnowszego) ogłoszenia.
-        // HomeView porównuje z tym ID, żeby zdecydować czy świecić czerwoną kropką.
-        // Dzięki temu po wejściu tutaj kropka znika przy następnym powrocie na HOME.
         if (myAnnouncements.length > 0) {
           localStorage.setItem(`last_seen_ann_${userId}`, myAnnouncements[0].id);
         }

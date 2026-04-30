@@ -430,10 +430,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const arr = data.arrows || data.totalArrows || 0;
           const sc  = data.score  || 0;
           const ts  = getSafeTime(data.timestamp);
+          const isTechnical = data.type === 'TECHNICAL';
 
           y += arr;
           if (ts >= startOfMonth) m += arr;
-          if (ts >= fourteenDaysAgo.getTime()) { a14 += arr; s14 += sc; }
+          if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += arr; s14 += sc; }
         });
 
         const avg14 = a14 > 0 ? (s14 / a14).toFixed(1) : '0.0';

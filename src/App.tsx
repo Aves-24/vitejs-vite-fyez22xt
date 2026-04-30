@@ -172,6 +172,14 @@ export default function App() {
         if (data.showRegion !== false && cCity) parts.push(cCity);
         setUserClub(parts.length > 0 ? parts.join(' - ') : '');
 
+        // Fallback dla kont założonych przed dodaniem trialEndsAt do App.tsx.
+        // Reguła Firestore pozwala ustawić to pole jednorazowo gdy go brakuje.
+        if (!data.trialEndsAt) {
+          setDoc(doc(db, 'users', user.uid), {
+            trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          }, { merge: true }).catch(e => console.error('trialEndsAt fallback failed:', e));
+        }
+
         if (!data.firstName) {
           setAutoStartWizard(true);
           setCurrentView('SETTINGS');

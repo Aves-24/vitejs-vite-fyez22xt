@@ -100,7 +100,10 @@ export default function SettingsView({
   };
 
   useEffect(() => { if (initialTab) setActiveTab(initialTab as SettingsTab); }, [initialTab]);
-  useEffect(() => { if (autoStartWizard) setWizardStep(1); }, [autoStartWizard]);
+  // Functional update: start wizard only from step 0. Prevents Firestore's
+  // optimistic-then-rejected onSnapshot cycle from resetting wizardStep to 1
+  // while the user is already mid-wizard (e.g. on step 7 clicking Finish).
+  useEffect(() => { if (autoStartWizard) setWizardStep(s => s === 0 ? 1 : s); }, [autoStartWizard]);
 
   // Rozpakowanie birthDate → bDay/bMonth/bYear JEDNORAZOWO (przy pierwszym
   // przyjściu daty z Firestore). Potem synchronizacja idzie tylko w drugą
@@ -213,17 +216,11 @@ export default function SettingsView({
         }
       }
 
-      let finalTrialEndsAt = trialEndsAt;
-      if (!finalTrialEndsAt) {
-        const trialDate = new Date(); trialDate.setDate(trialDate.getDate() + 30);
-        finalTrialEndsAt = trialDate.toISOString(); setTrialEndsAt(finalTrialEndsAt);
-      }
-
-      // Zapisujemy nowe pola sprzętowe w bazie
-      // [BEZPIECZEŃSTWO] `isPremium` NIE jest tu zapisywane — to pole chronione,
-      // zmieniane tylko przez admina lub backend (po zakupie). Klient tylko je czyta.
-      // `trialEndsAt` zapisujemy tylko przy pierwszej inicjalizacji (gdy było null) —
-      // reguła pozwala na to jednorazowo, potem lock.
+      // [BEZPIECZEŃSTWO] `isPremium` NIE jest tu zapisywane — to pole chronione.
+      // `trialEndsAt` NIE jest tu zapisywane — ustawiane jednorazowo przez App.tsx
+      // przy tworzeniu konta; reguła Firestore blokuje jakąkolwiek zmianę tego pola
+      // gdy jest już obecne w dokumencie. Stare konta bez trialEndsAt obsługuje
+      // osobny fallback w App.tsx (onSnapshot handler).
       const payload: any = {
         firstName, lastName, nickname, club, clubName: club, clubCity, placeId, countryCode: cCode,
         gender, birthDate, country, height, handedness,
@@ -231,10 +228,6 @@ export default function SettingsView({
         startYear, competitionLevel, userDistances: finalDistances,
         showFullName, showClub, showRegion
       };
-      // Trial tylko przy pierwszym zapisie (gdy wcześniej null)
-      if (!trialEndsAt && finalTrialEndsAt) {
-        payload.trialEndsAt = finalTrialEndsAt;
-      }
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
       if (wizardStep === 0) showToast(t('settings.successSave'));
     } catch (error) {

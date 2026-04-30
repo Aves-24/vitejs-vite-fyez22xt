@@ -202,7 +202,10 @@ export default function ProfileWizard(props: ProfileWizardProps) {
         <div className="absolute inset-0 bg-emerald-900/20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
         <div className="relative z-10 flex flex-col items-center">
           <span className="material-symbols-outlined text-[80px] text-[#fed33e] mb-4 animate-bounce-subtle">auto_awesome</span>
-          <h1 className="text-3xl font-black text-white mb-2 text-center">{t('settings.wizard.welcomeTitle', 'Witaj w GROT-X!')}</h1>
+          <h1 className="text-3xl font-black text-white mb-2 text-center flex flex-col items-center leading-snug">
+            <span>{t('settings.wizard.welcomeTitle1')}</span>
+            <span>{t('settings.wizard.welcomeTitle2')}</span>
+          </h1>
           <p className="text-base font-black text-[#fed33e] text-center mb-4 uppercase tracking-wide">
             {t('settings.wizard.assistantTitle', { steps: totalSteps })}
           </p>

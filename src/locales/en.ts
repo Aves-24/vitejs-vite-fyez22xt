@@ -94,7 +94,7 @@ export const components = {
   common: {
     comingSoon: "Coming soon",
     noClubsFound: "No matching clubs found",
-    clubNameWarning: "This name is not in the database. Please verify it is correct.",
+    clubNameWarning: "This name is not in the database. Please enter the club name as accurately as possible so it can be added correctly and prevent other members from registering the same club under a different name.",
     firstClubInCity: "You are the first person from this city/club — it will be added to the database.",
     noClubManual: "Club not found? Enter manually",
     arrows: "arrows",
@@ -579,7 +579,8 @@ export const views = {
       benefit2: "Sight settings always at hand",
       laterNote: "You can fill in missing data later in Settings, but we encourage you to do it now — it only takes a moment.",
       completionNote: "Carefully completing the assistant is the key to full GROT-X functionality — don't skip any step!",
-      welcomeTitle: "Welcome to GROT-X!",
+      welcomeTitle1: "Welcome,",
+      welcomeTitle2: "to GROT-X.",
       welcomeBtn: "GOT IT, LET'S START"
     },
     sight: {

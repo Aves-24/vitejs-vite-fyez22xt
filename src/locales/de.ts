@@ -94,7 +94,7 @@ export const components = {
   common: {
     comingSoon: "In Kürze verfügbar",
     noClubsFound: "Kein passender Verein gefunden",
-    clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte überprüfe die Schreibweise.",
+    clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte gib den Vereinsnamen so genau wie möglich ein, damit er korrekt hinzugefügt werden kann und andere Mitglieder ihn nicht unter einem anderen Namen eintragen.",
     firstClubInCity: "Du bist die erste Person aus dieser Stadt/diesem Verein — er wird der Datenbank hinzugefügt.",
     noClubManual: "Kein Verein gefunden? Manuell eingeben",
     arrows: "Pfeile",
@@ -579,7 +579,8 @@ export const views = {
       benefit2: "Visiereinstellungen immer griffbereit",
       laterNote: "Du kannst fehlende Daten später in den Einstellungen ergänzen, aber wir empfehlen, es jetzt auszufüllen — es dauert nur einen Moment.",
       completionNote: "Das sorgfältige Ausfüllen des Assistenten ist der Schlüssel zur vollen Funktionalität von GROT-X — überspringe keinen Schritt!",
-      welcomeTitle: "Willkommen bei GROT-X!",
+      welcomeTitle1: "Willkommen,",
+      welcomeTitle2: "bei Grot-X.",
       welcomeBtn: "VERSTANDEN, LOS GEHT'S"
     },
     sight: {

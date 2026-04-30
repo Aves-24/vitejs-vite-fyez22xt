@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
@@ -66,7 +66,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [newTime, setNewTime] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [newNote, setNewNote] = useState('');
-  const [newDistance, setNewDistance] = useState('70m'); 
+  const [newDistance, setNewDistance] = useState('70m');
+  const calendarPickerRef = useRef<HTMLInputElement>(null);
   
   const [isPremium, setIsPremium] = useState(false);
   const [userSightMarks, setUserSightMarks] = useState<any[]>([]); 
@@ -824,6 +825,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    <div className="flex-[1.5] flex flex-col gap-1">
                      <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={newTime} onChange={e => setNewTime(e.target.value)} />
                      <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                   </div>
+                   <div className="flex flex-col gap-1 pb-4">
+                     <button type="button" onClick={() => calendarPickerRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                       <span className="material-symbols-outlined text-xl">calendar_today</span>
+                     </button>
+                     <input ref={calendarPickerRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setInputYear(y); setInputMonth(m); setInputDay(d); setDateError(''); } }} />
                    </div>
                  </div>
                  {dateError && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -66,6 +66,11 @@ export default function App() {
   const [activeBattleId, setActiveBattleId] = useState<string | null>(null); 
   const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
+
+  // Pętla ochronna dla jednorazowego fallback-write trialEndsAt:
+  // próbujemy MAX raz na sesję, niezależnie od wyniku. Bez tego optimistic
+  // update / server reject Firestore'a tworzy pętlę 50+ błędów.
+  const trialFallbackAttemptedRef = useRef(false);
 
   // --- WAKE LOCK (Globalna blokada gaszenia ekranu) ---
   useEffect(() => {
@@ -171,6 +176,16 @@ export default function App() {
         if (data.showClub !== false && cName) parts.push(cName);
         if (data.showRegion !== false && cCity) parts.push(cCity);
         setUserClub(parts.length > 0 ? parts.join(' - ') : '');
+
+        // Jednorazowy fallback dla starych kont bez trialEndsAt.
+        // Reguła Firestore (Path B) pozwala na jednorazowy zapis gdy pole
+        // nie istnieje w dokumencie. Ref chroni przed pętlą optimistic-revert.
+        if (!data.trialEndsAt && !trialFallbackAttemptedRef.current) {
+          trialFallbackAttemptedRef.current = true;
+          setDoc(doc(db, 'users', user.uid), {
+            trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          }, { merge: true }).catch(e => console.error('trialEndsAt fallback failed:', e));
+        }
 
         if (!data.firstName) {
           setAutoStartWizard(true);

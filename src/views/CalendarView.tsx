@@ -740,18 +740,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-start justify-center pt-24 px-4">
-          <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl overflow-y-auto max-h-[85vh] animate-fade-in-up">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-start justify-center pt-14 px-4">
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-6 shadow-2xl overflow-y-auto max-h-[90vh] animate-fade-in-up">
              <div className="flex justify-between items-center mb-4 text-[#0a3a2a]">
                 <h2 className="text-xl font-black">{editingEventId ? t('calendar.editEvent') : t('calendar.addEvent')}</h2>
                 <button onClick={() => { setShowForm(false); resetForm(); }} className="p-2 active:scale-90 bg-red-50 text-red-500 hover:text-red-600 rounded-full transition-colors"><span className="material-symbols-outlined">close</span></button>
              </div>
 
-             <div className="flex p-1 bg-gray-100 rounded-2xl mb-4">
-               <button onClick={() => setNewCategory('Turniej')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Turniej' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTournament')}</button>
-               <button onClick={() => setNewCategory('Inne')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Inne' ? 'bg-emerald-100 text-emerald-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabOther')}</button>
+             <div className="flex p-1 bg-gray-100 rounded-xl mb-4">
+               <button onClick={() => setNewCategory('Turniej')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${newCategory === 'Turniej' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTournament')}</button>
+               <button onClick={() => setNewCategory('Inne')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${newCategory === 'Inne' ? 'bg-emerald-100 text-emerald-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabOther')}</button>
                {isCoach && (
-                 <button onClick={() => setNewCategory('Trener')} className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${newCategory === 'Trener' ? 'bg-blue-100 text-blue-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTrainer')}</button>
+                 <button onClick={() => setNewCategory('Trener')} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${newCategory === 'Trener' ? 'bg-blue-100 text-blue-700 shadow-md' : 'text-gray-400'}`}>{t('calendar.tabTrainer')}</button>
                )}
              </div>
              
@@ -808,8 +808,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                )}
 
                <div className="space-y-2">
-                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('calendar.modalDateTime')}</label>
-                 <div className="flex gap-1.5 items-end">
+                 <div className="flex items-center justify-between ml-1 mr-0.5">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('calendar.modalDateTime')}</label>
+                   <button type="button" onClick={() => calendarPickerRef.current?.click()} className="w-7 h-7 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-600 active:scale-95 transition-all">
+                     <span className="material-symbols-outlined text-sm">calendar_today</span>
+                   </button>
+                   <input ref={calendarPickerRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setInputYear(y); setInputMonth(m); setInputDay(d); setDateError(''); } }} />
+                 </div>
+                 <div className="flex gap-1.5">
                    <div className="flex-1 flex flex-col gap-1">
                      <input type="number" placeholder="DD" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputDay} onChange={e => { setInputDay(e.target.value.slice(0,2)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
@@ -825,12 +831,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    <div className="flex-[1.5] flex flex-col gap-1">
                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-2.5 text-center font-black text-base text-[#5d4a00] outline-none" value={newTime} onChange={e => setNewTime(e.target.value)} />
                      <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
-                   </div>
-                   <div className="flex flex-col gap-1 mb-4">
-                     <button type="button" onClick={() => calendarPickerRef.current?.click()} className="w-10 h-10 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
-                       <span className="material-symbols-outlined text-lg">calendar_today</span>
-                     </button>
-                     <input ref={calendarPickerRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setInputYear(y); setInputMonth(m); setInputDay(d); setDateError(''); } }} />
                    </div>
                  </div>
                  {dateError && (

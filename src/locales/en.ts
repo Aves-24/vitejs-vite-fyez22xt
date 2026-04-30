@@ -428,6 +428,8 @@ export const views = {
     modalEdit: "Edit",
     modalDelete: "Delete",
     confirmDelete: "Are you sure you want to delete this event from the schedule?",
+    todoSection: "To-Do",
+    todoToggle: "No date — to-do",
     days: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
   },
   profile: {

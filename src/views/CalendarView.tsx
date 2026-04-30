@@ -19,6 +19,7 @@ interface Event {
   distance?: string;
   hasScore?: boolean;
   coachStudents?: 'all' | string[];
+  todo?: boolean;
 }
 
 interface CoachStudent {
@@ -77,6 +78,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showAllTrainer, setShowAllTrainer] = useState(false);
   const [showAllPast, setShowAllPast] = useState(false);
 
+  const [newIsTodo, setNewIsTodo] = useState(false);
+  const [todoEvents, setTodoEvents] = useState<Event[]>([]);
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const availableDistances = ['18m', '20m', '25m', '30m', '40m', '50m', '60m', '70m', '90m'];
@@ -87,6 +91,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   useEffect(() => {
     if (!userId) return; 
     let unsubscribe: () => void;
+    let unsubscribeTodo: () => void;
     let isMounted = true; // <--- DODANE: Zabezpieczenie przed asynchronicznym duchem
 
     const setupCalendarData = async () => {
@@ -141,6 +146,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         const loadedEvents = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Event[];
         setEvents(loadedEvents);
       });
+
+      const qTodo = query(
+        collection(db, 'users', userId, 'tournaments'),
+        where('todo', '==', true)
+      );
+      unsubscribeTodo = onSnapshot(qTodo, (snapshot) => {
+        if (!isMounted) return;
+        const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Event[];
+        setTodoEvents(loaded);
+      });
     };
 
     setupCalendarData();
@@ -148,6 +163,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return () => {
       isMounted = false; // Zaznaczamy, że komponent znika
       if (unsubscribe) unsubscribe();
+      if (unsubscribeTodo) unsubscribeTodo();
     };
   }, [userId]);
 
@@ -192,6 +208,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewDistance('70m');
     setNewCategory('Turniej');
     setNewCoachStudents('all');
+    setNewIsTodo(false);
   };
 
   const handleOpenNewForm = () => {
@@ -220,6 +237,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setEditingEventId(viewingEvent.id);
     setNewCategory(viewingEvent.category || 'Turniej');
     setNewTitle(viewingEvent.title);
+    setNewIsTodo(viewingEvent.todo || false);
     setNewDate(viewingEvent.date);
     const dParts = viewingEvent.date.split('-');
     setInputYear(dParts[0] || '');
@@ -257,14 +275,28 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return '';
   };
 
-  const saveEvent = async () => {
-    const validationError = validateInputDate(inputDay, inputMonth, inputYear);
-    if (validationError) {
-      setDateError(validationError);
-      return;
+  const markTodoComplete = async (id: string) => {
+    try {
+      await updateDoc(doc(db, 'users', userId, 'tournaments', id), {
+        todo: false,
+        date: todayStr,
+      });
+    } catch (error) {
+      console.error('Błąd oznaczenia jako zrobione:', error);
     }
-    setDateError('');
-    const finalDate = `${inputYear}-${String(inputMonth).padStart(2, '0')}-${String(inputDay).padStart(2, '0')}`;
+  };
+
+  const saveEvent = async () => {
+    let finalDate = '';
+    if (!newIsTodo) {
+      const validationError = validateInputDate(inputDay, inputMonth, inputYear);
+      if (validationError) {
+        setDateError(validationError);
+        return;
+      }
+      setDateError('');
+      finalDate = `${inputYear}-${String(inputMonth).padStart(2, '0')}-${String(inputDay).padStart(2, '0')}`;
+    }
     if (!newTitle || !userId) return;
     setIsSaving(true);
     
@@ -272,6 +304,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       category: newCategory,
       title: newTitle,
       date: finalDate,
+      todo: newIsTodo,
       time: newTime,
       address: newAddress,
       note: newNote,
@@ -465,13 +498,48 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
         
-        {upcomingEvents.length === 0 ? (
+        {todoEvents.length === 0 && upcomingEvents.length === 0 ? (
           <div className="text-center py-10 text-gray-300 flex flex-col items-center">
             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
             <p className="font-bold text-[10px] uppercase tracking-widest">{t('calendar.noEvents')}</p>
           </div>
         ) : (
           <>
+            {todoEvents.length > 0 && (
+              <div className="space-y-1">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5">
+                  {t('calendar.todoSection')}
+                </div>
+                {todoEvents.map(event => (
+                  <div
+                    key={event.id}
+                    onClick={() => setViewingEvent(event)}
+                    className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-emerald-50 border-emerald-200 text-[#0a3a2a]"
+                  >
+                    <div className="flex-1 p-4 flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center shadow-sm shrink-0">
+                        <span className="material-symbols-outlined text-emerald-300 text-[28px]">radio_button_unchecked</span>
+                      </div>
+                      <div className="flex-1 pr-2">
+                        <h3 className="font-black text-base leading-tight">{event.title}</h3>
+                        {event.note ? (
+                          <p className="text-[10px] font-bold text-emerald-600/70 mt-0.5 line-clamp-1">{event.note}</p>
+                        ) : (
+                          <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mt-0.5">{t('calendar.todoSection')}</p>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); markTodoComplete(event.id); }}
+                      className="w-16 bg-emerald-500 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-emerald-600 active:bg-emerald-700 transition-colors shrink-0 border-l border-emerald-200"
+                    >
+                      <span className="material-symbols-outlined text-white text-[26px]">check</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {upcomingTournaments.length > 0 && (
               <div className="space-y-1">
                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5">
@@ -807,7 +875,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  </div>
                )}
 
-               <div className="space-y-2">
+               {newCategory === 'Inne' && (
+                 <button
+                   type="button"
+                   onClick={() => setNewIsTodo(!newIsTodo)}
+                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all ${newIsTodo ? 'bg-emerald-50 border-emerald-400 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+                 >
+                   <span className={`material-symbols-outlined text-[20px] ${newIsTodo ? 'text-emerald-600' : 'text-gray-300'}`}>
+                     {newIsTodo ? 'check_circle' : 'radio_button_unchecked'}
+                   </span>
+                   <span className="text-[11px] font-black uppercase tracking-widest">{t('calendar.todoToggle')}</span>
+                 </button>
+               )}
+
+               {!newIsTodo && <div className="space-y-2">
                  <div className="flex items-center gap-1.5 ml-1">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('calendar.modalDateTime')}</label>
                    <div className="relative w-6 h-6">
@@ -838,15 +919,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  {dateError && (
                    <p className="text-[10px] font-bold text-red-500 text-center mt-1">{dateError}</p>
                  )}
-               </div>
-               
+               </div>}
+
                <input type="text" placeholder={t('calendar.formCity')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none" value={newAddress} onChange={e => setNewAddress(e.target.value)} />
                <textarea maxLength={120} placeholder={t('calendar.formNotes')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold h-20 resize-none focus:outline-none" value={newNote} onChange={e => setNewNote(e.target.value)} />
                
-               <button 
-                 onClick={saveEvent} 
-                 disabled={isSaving || !newTitle || !inputDay || !inputMonth || !inputYear} 
-                 className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${(!newTitle || !inputDay || !inputMonth || !inputYear) ? 'bg-gray-200 text-gray-400' : 'bg-[#0a3a2a] text-white'}`}
+               <button
+                 onClick={saveEvent}
+                 disabled={isSaving || !newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))}
+                 className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${(!newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))) ? 'bg-gray-200 text-gray-400' : 'bg-[#0a3a2a] text-white'}`}
                >
                  {isSaving ? t('calendar.formSaving') : t('calendar.formSave')}
                </button>
@@ -978,7 +1059,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('calendar.modalDateTime')}</span>
-                    <span className="text-sm font-black text-[#0a3a2a]">{new Date(viewingEvent.date).toLocaleDateString(currentLocale)} • {viewingEvent.time || '--:--'}</span>
+                    <span className="text-sm font-black text-[#0a3a2a]">
+                      {viewingEvent.todo ? t('calendar.todoSection') : `${new Date(viewingEvent.date).toLocaleDateString(currentLocale)} • ${viewingEvent.time || '--:--'}`}
+                    </span>
                   </div>
                 </div>
 
@@ -1040,15 +1123,25 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 )}
              </div>
 
+             {viewingEvent.todo && (
+               <button
+                 onClick={() => { markTodoComplete(viewingEvent.id); closeViewingModal(); }}
+                 className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-emerald-500 text-white active:scale-95 transition-all flex items-center justify-center gap-2"
+               >
+                 <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                 {t('calendar.todoSection')} — zrobione!
+               </button>
+             )}
+
              <div className="flex gap-2">
-               <button 
+               <button
                   onClick={handleEditViewing}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
                 >
                   {t('calendar.modalEdit')}
                </button>
-               <button 
-                  onClick={() => handleDeleteEvent(viewingEvent.id)} 
+               <button
+                  onClick={() => handleDeleteEvent(viewingEvent.id)}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
                 >
                   {t('calendar.modalDelete')}

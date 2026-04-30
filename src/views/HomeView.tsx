@@ -51,6 +51,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const { t, i18n } = useTranslation();
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
+  const [todoItems, setTodoItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realLastSession, setRealLastSession] = useState<any | null>(null);
   
@@ -274,13 +275,24 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     const fetchTournaments = async () => {
       const cacheKey = `grotX_tournaments_${userId}`;
+      const cacheTodoKey = `grotX_todos_${userId}`;
       const cached = cacheGet<any[]>(cacheKey);
+      const cachedTodos = cacheGet<any[]>(cacheTodoKey);
 
       if (cached) {
         if (cancelled) return;
         setNextTournament(cached.find((e: any) => e.category === 'Turniej' || !e.category) || null);
         setNextOtherEvent(cached.find((e: any) => e.category === 'Inne') || null);
+        if (cachedTodos) setTodoItems(cachedTodos);
         setIsLoading(false);
+        if (!cachedTodos) {
+          const qTodo = query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true));
+          const todoSnap = await getDocs(qTodo);
+          if (cancelled) return;
+          const todos = todoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+          setTodoItems(todos);
+          cacheSet(cacheTodoKey, todos, CACHE_TTL.TOURNAMENTS);
+        }
         return;
       }
 
@@ -290,20 +302,37 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         where('date', '>=', today),
         orderBy('date', 'asc')
       );
-      const snap = await getDocs(q);
+      const [snap, todoSnap] = await Promise.all([
+        getDocs(q),
+        getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true))),
+      ]);
       if (cancelled) return;
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const todos = todoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setNextTournament(all.find((e: any) => e.category === 'Turniej' || !e.category) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
+      setTodoItems(todos);
       setIsLoading(false);
 
       cacheSet(cacheKey, all, CACHE_TTL.TOURNAMENTS);
+      cacheSet(cacheTodoKey, todos, CACHE_TTL.TOURNAMENTS);
     };
 
     fetchTournaments();
     return () => { cancelled = true; };
   }, [userId]);
+
+  const markTodoComplete = async (id: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    try {
+      await updateDoc(doc(db, 'users', userId, 'tournaments', id), { todo: false, date: today });
+      setTodoItems(prev => prev.filter(t => t.id !== id));
+      localStorage.removeItem(`grotX_todos_${userId}`);
+    } catch (e) {
+      console.error('Błąd oznaczania todo:', e);
+    }
+  };
 
   useEffect(() => {
     if (!userId) return;
@@ -735,6 +764,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       <div className="flex flex-col gap-2">
         
+        {/* TO-DO */}
+        {!isLoading && todoItems.length > 0 && (
+          <div className="space-y-1.5 mt-1">
+            <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">{t('calendar.todoSection')}</div>
+            {todoItems.map(item => (
+              <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="relative bg-white border border-emerald-100 rounded-[20px] px-3 py-2.5 flex items-center gap-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+                <span className="material-symbols-outlined text-emerald-300 text-[22px] shrink-0">radio_button_unchecked</span>
+                <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
+                <button
+                  onClick={(e) => { e.stopPropagation(); markTodoComplete(item.id); }}
+                  className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 active:bg-emerald-600 transition-colors shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-white text-[18px]">check</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* NASTĘPNY CEL */}
         {!isLoading && nextTournament && (
           <div onClick={() => onGoToCalendar(nextTournament.id)} className="relative bg-[#0a3a2a] rounded-[28px] p-4 mt-1 shadow-lg text-white active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-[#0a3a2a]">

@@ -428,6 +428,8 @@ export const views = {
     modalEdit: "Bearbeiten",
     modalDelete: "Löschen",
     confirmDelete: "Möchtest du diesen Termin wirklich aus dem Kalender löschen?",
+    todoSection: "Zu Erledigen",
+    todoToggle: "Ohne Datum — zu erledigen",
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
   },
   profile: {

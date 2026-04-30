@@ -53,13 +53,15 @@ interface ProfileWizardProps {
 export default function ProfileWizard(props: ProfileWizardProps) {
   const { t } = useTranslation();
   
-  // [POPRAWKA] Twarde wywołanie ekranu powitalnego dla nowych kont
   const [showWelcome, setShowWelcome] = useState(false);
+  const prevWizardStepRef = React.useRef(0);
   useEffect(() => {
-    if (props.autoStartWizard && props.wizardStep === 1) {
+    const prev = prevWizardStepRef.current;
+    prevWizardStepRef.current = props.wizardStep;
+    if (props.wizardStep === 1 && prev === 0) {
       setShowWelcome(true);
     }
-  }, [props.autoStartWizard, props.wizardStep]);
+  }, [props.wizardStep]);
 
   const [isSavingLocal, setIsSavingLocal] = useState(false);
   const [wizardDistances, setWizardDistances] = useState<any[]>([]);

@@ -100,6 +100,7 @@ export default function SettingsView({
   };
 
   useEffect(() => { if (initialTab) setActiveTab(initialTab as SettingsTab); }, [initialTab]);
+  useEffect(() => { if (autoStartWizard) setWizardStep(1); }, [autoStartWizard]);
 
   // Rozpakowanie birthDate → bDay/bMonth/bYear JEDNORAZOWO (przy pierwszym
   // przyjściu daty z Firestore). Potem synchronizacja idzie tylko w drugą

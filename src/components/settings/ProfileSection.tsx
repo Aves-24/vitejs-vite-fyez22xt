@@ -76,7 +76,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
            </div>
            <div className="relative">
               <label className="text-[10px] font-black text-gray-400 uppercase ml-1">2. {t('settings.wizard.clubCity')}</label>
-              <input list="profile-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder="np. Sankt Tönis" className="w-full mt-0.5 bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
+              <input list="profile-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder={t('common.clubCityPlaceholder')} className="w-full mt-0.5 bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
               <datalist id="profile-cities">{props.availableCities.map(c => <option key={c} value={c} />)}</datalist>
            </div>
            <div>

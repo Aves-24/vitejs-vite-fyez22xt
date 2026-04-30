@@ -171,7 +171,17 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
     // Przekaż dystanse tylko jeśli zostały wygenerowane (krok 5 był odwiedzony)
     // Puste wizardDistances [] nie powinny nadpisać istniejących ustawień wizjera
-    await props.onSaveSettings(wizardDistances.length > 0 ? wizardDistances : undefined);
+    try {
+      await props.onSaveSettings(wizardDistances.length > 0 ? wizardDistances : undefined);
+    } catch (e) {
+      // Save failed (e.g. Firestore permission denied). Keep the wizard open
+      // so the user doesn't lose their data — do NOT call setWizardStep(0)
+      // here, because that would unmount the form and leave autoStartWizard=true
+      // in App state, which causes the guard to restart the wizard on the next
+      // snapshot event.
+      setIsSavingLocal(false);
+      return;
+    }
     props.setWizardStep(0);
     if (props.onNavigate) props.onNavigate('HOME');
   };

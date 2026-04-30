@@ -65,6 +65,8 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
   const [isSavingLocal, setIsSavingLocal] = useState(false);
   const [wizardDistances, setWizardDistances] = useState<any[]>([]);
+  const tDateRef = React.useRef<HTMLInputElement>(null);
+  const pDateRef = React.useRef<HTMLInputElement>(null);
 
   const countryOptions = t('settings.lists.countries', { returnObjects: true }) as string[];
   const competitionLevels = t('settings.lists.compLevels', { returnObjects: true }) as string[];
@@ -498,6 +500,10 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 </div>
               ))}
             </div>
+            <p className="text-[10px] font-bold text-gray-400 text-center px-2 pt-1">
+              <span className="material-symbols-outlined text-[12px] align-middle mr-0.5">info</span>
+              {t('settings.wizard.step5Note')}
+            </p>
           </div>
         )}
 
@@ -544,7 +550,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
                 
                 <div className="space-y-2 mt-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
                       <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
@@ -558,8 +564,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
+                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 pb-4">
+                      <button type="button" onClick={() => tDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                        <span className="material-symbols-outlined text-xl">calendar_today</span>
+                      </button>
+                      <input ref={tDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
                     </div>
                   </div>
                 </div>
@@ -596,7 +608,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
                 
                 <div className="space-y-2 mt-3">
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
                       <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
@@ -610,8 +622,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="text" placeholder="00:00" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
+                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                    </div>
+                    <div className="flex flex-col gap-1 pb-4">
+                      <button type="button" onClick={() => pDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
+                        <span className="material-symbols-outlined text-xl">calendar_today</span>
+                      </button>
+                      <input ref={pDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
                     </div>
                   </div>
                 </div>

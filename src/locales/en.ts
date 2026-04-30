@@ -549,6 +549,7 @@ export const views = {
       bowType: "Bow Type",
       step5Title: "Your Sight Marks",
       step5Desc: "I've prepared a list of distances. It's worth saving your sight marks here.",
+      step5Note: "Missing distances can be added at any time later in Settings.",
       distTarget: "Distance / Face",
       ext: "Extension",
       ud: "Elevation",

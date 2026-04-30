@@ -549,6 +549,7 @@ export const views = {
       bowType: "Rodzaj Łuku",
       step5Title: "Twoje Nastawy Wizjera",
       step5Desc: "Przygotowałem listę dystansów. Warto zapisać tutaj ustawienia celownika.",
+      step5Note: "Brakujące dystanse możesz dodać w dowolnym momencie w Ustawieniach.",
       distTarget: "Dystans / Tarcza",
       ext: "Wysięg",
       ud: "Wysokość",

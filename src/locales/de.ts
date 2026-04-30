@@ -549,6 +549,7 @@ export const views = {
       bowType: "Bogenart",
       step5Title: "Deine Visiermarken",
       step5Desc: "Ich habe eine Liste von Distanzen vorbereitet. Es lohnt sich, deine Visiermarken hier zu speichern.",
+      step5Note: "Fehlende Abstände können jederzeit später in den Einstellungen hinzugefügt werden.",
       distTarget: "Distanz / Auflage",
       ext: "Auszugslänge",
       ud: "Höhe",

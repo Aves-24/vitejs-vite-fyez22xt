@@ -240,7 +240,9 @@ export const views = {
     trialWarningTitle: "Darmowy PRO wygasa za {{days}} {{unit}}! 🚀",
     trialWarningDay: "dzień",
     trialWarningDays: "dni",
-    trialWarningContent: "Po tym czasie Twoje konto wróci do wersji FREE. Jeśli podoba Ci się Grot-X, zachowaj dostęp do wszystkich funkcji wykupując PRO."
+    trialWarningContent: "Po tym czasie Twoje konto wróci do wersji FREE. Jeśli podoba Ci się Grot-X, zachowaj dostęp do wszystkich funkcji wykupując PRO.",
+    trialWelcomeTitle: "Otrzymałeś 30 dni GROT-X Pro za darmo! 🎉",
+    trialWelcomeContent: "Odkryj wszystkie funkcje PRO bez ograniczeń. Ciesz się darmowym okresem próbnym!"
   },
   setup: {
     title: "Przygotowanie",

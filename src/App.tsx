@@ -203,6 +203,7 @@ export default function App() {
         setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           createdAt: serverTimestamp(),
+          trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
         }, { merge: true }).catch(e => console.error('Błąd tworzenia profilu:', e));
 
         setAutoStartWizard(true);

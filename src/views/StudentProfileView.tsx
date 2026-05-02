@@ -252,10 +252,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const nonTechnical = sessionsData.filter((s: any) => s.type !== 'TECHNICAL');
         setRecentSessions(nonTechnical.slice(0, 3));
         const spark = nonTechnical
-          .slice(0, 8)
+          .slice(0, 5)
           .reverse()
           .filter((s: any) => s.arrows > 0)
-          .map((s: any) => s.score / s.arrows);
+          .map((s: any) => s.score);
         setSparkline(spark);
       }
 
@@ -404,34 +404,50 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
           </button>
 
-          {/* SPARKLINE PROGRESU */}
+          {/* ERGEBNISKURVE */}
           <button
             onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
             className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
           >
-            <div className="flex-1">
-              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest block mb-1.5">{t('studentProfile.avg14days')} trend</span>
-              {sparkline.length >= 2 ? (
-                <div className="flex items-end gap-[3px] h-5">
-                  {(() => {
-                    const max = Math.max(...sparkline, 0.1);
-                    return sparkline.map((v, i) => (
-                      <div
-                        key={i}
-                        className="flex-1 rounded-sm"
-                        style={{
-                          height: `${Math.max(15, (v / max) * 100)}%`,
-                          backgroundColor: i === sparkline.length - 1 ? '#fed33e' : 'rgba(255,255,255,0.35)',
-                        }}
-                      />
-                    ));
-                  })()}
-                </div>
-              ) : (
+            <div className="flex-1 min-w-0">
+              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest block mb-1">ergebniskurve</span>
+              {sparkline.length >= 2 ? (() => {
+                const W = 100, H = 32, pad = 5;
+                const minS = Math.min(...sparkline);
+                const maxS = Math.max(...sparkline);
+                const range = maxS - minS || 1;
+                const maxIdx = sparkline.indexOf(maxS);
+                const minIdx = sparkline.lastIndexOf(minS);
+                const pts = sparkline.map((s, i) => ({
+                  x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
+                  y: H - pad - ((s - minS) / range) * (H - pad * 2),
+                }));
+                const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+                return (
+                  <div className="flex items-center gap-1.5 w-full">
+                    <svg viewBox={`0 0 ${W} ${H}`} className="flex-1" style={{ overflow: 'visible' }}>
+                      <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                      {pts.map((p, i) => {
+                        const isMax = i === maxIdx;
+                        const isMin = i === minIdx;
+                        const isLast = i === pts.length - 1;
+                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
+                        const r = (isMax || isMin) ? 3.5 : isLast ? 3 : 1.5;
+                        const op = (isMax || isMin || isLast) ? 1 : 0.3;
+                        return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
+                      })}
+                    </svg>
+                    <div className="flex flex-col gap-[3px] shrink-0">
+                      <span className="text-[8px] font-black text-emerald-400 leading-none">{maxS}</span>
+                      <span className="text-[8px] font-black text-red-400 leading-none">{minS}</span>
+                      <span className="text-[8px] font-black text-[#fed33e] leading-none">{sparkline[sparkline.length - 1]}</span>
+                    </div>
+                  </div>
+                );
+              })() : (
                 <span className="text-[9px] text-white/30 font-bold">—</span>
               )}
             </div>
-            <span className="material-symbols-outlined text-white/30 text-[18px] ml-2">arrow_forward_ios</span>
           </button>
         </div>
       </div>

@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateD
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
+import QuickStatsModal from '../components/QuickStatsModal';
 
 // --- FUNKCJA POMOCNICZA DO OBLICZANIA TRAFIEŃ ---
 const calculateHits = (ends: any[]) => {
@@ -203,8 +204,13 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [currentSessionIndex, setCurrentSessionIndex] = useState(0);
   
+  const [dailyArrows, setDailyArrows] = useState(0);
   const [monthlyArrows, setMonthlyArrows] = useState(0);
+  const [yearlyArrows, setYearlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
+
+  const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false);
+  const [quickStatsTab, setQuickStatsTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
   
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -231,7 +237,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setUpcomingTournaments(tourneysOnly);
 
       const now = new Date();
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
       const fourteenDaysAgo = new Date();
       fourteenDaysAgo.setDate(now.getDate() - 14);
 
@@ -244,10 +252,18 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         setRecentSessions(nonTechnical.slice(0, 3));
       }
 
-      const snapMonth = await getDocs(query(sessionsRef, where('timestamp', '>=', startOfMonth)));
-      let monthTotal = 0;
+      const [snapDay, snapMonth, snapYear] = await Promise.all([
+        getDocs(query(sessionsRef, where('timestamp', '>=', startOfDay))),
+        getDocs(query(sessionsRef, where('timestamp', '>=', startOfMonth))),
+        getDocs(query(sessionsRef, where('timestamp', '>=', startOfYear))),
+      ]);
+      let dayTotal = 0, monthTotal = 0, yearTotal = 0;
+      snapDay.forEach(d => dayTotal += (d.data().arrows || 0));
       snapMonth.forEach(d => monthTotal += (d.data().arrows || 0));
+      snapYear.forEach(d => yearTotal += (d.data().arrows || 0));
+      setDailyArrows(dayTotal);
       setMonthlyArrows(monthTotal);
+      setYearlyArrows(yearTotal);
 
       const snap14 = await getDocs(query(sessionsRef, where('timestamp', '>=', fourteenDaysAgo)));
       let tScore14 = 0; let tArrows14 = 0;
@@ -339,14 +355,24 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
         {/* LEKKIE STATYSTYKI */}
         <div className="grid grid-cols-3 gap-1.5 mt-3">
-          <div className="bg-white/10 rounded-xl p-2 border border-white/10 text-center">
+          <button
+            onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }}
+            className="bg-white/10 rounded-xl p-2 border border-white/10 text-center active:scale-95 transition-all"
+          >
             <p className="text-base font-black text-white leading-tight">{monthlyArrows}</p>
-            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
-          </div>
-          <div className="bg-white/10 rounded-xl p-2 border border-white/10 text-center">
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
+              {t('studentProfile.arrowsMonth')}<span className="material-symbols-outlined text-[9px]">chevron_right</span>
+            </span>
+          </button>
+          <button
+            onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
+            className="bg-white/10 rounded-xl p-2 border border-white/10 text-center active:scale-95 transition-all"
+          >
             <p className="text-base font-black text-[#fed33e] leading-tight">{avg14Days}</p>
-            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
-          </div>
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
+              {t('studentProfile.avg14days')}<span className="material-symbols-outlined text-[9px]">chevron_right</span>
+            </span>
+          </button>
           <div
             onClick={() => {
               if (recentSessions.length > 0) {
@@ -483,6 +509,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </div>
 
       </div>
+
+      {/* QUICK STATS MODAL UCZNIA */}
+      <QuickStatsModal
+        isOpen={isQuickStatsOpen}
+        onClose={() => setIsQuickStatsOpen(false)}
+        isPremium={!!(student.isPremium || student.isPremiumPromo)}
+        onNavigate={onNavigate}
+        userId={studentId}
+        initialTab={quickStatsTab}
+        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days }}
+      />
 
       {/* MODAL KARTY SPRZĘTOWEJ */}
       {showHardwareModal && typeof document !== 'undefined' && createPortal(

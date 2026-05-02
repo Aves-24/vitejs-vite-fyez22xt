@@ -372,29 +372,27 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {nextTournament && (
           <div
             onClick={() => { if (additionalTournamentsCount > 0) setShowTournamentsModal(true); }}
-            className={`bg-gradient-to-br from-fuchsia-600 to-purple-700 rounded-[20px] p-3.5 shadow-lg flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
+            className={`bg-[#fed33e] rounded-[20px] p-3.5 flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
           >
-            {/* dekoracyjne kółko w tle */}
-            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
-            <div className="absolute -right-2 -bottom-6 w-16 h-16 bg-white/5 rounded-full pointer-events-none" />
+            <div className="absolute -right-5 -top-5 w-28 h-28 rounded-full border-[14px] border-black/5 pointer-events-none" />
 
-            <div className="w-11 h-11 bg-white/20 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-white/20">
-              <span className="material-symbols-outlined text-white text-[22px]">emoji_events</span>
+            <div className="w-10 h-10 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#fed33e] text-[20px]">emoji_events</span>
             </div>
 
             <div className="flex-1 min-w-0">
-              <span className="text-[8px] font-black text-fuchsia-200 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
-              <h3 className="font-black text-white text-[13px] leading-tight truncate">{nextTournament.title}</h3>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="material-symbols-outlined text-fuchsia-300 text-[11px]">calendar_today</span>
-                <p className="text-[10px] font-bold text-fuchsia-200">
+              <span className="text-[8px] font-black text-[#0a3a2a]/50 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
+              <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{nextTournament.title}</h3>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="material-symbols-outlined text-[#0a3a2a]/50 text-[11px]">calendar_today</span>
+                <p className="text-[10px] font-bold text-[#0a3a2a]/60">
                   {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
                 </p>
               </div>
             </div>
 
             {additionalTournamentsCount > 0 && (
-              <div className="shrink-0 bg-white/20 border border-white/30 text-white w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] shadow-sm z-10">
+              <div className="shrink-0 bg-[#0a3a2a] text-[#fed33e] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] z-10">
                 +{additionalTournamentsCount}
               </div>
             )}
@@ -403,12 +401,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
         {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
         {currentSession && (
-          <div ref={sessionSectionRef} className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[24px] shadow-lg overflow-hidden">
+          <div ref={sessionSectionRef} className="bg-[#0a3a2a] rounded-[20px] overflow-hidden">
 
             {/* NAGŁÓWEK KARUZELI */}
-            <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+            <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
               <div className="flex-1">
-                <span className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">
+                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">
                   {t('studentProfile.historyLabel', { index: currentSessionIndex + 1, count: recentSessions.length })} · {currentSession.date}
                 </span>
                 <h3 className="font-black text-white text-sm mt-0.5">{currentSession.distance} · {currentSession.targetType}</h3>
@@ -418,14 +416,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 <button
                   onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))}
                   disabled={currentSessionIndex === recentSessions.length - 1}
-                  className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 disabled:opacity-30 transition-all"
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">arrow_back_ios_new</span>
                 </button>
                 <button
                   onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))}
                   disabled={currentSessionIndex === 0}
-                  className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 disabled:opacity-30 transition-all"
+                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">arrow_forward_ios</span>
                 </button>
@@ -436,24 +434,24 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             {recentSessions.length > 1 && (
               <div className="flex justify-center gap-1.5 pb-2">
                 {recentSessions.map((_, i) => (
-                  <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/30'}`} />
+                  <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-4 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/20'}`} />
                 ))}
               </div>
             )}
 
             {/* TREŚĆ SESJI */}
-            <div className="mx-3 mb-3 bg-white rounded-[18px] p-3 space-y-3">
+            <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">
 
-              <div className="grid grid-cols-5 text-center border-b border-gray-50 pb-3">
+              <div className="grid grid-cols-5 text-center pb-2.5 border-b border-gray-50">
                 <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
                 <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
-                <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-amber-400 uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black">{sessionHits.x}</p></div>
-                <div><p className="text-[8px] font-bold text-emerald-400 uppercase">10</p><p className="text-sm font-black">{sessionHits.ten}</p></div>
-                <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black">{sessionHits.nine}</p></div>
+                <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#b8860b] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.x}</p></div>
+                <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
+                <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.nine}</p></div>
               </div>
 
-              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 relative">
-                <span className="material-symbols-outlined absolute -top-3 -left-2 text-gray-300 text-3xl rotate-12">format_quote</span>
+              <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
+                <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
                 <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
               </div>

@@ -532,16 +532,27 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         )}
 
-        <div className="pt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-lg font-black text-[#0a3a2a]">{t('studentProfile.fullAnalytics')}</h2>
+        <div className="pt-3">
+          {/* NAGŁÓWEK SEKCJI ANALITYKI */}
+          <div className="bg-[#0a3a2a] rounded-[20px] px-4 py-3 mb-2 flex items-center justify-between overflow-hidden relative">
+            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full border-[12px] border-white/5 pointer-events-none" />
+            <div className="absolute right-10 -bottom-4 w-14 h-14 rounded-full border-[8px] border-white/5 pointer-events-none" />
+            <div className="flex items-center gap-3 relative z-10">
+              <div className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#0a3a2a] text-[18px]">analytics</span>
+              </div>
+              <div>
+                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-0.5">{student.firstName} {student.lastName}</p>
+                <h2 className="text-base font-black text-white leading-none">{t('studentProfile.fullAnalytics')}</h2>
+              </div>
+            </div>
             {student.isPremium || student.isPremiumPromo ? (
-              <span className="bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">PRO</span>
+              <span className="relative z-10 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">PRO</span>
             ) : (
-              <span className="bg-gray-200 text-gray-500 text-[8px] font-black px-1.5 py-0.5 rounded uppercase tracking-widest">FREE</span>
+              <span className="relative z-10 bg-white/10 text-white/50 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">FREE</span>
             )}
           </div>
-          
+
           <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden relative min-h-[600px] -mx-5 px-5 pt-4">
              <StatsView 
                userId={studentId} 

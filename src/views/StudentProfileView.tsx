@@ -6,21 +6,17 @@ import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 
-const STUDENT_PROFILE_TTL = 10 * 60 * 1000; // 10 minut
-
 function spCacheGet<T>(key: string): T | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    const { data, expiresAt } = JSON.parse(raw);
-    if (Date.now() > expiresAt) { localStorage.removeItem(key); return null; }
-    return data as T;
+    return JSON.parse(raw) as T;
   } catch { return null; }
 }
 
 function spCacheSet(key: string, data: unknown): void {
   try {
-    localStorage.setItem(key, JSON.stringify({ data, expiresAt: Date.now() + STUDENT_PROFILE_TTL }));
+    localStorage.setItem(key, JSON.stringify(data));
   } catch { /* ignore */ }
 }
 
@@ -244,10 +240,20 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     const fetchStudentData = async () => {
       if (!studentId) return;
 
+      // Zawsze pobieramy profil ucznia — 1 odczyt, potrzebny i tak
+      const studentDoc = await getDoc(doc(db, 'users', studentId));
+      const studentData = studentDoc.exists() ? studentDoc.data() : null;
+      if (studentData) setStudent(studentData);
+
+      // lastSessionTimestamp jako klucz świeżości danych
+      const rawTs = studentData?.lastSessionTimestamp;
+      const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
+
       const cacheKey = `grotX_studentProfile_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
-      if (cached) {
-        setStudent(cached.student);
+
+      if (cached && cached.lastSessionTimestamp === lastTs) {
+        // Nic się nie zmieniło — używamy cache, 0 dodatkowych odczytów
         setUpcomingTournaments(cached.tournaments);
         setRecentSessions(cached.recentSessions);
         setSparkline(cached.sparkline);
@@ -258,15 +264,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         return;
       }
 
-      const studentDoc = await getDoc(doc(db, 'users', studentId));
-      const studentData = studentDoc.exists() ? studentDoc.data() : null;
-      if (studentData) setStudent(studentData);
-
+      // Nowa aktywność lub brak cache — pełny fetch
       const today = new Date().toISOString().split('T')[0];
-      const qTourney = query(collection(db, `users/${studentId}/tournaments`), where('date', '>=', today), orderBy('date', 'asc'));
-      const snapTourney = await getDocs(qTourney);
-      const allEvents = snapTourney.docs.map(d => ({ id: d.id, ...d.data() }));
-      const tournaments = allEvents.filter((e: any) => e.category === 'Turniej' || !e.category);
+      const snapTourney = await getDocs(query(collection(db, `users/${studentId}/tournaments`), where('date', '>=', today), orderBy('date', 'asc')));
+      const tournaments = snapTourney.docs.map(d => ({ id: d.id, ...d.data() })).filter((e: any) => e.category === 'Turniej' || !e.category);
       setUpcomingTournaments(tournaments);
 
       const now = new Date();
@@ -275,8 +276,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
       const fourteenDaysAgo = now.getTime() - 14 * 24 * 60 * 60 * 1000;
 
-      const sessionsRef = collection(db, `users/${studentId}/sessions`);
-      const snap = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(15)));
+      const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
       let recentSessions: any[] = [], sparkline: number[] = [];
       let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
@@ -286,22 +286,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
         recentSessions = nonTech.slice(0, 3);
         sparkline = nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
-
         all.forEach((s: any) => {
           const ts: number = s.timestamp?.toMillis ? s.timestamp.toMillis() : (s.timestamp || 0);
           const arrows = s.arrows || 0;
           if (ts >= startOfDay)   dayTotal   += arrows;
           if (ts >= startOfMonth) monthTotal += arrows;
           if (ts >= startOfYear)  yearTotal  += arrows;
-          if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') {
-            tScore14  += (s.score  || 0);
-            tArrows14 += arrows;
-          }
+          if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') { tScore14 += (s.score || 0); tArrows14 += arrows; }
         });
       }
 
       const avg14Days = tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0';
-
       setRecentSessions(recentSessions);
       setSparkline(sparkline);
       setDailyArrows(dayTotal);
@@ -309,7 +304,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setYearlyArrows(yearTotal);
       setAvg14Days(avg14Days);
 
-      spCacheSet(cacheKey, { student: studentData, tournaments, recentSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
     };
 
     fetchStudentData();

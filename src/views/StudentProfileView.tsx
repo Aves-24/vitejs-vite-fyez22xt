@@ -403,41 +403,38 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {currentSession && (
           <div ref={sessionSectionRef} className="bg-[#0a3a2a] rounded-[20px] overflow-hidden">
 
-            {/* NAGŁÓWEK KARUZELI */}
-            <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
-              <div className="flex-1">
-                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">
-                  {t('studentProfile.historyLabel', { index: currentSessionIndex + 1, count: recentSessions.length })} · {currentSession.date}
-                </span>
-                <h3 className="font-black text-white text-sm mt-0.5">{currentSession.distance} · {currentSession.targetType}</h3>
+            {/* NAGŁÓWEK KARUZELI — jedna linia */}
+            <div className="px-3 py-2.5 flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">{currentSession.date} · </span>
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">{currentSession.distance} · {currentSession.targetType}</span>
               </div>
 
-              <div className="flex items-center gap-1">
+              {recentSessions.length > 1 && (
+                <div className="flex items-center gap-1 shrink-0">
+                  {recentSessions.map((_, i) => (
+                    <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/25'}`} />
+                  ))}
+                </div>
+              )}
+
+              <div className="flex items-center gap-0.5 shrink-0">
                 <button
                   onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))}
                   disabled={currentSessionIndex === recentSessions.length - 1}
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
+                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_back_ios_new</span>
+                  <span className="material-symbols-outlined text-[13px]">arrow_back_ios_new</span>
                 </button>
                 <button
                   onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))}
                   disabled={currentSessionIndex === 0}
-                  className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
+                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_forward_ios</span>
+                  <span className="material-symbols-outlined text-[13px]">arrow_forward_ios</span>
                 </button>
               </div>
             </div>
-
-            {/* KROPKI PAGINACJI */}
-            {recentSessions.length > 1 && (
-              <div className="flex justify-center gap-1.5 pb-2">
-                {recentSessions.map((_, i) => (
-                  <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-4 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/20'}`} />
-                ))}
-              </div>
-            )}
 
             {/* TREŚĆ SESJI */}
             <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">

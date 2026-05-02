@@ -366,7 +366,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-32 space-y-4">
+      <div className="flex-1 overflow-y-auto px-5 pt-2 pb-32 space-y-2">
         
         {/* NASTĘPNY CEL UCZNIA */}
         {nextTournament && (

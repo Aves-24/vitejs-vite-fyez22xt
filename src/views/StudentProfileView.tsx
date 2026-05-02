@@ -236,10 +236,11 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const sessionsRef = collection(db, `users/${studentId}/sessions`);
       
-      const snapRecent = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(3)));
+      const snapRecent = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(10)));
       if (!snapRecent.empty) {
         const sessionsData = snapRecent.docs.map(d => ({ id: d.id, ...d.data() }));
-        setRecentSessions(sessionsData);
+        const nonTechnical = sessionsData.filter((s: any) => s.type !== 'TECHNICAL');
+        setRecentSessions(nonTechnical.slice(0, 3));
       }
 
       const snapMonth = await getDocs(query(sessionsRef, where('timestamp', '>=', startOfMonth)));
@@ -250,6 +251,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const snap14 = await getDocs(query(sessionsRef, where('timestamp', '>=', fourteenDaysAgo)));
       let tScore14 = 0; let tArrows14 = 0;
       snap14.forEach(d => {
+        if (d.data().type === 'TECHNICAL') return;
         tScore14 += (d.data().score || 0);
         tArrows14 += (d.data().arrows || 0);
       });

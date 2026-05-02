@@ -6,6 +6,24 @@ import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 
+const STUDENT_PROFILE_TTL = 10 * 60 * 1000; // 10 minut
+
+function spCacheGet<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return null;
+    const { data, expiresAt } = JSON.parse(raw);
+    if (Date.now() > expiresAt) { localStorage.removeItem(key); return null; }
+    return data as T;
+  } catch { return null; }
+}
+
+function spCacheSet(key: string, data: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify({ data, expiresAt: Date.now() + STUDENT_PROFILE_TTL }));
+  } catch { /* ignore */ }
+}
+
 // --- FUNKCJA POMOCNICZA DO OBLICZANIA TRAFIEŃ ---
 const calculateHits = (ends: any[]) => {
   let x = 0, ten = 0, nine = 0;
@@ -226,16 +244,30 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     const fetchStudentData = async () => {
       if (!studentId) return;
 
+      const cacheKey = `grotX_studentProfile_${studentId}`;
+      const cached = spCacheGet<any>(cacheKey);
+      if (cached) {
+        setStudent(cached.student);
+        setUpcomingTournaments(cached.tournaments);
+        setRecentSessions(cached.recentSessions);
+        setSparkline(cached.sparkline);
+        setDailyArrows(cached.dailyArrows);
+        setMonthlyArrows(cached.monthlyArrows);
+        setYearlyArrows(cached.yearlyArrows);
+        setAvg14Days(cached.avg14Days);
+        return;
+      }
+
       const studentDoc = await getDoc(doc(db, 'users', studentId));
-      if (studentDoc.exists()) setStudent(studentDoc.data());
+      const studentData = studentDoc.exists() ? studentDoc.data() : null;
+      if (studentData) setStudent(studentData);
 
       const today = new Date().toISOString().split('T')[0];
       const qTourney = query(collection(db, `users/${studentId}/tournaments`), where('date', '>=', today), orderBy('date', 'asc'));
       const snapTourney = await getDocs(qTourney);
-      
       const allEvents = snapTourney.docs.map(d => ({ id: d.id, ...d.data() }));
-      const tourneysOnly = allEvents.filter((e: any) => e.category === 'Turniej' || !e.category);
-      setUpcomingTournaments(tourneysOnly);
+      const tournaments = allEvents.filter((e: any) => e.category === 'Turniej' || !e.category);
+      setUpcomingTournaments(tournaments);
 
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
@@ -246,14 +278,15 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const sessionsRef = collection(db, `users/${studentId}/sessions`);
       const snap = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(15)));
 
+      let recentSessions: any[] = [], sparkline: number[] = [];
+      let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
+
       if (!snap.empty) {
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
+        recentSessions = nonTech.slice(0, 3);
+        sparkline = nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
 
-        setRecentSessions(nonTech.slice(0, 3));
-        setSparkline(nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score));
-
-        let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
         all.forEach((s: any) => {
           const ts: number = s.timestamp?.toMillis ? s.timestamp.toMillis() : (s.timestamp || 0);
           const arrows = s.arrows || 0;
@@ -265,11 +298,18 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             tArrows14 += arrows;
           }
         });
-        setDailyArrows(dayTotal);
-        setMonthlyArrows(monthTotal);
-        setYearlyArrows(yearTotal);
-        setAvg14Days(tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0');
       }
+
+      const avg14Days = tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0';
+
+      setRecentSessions(recentSessions);
+      setSparkline(sparkline);
+      setDailyArrows(dayTotal);
+      setMonthlyArrows(monthTotal);
+      setYearlyArrows(yearTotal);
+      setAvg14Days(avg14Days);
+
+      spCacheSet(cacheKey, { student: studentData, tournaments, recentSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
     };
 
     fetchStudentData();

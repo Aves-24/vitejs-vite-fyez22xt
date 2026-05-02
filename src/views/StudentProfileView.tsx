@@ -208,6 +208,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [monthlyArrows, setMonthlyArrows] = useState(0);
   const [yearlyArrows, setYearlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
+  const [sparkline, setSparkline] = useState<number[]>([]);
 
   const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false);
   const [quickStatsTab, setQuickStatsTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
@@ -245,11 +246,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const sessionsRef = collection(db, `users/${studentId}/sessions`);
       
-      const snapRecent = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(10)));
+      const snapRecent = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(20)));
       if (!snapRecent.empty) {
         const sessionsData = snapRecent.docs.map(d => ({ id: d.id, ...d.data() }));
         const nonTechnical = sessionsData.filter((s: any) => s.type !== 'TECHNICAL');
         setRecentSessions(nonTechnical.slice(0, 3));
+        const spark = nonTechnical
+          .slice(0, 8)
+          .reverse()
+          .filter((s: any) => s.arrows > 0)
+          .map((s: any) => s.score / s.arrows);
+        setSparkline(spark);
       }
 
       const [snapDay, snapMonth, snapYear] = await Promise.all([
@@ -329,8 +336,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
       
       {/* HEADER TRENERA */}
-      <div className="bg-[#0a3a2a] pt-[calc(env(safe-area-inset-top)+1rem)] pb-6 px-5 rounded-b-[32px] shadow-lg relative z-20 shrink-0">
-        <div className="flex items-center gap-4 mb-4">
+      <div className="bg-[#0a3a2a] pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-5 rounded-b-[32px] shadow-lg relative z-20 shrink-0">
+        <div className="flex items-center gap-4 mb-2">
           <button onClick={() => onNavigate('COACH')} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
@@ -353,27 +360,34 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         </div>
 
-        {/* LEKKIE STATYSTYKI */}
-        <div className="grid grid-cols-3 gap-1.5 mt-3">
+        {/* STATYSTYKI 2×2 */}
+        <div className="grid grid-cols-2 gap-1.5 mt-2">
+          {/* STRZAŁY / MIESIĄC */}
           <button
             onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/10 rounded-xl p-2 border border-white/10 text-center active:scale-95 transition-all"
+            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
           >
-            <p className="text-base font-black text-white leading-tight">{monthlyArrows}</p>
-            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
-              {t('studentProfile.arrowsMonth')}<span className="material-symbols-outlined text-[9px]">chevron_right</span>
-            </span>
+            <div>
+              <p className="text-xl font-black text-white leading-none">{monthlyArrows}</p>
+              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
+            </div>
+            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
           </button>
+
+          {/* ŚREDNIA 14 DNI */}
           <button
             onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/10 rounded-xl p-2 border border-white/10 text-center active:scale-95 transition-all"
+            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
           >
-            <p className="text-base font-black text-[#fed33e] leading-tight">{avg14Days}</p>
-            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
-              {t('studentProfile.avg14days')}<span className="material-symbols-outlined text-[9px]">chevron_right</span>
-            </span>
+            <div>
+              <p className="text-xl font-black text-[#fed33e] leading-none">{avg14Days}</p>
+              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
+            </div>
+            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
           </button>
-          <div
+
+          {/* OSTATNI WYNIK */}
+          <button
             onClick={() => {
               if (recentSessions.length > 0) {
                 setCurrentSessionIndex(0);
@@ -381,14 +395,44 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
               }
             }}
-            className={`bg-white/10 rounded-xl p-2 border border-white/10 text-center ${recentSessions.length > 0 ? 'cursor-pointer active:scale-95 transition-all' : ''}`}
+            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
           >
-            <p className="text-base font-black text-white leading-tight">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
-            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
-              {t('studentProfile.lastScore')}
-              {recentSessions.length > 0 && <span className="material-symbols-outlined text-[9px]">chevron_right</span>}
-            </span>
-          </div>
+            <div>
+              <p className="text-xl font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
+              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
+            </div>
+            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
+          </button>
+
+          {/* SPARKLINE PROGRESU */}
+          <button
+            onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
+            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
+          >
+            <div className="flex-1">
+              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest block mb-1.5">{t('studentProfile.avg14days')} trend</span>
+              {sparkline.length >= 2 ? (
+                <div className="flex items-end gap-[3px] h-5">
+                  {(() => {
+                    const max = Math.max(...sparkline, 0.1);
+                    return sparkline.map((v, i) => (
+                      <div
+                        key={i}
+                        className="flex-1 rounded-sm"
+                        style={{
+                          height: `${Math.max(15, (v / max) * 100)}%`,
+                          backgroundColor: i === sparkline.length - 1 ? '#fed33e' : 'rgba(255,255,255,0.35)',
+                        }}
+                      />
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <span className="text-[9px] text-white/30 font-bold">—</span>
+              )}
+            </div>
+            <span className="material-symbols-outlined text-white/30 text-[18px] ml-2">arrow_forward_ios</span>
+          </button>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -206,6 +206,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [monthlyArrows, setMonthlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
   
+  const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
   const [showTournamentsModal, setShowTournamentsModal] = useState(false);
 
@@ -337,18 +338,30 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </div>
 
         {/* LEKKIE STATYSTYKI */}
-        <div className="grid grid-cols-3 gap-2 mt-6">
-          <div className="bg-white/10 rounded-2xl p-3 border border-white/10 text-center">
-            <p className="text-xl font-black text-white">{monthlyArrows}</p>
-            <span className="text-[8px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
+        <div className="grid grid-cols-3 gap-1.5 mt-3">
+          <div className="bg-white/10 rounded-xl p-2 border border-white/10 text-center">
+            <p className="text-base font-black text-white leading-tight">{monthlyArrows}</p>
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
           </div>
-          <div className="bg-white/10 rounded-2xl p-3 border border-white/10 text-center">
-            <p className="text-xl font-black text-[#fed33e]">{avg14Days}</p>
-            <span className="text-[8px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
+          <div className="bg-white/10 rounded-xl p-2 border border-white/10 text-center">
+            <p className="text-base font-black text-[#fed33e] leading-tight">{avg14Days}</p>
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
           </div>
-          <div className="bg-white/10 rounded-2xl p-3 border border-white/10 text-center">
-            <p className="text-xl font-black text-white">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
-            <span className="text-[8px] font-bold text-emerald-200 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
+          <div
+            onClick={() => {
+              if (recentSessions.length > 0) {
+                setCurrentSessionIndex(0);
+                setIsNotesExpanded(true);
+                setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+              }
+            }}
+            className={`bg-white/10 rounded-xl p-2 border border-white/10 text-center ${recentSessions.length > 0 ? 'cursor-pointer active:scale-95 transition-all' : ''}`}
+          >
+            <p className="text-base font-black text-white leading-tight">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
+            <span className="text-[7px] font-bold text-emerald-200 uppercase tracking-widest flex items-center justify-center gap-0.5">
+              {t('studentProfile.lastScore')}
+              {recentSessions.length > 0 && <span className="material-symbols-outlined text-[9px]">chevron_right</span>}
+            </span>
           </div>
         </div>
       </div>
@@ -357,22 +370,31 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         
         {/* NASTĘPNY CEL UCZNIA */}
         {nextTournament && (
-          <div 
+          <div
             onClick={() => { if (additionalTournamentsCount > 0) setShowTournamentsModal(true); }}
-            className={`bg-white border border-gray-100 rounded-[24px] p-4 shadow-sm flex items-center gap-4 relative ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
+            className={`bg-gradient-to-br from-fuchsia-600 to-purple-700 rounded-[20px] p-3.5 shadow-lg flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
           >
-            <div className="bg-fuchsia-50 text-fuchsia-600 p-3 rounded-xl text-center min-w-[60px]">
-              <span className="block text-[9px] font-black uppercase mb-0.5">{new Date(nextTournament.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-              <span className="block text-xl font-black">{new Date(nextTournament.date).getDate()}</span>
+            {/* dekoracyjne kółko w tle */}
+            <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full pointer-events-none" />
+            <div className="absolute -right-2 -bottom-6 w-16 h-16 bg-white/5 rounded-full pointer-events-none" />
+
+            <div className="w-11 h-11 bg-white/20 rounded-2xl flex flex-col items-center justify-center shrink-0 border border-white/20">
+              <span className="material-symbols-outlined text-white text-[22px]">emoji_events</span>
             </div>
-            <div className="flex-1 pr-12">
-              <span className="text-[9px] font-black text-fuchsia-500 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
-              <h3 className="font-black text-[#0a3a2a] text-sm leading-tight line-clamp-2">{nextTournament.title}</h3>
-              <p className="text-[10px] font-bold text-gray-400 mt-1">{getDaysUntil(nextTournament.date)}</p>
+
+            <div className="flex-1 min-w-0">
+              <span className="text-[8px] font-black text-fuchsia-200 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
+              <h3 className="font-black text-white text-[13px] leading-tight truncate">{nextTournament.title}</h3>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="material-symbols-outlined text-fuchsia-300 text-[11px]">calendar_today</span>
+                <p className="text-[10px] font-bold text-fuchsia-200">
+                  {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
+                </p>
+              </div>
             </div>
 
             {additionalTournamentsCount > 0 && (
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 bg-fuchsia-100 text-fuchsia-600 w-10 h-10 rounded-full flex items-center justify-center font-black text-xs shadow-sm border border-fuchsia-200">
+              <div className="shrink-0 bg-white/20 border border-white/30 text-white w-8 h-8 rounded-full flex items-center justify-center font-black text-[10px] shadow-sm z-10">
                 +{additionalTournamentsCount}
               </div>
             )}
@@ -381,7 +403,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
         {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
         {currentSession && (
-          <div className="bg-white border border-indigo-100 rounded-[24px] shadow-sm overflow-hidden">
+          <div ref={sessionSectionRef} className="bg-white border border-indigo-100 rounded-[24px] shadow-sm overflow-hidden">
             
             <div className="p-4 bg-indigo-50 flex items-center justify-between border-b border-indigo-100">
               <div className="flex-1 cursor-pointer" onClick={() => setIsNotesExpanded(!isNotesExpanded)}>

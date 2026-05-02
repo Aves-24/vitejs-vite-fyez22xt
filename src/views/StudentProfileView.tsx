@@ -238,48 +238,38 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setUpcomingTournaments(tourneysOnly);
 
       const now = new Date();
-      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const fourteenDaysAgo = new Date();
-      fourteenDaysAgo.setDate(now.getDate() - 14);
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+      const fourteenDaysAgo = now.getTime() - 14 * 24 * 60 * 60 * 1000;
 
       const sessionsRef = collection(db, `users/${studentId}/sessions`);
-      
-      const snapRecent = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(20)));
-      if (!snapRecent.empty) {
-        const sessionsData = snapRecent.docs.map(d => ({ id: d.id, ...d.data() }));
-        const nonTechnical = sessionsData.filter((s: any) => s.type !== 'TECHNICAL');
-        setRecentSessions(nonTechnical.slice(0, 3));
-        const spark = nonTechnical
-          .slice(0, 5)
-          .reverse()
-          .filter((s: any) => s.arrows > 0)
-          .map((s: any) => s.score);
-        setSparkline(spark);
+      const snap = await getDocs(query(sessionsRef, orderBy('timestamp', 'desc'), limit(15)));
+
+      if (!snap.empty) {
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
+
+        setRecentSessions(nonTech.slice(0, 3));
+        setSparkline(nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score));
+
+        let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
+        all.forEach((s: any) => {
+          const ts: number = s.timestamp?.toMillis ? s.timestamp.toMillis() : (s.timestamp || 0);
+          const arrows = s.arrows || 0;
+          if (ts >= startOfDay)   dayTotal   += arrows;
+          if (ts >= startOfMonth) monthTotal += arrows;
+          if (ts >= startOfYear)  yearTotal  += arrows;
+          if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') {
+            tScore14  += (s.score  || 0);
+            tArrows14 += arrows;
+          }
+        });
+        setDailyArrows(dayTotal);
+        setMonthlyArrows(monthTotal);
+        setYearlyArrows(yearTotal);
+        setAvg14Days(tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0');
       }
-
-      const [snapDay, snapMonth, snapYear] = await Promise.all([
-        getDocs(query(sessionsRef, where('timestamp', '>=', startOfDay))),
-        getDocs(query(sessionsRef, where('timestamp', '>=', startOfMonth))),
-        getDocs(query(sessionsRef, where('timestamp', '>=', startOfYear))),
-      ]);
-      let dayTotal = 0, monthTotal = 0, yearTotal = 0;
-      snapDay.forEach(d => dayTotal += (d.data().arrows || 0));
-      snapMonth.forEach(d => monthTotal += (d.data().arrows || 0));
-      snapYear.forEach(d => yearTotal += (d.data().arrows || 0));
-      setDailyArrows(dayTotal);
-      setMonthlyArrows(monthTotal);
-      setYearlyArrows(yearTotal);
-
-      const snap14 = await getDocs(query(sessionsRef, where('timestamp', '>=', fourteenDaysAgo)));
-      let tScore14 = 0; let tArrows14 = 0;
-      snap14.forEach(d => {
-        if (d.data().type === 'TECHNICAL') return;
-        tScore14 += (d.data().score || 0);
-        tArrows14 += (d.data().arrows || 0);
-      });
-      setAvg14Days(tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0');
     };
 
     fetchStudentData();

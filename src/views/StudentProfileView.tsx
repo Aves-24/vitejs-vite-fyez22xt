@@ -403,61 +403,67 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
         {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
         {currentSession && (
-          <div ref={sessionSectionRef} className="bg-white border border-indigo-100 rounded-[24px] shadow-sm overflow-hidden">
-            
-            <div className="p-4 bg-indigo-50 flex items-center justify-between border-b border-indigo-100">
-              <div className="flex-1 cursor-pointer" onClick={() => setIsNotesExpanded(!isNotesExpanded)}>
-                <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">
-                  {t('studentProfile.historyLabel', { index: currentSessionIndex + 1, count: recentSessions.length })} • {currentSession.date}
+          <div ref={sessionSectionRef} className="bg-gradient-to-br from-indigo-600 to-indigo-800 rounded-[24px] shadow-lg overflow-hidden">
+
+            {/* NAGŁÓWEK KARUZELI */}
+            <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+              <div className="flex-1">
+                <span className="text-[8px] font-black text-indigo-300 uppercase tracking-widest">
+                  {t('studentProfile.historyLabel', { index: currentSessionIndex + 1, count: recentSessions.length })} · {currentSession.date}
                 </span>
-                <h3 className="font-black text-[#0a3a2a] text-sm mt-0.5">{currentSession.distance} • {currentSession.targetType}</h3>
+                <h3 className="font-black text-white text-sm mt-0.5">{currentSession.distance} · {currentSession.targetType}</h3>
               </div>
-              
+
               <div className="flex items-center gap-1">
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1)); }}
+                <button
+                  onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))}
                   disabled={currentSessionIndex === recentSessions.length - 1}
-                  className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 active:scale-90 disabled:opacity-30 transition-all border border-indigo-100"
+                  className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 disabled:opacity-30 transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">arrow_back_ios_new</span>
                 </button>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1)); }}
+                <button
+                  onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))}
                   disabled={currentSessionIndex === 0}
-                  className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-600 active:scale-90 disabled:opacity-30 transition-all border border-indigo-100"
+                  className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white active:scale-90 disabled:opacity-30 transition-all"
                 >
                   <span className="material-symbols-outlined text-sm">arrow_forward_ios</span>
-                </button>
-                <button onClick={() => setIsNotesExpanded(!isNotesExpanded)} className="ml-2 w-8 h-8 flex items-center justify-center">
-                  <span className={`material-symbols-outlined text-indigo-400 transition-transform ${isNotesExpanded ? 'rotate-180' : ''}`}>expand_more</span>
                 </button>
               </div>
             </div>
 
-            {isNotesExpanded && (
-              <div className="p-4 space-y-3 animate-fade-in">
-                
-                <div className="bg-white border border-gray-100 rounded-2xl p-3 grid grid-cols-5 text-center shadow-sm">
-                  <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
-                  <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
-                  <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#fed33e] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black">{sessionHits.x}</p></div>
-                  <div><p className="text-[8px] font-bold text-emerald-400 uppercase">10</p><p className="text-sm font-black">{sessionHits.ten}</p></div>
-                  <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black">{sessionHits.nine}</p></div>
-                </div>
-
-                <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 relative mt-2">
-                  <span className="material-symbols-outlined absolute -top-3 -left-2 text-gray-300 text-3xl rotate-12">format_quote</span>
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
-                  <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
-                </div>
-
-                <CoachNoteModule 
-                  session={currentSession} 
-                  studentId={studentId} 
-                  onSaveSuccess={handleUpdateSessionNote}
-                />
+            {/* KROPKI PAGINACJI */}
+            {recentSessions.length > 1 && (
+              <div className="flex justify-center gap-1.5 pb-2">
+                {recentSessions.map((_, i) => (
+                  <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-4 h-1.5 bg-white' : 'w-1.5 h-1.5 bg-white/30'}`} />
+                ))}
               </div>
             )}
+
+            {/* TREŚĆ SESJI */}
+            <div className="mx-3 mb-3 bg-white rounded-[18px] p-3 space-y-3">
+
+              <div className="grid grid-cols-5 text-center border-b border-gray-50 pb-3">
+                <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
+                <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
+                <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-amber-400 uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black">{sessionHits.x}</p></div>
+                <div><p className="text-[8px] font-bold text-emerald-400 uppercase">10</p><p className="text-sm font-black">{sessionHits.ten}</p></div>
+                <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black">{sessionHits.nine}</p></div>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 relative">
+                <span className="material-symbols-outlined absolute -top-3 -left-2 text-gray-300 text-3xl rotate-12">format_quote</span>
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
+                <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
+              </div>
+
+              <CoachNoteModule
+                session={currentSession}
+                studentId={studentId}
+                onSaveSuccess={handleUpdateSessionNote}
+              />
+            </div>
           </div>
         )}
 

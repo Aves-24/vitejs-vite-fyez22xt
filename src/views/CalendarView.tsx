@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 
 // IMPORTUJEMY NOWY KOMPONENT:
 import TournamentScoreInput from '../components/TournamentScoreInput';
+import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
 
 interface Event {
   id: string;
@@ -319,18 +320,33 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       eventData.coachStudents = newCoachStudents;
     }
 
+    // Rozwiąż listę studentIds dla mirror (all → pełna lista)
+    const resolvedStudentIds: string[] = newCategory === 'Trener'
+      ? (newCoachStudents === 'all'
+          ? coachStudentsList.map(s => s.id)
+          : newCoachStudents as string[])
+      : [];
+
     try {
       if (editingEventId) {
         await updateDoc(doc(db, 'users', userId, 'tournaments', editingEventId), eventData);
+        // Mirror update do uczniów
+        if (newCategory === 'Trener') {
+          await updateMirroredEvent(editingEventId, eventData as any, resolvedStudentIds, userId);
+        }
       } else {
-        await addDoc(collection(db, 'users', userId, 'tournaments'), eventData);
+        const docRef = await addDoc(collection(db, 'users', userId, 'tournaments'), eventData);
+        // Mirror nowego eventu do uczniów
+        if (newCategory === 'Trener' && resolvedStudentIds.length > 0) {
+          await mirrorTrenerEventToStudents(eventData as any, docRef.id, resolvedStudentIds, userId);
+        }
       }
       setShowForm(false);
       resetForm();
-    } catch (error) { 
-      console.error("Błąd zapisu:", error); 
-    } finally { 
-      setIsSaving(false); 
+    } catch (error) {
+      console.error("Błąd zapisu:", error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -341,6 +357,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const confirmDeletion = async () => {
     if (showDeleteConfirm && userId) {
       try {
+        // Znajdź event żeby sprawdzić czy to Trener i pobrać listę uczniów
+        const eventToDelete = events.find(e => e.id === showDeleteConfirm);
+        if (eventToDelete?.category === 'Trener') {
+          const studentIds = eventToDelete.coachStudents === 'all'
+            ? coachStudentsList.map(s => s.id)
+            : (eventToDelete.coachStudents as string[] || []);
+          await deleteMirroredEvent(showDeleteConfirm, studentIds);
+        }
         await deleteDoc(doc(db, 'users', userId, 'tournaments', showDeleteConfirm));
         setShowDeleteConfirm(null);
         closeViewingModal();

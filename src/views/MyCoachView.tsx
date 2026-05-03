@@ -72,7 +72,7 @@ export default function MyCoachView({ userId, onBack }: MyCoachViewProps) {
             <h1 className="text-2xl font-black text-white leading-tight truncate">{t('myCoach.title', { defaultValue: 'Mein Trainer' })}</h1>
           </div>
           <div className="w-12 h-12 bg-[#fed33e] rounded-2xl flex items-center justify-center text-[#0a3a2a] shadow-sm shrink-0">
-            <span className="material-symbols-outlined text-2xl">sports</span>
+            <span className="material-symbols-outlined text-2xl">school</span>
           </div>
         </div>
 

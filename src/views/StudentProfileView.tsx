@@ -299,6 +299,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [showPrivateNoteModal, setShowPrivateNoteModal] = useState(false);
   const [showHardwareModal, setShowHardwareModal] = useState(false);
 
+  // TABS
+  const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
+
   useEffect(() => {
     const fetchStudentData = async () => {
       if (!studentId) return;
@@ -540,135 +543,153 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-2 pb-32 space-y-2">
-        
-        {/* NASTĘPNY CEL UCZNIA */}
-        {nextTournament && (
-          <div
-            onClick={() => { if (additionalTournamentsCount > 0) setShowTournamentsModal(true); }}
-            className={`bg-[#fed33e] rounded-[20px] p-3.5 flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
-          >
-            <div className="absolute -right-5 -top-5 w-28 h-28 rounded-full border-[14px] border-black/5 pointer-events-none" />
-
-            <div className="w-10 h-10 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#fed33e] text-[20px]">emoji_events</span>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <span className="text-[8px] font-black text-[#0a3a2a]/50 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
-              <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{nextTournament.title}</h3>
-              <div className="flex items-center gap-1 mt-0.5">
-                <span className="material-symbols-outlined text-[#0a3a2a]/50 text-[11px]">calendar_today</span>
-                <p className="text-[10px] font-bold text-[#0a3a2a]/60">
-                  {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
-                </p>
-              </div>
-            </div>
-
-            {additionalTournamentsCount > 0 && (
-              <div className="shrink-0 bg-[#0a3a2a] text-[#fed33e] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] z-10">
-                +{additionalTournamentsCount}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
-        {currentSession && (
-          <div ref={sessionSectionRef} className="bg-[#0a3a2a] rounded-[20px] overflow-hidden">
-
-            {/* NAGŁÓWEK KARUZELI — jedna linia */}
-            <div className="px-3 py-2.5 flex items-center gap-2">
-              <div className="flex-1 min-w-0">
-                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">{currentSession.date} · </span>
-                <span className="text-[8px] font-black text-white uppercase tracking-widest">{currentSession.distance} · {currentSession.targetType}</span>
-              </div>
-
-              {recentSessions.length > 1 && (
-                <div className="flex items-center gap-1 shrink-0">
-                  {recentSessions.map((_, i) => (
-                    <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/25'}`} />
-                  ))}
-                </div>
+      {/* ─── TAB BAR ─────────────────────────────────────────── */}
+      <div className="bg-white border-b border-gray-100 px-4 shrink-0 z-10 shadow-sm">
+        <div className="flex">
+          {[
+            { key: 'overview',   icon: 'home',      label: t('studentProfile.tabOverview',   { defaultValue: 'Überblick' }) },
+            { key: 'diary',      icon: 'menu_book', label: t('studentProfile.tabDiary',      { defaultValue: 'Tagebuch' }) },
+            { key: 'analytics',  icon: 'analytics', label: t('studentProfile.tabAnalytics',  { defaultValue: 'Analytik' }) },
+          ].map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key as any)}
+              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 relative transition-all ${
+                activeTab === tab.key ? 'text-[#0a3a2a]' : 'text-gray-400'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.key ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>
+                {tab.icon}
+              </span>
+              <span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>
+              {activeTab === tab.key && (
+                <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#fed33e] rounded-full" />
               )}
+            </button>
+          ))}
+        </div>
+      </div>
 
-              <div className="flex items-center gap-0.5 shrink-0">
-                <button
-                  onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))}
-                  disabled={currentSessionIndex === recentSessions.length - 1}
-                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[13px]">arrow_back_ios_new</span>
-                </button>
-                <button
-                  onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))}
-                  disabled={currentSessionIndex === 0}
-                  className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[13px]">arrow_forward_ios</span>
-                </button>
+      {/* ─── TAB CONTENT ─────────────────────────────────────── */}
+      <div className="flex-1 overflow-y-auto pb-32">
+
+        {/* ══ TAB 1: ÜBERBLICK ══════════════════════════════════ */}
+        {activeTab === 'overview' && (
+          <div className="px-5 pt-3 space-y-2">
+
+            {/* NASTĘPNY CEL UCZNIA */}
+            {nextTournament && (
+              <div
+                onClick={() => { if (additionalTournamentsCount > 0) setShowTournamentsModal(true); }}
+                className={`bg-[#fed33e] rounded-[20px] p-3.5 flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
+              >
+                <div className="absolute -right-5 -top-5 w-28 h-28 rounded-full border-[14px] border-black/5 pointer-events-none" />
+                <div className="w-10 h-10 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[#fed33e] text-[20px]">emoji_events</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="text-[8px] font-black text-[#0a3a2a]/50 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
+                  <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{nextTournament.title}</h3>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="material-symbols-outlined text-[#0a3a2a]/50 text-[11px]">calendar_today</span>
+                    <p className="text-[10px] font-bold text-[#0a3a2a]/60">
+                      {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
+                    </p>
+                  </div>
+                </div>
+                {additionalTournamentsCount > 0 && (
+                  <div className="shrink-0 bg-[#0a3a2a] text-[#fed33e] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] z-10">
+                    +{additionalTournamentsCount}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
-            {/* TREŚĆ SESJI */}
-            <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">
-
-              <div className="grid grid-cols-5 text-center pb-2.5 border-b border-gray-50">
-                <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
-                <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
-                <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#b8860b] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.x}</p></div>
-                <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
-                <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.nine}</p></div>
+            {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
+            {currentSession ? (
+              <div ref={sessionSectionRef} className="bg-[#0a3a2a] rounded-[20px] overflow-hidden">
+                <div className="px-3 py-2.5 flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">{currentSession.date} · </span>
+                    <span className="text-[8px] font-black text-white uppercase tracking-widest">{currentSession.distance} · {currentSession.targetType}</span>
+                  </div>
+                  {recentSessions.length > 1 && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      {recentSessions.map((_, i) => (
+                        <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/25'}`} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all">
+                      <span className="material-symbols-outlined text-[13px]">arrow_back_ios_new</span>
+                    </button>
+                    <button onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))} disabled={currentSessionIndex === 0} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all">
+                      <span className="material-symbols-outlined text-[13px]">arrow_forward_ios</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">
+                  <div className="grid grid-cols-5 text-center pb-2.5 border-b border-gray-50">
+                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
+                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
+                    <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#b8860b] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.x}</p></div>
+                    <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
+                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.nine}</p></div>
+                  </div>
+                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
+                    <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
+                    <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
+                  </div>
+                  <CoachNoteModule session={currentSession} studentId={studentId} onSaveSuccess={handleUpdateSessionNote} />
+                </div>
               </div>
-
-              <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
-                <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
-                <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
+            ) : (
+              <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
+                <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports_score</span>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</p>
               </div>
+            )}
 
-              <CoachNoteModule
-                session={currentSession}
-                studentId={studentId}
-                onSaveSuccess={handleUpdateSessionNote}
-              />
-            </div>
           </div>
         )}
 
-        {/* WSPÓLNY DZIENNIK TRENERSKI */}
-        <CoachLogPanel studentId={studentId} currentUserId={coachId} mode="coach" />
+        {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
+        {activeTab === 'diary' && (
+          <div className="px-5 pt-3">
+            <CoachLogPanel studentId={studentId} currentUserId={coachId} mode="coach" />
+          </div>
+        )}
 
-        <div className="pt-3">
-          {/* NAGŁÓWEK SEKCJI ANALITYKI */}
-          <div className="bg-[#0a3a2a] rounded-[20px] px-4 py-3 mb-2 flex items-center justify-between overflow-hidden relative">
-            <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full border-[12px] border-white/5 pointer-events-none" />
-            <div className="absolute right-10 -bottom-4 w-14 h-14 rounded-full border-[8px] border-white/5 pointer-events-none" />
-            <div className="flex items-center gap-3 relative z-10">
-              <div className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#0a3a2a] text-[18px]">analytics</span>
-              </div>
-              <div>
-                <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-0.5">{student.firstName} {student.lastName}</p>
-                <h2 className="text-base font-black text-white leading-none">{t('studentProfile.fullAnalytics')}</h2>
+        {/* ══ TAB 3: ANALYTIK ═══════════════════════════════════ */}
+        {activeTab === 'analytics' && (
+          <div>
+            <div className="px-5 pt-3 pb-2">
+              <div className="bg-[#0a3a2a] rounded-[20px] px-4 py-3 flex items-center justify-between overflow-hidden relative">
+                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full border-[12px] border-white/5 pointer-events-none" />
+                <div className="absolute right-10 -bottom-4 w-14 h-14 rounded-full border-[8px] border-white/5 pointer-events-none" />
+                <div className="flex items-center gap-3 relative z-10">
+                  <div className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#0a3a2a] text-[18px]">analytics</span>
+                  </div>
+                  <div>
+                    <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-0.5">{student.firstName} {student.lastName}</p>
+                    <h2 className="text-base font-black text-white leading-none">{t('studentProfile.fullAnalytics')}</h2>
+                  </div>
+                </div>
+                {student.isPremium || student.isPremiumPromo ? (
+                  <span className="relative z-10 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">PRO</span>
+                ) : (
+                  <span className="relative z-10 bg-white/10 text-white/50 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">FREE</span>
+                )}
               </div>
             </div>
-            {student.isPremium || student.isPremiumPromo ? (
-              <span className="relative z-10 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">PRO</span>
-            ) : (
-              <span className="relative z-10 bg-white/10 text-white/50 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">FREE</span>
-            )}
+            <div className="bg-white shadow-sm border-t border-gray-100 overflow-hidden relative min-h-[600px] px-5 pt-4">
+              <StatsView userId={studentId} viewingStudentId={studentId} onNavigate={onNavigate} isEmbedded={true} />
+            </div>
           </div>
-
-          <div className="bg-white rounded-[32px] shadow-sm border border-gray-100 overflow-hidden relative min-h-[600px] -mx-5 px-5 pt-4">
-             <StatsView 
-               userId={studentId} 
-               viewingStudentId={studentId} 
-               onNavigate={onNavigate} 
-               isEmbedded={true}
-             />
-          </div>
-        </div>
+        )}
 
       </div>
 

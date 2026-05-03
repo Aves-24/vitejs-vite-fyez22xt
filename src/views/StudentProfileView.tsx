@@ -528,10 +528,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     </svg>
                   </div>
                   {/* 25% legenda */}
-                  <div className="w-1/4 flex flex-col items-end gap-[5px] pl-2">
-                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />{maxS}</span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />{minS}</span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-[#fed33e] leading-none"><span className="w-1.5 h-1.5 rounded-full bg-[#fed33e] shrink-0" />{lastS}</span>
+                  <div className="w-1/4 flex flex-col items-end justify-center gap-[7px] pl-2">
+                    <span className="flex items-center gap-1 text-[11px] font-black text-emerald-400 leading-none"><span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />{maxS}</span>
+                    <span className="flex items-center gap-1 text-[11px] font-black text-red-400 leading-none"><span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />{minS}</span>
+                    <span className="flex items-center gap-1 text-[11px] font-black text-[#fed33e] leading-none"><span className="w-2 h-2 rounded-full bg-[#fed33e] shrink-0" />{lastS}</span>
                   </div>
                 </>
               );

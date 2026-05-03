@@ -493,10 +493,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* STATYSTYKI — rząd 2: Ergebniskurve pełna szerokość */}
         <button
           onClick={() => sparkline.length >= 2 && setShowTrendModal(true)}
-          className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-3 active:scale-[0.97] transition-all"
+          className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 pt-2 pb-2.5 flex flex-col active:scale-[0.97] transition-all"
         >
-          <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest shrink-0">Ergebniskurve</span>
-          <div className="flex-1 min-w-0 flex items-center gap-2">
+          <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest mb-1.5">Ergebniskurve</span>
+          <div className="flex items-center w-full gap-0">
             {sparkline.length >= 2 ? (() => {
               const W = 200, H = 36, pad = 5;
               const minS = Math.min(...sparkline);
@@ -512,22 +512,26 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
               return (
                 <>
-                  <svg viewBox={`0 0 ${W} ${H}`} className="flex-1" style={{ overflow: 'visible' }}>
-                    <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-                    {pts.map((p, i) => {
-                      const isMax = i === maxIdx;
-                      const isMin = i === minIdx;
-                      const isLast = i === pts.length - 1;
-                      const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
-                      const r = (isMax || isMin) ? 4 : isLast ? 3.5 : 2;
-                      const op = (isMax || isMin || isLast) ? 1 : 0.2;
-                      return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
-                    })}
-                  </svg>
-                  <div className="flex flex-col gap-[4px] shrink-0">
-                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />{maxS}</span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />{minS}</span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-[#fed33e] leading-none"><span className="w-1.5 h-1.5 rounded-full bg-[#fed33e] inline-block" />{lastS}</span>
+                  {/* 75% wykres */}
+                  <div className="w-3/4 min-w-0">
+                    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+                      <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+                      {pts.map((p, i) => {
+                        const isMax = i === maxIdx;
+                        const isMin = i === minIdx;
+                        const isLast = i === pts.length - 1;
+                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
+                        const r = (isMax || isMin) ? 4 : isLast ? 3.5 : 2;
+                        const op = (isMax || isMin || isLast) ? 1 : 0.2;
+                        return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
+                      })}
+                    </svg>
+                  </div>
+                  {/* 25% legenda */}
+                  <div className="w-1/4 flex flex-col items-end gap-[5px] pl-2">
+                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />{maxS}</span>
+                    <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />{minS}</span>
+                    <span className="flex items-center gap-1 text-[9px] font-black text-[#fed33e] leading-none"><span className="w-1.5 h-1.5 rounded-full bg-[#fed33e] shrink-0" />{lastS}</span>
                   </div>
                 </>
               );

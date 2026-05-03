@@ -7,6 +7,34 @@ import { createPortal } from 'react-dom';
 // --- TYPY WPISÓW ---
 type EntryType = 'observation' | 'tip' | 'goal' | 'flag';
 
+// --- WEB SPEECH API SETUP ---
+type SpeechRecognitionEvent = Event & { results: SpeechRecognitionResultList };
+type SpeechRecognitionErrorEvent = Event & { error: string };
+interface SpeechRecognitionStatic {
+  new (): SpeechRecognition;
+}
+interface SpeechRecognition {
+  start(): void;
+  stop(): void;
+  abort(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+}
+
+const SpeechRecognition = (typeof window !== 'undefined' && (window as any).SpeechRecognition) ||
+  (typeof window !== 'undefined' && (window as any).webkitSpeechRecognition) || null;
+
+const LANGUAGE_MAP: Record<string, string> = {
+  de: 'de-DE',
+  pl: 'pl-PL',
+  en: 'en-US',
+};
+
 interface CoachLogEntry {
   id: string;
   authorId: string;
@@ -45,6 +73,8 @@ export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachL
   const [isSaving, setIsSaving] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
 
   // --- POBIERANIE WPISÓW ---
   useEffect(() => {
@@ -142,6 +172,61 @@ export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachL
     setConfirmDelete(null);
   };
 
+  // --- VOICE TO TEXT ---
+  const startListening = () => {
+    if (!SpeechRecognition) {
+      setSpeechError('Voice input not supported in your browser');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    const speechLang = LANGUAGE_MAP[i18n.language] || 'de-DE';
+
+    recognition.lang = speechLang;
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSpeechError(null);
+    };
+
+    recognition.onresult = (event: any) => {
+      let interimTranscript = '';
+      let finalTranscript = '';
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript + ' ';
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript) {
+        setText(prev => (prev + ' ' + finalTranscript).trim().slice(0, MAX_TEXT));
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      setSpeechError(event.error);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
+  };
+
+  const stopListening = () => {
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.stop();
+    }
+  };
+
   const formatDate = (ts: number) => {
     if (!ts) return '';
     return new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
@@ -196,13 +281,33 @@ export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachL
           </div>
 
           {/* Treść */}
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
-            maxLength={MAX_TEXT}
-            placeholder={t('coachLog.placeholder', { defaultValue: 'Schreibe einen Eintrag für die anderen Trainer…' })}
-            className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-20 leading-snug"
-          />
+          <div className="relative">
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
+              maxLength={MAX_TEXT}
+              placeholder={t('coachLog.placeholder', { defaultValue: 'Schreibe einen Eintrag für die anderen Trainer…' })}
+              className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-20 leading-snug pr-10"
+            />
+            {SpeechRecognition && (
+              <button
+                onClick={isListening ? stopListening : startListening}
+                className={`absolute right-2 top-2 p-2 rounded-lg transition-all ${
+                  isListening
+                    ? 'bg-red-100 text-red-500'
+                    : 'text-gray-400 hover:text-[#0a3a2a] hover:bg-gray-100'
+                }`}
+                title={isListening ? 'Stop recording' : 'Start voice input'}
+              >
+                <span className="material-symbols-outlined text-[16px]">
+                  {isListening ? 'mic' : 'mic_none'}
+                </span>
+              </button>
+            )}
+          </div>
+          {speechError && (
+            <p className="text-[8px] font-bold text-red-500 mt-1">{speechError}</p>
+          )}
 
           {/* Stopka — licznik + przyciski */}
           <div className="flex justify-between items-center">

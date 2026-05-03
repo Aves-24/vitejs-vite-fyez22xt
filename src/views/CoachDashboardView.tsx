@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
@@ -45,6 +45,9 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
   const [newNoteText, setNewNoteText] = useState('');
   const [noteReplacementPrompt, setNoteReplacementPrompt] = useState<{ pendingNote: string, oldestNote: any } | null>(null);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<{ groupId: string; noteId: string } | null>(null);
+
+  // Ostatni wpis CoachLog per uczeń
+  const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -99,6 +102,26 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
           });
 
           setStudents(studentsData as any);
+
+          // Fetch ostatniego wpisu CoachLog dla każdego ucznia
+          const entries: Record<string, { text: string; type: string } | null> = {};
+          await Promise.all((studentsData as any[]).map(async (s: any) => {
+            try {
+              const snap = await getDocs(query(
+                collection(db, `users/${s.id}/coachLog`),
+                orderBy('createdAt', 'desc'),
+                limit(1)
+              ));
+              if (!snap.empty) {
+                const d = snap.docs[0].data();
+                entries[s.id] = { text: d.text || '', type: d.type || 'observation' };
+              } else {
+                entries[s.id] = null;
+              }
+            } catch { entries[s.id] = null; }
+          }));
+          setLastLogEntries(entries);
+
         } else {
           setStudents([]);
         }
@@ -646,6 +669,22 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
                         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
                           {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
                         </p>
+                        {lastLogEntries[student.id] && (() => {
+                          const entry = lastLogEntries[student.id]!;
+                          const typeColors: Record<string, string> = {
+                            observation: '#059669',
+                            tip: '#b45309',
+                            goal: '#2563eb',
+                            flag: '#dc2626',
+                          };
+                          const color = typeColors[entry.type] || '#059669';
+                          return (
+                            <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
+                              <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
+                              {entry.text}
+                            </p>
+                          );
+                        })()}
                       </div>
                     </div>
 

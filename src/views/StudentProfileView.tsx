@@ -454,110 +454,88 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         </div>
 
-        {/* STATYSTYKI 2×2 */}
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {/* STRZAŁY / MIESIĄC */}
+        {/* STATYSTYKI — rząd 1: 3 kafelki */}
+        <div className="flex gap-2 mt-3">
           <button
             onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
+            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
           >
-            <div className="w-7 h-7 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-emerald-400 text-[16px]">bolt</span>
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-lg font-black text-white leading-none">{monthlyArrows}</p>
-              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
-            </div>
+            <span className="material-symbols-outlined text-emerald-400 text-[15px] mb-0.5">bolt</span>
+            <p className="text-base font-black text-white leading-none">{monthlyArrows}</p>
+            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.arrowsMonth')}</span>
           </button>
 
-          {/* ŚREDNIA 14 DNI */}
           <button
             onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
+            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
           >
-            <div className="w-7 h-7 rounded-xl bg-[#fed33e]/15 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#fed33e] text-[16px]">target</span>
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-lg font-black text-[#fed33e] leading-none">{avg14Days}</p>
-              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
-            </div>
+            <span className="material-symbols-outlined text-[#fed33e] text-[15px] mb-0.5">target</span>
+            <p className="text-base font-black text-[#fed33e] leading-none">{avg14Days}</p>
+            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.avg14days')}</span>
           </button>
 
-          {/* OSTATNI WYNIK */}
           <button
             onClick={() => {
               if (recentSessions.length > 0) {
                 setActiveTab('overview');
                 setCurrentSessionIndex(0);
-                setIsNotesExpanded(true);
                 setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
               }
             }}
-            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
+            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
           >
-            <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-white text-[16px]">trophy</span>
-            </div>
-            <div className="flex-1 min-w-0 text-left">
-              <p className="text-lg font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
-              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
-            </div>
-          </button>
-
-          {/* ERGEBNISKURVE */}
-          <button
-            onClick={() => sparkline.length >= 2 && setShowTrendModal(true)}
-            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
-          >
-            <div className="flex-1 min-w-0">
-              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest block mb-1">ergebniskurve</span>
-              {sparkline.length >= 2 ? (() => {
-                const W = 100, H = 36, pad = 5;
-                const minS = Math.min(...sparkline);
-                const maxS = Math.max(...sparkline);
-                const lastS = sparkline[sparkline.length - 1];
-                const range = maxS - minS || 1;
-                const maxIdx = sparkline.indexOf(maxS);
-                const minIdx = sparkline.lastIndexOf(minS);
-                const pts = sparkline.map((s, i) => ({
-                  x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
-                  y: H - pad - ((s - minS) / range) * (H - pad * 2),
-                }));
-                const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
-                return (
-                  <div className="flex items-center gap-1.5 w-full">
-                    <svg viewBox={`0 0 ${W} ${H}`} className="flex-1" style={{ overflow: 'visible' }}>
-                      <polyline points={polyline} fill="none" stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
-                      {pts.map((p, i) => {
-                        const isMax = i === maxIdx;
-                        const isMin = i === minIdx;
-                        const isLast = i === pts.length - 1;
-                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : '#0a3a2a';
-                        const r = (isMax || isMin) ? 4 : isLast ? 3 : 2;
-                        const op = (isMax || isMin || isLast) ? 1 : 0.2;
-                        return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
-                      })}
-                    </svg>
-                    <div className="flex flex-col gap-[5px] shrink-0">
-                      <span className="flex items-center gap-1 text-[9px] font-black text-emerald-500 leading-none">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block" />{maxS}
-                      </span>
-                      <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none">
-                        <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 inline-block" />{minS}
-                      </span>
-                      <span className="flex items-center gap-1 text-[9px] font-black text-[#725b00] leading-none">
-                        <span className="w-2 h-2 rounded-full bg-[#fed33e] shrink-0 inline-block" />{lastS}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })() : (
-                <span className="material-symbols-outlined text-white/20 text-xl">monitoring</span>
-              )}
-            </div>
+            <span className="material-symbols-outlined text-white/60 text-[15px] mb-0.5">trophy</span>
+            <p className="text-base font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
+            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.lastScore')}</span>
           </button>
         </div>
+
+        {/* STATYSTYKI — rząd 2: Ergebniskurve pełna szerokość */}
+        <button
+          onClick={() => sparkline.length >= 2 && setShowTrendModal(true)}
+          className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-3 active:scale-[0.97] transition-all"
+        >
+          <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest shrink-0">Ergebniskurve</span>
+          <div className="flex-1 min-w-0 flex items-center gap-2">
+            {sparkline.length >= 2 ? (() => {
+              const W = 200, H = 36, pad = 5;
+              const minS = Math.min(...sparkline);
+              const maxS = Math.max(...sparkline);
+              const lastS = sparkline[sparkline.length - 1];
+              const range = maxS - minS || 1;
+              const maxIdx = sparkline.indexOf(maxS);
+              const minIdx = sparkline.lastIndexOf(minS);
+              const pts = sparkline.map((s, i) => ({
+                x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
+                y: H - pad - ((s - minS) / range) * (H - pad * 2),
+              }));
+              const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+              return (
+                <>
+                  <svg viewBox={`0 0 ${W} ${H}`} className="flex-1" style={{ overflow: 'visible' }}>
+                    <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
+                    {pts.map((p, i) => {
+                      const isMax = i === maxIdx;
+                      const isMin = i === minIdx;
+                      const isLast = i === pts.length - 1;
+                      const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
+                      const r = (isMax || isMin) ? 4 : isLast ? 3.5 : 2;
+                      const op = (isMax || isMin || isLast) ? 1 : 0.2;
+                      return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
+                    })}
+                  </svg>
+                  <div className="flex flex-col gap-[4px] shrink-0">
+                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />{maxS}</span>
+                    <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none"><span className="w-1.5 h-1.5 rounded-full bg-red-400 inline-block" />{minS}</span>
+                    <span className="flex items-center gap-1 text-[9px] font-black text-[#fed33e] leading-none"><span className="w-1.5 h-1.5 rounded-full bg-[#fed33e] inline-block" />{lastS}</span>
+                  </div>
+                </>
+              );
+            })() : (
+              <span className="material-symbols-outlined text-white/20 text-xl">monitoring</span>
+            )}
+          </div>
+        </button>
       </div>
 
       {/* ─── TAB BAR ─────────────────────────────────────────── */}
@@ -786,18 +764,23 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
                   <div className="space-y-1.5">
                     {[...recentSessions].reverse().map((sess, i) => {
-                      const typeKey = sess.type === 'Turniej' ? 'bg-[#0a3a2a]' : sess.type === 'Arena' ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const isTurniej = sess.type === 'Turniej';
+                      const isArena = sess.type === 'Arena';
+                      const dotColor = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const label = isTurniej
+                        ? (sess.title || sess.tournamentName || sess.name || 'Turnier')
+                        : isArena ? 'Arena' : 'Training';
                       const tsRaw = sess.timestamp;
                       const ms = tsRaw?.toMillis ? tsRaw.toMillis() : tsRaw?.seconds ? tsRaw.seconds * 1000 : (typeof tsRaw === 'number' ? tsRaw : 0);
                       const dateStr = ms ? (() => { const d = new Date(ms); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })() : (sess.date || '');
                       return (
                         <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${typeKey}`} />
-                            <span className="text-[9px] font-black text-gray-400 uppercase">{sess.type || 'Training'}</span>
-                            <span className="text-[9px] font-bold text-gray-300">{sess.distance}</span>
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${dotColor}`} />
+                            <span className="text-[9px] font-black text-gray-500 truncate">{label}</span>
+                            <span className="text-[9px] font-bold text-gray-300 shrink-0">{sess.distance}</span>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 shrink-0">
                             {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
                             <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                           </div>

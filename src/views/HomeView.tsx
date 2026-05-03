@@ -486,7 +486,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { score: dd.score || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening' };
+            return { score: dd.score || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '' };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
@@ -1653,19 +1653,23 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
                   <div className="space-y-1.5">
                     {[...sessionsForModal].reverse().map((sess, i) => {
-                      const typeKey = sess.type === 'Turniej' ? 'typeTournament' : sess.type === 'Arena' ? 'typeArena' : 'typeTraining';
-                      const dot = sess.type === 'Turniej' ? 'bg-[#0a3a2a]' : sess.type === 'Arena' ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const isTurniej = sess.type === 'Turniej';
+                      const isArena = sess.type === 'Arena';
+                      const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const label = isTurniej
+                        ? (sess.title || t('home.trendModal.typeTournament'))
+                        : isArena ? t('home.trendModal.typeArena') : t('home.trendModal.typeTraining');
                       const dateStr = sess.ts
                         ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()
                         : '';
                       return (
                         <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                            <span className="text-[9px] font-black text-gray-400 uppercase">{t(`home.trendModal.${typeKey}`)}</span>
-                            <span className="text-[9px] font-bold text-gray-300">{sess.distance}</span>
+                            <span className="text-[9px] font-black text-gray-500 truncate">{label}</span>
+                            <span className="text-[9px] font-bold text-gray-300 shrink-0">{sess.distance}</span>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 shrink-0">
                             {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
                             <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                           </div>

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
+import CoachLogPanel from '../components/CoachLogPanel';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -572,6 +573,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             </div>
           </div>
         )}
+
+        {/* WSPÓLNY DZIENNIK TRENERSKI */}
+        <CoachLogPanel studentId={studentId} currentUserId={coachId} mode="coach" />
 
         <div className="pt-3">
           {/* NAGŁÓWEK SEKCJI ANALITYKI */}

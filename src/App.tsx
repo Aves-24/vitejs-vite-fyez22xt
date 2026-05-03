@@ -313,8 +313,8 @@ export default function App() {
             </button>
             {hasCoach && (
               <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
-                <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Trainer' })}</span>
+                <span className="material-symbols-outlined text-[26px] font-bold">school</span>
+                <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Coach' })}</span>
               </button>
             )}
           </div>

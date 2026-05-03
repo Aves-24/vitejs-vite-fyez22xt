@@ -170,6 +170,31 @@ service cloud.firestore {
       allow update: if isSelf(uid) || isAdmin();
     }
 
+    // ─── /users/{uid}/coachLog/{entryId} ────────────────────────
+    //  Wspólny dziennik trenerski — wszyscy trenerzy ucznia widzą wpisy
+    //  każdego z trenerów (continuity przy zastępstwach). Uczeń też może
+    //  czytać (przyszły MyCoachView). Edycja zablokowana, kasować może
+    //  tylko autor wpisu lub admin.
+    match /users/{uid}/coachLog/{entryId} {
+      allow read: if isSelf(uid)
+        || isAdmin()
+        || (isSignedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []));
+
+      allow create: if isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.get('text', '') is string
+        && request.resource.data.get('text', '').size() >= 1
+        && request.resource.data.get('text', '').size() <= 300
+        && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag'];
+
+      allow update: if false;
+
+      allow delete: if isSignedIn()
+        && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
     // ─── /users/{uid}/dailyStats/{day} ──────────────────────────
     match /users/{uid}/dailyStats/{day} {
       allow read, write: if isSelf(uid) || isAdmin();

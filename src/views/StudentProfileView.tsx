@@ -302,6 +302,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // TABS
   const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
 
+  // TREND MODAL
+  const [showTrendModal, setShowTrendModal] = useState(false);
+
   useEffect(() => {
     const fetchStudentData = async () => {
       if (!studentId) return;
@@ -504,15 +507,16 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
           {/* ERGEBNISKURVE */}
           <button
-            onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
+            onClick={() => sparkline.length >= 2 && setShowTrendModal(true)}
             className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
           >
             <div className="flex-1 min-w-0">
               <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest block mb-1">ergebniskurve</span>
               {sparkline.length >= 2 ? (() => {
-                const W = 100, H = 32, pad = 5;
+                const W = 100, H = 36, pad = 5;
                 const minS = Math.min(...sparkline);
                 const maxS = Math.max(...sparkline);
+                const lastS = sparkline[sparkline.length - 1];
                 const range = maxS - minS || 1;
                 const maxIdx = sparkline.indexOf(maxS);
                 const minIdx = sparkline.lastIndexOf(minS);
@@ -524,26 +528,32 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 return (
                   <div className="flex items-center gap-1.5 w-full">
                     <svg viewBox={`0 0 ${W} ${H}`} className="flex-1" style={{ overflow: 'visible' }}>
-                      <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.4" />
+                      <polyline points={polyline} fill="none" stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
                       {pts.map((p, i) => {
                         const isMax = i === maxIdx;
                         const isMin = i === minIdx;
                         const isLast = i === pts.length - 1;
-                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
-                        const r = (isMax || isMin) ? 3.5 : isLast ? 3 : 1.5;
-                        const op = (isMax || isMin || isLast) ? 1 : 0.3;
+                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : '#0a3a2a';
+                        const r = (isMax || isMin) ? 4 : isLast ? 3 : 2;
+                        const op = (isMax || isMin || isLast) ? 1 : 0.2;
                         return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
                       })}
                     </svg>
-                    <div className="flex flex-col gap-[3px] shrink-0">
-                      <span className="text-[8px] font-black text-emerald-400 leading-none">{maxS}</span>
-                      <span className="text-[8px] font-black text-red-400 leading-none">{minS}</span>
-                      <span className="text-[8px] font-black text-[#fed33e] leading-none">{sparkline[sparkline.length - 1]}</span>
+                    <div className="flex flex-col gap-[5px] shrink-0">
+                      <span className="flex items-center gap-1 text-[9px] font-black text-emerald-500 leading-none">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block" />{maxS}
+                      </span>
+                      <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none">
+                        <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 inline-block" />{minS}
+                      </span>
+                      <span className="flex items-center gap-1 text-[9px] font-black text-[#725b00] leading-none">
+                        <span className="w-2 h-2 rounded-full bg-[#fed33e] shrink-0 inline-block" />{lastS}
+                      </span>
                     </div>
                   </div>
                 );
               })() : (
-                <span className="text-[9px] text-white/30 font-bold">—</span>
+                <span className="material-symbols-outlined text-white/20 text-xl">monitoring</span>
               )}
             </div>
           </button>
@@ -712,6 +722,96 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         initialTab={quickStatsTab}
         stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days }}
       />
+
+      {/* MODAL: KRZYWA WYNIKÓW UCZNIA */}
+      {showTrendModal && sparkline.length >= 2 && typeof document !== 'undefined' && createPortal(
+        <div
+          className="fixed inset-0 z-[200000] bg-black/70 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,env(safe-area-inset-top))] animate-fade-in overflow-y-auto"
+          onClick={() => setShowTrendModal(false)}
+        >
+          <div className="bg-[#fcfdfe] w-full max-w-md rounded-[32px] shadow-2xl p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">{student.firstName} {student.lastName}</span>
+                <h2 className="text-xl font-black text-[#0a3a2a] leading-tight">{t('studentProfile.trendTitle', { defaultValue: 'Ergebniskurve' })}</h2>
+              </div>
+              <button onClick={() => setShowTrendModal(false)} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            {(() => {
+              const W = 300, H = 100, pad = 12;
+              const scores = sparkline;
+              const minS = Math.min(...scores);
+              const maxS = Math.max(...scores);
+              const range = maxS - minS || 1;
+              const maxIdx = scores.indexOf(maxS);
+              const minIdx = scores.lastIndexOf(minS);
+              const pts = scores.map((s, i) => ({
+                x: pad + (i / (scores.length - 1)) * (W - pad * 2),
+                y: H - pad - ((s - minS) / range) * (H - pad * 2),
+                s,
+              }));
+              const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
+              return (
+                <>
+                  <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
+                    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+                      <defs>
+                        <linearGradient id="trendGradCoach" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#fed33e" stopOpacity="0.2" />
+                          <stop offset="100%" stopColor="#fed33e" stopOpacity="0" />
+                        </linearGradient>
+                      </defs>
+                      <polygon points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`} fill="url(#trendGradCoach)" />
+                      <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                      {pts.map((p, i) => {
+                        const isMax = i === maxIdx;
+                        const isMin = i === minIdx;
+                        const isLast = i === pts.length - 1;
+                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'rgba(255,255,255,0.4)';
+                        const r = (isMax || isMin || isLast) ? 5 : 3;
+                        return (
+                          <g key={i}>
+                            <circle cx={p.x} cy={p.y} r={r} fill={color} />
+                            {(isMax || isMin || isLast) && (
+                              <text x={p.x} y={p.y - 9} fontSize="8" fontWeight="bold" textAnchor="middle" fill={color}>{p.s}</text>
+                            )}
+                          </g>
+                        );
+                      })}
+                    </svg>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {[...recentSessions].reverse().map((sess, i) => {
+                      const typeKey = sess.type === 'Turniej' ? 'bg-[#0a3a2a]' : sess.type === 'Arena' ? 'bg-blue-500' : 'bg-[#fed33e]';
+                      const tsRaw = sess.timestamp;
+                      const ms = tsRaw?.toMillis ? tsRaw.toMillis() : tsRaw?.seconds ? tsRaw.seconds * 1000 : (typeof tsRaw === 'number' ? tsRaw : 0);
+                      const dateStr = ms ? (() => { const d = new Date(ms); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })() : (sess.date || '');
+                      return (
+                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                          <div className="flex items-center gap-2">
+                            <span className={`w-2 h-2 rounded-full shrink-0 ${typeKey}`} />
+                            <span className="text-[9px] font-black text-gray-400 uppercase">{sess.type || 'Training'}</span>
+                            <span className="text-[9px] font-bold text-gray-300">{sess.distance}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
+                            <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* MODAL KARTY SPRZĘTOWEJ */}
       {showHardwareModal && typeof document !== 'undefined' && createPortal(

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 import CoachLogPanel from '../components/CoachLogPanel';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -40,10 +41,14 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
   const { t } = useTranslation();
   const edits = session.coachEditCount || 0;
   const canEdit = edits < 2;
-  
+
   const [isEditing, setIsEditing] = useState(!session.coachNote && canEdit);
   const [text, setText] = useState(session.coachNote || '');
   const [isSaving, setIsSaving] = useState(false);
+  const voice = useVoiceInput({
+    onResult: (result) => setText(prev => (prev + ' ' + result).trim().slice(0, 100)),
+    append: true,
+  });
 
   useEffect(() => {
     setText(session.coachNote || '');
@@ -88,15 +93,35 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
        
        {isEditing ? (
          <div className="flex flex-col gap-1.5 mt-1">
-           <textarea 
-             value={text} 
-             onChange={e => setText(e.target.value.slice(0, 100))} 
-             maxLength={100}
-             className="w-full bg-white border border-blue-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-blue-500 resize-none h-16 leading-tight"
-             placeholder={t('studentProfile.coachNotePlaceholder')}
-           />
+           <div className="relative">
+             <textarea
+               value={text}
+               onChange={e => setText(e.target.value.slice(0, 100))}
+               maxLength={100}
+               className="w-full bg-white border border-blue-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-blue-500 resize-none h-16 leading-tight pr-10"
+               placeholder={t('studentProfile.coachNotePlaceholder')}
+             />
+             {voice.isSupported && (
+               <button
+                 onClick={voice.isListening ? voice.stopListening : () => voice.startListening()}
+                 className={`absolute right-1.5 top-1.5 p-1.5 rounded transition-all ${
+                   voice.isListening
+                     ? 'bg-red-500 text-white scale-105 animate-pulse'
+                     : 'bg-[#fed33e] text-[#0a3a2a] hover:shadow-md active:scale-95'
+                 }`}
+                 title={voice.isListening ? 'Stop recording' : 'Record voice'}
+               >
+                 <span className="material-symbols-outlined text-[14px]">
+                   {voice.isListening ? 'mic' : 'mic_none'}
+                 </span>
+               </button>
+             )}
+           </div>
            <div className="flex justify-between items-center mt-1">
-             <span className="text-[9px] font-bold text-blue-400/70">{text.length}/100</span>
+             <div className="flex items-center gap-2">
+               <span className="text-[9px] font-bold text-blue-400/70">{text.length}/100</span>
+               {voice.error && <span className="text-[8px] font-bold text-red-500">{voice.error}</span>}
+             </div>
              <div className="flex gap-2">
                 {session.coachNote && (
                   <button onClick={() => { setIsEditing(false); setText(session.coachNote); }} className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">{t('studentProfile.coachNoteCancel')}</button>
@@ -125,6 +150,19 @@ function PrivateNoteModal({ coachId, studentId, initialNotes, onClose, onSaveSuc
   const { t } = useTranslation();
   const [notes, setNotes] = useState<string[]>(initialNotes || ['', '', '']);
   const [isSaving, setIsSaving] = useState(false);
+  const [recordingNoteIndex, setRecordingNoteIndex] = useState<number | null>(null);
+  const voice = useVoiceInput({
+    onResult: (result) => {
+      if (recordingNoteIndex !== null) {
+        setNotes(prev => {
+          const newNotes = [...prev];
+          newNotes[recordingNoteIndex] = (newNotes[recordingNoteIndex] + ' ' + result).trim().slice(0, 200);
+          return newNotes;
+        });
+      }
+    },
+    append: true,
+  });
 
   const labels = [
     { title: t('studentProfile.privateNoteLabel0'), icon: 'flag' },
@@ -175,17 +213,41 @@ function PrivateNoteModal({ coachId, studentId, initialNotes, onClose, onSaveSuc
                    </span>
                    <span className={`text-[9px] font-bold ${text.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>{text.length}/200</span>
                  </div>
-                 <textarea
-                   value={text}
-                   onChange={e => {
-                     const newNotes = [...notes];
-                     newNotes[idx] = e.target.value.slice(0, 200);
-                     setNotes(newNotes);
-                   }}
-                   placeholder={t('studentProfile.privateNotePlaceholder')}
-                   className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-yellow-500 resize-none h-[72px]"
-                   maxLength={200}
-                 />
+                 <div className="relative">
+                   <textarea
+                     value={text}
+                     onChange={e => {
+                       const newNotes = [...notes];
+                       newNotes[idx] = e.target.value.slice(0, 200);
+                       setNotes(newNotes);
+                     }}
+                     placeholder={t('studentProfile.privateNotePlaceholder')}
+                     className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-yellow-500 resize-none h-[72px] pr-9"
+                     maxLength={200}
+                   />
+                   {voice.isSupported && (
+                     <button
+                       onClick={() => {
+                         setRecordingNoteIndex(recordingNoteIndex === idx ? null : idx);
+                         if (recordingNoteIndex !== idx) {
+                           voice.startListening();
+                         } else {
+                           voice.stopListening();
+                         }
+                       }}
+                       className={`absolute right-1.5 top-1.5 p-1.5 rounded transition-all ${
+                         recordingNoteIndex === idx && voice.isListening
+                           ? 'bg-red-500 text-white scale-105 animate-pulse'
+                           : 'bg-[#fed33e] text-[#0a3a2a] hover:shadow-md active:scale-95'
+                       }`}
+                       title={recordingNoteIndex === idx && voice.isListening ? 'Stop recording' : 'Record voice'}
+                     >
+                       <span className="material-symbols-outlined text-[14px]">
+                         {recordingNoteIndex === idx && voice.isListening ? 'mic' : 'mic_none'}
+                       </span>
+                     </button>
+                   )}
+                 </div>
                </div>
             ))}
          </div>

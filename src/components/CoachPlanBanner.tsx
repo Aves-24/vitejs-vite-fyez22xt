@@ -2,6 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+
+// Format date label: "Heute" / "Morgen" / "Mi · 15. Aug" / "15. Aug 2027"
+function formatDateLabel(dateStr: string, todayStr: string, tomorrowStr: string, t: any): string {
+  if (dateStr === todayStr) return t('coachPlan.today', { defaultValue: 'Heute' });
+  if (dateStr === tomorrowStr) return t('coachPlan.tomorrow', { defaultValue: 'Morgen' });
+  try {
+    const d = new Date(dateStr + 'T00:00:00');
+    const today = new Date(todayStr + 'T00:00:00');
+    const sameYear = d.getFullYear() === today.getFullYear();
+    const opts: Intl.DateTimeFormatOptions = sameYear
+      ? { weekday: 'short', day: 'numeric', month: 'short' }
+      : { day: 'numeric', month: 'short', year: 'numeric' };
+    return d.toLocaleDateString(i18n.language || 'de', opts);
+  } catch { return dateStr; }
+}
 
 interface CoachPlanBannerProps {
   userId: string;
@@ -83,6 +99,9 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
   if (compact) {
     const nextEvent = events[0];
     const isToday = nextEvent.date === todayStr;
+    const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+    const tomorrowStr2 = `${tomorrowD.getFullYear()}-${String(tomorrowD.getMonth() + 1).padStart(2, '0')}-${String(tomorrowD.getDate()).padStart(2, '0')}`;
+    const dateLabel = formatDateLabel(nextEvent.date, todayStr, tomorrowStr2, t);
     return (
       <div
         onClick={onClick}
@@ -94,7 +113,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
         </div>
         <div className="flex-1 min-w-0 relative z-10">
           <span className="text-[8px] font-black text-[#fed33e]/80 uppercase tracking-widest block mb-0.5">
-            {isToday ? t('coachPlan.today', { defaultValue: 'Heute · Trainerplan' }) : t('coachPlan.tomorrow', { defaultValue: 'Morgen · Trainerplan' })}
+            {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
           </span>
           <h3 className="font-black text-white text-[13px] leading-tight truncate">{nextEvent.title}</h3>
           {(nextEvent.time || nextEvent.originCoachName) && (
@@ -120,11 +139,15 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
     );
   }
 
+  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
+  const tomorrowStr2 = `${tomorrowD.getFullYear()}-${String(tomorrowD.getMonth() + 1).padStart(2, '0')}-${String(tomorrowD.getDate()).padStart(2, '0')}`;
+
   // Full mode (MyCoachView) — pełna lista
   return (
     <div className="space-y-2">
       {events.map(ev => {
         const isToday = ev.date === todayStr;
+        const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr2, t);
         return (
           <div key={ev.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
             <div className="flex items-start gap-3">
@@ -133,7 +156,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
               </div>
               <div className="flex-1 min-w-0">
                 <span className={`text-[8px] font-black uppercase tracking-widest block mb-0.5 ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
-                  {isToday ? t('coachPlan.today', { defaultValue: 'Heute · Trainerplan' }) : t('coachPlan.tomorrow', { defaultValue: 'Morgen · Trainerplan' })}
+                  {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
                 </span>
                 <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight">{ev.title}</h4>
                 <div className="flex flex-wrap items-center gap-2 mt-1">

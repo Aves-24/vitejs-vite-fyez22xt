@@ -675,10 +675,35 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const visibleAnnouncements = myAnnouncements.filter((a: any) => !dismissedIds.includes(a.id));
 
       const lastSeenId = localStorage.getItem(`last_seen_ann_${userId}`);
+
+      // Dodatkowo: sprawdź czy jest jakiś NOWY plan od trenera (mirrored event w tournaments)
+      let hasNewCoachPlan = false;
+      try {
+        const trenerSnap = await getDocs(query(
+          collection(db, `users/${userId}/tournaments`),
+          where('category', '==', 'Trener')
+        ));
+        const lastSeenCoachPlan = parseInt(localStorage.getItem(`last_seen_coach_plan_${userId}`) || '0', 10);
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        trenerSnap.docs.forEach(d => {
+          const data = d.data();
+          const ts = data.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
+          // Tylko jeśli event jest dziś lub w przyszłości i był utworzony po ostatnim sprawdzeniu
+          if (ts > lastSeenCoachPlan && data.date >= todayStr) {
+            hasNewCoachPlan = true;
+          }
+        });
+      } catch (e) {
+        console.warn('Coach plan check failed (non-critical):', e);
+      }
+
       if (cancelled) return;
       if (visibleAnnouncements.length > 0 && visibleAnnouncements[0].id !== lastSeenId) {
         const hasCoach = visibleAnnouncements.some((a: any) => !!a.senderId);
-        setNewAnnouncementType(hasCoach ? 'coach' : 'system');
+        setNewAnnouncementType(hasCoach || hasNewCoachPlan ? 'coach' : 'system');
+      } else if (hasNewCoachPlan) {
+        setNewAnnouncementType('coach');
       } else {
         setNewAnnouncementType('none');
       }
@@ -743,7 +768,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </button>
 
           <button
-            onClick={() => onNavigate?.('ANNOUNCEMENTS')}
+            onClick={() => {
+              // Oznacz coach plans jako "widziane" — żeby badge zniknął przy następnym fetchu
+              try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
+              onNavigate?.('ANNOUNCEMENTS');
+            }}
             className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
               newAnnouncementType !== 'none' ? 'opacity-100' : 'opacity-40'
             }`}
@@ -789,7 +818,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <CoachPlanBanner
             userId={userId}
             compact={true}
-            onClick={() => onNavigate?.('MY_COACH')}
+            onClick={() => {
+              try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
+              onNavigate?.('MY_COACH');
+            }}
           />
         )}
 

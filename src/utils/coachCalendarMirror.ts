@@ -15,11 +15,11 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   addDoc,
-  updateDoc,
-  deleteDoc,
   doc,
   writeBatch,
+  serverTimestamp,
 } from 'firebase/firestore';
 
 // ─── Typy ────────────────────────────────────────────────────────────────────
@@ -38,8 +38,24 @@ interface TrenerEventData {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
+/** Pobiera imię + nazwisko trenera (1x cache) */
+const _coachNameCache: Record<string, string> = {};
+async function getCoachName(coachId: string): Promise<string> {
+  if (_coachNameCache[coachId]) return _coachNameCache[coachId];
+  try {
+    const snap = await getDoc(doc(db, 'users', coachId));
+    if (snap.exists()) {
+      const d = snap.data();
+      const name = `${d.firstName || ''} ${d.lastName || ''}`.trim() || 'Trainer';
+      _coachNameCache[coachId] = name;
+      return name;
+    }
+  } catch { /* ignore */ }
+  return 'Trainer';
+}
+
 /** Buduje payload dla mirrored doc */
-function buildMirrorPayload(event: TrenerEventData, coachId: string, originEventId: string) {
+function buildMirrorPayload(event: TrenerEventData, coachId: string, coachName: string, originEventId: string) {
   return {
     title: event.title,
     date: event.date,
@@ -50,8 +66,10 @@ function buildMirrorPayload(event: TrenerEventData, coachId: string, originEvent
     distance: event.distance || null,
     type: event.type || 'Trener',
     originCoachId: coachId,
+    originCoachName: coachName,
     originEventId,
     isMirrored: true,
+    createdAt: serverTimestamp(),
   };
 }
 
@@ -79,8 +97,11 @@ export async function mirrorTrenerEventToStudents(
   coachId: string
 ): Promise<void> {
   if (!studentIds.length) return;
-  const payload = buildMirrorPayload(event, coachId, originEventId);
+  const coachName = await getCoachName(coachId);
+  const payload = buildMirrorPayload(event, coachId, coachName, originEventId);
 
+  // Mirror eventu — `createdAt: serverTimestamp` w payload służy też jako sygnał
+  // dla dzwonka HomeView (porównanie z localStorage lastSeenCoachPlan).
   await Promise.all(
     studentIds.map(sid =>
       addDoc(collection(db, `users/${sid}/tournaments`), payload)
@@ -98,11 +119,11 @@ export async function updateMirroredEvent(
   newStudentIds: string[],
   coachId: string
 ): Promise<void> {
-  const payload = buildMirrorPayload(event, coachId, originEventId);
+  const coachName = await getCoachName(coachId);
+  const payload = buildMirrorPayload(event, coachId, coachName, originEventId);
 
   // Znajdź wszystkich uczniów którzy już mają ten event
   const existingStudentIds = new Set<string>();
-  const existingDocs: { studentId: string; docId: string }[] = [];
 
   // Przeszukujemy nowych + potencjalnych poprzednich uczniów
   // Ponieważ nie wiemy kto był poprzednio, robimy delete+create dla nowych

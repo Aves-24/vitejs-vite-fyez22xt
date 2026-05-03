@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 
 interface CoachPlanBannerProps {
@@ -35,25 +35,32 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
         const todayStr = fmt(today);
         const tomorrowStr = fmt(tomorrow);
 
+        // Tylko 1 prosty filtr — żeby nie wymagać composite index w Firestore.
+        // Reszta filtrowania lokalnie (lista jest mała: max kilkanaście eventów / ucznia).
         const snap = await getDocs(query(
           collection(db, `users/${userId}/tournaments`),
-          where('category', '==', 'Trener'),
-          where('date', 'in', [todayStr, tomorrowStr]),
-          orderBy('date', 'asc')
+          where('category', '==', 'Trener')
         ));
 
-        const list: CoachPlanEvent[] = snap.docs.map(d => {
-          const data = d.data();
-          return {
-            id: d.id,
-            title: data.title || '',
-            date: data.date || '',
-            time: data.time || '',
-            address: data.address || '',
-            originCoachName: data.originCoachName || '',
-            description: data.description || '',
-          };
-        });
+        const list: CoachPlanEvent[] = snap.docs
+          .map(d => {
+            const data = d.data();
+            return {
+              id: d.id,
+              title: data.title || '',
+              date: data.date || '',
+              time: data.time || '',
+              address: data.address || '',
+              originCoachName: data.originCoachName || '',
+              description: data.note || data.description || '',
+            };
+          })
+          .filter(ev => ev.date === todayStr || ev.date === tomorrowStr)
+          .sort((a, b) => {
+            // dziś przed jutro, wcześniejsza godzina pierwsza
+            if (a.date !== b.date) return a.date.localeCompare(b.date);
+            return (a.time || '').localeCompare(b.time || '');
+          });
 
         setEvents(list);
       } catch (e) {

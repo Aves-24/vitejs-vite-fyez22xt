@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel from '../components/CoachLogPanel';
+import CoachPlanBanner from '../components/CoachPlanBanner';
 
 interface MyCoachViewProps {
   userId: string;
@@ -20,7 +21,7 @@ export default function MyCoachView({ userId, onBack }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'diary' | 'coaches'>('diary');
+  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'coaches'>('plan');
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -98,6 +99,7 @@ export default function MyCoachView({ userId, onBack }: MyCoachViewProps) {
       <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex">
           {[
+            { key: 'plan',     icon: 'event',           label: t('myCoach.tabPlan',     { defaultValue: 'Plan' }) },
             { key: 'diary',    icon: 'edit_note',       label: t('myCoach.tabDiary',    { defaultValue: 'Tagebuch' }) },
             { key: 'coaches',  icon: 'group',           label: t('myCoach.tabCoaches',  { defaultValue: 'Trainer' }) },
           ].map(tab => {
@@ -127,6 +129,24 @@ export default function MyCoachView({ userId, onBack }: MyCoachViewProps) {
           <div className="text-center py-10">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
           </div>
+        )}
+
+        {!isLoading && activeTab === 'plan' && (
+          coaches.length > 0 ? (
+            <>
+              <CoachPlanBanner userId={userId} compact={false} />
+              <div className="text-center mt-4">
+                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
+                  {t('myCoach.planNote', { defaultValue: 'Heute & Morgen — vom Trainer geplant' })}
+                </p>
+              </div>
+            </>
+          ) : (
+            <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
+              <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">event_busy</span>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noPlan', { defaultValue: 'Kein Plan' })}</p>
+            </div>
+          )
         )}
 
         {!isLoading && activeTab === 'diary' && (

@@ -5,6 +5,7 @@ import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getD
 import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
+import CoachPlanBanner from '../components/CoachPlanBanner';
 import { calculateRank, TARGET_RANKS } from '../utils/rankEngine';
 import { getHandicapBand, HANDICAP_BANDS } from '../utils/handicapEngine';
 
@@ -781,6 +782,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             ))}
           </div>
+        )}
+
+        {/* PLAN OD TRENERA — dziś / jutro */}
+        {!isLoading && (
+          <CoachPlanBanner
+            userId={userId}
+            compact={true}
+            onClick={() => onNavigate?.('MY_COACH')}
+          />
         )}
 
         {/* NASTĘPNY CEL */}

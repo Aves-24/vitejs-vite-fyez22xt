@@ -1,0 +1,157 @@
+import React, { useState, useEffect } from 'react';
+import { db } from '../firebase';
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { useTranslation } from 'react-i18next';
+
+interface CoachPlanBannerProps {
+  userId: string;
+  compact?: boolean;
+  onClick?: () => void;
+}
+
+interface CoachPlanEvent {
+  id: string;
+  title: string;
+  date: string;          // YYYY-MM-DD
+  time?: string;
+  address?: string;
+  originCoachName?: string;
+  description?: string;
+}
+
+export default function CoachPlanBanner({ userId, compact = false, onClick }: CoachPlanBannerProps) {
+  const { t } = useTranslation();
+  const [events, setEvents] = useState<CoachPlanEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlan = async () => {
+      if (!userId) { setIsLoading(false); return; }
+      setIsLoading(true);
+      try {
+        const today = new Date();
+        const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const todayStr = fmt(today);
+        const tomorrowStr = fmt(tomorrow);
+
+        const snap = await getDocs(query(
+          collection(db, `users/${userId}/tournaments`),
+          where('category', '==', 'Trener'),
+          where('date', 'in', [todayStr, tomorrowStr]),
+          orderBy('date', 'asc')
+        ));
+
+        const list: CoachPlanEvent[] = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            title: data.title || '',
+            date: data.date || '',
+            time: data.time || '',
+            address: data.address || '',
+            originCoachName: data.originCoachName || '',
+            description: data.description || '',
+          };
+        });
+
+        setEvents(list);
+      } catch (e) {
+        console.error('CoachPlanBanner: błąd pobierania', e);
+      }
+      setIsLoading(false);
+    };
+    fetchPlan();
+  }, [userId]);
+
+  if (isLoading || events.length === 0) return null;
+
+  const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+
+  // Compact mode (HomeView) — pokazuje tylko najbliższy event jako banner
+  if (compact) {
+    const nextEvent = events[0];
+    const isToday = nextEvent.date === todayStr;
+    return (
+      <div
+        onClick={onClick}
+        className={`bg-gradient-to-br from-[#0a3a2a] to-[#0d4a36] rounded-[20px] p-3.5 flex items-center gap-3 relative overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98] transition-all' : ''} shadow-md`}
+      >
+        <div className="absolute -right-5 -top-5 w-28 h-28 rounded-full border-[14px] border-[#fed33e]/10 pointer-events-none" />
+        <div className="w-10 h-10 bg-[#fed33e] rounded-xl flex items-center justify-center shrink-0 relative z-10">
+          <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">sports</span>
+        </div>
+        <div className="flex-1 min-w-0 relative z-10">
+          <span className="text-[8px] font-black text-[#fed33e]/80 uppercase tracking-widest block mb-0.5">
+            {isToday ? t('coachPlan.today', { defaultValue: 'Heute · Trainerplan' }) : t('coachPlan.tomorrow', { defaultValue: 'Morgen · Trainerplan' })}
+          </span>
+          <h3 className="font-black text-white text-[13px] leading-tight truncate">{nextEvent.title}</h3>
+          {(nextEvent.time || nextEvent.originCoachName) && (
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {nextEvent.time && (
+                <span className="flex items-center gap-0.5 text-[10px] font-bold text-emerald-300/80">
+                  <span className="material-symbols-outlined text-[11px]">schedule</span>
+                  {nextEvent.time}
+                </span>
+              )}
+              {nextEvent.originCoachName && (
+                <span className="text-[10px] font-bold text-emerald-300/60 truncate">· {nextEvent.originCoachName}</span>
+              )}
+            </div>
+          )}
+        </div>
+        {events.length > 1 && (
+          <div className="shrink-0 bg-[#fed33e] text-[#0a3a2a] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] z-10">
+            +{events.length - 1}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Full mode (MyCoachView) — pełna lista
+  return (
+    <div className="space-y-2">
+      {events.map(ev => {
+        const isToday = ev.date === todayStr;
+        return (
+          <div key={ev.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
+            <div className="flex items-start gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isToday ? 'bg-[#fed33e]' : 'bg-emerald-50'}`}>
+                <span className={`material-symbols-outlined text-[18px] ${isToday ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>sports</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className={`text-[8px] font-black uppercase tracking-widest block mb-0.5 ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
+                  {isToday ? t('coachPlan.today', { defaultValue: 'Heute · Trainerplan' }) : t('coachPlan.tomorrow', { defaultValue: 'Morgen · Trainerplan' })}
+                </span>
+                <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight">{ev.title}</h4>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {ev.time && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500">
+                      <span className="material-symbols-outlined text-[12px]">schedule</span>
+                      {ev.time}
+                    </span>
+                  )}
+                  {ev.address && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500 truncate">
+                      <span className="material-symbols-outlined text-[12px]">location_on</span>
+                      {ev.address}
+                    </span>
+                  )}
+                </div>
+                {ev.originCoachName && (
+                  <p className="text-[10px] font-bold text-gray-400 mt-1.5">— {ev.originCoachName}</p>
+                )}
+                {ev.description && (
+                  <p className="text-[11px] text-[#333] font-medium leading-snug mt-2 bg-gray-50 rounded-lg px-2.5 py-2 italic">
+                    "{ev.description}"
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

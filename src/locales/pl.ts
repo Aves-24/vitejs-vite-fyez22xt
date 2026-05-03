@@ -139,7 +139,8 @@ export const views = {
     home: "Ekran główny",
     calendar: "Terminarz",
     stats: "Statystyki",
-    settings: "Ustawienia"
+    settings: "Ustawienia",
+    myCoach: "Łucznik"
   },
   home: {
     archerRanking: "Ranking Łucznika",

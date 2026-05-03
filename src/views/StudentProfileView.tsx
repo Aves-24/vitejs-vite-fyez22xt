@@ -427,7 +427,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
       
       {/* HEADER TRENERA */}
-      <div className="bg-[#0a3a2a] pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-5 rounded-b-[32px] shadow-lg relative z-20 shrink-0">
+      <div className="bg-gradient-to-b from-[#0a3a2a] to-[#0d4a36] pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 px-5 rounded-b-[36px] shadow-xl shadow-[#0a3a2a]/20 relative z-20 shrink-0">
         <div className="flex items-center gap-4 mb-2">
           <button onClick={() => onNavigate('COACH')} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
@@ -452,56 +452,63 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </div>
 
         {/* STATYSTYKI 2×2 */}
-        <div className="grid grid-cols-2 gap-1.5 mt-2">
+        <div className="grid grid-cols-2 gap-2 mt-3">
           {/* STRZAŁY / MIESIĄC */}
           <button
             onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
+            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
           >
-            <div>
-              <p className="text-xl font-black text-white leading-none">{monthlyArrows}</p>
-              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
+            <div className="w-7 h-7 rounded-xl bg-emerald-500/15 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-emerald-400 text-[16px]">bolt</span>
             </div>
-            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-lg font-black text-white leading-none">{monthlyArrows}</p>
+              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
+            </div>
           </button>
 
           {/* ŚREDNIA 14 DNI */}
           <button
             onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
+            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
           >
-            <div>
-              <p className="text-xl font-black text-[#fed33e] leading-none">{avg14Days}</p>
-              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
+            <div className="w-7 h-7 rounded-xl bg-[#fed33e]/15 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#fed33e] text-[16px]">target</span>
             </div>
-            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-lg font-black text-[#fed33e] leading-none">{avg14Days}</p>
+              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
+            </div>
           </button>
 
           {/* OSTATNI WYNIK */}
           <button
             onClick={() => {
               if (recentSessions.length > 0) {
+                setActiveTab('overview');
                 setCurrentSessionIndex(0);
                 setIsNotesExpanded(true);
                 setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
               }
             }}
-            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
+            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
           >
-            <div>
-              <p className="text-xl font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
-              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
+            <div className="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-white text-[16px]">trophy</span>
             </div>
-            <span className="material-symbols-outlined text-white/30 text-[18px]">arrow_forward_ios</span>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-lg font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
+              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
+            </div>
           </button>
 
           {/* ERGEBNISKURVE */}
           <button
             onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
-            className="bg-white/10 rounded-xl px-3 py-2 border border-white/10 flex items-center justify-between active:scale-95 transition-all"
+            className="bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3 py-2.5 flex items-center gap-2 active:scale-[0.97] transition-all"
           >
             <div className="flex-1 min-w-0">
-              <span className="text-[8px] font-bold text-emerald-300 uppercase tracking-widest block mb-1">ergebniskurve</span>
+              <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest block mb-1">ergebniskurve</span>
               {sparkline.length >= 2 ? (() => {
                 const W = 100, H = 32, pad = 5;
                 const minS = Math.min(...sparkline);
@@ -544,29 +551,31 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       </div>
 
       {/* ─── TAB BAR ─────────────────────────────────────────── */}
-      <div className="bg-white border-b border-gray-100 px-4 shrink-0 z-10 shadow-sm">
-        <div className="flex">
+      <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
+        <div className="bg-gray-50 rounded-2xl p-1 flex relative">
           {[
-            { key: 'overview',   icon: 'home',      label: t('studentProfile.tabOverview',   { defaultValue: 'Überblick' }) },
-            { key: 'diary',      icon: 'menu_book', label: t('studentProfile.tabDiary',      { defaultValue: 'Tagebuch' }) },
-            { key: 'analytics',  icon: 'analytics', label: t('studentProfile.tabAnalytics',  { defaultValue: 'Analytik' }) },
-          ].map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key as any)}
-              className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 relative transition-all ${
-                activeTab === tab.key ? 'text-[#0a3a2a]' : 'text-gray-400'
-              }`}
-            >
-              <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.key ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>
-                {tab.icon}
-              </span>
-              <span className="text-[8px] font-black uppercase tracking-widest">{tab.label}</span>
-              {activeTab === tab.key && (
-                <span className="absolute bottom-0 left-3 right-3 h-[2.5px] bg-[#fed33e] rounded-full" />
-              )}
-            </button>
-          ))}
+            { key: 'overview',   icon: 'space_dashboard', label: t('studentProfile.tabOverview',   { defaultValue: 'Überblick' }) },
+            { key: 'diary',      icon: 'edit_note',       label: t('studentProfile.tabDiary',      { defaultValue: 'Tagebuch' }) },
+            { key: 'analytics',  icon: 'monitoring',      label: t('studentProfile.tabAnalytics',  { defaultValue: 'Analytik' }) },
+          ].map(tab => {
+            const isActive = activeTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key as any)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-200 ${
+                  isActive
+                    ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
+                    : 'text-gray-500 active:scale-95'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`} style={isActive ? { fontVariationSettings: '"FILL" 1' } : {}}>
+                  {tab.icon}
+                </span>
+                <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 

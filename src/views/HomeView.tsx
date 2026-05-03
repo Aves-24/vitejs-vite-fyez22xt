@@ -83,6 +83,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [battleToDelete, setBattleToDelete] = useState<string | null>(null);
 
   const [newAnnouncementType, setNewAnnouncementType] = useState<'none' | 'coach' | 'system'>('none');
+  const [hasNewCoachPlan, setHasNewCoachPlan] = useState<boolean>(false);
+  const [hasCoachAnnouncement, setHasCoachAnnouncement] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [isPremium, setIsPremium] = useState(false);
@@ -677,7 +679,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const lastSeenId = localStorage.getItem(`last_seen_ann_${userId}`);
 
       // Dodatkowo: sprawdź czy jest jakiś NOWY plan od trenera (mirrored event w tournaments)
-      let hasNewCoachPlan = false;
+      let foundNewCoachPlan = false;
       try {
         const trenerSnap = await getDocs(query(
           collection(db, `users/${userId}/tournaments`),
@@ -691,7 +693,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const ts = data.createdAt?.toMillis ? data.createdAt.toMillis() : 0;
           // Tylko jeśli event jest dziś lub w przyszłości i był utworzony po ostatnim sprawdzeniu
           if (ts > lastSeenCoachPlan && data.date >= todayStr) {
-            hasNewCoachPlan = true;
+            foundNewCoachPlan = true;
           }
         });
       } catch (e) {
@@ -699,10 +701,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       }
 
       if (cancelled) return;
-      if (visibleAnnouncements.length > 0 && visibleAnnouncements[0].id !== lastSeenId) {
-        const hasCoach = visibleAnnouncements.some((a: any) => !!a.senderId);
-        setNewAnnouncementType(hasCoach || hasNewCoachPlan ? 'coach' : 'system');
-      } else if (hasNewCoachPlan) {
+      const announcementVisible = visibleAnnouncements.length > 0 && visibleAnnouncements[0].id !== lastSeenId;
+      const announcementIsCoach = announcementVisible && visibleAnnouncements.some((a: any) => !!a.senderId);
+
+      setHasNewCoachPlan(foundNewCoachPlan);
+      setHasCoachAnnouncement(announcementIsCoach);
+
+      if (announcementVisible) {
+        setNewAnnouncementType(announcementIsCoach || foundNewCoachPlan ? 'coach' : 'system');
+      } else if (foundNewCoachPlan) {
         setNewAnnouncementType('coach');
       } else {
         setNewAnnouncementType('none');
@@ -771,7 +778,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             onClick={() => {
               // Oznacz coach plans jako "widziane" — żeby badge zniknął przy następnym fetchu
               try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
-              onNavigate?.('ANNOUNCEMENTS');
+              setNewAnnouncementType('none');
+              setHasNewCoachPlan(false);
+              // Decyzja gdzie iść:
+              // - jeśli jest jakikolwiek announcement (coach/system) → ANNOUNCEMENTS
+              // - jeśli ŹRÓDŁEM badge'a był tylko nowy plan trenera → MY_COACH
+              if (hasCoachAnnouncement || (newAnnouncementType === 'system')) {
+                onNavigate?.('ANNOUNCEMENTS');
+              } else if (hasNewCoachPlan) {
+                onNavigate?.('MY_COACH');
+              } else {
+                onNavigate?.('ANNOUNCEMENTS');
+              }
             }}
             className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
               newAnnouncementType !== 'none' ? 'opacity-100' : 'opacity-40'

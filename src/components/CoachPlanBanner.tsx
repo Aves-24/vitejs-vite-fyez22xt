@@ -42,34 +42,38 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
           where('category', '==', 'Trener')
         ));
 
-        const list: CoachPlanEvent[] = snap.docs
-          .map(d => {
-            const data = d.data();
-            return {
-              id: d.id,
-              title: data.title || '',
-              date: data.date || '',
-              time: data.time || '',
-              address: data.address || '',
-              originCoachName: data.originCoachName || '',
-              description: data.note || data.description || '',
-            };
-          })
-          .filter(ev => ev.date === todayStr || ev.date === tomorrowStr)
-          .sort((a, b) => {
-            // dziś przed jutro, wcześniejsza godzina pierwsza
-            if (a.date !== b.date) return a.date.localeCompare(b.date);
-            return (a.time || '').localeCompare(b.time || '');
-          });
+        const all: CoachPlanEvent[] = snap.docs.map(d => {
+          const data = d.data();
+          return {
+            id: d.id,
+            title: data.title || '',
+            date: data.date || '',
+            time: data.time || '',
+            address: data.address || '',
+            originCoachName: data.originCoachName || '',
+            description: data.note || data.description || '',
+          };
+        });
 
-        setEvents(list);
+        const sorted = all.sort((a, b) => {
+          if (a.date !== b.date) return a.date.localeCompare(b.date);
+          return (a.time || '').localeCompare(b.time || '');
+        });
+
+        // compact (HomeView) → tylko dziś/jutro
+        // full (MyCoachView)  → wszystkie nadchodzące (date >= today)
+        const filtered = compact
+          ? sorted.filter(ev => ev.date === todayStr || ev.date === tomorrowStr)
+          : sorted.filter(ev => ev.date >= todayStr);
+
+        setEvents(filtered);
       } catch (e) {
         console.error('CoachPlanBanner: błąd pobierania', e);
       }
       setIsLoading(false);
     };
     fetchPlan();
-  }, [userId]);
+  }, [userId, compact]);
 
   if (isLoading || events.length === 0) return null;
 

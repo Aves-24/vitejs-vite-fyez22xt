@@ -27,6 +27,7 @@ const StatsView           = React.lazy(() => import('./views/StatsView'));
 const AdminDashboardView  = React.lazy(() => import('./views/AdminDashboardView'));
 const CoachDashboardView  = React.lazy(() => import('./views/CoachDashboardView'));
 const StudentProfileView  = React.lazy(() => import('./views/StudentProfileView'));
+const MyCoachView         = React.lazy(() => import('./views/MyCoachView'));
 const DelayMirrorView     = React.lazy(() => import('./views/DelayMirrorView'));
 
 // Fallback pokazywany podczas ładowania chunka (zwykle <100ms).
@@ -36,7 +37,7 @@ const ViewFallback = () => (
   </div>
 );
 
-type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD' | 'DELAY_MIRROR';
+type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD' | 'DELAY_MIRROR' | 'MY_COACH';
 
 export default function App() {
   const { t } = useTranslation();
@@ -58,6 +59,7 @@ export default function App() {
   
   const [userDistances, setUserDistances] = useState<any[]>([]);
   const [isCoach, setIsCoach] = useState<boolean>(false);
+  const [hasCoach, setHasCoach] = useState<boolean>(false);
   const [userLevel, setUserLevel] = useState<number>(1);
 
   // NOWE: trzymamy userClub w App.tsx żeby przekazać do AnnouncementsView
@@ -167,6 +169,7 @@ export default function App() {
         }
         
         setIsCoach(!!data.isCoach);
+        setHasCoach(Array.isArray(data.coaches) && data.coaches.length > 0);
         setUserLevel(data.level || 1);
 
         // NOWE: zapisujemy klub użytkownika żeby AnnouncementsView mógł filtrować ogłoszenia klubowe
@@ -292,7 +295,7 @@ export default function App() {
   };
 
   const renderBottomNav = () => {
-    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
+    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR', 'MY_COACH'];
     if (hiddenViews.includes(currentView)) return null;
 
     return (
@@ -308,6 +311,12 @@ export default function App() {
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
               <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>
             </button>
+            {hasCoach && (
+              <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+                <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
+                <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Trainer' })}</span>
+              </button>
+            )}
           </div>
           
           <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
@@ -459,6 +468,7 @@ export default function App() {
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
       </Suspense>
       </main>
       

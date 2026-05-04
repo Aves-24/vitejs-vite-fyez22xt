@@ -9,6 +9,7 @@ interface MyCoachViewProps {
   userId: string;
   onBack: () => void;
   onNavigateToSettings?: () => void;
+  onNavigateToStats?: (date: string) => void;
 }
 
 interface CoachInfo {
@@ -28,11 +29,11 @@ interface SessionWithNote {
   timestamp: number;
 }
 
-export default function MyCoachView({ userId, onBack, onNavigateToSettings }: MyCoachViewProps) {
+export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'coaches'>('plan');
+  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips'>('plan');
   const [planCount, setPlanCount] = useState(0);
   const [diaryCount, setDiaryCount] = useState(0);
   const [sessionNotes, setSessionNotes] = useState<SessionWithNote[]>([]);
@@ -115,13 +116,35 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
 
       {/* HEADER */}
-      <div className="bg-gradient-to-b from-[#0a3a2a] to-[#0d4a36] pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 px-5 rounded-b-[36px] shadow-xl shadow-[#0a3a2a]/20 relative z-20 shrink-0">
+      <div className="bg-gradient-to-b from-[#0a3a2a] to-[#0d4a36] pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-5 rounded-b-[36px] shadow-xl shadow-[#0a3a2a]/20 relative z-20 shrink-0">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
+            {/* Chipsy trenerów pod tytułem */}
+            {!isLoading && coaches.length > 0 && (
+              <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                {coaches.map(c => {
+                  const initials = `${c.firstName[0] || ''}${c.lastName[0] || ''}`.toUpperCase();
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={onNavigateToSettings}
+                      className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full pl-0.5 pr-2 py-0.5"
+                    >
+                      <div className="w-5 h-5 bg-[#fed33e] rounded-full flex items-center justify-center shrink-0">
+                        <span className="text-[8px] font-black text-[#0a3a2a]">{initials || '?'}</span>
+                      </div>
+                      <span className="text-[9px] font-black text-white/80 truncate max-w-[80px]">
+                        {c.firstName} {c.lastName}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="flex items-center shrink-0">
             <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
@@ -134,9 +157,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
       <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex">
           {[
-            { key: 'plan',    icon: 'event',      label: t('myCoach.tabPlan',    { defaultValue: 'Plan' }),    badge: planCount },
-            { key: 'diary',   icon: 'edit_note',  label: t('myCoach.tabDiary',   { defaultValue: 'Tagebuch' }), badge: diaryCount },
-            { key: 'coaches', icon: 'group',      label: t('myCoach.tabCoaches', { defaultValue: 'Trainer' }),  badge: 0 },
+            { key: 'plan', icon: 'event',      label: t('myCoach.tabPlan',  { defaultValue: 'Plan' }),      badge: planCount },
+            { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary', { defaultValue: 'Tagebuch' }),  badge: diaryCount },
+            { key: 'tips', icon: 'sports',     label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: sessionNotes.length },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -173,7 +196,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
           </div>
         )}
 
-        {/* Plan — zawsze zamontowany, ukrywany gdy nieaktywny */}
+        {/* Plan */}
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
           {!isLoading && (
             coaches.length > 0 ? (
@@ -194,56 +217,11 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
           )}
         </div>
 
-        {/* Diary — zawsze zamontowany, ukrywany gdy nieaktywny */}
+        {/* Tagebuch */}
         <div className={activeTab === 'diary' ? '' : 'hidden'}>
           {!isLoading && (
             coaches.length > 0 ? (
-              <div className="space-y-4">
-                <CoachLogPanel studentId={userId} currentUserId={userId} mode="student" onCountChange={setDiaryCount} />
-
-                {/* Wskazówki trenera do konkretnych sesji */}
-                {!sessionNotesLoading && sessionNotes.length > 0 && (
-                  <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                      <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                        <span className="material-symbols-outlined text-white text-[15px]">sports</span>
-                      </div>
-                      <div className="leading-tight">
-                        <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
-                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.sessionNotesSubtitle', { defaultValue: 'Komentarze trenera po treningu' })} · {sessionNotes.length}</p>
-                      </div>
-                    </div>
-                    <div className="divide-y divide-gray-50">
-                      {sessionNotes.map(s => {
-                        const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
-                        const dateLabel = s.date
-                          ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-                          : '';
-                        return (
-                          <div key={s.id} className="p-3 flex items-start gap-2.5">
-                            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
-                              <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{t('myCoach.sessionNoteLabel', { defaultValue: 'Wskazówka' })}</span>
-                                  {s.distance && (
-                                    <span className="text-[8px] font-bold text-gray-400">{s.distance}</span>
-                                  )}
-                                  <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
-                                </div>
-                                <span className="text-[8px] font-bold text-gray-400 shrink-0">{dateLabel}</span>
-                              </div>
-                              <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <CoachLogPanel studentId={userId} currentUserId={userId} mode="student" onCountChange={setDiaryCount} />
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">menu_book</span>
@@ -253,42 +231,65 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
           )}
         </div>
 
-        {/* Coaches — zawsze zamontowany, ukrywany gdy nieaktywny */}
-        <div className={activeTab === 'coaches' ? '' : 'hidden'}>
-          {!isLoading && (
-            coaches.length === 0 ? (
-              <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
-                <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">person_off</span>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noCoaches', { defaultValue: 'Keine Trainer' })}</p>
+        {/* Wskazówki — komentarze trenera do konkretnych sesji */}
+        <div className={activeTab === 'tips' ? '' : 'hidden'}>
+          {sessionNotesLoading ? (
+            <div className="text-center py-10">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
+            </div>
+          ) : sessionNotes.length === 0 ? (
+            <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
+              <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports</span>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noTips', { defaultValue: 'Brak wskazówek' })}</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-white text-[15px]">sports</span>
+                </div>
+                <div className="leading-tight">
+                  <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
+                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                    {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {sessionNotes.length}
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {coaches.map(c => {
-                  const initials = `${c.firstName[0] || ''}${c.lastName[0] || ''}`.toUpperCase();
+              <div className="divide-y divide-gray-50">
+                {sessionNotes.map(s => {
+                  const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
+                  const dateLabel = s.date
+                    ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                    : '';
                   return (
-                    <div key={c.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100 flex items-center gap-3">
-                      <div className="w-12 h-12 bg-[#0a3a2a] text-[#fed33e] rounded-full flex items-center justify-center shrink-0">
-                        <span className="font-black text-[14px]">{initials || <span className="material-symbols-outlined">sports</span>}</span>
+                    <button
+                      key={s.id}
+                      onClick={() => s.date && onNavigateToStats?.(s.date)}
+                      className="w-full text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                        <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{c.firstName} {c.lastName}</h3>
-                        {c.clubName && (
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">{c.clubName}</p>
-                        )}
+                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {s.distance && (
+                              <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>
+                            )}
+                            <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
+                            <span className="material-symbols-outlined text-[12px] text-gray-300 group-active:text-blue-400 transition-colors">chevron_right</span>
+                          </div>
+                        </div>
+                        <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
                       </div>
-                      {onNavigateToSettings && (
-                        <button
-                          onClick={onNavigateToSettings}
-                          className="shrink-0 text-[8px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-0.5 hover:text-[#0a3a2a] transition-colors active:scale-95"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">manage_accounts</span>
-                        </button>
-                      )}
-                    </div>
+                    </button>
                   );
                 })}
               </div>
-            )
+            </div>
           )}
         </div>
 

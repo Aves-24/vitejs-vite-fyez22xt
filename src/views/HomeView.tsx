@@ -868,11 +868,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* KALENDARZ PRYWATNY / TO-DO */}
         {!isLoading && (todoItems.length > 0 || nextOtherEvent) && (
           todoItems.length > 0 ? (
-            <div className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] overflow-hidden shadow-sm mt-2">
+            <div className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] shadow-sm mt-2 pt-3">
               <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
                 {t('calendar.todoSection')}
               </span>
-              <div className="pt-4 px-3 pb-2 space-y-1.5">
+              <div className="pt-1 px-3 pb-2 space-y-1.5">
                 {todoItems.map(item => (
                   <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="bg-white border border-emerald-100 rounded-[18px] px-3 py-2.5 flex items-center gap-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-emerald-300 text-[20px] shrink-0">radio_button_unchecked</span>

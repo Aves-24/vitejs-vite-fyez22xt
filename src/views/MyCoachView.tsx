@@ -124,10 +124,11 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
   const handleAcknowledge = useCallback(async (id: string) => {
     setAcknowledgedIds(prev => new Set(prev).add(id));
+    onBack();
     try {
       await updateDoc(doc(db, 'users', userId), { acknowledgedItems: arrayUnion(id) });
     } catch { /* ignore */ }
-  }, [userId]);
+  }, [userId, onBack]);
 
   const visibleNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
 

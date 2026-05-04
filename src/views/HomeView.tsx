@@ -311,11 +311,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
   useEffect(() => {
     if (!userId) return;
-    const qTodo = query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true));
-    const unsub = onSnapshot(qTodo, (snap) => {
-      setTodoItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return unsub;
+    let cancelled = false;
+    getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true)))
+      .then(snap => {
+        if (!cancelled) setTodoItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      });
+    return () => { cancelled = true; };
   }, [userId]);
 
 

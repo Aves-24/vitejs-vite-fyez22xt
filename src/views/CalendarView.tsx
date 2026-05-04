@@ -464,7 +464,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     </div>
     <div className="w-[1.5px] h-[14px] bg-gray-200 rounded-full mx-1"></div>
     <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none pt-0.5 whitespace-nowrap">
-      {t('nav.menuCalendar')}
+      {t('nav.calendar')}
     </h1>
   </div>
   

@@ -18,6 +18,7 @@ const CACHE_TTL = {
   TOURNAMENTS:    10 * 60 * 1000, // 10 min
   LAST_SESSION:   60 * 60 * 1000, // 1h — i tak czyszczone po nowym treningu
   ANNOUNCEMENTS:  30 * 60 * 1000, // 30 min
+  TODOS:        24 * 60 * 60 * 1000, // 24h — inwalidowane ręcznie z CalendarView
 };
 
 function cacheGet<T>(key: string): T | null {
@@ -312,9 +313,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
+    const cacheKey = `grotX_todos_${userId}`;
+    const cached = cacheGet<any[]>(cacheKey);
+    if (cached) { setTodoItems(cached); return; }
     getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true)))
       .then(snap => {
-        if (!cancelled) setTodoItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        if (cancelled) return;
+        const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setTodoItems(todos);
+        cacheSet(cacheKey, todos, CACHE_TTL.TODOS);
       });
     return () => { cancelled = true; };
   }, [userId]);

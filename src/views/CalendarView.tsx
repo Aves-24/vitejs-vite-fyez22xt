@@ -283,6 +283,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         todo: false,
         date: todayStr,
       });
+      localStorage.removeItem(`grotX_todos_${userId}`);
     } catch (error) {
       console.error('Błąd oznaczenia jako zrobione:', error);
     }
@@ -337,6 +338,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         }
       } else {
         const docRef = await addDoc(collection(db, 'users', userId, 'tournaments'), eventData);
+        if (newIsTodo) localStorage.removeItem(`grotX_todos_${userId}`);
         // Mirror nowego eventu do uczniów
         if (newCategory === 'Trener' && resolvedStudentIds.length > 0) {
           await mirrorTrenerEventToStudents(eventData as any, docRef.id, resolvedStudentIds, userId);

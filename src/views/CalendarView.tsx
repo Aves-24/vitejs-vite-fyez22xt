@@ -21,6 +21,7 @@ interface Event {
   hasScore?: boolean;
   coachStudents?: 'all' | string[];
   todo?: boolean;
+  isMirrored?: boolean;
 }
 
 interface CoachStudent {
@@ -464,9 +465,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 
                 const hasTournament = dayEvents.some(e => e.category === 'Turniej' || !e.category);
                 const hasOther = dayEvents.some(e => e.category === 'Inne');
-                const hasTrainer = dayEvents.some(e => e.category === 'Trener');
+                const hasOwnTrainer = dayEvents.some(e => e.category === 'Trener' && !e.isMirrored);
+                const hasMirroredTrainer = dayEvents.some(e => e.category === 'Trener' && e.isMirrored);
+                const hasTrainer = hasOwnTrainer || hasMirroredTrainer;
                 const isToday = dateStr === todayStr;
-                const typeCount = [hasTournament, hasOther, hasTrainer].filter(Boolean).length;
+                const typeCount = [hasTournament, hasOther, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
                   return (
@@ -478,7 +481,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <div className="w-full h-full rounded-[10px] overflow-hidden flex flex-col relative">
                         {hasTournament && <div className="bg-[#0a3a2a] flex-1" />}
                         {hasOther && <div className="bg-emerald-300 flex-1" />}
-                        {hasTrainer && <div className="bg-blue-400 flex-1" />}
+                        {hasOwnTrainer && <div className="bg-indigo-500 flex-1" />}
+                        {hasMirroredTrainer && <div className="bg-sky-400 flex-1" />}
                         <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[11px] drop-shadow">
                           {day}
                         </span>
@@ -496,8 +500,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 } else if (hasOther) {
                   bgClass = "bg-emerald-100";
                   textClass = "text-emerald-800 font-black";
-                } else if (hasTrainer) {
-                  bgClass = "bg-blue-500 shadow-sm";
+                } else if (hasOwnTrainer) {
+                  bgClass = "bg-indigo-500 shadow-sm";
+                  textClass = "text-white font-black";
+                } else if (hasMirroredTrainer) {
+                  bgClass = "bg-sky-400 shadow-sm";
                   textClass = "text-white font-black";
                 } else if (isToday) {
                   bgClass = "bg-white border-2 border-[#fed33e] shadow-sm";
@@ -706,7 +713,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     <div
                       key={event.id}
                       onClick={() => setViewingEvent(event)}
-                      className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-blue-50 border-blue-100 text-[#0a3a2a]"
+                      className={`rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex text-[#0a3a2a] ${event.isMirrored ? 'bg-sky-50 border-sky-100' : 'bg-indigo-50 border-indigo-100'}`}
                     >
                       <div className="flex-1 p-4 flex items-start gap-3">
                         <div className="p-2.5 rounded-2xl text-center min-w-[56px] border bg-white shadow-sm">
@@ -726,10 +733,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       {isLastVisible && hiddenCount > 0 ? (
                         <button
                           onClick={(e) => { e.stopPropagation(); setShowAllTrainer(true); }}
-                          className="w-[84px] bg-blue-600/10 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-blue-600/20 active:bg-blue-600/30 transition-colors shrink-0 border-l border-blue-900/5"
+                          className={`w-[84px] rounded-r-[24px] flex flex-col items-center justify-center transition-colors shrink-0 border-l ${event.isMirrored ? 'bg-sky-500/10 hover:bg-sky-500/20 active:bg-sky-500/30 border-sky-900/5' : 'bg-indigo-600/10 hover:bg-indigo-600/20 active:bg-indigo-600/30 border-indigo-900/5'}`}
                         >
-                          <span className="material-symbols-outlined text-blue-600/70 text-[24px] mb-0.5">calendar_month</span>
-                          <span className="text-blue-800 font-black text-2xl leading-none">+{hiddenCount}</span>
+                          <span className={`material-symbols-outlined text-[24px] mb-0.5 ${event.isMirrored ? 'text-sky-500/70' : 'text-indigo-600/70'}`}>calendar_month</span>
+                          <span className={`font-black text-2xl leading-none ${event.isMirrored ? 'text-sky-800' : 'text-indigo-800'}`}>+{hiddenCount}</span>
                         </button>
                       ) : (
                         <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
@@ -978,16 +985,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   onClick={() => { setViewingEvent(ev); }}
                   className="w-full flex items-center gap-3 p-3 rounded-2xl border active:scale-[0.98] transition-all text-left"
                   style={{
-                    background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#eff6ff' : '#f0fdf4',
-                    borderColor: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? '#bfdbfe' : '#bbf7d0',
+                    background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? (ev.isMirrored ? '#f0f9ff' : '#eef2ff') : '#f0fdf4',
+                    borderColor: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? (ev.isMirrored ? '#bae6fd' : '#c7d2fe') : '#bbf7d0',
                   }}
                 >
-                  <span className={`material-symbols-outlined text-xl ${ev.category === 'Turniej' ? 'text-white' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                  <span className={`material-symbols-outlined text-xl ${ev.category === 'Turniej' ? 'text-white' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-sky-500' : 'text-indigo-500') : 'text-emerald-600'}`}>
                     {ev.category === 'Turniej' ? 'emoji_events' : ev.category === 'Trener' ? 'group' : 'event'}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className={`font-black text-sm leading-tight truncate ${ev.category === 'Turniej' ? 'text-white' : 'text-[#0a3a2a]'}`}>{ev.title}</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ev.category === 'Turniej' ? 'text-white/60' : ev.category === 'Trener' ? 'text-blue-500' : 'text-emerald-600'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ev.category === 'Turniej' ? 'text-white/60' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-sky-500' : 'text-indigo-500') : 'text-emerald-600'}`}>
                       {ev.category === 'Turniej' ? t('calendar.tabTournament') : ev.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                       {ev.time ? ` • ${ev.time}` : ''}
                     </p>
@@ -1006,7 +1013,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              
              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700') : 'bg-emerald-100 text-emerald-700'}`}>
                     {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>

@@ -456,25 +456,26 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   return (
     <div className="flex flex-col h-full bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-32">
       
-      <div className="px-4 mt-6 mb-4 h-12 flex justify-between items-center shrink-0">
-  <div className="flex items-center gap-2 ml-20">
-    <div className="flex items-center shrink-0 whitespace-nowrap">
-      <span className="text-[20px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-      <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-1.5 animate-pulse"></div>
-    </div>
-    <div className="w-[1.5px] h-[14px] bg-gray-200 rounded-full mx-1"></div>
-    <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none pt-0.5 whitespace-nowrap">
-      {t('nav.calendar')}
-    </h1>
-  </div>
-  
-  <button 
-    onClick={handleOpenNewForm} 
-    className="bg-[#0a3a2a] text-white w-11 h-11 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all shrink-0"
-  >
-    <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
-  </button>
-</div>
+      <div className="px-4 mt-6 mb-4 h-12 flex items-center shrink-0">
+        <div className="w-20 shrink-0" />
+        <div className="flex-1 flex items-center gap-1.5">
+          <span className="text-[20px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
+          <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-0.5 animate-pulse" />
+          <div className="w-px h-3.5 bg-gray-200 rounded-full mx-1.5" />
+          <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none whitespace-nowrap">
+            {t('nav.calendar')}
+          </h1>
+        </div>
+        <div className="relative shrink-0">
+          <div className="absolute inset-0 rounded-full bg-[#0a3a2a]/25 animate-ping" />
+          <button
+            onClick={handleOpenNewForm}
+            className="relative bg-[#0a3a2a] text-white w-11 h-11 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all z-10"
+          >
+            <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
+          </button>
+        </div>
+      </div>
 
       <div className="px-4 mb-3 shrink-0">
         <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-3 shadow-sm">

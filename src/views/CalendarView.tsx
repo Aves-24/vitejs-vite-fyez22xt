@@ -477,8 +477,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       </div>
 
-      <div className="px-4 mb-3 shrink-0">
-        <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-3 shadow-sm">
+      <div className="px-4 mb-2 shrink-0">
+        <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-2.5 shadow-sm">
            <div className="flex justify-between items-center mb-1.5 px-1">
              <button onClick={prevMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
              <h3 className="font-black text-[#0a3a2a] uppercase tracking-widest text-[10px]">
@@ -567,8 +567,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
-        
+      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-0.5">
+
         {todoEvents.length === 0 && upcomingEvents.length === 0 ? (
           <div className="text-center py-10 text-gray-300 flex flex-col items-center">
             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
@@ -577,34 +577,30 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         ) : (
           <>
             {todoEvents.length > 0 && (
-              <div className="space-y-1">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5">
-                  {t('calendar.todoSection')}
-                </div>
+              <div className="space-y-0.5">
                 {todoEvents.map(event => (
                   <div
                     key={event.id}
                     onClick={() => setViewingEvent(event)}
                     className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-emerald-50 border-emerald-200 text-[#0a3a2a]"
                   >
-                    <div className="flex-1 p-4 flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center shadow-sm shrink-0">
-                        <span className="material-symbols-outlined text-emerald-300 text-[28px]">radio_button_unchecked</span>
+                    <span className="absolute top-2 left-3 text-[8px] font-black text-emerald-500 uppercase tracking-widest opacity-60">{t('calendar.todoSection')}</span>
+                    <div className="flex-1 p-3 pt-5 flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-white border border-emerald-100 flex items-center justify-center shadow-sm shrink-0">
+                        <span className="material-symbols-outlined text-emerald-300 text-[22px]">radio_button_unchecked</span>
                       </div>
                       <div className="flex-1 pr-2">
-                        <h3 className="font-black text-base leading-tight">{event.title}</h3>
-                        {event.note ? (
-                          <p className="text-[10px] font-bold text-emerald-600/70 mt-0.5 line-clamp-1">{event.note}</p>
-                        ) : (
-                          <p className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest mt-0.5">{t('calendar.todoSection')}</p>
+                        <h3 className="font-black text-sm leading-tight">{event.title}</h3>
+                        {event.note && (
+                          <p className="text-[9px] font-bold text-emerald-600/70 mt-0.5 line-clamp-1">{event.note}</p>
                         )}
                       </div>
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); markTodoComplete(event.id); }}
-                      className="w-16 bg-emerald-500 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-emerald-600 active:bg-emerald-700 transition-colors shrink-0 border-l border-emerald-200"
+                      className="w-14 bg-emerald-500 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-emerald-600 active:bg-emerald-700 transition-colors shrink-0 border-l border-emerald-200"
                     >
-                      <span className="material-symbols-outlined text-white text-[26px]">check</span>
+                      <span className="material-symbols-outlined text-white text-[20px]">check</span>
                     </button>
                   </div>
                 ))}
@@ -612,57 +608,52 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTournaments.length > 0 && (
-              <div className="space-y-1">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5">
-                  {t('calendar.upcomingTournaments')}
-                </div>
-                
+              <div className="space-y-0.5">
+
                 {visibleTournaments.map((event, index) => {
                   const isLastVisible = !showAllTournaments && index === visibleTournaments.length - 1;
                   const hiddenCount = upcomingTournaments.length - visibleTournaments.length;
 
                   return (
-                    <div 
-                      key={event.id} 
+                    <div
+                      key={event.id}
                       onClick={() => setViewingEvent(event)}
                       className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-gradient-to-br from-[#0a3a2a] to-emerald-900 border-emerald-800 text-white"
                     >
+                      <span className="absolute top-2 left-3 text-[7px] font-black text-white/40 uppercase tracking-widest">{t('calendar.upcomingTournaments')}</span>
                       {event.id === nextTournamentId && (
-                        <div className="absolute -top-3 left-5 bg-[#fed33e] text-[#5d4a00] px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest shadow-md z-10">
+                        <div className="absolute -top-2 right-3 bg-[#fed33e] text-[#5d4a00] px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest shadow-md z-10">
                           {t('calendar.nextStart')}
                         </div>
                       )}
 
-                      <div className="flex-1 p-4 flex items-start gap-3">
-                        <div className="p-2.5 rounded-2xl text-center min-w-[56px] border bg-white/10">
-                          <span className="block text-[9px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-xl font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                      <div className="flex-1 p-3 pt-5 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-xl text-center min-w-[48px] border bg-white/10 text-[10px]">
+                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-lg font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
                         </div>
-                        <div className="flex-1 pr-2 mt-0.5">
-                          <h3 className="font-black text-base leading-tight mb-1">{event.title}</h3>
-                          <div className="flex flex-col gap-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
-                            <div className="flex items-center gap-2">
-                              {event.distance && <span className="bg-[#fed33e] text-[#5d4a00] px-2 py-0.5 rounded-md">{event.distance}</span>}
-                              <span>{t('calendar.upcomingTournaments')}</span>
-                            </div>
+                        <div className="flex-1 pr-2">
+                          <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
+                          <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
+                            {event.distance && <span className="bg-[#fed33e] text-[#5d4a00] px-1.5 py-0.5 rounded w-fit text-[7px]">{event.distance}</span>}
                             <div className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">schedule</span> {event.time || t('calendar.wholeDay')}
+                              <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {isLastVisible && hiddenCount > 0 ? (
-                         <button 
+                         <button
                            onClick={(e) => { e.stopPropagation(); setShowAllTournaments(true); }}
-                           className="w-[84px] bg-black/20 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-black/30 active:bg-black/40 transition-colors shrink-0 border-l border-white/10"
+                           className="w-12 bg-black/20 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-black/30 active:bg-black/40 transition-colors shrink-0 border-l border-white/10"
                          >
-                           <span className="material-symbols-outlined text-white/70 text-[24px] mb-0.5">calendar_month</span>
-                           <span className="text-white font-black text-2xl leading-none">+{hiddenCount}</span>
+                           <span className="material-symbols-outlined text-white/70 text-[18px]">add</span>
+                           <span className="text-white font-black text-xs leading-none">{hiddenCount}</span>
                          </button>
                       ) : (
-                         <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
-                           <span className="material-symbols-outlined">chevron_right</span>
+                         <div className="w-10 flex items-center justify-center opacity-40 shrink-0">
+                           <span className="material-symbols-outlined text-lg">chevron_right</span>
                          </div>
                       )}
                     </div>
@@ -670,9 +661,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 })}
                 
                 {showAllTournaments && upcomingTournaments.length > 1 && (
-                  <button 
+                  <button
                     onClick={() => setShowAllTournaments(false)}
-                    className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
+                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
                   >
                     {t('calendar.collapseTournaments')}
                   </button>
@@ -681,47 +672,45 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingOthers.length > 0 && (
-              <div className="space-y-1">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-2">
-                  {t('calendar.tabOther')}
-                </div>
+              <div className="space-y-0.5">
 
                 {visibleOthers.map((event, index) => {
                   const isLastVisible = !showAllOthers && index === visibleOthers.length - 1;
                   const hiddenCount = upcomingOthers.length - visibleOthers.length;
 
                   return (
-                    <div 
-                      key={event.id} 
+                    <div
+                      key={event.id}
                       onClick={() => setViewingEvent(event)}
                       className="rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex bg-emerald-50 border-emerald-100 text-[#0a3a2a]"
                     >
-                      <div className="flex-1 p-4 flex items-start gap-3">
-                        <div className="p-2.5 rounded-2xl text-center min-w-[56px] border bg-white shadow-sm">
-                          <span className="block text-[9px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-xl font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                      <span className="absolute top-2 left-3 text-[8px] font-black text-emerald-500 uppercase tracking-widest opacity-60">{t('calendar.tabOther')}</span>
+                      <div className="flex-1 p-3 pt-5 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-xl text-center min-w-[48px] border bg-white shadow-sm text-[10px]">
+                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-lg font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
                         </div>
-                        <div className="flex-1 pr-2 mt-0.5">
-                          <h3 className="font-black text-base leading-tight mb-1">{event.title}</h3>
-                          <div className="flex flex-col gap-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
+                        <div className="flex-1 pr-2">
+                          <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
+                          <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
                             <div className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">schedule</span> {event.time || t('calendar.wholeDay')}
+                              <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
                             </div>
                           </div>
                         </div>
                       </div>
 
                       {isLastVisible && hiddenCount > 0 ? (
-                         <button 
+                         <button
                            onClick={(e) => { e.stopPropagation(); setShowAllOthers(true); }}
-                           className="w-[84px] bg-emerald-600/10 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-emerald-600/20 active:bg-emerald-600/30 transition-colors shrink-0 border-l border-emerald-900/5"
+                           className="w-12 bg-emerald-600/10 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-emerald-600/20 active:bg-emerald-600/30 transition-colors shrink-0 border-l border-emerald-900/5"
                          >
-                           <span className="material-symbols-outlined text-emerald-600/70 text-[24px] mb-0.5">calendar_month</span>
-                           <span className="text-emerald-800 font-black text-2xl leading-none">+{hiddenCount}</span>
+                           <span className="material-symbols-outlined text-emerald-600/70 text-[18px]">add</span>
+                           <span className="text-emerald-800 font-black text-xs leading-none">{hiddenCount}</span>
                          </button>
                       ) : (
-                         <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
-                           <span className="material-symbols-outlined">chevron_right</span>
+                         <div className="w-10 flex items-center justify-center opacity-40 shrink-0">
+                           <span className="material-symbols-outlined text-lg">chevron_right</span>
                          </div>
                       )}
                     </div>
@@ -731,7 +720,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllOthers && upcomingOthers.length > 1 && (
                   <button
                     onClick={() => setShowAllOthers(false)}
-                    className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
+                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
                   >
                     {t('calendar.collapseOthers')}
                   </button>
@@ -740,10 +729,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTrainer.length > 0 && (
-              <div className="space-y-1">
-                <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-2">
-                  {t('calendar.tabTrainer')}
-                </div>
+              <div className="space-y-0.5">
 
                 {visibleTrainer.map((event, index) => {
                   const isLastVisible = !showAllTrainer && index === visibleTrainer.length - 1;
@@ -755,16 +741,17 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       onClick={() => setViewingEvent(event)}
                       className={`rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex text-[#0a3a2a] ${event.isMirrored ? 'bg-sky-50 border-sky-100' : 'bg-indigo-50 border-indigo-100'}`}
                     >
-                      <div className="flex-1 p-4 flex items-start gap-3">
-                        <div className="p-2.5 rounded-2xl text-center min-w-[56px] border bg-white shadow-sm">
-                          <span className="block text-[9px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-xl font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                      <span className={`absolute top-2 left-3 text-[8px] font-black uppercase tracking-widest opacity-60 ${event.isMirrored ? 'text-sky-500' : 'text-indigo-500'}`}>{t('calendar.tabTrainer')}</span>
+                      <div className="flex-1 p-3 pt-5 flex items-start gap-2.5">
+                        <div className="p-1.5 rounded-xl text-center min-w-[48px] border bg-white shadow-sm text-[10px]">
+                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-lg font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
                         </div>
-                        <div className="flex-1 pr-2 mt-0.5">
-                          <h3 className="font-black text-base leading-tight mb-1">{event.title}</h3>
-                          <div className="flex flex-col gap-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
+                        <div className="flex-1 pr-2">
+                          <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
+                          <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
                             <div className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[12px]">schedule</span> {event.time || t('calendar.wholeDay')}
+                              <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
                             </div>
                           </div>
                         </div>
@@ -773,14 +760,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       {isLastVisible && hiddenCount > 0 ? (
                         <button
                           onClick={(e) => { e.stopPropagation(); setShowAllTrainer(true); }}
-                          className={`w-[84px] rounded-r-[24px] flex flex-col items-center justify-center transition-colors shrink-0 border-l ${event.isMirrored ? 'bg-sky-500/10 hover:bg-sky-500/20 active:bg-sky-500/30 border-sky-900/5' : 'bg-indigo-600/10 hover:bg-indigo-600/20 active:bg-indigo-600/30 border-indigo-900/5'}`}
+                          className={`w-12 rounded-r-[24px] flex flex-col items-center justify-center transition-colors shrink-0 border-l ${event.isMirrored ? 'bg-sky-500/10 hover:bg-sky-500/20 active:bg-sky-500/30 border-sky-900/5' : 'bg-indigo-600/10 hover:bg-indigo-600/20 active:bg-indigo-600/30 border-indigo-900/5'}`}
                         >
-                          <span className={`material-symbols-outlined text-[24px] mb-0.5 ${event.isMirrored ? 'text-sky-500/70' : 'text-indigo-600/70'}`}>calendar_month</span>
-                          <span className={`font-black text-2xl leading-none ${event.isMirrored ? 'text-sky-800' : 'text-indigo-800'}`}>+{hiddenCount}</span>
+                          <span className={`material-symbols-outlined text-[18px] ${event.isMirrored ? 'text-sky-500/70' : 'text-indigo-600/70'}`}>add</span>
+                          <span className={`font-black text-xs leading-none ${event.isMirrored ? 'text-sky-800' : 'text-indigo-800'}`}>{hiddenCount}</span>
                         </button>
                       ) : (
-                        <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
-                          <span className="material-symbols-outlined">chevron_right</span>
+                        <div className="w-10 flex items-center justify-center opacity-40 shrink-0">
+                          <span className="material-symbols-outlined text-lg">chevron_right</span>
                         </div>
                       )}
                     </div>
@@ -790,7 +777,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllTrainer && upcomingTrainer.length > 1 && (
                   <button
                     onClick={() => setShowAllTrainer(false)}
-                    className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
+                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
                   >
                     {t('calendar.collapseTrainer')}
                   </button>
@@ -809,10 +796,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             state: ArchiveState; setter: React.Dispatch<React.SetStateAction<ArchiveState>>;
             cutoffType: 'turniej' | 'other'; filterFn: (e: Event) => boolean;
           }) => (
-            <div className="mt-1">
+            <div className="mt-0.5">
               <button
                 onClick={() => openArchiveSection(state, setter, cutoffType, filterFn)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-100 rounded-[20px] active:bg-gray-100 transition-all"
+                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg active:bg-gray-100 transition-all"
               >
                 <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   <span className="material-symbols-outlined text-[15px] text-gray-300">{icon}</span>
@@ -828,39 +815,39 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               </button>
 
               {state.open && (
-                <div className="space-y-1 mt-1">
+                <div className="space-y-0.5 mt-0.5">
                   {state.allItems.length === 0 && !state.loading && (
-                    <p className="text-center text-[10px] font-bold text-gray-300 uppercase py-3">{t('calendar.archiveEmpty')}</p>
+                    <p className="text-center text-[9px] font-bold text-gray-300 uppercase py-2">{t('calendar.archiveEmpty')}</p>
                   )}
                   {state.allItems.slice(0, state.shown).map(event => (
                     <div
                       key={event.id}
                       onClick={() => setViewingEvent(event)}
-                      className="rounded-[24px] border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all cursor-pointer active:scale-[0.98] flex"
+                      className="rounded-lg border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all cursor-pointer active:scale-[0.98] flex"
                     >
-                      <div className="flex-1 p-3 flex items-center gap-3">
-                        <div className="px-3 py-2 rounded-xl text-center min-w-[56px] border bg-gray-100 border-gray-200">
-                          <span className="block text-[8px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-lg font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                      <div className="flex-1 p-2.5 flex items-center gap-2">
+                        <div className="px-2 py-1.5 rounded-lg text-center min-w-[48px] border bg-gray-100 border-gray-200 text-[8px]">
+                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-base font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
                         </div>
-                        <div className="flex-1 pr-2">
-                          <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
-                          <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
+                        <div className="flex-1 pr-1.5">
+                          <h3 className="font-black text-xs leading-tight line-through decoration-gray-300">{event.title}</h3>
+                          <p className="text-[7px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
                             {event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                           </p>
                         </div>
                       </div>
-                      <div className="w-10 flex items-center justify-center opacity-30 shrink-0">
-                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      <div className="w-8 flex items-center justify-center opacity-30 shrink-0">
+                        <span className="material-symbols-outlined text-sm">chevron_right</span>
                       </div>
                     </div>
                   ))}
                   {state.shown < state.allItems.length && (
                     <button
                       onClick={() => setter(p => ({ ...p, shown: p.shown + 5 }))}
-                      className="w-full py-3 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-[18px] active:bg-gray-100 transition-all flex items-center justify-center gap-1.5"
+                      className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 transition-all flex items-center justify-center gap-1"
                     >
-                      <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                      <span className="material-symbols-outlined text-[12px]">expand_more</span>
                       {t('calendar.archiveLoadMore')}
                     </button>
                   )}
@@ -870,8 +857,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           );
 
           return (
-            <div className="mt-4 space-y-0.5">
-              <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest pl-1 pb-1">{t('calendar.history')}</div>
+            <div className="mt-2 space-y-0.5">
+              <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest pl-1 pb-0.5">{t('calendar.history')}</div>
               <ArchiveSection label={t('calendar.archiveTournaments')} icon="emoji_events" state={archTurniej} setter={setArchTurniej} cutoffType="turniej" filterFn={e => e.category === 'Turniej' || !e.category} />
               <ArchiveSection label={t('calendar.archiveCalendar')} icon="calendar_month" state={archInne} setter={setArchInne} cutoffType="other" filterFn={e => e.category === 'Inne' && !e.wasATodo} />
               <ArchiveSection label={t('calendar.archiveTrainerReceived')} icon="school" state={archTrainerRec} setter={setArchTrainerRec} cutoffType="other" filterFn={e => e.category === 'Trener' && !!e.isMirrored} />

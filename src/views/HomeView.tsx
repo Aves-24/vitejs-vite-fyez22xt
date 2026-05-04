@@ -278,24 +278,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     const fetchTournaments = async () => {
       const cacheKey = `grotX_tournaments_${userId}`;
-      const cacheTodoKey = `grotX_todos_${userId}`;
       const cached = cacheGet<any[]>(cacheKey);
-      const cachedTodos = cacheGet<any[]>(cacheTodoKey);
 
       if (cached) {
         if (cancelled) return;
         setNextTournament(cached.find((e: any) => e.category === 'Turniej' || !e.category) || null);
         setNextOtherEvent(cached.find((e: any) => e.category === 'Inne') || null);
-        if (cachedTodos) setTodoItems(cachedTodos);
         setIsLoading(false);
-        if (!cachedTodos) {
-          const qTodo = query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true));
-          const todoSnap = await getDocs(qTodo);
-          if (cancelled) return;
-          const todos = todoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-          setTodoItems(todos);
-          cacheSet(cacheTodoKey, todos, CACHE_TTL.TOURNAMENTS);
-        }
         return;
       }
 
@@ -305,37 +294,30 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         where('date', '>=', today),
         orderBy('date', 'asc')
       );
-      const [snap, todoSnap] = await Promise.all([
-        getDocs(q),
-        getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true))),
-      ]);
+      const snap = await getDocs(q);
       if (cancelled) return;
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      const todos = todoSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setNextTournament(all.find((e: any) => e.category === 'Turniej' || !e.category) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
-      setTodoItems(todos);
       setIsLoading(false);
 
       cacheSet(cacheKey, all, CACHE_TTL.TOURNAMENTS);
-      cacheSet(cacheTodoKey, todos, CACHE_TTL.TOURNAMENTS);
     };
 
     fetchTournaments();
     return () => { cancelled = true; };
   }, [userId]);
 
-  const markTodoComplete = async (id: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    try {
-      await updateDoc(doc(db, 'users', userId, 'tournaments', id), { todo: false, date: today });
-      setTodoItems(prev => prev.filter(t => t.id !== id));
-      localStorage.removeItem(`grotX_todos_${userId}`);
-    } catch (e) {
-      console.error('Błąd oznaczania todo:', e);
-    }
-  };
+  useEffect(() => {
+    if (!userId) return;
+    const qTodo = query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true));
+    const unsub = onSnapshot(qTodo, (snap) => {
+      setTodoItems(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    });
+    return unsub;
+  }, [userId]);
+
 
   useEffect(() => {
     if (!userId) return;

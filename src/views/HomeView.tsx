@@ -812,24 +812,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       <div className="flex flex-col gap-2">
         
-        {/* TO-DO */}
-        {!isLoading && todoItems.length > 0 && (
-          <div className="space-y-1.5 mt-1">
-            <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1">{t('calendar.todoSection')}</div>
-            {todoItems.map(item => (
-              <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="relative bg-white border border-emerald-100 rounded-[20px] px-3 py-2.5 flex items-center gap-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
-                <span className="material-symbols-outlined text-emerald-300 text-[22px] shrink-0">radio_button_unchecked</span>
-                <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); markTodoComplete(item.id); }}
-                  className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 active:bg-emerald-600 transition-colors shadow-sm"
-                >
-                  <span className="material-symbols-outlined text-white text-[18px]">check</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* PLAN OD TRENERA — dziś / jutro */}
         {!isLoading && (
@@ -883,34 +865,67 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </div>
         )}
 
-        {/* KALENDARZ PRYWATNY */}
-        {!isLoading && nextOtherEvent && (
-          <div onClick={() => onGoToCalendar(nextOtherEvent.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] px-4 py-2.5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
-            <div className="absolute inset-0 rounded-[24px] overflow-hidden pointer-events-none">
-              <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
-                <span className="material-symbols-outlined text-[120px]">calendar_month</span>
+        {/* KALENDARZ PRYWATNY / TO-DO */}
+        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && (
+          todoItems.length > 0 ? (
+            <div className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] overflow-hidden shadow-sm mt-2">
+              <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
+                {t('calendar.todoSection')}
+              </span>
+              <div className="pt-4 px-3 pb-2 space-y-1.5">
+                {todoItems.map(item => (
+                  <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="bg-white border border-emerald-100 rounded-[18px] px-3 py-2.5 flex items-center gap-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
+                    <span className="material-symbols-outlined text-emerald-300 text-[20px] shrink-0">radio_button_unchecked</span>
+                    <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); markTodoComplete(item.id); }}
+                      className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 active:bg-emerald-600 transition-colors shadow-sm"
+                    >
+                      <span className="material-symbols-outlined text-white text-[16px]">check</span>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {nextOtherEvent && (
+                <div
+                  onClick={() => onGoToCalendar(nextOtherEvent.id)}
+                  className="flex items-center gap-2 px-4 py-2 border-t border-emerald-200 cursor-pointer active:bg-emerald-100 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">calendar_month</span>
+                  <span className="text-[9px] font-black text-emerald-600 shrink-0">
+                    {new Date(nextOtherEvent.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
+                  </span>
+                  <span className="text-[9px] font-bold text-[#0a3a2a] truncate flex-1">{nextOtherEvent.title}</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">arrow_forward</span>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] px-4 py-2.5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
+              <div className="absolute inset-0 rounded-[24px] overflow-hidden pointer-events-none">
+                <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
+                  <span className="material-symbols-outlined text-[120px]">calendar_month</span>
+                </div>
+              </div>
+              <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
+                {t('home.calendar')}
+              </span>
+              <div className="flex items-center gap-3 relative z-10 w-full pt-1">
+                <div className="bg-[#fed33e]/80 text-[#0a3a2a] p-2 rounded-xl text-center min-w-[50px] shadow-sm shrink-0">
+                  <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                  <span className="block text-lg font-black">{new Date(nextOtherEvent!.date).getDate()}</span>
+                </div>
+                <div className="flex-1 min-w-0 pr-2">
+                  <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight mb-1">{nextOtherEvent!.title}</h4>
+                  <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-0.5">
+                    <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
+                    <span>{nextOtherEvent!.address || t('home.noLocation')}</span>
+                  </span>
+                </div>
+                <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[28px] shrink-0">arrow_circle_right</span>
               </div>
             </div>
-            
-            <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
-              {t('home.calendar')}
-            </span>
-
-            <div className="flex items-center gap-3 relative z-10 w-full pt-1">
-              <div className="bg-[#fed33e]/80 text-[#0a3a2a] p-2 rounded-xl text-center min-w-[50px] shadow-sm shrink-0">
-                <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                <span className="block text-lg font-black">{new Date(nextOtherEvent.date).getDate()}</span>
-              </div>
-              <div className="flex-1 min-w-0 pr-2">
-                <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight mb-1">{nextOtherEvent.title}</h4>
-                <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-0.5">
-                  <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
-                  <span>{nextOtherEvent.address || t('home.noLocation')}</span>
-                </span>
-              </div>
-              <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[28px] shrink-0">arrow_circle_right</span>
-            </div>
-          </div>
+          )
         )}
 
         {/* ─── PASEK STATYSTYK + OSTATNI WYNIK ──────────────────────────────── */}

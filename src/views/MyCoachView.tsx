@@ -71,8 +71,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('myCoach.headerLabel', { defaultValue: 'Schüler-Bereich' })}</p>
-            <h1 className="text-2xl font-black text-white leading-tight truncate">{t('myCoach.title', { defaultValue: 'Mein Trainer' })}</h1>
+            <h1 className="text-2xl font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
           </div>
           <div className="flex items-baseline shrink-0">
             <span className="text-2xl font-black text-white tracking-tighter leading-none">GROT-X</span>

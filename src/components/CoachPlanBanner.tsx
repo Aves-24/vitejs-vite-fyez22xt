@@ -155,9 +155,17 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
                 <span className={`material-symbols-outlined text-[18px] ${isToday ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>sports</span>
               </div>
               <div className="flex-1 min-w-0">
-                <span className={`text-[8px] font-black uppercase tracking-widest block mb-0.5 ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
-                  {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
-                </span>
+                <div className="flex items-center justify-between gap-2 mb-1">
+                  <span className={`text-[8px] font-black uppercase tracking-widest ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
+                    {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
+                  </span>
+                  <span className="flex items-center gap-0.5 bg-emerald-50 border border-emerald-100 rounded-full px-1.5 py-0.5 shrink-0">
+                    <span className="material-symbols-outlined text-[10px] text-emerald-600">person</span>
+                    <span className="text-[9px] font-black text-emerald-700 truncate max-w-[80px]">
+                      {ev.originCoachName || 'Trener'}
+                    </span>
+                  </span>
+                </div>
                 <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight">{ev.title}</h4>
                 <div className="flex flex-wrap items-center gap-2 mt-1">
                   {ev.time && (
@@ -173,9 +181,6 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
                     </span>
                   )}
                 </div>
-                {ev.originCoachName && (
-                  <p className="text-[10px] font-bold text-gray-400 mt-1.5">— {ev.originCoachName}</p>
-                )}
                 {ev.description && (
                   <p className="text-[11px] text-[#333] font-medium leading-snug mt-2 bg-gray-50 rounded-lg px-2.5 py-2 italic">
                     "{ev.description}"

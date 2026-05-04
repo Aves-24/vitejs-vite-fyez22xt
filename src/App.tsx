@@ -299,7 +299,11 @@ export default function App() {
     if (hiddenViews.includes(currentView)) return null;
 
     return (
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 h-20 shadow-[0_-15px_40px_rgba(0,0,0,0.08)] z-[100] px-2 pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
+        <div className="relative h-20 w-full px-2">
+          <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
+            <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white"/>
+          </svg>
         <div className="flex justify-between items-center h-full w-full relative">
           
           <div className="flex flex-1 justify-evenly items-center h-full">
@@ -360,6 +364,8 @@ export default function App() {
           </div>
 
         </div>
+        </div>
+        <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
       </div>
     );
   };

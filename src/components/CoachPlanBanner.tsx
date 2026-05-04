@@ -31,6 +31,8 @@ interface CoachPlanBannerProps {
   compact?: boolean;
   onClick?: () => void;
   onCountChange?: (count: number) => void;
+  acknowledgedIds?: Set<string>;
+  onAcknowledge?: (id: string) => void;
 }
 
 interface CoachPlanEvent {
@@ -43,7 +45,7 @@ interface CoachPlanEvent {
   description?: string;
 }
 
-export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange }: CoachPlanBannerProps) {
+export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange, acknowledgedIds, onAcknowledge }: CoachPlanBannerProps) {
   const { t } = useTranslation();
   const [events, setEvents] = useState<CoachPlanEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,7 +89,8 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
           : sorted.filter(ev => ev.date >= todayStr);
 
         setEvents(filtered);
-        onCountChange?.(filtered.length);
+        const visibleCount = filtered.filter(ev => !acknowledgedIds?.has(ev.id)).length;
+        onCountChange?.(compact ? filtered.length : visibleCount);
       } catch (e) {
         console.error('CoachPlanBanner: błąd pobierania', e);
       }
@@ -143,51 +146,65 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
   }
 
   // Full mode (MyCoachView) — pełna lista
+  const visibleEvents = events.filter(ev => !acknowledgedIds?.has(ev.id));
+  if (visibleEvents.length === 0) return null;
+
   return (
     <div className="space-y-2">
-      {events.map(ev => {
+      {visibleEvents.map(ev => {
         const isToday = ev.date === todayStr;
         const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr, t);
         return (
-          <div key={ev.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
-            <div className="flex items-start gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isToday ? 'bg-[#fed33e]' : 'bg-emerald-50'}`}>
-                <span className={`material-symbols-outlined text-[18px] ${isToday ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>sports</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <span className={`text-[8px] font-black uppercase tracking-widest ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
-                    {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
-                  </span>
-                  <span className="flex items-center gap-0.5 bg-emerald-50 border border-emerald-100 rounded-full px-1.5 py-0.5 shrink-0">
-                    <span className="material-symbols-outlined text-[10px] text-emerald-600">person</span>
-                    <span className="text-[9px] font-black text-emerald-700 truncate max-w-[80px]">
-                      {ev.originCoachName || 'Trener'}
-                    </span>
-                  </span>
+          <div key={ev.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 flex items-stretch">
+            <div className="flex-1 p-3">
+              <div className="flex items-start gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isToday ? 'bg-[#fed33e]' : 'bg-emerald-50'}`}>
+                  <span className={`material-symbols-outlined text-[18px] ${isToday ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>sports</span>
                 </div>
-                <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight">{ev.title}</h4>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  {ev.time && (
-                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500">
-                      <span className="material-symbols-outlined text-[12px]">schedule</span>
-                      {ev.time}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${isToday ? 'text-[#fed33e]' : 'text-emerald-600'}`}>
+                      {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
                     </span>
-                  )}
-                  {ev.address && (
-                    <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500 truncate">
-                      <span className="material-symbols-outlined text-[12px]">location_on</span>
-                      {ev.address}
+                    <span className="flex items-center gap-0.5 bg-emerald-50 border border-emerald-100 rounded-full px-1.5 py-0.5 shrink-0">
+                      <span className="material-symbols-outlined text-[10px] text-emerald-600">person</span>
+                      <span className="text-[9px] font-black text-emerald-700 truncate max-w-[80px]">
+                        {ev.originCoachName || 'Trener'}
+                      </span>
                     </span>
+                  </div>
+                  <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight">{ev.title}</h4>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {ev.time && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500">
+                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                        {ev.time}
+                      </span>
+                    )}
+                    {ev.address && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-500 truncate">
+                        <span className="material-symbols-outlined text-[12px]">location_on</span>
+                        {ev.address}
+                      </span>
+                    )}
+                  </div>
+                  {ev.description && (
+                    <p className="text-[11px] text-[#333] font-medium leading-snug mt-2 bg-gray-50 rounded-lg px-2.5 py-2 italic">
+                      "{ev.description}"
+                    </p>
                   )}
                 </div>
-                {ev.description && (
-                  <p className="text-[11px] text-[#333] font-medium leading-snug mt-2 bg-gray-50 rounded-lg px-2.5 py-2 italic">
-                    "{ev.description}"
-                  </p>
-                )}
               </div>
             </div>
+            {onAcknowledge && (
+              <button
+                onClick={() => onAcknowledge(ev.id)}
+                className="shrink-0 w-11 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-100 rounded-r-2xl"
+                title="Wzięte do wiadomości"
+              >
+                <span className="material-symbols-outlined text-[22px]">check_circle</span>
+              </button>
+            )}
           </div>
         );
       })}

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, arrayUnion, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel from '../components/CoachLogPanel';
 import CoachPlanBanner from '../components/CoachPlanBanner';
@@ -41,6 +41,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
   const [unreadCoachIds, setUnreadCoachIds] = useState<Set<string>>(new Set());
   const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
+  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -50,7 +51,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         const userDoc = await getDoc(doc(db, 'users', userId));
         if (!userDoc.exists()) { setIsLoading(false); return; }
 
-        const coachIds: string[] = userDoc.data().coaches || [];
+        const data = userDoc.data();
+        setAcknowledgedIds(new Set<string>(data.acknowledgedItems || []));
+
+        const coachIds: string[] = data.coaches || [];
         if (coachIds.length === 0) { setCoaches([]); setIsLoading(false); return; }
 
         const list: CoachInfo[] = [];
@@ -59,18 +63,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             const cDoc = await getDoc(doc(db, 'users', cid));
             if (cDoc.exists()) {
               const d = cDoc.data();
-              list.push({
-                id: cid,
-                firstName: d.firstName || '',
-                lastName: d.lastName || '',
-                clubName: d.clubName || '',
-              });
+              list.push({ id: cid, firstName: d.firstName || '', lastName: d.lastName || '', clubName: d.clubName || '' });
             }
           } catch { /* ignore */ }
         }));
         setCoaches(list);
 
-        // Sprawdź unread dla każdego trenera
         const unread = new Set<string>();
         await Promise.all(list.map(async c => {
           try {
@@ -110,13 +108,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             ? data.timestamp.seconds * 1000
             : (typeof data.timestamp === 'number' ? data.timestamp : 0);
           withNote.push({
-            id: d.id,
-            date: data.date || '',
-            score: data.score || 0,
-            arrows: data.arrows || 0,
-            distance: data.distance || '',
-            coachNote: data.coachNote,
-            timestamp: ts,
+            id: d.id, date: data.date || '', score: data.score || 0,
+            arrows: data.arrows || 0, distance: data.distance || '',
+            coachNote: data.coachNote, timestamp: ts,
           });
         });
         setSessionNotes(withNote);
@@ -127,6 +121,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     };
     fetchSessionNotes();
   }, [userId]);
+
+  const handleAcknowledge = useCallback(async (id: string) => {
+    setAcknowledgedIds(prev => new Set(prev).add(id));
+    try {
+      await updateDoc(doc(db, 'users', userId), { acknowledgedItems: arrayUnion(id) });
+    } catch { /* ignore */ }
+  }, [userId]);
+
+  const visibleNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
@@ -139,7 +142,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           </button>
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
-            {/* Chipsy trenerów pod tytułem */}
             {!isLoading && coaches.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 {coaches.map(c => {
@@ -153,13 +155,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                     >
                       <div className="w-5 h-5 bg-[#fed33e] rounded-full flex items-center justify-center shrink-0 relative">
                         <span className="text-[8px] font-black text-[#0a3a2a]">{initials || '?'}</span>
-                        {hasUnread && (
-                          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 border border-white rounded-full" />
-                        )}
+                        {hasUnread && <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 border border-white rounded-full" />}
                       </div>
-                      <span className="text-[9px] font-black text-white/80 truncate max-w-[80px]">
-                        {c.firstName} {c.lastName}
-                      </span>
+                      <span className="text-[9px] font-black text-white/80 truncate max-w-[80px]">{c.firstName} {c.lastName}</span>
                       <span className="material-symbols-outlined text-[11px] text-white/40">chat</span>
                     </button>
                   );
@@ -178,9 +176,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex">
           {[
-            { key: 'plan', icon: 'event',      label: t('myCoach.tabPlan',  { defaultValue: 'Plan' }),      badge: planCount },
+            { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan',  { defaultValue: 'Plan' }),      badge: planCount },
             { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary', { defaultValue: 'Tagebuch' }),  badge: diaryCount },
-            { key: 'tips', icon: 'sports',     label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: sessionNotes.length },
+            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: visibleNotes.length },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -191,16 +189,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                   isActive ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md' : 'text-gray-500 active:scale-95'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`}>
-                  {tab.icon}
-                </span>
+                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`}>{tab.icon}</span>
                 <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
                 {tab.badge > 0 && (
                   <span className={`min-w-[15px] h-[15px] px-0.5 rounded-full text-[8px] font-black flex items-center justify-center shrink-0 ${
                     isActive ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-emerald-600 text-white'
-                  }`}>
-                    {tab.badge}
-                  </span>
+                  }`}>{tab.badge}</span>
                 )}
               </button>
             );
@@ -222,7 +216,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {!isLoading && (
             coaches.length > 0 ? (
               <>
-                <CoachPlanBanner userId={userId} compact={false} onCountChange={setPlanCount} />
+                <CoachPlanBanner
+                  userId={userId}
+                  compact={false}
+                  onCountChange={setPlanCount}
+                  acknowledgedIds={acknowledgedIds}
+                  onAcknowledge={handleAcknowledge}
+                />
                 <div className="text-center mt-4">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
                     {t('myCoach.planNote', { defaultValue: 'Heute & Morgen — vom Trainer geplant' })}
@@ -242,7 +242,14 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         <div className={activeTab === 'diary' ? '' : 'hidden'}>
           {!isLoading && (
             coaches.length > 0 ? (
-              <CoachLogPanel studentId={userId} currentUserId={userId} mode="student" onCountChange={setDiaryCount} />
+              <CoachLogPanel
+                studentId={userId}
+                currentUserId={userId}
+                mode="student"
+                onCountChange={setDiaryCount}
+                acknowledgedIds={acknowledgedIds}
+                onAcknowledge={handleAcknowledge}
+              />
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">menu_book</span>
@@ -252,13 +259,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           )}
         </div>
 
-        {/* Wskazówki — komentarze trenera do konkretnych sesji */}
+        {/* Wskazówki */}
         <div className={activeTab === 'tips' ? '' : 'hidden'}>
           {sessionNotesLoading ? (
             <div className="text-center py-10">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
             </div>
-          ) : sessionNotes.length === 0 ? (
+          ) : visibleNotes.length === 0 ? (
             <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
               <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports</span>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noTips', { defaultValue: 'Brak wskazówek' })}</p>
@@ -272,41 +279,47 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 <div className="leading-tight">
                   <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
                   <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                    {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {sessionNotes.length}
+                    {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {visibleNotes.length}
                   </p>
                 </div>
               </div>
               <div className="divide-y divide-gray-50">
-                {sessionNotes.map(s => {
+                {visibleNotes.map(s => {
                   const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
                   const dateLabel = s.date
                     ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
                     : '';
                   return (
-                    <button
-                      key={s.id}
-                      onClick={() => s.date && onNavigateToStats?.(s.date)}
-                      className="w-full text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
-                    >
-                      <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
-                        <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            {s.distance && (
-                              <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>
-                            )}
-                            <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
-                            <span className="material-symbols-outlined text-[12px] text-gray-300 group-active:text-blue-400 transition-colors">chevron_right</span>
-                          </div>
+                    <div key={s.id} className="flex items-start">
+                      <button
+                        onClick={() => s.date && onNavigateToStats?.(s.date)}
+                        className="flex-1 text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
+                      >
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                          <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
                         </div>
-                        <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
-                      </div>
-                    </button>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {s.distance && <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>}
+                              <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
+                              <span className="material-symbols-outlined text-[12px] text-gray-300 group-active:text-blue-400 transition-colors">chevron_right</span>
+                            </div>
+                          </div>
+                          <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
+                        </div>
+                      </button>
+                      <button
+                        onClick={() => handleAcknowledge(s.id)}
+                        className="shrink-0 w-10 flex items-center justify-center self-stretch text-gray-300 hover:text-emerald-500 active:scale-90 transition-all"
+                        title="Wzięte do wiadomości"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -325,12 +338,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           otherName={`${openMessageCoach.firstName} ${openMessageCoach.lastName}`.trim()}
           onClose={() => {
             setOpenMessageCoach(null);
-            // odśwież unread po zamknięciu
-            setUnreadCoachIds(prev => {
-              const next = new Set(prev);
-              next.delete(openMessageCoach.id);
-              return next;
-            });
+            setUnreadCoachIds(prev => { const n = new Set(prev); n.delete(openMessageCoach.id); return n; });
           }}
         />
       )}

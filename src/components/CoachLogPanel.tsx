@@ -22,6 +22,8 @@ interface CoachLogPanelProps {
   currentUserId: string;
   mode: 'coach' | 'student';
   onCountChange?: (count: number) => void;
+  acknowledgedIds?: Set<string>;
+  onAcknowledge?: (id: string) => void;
 }
 
 // Konfiguracja typów wpisu — kolor, ikona, etykieta
@@ -34,7 +36,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 300;
 
-export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, acknowledgedIds, onAcknowledge }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -77,7 +79,8 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
           };
         });
         setEntries(list);
-        onCountChange?.(list.length);
+        const visibleCount = list.filter(e => !acknowledgedIds?.has(e.id)).length;
+        onCountChange?.(visibleCount);
       } catch (e) {
         console.error('CoachLog: błąd pobierania', e);
       } finally {
@@ -275,37 +278,46 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
             )}
           </div>
         ) : (
-          entries.map(entry => {
-            const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
-            const canDelete = mode === 'coach' && entry.authorId === currentUserId;
-            return (
-              <div key={entry.id} className="p-3 flex items-start gap-2.5">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: cfg.bg }}>
-                  <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>{cfg.icon}</span>
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                    <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.color }}>
-                      {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
-                    </span>
-                    <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
+          entries
+            .filter(entry => !acknowledgedIds?.has(entry.id))
+            .map(entry => {
+              const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
+              const canDelete = mode === 'coach' && entry.authorId === currentUserId;
+              const canAck = mode === 'student' && !!onAcknowledge;
+              return (
+                <div key={entry.id} className="flex items-stretch">
+                  <div className="flex-1 p-3 flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: cfg.bg }}>
+                      <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>{cfg.icon}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                        <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.color }}>
+                          {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
+                        </span>
+                        <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
+                      <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                    </div>
+                    {canDelete && (
+                      <button onClick={() => setConfirmDelete(entry.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5">
+                        <span className="material-symbols-outlined text-[14px]">close</span>
+                      </button>
+                    )}
                   </div>
-                  <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
-                  <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                  {canAck && (
+                    <button
+                      onClick={() => onAcknowledge!(entry.id)}
+                      className="shrink-0 w-10 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-50"
+                      title="Wzięte do wiadomości"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                    </button>
+                  )}
                 </div>
-
-                {canDelete && (
-                  <button
-                    onClick={() => setConfirmDelete(entry.id)}
-                    className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5"
-                  >
-                    <span className="material-symbols-outlined text-[14px]">close</span>
-                  </button>
-                )}
-              </div>
-            );
-          })
+              );
+            })
         )}
       </div>
 

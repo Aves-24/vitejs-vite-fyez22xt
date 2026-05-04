@@ -567,7 +567,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-0.5">
+      <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
 
         {todoEvents.length === 0 && upcomingEvents.length === 0 ? (
           <div className="text-center py-10 text-gray-300 flex flex-col items-center">
@@ -577,7 +577,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         ) : (
           <>
             {todoEvents.length > 0 && (
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {todoEvents.map(event => (
                   <div
                     key={event.id}
@@ -608,7 +608,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTournaments.length > 0 && (
-              <div className="space-y-0.5">
+              <div className="space-y-1">
 
                 {visibleTournaments.map((event, index) => {
                   const isLastVisible = !showAllTournaments && index === visibleTournaments.length - 1;
@@ -622,7 +622,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     >
                       <span className="absolute top-2 left-3 text-[7px] font-black text-white/40 uppercase tracking-widest">{t('calendar.upcomingTournaments')}</span>
                       {event.id === nextTournamentId && (
-                        <div className="absolute -top-2 right-3 bg-[#fed33e] text-[#5d4a00] px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest shadow-md z-10">
+                        <div className="absolute top-2 right-3 bg-[#fed33e] text-[#5d4a00] px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest shadow-md z-10">
                           {t('calendar.nextStart')}
                         </div>
                       )}
@@ -672,7 +672,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingOthers.length > 0 && (
-              <div className="space-y-0.5">
+              <div className="space-y-1">
 
                 {visibleOthers.map((event, index) => {
                   const isLastVisible = !showAllOthers && index === visibleOthers.length - 1;
@@ -729,7 +729,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTrainer.length > 0 && (
-              <div className="space-y-0.5">
+              <div className="space-y-1">
 
                 {visibleTrainer.map((event, index) => {
                   const isLastVisible = !showAllTrainer && index === visibleTrainer.length - 1;
@@ -815,7 +815,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               </button>
 
               {state.open && (
-                <div className="space-y-0.5 mt-0.5">
+                <div className="space-y-1 mt-1">
                   {state.allItems.length === 0 && !state.loading && (
                     <p className="text-center text-[9px] font-bold text-gray-300 uppercase py-2">{t('calendar.archiveEmpty')}</p>
                   )}

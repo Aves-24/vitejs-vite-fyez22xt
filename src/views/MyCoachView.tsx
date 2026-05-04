@@ -73,9 +73,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
           <div className="flex-1 min-w-0">
             <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
           </div>
-          <div className="flex items-baseline shrink-0">
+          <div className="flex items-center shrink-0">
             <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
-            <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full animate-pulse ml-1 relative bottom-[0.25em]" />
+            <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
           </div>
         </div>
       </div>

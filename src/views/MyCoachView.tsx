@@ -71,11 +71,11 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-2xl font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
+            <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
           </div>
           <div className="flex items-baseline shrink-0">
-            <span className="text-2xl font-black text-white tracking-tighter leading-none">GROT-X</span>
-            <div className="bg-[#fed33e] w-2 h-2 rounded-full animate-pulse ml-1 relative bottom-[0.3em]" />
+            <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
+            <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full animate-pulse ml-1 relative bottom-[0.25em]" />
           </div>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-200 relative ${
+                className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md' : 'text-gray-500 active:scale-95'
                 }`}
               >
@@ -102,7 +102,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
                 </span>
                 <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
                 {tab.badge > 0 && (
-                  <span className={`absolute top-1.5 right-2 min-w-[16px] h-4 px-1 rounded-full text-[8px] font-black flex items-center justify-center ${
+                  <span className={`min-w-[15px] h-[15px] px-0.5 rounded-full text-[8px] font-black flex items-center justify-center shrink-0 ${
                     isActive ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-emerald-600 text-white'
                   }`}>
                     {tab.badge}

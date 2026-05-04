@@ -431,6 +431,7 @@ export const views = {
     confirmDelete: "Möchtest du diesen Termin wirklich aus dem Kalender löschen?",
     todoSection: "Zu Erledigen",
     todoToggle: "Ohne Datum — zu erledigen",
+    todoDone: "Als erledigt markieren",
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
   },
   profile: {

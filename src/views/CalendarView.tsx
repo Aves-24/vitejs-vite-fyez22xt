@@ -426,7 +426,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     </div>
     <div className="w-[1.5px] h-[14px] bg-gray-200 rounded-full mx-1"></div>
     <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none pt-0.5 whitespace-nowrap">
-      KALENDAR
+      {t('nav.menuCalendar')}
     </h1>
   </div>
   
@@ -575,7 +575,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {upcomingTournaments.length > 0 && (
               <div className="space-y-1">
                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5">
-                  TURNIERE
+                  {t('calendar.upcomingTournaments')}
                 </div>
                 
                 {visibleTournaments.map((event, index) => {
@@ -604,7 +604,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           <div className="flex flex-col gap-1 text-[9px] font-bold uppercase tracking-widest opacity-70">
                             <div className="flex items-center gap-2">
                               {event.distance && <span className="bg-[#fed33e] text-[#5d4a00] px-2 py-0.5 rounded-md">{event.distance}</span>}
-                              <span>TURNIERE</span>
+                              <span>{t('calendar.upcomingTournaments')}</span>
                             </div>
                             <div className="flex items-center gap-1">
                               <span className="material-symbols-outlined text-[12px]">schedule</span> {event.time || t('calendar.wholeDay')}
@@ -644,7 +644,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {upcomingOthers.length > 0 && (
               <div className="space-y-1">
                 <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-2">
-                  KALENDAR
+                  {t('calendar.tabOther')}
                 </div>
 
                 {visibleOthers.map((event, index) => {
@@ -784,7 +784,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     </div>
                     <div className="flex-1 pr-2">
                       <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
-                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? 'TURNIERE' : event.category === 'Trener' ? t('calendar.tabTrainer') : 'KALENDAR'}</p>
+                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}</p>
                     </div>
                   </div>
 
@@ -1161,7 +1161,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-emerald-500 text-white active:scale-95 transition-all flex items-center justify-center gap-2"
                >
                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                 {t('calendar.todoSection')} — zrobione!
+                 {t('calendar.todoDone')}
                </button>
              )}
 

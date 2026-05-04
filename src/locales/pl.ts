@@ -431,6 +431,7 @@ export const views = {
     confirmDelete: "Na pewno usunąć ten plan z kalendarza?",
     todoSection: "Do Zrobienia",
     todoToggle: "Bez daty — do zrobienia",
+    todoDone: "Oznacz jako zrobione",
     days: ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
   },
   profile: {

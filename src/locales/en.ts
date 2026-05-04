@@ -431,6 +431,7 @@ export const views = {
     confirmDelete: "Are you sure you want to delete this event from the schedule?",
     todoSection: "To-Do",
     todoToggle: "No date — to-do",
+    todoDone: "Mark as done",
     days: ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
   },
   profile: {

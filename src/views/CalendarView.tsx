@@ -179,11 +179,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
 
   useEffect(() => {
-    if (focusedEventId && events.length > 0) {
-      const ev = events.find(e => e.id === focusedEventId);
-      if (ev) setViewingEvent(ev);
-    }
-  }, [focusedEventId, events]);
+    if (!focusedEventId) return;
+    const ev = [...events, ...todoEvents].find(e => e.id === focusedEventId);
+    if (ev) setViewingEvent(ev);
+  }, [focusedEventId, events, todoEvents]);
 
   const closeViewingModal = () => {
     setViewingEvent(null);

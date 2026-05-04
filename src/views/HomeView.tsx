@@ -877,12 +877,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="bg-white border border-emerald-100 rounded-[18px] px-3 py-2.5 flex items-center gap-3 shadow-sm active:scale-[0.98] transition-all cursor-pointer">
                     <span className="material-symbols-outlined text-emerald-300 text-[20px] shrink-0">radio_button_unchecked</span>
                     <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); markTodoComplete(item.id); }}
-                      className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center shrink-0 active:bg-emerald-600 transition-colors shadow-sm"
-                    >
-                      <span className="material-symbols-outlined text-white text-[16px]">check</span>
-                    </button>
+                    <span className="material-symbols-outlined text-emerald-300 text-[18px] shrink-0">arrow_forward_ios</span>
                   </div>
                 ))}
               </div>

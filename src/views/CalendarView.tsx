@@ -21,6 +21,7 @@ interface Event {
   hasScore?: boolean;
   coachStudents?: 'all' | string[];
   todo?: boolean;
+  wasATodo?: boolean;
   isMirrored?: boolean;
 }
 
@@ -78,7 +79,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showAllTournaments, setShowAllTournaments] = useState(false);
   const [showAllOthers, setShowAllOthers] = useState(false);
   const [showAllTrainer, setShowAllTrainer] = useState(false);
-  const [showAllPast, setShowAllPast] = useState(false);
+
+  type ArchiveState = { open: boolean; allItems: Event[]; shown: number; loading: boolean };
+  const initArch = (): ArchiveState => ({ open: false, allItems: [], shown: 5, loading: false });
+  const [archTurniej, setArchTurniej] = useState<ArchiveState>(initArch());
+  const [archInne, setArchInne] = useState<ArchiveState>(initArch());
+  const [archTrainerRec, setArchTrainerRec] = useState<ArchiveState>(initArch());
+  const [archTrainerSent, setArchTrainerSent] = useState<ArchiveState>(initArch());
+  const [archTodo, setArchTodo] = useState<ArchiveState>(initArch());
 
   const [newIsTodo, setNewIsTodo] = useState(false);
   const [todoEvents, setTodoEvents] = useState<Event[]>([]);
@@ -281,6 +289,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       await updateDoc(doc(db, 'users', userId, 'tournaments', id), {
         todo: false,
         date: todayStr,
+        wasATodo: true,
       });
       localStorage.removeItem(`grotX_todos_${userId}`);
     } catch (error) {
@@ -388,7 +397,37 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
 
   const upcomingEvents = events.filter(e => e.date >= todayStr);
-  const pastEvents = events.filter(e => e.date < todayStr).reverse();
+
+  const getArchiveCutoff = (type: 'turniej' | 'other') => {
+    const d = new Date();
+    if (type === 'turniej') {
+      if (isPremium) d.setFullYear(d.getFullYear() - 5); else d.setFullYear(d.getFullYear() - 1);
+    } else {
+      if (isPremium) d.setFullYear(d.getFullYear() - 1); else d.setMonth(d.getMonth() - 2);
+    }
+    return d.toISOString().split('T')[0];
+  };
+
+  const openArchiveSection = async (
+    state: ArchiveState,
+    setter: React.Dispatch<React.SetStateAction<ArchiveState>>,
+    cutoffType: 'turniej' | 'other',
+    filterFn: (e: Event) => boolean
+  ) => {
+    if (state.allItems.length > 0) { setter(p => ({ ...p, open: !p.open })); return; }
+    setter(p => ({ ...p, loading: true, open: true }));
+    try {
+      const cutoff = getArchiveCutoff(cutoffType);
+      const snap = await getDocs(query(
+        collection(db, 'users', userId, 'tournaments'),
+        where('date', '>=', cutoff),
+        where('date', '<', todayStr),
+        orderBy('date', 'desc')
+      ));
+      const allItems = snap.docs.map(d => ({ id: d.id, ...d.data() } as Event)).filter(filterFn);
+      setter({ open: true, allItems, shown: 5, loading: false });
+    } catch { setter(p => ({ ...p, loading: false, open: false })); }
+  };
 
   const upcomingTournaments = upcomingEvents.filter(e => e.category === 'Turniej' || !e.category);
   const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne');
@@ -399,7 +438,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const visibleTournaments = showAllTournaments ? upcomingTournaments : upcomingTournaments.slice(0, 1);
   const visibleOthers = showAllOthers ? upcomingOthers : upcomingOthers.slice(0, 1);
   const visibleTrainer = showAllTrainer ? upcomingTrainer : upcomingTrainer.slice(0, 1);
-  const visiblePast = showAllPast ? pastEvents : pastEvents.slice(0, 3);
 
   const openInGoogleMaps = (address: string) => {
     const encodedAddress = encodeURIComponent(address);
@@ -761,82 +799,86 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           </>
         )}
 
-        {pastEvents.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 border-b border-gray-100 pb-1.5 mt-4">
-              {t('calendar.history')}
-            </div>
+        {/* ─── ARCHIWA ─────────────────────────────────────────── */}
+        {(() => {
+          const ArchiveSection = ({
+            label, icon, state, setter, cutoffType, filterFn,
+          }: {
+            label: string; icon: string;
+            state: ArchiveState; setter: React.Dispatch<React.SetStateAction<ArchiveState>>;
+            cutoffType: 'turniej' | 'other'; filterFn: (e: Event) => boolean;
+          }) => (
+            <div className="mt-1">
+              <button
+                onClick={() => openArchiveSection(state, setter, cutoffType, filterFn)}
+                className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 border border-gray-100 rounded-[20px] active:bg-gray-100 transition-all"
+              >
+                <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                  <span className="material-symbols-outlined text-[15px] text-gray-300">{icon}</span>
+                  {label}
+                  {state.loading && <span className="material-symbols-outlined text-[12px] animate-spin text-gray-300">progress_activity</span>}
+                  {!state.loading && state.allItems.length > 0 && (
+                    <span className="bg-gray-200 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none">{state.allItems.length}</span>
+                  )}
+                </span>
+                <span className="material-symbols-outlined text-gray-300 text-[18px]">
+                  {state.open ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
 
-            {visiblePast.map((event, index) => {
-              const isLastVisible = !showAllPast && index === visiblePast.length - 1;
-              const hiddenCount = pastEvents.length - visiblePast.length;
-
-              return (
-                <div 
-                  key={event.id} 
-                  onClick={() => setViewingEvent(event)}
-                  className="rounded-[24px] border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex"
-                >
-                  <div className="flex-1 p-3 flex items-center gap-3">
-                    <div className="px-3 py-2 rounded-xl text-center min-w-[56px] border bg-gray-100 border-gray-200">
-                      <span className="block text-[8px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                      <span className="block text-lg font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+              {state.open && (
+                <div className="space-y-1 mt-1">
+                  {state.allItems.length === 0 && !state.loading && (
+                    <p className="text-center text-[10px] font-bold text-gray-300 uppercase py-3">{t('calendar.archiveEmpty')}</p>
+                  )}
+                  {state.allItems.slice(0, state.shown).map(event => (
+                    <div
+                      key={event.id}
+                      onClick={() => setViewingEvent(event)}
+                      className="rounded-[24px] border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all cursor-pointer active:scale-[0.98] flex"
+                    >
+                      <div className="flex-1 p-3 flex items-center gap-3">
+                        <div className="px-3 py-2 rounded-xl text-center min-w-[56px] border bg-gray-100 border-gray-200">
+                          <span className="block text-[8px] font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                          <span className="block text-lg font-black leading-none mt-0.5">{new Date(event.date).getDate()}</span>
+                        </div>
+                        <div className="flex-1 pr-2">
+                          <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
+                          <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
+                            {event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="w-10 flex items-center justify-center opacity-30 shrink-0">
+                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                      </div>
                     </div>
-                    <div className="flex-1 pr-2">
-                      <h3 className="font-black text-sm leading-tight line-through decoration-gray-300">{event.title}</h3>
-                      <p className="text-[8px] font-bold uppercase tracking-widest opacity-70 mt-0.5">{event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}</p>
-                    </div>
-                  </div>
-
-                  {isLastVisible && hiddenCount > 0 ? (
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); setShowAllPast(true); }}
-                       className="w-[84px] bg-gray-200/50 rounded-r-[24px] flex flex-col items-center justify-center hover:bg-gray-200 active:bg-gray-300 transition-colors shrink-0 border-l border-gray-200"
-                     >
-                       <span className="material-symbols-outlined text-gray-400 text-[24px] mb-0.5">history</span>
-                       <span className="text-gray-500 font-black text-2xl leading-none">+{hiddenCount}</span>
-                     </button>
-                  ) : (
-                     <div className="w-14 flex items-center justify-center opacity-40 shrink-0">
-                       <span className="material-symbols-outlined">chevron_right</span>
-                     </div>
+                  ))}
+                  {state.shown < state.allItems.length && (
+                    <button
+                      onClick={() => setter(p => ({ ...p, shown: p.shown + 5 }))}
+                      className="w-full py-3 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-[18px] active:bg-gray-100 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                      {t('calendar.archiveLoadMore')}
+                    </button>
                   )}
                 </div>
-              );
-            })}
+              )}
+            </div>
+          );
 
-            {showAllPast && pastEvents.length > 3 && (
-              <button 
-                onClick={() => setShowAllPast(false)}
-                className="w-full py-3.5 bg-gray-50 text-gray-400 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-gray-100 active:scale-95 transition-all mt-1"
-              >
-                {t('calendar.collapseHistory')}
-              </button>
-            )}
-          </div>
-        )}
-
-        {events.length > 0 && (
-          <div className="pt-6 pb-2 px-2 text-center">
-            {!isPremium ? (
-              <div className="bg-gray-100 p-4 rounded-2xl border border-gray-200 border-dashed">
-                <span className="material-symbols-outlined text-[#F2C94C] text-2xl mb-1">lock</span>
-                <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-tight">
-                  {t('calendar.historyLocked')}<br/>
-                  <span className="text-[#0a3a2a]">{t('calendar.proHistoryInfo')}</span>
-                </p>
-              </div>
-            ) : (
-              <div className="opacity-50">
-                <span className="material-symbols-outlined text-gray-400 text-lg mb-1">history</span>
-                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">
-                  {t('calendar.proHistoryActive')}<br/>
-                  {t('calendar.autoArchive')}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
+          return (
+            <div className="mt-4 space-y-0.5">
+              <div className="text-[9px] font-black text-gray-300 uppercase tracking-widest pl-1 pb-1">{t('calendar.history')}</div>
+              <ArchiveSection label={t('calendar.archiveTournaments')} icon="emoji_events" state={archTurniej} setter={setArchTurniej} cutoffType="turniej" filterFn={e => e.category === 'Turniej' || !e.category} />
+              <ArchiveSection label={t('calendar.archiveCalendar')} icon="calendar_month" state={archInne} setter={setArchInne} cutoffType="other" filterFn={e => e.category === 'Inne' && !e.wasATodo} />
+              <ArchiveSection label={t('calendar.archiveTrainerReceived')} icon="school" state={archTrainerRec} setter={setArchTrainerRec} cutoffType="other" filterFn={e => e.category === 'Trener' && !!e.isMirrored} />
+              <ArchiveSection label={t('calendar.archiveTrainerSent')} icon="send" state={archTrainerSent} setter={setArchTrainerSent} cutoffType="other" filterFn={e => e.category === 'Trener' && !e.isMirrored} />
+              <ArchiveSection label={t('calendar.archiveTodo')} icon="check_circle" state={archTodo} setter={setArchTodo} cutoffType="other" filterFn={e => !!e.wasATodo} />
+            </div>
+          );
+        })()}
       </div>
 
       {showForm && (

@@ -432,6 +432,13 @@ export const views = {
     todoSection: "Zu Erledigen",
     todoToggle: "Ohne Datum — zu erledigen",
     todoDone: "Als erledigt markieren",
+    archiveTournaments: "Archiv: Wettkämpfe",
+    archiveCalendar: "Archiv: Sonstiges",
+    archiveTrainerReceived: "Archiv: Trainingspläne",
+    archiveTrainerSent: "Archiv: Gesendete Pläne",
+    archiveTodo: "Archiv: Aufgaben",
+    archiveLoadMore: "5 weitere laden",
+    archiveEmpty: "Keine Einträge",
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
   },
   profile: {

@@ -4,6 +4,7 @@ import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebas
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel from '../components/CoachLogPanel';
 import CoachPlanBanner from '../components/CoachPlanBanner';
+import StudentMessageSheet from '../components/StudentMessageSheet';
 
 interface MyCoachViewProps {
   userId: string;
@@ -38,6 +39,8 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [diaryCount, setDiaryCount] = useState(0);
   const [sessionNotes, setSessionNotes] = useState<SessionWithNote[]>([]);
   const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
+  const [unreadCoachIds, setUnreadCoachIds] = useState<Set<string>>(new Set());
+  const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -66,6 +69,19 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           } catch { /* ignore */ }
         }));
         setCoaches(list);
+
+        // Sprawdź unread dla każdego trenera
+        const unread = new Set<string>();
+        await Promise.all(list.map(async c => {
+          try {
+            const snap = await getDoc(doc(db, `users/${c.id}/studentMessages/${userId}`));
+            if (snap.exists()) {
+              const d = snap.data();
+              if ((d.lastCoachAt || 0) > (d.lastStudentReadAt || 0)) unread.add(c.id);
+            }
+          } catch { /* ignore */ }
+        }));
+        setUnreadCoachIds(unread);
       } catch (e) {
         console.error('MyCoachView: błąd pobierania trenerów', e);
       }
@@ -128,18 +144,23 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 {coaches.map(c => {
                   const initials = `${c.firstName[0] || ''}${c.lastName[0] || ''}`.toUpperCase();
+                  const hasUnread = unreadCoachIds.has(c.id);
                   return (
                     <button
                       key={c.id}
-                      onClick={onNavigateToSettings}
-                      className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full pl-0.5 pr-2 py-0.5"
+                      onClick={() => setOpenMessageCoach(c)}
+                      className="flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full pl-0.5 pr-2 py-0.5 relative"
                     >
-                      <div className="w-5 h-5 bg-[#fed33e] rounded-full flex items-center justify-center shrink-0">
+                      <div className="w-5 h-5 bg-[#fed33e] rounded-full flex items-center justify-center shrink-0 relative">
                         <span className="text-[8px] font-black text-[#0a3a2a]">{initials || '?'}</span>
+                        {hasUnread && (
+                          <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 border border-white rounded-full" />
+                        )}
                       </div>
                       <span className="text-[9px] font-black text-white/80 truncate max-w-[80px]">
                         {c.firstName} {c.lastName}
                       </span>
+                      <span className="material-symbols-outlined text-[11px] text-white/40">chat</span>
                     </button>
                   );
                 })}
@@ -294,6 +315,25 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
 
       </div>
+
+      {openMessageCoach && (
+        <StudentMessageSheet
+          coachId={openMessageCoach.id}
+          studentId={userId}
+          currentUserId={userId}
+          mode="student"
+          otherName={`${openMessageCoach.firstName} ${openMessageCoach.lastName}`.trim()}
+          onClose={() => {
+            setOpenMessageCoach(null);
+            // odśwież unread po zamknięciu
+            setUnreadCoachIds(prev => {
+              const next = new Set(prev);
+              next.delete(openMessageCoach.id);
+              return next;
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, qu
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
+import StudentMessageSheet from '../components/StudentMessageSheet';
 
 interface CoachDashboardViewProps {
   userId: string;
@@ -48,6 +49,11 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
 
   // Ostatni wpis CoachLog per uczeń
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
+
+  // Wiadomości per uczeń
+  const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
+  const [lastStudentMessages, setLastStudentMessages] = useState<Record<string, string>>({});
+  const [openMessageStudentId, setOpenMessageStudentId] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -121,6 +127,24 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
             } catch { entries[s.id] = null; }
           }));
           setLastLogEntries(entries);
+
+          // Fetch wiadomości per uczeń
+          const unread = new Set<string>();
+          const previews: Record<string, string> = {};
+          await Promise.all((studentsData as any[]).map(async (s: any) => {
+            try {
+              const snap = await getDoc(doc(db, `users/${userId}/studentMessages/${s.id}`));
+              if (snap.exists()) {
+                const d = snap.data();
+                const thread: any[] = d.thread || [];
+                if ((d.lastStudentAt || 0) > (d.lastCoachReadAt || 0)) unread.add(s.id);
+                const lastFromStudent = [...thread].reverse().find((m: any) => m.from === 'student');
+                if (lastFromStudent) previews[s.id] = lastFromStudent.text;
+              }
+            } catch { /* ignore */ }
+          }));
+          setUnreadStudentIds(unread);
+          setLastStudentMessages(previews);
 
         } else {
           setStudents([]);
@@ -685,24 +709,41 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
                             </p>
                           );
                         })()}
+                        {lastStudentMessages[student.id] && (
+                          <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
+                            <span className="material-symbols-outlined text-[10px]">chat</span>
+                            {lastStudentMessages[student.id]}
+                          </p>
+                        )}
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {/* Przycisk wiadomości */}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
+                        className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">chat</span>
+                        {unreadStudentIds.has(student.id) && (
+                          <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+                        )}
+                      </button>
+
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                          hasNewActivity 
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30' 
+                          hasNewActivity
+                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
                           : 'bg-indigo-50 text-indigo-600'
                         }`}
                       >
                         <span className="material-symbols-outlined text-[18px]">analytics</span>
                       </div>
 
-                      <button 
-                        onClick={(e) => { 
+                      <button
+                        onClick={(e) => {
                           e.preventDefault();
-                          e.stopPropagation(); 
-                          setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id); 
+                          e.stopPropagation();
+                          setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
                         }}
                         className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
                       >
@@ -968,6 +1009,29 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
           </div>
         </div>, document.body
       )}
+
+      {openMessageStudentId && (() => {
+        const student = students.find(s => s.id === openMessageStudentId);
+        if (!student) return null;
+        const name = `${student.firstName || ''} ${student.lastName || ''}`.trim() || 'Uczeń';
+        return (
+          <StudentMessageSheet
+            coachId={userId}
+            studentId={openMessageStudentId}
+            currentUserId={userId}
+            mode="coach"
+            otherName={name}
+            onClose={() => {
+              setOpenMessageStudentId(null);
+              setUnreadStudentIds(prev => {
+                const next = new Set(prev);
+                next.delete(openMessageStudentId);
+                return next;
+              });
+            }}
+          />
+        );
+      })()}
 
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }

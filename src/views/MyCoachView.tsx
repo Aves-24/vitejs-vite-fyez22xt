@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel from '../components/CoachLogPanel';
 import CoachPlanBanner from '../components/CoachPlanBanner';
@@ -18,6 +18,16 @@ interface CoachInfo {
   clubName?: string;
 }
 
+interface SessionWithNote {
+  id: string;
+  date: string;
+  score: number;
+  arrows: number;
+  distance: string;
+  coachNote: string;
+  timestamp: number;
+}
+
 export default function MyCoachView({ userId, onBack, onNavigateToSettings }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
@@ -25,6 +35,8 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
   const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'coaches'>('plan');
   const [planCount, setPlanCount] = useState(0);
   const [diaryCount, setDiaryCount] = useState(0);
+  const [sessionNotes, setSessionNotes] = useState<SessionWithNote[]>([]);
+  const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -59,6 +71,44 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
       setIsLoading(false);
     };
     fetchCoaches();
+  }, [userId]);
+
+  useEffect(() => {
+    const fetchSessionNotes = async () => {
+      if (!userId) { setSessionNotesLoading(false); return; }
+      setSessionNotesLoading(true);
+      try {
+        const snap = await getDocs(query(
+          collection(db, `users/${userId}/sessions`),
+          orderBy('timestamp', 'desc'),
+          limit(60)
+        ));
+        const withNote: SessionWithNote[] = [];
+        snap.docs.forEach(d => {
+          const data = d.data();
+          if (!data.coachNote) return;
+          const ts = data.timestamp?.toMillis
+            ? data.timestamp.toMillis()
+            : data.timestamp?.seconds
+            ? data.timestamp.seconds * 1000
+            : (typeof data.timestamp === 'number' ? data.timestamp : 0);
+          withNote.push({
+            id: d.id,
+            date: data.date || '',
+            score: data.score || 0,
+            arrows: data.arrows || 0,
+            distance: data.distance || '',
+            coachNote: data.coachNote,
+            timestamp: ts,
+          });
+        });
+        setSessionNotes(withNote);
+      } catch (e) {
+        console.error('MyCoachView: błąd pobierania notatek sesji', e);
+      }
+      setSessionNotesLoading(false);
+    };
+    fetchSessionNotes();
   }, [userId]);
 
   return (
@@ -148,7 +198,52 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings }: My
         <div className={activeTab === 'diary' ? '' : 'hidden'}>
           {!isLoading && (
             coaches.length > 0 ? (
-              <CoachLogPanel studentId={userId} currentUserId={userId} mode="student" onCountChange={setDiaryCount} />
+              <div className="space-y-4">
+                <CoachLogPanel studentId={userId} currentUserId={userId} mode="student" onCountChange={setDiaryCount} />
+
+                {/* Wskazówki trenera do konkretnych sesji */}
+                {!sessionNotesLoading && sessionNotes.length > 0 && (
+                  <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                      <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-white text-[15px]">sports</span>
+                      </div>
+                      <div className="leading-tight">
+                        <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.sessionNotesSubtitle', { defaultValue: 'Komentarze trenera po treningu' })} · {sessionNotes.length}</p>
+                      </div>
+                    </div>
+                    <div className="divide-y divide-gray-50">
+                      {sessionNotes.map(s => {
+                        const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
+                        const dateLabel = s.date
+                          ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                          : '';
+                        return (
+                          <div key={s.id} className="p-3 flex items-start gap-2.5">
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{t('myCoach.sessionNoteLabel', { defaultValue: 'Wskazówka' })}</span>
+                                  {s.distance && (
+                                    <span className="text-[8px] font-bold text-gray-400">{s.distance}</span>
+                                  )}
+                                  <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                                </div>
+                                <span className="text-[8px] font-bold text-gray-400 shrink-0">{dateLabel}</span>
+                              </div>
+                              <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">menu_book</span>

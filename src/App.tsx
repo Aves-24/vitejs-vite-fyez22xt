@@ -305,16 +305,16 @@ export default function App() {
           <div className="flex flex-1 justify-evenly items-center h-full">
             <button onClick={() => handleNavigate('HOME')} className={`flex flex-col items-center ${currentView === 'HOME' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">home</span>
-              <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.home')}</span>
+              {currentView === 'HOME' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.home')}</span>}
             </button>
             <button onClick={() => { setFocusedEventId(null); handleNavigate('CALENDAR'); }} className={`flex flex-col items-center ${currentView === 'CALENDAR' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
-              <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>
+              {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
             {hasCoach && (
               <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
                 <span className="material-symbols-outlined text-[26px] font-bold">school</span>
-                <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Schütze' })}</span>
+                {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Schütze' })}</span>}
               </button>
             )}
           </div>
@@ -343,19 +343,19 @@ export default function App() {
           <div className="flex flex-1 justify-evenly items-center h-full">
             <button onClick={() => handleNavigate('STATS')} className={`flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
-              <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>
+              {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
             </button>
 
             {isCoach && (
               <button onClick={() => handleNavigate('COACH')} className={`flex flex-col items-center ${currentView === 'COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
                 <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
-                <span className="text-[8px] font-black uppercase mt-0.5">Trener</span>
+                {currentView === 'COACH' && <span className="text-[8px] font-black uppercase mt-0.5">Trener</span>}
               </button>
             )}
 
             <button onClick={() => handleNavigate('SETTINGS')} className={`flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
-              <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>
+              {currentView === 'SETTINGS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>}
             </button>
           </div>
 

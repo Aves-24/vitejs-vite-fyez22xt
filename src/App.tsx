@@ -468,7 +468,7 @@ export default function App() {
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} />}
       </Suspense>
       </main>
       

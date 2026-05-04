@@ -21,6 +21,7 @@ interface CoachLogPanelProps {
   studentId: string;
   currentUserId: string;
   mode: 'coach' | 'student';
+  onCountChange?: (count: number) => void;
 }
 
 // Konfiguracja typów wpisu — kolor, ikona, etykieta
@@ -33,7 +34,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 300;
 
-export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -76,6 +77,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachL
           };
         });
         setEntries(list);
+        onCountChange?.(list.length);
       } catch (e) {
         console.error('CoachLog: błąd pobierania', e);
       } finally {
@@ -174,6 +176,12 @@ export default function CoachLogPanel({ studentId, currentUserId, mode }: CoachL
             <span className="material-symbols-outlined text-[14px]">add</span>
             {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
           </button>
+        )}
+        {mode === 'student' && (
+          <span className="flex items-center gap-1 text-[8px] font-bold text-gray-400 shrink-0">
+            <span className="material-symbols-outlined text-[13px]">lock</span>
+            {t('coachLog.readOnly', { defaultValue: 'Nur lesen' })}
+          </span>
         )}
       </div>
 

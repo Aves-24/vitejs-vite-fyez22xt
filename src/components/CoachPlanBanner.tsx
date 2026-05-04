@@ -4,6 +4,13 @@ import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import i18n from 'i18next';
 
+function getDateStrings() {
+  const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const today = new Date();
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  return { todayStr: fmt(today), tomorrowStr: fmt(tomorrow) };
+}
+
 // Format date label: "Heute" / "Morgen" / "Mi · 15. Aug" / "15. Aug 2027"
 function formatDateLabel(dateStr: string, todayStr: string, tomorrowStr: string, t: any): string {
   if (dateStr === todayStr) return t('coachPlan.today', { defaultValue: 'Heute' });
@@ -23,6 +30,7 @@ interface CoachPlanBannerProps {
   userId: string;
   compact?: boolean;
   onClick?: () => void;
+  onCountChange?: (count: number) => void;
 }
 
 interface CoachPlanEvent {
@@ -35,7 +43,7 @@ interface CoachPlanEvent {
   description?: string;
 }
 
-export default function CoachPlanBanner({ userId, compact = false, onClick }: CoachPlanBannerProps) {
+export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange }: CoachPlanBannerProps) {
   const { t } = useTranslation();
   const [events, setEvents] = useState<CoachPlanEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,11 +53,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
       if (!userId) { setIsLoading(false); return; }
       setIsLoading(true);
       try {
-        const today = new Date();
-        const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
-        const fmt = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const todayStr = fmt(today);
-        const tomorrowStr = fmt(tomorrow);
+        const { todayStr, tomorrowStr } = getDateStrings();
 
         // Tylko 1 prosty filtr — żeby nie wymagać composite index w Firestore.
         // Reszta filtrowania lokalnie (lista jest mała: max kilkanaście eventów / ucznia).
@@ -83,6 +87,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
           : sorted.filter(ev => ev.date >= todayStr);
 
         setEvents(filtered);
+        onCountChange?.(filtered.length);
       } catch (e) {
         console.error('CoachPlanBanner: błąd pobierania', e);
       }
@@ -93,15 +98,13 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
 
   if (isLoading || events.length === 0) return null;
 
-  const todayStr = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })();
+  const { todayStr, tomorrowStr } = getDateStrings();
 
   // Compact mode (HomeView) — pokazuje tylko najbliższy event jako banner
   if (compact) {
     const nextEvent = events[0];
     const isToday = nextEvent.date === todayStr;
-    const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
-    const tomorrowStr2 = `${tomorrowD.getFullYear()}-${String(tomorrowD.getMonth() + 1).padStart(2, '0')}-${String(tomorrowD.getDate()).padStart(2, '0')}`;
-    const dateLabel = formatDateLabel(nextEvent.date, todayStr, tomorrowStr2, t);
+    const dateLabel = formatDateLabel(nextEvent.date, todayStr, tomorrowStr, t);
     return (
       <div
         onClick={onClick}
@@ -139,15 +142,12 @@ export default function CoachPlanBanner({ userId, compact = false, onClick }: Co
     );
   }
 
-  const tomorrowD = new Date(); tomorrowD.setDate(tomorrowD.getDate() + 1);
-  const tomorrowStr2 = `${tomorrowD.getFullYear()}-${String(tomorrowD.getMonth() + 1).padStart(2, '0')}-${String(tomorrowD.getDate()).padStart(2, '0')}`;
-
   // Full mode (MyCoachView) — pełna lista
   return (
     <div className="space-y-2">
       {events.map(ev => {
         const isToday = ev.date === todayStr;
-        const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr2, t);
+        const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr, t);
         return (
           <div key={ev.id} className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
             <div className="flex items-start gap-3">

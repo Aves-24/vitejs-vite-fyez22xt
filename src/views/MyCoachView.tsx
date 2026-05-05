@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, arrayUnion, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel from '../components/CoachLogPanel';
 import CoachPlanBanner from '../components/CoachPlanBanner';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+
+const MAX_ACKED = 10;
+const ackedCacheKey = (uid: string) => `grotX_acked_${uid}`;
 
 interface MyCoachViewProps {
   userId: string;
@@ -41,7 +44,14 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
   const [unreadCoachIds, setUnreadCoachIds] = useState<Set<string>>(new Set());
   const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
-  const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
+  // ordered array (newest first, max MAX_ACKED) — source of truth for both display and cache
+  const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem(ackedCacheKey(userId));
+      return cached ? JSON.parse(cached) : [];
+    } catch { return []; }
+  });
+  const acknowledgedIds = new Set(acknowledgedList);
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -52,7 +62,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         if (!userDoc.exists()) { setIsLoading(false); return; }
 
         const data = userDoc.data();
-        setAcknowledgedIds(new Set<string>(data.acknowledgedItems || []));
+        // merge Firebase list with local cache — keep newest MAX_ACKED unique IDs
+        const remote: string[] = data.acknowledgedItems || [];
+        setAcknowledgedList(prev => {
+          const merged = [...new Set([...prev, ...remote])].slice(0, MAX_ACKED);
+          try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(merged)); } catch { /* ignore */ }
+          return merged;
+        });
 
         const coachIds: string[] = data.coaches || [];
         if (coachIds.length === 0) { setCoaches([]); setIsLoading(false); return; }
@@ -123,10 +139,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   }, [userId]);
 
   const handleAcknowledge = useCallback(async (id: string) => {
-    setAcknowledgedIds(prev => new Set(prev).add(id));
-    try {
-      await updateDoc(doc(db, 'users', userId), { acknowledgedItems: arrayUnion(id) });
-    } catch { /* ignore */ }
+    setAcknowledgedList(prev => {
+      const updated = [id, ...prev.filter(x => x !== id)].slice(0, MAX_ACKED);
+      try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(updated)); } catch { /* ignore */ }
+      updateDoc(doc(db, 'users', userId), { acknowledgedItems: updated }).catch(() => { /* ignore */ });
+      return updated;
+    });
   }, [userId]);
 
   const unreadNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));

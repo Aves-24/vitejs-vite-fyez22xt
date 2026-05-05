@@ -9,9 +9,11 @@ import StudentMessageSheet from '../components/StudentMessageSheet';
 interface CoachDashboardViewProps {
   userId: string;
   onNavigate: (view: string, tab?: string, extraData?: string, studentId?: string) => void;
+  pendingOpenStudentId?: string | null;
+  onClearPending?: () => void;
 }
 
-export default function CoachDashboardView({ userId, onNavigate }: CoachDashboardViewProps) {
+export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending }: CoachDashboardViewProps) {
   const { t } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
@@ -54,6 +56,14 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
   const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
   const [lastStudentMessages, setLastStudentMessages] = useState<Record<string, string>>({});
   const [openMessageStudentId, setOpenMessageStudentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!pendingOpenStudentId || students.length === 0) return;
+    if (students.some(s => s.id === pendingOpenStudentId)) {
+      setOpenMessageStudentId(pendingOpenStudentId);
+      onClearPending?.();
+    }
+  }, [pendingOpenStudentId, students]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);

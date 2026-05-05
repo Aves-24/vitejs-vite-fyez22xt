@@ -14,6 +14,8 @@ interface MyCoachViewProps {
   onBack: () => void;
   onNavigateToSettings?: () => void;
   onNavigateToStats?: (date: string) => void;
+  pendingOpenCoachId?: string | null;
+  onClearPending?: () => void;
 }
 
 interface CoachInfo {
@@ -33,7 +35,7 @@ interface SessionWithNote {
   timestamp: number;
 }
 
-export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats }: MyCoachViewProps) {
+export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats, pendingOpenCoachId, onClearPending }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +46,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
   const [unreadCoachIds, setUnreadCoachIds] = useState<Set<string>>(new Set());
   const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
+
+  useEffect(() => {
+    if (!pendingOpenCoachId || coaches.length === 0) return;
+    const coach = coaches.find(c => c.id === pendingOpenCoachId);
+    if (coach) { setOpenMessageCoach(coach); onClearPending?.(); }
+  }, [pendingOpenCoachId, coaches]);
   // ordered array (newest first, max MAX_ACKED) — source of truth for both display and cache
   const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
     try {

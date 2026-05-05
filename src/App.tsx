@@ -69,7 +69,8 @@ export default function App() {
   // NOWE: trzymamy userClub w App.tsx żeby przekazać do AnnouncementsView
   const [userClub, setUserClub] = useState<string>('');
 
-  const [activeBattleId, setActiveBattleId] = useState<string | null>(null); 
+  const [activeBattleId, setActiveBattleId] = useState<string | null>(null);
+  const [pendingMessageSenderId, setPendingMessageSenderId] = useState<string | null>(null);
   const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
 
@@ -267,6 +268,8 @@ export default function App() {
       }
     } else if (view === 'CALENDAR') {
       setFocusedEventId(extraData || null);
+    } else if (view === 'MY_COACH' || view === 'COACH') {
+      setPendingMessageSenderId(extraData || null);
     }
   };
 
@@ -426,7 +429,7 @@ export default function App() {
       <main className={`w-full min-h-screen pb-24 transition-all duration-500 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
       <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>
-        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} />}
+        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         
@@ -477,9 +480,9 @@ export default function App() {
         {currentView === 'ADMIN' && ['info@aves-24.de', 'rafal.woropaj@googlemail.com'].includes(user?.email || '') && (
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
-        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} />}
+        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date) => handleNavigate('STATS', undefined, date)} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date) => handleNavigate('STATS', undefined, date)} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
       </Suspense>
       </ViewErrorBoundary>
       </main>

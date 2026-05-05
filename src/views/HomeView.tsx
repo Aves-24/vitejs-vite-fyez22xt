@@ -88,6 +88,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [hasCoachAnnouncement, setHasCoachAnnouncement] = useState<boolean>(false);
   const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
   const [unreadMessageRole, setUnreadMessageRole] = useState<'student' | 'coach' | null>(null);
+  const [unreadSenderId, setUnreadSenderId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [isPremium, setIsPremium] = useState(false);
@@ -235,12 +236,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const unreadFrom: string[] = d.unreadMsgFrom || [];
         if (unreadFrom.length > 0) {
           setHasUnreadMessage(true);
+          setUnreadSenderId(unreadFrom[0]);
           const coaches: string[] = d.coaches || [];
           const students: string[] = d.students || [];
           const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
           setUnreadMessageRole(fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null);
         } else {
           setHasUnreadMessage(false);
+          setUnreadSenderId(null);
           setUnreadMessageRole(null);
         }
 
@@ -783,8 +786,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             onClick={() => {
               if (hasUnreadMessage) {
                 setHasUnreadMessage(false);
-                if (unreadMessageRole === 'student') { onNavigate?.('MY_COACH'); return; }
-                if (unreadMessageRole === 'coach') { onNavigate?.('COACH_DASHBOARD'); return; }
+                if (unreadMessageRole === 'student') { onNavigate?.('MY_COACH', undefined, unreadSenderId || undefined); return; }
+                if (unreadMessageRole === 'coach') { onNavigate?.('COACH', undefined, unreadSenderId || undefined); return; }
               }
               try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
               setNewAnnouncementType('none');

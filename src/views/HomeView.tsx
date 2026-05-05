@@ -86,6 +86,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [newAnnouncementType, setNewAnnouncementType] = useState<'none' | 'coach' | 'system'>('none');
   const [hasNewCoachPlan, setHasNewCoachPlan] = useState<boolean>(false);
   const [hasCoachAnnouncement, setHasCoachAnnouncement] = useState<boolean>(false);
+  const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
+  const [unreadMessageRole, setUnreadMessageRole] = useState<'student' | 'coach' | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [isPremium, setIsPremium] = useState(false);
@@ -710,6 +712,50 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return () => { cancelled = true; };
   }, [userId, userClub, i18n.language, trialEndsAt, rawIsPremium]);
 
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const checkMessages = async () => {
+      try {
+        const userSnap = await getDoc(doc(db, 'users', userId));
+        if (!userSnap.exists() || cancelled) return;
+        const data = userSnap.data();
+        const coaches: string[] = data.coaches || [];
+        const students: string[] = data.students || [];
+
+        let unread = false;
+        let role: 'student' | 'coach' | null = null;
+
+        await Promise.all([
+          ...coaches.map(async (coachId) => {
+            try {
+              const snap = await getDoc(doc(db, `users/${coachId}/studentMessages/${userId}`));
+              if (snap.exists()) {
+                const d = snap.data();
+                if ((d.lastCoachAt || 0) > (d.lastStudentReadAt || 0)) { unread = true; role = 'student'; }
+              }
+            } catch { /* ignore */ }
+          }),
+          ...students.map(async (studentId) => {
+            try {
+              const snap = await getDoc(doc(db, `users/${userId}/studentMessages/${studentId}`));
+              if (snap.exists()) {
+                const d = snap.data();
+                if ((d.lastStudentAt || 0) > (d.lastCoachReadAt || 0)) { unread = true; if (!role) role = 'coach'; }
+              }
+            } catch { /* ignore */ }
+          }),
+        ]);
+
+        if (cancelled) return;
+        setHasUnreadMessage(unread);
+        setUnreadMessageRole(unread ? role : null);
+      } catch { /* ignore */ }
+    };
+    checkMessages();
+    return () => { cancelled = true; };
+  }, [userId]);
+
   const validClubBattles = activeClubBattles.filter(b => {
     const isExpired = b.expiresAt 
       ? getSafeTime(b.expiresAt) < currentTime 
@@ -766,13 +812,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           <button
             onClick={() => {
-              // Oznacz coach plans jako "widziane" — żeby badge zniknął przy następnym fetchu
+              if (hasUnreadMessage) {
+                setHasUnreadMessage(false);
+                if (unreadMessageRole === 'student') { onNavigate?.('MY_COACH'); return; }
+                if (unreadMessageRole === 'coach') { onNavigate?.('COACH_DASHBOARD'); return; }
+              }
               try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
               setNewAnnouncementType('none');
               setHasNewCoachPlan(false);
-              // Decyzja gdzie iść:
-              // - jeśli jest jakikolwiek announcement (coach/system) → ANNOUNCEMENTS
-              // - jeśli ŹRÓDŁEM badge'a był tylko nowy plan trenera → MY_COACH
               if (hasCoachAnnouncement || (newAnnouncementType === 'system')) {
                 onNavigate?.('ANNOUNCEMENTS');
               } else if (hasNewCoachPlan) {
@@ -782,14 +829,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               }
             }}
             className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
-              newAnnouncementType !== 'none' ? 'opacity-100' : 'opacity-40'
+              newAnnouncementType !== 'none' || hasUnreadMessage ? 'opacity-100' : 'opacity-40'
             }`}
           >
              <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">notifications</span>
-             {newAnnouncementType === 'coach' && (
+             {hasUnreadMessage && (
+               <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+             )}
+             {!hasUnreadMessage && newAnnouncementType === 'coach' && (
                <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>
              )}
-             {newAnnouncementType === 'system' && (
+             {!hasUnreadMessage && newAnnouncementType === 'system' && (
                <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
              )}
           </button>

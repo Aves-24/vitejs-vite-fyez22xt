@@ -35,7 +35,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
     );
 
     const unsub = onSnapshot(q, (snap) => {
-      const fetchedBattles = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const fetchedBattles: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       fetchedBattles.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBattles(fetchedBattles);
     });

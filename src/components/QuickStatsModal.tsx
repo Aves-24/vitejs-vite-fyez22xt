@@ -98,7 +98,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
           }
         });
 
-        techSnap.forEach(doc => {
+        techSnap.forEach((doc: any) => {
           const data = doc.data();
           const ts = typeof data.timestamp === 'number' ? data.timestamp : data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now();
           const diffTime = Math.max(0, now.getTime() - ts);

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 
 const HomePage: React.FC = () => {
   const [sum, setSum] = useState(0);
-  const refInput = useRef(null);
+  const refInput = useRef<HTMLInputElement | null>(null);
 
   const summary = (value: string) => {
     const calculateNumber = value.split('').reduce((sum, value) => {
@@ -23,7 +23,7 @@ const HomePage: React.FC = () => {
         className="w-full h-[3rem] border-1 bg-gray-200 rounded-md"
       />
       <div className="w-full text-green-800 text-xl">
-        <p>length: {refInput.current.value.length}</p>
+        <p>length: {refInput.current?.value.length ?? 0}</p>
         <p>result: {sum}</p>
       </div>
     </div>

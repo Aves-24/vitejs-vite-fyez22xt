@@ -30,10 +30,10 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
           getDoc(doc(db, 'users', userId)),
         ]);
 
-        const allAnn = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const allAnn: any[] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         // Filtrujemy – ten sam algorytm co w HomeView
-        const myAnnouncements = allAnn.filter((a: any) => {
+        const myAnnouncements: any[] = allAnn.filter((a: any) => {
           const langMatch = a.lang === 'all' || a.lang === i18n.language;
           if (!langMatch) return false;
           return (

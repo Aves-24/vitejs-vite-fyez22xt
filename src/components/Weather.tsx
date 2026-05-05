@@ -7,9 +7,10 @@ interface WeatherProps {
   userId?: string;
   refreshTrigger?: number;
   variant?: 'horizontal' | 'compact-vertical';
+  onUpdateData?: (data: any) => void;
 }
 
-export default function Weather({ userId, refreshTrigger = 0, variant = 'horizontal' }: WeatherProps) {
+export default function Weather({ userId, refreshTrigger = 0, variant = 'horizontal', onUpdateData }: WeatherProps) {
   const { t } = useTranslation(); // <--- DODANE
   const [weather, setWeather] = useState<{temp: number | null, wind: number | null}>({ temp: null, wind: null });
   const [loading, setLoading] = useState(true);

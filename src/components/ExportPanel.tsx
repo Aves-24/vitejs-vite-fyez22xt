@@ -110,9 +110,9 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
 
   // --- RYSOWANIE ELEMENTÓW PDF ---
 
-  const drawRoundTable = (doc: any, roundScores: any[], startIndex: number, title: string, startY: number, headColor: number[]) => {
+  const drawRoundTable = (doc: any, roundScores: any[], startIndex: number, title: string, startY: number, headColor: [number, number, number]) => {
     const data = generateTableData(roundScores, startIndex);
-    const textColor = headColor[0] > 200 ? [0,0,0] : [255,255,255]; 
+    const textColor: [number, number, number] = headColor[0] > 200 ? [0,0,0] : [255,255,255];
     
     autoTable(doc, {
       startY: startY,
@@ -237,7 +237,7 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
       doc.setFont('Roboto', 'normal');
 
       const date = session.date || new Date().toLocaleDateString(i18n.language === 'en' ? 'en-GB' : i18n.language === 'de' ? 'de-DE' : 'pl-PL');
-      const headColor = [10, 58, 42]; 
+      const headColor: [number, number, number] = [10, 58, 42];
 
       // Nagłówek Dokumentu
       doc.setFontSize(18); 

@@ -46,7 +46,7 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
   const [text, setText] = useState(session.coachNote || '');
   const [isSaving, setIsSaving] = useState(false);
   const voice = useVoiceInput({
-    onResult: (result) => setText(prev => (prev + ' ' + result).trim().slice(0, 100)),
+    onResult: (result) => setText((prev: string) => (prev + ' ' + result).trim().slice(0, 100)),
     append: true,
   });
 

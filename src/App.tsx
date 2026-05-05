@@ -401,7 +401,7 @@ export default function App() {
         </div>
       )}
 
-      <SmartSeasonUpdater />
+      <SmartSeasonUpdater userId={user?.uid || ''} />
 
       {/* [BEZPIECZEŃSTWO] Globalny listener zaproszeń trenerskich — pokazuje
           popup "Trener X chce Cię obserwować" zanim coach dostanie dostęp.
@@ -426,7 +426,7 @@ export default function App() {
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         
         {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} targetType={sessionTargetType} battleId={activeBattleId} onNavigate={handleNavigate} />}
-        {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} userEmail={user?.email || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate} />}
+        {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} userEmail={user?.email || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate as any} />}
         
         {currentView === 'BATTLE_LOBBY' && (
           <BattleLobbyView
@@ -446,7 +446,7 @@ export default function App() {
           <StatsView 
             userId={user?.uid || ''} 
             viewingStudentId={viewingStudentId}
-            onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} 
+            onNavigate={(view: string, tab?: string) => handleNavigate(view as AppView, tab)}
             initialDate={focusedDate || undefined}
           />
         )}

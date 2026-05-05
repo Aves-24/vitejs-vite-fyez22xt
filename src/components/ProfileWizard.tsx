@@ -42,10 +42,13 @@ interface ProfileWizardProps {
   availableCities: string[];
   availableClubs: string[];
   bowOptions: { id: BowType, label: string }[];
+  countryOptions?: string[];
+  competitionLevels?: string[];
+  eventTypes?: string[];
 
   // Funkcje z SettingsView
   generateSmartList: (bow: BowType, birth: string, gender: 'M' | 'K') => any[];
-  onSaveSettings: (wizardDistances: any[]) => Promise<void>;
+  onSaveSettings: (wizardDistances?: any[]) => Promise<void>;
   onNavigate?: (view: string, tab?: string) => void;
   onLogout: () => void;
 }

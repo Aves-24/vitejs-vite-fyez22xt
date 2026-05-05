@@ -1136,17 +1136,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       </div>
 
       {/* MODAL ZE STATYSTYKAMI */}
-      <QuickStatsModal 
-        isOpen={isQuickStatsOpen} 
-        onClose={() => setIsQuickStatsOpen(false)} 
-        isPremium={isPremium} 
-        userId={userId} 
-        onNavigate={onNavigate}
-        initialTab={quickStatsInitialTab} 
-        stats={{ 
-          monthly: monthlyTotal, 
-          yearly: yearlyTotal, 
-          avg14: avg14Days 
+      <QuickStatsModal
+        isOpen={isQuickStatsOpen}
+        onClose={() => setIsQuickStatsOpen(false)}
+        isPremium={isPremium}
+        userId={userId}
+        onNavigate={onNavigate as any}
+        initialTab={quickStatsInitialTab}
+        stats={{
+          daily: 0,
+          monthly: monthlyTotal,
+          yearly: yearlyTotal,
+          avg14: avg14Days
         }}
       />
 
@@ -1554,7 +1555,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                         {HANDICAP_BANDS.map((b, i) => {
                           const isActive = userHandicap <= b.max && (i === 0 || userHandicap > HANDICAP_BANDS[i-1].max);
                           return (
-                            <div key={b.label} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all ${isActive ? 'bg-gray-50 border border-gray-200' : 'opacity-40'}`}>
+                            <div key={b.labelKey} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all ${isActive ? 'bg-gray-50 border border-gray-200' : 'opacity-40'}`}>
                               <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.bg }} />
                               <span className="text-[9px] font-black text-[#0a3a2a] w-6 shrink-0">{i === 0 ? '≤10' : `≤${b.max}`}</span>
                               <span className="text-[9px] font-bold text-gray-500 flex-1">{t(b.labelKey)}</span>
@@ -1572,7 +1573,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   <>
                     <div className="space-y-1 mb-3">
                       {HANDICAP_BANDS.map((b, i) => (
-                        <div key={b.label} className="flex items-center gap-2 px-2 py-1.5 rounded-xl opacity-50">
+                        <div key={b.labelKey} className="flex items-center gap-2 px-2 py-1.5 rounded-xl opacity-50">
                           <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.bg }} />
                           <span className="text-[9px] font-black text-[#0a3a2a] w-6 shrink-0">{i === 0 ? '≤10' : `≤${b.max}`}</span>
                           <span className="text-[9px] font-bold text-gray-500 flex-1">{t(b.labelKey)}</span>
@@ -1717,7 +1718,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       const isArena = sess.type === 'Arena';
                       const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
                       const label = isTurniej
-                        ? (sess.title || t('home.trendModal.typeTournament'))
+                        ? ((sess as any).title || t('home.trendModal.typeTournament'))
                         : isArena ? t('home.trendModal.typeArena') : t('home.trendModal.typeTraining');
                       const dateStr = sess.ts
                         ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()

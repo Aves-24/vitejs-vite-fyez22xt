@@ -339,7 +339,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
     try {
       if (editingEventId) {
-        await updateDoc(doc(db, 'users', userId, 'tournaments', editingEventId), eventData);
+        await updateDoc(doc(db, 'users', userId, 'tournaments', editingEventId), eventData as any);
         // Mirror update do uczniów
         if (newCategory === 'Trener') {
           await updateMirroredEvent(editingEventId, eventData as any, resolvedStudentIds, userId);

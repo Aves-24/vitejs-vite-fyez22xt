@@ -29,6 +29,19 @@ interface StudentMessageSheetProps {
 
 const MAX_THREAD = 10;
 const MAX_TEXT = 200;
+const COOLDOWN_MS = 10 * 60 * 1000;
+
+function cooldownKey(coachId: string, studentId: string, mode: string) {
+  return `grotX_msgCooldown_${coachId}_${studentId}_${mode}`;
+}
+
+function secsLeft(coachId: string, studentId: string, mode: string): number {
+  try {
+    const ts = parseInt(localStorage.getItem(cooldownKey(coachId, studentId, mode)) || '0', 10);
+    const remaining = COOLDOWN_MS - (Date.now() - ts);
+    return remaining > 0 ? Math.ceil(remaining / 1000) : 0;
+  } catch { return 0; }
+}
 
 export function hasUnread(thread: ThreadDoc | null, mode: 'student' | 'coach'): boolean {
   if (!thread) return false;
@@ -44,9 +57,21 @@ export default function StudentMessageSheet({
   const [text, setText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [cooldownSecs, setCooldownSecs] = useState(() => secsLeft(coachId, studentId, mode));
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const docRef = doc(db, `users/${coachId}/studentMessages/${studentId}`);
+
+  // Tick cooldown every second
+  useEffect(() => {
+    if (cooldownSecs <= 0) return;
+    const id = setInterval(() => {
+      const s = secsLeft(coachId, studentId, mode);
+      setCooldownSecs(s);
+      if (s <= 0) clearInterval(id);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [cooldownSecs > 0]);
 
   useEffect(() => {
     const load = async () => {
@@ -56,7 +81,6 @@ export default function StudentMessageSheet({
         if (snap.exists()) {
           const data = snap.data() as ThreadDoc;
           setThread(data.thread || []);
-          // Mark as read
           const readField = mode === 'student' ? 'lastStudentReadAt' : 'lastCoachReadAt';
           await updateDoc(docRef, { [readField]: Date.now() });
         }
@@ -72,7 +96,7 @@ export default function StudentMessageSheet({
 
   const handleSend = async () => {
     const clean = text.trim().slice(0, MAX_TEXT);
-    if (!clean) return;
+    if (!clean || cooldownSecs > 0) return;
     setIsSaving(true);
     setSendError(null);
     try {
@@ -98,6 +122,8 @@ export default function StudentMessageSheet({
         await setDoc(docRef, { ...existing, ...update });
       }
 
+      localStorage.setItem(cooldownKey(coachId, studentId, mode), String(Date.now()));
+      setCooldownSecs(COOLDOWN_MS / 1000);
       setThread(newThread);
       setText('');
     } catch (e: any) {
@@ -105,6 +131,12 @@ export default function StudentMessageSheet({
       setSendError(e?.code === 'permission-denied' ? 'Brak uprawnień do wysłania wiadomości.' : 'Błąd połączenia. Spróbuj ponownie.');
     }
     setIsSaving(false);
+  };
+
+  const formatCooldown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return m > 0 ? `${m}:${String(s).padStart(2, '0')} min` : `${s} sek`;
   };
 
   const formatTime = (ts: number) => {
@@ -118,12 +150,12 @@ export default function StudentMessageSheet({
 
   if (typeof document === 'undefined') return null;
 
+  const isBlocked = cooldownSecs > 0;
+
   return createPortal(
     <div className="fixed inset-0 z-[600000] flex flex-col justify-end" onClick={onClose}>
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 
-      {/* Sheet */}
       <div
         className="relative bg-white rounded-t-[32px] flex flex-col shadow-2xl max-h-[80vh]"
         onClick={e => e.stopPropagation()}
@@ -142,7 +174,7 @@ export default function StudentMessageSheet({
           <div className="flex-1 min-w-0">
             <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{otherName}</h3>
             <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-              {MAX_THREAD} wiad. max · starsze usuwane automatycznie
+              {MAX_THREAD} wiad. max · 1 wiad. / 10 min
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center active:scale-90 transition-all shrink-0">
@@ -167,9 +199,7 @@ export default function StudentMessageSheet({
               return (
                 <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${
-                    isMe
-                      ? 'bg-[#0a3a2a] text-white rounded-br-sm'
-                      : 'bg-gray-100 text-[#333] rounded-bl-sm'
+                    isMe ? 'bg-[#0a3a2a] text-white rounded-br-sm' : 'bg-gray-100 text-[#333] rounded-bl-sm'
                   }`}>
                     <p className="text-[12px] font-medium leading-snug break-words whitespace-pre-wrap">{msg.text}</p>
                     <p className={`text-[8px] font-bold mt-1 ${isMe ? 'text-white/50' : 'text-gray-400'}`}>
@@ -188,31 +218,40 @@ export default function StudentMessageSheet({
           {sendError && (
             <p className="text-[10px] font-bold text-red-500 mb-2 text-center">{sendError}</p>
           )}
-          <div className="flex gap-2 items-end">
-          <textarea
-            value={text}
-            onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
-            placeholder="Napisz wiadomość…"
-            rows={1}
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none leading-snug"
-            style={{ maxHeight: 80 }}
-            onInput={e => {
-              const t = e.target as HTMLTextAreaElement;
-              t.style.height = 'auto';
-              t.style.height = Math.min(t.scrollHeight, 80) + 'px';
-            }}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-            }}
-          />
-          <button
-            onClick={handleSend}
-            disabled={isSaving || !text.trim()}
-            className="w-10 h-10 bg-[#0a3a2a] text-[#fed33e] rounded-full flex items-center justify-center shrink-0 active:scale-90 disabled:opacity-40 transition-all shadow-md"
-          >
-            <span className="material-symbols-outlined text-[18px]">send</span>
-          </button>
-          </div>
+          {isBlocked ? (
+            <div className="flex items-center justify-center gap-2 py-3 bg-gray-50 rounded-2xl">
+              <span className="material-symbols-outlined text-gray-400 text-[18px]">timer</span>
+              <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest">
+                Następna wiadomość za {formatCooldown(cooldownSecs)}
+              </p>
+            </div>
+          ) : (
+            <div className="flex gap-2 items-end">
+              <textarea
+                value={text}
+                onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
+                placeholder="Napisz wiadomość…"
+                rows={1}
+                className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none leading-snug"
+                style={{ maxHeight: 80 }}
+                onInput={e => {
+                  const t = e.target as HTMLTextAreaElement;
+                  t.style.height = 'auto';
+                  t.style.height = Math.min(t.scrollHeight, 80) + 'px';
+                }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                }}
+              />
+              <button
+                onClick={handleSend}
+                disabled={isSaving || !text.trim()}
+                className="w-10 h-10 bg-[#0a3a2a] text-[#fed33e] rounded-full flex items-center justify-center shrink-0 active:scale-90 disabled:opacity-40 transition-all shadow-md"
+              >
+                <span className="material-symbols-outlined text-[18px]">send</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>,

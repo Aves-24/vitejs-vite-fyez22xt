@@ -195,6 +195,17 @@ service cloud.firestore {
         && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
+    // ─── /users/{uid}/studentMessages/{studentId} ───────────────
+    //  1-to-1 thread stored under coach's namespace (uid = coachId).
+    //  Coach owns the document. Student may read/write replies only if
+    //  they are in the coach's students[] list (prevents spoofing).
+    match /users/{uid}/studentMessages/{studentId} {
+      allow read, write: if isSelf(uid) || isAdmin();
+      allow read, write: if isSignedIn()
+        && request.auth.uid == studentId
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('students', []);
+    }
+
     // ─── /users/{uid}/dailyStats/{day} ──────────────────────────
     match /users/{uid}/dailyStats/{day} {
       allow read, write: if isSelf(uid) || isAdmin();

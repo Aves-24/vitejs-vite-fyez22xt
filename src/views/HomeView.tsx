@@ -858,30 +858,30 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* KALENDARZ PRYWATNY / TO-DO */}
         {!isLoading && (todoItems.length > 0 || nextOtherEvent) && (
           todoItems.length > 0 ? (
-            <div className="relative bg-[#0a3a2a] rounded-[24px] shadow-lg mt-2 pt-3">
-              <span className="absolute -top-2.5 left-6 bg-[#fed33e] text-[#0a3a2a] px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-[#0a3a2a]">
+            <div className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] shadow-sm mt-2 pt-3">
+              <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
                 {t('calendar.todoSection')}
               </span>
               <div className="pt-1 px-3 pb-2 space-y-1.5">
                 {todoItems.map(item => (
-                  <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="bg-white/10 border border-white/10 rounded-[18px] px-3 py-2.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer">
-                    <span className="material-symbols-outlined text-emerald-400 text-[20px] shrink-0">radio_button_unchecked</span>
-                    <p className="flex-1 font-black text-[14px] text-white leading-tight truncate">{item.title}</p>
-                    <span className="material-symbols-outlined text-white/40 text-[18px] shrink-0">arrow_forward_ios</span>
+                  <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="rounded-[18px] px-3 py-2.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer">
+                    <span className="material-symbols-outlined text-emerald-300 text-[20px] shrink-0">radio_button_unchecked</span>
+                    <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
+                    <span className="material-symbols-outlined text-emerald-300 text-[18px] shrink-0">arrow_forward_ios</span>
                   </div>
                 ))}
               </div>
               {nextOtherEvent && (
                 <div
                   onClick={() => onGoToCalendar(nextOtherEvent.id)}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-white/10 cursor-pointer active:bg-white/5 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 border-t border-emerald-200 cursor-pointer active:bg-emerald-100 transition-colors"
                 >
                   <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">calendar_month</span>
-                  <span className="text-[9px] font-black text-emerald-300 shrink-0">
+                  <span className="text-[9px] font-black text-emerald-600 shrink-0">
                     {new Date(nextOtherEvent.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
                   </span>
-                  <span className="text-[9px] font-bold text-white truncate flex-1">{nextOtherEvent.title}</span>
-                  <span className="material-symbols-outlined text-white/40 text-[13px] shrink-0">arrow_forward</span>
+                  <span className="text-[9px] font-bold text-[#0a3a2a] truncate flex-1">{nextOtherEvent.title}</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">arrow_forward</span>
                 </div>
               )}
             </div>

@@ -13,22 +13,26 @@ import SmartSeasonUpdater from './components/SmartSeasonUpdater';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import BattleInvitePopup from './components/BattleInvitePopup';
+import ViewErrorBoundary from './components/ViewErrorBoundary';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
-const ScoringView         = React.lazy(() => import('./views/ScoringView'));
-const SettingsView        = React.lazy(() => import('./views/SettingsView'));
-const CalendarView        = React.lazy(() => import('./views/CalendarView'));
-const BattleLobbyView     = React.lazy(() => import('./views/BattleLobbyView'));
-const BattleHistoryView   = React.lazy(() => import('./views/BattleHistoryView'));
-const WorldLeaderboardView = React.lazy(() => import('./views/WorldLeaderboardView'));
-const AnnouncementsView   = React.lazy(() => import('./views/AnnouncementsView'));
-const StatsView           = React.lazy(() => import('./views/StatsView'));
-const AdminDashboardView  = React.lazy(() => import('./views/AdminDashboardView'));
-const CoachDashboardView  = React.lazy(() => import('./views/CoachDashboardView'));
-const StudentProfileView  = React.lazy(() => import('./views/StudentProfileView'));
-const MyCoachView         = React.lazy(() => import('./views/MyCoachView'));
-const DelayMirrorView     = React.lazy(() => import('./views/DelayMirrorView'));
+// lazyWithRetry: jeśli chunk failuje (np. po deploy z nowymi hashami), robi
+// hard reload zamiast pokazywać biały ekran.
+const ScoringView         = lazyWithRetry(() => import('./views/ScoringView'));
+const SettingsView        = lazyWithRetry(() => import('./views/SettingsView'));
+const CalendarView        = lazyWithRetry(() => import('./views/CalendarView'));
+const BattleLobbyView     = lazyWithRetry(() => import('./views/BattleLobbyView'));
+const BattleHistoryView   = lazyWithRetry(() => import('./views/BattleHistoryView'));
+const WorldLeaderboardView = lazyWithRetry(() => import('./views/WorldLeaderboardView'));
+const AnnouncementsView   = lazyWithRetry(() => import('./views/AnnouncementsView'));
+const StatsView           = lazyWithRetry(() => import('./views/StatsView'));
+const AdminDashboardView  = lazyWithRetry(() => import('./views/AdminDashboardView'));
+const CoachDashboardView  = lazyWithRetry(() => import('./views/CoachDashboardView'));
+const StudentProfileView  = lazyWithRetry(() => import('./views/StudentProfileView'));
+const MyCoachView         = lazyWithRetry(() => import('./views/MyCoachView'));
+const DelayMirrorView     = lazyWithRetry(() => import('./views/DelayMirrorView'));
 
 // Fallback pokazywany podczas ładowania chunka (zwykle <100ms).
 const ViewFallback = () => (
@@ -420,6 +424,7 @@ export default function App() {
       )}
       
       <main className={`w-full min-h-screen pb-24 transition-all duration-500 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
+      <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>
         {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} />}
         
@@ -476,6 +481,7 @@ export default function App() {
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
         {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date) => handleNavigate('STATS', undefined, date)} />}
       </Suspense>
+      </ViewErrorBoundary>
       </main>
       
       {renderBottomNav()}

@@ -277,48 +277,80 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
               <p className="text-[9px] font-medium text-gray-300 mt-1">{t('coachLog.emptyCoachHint', { defaultValue: 'Hinterlasse den ersten Eintrag für das Trainerteam' })}</p>
             )}
           </div>
-        ) : (
-          entries
-            .filter(entry => !acknowledgedIds?.has(entry.id))
-            .map(entry => {
-              const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
-              const canDelete = mode === 'coach' && entry.authorId === currentUserId;
-              const canAck = mode === 'student' && !!onAcknowledge;
-              return (
-                <div key={entry.id} className="flex items-stretch">
-                  <div className="flex-1 p-3 flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: cfg.bg }}>
-                      <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>{cfg.icon}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                        <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.color }}>
-                          {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
-                        </span>
-                        <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
+        ) : (() => {
+          const unread = entries.filter(entry => !acknowledgedIds?.has(entry.id));
+          const read = entries.filter(entry => acknowledgedIds?.has(entry.id)).slice(0, 10);
+          return (
+            <>
+              {unread.map(entry => {
+                const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
+                const canDelete = mode === 'coach' && entry.authorId === currentUserId;
+                const canAck = mode === 'student' && !!onAcknowledge;
+                return (
+                  <div key={entry.id} className="flex items-stretch">
+                    <div className="flex-1 p-3 flex items-start gap-2.5">
+                      <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: cfg.bg }}>
+                        <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>{cfg.icon}</span>
                       </div>
-                      <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
-                      <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                          <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: cfg.color }}>
+                            {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
+                          </span>
+                          <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
+                        </div>
+                        <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
+                        <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                      </div>
+                      {canDelete && (
+                        <button onClick={() => setConfirmDelete(entry.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5">
+                          <span className="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      )}
                     </div>
-                    {canDelete && (
-                      <button onClick={() => setConfirmDelete(entry.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5">
-                        <span className="material-symbols-outlined text-[14px]">close</span>
+                    {canAck && (
+                      <button
+                        onClick={() => onAcknowledge!(entry.id)}
+                        className="shrink-0 w-10 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-50"
+                        title="Wzięte do wiadomości"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
                       </button>
                     )}
                   </div>
-                  {canAck && (
-                    <button
-                      onClick={() => onAcknowledge!(entry.id)}
-                      className="shrink-0 w-10 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-50"
-                      title="Wzięte do wiadomości"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                    </button>
-                  )}
-                </div>
-              );
-            })
-        )}
+                );
+              })}
+              {read.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50">
+                    <span className="material-symbols-outlined text-[13px] text-gray-400">check_circle</span>
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('coachLog.readHistory', { defaultValue: 'Przeczytane' })} · {read.length}</span>
+                  </div>
+                  {read.map(entry => {
+                    const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
+                    return (
+                      <div key={entry.id} className="flex items-start p-3 gap-2.5 opacity-40">
+                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-gray-100">
+                          <span className="material-symbols-outlined text-[14px] text-gray-400">{cfg.icon}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">
+                              {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
+                            </span>
+                            <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
+                          </div>
+                          <p className="text-[11px] font-bold text-gray-500 leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
+                          <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* MODAL POTWIERDZENIA USUNIĘCIA */}

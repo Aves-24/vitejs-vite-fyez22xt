@@ -124,13 +124,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
   const handleAcknowledge = useCallback(async (id: string) => {
     setAcknowledgedIds(prev => new Set(prev).add(id));
-    onBack();
     try {
       await updateDoc(doc(db, 'users', userId), { acknowledgedItems: arrayUnion(id) });
     } catch { /* ignore */ }
-  }, [userId, onBack]);
+  }, [userId]);
 
-  const visibleNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
+  const unreadNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
+  const readNotes = sessionNotes.filter(s => acknowledgedIds.has(s.id)).slice(0, 10);
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
@@ -179,7 +179,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {[
             { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan',  { defaultValue: 'Plan' }),      badge: planCount },
             { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary', { defaultValue: 'Tagebuch' }),  badge: diaryCount },
-            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: visibleNotes.length },
+            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: unreadNotes.length },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -266,64 +266,105 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             <div className="text-center py-10">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
             </div>
-          ) : visibleNotes.length === 0 ? (
+          ) : unreadNotes.length === 0 && readNotes.length === 0 ? (
             <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
               <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports</span>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noTips', { defaultValue: 'Brak wskazówek' })}</p>
             </div>
           ) : (
-            <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
-                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-white text-[15px]">sports</span>
-                </div>
-                <div className="leading-tight">
-                  <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
-                  <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                    {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {visibleNotes.length}
-                  </p>
-                </div>
-              </div>
-              <div className="divide-y divide-gray-50">
-                {visibleNotes.map(s => {
-                  const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
-                  const dateLabel = s.date
-                    ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
-                    : '';
-                  return (
-                    <div key={s.id} className="flex items-start">
-                      <button
-                        onClick={() => s.date && onNavigateToStats?.(s.date)}
-                        className="flex-1 text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
-                      >
-                        <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
-                          <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              {s.distance && <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>}
-                              <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
-                            </div>
-                            <div className="flex items-center gap-1 shrink-0">
-                              <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
-                              <span className="material-symbols-outlined text-[12px] text-gray-300 group-active:text-blue-400 transition-colors">chevron_right</span>
-                            </div>
-                          </div>
-                          <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
-                        </div>
-                      </button>
-                      <button
-                        onClick={() => handleAcknowledge(s.id)}
-                        className="shrink-0 w-10 flex items-center justify-center self-stretch text-gray-300 hover:text-emerald-500 active:scale-90 transition-all"
-                        title="Wzięte do wiadomości"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                      </button>
+            <div className="space-y-3">
+              {unreadNotes.length > 0 && (
+                <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
+                  <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-2">
+                    <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-white text-[15px]">sports</span>
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="leading-tight">
+                      <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
+                      <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
+                        {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {unreadNotes.length}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {unreadNotes.map(s => {
+                      const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
+                      const dateLabel = s.date
+                        ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '';
+                      return (
+                        <div key={s.id} className="flex items-start">
+                          <button
+                            onClick={() => s.date && onNavigateToStats?.(s.date)}
+                            className="flex-1 text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
+                              <span className="material-symbols-outlined text-[14px] text-blue-500">sports</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {s.distance && <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>}
+                                  <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
+                                  <span className="material-symbols-outlined text-[12px] text-gray-300 group-active:text-blue-400 transition-colors">chevron_right</span>
+                                </div>
+                              </div>
+                              <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
+                            </div>
+                          </button>
+                          <button
+                            onClick={() => handleAcknowledge(s.id)}
+                            className="shrink-0 w-10 flex items-center justify-center self-stretch text-gray-300 hover:text-emerald-500 active:scale-90 transition-all"
+                            title="Wzięte do wiadomości"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+              {readNotes.length > 0 && (
+                <div className="bg-gray-50 rounded-[20px] border border-gray-100 overflow-hidden">
+                  <div className="px-4 py-2 border-b border-gray-100 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-gray-400">check_circle</span>
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.readHistory', { defaultValue: 'Przeczytane' })} · {readNotes.length}</span>
+                  </div>
+                  <div className="divide-y divide-gray-100">
+                    {readNotes.map(s => {
+                      const pts = s.arrows > 0 ? Math.round((s.score / (s.arrows * 10)) * 100) : 0;
+                      const dateLabel = s.date
+                        ? new Date(s.date + 'T00:00:00').toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
+                        : '';
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => s.date && onNavigateToStats?.(s.date)}
+                          className="w-full text-left p-3 flex items-start gap-2.5 active:bg-gray-100 transition-colors group opacity-50"
+                        >
+                          <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">
+                            <span className="material-symbols-outlined text-[14px] text-gray-400">sports</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline justify-between gap-2 mb-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {s.distance && <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">{s.distance}</span>}
+                                <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                              </div>
+                              <span className="text-[8px] font-bold text-gray-400 shrink-0">{dateLabel}</span>
+                            </div>
+                            <p className="text-[11px] font-bold text-gray-500 leading-snug whitespace-pre-wrap break-words">"{s.coachNote}"</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

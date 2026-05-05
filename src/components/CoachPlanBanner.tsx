@@ -147,7 +147,9 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
 
   // Full mode (MyCoachView) — pełna lista
   const visibleEvents = events.filter(ev => !acknowledgedIds?.has(ev.id));
-  if (visibleEvents.length === 0) return null;
+  const acknowledgedEvents = events.filter(ev => acknowledgedIds?.has(ev.id)).slice(0, 10);
+
+  if (visibleEvents.length === 0 && acknowledgedEvents.length === 0) return null;
 
   return (
     <div className="space-y-2">
@@ -208,6 +210,51 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
           </div>
         );
       })}
+      {acknowledgedEvents.length > 0 && (
+        <>
+          <div className="flex items-center gap-2 px-1 py-1">
+            <span className="material-symbols-outlined text-[13px] text-gray-400">check_circle</span>
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
+              {t('coachPlan.readHistory', { defaultValue: 'Przeczytane' })} · {acknowledgedEvents.length}
+            </span>
+          </div>
+          {acknowledgedEvents.map(ev => {
+            const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr, t);
+            return (
+              <div key={ev.id} className="bg-gray-50 rounded-2xl border border-gray-100 flex items-start p-3 gap-3 opacity-50">
+                <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px] text-gray-400">sports</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">
+                      {dateLabel} · {t('coachPlan.label', { defaultValue: 'Trainerplan' })}
+                    </span>
+                    {ev.originCoachName && (
+                      <span className="text-[9px] font-black text-gray-400 truncate max-w-[80px]">{ev.originCoachName}</span>
+                    )}
+                  </div>
+                  <h4 className="font-black text-gray-500 text-[13px] leading-tight">{ev.title}</h4>
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {ev.time && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-400">
+                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                        {ev.time}
+                      </span>
+                    )}
+                    {ev.address && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-gray-400 truncate">
+                        <span className="material-symbols-outlined text-[12px]">location_on</span>
+                        {ev.address}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </>
+      )}
     </div>
   );
 }

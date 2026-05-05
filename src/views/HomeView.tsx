@@ -232,6 +232,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const isTrialActive = trialEndTimestamp ? trialEndTimestamp > Date.now() : false;
         const computedIsPremium = boughtPro || promoPro || isTrialActive;
 
+        const unreadFrom: string[] = d.unreadMsgFrom || [];
+        if (unreadFrom.length > 0) {
+          setHasUnreadMessage(true);
+          const coaches: string[] = d.coaches || [];
+          const students: string[] = d.students || [];
+          const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
+          setUnreadMessageRole(fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null);
+        } else {
+          setHasUnreadMessage(false);
+          setUnreadMessageRole(null);
+        }
+
         setFirstName(d.firstName || '');
         setUserClub(fullClubName);
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));
@@ -712,49 +724,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return () => { cancelled = true; };
   }, [userId, userClub, i18n.language, trialEndsAt, rawIsPremium]);
 
-  useEffect(() => {
-    if (!userId) return;
-    let cancelled = false;
-    const checkMessages = async () => {
-      try {
-        const userSnap = await getDoc(doc(db, 'users', userId));
-        if (!userSnap.exists() || cancelled) return;
-        const data = userSnap.data();
-        const coaches: string[] = data.coaches || [];
-        const students: string[] = data.students || [];
-
-        let unread = false;
-        let role: 'student' | 'coach' | null = null;
-
-        await Promise.all([
-          ...coaches.map(async (coachId) => {
-            try {
-              const snap = await getDoc(doc(db, `users/${coachId}/studentMessages/${userId}`));
-              if (snap.exists()) {
-                const d = snap.data();
-                if ((d.lastCoachAt || 0) > (d.lastStudentReadAt || 0)) { unread = true; role = 'student'; }
-              }
-            } catch { /* ignore */ }
-          }),
-          ...students.map(async (studentId) => {
-            try {
-              const snap = await getDoc(doc(db, `users/${userId}/studentMessages/${studentId}`));
-              if (snap.exists()) {
-                const d = snap.data();
-                if ((d.lastStudentAt || 0) > (d.lastCoachReadAt || 0)) { unread = true; if (!role) role = 'coach'; }
-              }
-            } catch { /* ignore */ }
-          }),
-        ]);
-
-        if (cancelled) return;
-        setHasUnreadMessage(unread);
-        setUnreadMessageRole(unread ? role : null);
-      } catch { /* ignore */ }
-    };
-    checkMessages();
-    return () => { cancelled = true; };
-  }, [userId]);
 
   const validClubBattles = activeClubBattles.filter(b => {
     const isExpired = b.expiresAt 

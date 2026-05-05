@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
 
 export interface ThreadMessage {
@@ -82,7 +82,11 @@ export default function StudentMessageSheet({
           const data = snap.data() as ThreadDoc;
           setThread(data.thread || []);
           const readField = mode === 'student' ? 'lastStudentReadAt' : 'lastCoachReadAt';
-          await updateDoc(docRef, { [readField]: Date.now() });
+          const senderId = mode === 'student' ? coachId : studentId;
+          await Promise.all([
+            updateDoc(docRef, { [readField]: Date.now() }),
+            updateDoc(doc(db, 'users', currentUserId), { unreadMsgFrom: arrayRemove(senderId) }),
+          ]);
         }
       } catch { /* ignore */ }
       setIsLoading(false);
@@ -122,6 +126,8 @@ export default function StudentMessageSheet({
         await setDoc(docRef, { ...existing, ...update });
       }
 
+      const recipientId = mode === 'student' ? coachId : studentId;
+      try { await updateDoc(doc(db, 'users', recipientId), { unreadMsgFrom: arrayUnion(currentUserId) }); } catch { /* ignore — notification flag, non-critical */ }
       localStorage.setItem(cooldownKey(coachId, studentId, mode), String(Date.now()));
       setCooldownSecs(COOLDOWN_MS / 1000);
       setThread(newThread);

@@ -201,9 +201,12 @@ service cloud.firestore {
     //  they are in the coach's students[] list (prevents spoofing).
     match /users/{uid}/studentMessages/{studentId} {
       allow read, write: if isSelf(uid) || isAdmin();
+      // Student can read/write their own thread — verified from both sides of the relation
+      // to be robust against data inconsistency between students[] and coaches[].
       allow read, write: if isSignedIn()
         && request.auth.uid == studentId
-        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('students', []);
+        && (request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('students', [])
+            || uid in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('coaches', []));
     }
 
     // ─── /users/{uid}/dailyStats/{day} ──────────────────────────

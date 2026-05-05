@@ -43,6 +43,7 @@ export default function StudentMessageSheet({
   const [isLoading, setIsLoading] = useState(true);
   const [text, setText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const docRef = doc(db, `users/${coachId}/studentMessages/${studentId}`);
@@ -73,6 +74,7 @@ export default function StudentMessageSheet({
     const clean = text.trim().slice(0, MAX_TEXT);
     if (!clean) return;
     setIsSaving(true);
+    setSendError(null);
     try {
       const snap = await getDoc(docRef);
       const existing: ThreadDoc = snap.exists()
@@ -98,8 +100,9 @@ export default function StudentMessageSheet({
 
       setThread(newThread);
       setText('');
-    } catch (e) {
+    } catch (e: any) {
       console.error('StudentMessageSheet: błąd zapisu', e);
+      setSendError(e?.code === 'permission-denied' ? 'Brak uprawnień do wysłania wiadomości.' : 'Błąd połączenia. Spróbuj ponownie.');
     }
     setIsSaving(false);
   };
@@ -181,7 +184,11 @@ export default function StudentMessageSheet({
         </div>
 
         {/* Input */}
-        <div className="px-4 pb-4 pt-2 border-t border-gray-100 shrink-0 flex gap-2 items-end">
+        <div className="px-4 pb-4 pt-2 border-t border-gray-100 shrink-0">
+          {sendError && (
+            <p className="text-[10px] font-bold text-red-500 mb-2 text-center">{sendError}</p>
+          )}
+          <div className="flex gap-2 items-end">
           <textarea
             value={text}
             onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
@@ -205,6 +212,7 @@ export default function StudentMessageSheet({
           >
             <span className="material-symbols-outlined text-[18px]">send</span>
           </button>
+          </div>
         </div>
       </div>
     </div>,

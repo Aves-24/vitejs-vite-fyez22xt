@@ -460,8 +460,8 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
           </button>
           <div>
             <div className="flex items-baseline">
-              <h1 className="text-4xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</h1>
-              <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[0.35em]"></div>
+              <h1 className="text-2xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</h1>
+              <div className="bg-[#fed33e] w-2 h-2 rounded-full animate-pulse ml-1 relative bottom-[0.3em]"></div>
             </div>
             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{t('coachDashboard.subtitle')}</p>
           </div>

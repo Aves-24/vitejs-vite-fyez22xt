@@ -140,7 +140,8 @@ export const views = {
     calendar: "Schedule",
     stats: "Stats",
     settings: "Settings",
-    myCoach: "Archer"
+    myCoach: "Archer",
+    coach: "Trainer"
   },
   home: {
     archerRanking: "Archer Ranking",

@@ -459,7 +459,7 @@ export default function CoachDashboardView({ userId, onNavigate }: CoachDashboar
             <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
           </button>
           <div>
-            <h1 className="text-2xl font-black text-[#0a3a2a] leading-none">{t('coachDashboard.title')}</h1>
+            <img src="/icon-192.png" alt="Grot-X" className="h-8 w-auto" />
             <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{t('coachDashboard.subtitle')}</p>
           </div>
         </div>

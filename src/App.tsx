@@ -357,7 +357,7 @@ export default function App() {
             {isCoach && (
               <button onClick={() => handleNavigate('COACH')} className={`flex flex-col items-center ${currentView === 'COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
                 <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
-                {currentView === 'COACH' && <span className="text-[8px] font-black uppercase mt-0.5">Trener</span>}
+                {currentView === 'COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.coach')}</span>}
               </button>
             )}
 

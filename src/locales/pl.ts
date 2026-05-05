@@ -140,7 +140,8 @@ export const views = {
     calendar: "Terminarz",
     stats: "Statystyki",
     settings: "Ustawienia",
-    myCoach: "Łucznik"
+    myCoach: "Łucznik",
+    coach: "Trener"
   },
   home: {
     archerRanking: "Ranking Łucznika",

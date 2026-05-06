@@ -38,6 +38,24 @@ function cacheSet(key: string, data: unknown, ttl: number): void {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+interface NotifItem {
+  id: string;
+  type: 'message' | 'coach_plan' | 'announcement';
+  icon: string;
+  iconColor: string;
+  title: string;
+  timestamp: number;
+  navigateTo: string;
+  extraData?: string;
+}
+
+function pushNotif(userId: string, item: NotifItem, current: NotifItem[]): NotifItem[] {
+  if (current.some(n => n.id === item.id)) return current;
+  const next = [item, ...current].slice(0, 3);
+  try { localStorage.setItem(`grotX_notifHistory_${userId}`, JSON.stringify(next)); } catch { /* ignore */ }
+  return next;
+}
+
 interface HomeViewProps {
   userId: string;
   isCoach: boolean;
@@ -89,6 +107,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [hasUnreadMessage, setHasUnreadMessage] = useState(false);
   const [unreadMessageRole, setUnreadMessageRole] = useState<'student' | 'coach' | null>(null);
   const [unreadSenderId, setUnreadSenderId] = useState<string | null>(null);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const [notifHistory, setNotifHistory] = useState<NotifItem[]>(() => {
+    try { return JSON.parse(localStorage.getItem(`grotX_notifHistory_${userId}`) || '[]'); } catch { return []; }
+  });
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [isPremium, setIsPremium] = useState(false);
@@ -240,7 +262,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const coaches: string[] = d.coaches || [];
           const students: string[] = d.students || [];
           const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
-          setUnreadMessageRole(fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null);
+          const role = fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null;
+          setUnreadMessageRole(role);
+          const msgItem: NotifItem = {
+            id: `msg_${unreadFrom[0]}`,
+            type: 'message',
+            icon: 'chat',
+            iconColor: 'text-green-600',
+            title: 'Nowa wiadomość',
+            timestamp: Date.now(),
+            navigateTo: role === 'student' ? 'MY_COACH' : 'COACH',
+            extraData: unreadFrom[0],
+          };
+          setNotifHistory(prev => pushNotif(userId, msgItem, prev));
         } else {
           setHasUnreadMessage(false);
           setUnreadSenderId(null);
@@ -714,6 +748,33 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       setHasNewCoachPlan(foundNewCoachPlan);
       setHasCoachAnnouncement(announcementIsCoach);
 
+      // Push do historii powiadomień
+      if (announcementVisible) {
+        const ann = visibleAnnouncements[0];
+        const annItem: NotifItem = {
+          id: `ann_${ann.id}`,
+          type: 'announcement',
+          icon: announcementIsCoach ? 'campaign' : 'notifications',
+          iconColor: announcementIsCoach ? 'text-blue-600' : 'text-red-500',
+          title: ann.title || 'Nowe ogłoszenie',
+          timestamp: ann.timestamp?.toMillis ? ann.timestamp.toMillis() : Date.now(),
+          navigateTo: 'ANNOUNCEMENTS',
+        };
+        setNotifHistory(prev => pushNotif(userId, annItem, prev));
+      }
+      if (foundNewCoachPlan) {
+        const planItem: NotifItem = {
+          id: `plan_${Date.now()}`,
+          type: 'coach_plan',
+          icon: 'event',
+          iconColor: 'text-[#0a3a2a]',
+          title: 'Nowy plan od trenera',
+          timestamp: Date.now(),
+          navigateTo: 'MY_COACH',
+        };
+        setNotifHistory(prev => pushNotif(userId, planItem, prev));
+      }
+
       if (announcementVisible) {
         setNewAnnouncementType(announcementIsCoach || foundNewCoachPlan ? 'coach' : 'system');
       } else if (foundNewCoachPlan) {
@@ -762,7 +823,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] px-5 pb-24 pt-[max(calc(env(safe-area-inset-top)+0.5rem),2.5rem)]">
+    <div className="flex flex-col h-full bg-[#fcfdfe] px-5 pb-24 pt-[max(calc(env(safe-area-inset-top)+0.5rem),2.5rem)]"
+      onClick={() => { if (showNotifPanel) setShowNotifPanel(false); }}
+    >
       
       {/* HEADER */}
       <div className="mb-4 flex items-center justify-between">
@@ -782,39 +845,86 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             <span className="material-symbols-outlined text-[#0a3a2a] text-[24px] font-bold">slow_motion_video</span>
           </button>
 
-          <button
-            onClick={() => {
-              if (hasUnreadMessage) {
-                setHasUnreadMessage(false);
-                if (unreadMessageRole === 'student') { onNavigate?.('MY_COACH', undefined, unreadSenderId || undefined); return; }
-                if (unreadMessageRole === 'coach') { onNavigate?.('COACH', undefined, unreadSenderId || undefined); return; }
-              }
-              try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
-              setNewAnnouncementType('none');
-              setHasNewCoachPlan(false);
-              if (hasCoachAnnouncement || (newAnnouncementType === 'system')) {
-                onNavigate?.('ANNOUNCEMENTS');
-              } else if (hasNewCoachPlan) {
-                onNavigate?.('MY_COACH');
-              } else {
-                onNavigate?.('ANNOUNCEMENTS');
-              }
-            }}
-            className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
-              newAnnouncementType !== 'none' || hasUnreadMessage ? 'opacity-100' : 'opacity-40'
-            }`}
-          >
-             <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">notifications</span>
-             {hasUnreadMessage && (
-               <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
-             )}
-             {!hasUnreadMessage && newAnnouncementType === 'coach' && (
-               <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>
-             )}
-             {!hasUnreadMessage && newAnnouncementType === 'system' && (
-               <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
-             )}
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifPanel(p => !p)}
+              className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
+                newAnnouncementType !== 'none' || hasUnreadMessage ? 'opacity-100' : 'opacity-40'
+              }`}
+            >
+              <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">notifications</span>
+              {hasUnreadMessage && (
+                <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+              {!hasUnreadMessage && newAnnouncementType === 'coach' && (
+                <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+              {!hasUnreadMessage && newAnnouncementType === 'system' && (
+                <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
+              )}
+            </button>
+
+            {showNotifPanel && (
+              <div className="absolute right-0 top-14 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">Powiadomienia</p>
+                  <button onClick={() => setShowNotifPanel(false)} className="w-6 h-6 flex items-center justify-center text-gray-400 active:scale-90">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+                {notifHistory.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2">
+                    <span className="material-symbols-outlined text-gray-200 text-4xl">notifications_off</span>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Brak powiadomień</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-50">
+                    {notifHistory.map(item => {
+                      const ago = (() => {
+                        const diff = Date.now() - item.timestamp;
+                        const m = Math.floor(diff / 60000);
+                        if (m < 1) return 'przed chwilą';
+                        if (m < 60) return `${m} min temu`;
+                        const h = Math.floor(m / 60);
+                        if (h < 24) return `${h} godz. temu`;
+                        return `${Math.floor(h / 24)} dni temu`;
+                      })();
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setShowNotifPanel(false);
+                            if (item.type === 'message') {
+                              setHasUnreadMessage(false);
+                              onNavigate?.(item.navigateTo, undefined, item.extraData);
+                            } else if (item.type === 'coach_plan') {
+                              try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
+                              setHasNewCoachPlan(false);
+                              setNewAnnouncementType('none');
+                              onNavigate?.(item.navigateTo);
+                            } else {
+                              setNewAnnouncementType('none');
+                              onNavigate?.(item.navigateTo);
+                            }
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-all text-left"
+                        >
+                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
+                            <span className={`material-symbols-outlined text-[16px] ${item.iconColor}`}>{item.icon}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-black text-[#0a3a2a] truncate">{item.title}</p>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{ago}</p>
+                          </div>
+                          <span className="material-symbols-outlined text-[14px] text-gray-300 shrink-0">chevron_right</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
           
           <button onClick={() => setShowQR(true)} className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center active:scale-90 transition-all">
              <span className="material-symbols-outlined text-indigo-600 text-3xl font-bold">qr_code_2</span>

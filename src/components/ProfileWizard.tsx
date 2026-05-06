@@ -588,10 +588,12 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
                     </div>
                     <div className="flex flex-col gap-1 pb-4">
-                      <button type="button" onClick={() => tDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
-                        <span className="material-symbols-outlined text-xl">calendar_today</span>
-                      </button>
-                      <input ref={tDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
+                      <div className="relative w-11 h-11">
+                        <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
+                          <span className="material-symbols-outlined text-xl">calendar_today</span>
+                        </div>
+                        <input ref={tDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -646,10 +648,12 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
                     </div>
                     <div className="flex flex-col gap-1 pb-4">
-                      <button type="button" onClick={() => pDateRef.current?.click()} className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 active:scale-95 transition-all">
-                        <span className="material-symbols-outlined text-xl">calendar_today</span>
-                      </button>
-                      <input ref={pDateRef} type="date" className="sr-only" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
+                      <div className="relative w-11 h-11">
+                        <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
+                          <span className="material-symbols-outlined text-xl">calendar_today</span>
+                        </div>
+                        <input ref={pDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
+                      </div>
                     </div>
                   </div>
                 </div>

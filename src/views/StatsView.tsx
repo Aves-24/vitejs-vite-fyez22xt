@@ -452,7 +452,7 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
     const q = query(
       collection(db, `users/${targetUserId}/sessions`),
       orderBy('timestamp', 'desc'),
-      limit(150)
+      limit(20)
     );
 
     const unsub = onSnapshot(q, (snap) => {

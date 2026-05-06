@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, doc, getDoc, deleteDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, doc, getDoc, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -409,12 +409,15 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
   const [selectedDate, setSelectedDate] = useState<string>(initialDate || new Date().toISOString().split('T')[0]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
-  
+
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [hasAutoSelectedDate, setHasAutoSelectedDate] = useState(false);
 
   const [isPremium, setIsPremium] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(true);
   const [dailyArrows, setDailyArrows] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
@@ -448,6 +451,8 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
   useEffect(() => {
     if (!targetUserId) return;
     setIsLoading(true);
+    setLastVisible(null);
+    setHasMore(true);
 
     const q = query(
       collection(db, `users/${targetUserId}/sessions`),
@@ -458,11 +463,37 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Session));
       setSessions(data);
+      setLastVisible(snap.docs[snap.docs.length - 1] || null);
+      setHasMore(snap.docs.length === 20);
       setIsLoading(false);
     });
 
     return () => unsub();
   }, [targetUserId]);
+
+  const loadMore = async () => {
+    if (!targetUserId || !lastVisible || isLoadingMore || !hasMore) return;
+    setIsLoadingMore(true);
+    try {
+      const q = query(
+        collection(db, `users/${targetUserId}/sessions`),
+        orderBy('timestamp', 'desc'),
+        startAfter(lastVisible),
+        limit(20)
+      );
+      const snap = await new Promise<any>((resolve) => {
+        const unsub = onSnapshot(q, resolve);
+        setTimeout(() => unsub(), 5000);
+      });
+      const newData = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Session));
+      setSessions(prev => [...prev, ...newData]);
+      setLastVisible(snap.docs[snap.docs.length - 1] || null);
+      setHasMore(snap.docs.length === 20);
+    } catch (e) {
+      console.error('Load more error:', e);
+    }
+    setIsLoadingMore(false);
+  };
 
   const toISO = (d: string) => { 
     if (!d) return '';
@@ -801,6 +832,26 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
                     </div>
                   )}
                 </div>
+              )}
+
+              {hasMore && (
+                <button
+                  onClick={loadMore}
+                  disabled={isLoadingMore}
+                  className="w-full py-3 mt-6 bg-gray-100 text-gray-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-150 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <span className="material-symbols-outlined text-[14px] animate-spin">loading</span>
+                      Ładowanie...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                      Załaduj więcej treningów
+                    </>
+                  )}
+                </button>
               )}
             </div>
           ) : (

@@ -682,7 +682,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
       </div>
 
       {battleMode === 'LOCAL' && (
-        <div className={`mt-4 bg-black/30 border border-white/10 rounded-[20px] p-3 space-y-2 transition-opacity ${!isGameCreated ? 'opacity-40' : ''}`}>
+        <div className={`mt-3 bg-black/30 border border-white/10 rounded-[20px] p-2 space-y-1.5 transition-opacity ${!isGameCreated ? 'opacity-40' : ''}`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm">👤</span>
@@ -737,7 +737,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
         </div>
       )}
 
-      <div className="mt-4 pt-3 border-t border-white/10 flex items-center gap-3">
+      <div className="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2">
         <button
           onClick={() => {
             if (!isGameCreated) {
@@ -750,19 +750,19 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
               updateDoc(doc(db, 'battles', battleId), { status: 'START' });
             }
           }}
-          className={`flex-1 py-4 text-white rounded-[20px] font-black uppercase tracking-[0.1em] text-sm shadow-xl active:scale-95 transition-all disabled:opacity-30 ${!isGameCreated ? 'bg-indigo-500' : 'bg-indigo-600'}`}
+          className={`flex-1 py-3 text-white rounded-[20px] font-black uppercase tracking-[0.1em] text-sm shadow-xl active:scale-95 transition-all disabled:opacity-30 ${!isGameCreated ? 'bg-indigo-500' : 'bg-indigo-600'}`}
           disabled={(isGameCreated && battleMode === 'LOCAL' && (participants.length + guestNames.filter(n => n.trim()).length) < 2) && userId === battleData?.hostId}
         >
-          {!isGameCreated 
-            ? t('battleLobby.create', 'UTWÓRZ GRĘ') 
+          {!isGameCreated
+            ? t('battleLobby.create', 'UTWÓRZ GRĘ')
             : (userId === battleData?.hostId ? t('battleLobby.startChallenge') : t('battleLobby.waitingForHost'))}
         </button>
-        
-        <button 
+
+        <button
           onClick={() => setIsPrivacyModalOpen(true)}
-          className="w-14 h-14 bg-white/5 border border-white/10 rounded-[20px] flex items-center justify-center text-gray-400 active:scale-95 transition-all hover:bg-white/10 shrink-0"
+          className="w-12 h-12 bg-white/5 border border-white/10 rounded-[20px] flex items-center justify-center text-gray-400 active:scale-95 transition-all hover:bg-white/10 shrink-0"
         >
-          <span className="material-symbols-outlined text-2xl">settings_accessibility</span>
+          <span className="material-symbols-outlined text-xl">settings_accessibility</span>
         </button>
       </div>
 

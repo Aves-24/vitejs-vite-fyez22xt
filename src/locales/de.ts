@@ -191,7 +191,10 @@ export const views = {
     noNotes: "Keine Notizen",
     notesEmpty: "Schreib deine Trainingsbeobachtungen auf",
     notesDeleteTitle: "Notiz löschen?",
-    notesDeleteConfirm: "Löschen"
+    notesDeleteConfirm: "Löschen",
+    notesMic: "Mikrofon",
+    notesMicStop: "Stop",
+    notesMicRecording: "Aufnahme…"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

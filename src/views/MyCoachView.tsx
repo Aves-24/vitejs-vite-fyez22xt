@@ -61,7 +61,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [newNoteText, setNewNoteText] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const hasSpeechAPI = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   useEffect(() => {
     if (!pendingOpenCoachId || isLoading) return;
@@ -216,6 +219,49 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       console.error('MyCoachView: błąd dodawania notatki', e);
     }
     setIsSavingNote(false);
+  };
+
+  const handleToggleRecording = () => {
+    if (!hasSpeechAPI) return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (isRecording) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const rec = new SR();
+    rec.lang = 'pl-PL';
+    rec.continuous = true;
+    rec.interimResults = false;
+
+    rec.onresult = (e: any) => {
+      const transcript = Array.from(e.results)
+        .slice(e.resultIndex)
+        .map((r: any) => r[0].transcript)
+        .join('');
+      setNewNoteText(prev => {
+        const sep = prev && !prev.endsWith(' ') ? ' ' : '';
+        const next = prev + sep + transcript;
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+          textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+        }
+        return next;
+      });
+    };
+
+    rec.onerror = () => {
+      setIsRecording(false);
+    };
+
+    rec.onend = () => {
+      setIsRecording(false);
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+    setIsRecording(true);
   };
 
   const handleDeleteNote = async (noteId: string) => {
@@ -579,7 +625,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           </div>
 
           {/* Add note form */}
-          <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-3 mb-3">
+          <div className={`bg-white rounded-[20px] border shadow-sm p-3 mb-3 transition-all ${isRecording ? 'border-red-300 shadow-red-100' : 'border-gray-100'}`}>
+            {isRecording && (
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">
+                  {t('myCoach.notesMicRecording', { defaultValue: 'Nagrywanie…' })}
+                </span>
+              </div>
+            )}
             <textarea
               ref={textareaRef}
               value={newNoteText}
@@ -596,7 +650,24 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               className="w-full text-[12px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed"
               style={{ minHeight: '48px' }}
             />
-            <div className="flex justify-end mt-2">
+            <div className="flex items-center justify-between mt-2">
+              {hasSpeechAPI ? (
+                <button
+                  onClick={handleToggleRecording}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                    isRecording
+                      ? 'bg-red-500 text-white'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {isRecording ? 'stop' : 'mic'}
+                  </span>
+                  {isRecording ? t('myCoach.notesMicStop', { defaultValue: 'Stop' }) : t('myCoach.notesMic', { defaultValue: 'Mikrofon' })}
+                </button>
+              ) : (
+                <span />
+              )}
               <button
                 onClick={handleAddNote}
                 disabled={!newNoteText.trim() || isSavingNote}

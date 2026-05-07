@@ -191,7 +191,10 @@ export const views = {
     noNotes: "Brak notatek",
     notesEmpty: "Zapisuj swoje spostrzeżenia z treningów",
     notesDeleteTitle: "Usuń notatkę?",
-    notesDeleteConfirm: "Usuń"
+    notesDeleteConfirm: "Usuń",
+    notesMic: "Mikrofon",
+    notesMicStop: "Stop",
+    notesMicRecording: "Nagrywanie…"
   },
   home: {
     archerRanking: "Ranking Łucznika",

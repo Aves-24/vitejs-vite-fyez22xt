@@ -191,7 +191,10 @@ export const views = {
     noNotes: "No notes yet",
     notesEmpty: "Write down your training observations",
     notesDeleteTitle: "Delete note?",
-    notesDeleteConfirm: "Delete"
+    notesDeleteConfirm: "Delete",
+    notesMic: "Microphone",
+    notesMicStop: "Stop",
+    notesMicRecording: "Recording…"
   },
   home: {
     archerRanking: "Archer Ranking",

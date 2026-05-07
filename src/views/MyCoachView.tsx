@@ -654,16 +654,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               {hasSpeechAPI ? (
                 <button
                   onClick={handleToggleRecording}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
-                    isRecording
-                      ? 'bg-red-500 text-white'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                  className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all active:scale-95 ${
+                    isRecording ? 'bg-red-500 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                   }`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">
+                  <span className="material-symbols-outlined text-[18px]">
                     {isRecording ? 'stop' : 'mic'}
                   </span>
-                  {isRecording ? t('myCoach.notesMicStop', { defaultValue: 'Stop' }) : t('myCoach.notesMic', { defaultValue: 'Mikrofon' })}
                 </button>
               ) : (
                 <span />

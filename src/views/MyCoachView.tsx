@@ -286,15 +286,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">event</span>
-              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabPlan')}</span>
-              {planCount > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{planCount}</span>}
+              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">event</span>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabPlan')}</span>
+              {planCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{planCount}</span>}
             </div>
-            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+            <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
               {latestPlanEvent ? latestPlanEvent.title : t('myCoach.noUpcoming')}
             </p>
             {latestPlanEvent?.date && (
-              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{latestPlanEvent.date}{latestPlanEvent.time ? ` · ${latestPlanEvent.time}` : ''}</p>
+              <p className="text-[9px] font-bold text-gray-400 mt-0.5">{latestPlanEvent.date}{latestPlanEvent.time ? ` · ${latestPlanEvent.time}` : ''}</p>
             )}
           </button>
 
@@ -304,15 +304,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">edit_note</span>
-              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabDiary')}</span>
-              {diaryCount > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{diaryCount}</span>}
+              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">edit_note</span>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabDiary')}</span>
+              {diaryCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{diaryCount}</span>}
             </div>
-            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+            <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
               {latestDiaryEntry ? latestDiaryEntry.text.slice(0, 35) + (latestDiaryEntry.text.length > 35 ? '…' : '') : t('myCoach.noEntries')}
             </p>
             {latestDiaryEntry && (
-              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{latestDiaryEntry.authorName}</p>
+              <p className="text-[9px] font-bold text-gray-400 mt-0.5">{latestDiaryEntry.authorName}</p>
             )}
           </button>
 
@@ -322,21 +322,21 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">sports</span>
-              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabTips')}</span>
-              {unreadNotes.length > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{unreadNotes.length}</span>}
+              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">sports</span>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabTips')}</span>
+              {unreadNotes.length > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{unreadNotes.length}</span>}
             </div>
             {(() => {
               const tip = unreadNotes[0] || readNotes[0];
               return tip ? (
                 <>
-                  <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+                  <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
                     {tip.coachNote.slice(0, 35)}{tip.coachNote.length > 35 ? '…' : ''}
                   </p>
-                  <p className="text-[7px] font-bold text-gray-400 mt-0.5">{tip.date}</p>
+                  <p className="text-[9px] font-bold text-gray-400 mt-0.5">{tip.date}</p>
                 </>
               ) : (
-                <p className="text-[9px] font-black text-gray-400 truncate">{t('myCoach.noTips')}</p>
+                <p className="text-[11px] font-black text-gray-400 truncate">{t('myCoach.noTips')}</p>
               );
             })()}
           </button>
@@ -347,15 +347,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'notes' ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[12px] text-indigo-500">lock</span>
-              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabNotes')}</span>
-              {privateNotes.length > 0 && <span className="text-[7px] font-black text-indigo-600 bg-indigo-50 rounded-full px-1.5 py-0.5">{privateNotes.length}</span>}
+              <span className="material-symbols-outlined text-[14px] text-indigo-500">lock</span>
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabNotes')}</span>
+              {privateNotes.length > 0 && <span className="text-[9px] font-black text-indigo-600 bg-indigo-50 rounded-full px-1.5 py-0.5">{privateNotes.length}</span>}
             </div>
-            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+            <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
               {privateNotes.length > 0 ? privateNotes[0].text.slice(0, 35) + (privateNotes[0].text.length > 35 ? '…' : '') : t('myCoach.noNotes')}
             </p>
             {privateNotes.length > 0 && (
-              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{formatNoteDate(privateNotes[0].createdAt)}</p>
+              <p className="text-[9px] font-bold text-gray-400 mt-0.5">{formatNoteDate(privateNotes[0].createdAt)}</p>
             )}
           </button>
         </div>

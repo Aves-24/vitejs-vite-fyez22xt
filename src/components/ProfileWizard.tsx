@@ -590,7 +590,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                     <div className="flex flex-col gap-1 pb-4">
                       <div className="relative w-11 h-11">
                         <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
-                          <span className="material-symbols-outlined text-xl">calendar_today</span>
+                          <span className="material-symbols-outlined text-xl pointer-events-none">calendar_today</span>
                         </div>
                         <input ref={tDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
                       </div>
@@ -650,7 +650,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                     <div className="flex flex-col gap-1 pb-4">
                       <div className="relative w-11 h-11">
                         <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
-                          <span className="material-symbols-outlined text-xl">calendar_today</span>
+                          <span className="material-symbols-outlined text-xl pointer-events-none">calendar_today</span>
                         </div>
                         <input ref={pDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
                       </div>

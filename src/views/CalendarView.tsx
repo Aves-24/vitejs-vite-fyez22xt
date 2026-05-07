@@ -889,6 +889,28 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             </div>
           );
         })()}
+
+        <div className="mx-4 mb-6 mt-2 p-4 bg-white rounded-2xl border border-gray-100">
+          <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">{t('calendar.legend', 'Legenda')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />
+              <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTournament', 'Turniej')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-emerald-300 flex-shrink-0" />
+              <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendOther', 'Inne')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-sky-400 flex-shrink-0" />
+              <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTrainerReceived', 'Moje terminy od trenera')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full bg-indigo-500 flex-shrink-0" />
+              <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTrainerSent', 'Terminy jako trener')}</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {showForm && (

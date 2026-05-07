@@ -505,6 +505,11 @@ export const views = {
     archiveTodo: "Archiwum: Zadania",
     archiveLoadMore: "Załaduj kolejne 5",
     archiveEmpty: "Brak wpisów",
+    legend: "Legenda",
+    legendTournament: "Turniej",
+    legendOther: "Inne",
+    legendTrainerReceived: "Moje terminy od trenera",
+    legendTrainerSent: "Terminy jako trener",
     days: ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
   },
   profile: {

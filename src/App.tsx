@@ -211,6 +211,7 @@ export default function App() {
               'STATS',
               'ADMIN',
               'COACH',
+              'MY_COACH',
               'STUDENT_PROFILE',
               'ANNOUNCEMENTS',
               'DELAY_MIRROR',

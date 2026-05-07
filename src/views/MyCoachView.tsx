@@ -48,10 +48,16 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
 
   useEffect(() => {
-    if (!pendingOpenCoachId || coaches.length === 0) return;
+    if (!pendingOpenCoachId || isLoading) return;
     const coach = coaches.find(c => c.id === pendingOpenCoachId);
-    if (coach) { setOpenMessageCoach(coach); onClearPending?.(); }
-  }, [pendingOpenCoachId, coaches]);
+    if (coach) {
+      setOpenMessageCoach(coach);
+      onClearPending?.();
+    } else {
+      // Coach not found after load — clear pending to avoid stuck state
+      onClearPending?.();
+    }
+  }, [pendingOpenCoachId, coaches, isLoading]);
   // ordered array (newest first, max MAX_ACKED) — source of truth for both display and cache
   const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
     try {

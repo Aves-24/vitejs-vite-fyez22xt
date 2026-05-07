@@ -51,7 +51,13 @@ interface NotifItem {
 }
 
 function pushNotif(userId: string, item: NotifItem, current: NotifItem[]): NotifItem[] {
-  if (current.some(n => n.id === item.id)) return current;
+  const existing = current.find(n => n.id === item.id);
+  if (existing) {
+    // Update navigateTo/extraData but preserve read state and position
+    const next = current.map(n => n.id === item.id ? { ...item, read: n.read } : n);
+    try { localStorage.setItem(`grotX_notifHistory_${userId}`, JSON.stringify(next)); } catch { /* ignore */ }
+    return next;
+  }
   const next = [item, ...current].slice(0, 3);
   try { localStorage.setItem(`grotX_notifHistory_${userId}`, JSON.stringify(next)); } catch { /* ignore */ }
   return next;

@@ -230,7 +230,7 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
 
       {/* MODAL POTWIERDZENIA USUNIĘCIA */}
       {confirmDismissId && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center pb-8 px-5" style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5" style={{ background: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}>
           <div className="w-full max-w-md bg-white rounded-[28px] p-6 shadow-2xl">
             <div className="flex flex-col items-center text-center mb-6">
               <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-4">

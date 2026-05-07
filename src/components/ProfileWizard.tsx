@@ -567,20 +567,20 @@ export default function ProfileWizard(props: ProfileWizardProps) {
               </div>
               
               <div className="space-y-3">
-                <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
-                
+                <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-600" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
+
                 <div className="space-y-2 mt-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={tMonth} onChange={e => setTMonth(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tMonth} onChange={e => setTMonth(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={tYear} onChange={e => setTYear(e.target.value.slice(0,4))} />
+                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tYear} onChange={e => setTYear(e.target.value.slice(0,4))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
@@ -627,20 +627,20 @@ export default function ProfileWizard(props: ProfileWizardProps) {
               </div>
               
               <div className="space-y-3">
-                <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
-                
+                <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-amber-50 border-2 border-amber-400 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-amber-600" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
+
                 <div className="space-y-2 mt-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={pMonth} onChange={e => setPMonth(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pMonth} onChange={e => setPMonth(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={pYear} onChange={e => setPYear(e.target.value.slice(0,4))} />
+                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pYear} onChange={e => setPYear(e.target.value.slice(0,4))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">

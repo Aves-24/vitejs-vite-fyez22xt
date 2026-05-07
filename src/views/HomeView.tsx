@@ -867,7 +867,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {showNotifPanel && (
               <div className="absolute right-0 top-14 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">Powiadomienia</p>
+                  <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('announcements.pageTitle')}</p>
                   <button onClick={() => setShowNotifPanel(false)} className="w-6 h-6 flex items-center justify-center text-gray-400 active:scale-90">
                     <span className="material-symbols-outlined text-[16px]">close</span>
                   </button>
@@ -875,7 +875,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 {notifHistory.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-8 gap-2">
                     <span className="material-symbols-outlined text-gray-200 text-4xl">notifications_off</span>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Brak powiadomień</p>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('announcements.empty')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-50">
@@ -883,11 +883,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       const ago = (() => {
                         const diff = Date.now() - item.timestamp;
                         const m = Math.floor(diff / 60000);
-                        if (m < 1) return 'przed chwilą';
-                        if (m < 60) return `${m} min temu`;
+                        if (m < 1) return t('announcements.justNow');
+                        if (m < 60) return t('announcements.minutesAgo', { count: m });
                         const h = Math.floor(m / 60);
-                        if (h < 24) return `${h} godz. temu`;
-                        return `${Math.floor(h / 24)} dni temu`;
+                        if (h < 24) return t('announcements.hoursAgo', { count: h });
+                        return t('announcements.daysAgo', { count: Math.floor(h / 24) });
                       })();
                       return (
                         <button

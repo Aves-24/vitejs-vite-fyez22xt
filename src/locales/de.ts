@@ -287,7 +287,11 @@ export const views = {
     pageTitle: "Benachrichtigungen",
     badgeCoach: "Trainer",
     badgeSystem: "System",
-    deleteConfirmDesc: "Die Benachrichtigung wird dauerhaft aus deiner Liste entfernt."
+    deleteConfirmDesc: "Die Benachrichtigung wird dauerhaft aus deiner Liste entfernt.",
+    justNow: "gerade eben",
+    minutesAgo: "vor {{count}} Min.",
+    hoursAgo: "vor {{count}} Std.",
+    daysAgo: "vor {{count}} Tagen"
   },
   battleHistory: {
     title: "BATTLE",

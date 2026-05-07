@@ -287,7 +287,11 @@ export const views = {
     pageTitle: "Notifications",
     badgeCoach: "Coach",
     badgeSystem: "System",
-    deleteConfirmDesc: "This notification will be permanently removed from your list."
+    deleteConfirmDesc: "This notification will be permanently removed from your list.",
+    justNow: "just now",
+    minutesAgo: "{{count}} min ago",
+    hoursAgo: "{{count}} h ago",
+    daysAgo: "{{count}} days ago"
   },
   battleHistory: {
     title: "BATTLE",

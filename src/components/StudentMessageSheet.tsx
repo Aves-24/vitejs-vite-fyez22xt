@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 
 export interface ThreadMessage {
   from: 'student' | 'coach';
@@ -52,6 +53,7 @@ export function hasUnread(thread: ThreadDoc | null, mode: 'student' | 'coach'): 
 export default function StudentMessageSheet({
   coachId, studentId, currentUserId, mode, otherName, onClose,
 }: StudentMessageSheetProps) {
+  const { t } = useTranslation();
   const [thread, setThread] = useState<ThreadMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [text, setText] = useState('');
@@ -134,7 +136,7 @@ export default function StudentMessageSheet({
       setText('');
     } catch (e: any) {
       console.error('StudentMessageSheet: błąd zapisu', e);
-      setSendError(e?.code === 'permission-denied' ? 'Brak uprawnień do wysłania wiadomości.' : 'Błąd połączenia. Spróbuj ponownie.');
+      setSendError(e?.code === 'permission-denied' ? t('messages.errorPermission') : t('messages.errorConnection'));
     }
     setIsSaving(false);
   };
@@ -142,7 +144,7 @@ export default function StudentMessageSheet({
   const formatCooldown = (secs: number) => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
-    return m > 0 ? `${m}:${String(s).padStart(2, '0')} min` : `${s} sek`;
+    return m > 0 ? `${m}:${String(s).padStart(2, '0')} ${t('messages.min')}` : `${s} ${t('messages.sek')}`;
   };
 
   const formatTime = (ts: number) => {
@@ -180,7 +182,7 @@ export default function StudentMessageSheet({
           <div className="flex-1 min-w-0">
             <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{otherName}</h3>
             <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-              {MAX_THREAD} wiad. max · 1 wiad. / 10 min
+              {t('messages.headerSubtitle', { max: MAX_THREAD })}
             </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center active:scale-90 transition-all shrink-0">
@@ -192,12 +194,12 @@ export default function StudentMessageSheet({
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 min-h-[120px]">
           {isLoading ? (
             <div className="flex items-center justify-center h-20">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ładowanie…</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('messages.loading')}</span>
             </div>
           ) : thread.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-20 gap-1">
               <span className="material-symbols-outlined text-gray-200 text-3xl">chat_bubble_outline</span>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Zacznij rozmowę</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('messages.empty')}</p>
             </div>
           ) : (
             thread.map((msg, i) => {
@@ -228,7 +230,7 @@ export default function StudentMessageSheet({
             <div className="flex items-center justify-center gap-2 py-3 bg-gray-50 rounded-2xl">
               <span className="material-symbols-outlined text-gray-400 text-[18px]">timer</span>
               <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest">
-                Następna wiadomość za {formatCooldown(cooldownSecs)}
+                {t('messages.cooldown')} {formatCooldown(cooldownSecs)}
               </p>
             </div>
           ) : (
@@ -236,7 +238,7 @@ export default function StudentMessageSheet({
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value.slice(0, MAX_TEXT))}
-                placeholder="Napisz wiadomość…"
+                placeholder={t('messages.placeholder')}
                 rows={1}
                 className="flex-1 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none leading-snug"
                 style={{ maxHeight: 80 }}

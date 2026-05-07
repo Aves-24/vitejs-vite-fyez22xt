@@ -53,9 +53,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     if (coach) {
       setOpenMessageCoach(coach);
       onClearPending?.();
-    } else {
-      // Coach not found after load — clear pending to avoid stuck state
-      onClearPending?.();
     }
   }, [pendingOpenCoachId, coaches, isLoading]);
   // ordered array (newest first, max MAX_ACKED) — source of truth for both display and cache

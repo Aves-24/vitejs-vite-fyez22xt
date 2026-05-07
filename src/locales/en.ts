@@ -111,6 +111,17 @@ export const components = {
     export: {
       errorGenerate: "An error occurred while generating the document."
     }
+  },
+  messages: {
+    headerSubtitle: "{{max}} msg max · 1 msg / 10 min",
+    loading: "Loading…",
+    empty: "Start the conversation",
+    cooldown: "Next message in",
+    placeholder: "Write a message…",
+    min: "min",
+    sek: "sec",
+    errorPermission: "No permission to send this message.",
+    errorConnection: "Connection error. Please try again."
   }
 };
 

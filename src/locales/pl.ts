@@ -111,6 +111,17 @@ export const components = {
     export: {
       errorGenerate: "Wystąpił błąd podczas generowania dokumentu."
     }
+  },
+  messages: {
+    headerSubtitle: "{{max}} wiad. max · 1 wiad. / 10 min",
+    loading: "Ładowanie…",
+    empty: "Zacznij rozmowę",
+    cooldown: "Następna wiadomość za",
+    placeholder: "Napisz wiadomość…",
+    min: "min",
+    sek: "sek",
+    errorPermission: "Brak uprawnień do wysłania wiadomości.",
+    errorConnection: "Błąd połączenia. Spróbuj ponownie."
   }
 };
 

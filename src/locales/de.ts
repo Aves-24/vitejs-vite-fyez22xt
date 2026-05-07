@@ -111,6 +111,17 @@ export const components = {
     export: {
       errorGenerate: "Beim Generieren des Dokuments ist ein Fehler aufgetreten."
     }
+  },
+  messages: {
+    headerSubtitle: "{{max}} Nachr. max · 1 Nachr. / 10 Min.",
+    loading: "Laden…",
+    empty: "Gespräch beginnen",
+    cooldown: "Nächste Nachricht in",
+    placeholder: "Nachricht schreiben…",
+    min: "Min.",
+    sek: "Sek.",
+    errorPermission: "Keine Berechtigung zum Senden.",
+    errorConnection: "Verbindungsfehler. Erneut versuchen."
   }
 };
 

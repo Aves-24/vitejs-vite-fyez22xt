@@ -44,6 +44,7 @@ interface NotifItem {
   icon: string;
   iconColor: string;
   title: string;
+  senderName?: string;
   timestamp: number;
   navigateTo: string;
   extraData?: string;
@@ -271,12 +272,22 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
           const role = fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null;
           setUnreadMessageRole(role);
+          let senderName: string | undefined;
+          try {
+            const senderSnap = await getDoc(doc(db, 'users', unreadFrom[0]));
+            if (senderSnap.exists()) {
+              const sd = senderSnap.data();
+              senderName = [sd.firstName, sd.lastName].filter(Boolean).join(' ') || undefined;
+            }
+          } catch { /* ignore — name is optional */ }
+          if (cancelled) return;
           const msgItem: NotifItem = {
             id: `msg_${unreadFrom[0]}`,
             type: 'message',
             icon: 'chat',
             iconColor: 'text-green-600',
             title: t('announcements.newMessage'),
+            senderName,
             timestamp: Date.now(),
             navigateTo: role === 'student' ? 'MY_COACH' : 'COACH',
             extraData: unreadFrom[0],
@@ -932,6 +943,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className={`text-[12px] font-black truncate ${item.read ? 'text-gray-400' : 'text-[#0a3a2a]'}`}>{item.title}</p>
+                            {item.senderName && (
+                              <p className={`text-[10px] font-semibold truncate ${item.read ? 'text-gray-300' : 'text-gray-500'}`}>{item.senderName}</p>
+                            )}
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{ago}</p>
                           </div>
                           <span className="material-symbols-outlined text-[14px] text-gray-300 shrink-0">chevron_right</span>

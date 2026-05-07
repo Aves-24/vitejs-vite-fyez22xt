@@ -204,10 +204,13 @@ export default function StudentMessageSheet({
           ) : (
             thread.map((msg, i) => {
               const isMe = msg.from === mode;
+              const isLast = i === thread.length - 1;
               return (
                 <div key={i} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[78%] rounded-2xl px-3 py-2 ${
-                    isMe ? 'bg-[#0a3a2a] text-white rounded-br-sm' : 'bg-gray-100 text-[#333] rounded-bl-sm'
+                    isMe
+                      ? `${isLast ? 'bg-[#145f40]' : 'bg-[#0a3a2a]'} text-white rounded-br-sm`
+                      : `${isLast ? 'bg-emerald-50 border border-emerald-200' : 'bg-gray-100'} text-[#333] rounded-bl-sm`
                   }`}>
                     <p className="text-[12px] font-medium leading-snug break-words whitespace-pre-wrap">{msg.text}</p>
                     <p className={`text-[8px] font-bold mt-1 ${isMe ? 'text-white/50' : 'text-gray-400'}`}>

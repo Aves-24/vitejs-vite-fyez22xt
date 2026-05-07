@@ -6,7 +6,7 @@ import CoachLogPanel, { CoachLogLatestEntry } from '../components/CoachLogPanel'
 import CoachPlanBanner, { CoachPlanEvent } from '../components/CoachPlanBanner';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 
-const MAX_ACKED = 10;
+const MAX_ACKED = 50;
 const ackedCacheKey = (uid: string) => `grotX_acked_${uid}`;
 
 interface MyCoachViewProps {
@@ -195,13 +195,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     fetchPrivateNotes();
   }, [userId]);
 
-  const handleAcknowledge = useCallback(async (id: string) => {
+  const handleAcknowledge = useCallback((id: string) => {
+    let toSave: string[] = [];
     setAcknowledgedList(prev => {
       const updated = [id, ...prev.filter(x => x !== id)].slice(0, MAX_ACKED);
-      try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(updated)); } catch { /* ignore */ }
-      updateDoc(doc(db, 'users', userId), { acknowledgedItems: updated }).catch(() => { /* ignore */ });
+      toSave = updated;
       return updated;
     });
+    try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(toSave)); } catch { /* ignore */ }
+    updateDoc(doc(db, 'users', userId), { acknowledgedItems: toSave }).catch(() => { /* ignore */ });
   }, [userId]);
 
   const handleAddNote = async () => {

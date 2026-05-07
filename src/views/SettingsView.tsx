@@ -424,7 +424,7 @@ export default function SettingsView({
         )}
 
         {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} />}
-        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} />}
+        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} userId={userId} userName={`${firstName} ${lastName}`.trim()} userEmail={userEmail} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (
           <div className="flex flex-col items-center justify-center py-6">

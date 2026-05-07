@@ -56,7 +56,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
-  const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>('all');
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string}[]>([]);
+  const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
+  const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>([]);
 
   const [newCategory, setNewCategory] = useState<'Turniej' | 'Inne' | 'Trener'>('Turniej');
   const [newTitle, setNewTitle] = useState('');
@@ -130,6 +132,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               }
               setCoachStudentsList(loaded);
             }
+            setCoachGroups(data.coachGroups || []);
+            setStudentGroupMap(data.studentGroupMap || {});
           }
         }
       } catch (e) { console.error("Błąd sprawdzania profilu:", e); }
@@ -216,7 +220,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewNote(''); 
     setNewDistance('70m');
     setNewCategory('Turniej');
-    setNewCoachStudents('all');
+    setNewCoachStudents([]);
     setNewIsTodo(false);
   };
 
@@ -256,7 +260,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewAddress(viewingEvent.address);
     setNewNote(viewingEvent.note);
     if (viewingEvent.distance) setNewDistance(viewingEvent.distance);
-    setNewCoachStudents(viewingEvent.coachStudents || 'all');
+    setNewCoachStudents(viewingEvent.coachStudents || []);
 
     setViewingEvent(null);
     setShowForm(true);    
@@ -922,13 +926,39 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.trainerStudents')}</label>
                    <div className="flex flex-wrap gap-1.5">
                      <button
-                       onClick={() => setNewCoachStudents('all')}
+                       onClick={() => setNewCoachStudents(newCoachStudents === 'all' ? [] : 'all')}
                        className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${newCoachStudents === 'all' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
                      >
                        {t('calendar.trainerAllStudents')}
                      </button>
+                     {coachGroups.map(group => {
+                       const groupStudentIds = Object.entries(studentGroupMap)
+                         .filter(([, groups]) => groups.includes(group.id))
+                         .map(([studentId]) => studentId)
+                         .filter(id => coachStudentsList.some(s => s.id === id));
+                       const selectedArr = newCoachStudents === 'all' ? coachStudentsList.map(s => s.id) : newCoachStudents as string[];
+                       const allInGroup = groupStudentIds.length > 0 && groupStudentIds.every(id => selectedArr.includes(id));
+                       const someInGroup = groupStudentIds.some(id => selectedArr.includes(id));
+                       return (
+                         <button
+                           key={group.id}
+                           onClick={() => {
+                             const currentArr = newCoachStudents === 'all' ? coachStudentsList.map(s => s.id) : [...newCoachStudents as string[]];
+                             const next = allInGroup
+                               ? currentArr.filter(id => !groupStudentIds.includes(id))
+                               : Array.from(new Set([...currentArr, ...groupStudentIds]));
+                             setNewCoachStudents(next);
+                           }}
+                           className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${allInGroup ? 'bg-indigo-100 border-indigo-400 text-indigo-700' : someInGroup ? 'bg-indigo-50 border-indigo-200 text-indigo-500' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                         >
+                           <span className="material-symbols-outlined text-[12px]">folder_shared</span>
+                           {group.name}
+                         </button>
+                       );
+                     })}
+                     {coachGroups.length > 0 && <div className="w-full h-px bg-gray-100 my-0.5" />}
                      {coachStudentsList.map(s => {
-                       const isSelected = Array.isArray(newCoachStudents) && newCoachStudents.includes(s.id);
+                       const isSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.includes(s.id));
                        return (
                          <button
                            key={s.id}
@@ -937,12 +967,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                                setNewCoachStudents([s.id]);
                              } else {
                                const arr = newCoachStudents as string[];
-                               if (arr.includes(s.id)) {
-                                 const next = arr.filter(id => id !== s.id);
-                                 setNewCoachStudents(next.length === 0 ? 'all' : next);
-                               } else {
-                                 setNewCoachStudents([...arr, s.id]);
-                               }
+                               setNewCoachStudents(arr.includes(s.id) ? arr.filter(id => id !== s.id) : [...arr, s.id]);
                              }
                            }}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${isSelected ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
@@ -952,6 +977,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                        );
                      })}
                    </div>
+                   {(() => {
+                     const hasSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.length > 0);
+                     return (
+                       <p className={`text-[10px] ml-1 mt-1 flex items-center gap-1 ${hasSelected ? 'text-blue-500' : 'text-gray-400'}`}>
+                         <span className="material-symbols-outlined text-[12px]">{hasSelected ? 'visibility' : 'visibility_off'}</span>
+                         {hasSelected ? t('calendar.trainerPlanHint') : t('calendar.trainerPlanHintNone')}
+                       </p>
+                     );
+                   })()}
                  </div>
                )}
 

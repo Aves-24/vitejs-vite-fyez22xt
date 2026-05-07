@@ -299,6 +299,33 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           setUnreadMessageRole(null);
         }
 
+        const pendingRequests: string[] = d.newCoachRequests || [];
+        if (pendingRequests.length > 0) {
+          let senderName: string | undefined;
+          try {
+            const reqSnap = await getDoc(doc(db, 'coachRequests', pendingRequests[pendingRequests.length - 1]));
+            if (reqSnap.exists()) {
+              const rd = reqSnap.data();
+              const name = rd.userName || '';
+              const students = rd.desiredStudents ? ` · ${rd.desiredStudents} uczniów` : '';
+              senderName = name + students || undefined;
+            }
+          } catch { /* ignore */ }
+          if (cancelled) return;
+          const count = pendingRequests.length;
+          const reqItem: NotifItem = {
+            id: 'coach_requests',
+            type: 'announcement',
+            icon: 'sports',
+            iconColor: 'text-orange-500',
+            title: count > 1 ? `${count} ${t('announcements.newCoachRequest')}` : t('announcements.newCoachRequest'),
+            senderName,
+            timestamp: Date.now(),
+            navigateTo: 'ADMIN',
+          };
+          setNotifHistory(prev => pushNotif(userId, reqItem, prev));
+        }
+
         setFirstName(d.firstName || '');
         setUserClub(fullClubName);
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));

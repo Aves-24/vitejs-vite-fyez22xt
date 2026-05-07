@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { db } from '../../firebase';
+import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+
+const ADMIN_UID = 'b55wNdZf17gH5wxziuzG9bkaQKo2';
 
 interface CoachSectionProps {
   isCoach: boolean;
@@ -9,6 +13,9 @@ interface CoachSectionProps {
   onShowQR: () => void;
   onRevokeCoach: (coachId: string) => void;
   onNavigate?: (view: string) => void;
+  userId: string;
+  userName: string;
+  userEmail: string;
 }
 
 const CoachSection: React.FC<CoachSectionProps> = ({
@@ -18,9 +25,45 @@ const CoachSection: React.FC<CoachSectionProps> = ({
   myCoachesData,
   onShowQR,
   onRevokeCoach,
-  onNavigate
+  onNavigate,
+  userId,
+  userName,
+  userEmail,
 }) => {
   const { t } = useTranslation();
+  const [desiredStudents, setDesiredStudents] = useState('');
+  const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'alreadySent' | 'error'>('idle');
+
+  const handleSendRequest = async () => {
+    const count = parseInt(desiredStudents, 10);
+    if (!desiredStudents || isNaN(count) || count < 1) return;
+
+    setStatus('sending');
+    try {
+      const existing = await getDocs(
+        query(collection(db, 'coachRequests'), where('userId', '==', userId), where('status', '==', 'pending'))
+      );
+      if (!existing.empty) {
+        setStatus('alreadySent');
+        return;
+      }
+
+      const ref = await addDoc(collection(db, 'coachRequests'), {
+        userId,
+        userName,
+        userEmail,
+        desiredStudents: count,
+        status: 'pending',
+        timestamp: Timestamp.now(),
+      });
+      await updateDoc(doc(db, 'users', ADMIN_UID), {
+        newCoachRequests: arrayUnion(ref.id),
+      });
+      setStatus('sent');
+    } catch {
+      setStatus('error');
+    }
+  };
 
   return (
     <div className="space-y-4 animate-fade-in-up">
@@ -80,12 +123,54 @@ const CoachSection: React.FC<CoachSectionProps> = ({
           </div>
         </div>
       )}
-      
+
       {!isCoach && (
-        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 text-center">
-          <span className="material-symbols-outlined text-gray-300 text-4xl mb-2">sports</span>
-          <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{t('settings.coach.becomeTitle')}</h4>
-          <p className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('settings.coach.becomeDesc')}</p>
+        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+          <div className="flex flex-col items-center text-center mb-4">
+            <span className="material-symbols-outlined text-gray-300 text-4xl mb-2">sports</span>
+            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{t('settings.coach.becomeTitle')}</h4>
+            <p className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('settings.coach.becomeDesc')}</p>
+          </div>
+
+          {status === 'sent' ? (
+            <div className="text-center bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+              <span className="material-symbols-outlined text-emerald-500 text-2xl mb-1">check_circle</span>
+              <p className="text-xs font-black text-emerald-600 uppercase tracking-widest">{t('settings.coach.becomeSent')}</p>
+              <p className="text-[10px] text-emerald-500 mt-1">{t('settings.coach.becomeSentDesc')}</p>
+            </div>
+          ) : status === 'alreadySent' ? (
+            <div className="text-center bg-yellow-50 border border-yellow-100 rounded-xl p-4">
+              <span className="material-symbols-outlined text-yellow-500 text-2xl mb-1">schedule</span>
+              <p className="text-[10px] font-bold text-yellow-600 leading-relaxed">{t('settings.coach.becomeAlreadySent')}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div>
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1">
+                  {t('settings.coach.becomeStudentsLabel')}
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={desiredStudents}
+                  onChange={e => setDesiredStudents(e.target.value)}
+                  placeholder={t('settings.coach.becomeStudentsPlaceholder')}
+                  className="w-full px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-bold text-[#0a3a2a] focus:outline-none focus:border-emerald-300"
+                />
+              </div>
+              {status === 'error' && (
+                <p className="text-[10px] text-red-500 font-bold">{t('settings.coach.becomeError')}</p>
+              )}
+              <button
+                onClick={handleSendRequest}
+                disabled={status === 'sending' || !desiredStudents}
+                className="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-base">send</span>
+                {status === 'sending' ? t('settings.coach.becomeSending') : t('settings.coach.becomeRequestBtn')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

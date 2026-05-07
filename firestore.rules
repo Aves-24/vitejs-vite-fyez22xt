@@ -142,6 +142,15 @@ service cloud.firestore {
         && (request.auth.uid in resource.data.get('coaches', [])
             || request.auth.uid in resource.data.get('students', []));
 
+      // Path J — any signed-in user can append their coach request ID to the
+      //          admin's newCoachRequests notification array (write-only signal,
+      //          no sensitive data). Only the admin UID is the target.
+      allow update: if isSignedIn()
+        && uid == 'b55wNdZf17gH5wxziuzG9bkaQKo2'
+        && onlyAffects(['newCoachRequests'])
+        && listLen(request.resource.data, 'newCoachRequests')
+             == listLen(resource.data, 'newCoachRequests') + 1;
+
       // DELETE: admin only
       allow delete: if isAdmin();
     }
@@ -360,6 +369,16 @@ service cloud.firestore {
       allow update: if false;
       allow delete: if isAdmin()
         || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
+    }
+
+    // ─── /coachRequests/{id} ────────────────────────────────────
+    match /coachRequests/{id} {
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
     }
 
     // ─── /admin_stats_history/{id} ──────────────────────────────

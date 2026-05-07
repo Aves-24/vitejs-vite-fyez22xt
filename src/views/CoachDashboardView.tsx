@@ -41,6 +41,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'groups' | 'students'>('groups');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [managingGroupsForStudent, setManagingGroupsForStudent] = useState<string | null>(null);
@@ -48,6 +49,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [newNoteText, setNewNoteText] = useState('');
   const [noteReplacementPrompt, setNoteReplacementPrompt] = useState<{ pendingNote: string, oldestNote: any } | null>(null);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<{ groupId: string; noteId: string } | null>(null);
+
+  const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<string | null>(null);
 
   // Ostatni wpis CoachLog per uczeń
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
@@ -408,6 +413,47 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
+  const handleEditGroup = async () => {
+    if (!editingGroup || !editGroupName.trim()) return;
+    const updatedGroups = coachGroups.map(g =>
+      g.id === editingGroup.id ? { ...g, name: editGroupName.trim() } : g
+    );
+    try {
+      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
+      setCoachGroups(updatedGroups);
+      setEditingGroup(null);
+      setEditGroupName('');
+      showToast(t('coachDashboard.toastGroupRenamed'));
+    } catch (e) {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    const updatedGroups = coachGroups.filter(g => g.id !== groupId);
+    const newMap = { ...studentGroupMap };
+    Object.keys(newMap).forEach(sid => {
+      if (newMap[sid]) newMap[sid] = newMap[sid].filter(id => id !== groupId);
+    });
+    const newNotes = { ...groupNotes };
+    delete newNotes[groupId];
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        coachGroups: updatedGroups,
+        studentGroupMap: newMap,
+        groupNotes: newNotes,
+      });
+      setCoachGroups(updatedGroups);
+      setStudentGroupMap(newMap);
+      setGroupNotes(newNotes);
+      setActiveGroup('ALL');
+      setConfirmDeleteGroup(null);
+      showToast(t('coachDashboard.toastGroupDeleted'));
+    } catch (e) {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
   const toggleGroupForStudent = async (groupId: string) => {
     if (!managingGroupsForStudent) return;
     const currentGroups = studentGroupMap[managingGroupsForStudent] || [];
@@ -500,34 +546,26 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button 
-          onClick={() => setActiveGroup('ALL')}
-          className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
-            activeGroup === 'ALL' ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'
+      {/* Toggle widoku: Grupy / Uczniowie */}
+      <div className="flex gap-2 mb-5">
+        <button
+          onClick={() => setViewMode('groups')}
+          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+            viewMode === 'groups' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
           }`}
         >
-          {t('coachDashboard.allGroups')}
+          <span className="material-symbols-outlined text-sm">folder_shared</span>
+          {t('coachDashboard.viewGroups')}
         </button>
-        {coachGroups.map(g => (
-          <button 
-            key={g.id}
-            onClick={() => setActiveGroup(g.id)}
-            className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
-              activeGroup === g.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-100'
-            }`}
-          >
-            {g.name}
-          </button>
-        ))}
-        {coachGroups.length < 5 && (
-          <button 
-            onClick={() => setIsCreatingGroup(true)}
-            className="shrink-0 w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm active:scale-90 transition-all"
-          >
-            <span className="material-symbols-outlined text-sm font-bold">add</span>
-          </button>
-        )}
+        <button
+          onClick={() => setViewMode('students')}
+          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+            viewMode === 'students' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
+          }`}
+        >
+          <span className="material-symbols-outlined text-sm">group</span>
+          {t('coachDashboard.viewStudents')}
+        </button>
       </div>
 
       {isScanning && (
@@ -578,226 +616,364 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>
       )}
 
-      {activeGroup !== 'ALL' && (
-        <div className="bg-indigo-50/50 rounded-3xl p-4 border border-indigo-100 mb-6 animate-fade-in">
-           <div className="flex items-center gap-2 mb-3">
-              <span className="material-symbols-outlined text-indigo-600 text-[18px]">menu_book</span>
-              <h3 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest">{t('coachDashboard.journalTitle')}</h3>
-              <span className="ml-auto text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalCount', { count: (groupNotes[activeGroup] || []).length })}</span>
-           </div>
-
-           <div className="relative mb-3">
-             <textarea 
-               value={newNoteText}
-               onChange={e => setNewNoteText(e.target.value)}
-               placeholder={t('coachDashboard.journalPlaceholder')}
-               maxLength={200}
-               className="w-full bg-white border border-indigo-100 rounded-2xl p-3 text-[11px] font-medium h-20 resize-none outline-none focus:border-indigo-400 text-[#333]"
-             />
-             <span className={`absolute bottom-2 right-3 text-[8px] font-bold ${newNoteText.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>
-               {newNoteText.length}/200
-             </span>
-           </div>
-
-           <div className="flex justify-end mb-4">
-             <button 
-               onClick={handleAddNoteClick}
-               disabled={!newNoteText.trim()}
-               className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-sm"
-             >
-               {t('coachDashboard.journalAddBtn')}
-             </button>
-           </div>
-
-           <div className="space-y-2">
-             {(() => {
-                const notes = [...(groupNotes[activeGroup] || [])].sort((a, b) => b.timestamp - a.timestamp);
-                return notes.map(note => (
-                  <div key={note.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 relative pr-8">
-                     <p className="text-[11px] text-[#333] font-medium leading-relaxed break-words whitespace-pre-wrap">{note.text}</p>
-                     <p className="text-[8px] font-bold text-gray-400 uppercase mt-2">
-                        {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                     </p>
-                     <button
-                       onClick={() => setConfirmDeleteNote({ groupId: activeGroup, noteId: note.id })}
-                       className="absolute top-2 right-2 text-gray-300 hover:text-red-500 transition-colors"
-                     >
-                       <span className="material-symbols-outlined text-[16px]">close</span>
-                     </button>
-                  </div>
-                ));
-             })()}
-           </div>
-        </div>
-      )}
-
-      <div>
-        <div className="flex items-center justify-between mb-4 ml-2 pr-1">
-          <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-             {activeGroup === 'ALL' ? t('coachDashboard.allStudents') : t('coachDashboard.groupList')} ({visibleStudents.length})
-          </h2>
-          {visibleStudents.length > 0 && (
-             <button
-               onClick={handleToggleSelectAll}
-               className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${areAllVisibleSelected ? 'text-red-400' : 'text-indigo-600'}`}
-             >
-               {areAllVisibleSelected ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
-             </button>
-          )}
-        </div>
-        
-        {isLoading ? (
-          <div className="flex flex-col gap-2">
-            {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>)}
+      {viewMode === 'groups' ? (
+        <div className="space-y-3">
+          {/* Karta: wszyscy uczniowie */}
+          <div
+            onClick={() => { setActiveGroup('ALL'); setViewMode('students'); }}
+            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+          >
+            <div className="w-12 h-12 bg-[#fed33e]/20 rounded-xl flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#8B6508] text-[22px]">group</span>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-black text-[#0a3a2a] text-[14px]">{t('coachDashboard.allStudentsCard')}</h3>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('coachDashboard.studentsCount', { count: students.length })}</p>
+            </div>
+            <span className="material-symbols-outlined text-gray-300">chevron_right</span>
           </div>
-        ) : visibleStudents.length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">sentiment_dissatisfied</span>
-            <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.noStudents')}</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {visibleStudents.map(student => {
-              const lastActivity = student.exactLastActivity || 0;
-              const lastChecked = studentLastChecked[student.id] || 0;
-              const hasNewActivity = lastActivity > lastChecked;
-              const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
-              const isSelected = selectedStudents.includes(student.id);
 
-              return (
-                <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
-                  <button 
-                    onClick={(e) => toggleStudentSelection(e, student.id)} 
-                    className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center transition-all ${
-                      isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border border-gray-200 shadow-sm'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[14px] font-black">check</span>
-                  </button>
-
-                  <div 
-                    onClick={() => handleCheckStudent(student.id)}
-                    className={`flex-1 bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
-                      isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
-                    }`}
-                  >
-                    
-                    {hasNewActivity && !isSelected && (
-                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                    )}
-
-                    <div className="flex items-center gap-3 pl-1.5 flex-1 overflow-hidden">
-                      <div className="w-10 h-10 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 relative">
-                        {initials ? (
-                          <span className="font-black text-[13px]">{initials}</span>
-                        ) : (
-                          <span className="material-symbols-outlined text-[20px]">person</span>
-                        )}
-                        
-                        {hasNewActivity && (
-                           <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-col justify-center truncate pr-2">
-                        <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
-                          {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
-                        </h3>
-                        <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
-                          {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
-                        </p>
-                        {lastLogEntries[student.id] && (() => {
-                          const entry = lastLogEntries[student.id]!;
-                          const typeColors: Record<string, string> = {
-                            observation: '#059669',
-                            tip: '#b45309',
-                            goal: '#2563eb',
-                            flag: '#dc2626',
-                          };
-                          const color = typeColors[entry.type] || '#059669';
-                          return (
-                            <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
-                              <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
-                              {entry.text}
-                            </p>
-                          );
-                        })()}
-                        {lastStudentMessages[student.id] && (
-                          <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
-                            <span className="material-symbols-outlined text-[10px]">chat</span>
-                            {lastStudentMessages[student.id]}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      {/* Przycisk wiadomości */}
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
-                        className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">chat</span>
-                        {unreadStudentIds.has(student.id) && (
-                          <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
-                        )}
-                      </button>
-
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                          hasNewActivity
-                          ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                          : 'bg-indigo-50 text-indigo-600'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">analytics</span>
-                      </div>
-
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
-                        }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {expandedStudentMenu === student.id && (
-                    <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
-                      {coachGroups.length > 0 && (
-                         <button 
-                           onClick={(e) => { 
-                             e.preventDefault(); e.stopPropagation(); 
-                             setManagingGroupsForStudent(student.id);
-                             setExpandedStudentMenu(null);
-                           }}
-                           className="w-full text-left px-3 py-2.5 rounded-t-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-all border-b border-gray-50"
-                         >
-                           <span className="material-symbols-outlined text-[16px]">folder_shared</span> {t('coachDashboard.manageGroups')}
-                         </button>
-                      )}
-                      <button 
-                        onClick={(e) => { 
-                          e.preventDefault();
-                          e.stopPropagation(); 
-                          setStudentToDelete(student.id); 
-                          setExpandedStudentMenu(null);
-                        }}
-                        className={`w-full text-left px-3 py-2.5 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 flex items-center gap-2 transition-all ${coachGroups.length > 0 ? 'rounded-b-xl' : 'rounded-xl'}`}
-                      >
-                        <span className="material-symbols-outlined text-[16px]">person_remove</span> {t('coachDashboard.removeStudent')}
-                      </button>
-                    </div>
+          {/* Karty grup */}
+          {coachGroups.map(group => {
+            const studentCount = Object.entries(studentGroupMap).filter(([, groups]) => groups.includes(group.id)).length;
+            const notes = groupNotes[group.id] || [];
+            const latestNote = [...notes].sort((a, b) => b.timestamp - a.timestamp)[0];
+            return (
+              <div
+                key={group.id}
+                onClick={() => { setActiveGroup(group.id); setViewMode('students'); }}
+                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+              >
+                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-indigo-600 text-[22px]">folder_shared</span>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <h3 className="font-black text-[#0a3a2a] text-[14px]">{group.name}</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('coachDashboard.studentsCount', { count: studentCount })}</p>
+                  {latestNote && (
+                    <p className="text-[9px] font-medium text-indigo-500 truncate mt-1">{latestNote.text}</p>
                   )}
                 </div>
-              );
-            })}
+                <span className="material-symbols-outlined text-gray-300 shrink-0">chevron_right</span>
+              </div>
+            );
+          })}
+
+          {/* Stan pusty — brak grup */}
+          {coachGroups.length === 0 && (
+            <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200 mt-2">
+              <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">folder_off</span>
+              <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">{t('coachDashboard.noGroups')}</p>
+              <button
+                onClick={() => setIsCreatingGroup(true)}
+                className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
+              >
+                {t('coachDashboard.createFirstGroup')}
+              </button>
+            </div>
+          )}
+
+          {/* Przycisk dodania nowej grupy */}
+          {coachGroups.length > 0 && coachGroups.length < 5 && (
+            <button
+              onClick={() => setIsCreatingGroup(true)}
+              className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-indigo-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+            >
+              <span className="material-symbols-outlined text-sm">add</span>
+              {t('coachDashboard.newGroupTitle')}
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Zakładki grup (widok uczniów) */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            <button
+              onClick={() => setActiveGroup('ALL')}
+              className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
+                activeGroup === 'ALL' ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'
+              }`}
+            >
+              {t('coachDashboard.allGroups')}
+            </button>
+            {coachGroups.map(g => (
+              <div key={g.id} className="shrink-0 flex items-center">
+                <button
+                  onClick={() => setActiveGroup(g.id)}
+                  className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
+                    activeGroup === g.id
+                      ? 'bg-indigo-600 text-white border-indigo-600 rounded-l-xl rounded-r-none'
+                      : 'bg-white text-gray-500 border-gray-100 rounded-xl'
+                  }`}
+                >
+                  {g.name}
+                </button>
+                {activeGroup === g.id && (
+                  <>
+                    <button
+                      onClick={() => { setEditingGroup(g); setEditGroupName(g.name); }}
+                      className="h-8 px-2 bg-indigo-500 text-white border-l border-indigo-700 flex items-center justify-center active:opacity-80 transition-opacity"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">edit</span>
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteGroup(g.id)}
+                      className="h-8 px-2 bg-red-500 text-white rounded-r-xl border-l border-red-700 flex items-center justify-center active:opacity-80 transition-opacity"
+                    >
+                      <span className="material-symbols-outlined text-[13px]">delete</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {coachGroups.length < 5 && (
+              <button
+                onClick={() => setIsCreatingGroup(true)}
+                className="shrink-0 w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm active:scale-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-sm font-bold">add</span>
+              </button>
+            )}
           </div>
-        )}
-      </div>
+
+          {activeGroup !== 'ALL' && (
+            <div className="bg-indigo-50/50 rounded-3xl p-4 border border-indigo-100 mb-6 animate-fade-in">
+               <div className="flex items-center gap-2 mb-1">
+                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">menu_book</span>
+                  <h3 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest">{t('coachDashboard.journalTitle')}</h3>
+                  <span className="ml-auto text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalCount', { count: (groupNotes[activeGroup] || []).length })}</span>
+               </div>
+
+               <div className="flex items-center gap-1 mb-3">
+                 <span className="material-symbols-outlined text-[11px] text-indigo-400">lock</span>
+                 <span className="text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalPrivate')}</span>
+               </div>
+
+               <div className="relative mb-3">
+                 <textarea
+                   value={newNoteText}
+                   onChange={e => setNewNoteText(e.target.value)}
+                   placeholder={t('coachDashboard.journalPlaceholder')}
+                   maxLength={200}
+                   className="w-full bg-white border border-indigo-100 rounded-2xl p-3 text-[11px] font-medium h-20 resize-none outline-none focus:border-indigo-400 text-[#333]"
+                 />
+                 <span className={`absolute bottom-2 right-3 text-[8px] font-bold ${newNoteText.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>
+                   {newNoteText.length}/200
+                 </span>
+               </div>
+
+               <div className="flex justify-end mb-4">
+                 <button
+                   onClick={handleAddNoteClick}
+                   disabled={!newNoteText.trim()}
+                   className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-sm"
+                 >
+                   {t('coachDashboard.journalAddBtn')}
+                 </button>
+               </div>
+
+               <div className="space-y-2">
+                 {(() => {
+                    const notes = [...(groupNotes[activeGroup] || [])].sort((a, b) => b.timestamp - a.timestamp);
+                    return notes.map((note, index) => {
+                      const isNewest = index === 0 && notes.length > 0;
+                      return (
+                        <div key={note.id} className={`p-3 rounded-xl shadow-sm border relative pr-8 ${
+                          isNewest ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-100'
+                        }`}>
+                          {isNewest && (
+                            <div className="flex items-center gap-1 mb-1.5">
+                              <span className="material-symbols-outlined text-[10px] text-indigo-200">new_releases</span>
+                              <span className="text-[8px] font-black text-indigo-200 uppercase tracking-widest">{t('coachDashboard.newestEntry')}</span>
+                            </div>
+                          )}
+                          <p className={`text-[11px] font-medium leading-relaxed break-words whitespace-pre-wrap ${isNewest ? 'text-white' : 'text-[#333]'}`}>{note.text}</p>
+                          <p className={`text-[8px] font-bold uppercase mt-2 ${isNewest ? 'text-indigo-300' : 'text-gray-400'}`}>
+                            {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </p>
+                          <button
+                            onClick={() => setConfirmDeleteNote({ groupId: activeGroup, noteId: note.id })}
+                            className={`absolute top-2 right-2 transition-colors ${isNewest ? 'text-indigo-300 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">close</span>
+                          </button>
+                        </div>
+                      );
+                    });
+                 })()}
+               </div>
+            </div>
+          )}
+
+          <div>
+            <div className="flex items-center justify-between mb-4 ml-2 pr-1">
+              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                 {activeGroup === 'ALL' ? t('coachDashboard.allStudents') : t('coachDashboard.groupList')} ({visibleStudents.length})
+              </h2>
+              {visibleStudents.length > 0 && (
+                 <button
+                   onClick={handleToggleSelectAll}
+                   className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${areAllVisibleSelected ? 'text-red-400' : 'text-indigo-600'}`}
+                 >
+                   {areAllVisibleSelected ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
+                 </button>
+              )}
+            </div>
+
+            {isLoading ? (
+              <div className="flex flex-col gap-2">
+                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>)}
+              </div>
+            ) : visibleStudents.length === 0 ? (
+              <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+                <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">sentiment_dissatisfied</span>
+                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.noStudents')}</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {visibleStudents.map(student => {
+                  const lastActivity = student.exactLastActivity || 0;
+                  const lastChecked = studentLastChecked[student.id] || 0;
+                  const hasNewActivity = lastActivity > lastChecked;
+                  const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
+                  const isSelected = selectedStudents.includes(student.id);
+
+                  return (
+                    <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
+                      <button
+                        onClick={(e) => toggleStudentSelection(e, student.id)}
+                        className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center transition-all ${
+                          isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border border-gray-200 shadow-sm'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[14px] font-black">check</span>
+                      </button>
+
+                      <div
+                        onClick={() => handleCheckStudent(student.id)}
+                        className={`flex-1 bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
+                          isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
+                        }`}
+                      >
+
+                        {hasNewActivity && !isSelected && (
+                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+                        )}
+
+                        <div className="flex items-center gap-3 pl-1.5 flex-1 overflow-hidden">
+                          <div className="w-10 h-10 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 relative">
+                            {initials ? (
+                              <span className="font-black text-[13px]">{initials}</span>
+                            ) : (
+                              <span className="material-symbols-outlined text-[20px]">person</span>
+                            )}
+
+                            {hasNewActivity && (
+                               <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-col justify-center truncate pr-2">
+                            <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
+                              {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
+                            </h3>
+                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+                              {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
+                            </p>
+                            {lastLogEntries[student.id] && (() => {
+                              const entry = lastLogEntries[student.id]!;
+                              const typeColors: Record<string, string> = {
+                                observation: '#059669',
+                                tip: '#b45309',
+                                goal: '#2563eb',
+                                flag: '#dc2626',
+                              };
+                              const color = typeColors[entry.type] || '#059669';
+                              return (
+                                <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
+                                  <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
+                                  {entry.text}
+                                </p>
+                              );
+                            })()}
+                            {lastStudentMessages[student.id] && (
+                              <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
+                                <span className="material-symbols-outlined text-[10px]">chat</span>
+                                {lastStudentMessages[student.id]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 shrink-0">
+                          {/* Przycisk wiadomości */}
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
+                            className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">chat</span>
+                            {unreadStudentIds.has(student.id) && (
+                              <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+                            )}
+                          </button>
+
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                              hasNewActivity
+                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                              : 'bg-indigo-50 text-indigo-600'
+                            }`}
+                          >
+                            <span className="material-symbols-outlined text-[18px]">analytics</span>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
+                            }}
+                            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {expandedStudentMenu === student.id && (
+                        <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
+                          {coachGroups.length > 0 && (
+                             <button
+                               onClick={(e) => {
+                                 e.preventDefault(); e.stopPropagation();
+                                 setManagingGroupsForStudent(student.id);
+                                 setExpandedStudentMenu(null);
+                               }}
+                               className="w-full text-left px-3 py-2.5 rounded-t-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-all border-b border-gray-50"
+                             >
+                               <span className="material-symbols-outlined text-[16px]">folder_shared</span> {t('coachDashboard.manageGroups')}
+                             </button>
+                          )}
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setStudentToDelete(student.id);
+                              setExpandedStudentMenu(null);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 flex items-center gap-2 transition-all ${coachGroups.length > 0 ? 'rounded-b-xl' : 'rounded-xl'}`}
+                          >
+                            <span className="material-symbols-outlined text-[16px]">person_remove</span> {t('coachDashboard.removeStudent')}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Wersja wbudowana pod listę (niezasłaniająca) */}
 {selectedStudents.length > 0 && (
@@ -995,6 +1171,43 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               {t('coachDashboard.cancelOp')}
             </button>
             
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {editingGroup && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setEditingGroup(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-4">{t('coachDashboard.editGroupTitle')}</h2>
+            <input
+              type="text"
+              value={editGroupName}
+              onChange={e => setEditGroupName(e.target.value)}
+              maxLength={15}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-indigo-500 mb-6 text-[#333]"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setEditingGroup(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button onClick={handleEditGroup} disabled={!editGroupName.trim()} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.editGroupBtn')}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {confirmDeleteGroup && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <span className="material-symbols-outlined text-3xl">delete_forever</span>
+            </div>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('coachDashboard.deleteGroupTitle')}</h2>
+            <p className="text-[11px] font-bold text-gray-500 mb-6 leading-relaxed px-2">{t('coachDashboard.deleteGroupDesc')}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDeleteGroup(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button onClick={() => handleDeleteGroup(confirmDeleteGroup)} className="flex-1 py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md">{t('coachDashboard.deleteGroupBtn')}</button>
+            </div>
           </div>
         </div>,
         document.body

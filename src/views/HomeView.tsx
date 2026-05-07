@@ -263,42 +263,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const isTrialActive = trialEndTimestamp ? trialEndTimestamp > Date.now() : false;
         const computedIsPremium = boughtPro || promoPro || isTrialActive;
 
-        const unreadFrom: string[] = d.unreadMsgFrom || [];
-        if (unreadFrom.length > 0) {
-          setHasUnreadMessage(true);
-          setUnreadSenderId(unreadFrom[0]);
-          const coaches: string[] = d.coaches || [];
-          const students: string[] = d.students || [];
-          const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
-          const role = fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null;
-          setUnreadMessageRole(role);
-          let senderName: string | undefined;
-          try {
-            const senderSnap = await getDoc(doc(db, 'users', unreadFrom[0]));
-            if (senderSnap.exists()) {
-              const sd = senderSnap.data();
-              senderName = [sd.firstName, sd.lastName].filter(Boolean).join(' ') || undefined;
-            }
-          } catch { /* ignore — name is optional */ }
-          if (cancelled) return;
-          const msgItem: NotifItem = {
-            id: `msg_${unreadFrom[0]}`,
-            type: 'message',
-            icon: 'chat',
-            iconColor: 'text-green-600',
-            title: t('announcements.newMessage'),
-            senderName,
-            timestamp: Date.now(),
-            navigateTo: role === 'student' ? 'MY_COACH' : 'COACH',
-            extraData: unreadFrom[0],
-          };
-          setNotifHistory(prev => pushNotif(userId, msgItem, prev));
-        } else {
-          setHasUnreadMessage(false);
-          setUnreadSenderId(null);
-          setUnreadMessageRole(null);
-        }
-
         const pendingRequests: string[] = d.newCoachRequests || [];
         if (pendingRequests.length > 0) {
           let senderName: string | undefined;
@@ -367,6 +331,96 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return () => {
       cancelled = true;
     };
+  }, [userId, t]);
+
+  // Real-time tracking of unread messages via onSnapshot.
+  // Source of truth: users/{userId}.unreadMsgFrom (array of senderIds).
+  // Pushes a notif per sender, syncs `read` state in localStorage with Firestore
+  // so the dot disappears when the message is actually read in StudentMessageSheet.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    const knownNames = new Map<string, string | undefined>();
+
+    const unsub = onSnapshot(doc(db, 'users', userId), async (snap) => {
+      if (cancelled || !snap.exists()) return;
+      const d = snap.data();
+      const unreadFrom: string[] = d.unreadMsgFrom || [];
+      const coaches: string[] = d.coaches || [];
+      const students: string[] = d.students || [];
+
+      setHasUnreadMessage(unreadFrom.length > 0);
+      setUnreadSenderId(unreadFrom[0] || null);
+      if (unreadFrom.length > 0) {
+        const fromCoach = unreadFrom.some((id: string) => coaches.includes(id));
+        const role = fromCoach ? 'student' : students.some((id: string) => unreadFrom.includes(id)) ? 'coach' : null;
+        setUnreadMessageRole(role);
+      } else {
+        setUnreadMessageRole(null);
+      }
+
+      // Identify senders we don't yet have a notif for
+      let existingMsgSenderIds: Set<string> = new Set();
+      setNotifHistory(prev => {
+        existingMsgSenderIds = new Set(
+          prev.filter(n => n.type === 'message' && n.extraData).map(n => n.extraData as string)
+        );
+        return prev;
+      });
+      const sendersNeedingNew = unreadFrom.filter(id => !existingMsgSenderIds.has(id));
+
+      // Fetch sender names for new senders (cached per session)
+      const newItems: NotifItem[] = await Promise.all(sendersNeedingNew.map(async (senderId): Promise<NotifItem> => {
+        let senderName = knownNames.get(senderId);
+        if (senderName === undefined) {
+          try {
+            const senderSnap = await getDoc(doc(db, 'users', senderId));
+            if (senderSnap.exists()) {
+              const sd = senderSnap.data();
+              senderName = [sd.firstName, sd.lastName].filter(Boolean).join(' ') || undefined;
+            }
+          } catch { /* ignore — name is optional */ }
+          knownNames.set(senderId, senderName);
+        }
+        const isCoach = coaches.includes(senderId);
+        const role = isCoach ? 'student' : students.includes(senderId) ? 'coach' : null;
+        return {
+          id: `msg_${senderId}`,
+          type: 'message',
+          icon: 'chat',
+          iconColor: 'text-green-600',
+          title: t('announcements.newMessage'),
+          senderName,
+          timestamp: Date.now(),
+          navigateTo: role === 'student' ? 'MY_COACH' : 'COACH',
+          extraData: senderId,
+        };
+      }));
+
+      if (cancelled) return;
+
+      setNotifHistory(prev => {
+        // Sync read state with Firestore truth: read iff sender NOT in unreadFrom
+        let next: NotifItem[] = prev.map(n => {
+          if (n.type === 'message' && n.extraData) {
+            return { ...n, read: !unreadFrom.includes(n.extraData) };
+          }
+          return n;
+        });
+
+        // Add notifs for any new senders not yet present
+        for (const item of newItems) {
+          if (!next.some(n => n.id === item.id)) {
+            next = [item, ...next].slice(0, 3);
+          }
+        }
+
+        try { localStorage.setItem(`grotX_notifHistory_${userId}`, JSON.stringify(next)); } catch { /* ignore */ }
+        return next;
+      });
+    });
+
+    return () => { cancelled = true; unsub(); };
   }, [userId, t]);
 
   useEffect(() => {
@@ -905,17 +959,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 });
               }}
               className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
-                notifHistory.some(n => !n.read) ? 'opacity-100' : 'opacity-40'
+                (hasUnreadMessage || notifHistory.some(n => !n.read)) ? 'opacity-100' : 'opacity-40'
               }`}
             >
               <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">notifications</span>
-              {notifHistory.some(n => !n.read && n.type === 'message') && (
+              {hasUnreadMessage && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
-              {!notifHistory.some(n => !n.read && n.type === 'message') && notifHistory.some(n => !n.read && n.type === 'coach_plan') && (
+              {!hasUnreadMessage && notifHistory.some(n => !n.read && n.type === 'coach_plan') && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
-              {!notifHistory.some(n => !n.read && (n.type === 'message' || n.type === 'coach_plan')) && notifHistory.some(n => !n.read && n.type === 'announcement') && (
+              {!hasUnreadMessage && !notifHistory.some(n => !n.read && n.type === 'coach_plan') && notifHistory.some(n => !n.read && n.type === 'announcement') && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
             </button>

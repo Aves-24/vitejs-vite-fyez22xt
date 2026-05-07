@@ -692,17 +692,36 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           ) : (
             <div className="space-y-2">
               {privateNotes.map(note => (
-                <div key={note.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-start gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{note.text}</p>
-                    <p className="text-[8px] font-bold text-gray-300 mt-1.5">{formatNoteDate(note.createdAt)}</p>
+                <div key={note.id} className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${confirmDeleteId === note.id ? 'border-red-200' : 'border-gray-100'}`}>
+                  <div className="p-3.5 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{note.text}</p>
+                      <p className="text-[8px] font-bold text-gray-300 mt-1.5">{formatNoteDate(note.createdAt)}</p>
+                    </div>
+                    <button
+                      onClick={() => setConfirmDeleteId(confirmDeleteId === note.id ? null : note.id)}
+                      className={`shrink-0 active:scale-90 transition-all mt-0.5 ${confirmDeleteId === note.id ? 'text-red-400' : 'text-gray-200 hover:text-red-400'}`}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setConfirmDeleteId(note.id)}
-                    className="shrink-0 text-gray-200 hover:text-red-400 active:scale-90 transition-all mt-0.5"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">delete</span>
-                  </button>
+                  {confirmDeleteId === note.id && (
+                    <div className="flex items-center gap-2 px-3.5 pb-3">
+                      <span className="text-[10px] font-black text-red-500 flex-1">{t('myCoach.notesDeleteTitle')}</span>
+                      <button
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="px-3 py-1 bg-gray-100 text-gray-500 rounded-lg font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                      >
+                        {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(note.id)}
+                        className="px-3 py-1 bg-red-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest active:scale-95 transition-all"
+                      >
+                        {t('myCoach.notesDeleteConfirm')}
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -710,29 +729,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
 
       </div>
-
-      {/* Delete confirmation modal */}
-      {confirmDeleteId && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-8">
-          <div className="bg-white rounded-[24px] p-5 w-full max-w-sm shadow-2xl">
-            <h3 className="text-base font-black text-[#0a3a2a] mb-2">{t('myCoach.notesDeleteTitle')}</h3>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => setConfirmDeleteId(null)}
-                className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
-              >
-                {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
-              </button>
-              <button
-                onClick={() => handleDeleteNote(confirmDeleteId)}
-                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
-              >
-                {t('myCoach.notesDeleteConfirm')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {openMessageCoach && (
         <StudentMessageSheet

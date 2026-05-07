@@ -1002,6 +1002,7 @@ export const views = {
     today: "Dzisiaj",
     tomorrow: "Jutro",
     inDays: "Za {{count}} dni",
+    techSectionsTitle: "Treningi Techniczne",
   },
   coachInvite: {
     title: "Zaproszenie trenera",

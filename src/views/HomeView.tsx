@@ -47,6 +47,7 @@ interface NotifItem {
   timestamp: number;
   navigateTo: string;
   extraData?: string;
+  read?: boolean;
 }
 
 function pushNotif(userId: string, item: NotifItem, current: NotifItem[]): NotifItem[] {
@@ -847,19 +848,30 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           <div className="relative">
             <button
-              onClick={() => setShowNotifPanel(p => !p)}
+              onClick={() => {
+                setShowNotifPanel(p => {
+                  if (!p) {
+                    setNotifHistory(prev => {
+                      const next = prev.map(n => ({ ...n, read: true }));
+                      try { localStorage.setItem(`grotX_notifHistory_${userId}`, JSON.stringify(next)); } catch { /* ignore */ }
+                      return next;
+                    });
+                  }
+                  return !p;
+                });
+              }}
               className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
-                newAnnouncementType !== 'none' || hasUnreadMessage ? 'opacity-100' : 'opacity-40'
+                notifHistory.some(n => !n.read) ? 'opacity-100' : 'opacity-40'
               }`}
             >
               <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">notifications</span>
-              {hasUnreadMessage && (
+              {notifHistory.some(n => !n.read && n.type === 'message') && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
-              {!hasUnreadMessage && newAnnouncementType === 'coach' && (
+              {!notifHistory.some(n => !n.read && n.type === 'message') && notifHistory.some(n => !n.read && n.type === 'coach_plan') && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-blue-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
-              {!hasUnreadMessage && newAnnouncementType === 'system' && (
+              {!notifHistory.some(n => !n.read && (n.type === 'message' || n.type === 'coach_plan')) && notifHistory.some(n => !n.read && n.type === 'announcement') && (
                 <span className="absolute top-2.5 right-2.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>
               )}
             </button>
@@ -909,11 +921,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                           }}
                           className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 active:bg-gray-100 transition-all text-left"
                         >
-                          <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center shrink-0">
-                            <span className={`material-symbols-outlined text-[16px] ${item.iconColor}`}>{item.icon}</span>
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${item.read ? 'bg-gray-50' : 'bg-gray-100'}`}>
+                            <span className={`material-symbols-outlined text-[16px] ${item.read ? 'text-gray-400' : item.iconColor}`}>{item.icon}</span>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[12px] font-black text-[#0a3a2a] truncate">{item.title}</p>
+                            <p className={`text-[12px] font-black truncate ${item.read ? 'text-gray-400' : 'text-[#0a3a2a]'}`}>{item.title}</p>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5">{ago}</p>
                           </div>
                           <span className="material-symbols-outlined text-[14px] text-gray-300 shrink-0">chevron_right</span>

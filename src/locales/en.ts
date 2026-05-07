@@ -96,6 +96,7 @@ export const components = {
     noClubsFound: "No matching clubs found",
     clubNameWarning: "This name is not in the database. Please enter the club name as accurately as possible so it can be added correctly and prevent other members from registering the same club under a different name.",
     firstClubInCity: "You are the first person from this city/club — it will be added to the database. Please enter the club name as accurately as possible so other members don't add the same club under a different name.",
+    clubFoundInDb: "Club found in database ✓",
     noClubManual: "Club not found? Enter manually",
     clubCityPlaceholder: "Club city",
     selectCityFirst: "Select a city first",

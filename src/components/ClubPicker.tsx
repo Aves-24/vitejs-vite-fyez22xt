@@ -124,7 +124,7 @@ export default function ClubPicker({ value, onChange, availableClubs, citySelect
       {isExactMatch && (
         <div className="mt-1.5 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
           <span className="material-symbols-outlined text-emerald-500 text-[16px] shrink-0">check_circle</span>
-          <p className="text-[10px] font-bold text-emerald-700 leading-snug">Klub znaleziony w bazie ✓</p>
+          <p className="text-[10px] font-bold text-emerald-700 leading-snug">{t('common.clubFoundInDb', 'Klub znaleziony w bazie ✓')}</p>
         </div>
       )}
     </div>

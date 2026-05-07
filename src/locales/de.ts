@@ -96,6 +96,7 @@ export const components = {
     noClubsFound: "Kein passender Verein gefunden",
     clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte gib den Vereinsnamen so genau wie möglich ein, damit er korrekt hinzugefügt werden kann und andere Mitglieder ihn nicht unter einem anderen Namen eintragen.",
     firstClubInCity: "Du bist die erste Person aus dieser Stadt/diesem Verein — er wird der Datenbank hinzugefügt. Bitte gib den Vereinsnamen so genau wie möglich ein, damit andere Mitglieder denselben Verein nicht unter einem anderen Namen eintragen.",
+    clubFoundInDb: "Verein in der Datenbank gefunden ✓",
     noClubManual: "Kein Verein gefunden? Manuell eingeben",
     clubCityPlaceholder: "Stadt des Vereins",
     selectCityFirst: "Zuerst Stadt auswählen",

@@ -1358,19 +1358,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         </div>
 
-        {/* AI COACH */}
-        <div className="p-4 bg-[#0a3a2a] rounded-[24px] flex gap-3 items-center shadow-lg relative overflow-hidden mt-2">
-          <div className="absolute right-[-10px] top-[-10px] text-white opacity-5 text-6xl rotate-12">
-            <span className="material-symbols-outlined text-7xl">psychology</span>
-          </div>
-          <div className="bg-[#fed33e] p-2 rounded-xl shrink-0 z-10">
-            <span className="material-symbols-outlined text-[#0a3a2a] font-bold text-xl">psychology</span>
-          </div>
-          <div className="flex-1 relative z-10 pr-2">
-            <span className="font-black text-[#fed33e] uppercase text-[9px] tracking-widest block mb-1">{t('home.aiCoach')}</span>
-            <p className="text-[13px] text-white font-medium leading-snug italic">"{aiAdvice}"</p>
-          </div>
-        </div>
+        {/* AI COACH — tymczasowo ukryte */}
 
         {/* BUILD TIMESTAMP + CURRENT TIME */}
         <div className="text-center mt-1 space-y-0.5">

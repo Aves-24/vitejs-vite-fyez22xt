@@ -108,6 +108,18 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   useEffect(() => {
     if (activeDistances.length > 0 && !selectedDistance) {
+      const saved = localStorage.getItem(`grotX_lastSetup_${userId}`);
+      if (saved) {
+        try {
+          const { distance, targetType } = JSON.parse(saved);
+          const stillActive = activeDistances.find((d: any) => d.m === distance);
+          if (stillActive) {
+            updateSelection(distance);
+            setSelectedTarget(targetType);
+            return;
+          }
+        } catch (_) { /* ignore malformed cache */ }
+      }
       updateSelection(activeDistances[0].m);
     }
   }, [activeDistances, selectedDistance]);
@@ -123,9 +135,13 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     }
   };
 
+  const saveLastSetup = () => {
+    localStorage.setItem(`grotX_lastSetup_${userId}`, JSON.stringify({ distance: selectedDistance, targetType: selectedTarget }));
+  };
+
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
-    else onStartSession(selectedDistance, selectedTarget, true, null);
+    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null); }
   };
 
   const openSightEditor = () => {
@@ -429,7 +445,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
-            <button onClick={() => onStartSession(selectedDistance, selectedTarget, true, null)} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
+            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
         </div>

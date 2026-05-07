@@ -1949,8 +1949,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       const dateStr = sess.ts
                         ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()
                         : '';
+                      const isoDate = sess.date || (sess.ts ? new Date(sess.ts).toISOString().split('T')[0] : '');
+                      const handleSessionClick = isoDate ? () => {
+                        setShowTrendModal(false);
+                        onNavigate?.('STATS', undefined, isoDate);
+                      } : undefined;
                       return (
-                        <div key={i} className="flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100">
+                        <div
+                          key={i}
+                          className={`flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 transition-all ${handleSessionClick ? 'cursor-pointer active:scale-[0.98] active:bg-gray-100' : ''}`}
+                          onClick={handleSessionClick}
+                        >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
                             <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                             <span className="text-[9px] font-black text-gray-500 truncate">{label}</span>
@@ -1959,6 +1968,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                           <div className="flex items-center gap-3 shrink-0">
                             {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
                             <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
+                            {handleSessionClick && <span className="material-symbols-outlined text-gray-300" style={{ fontSize: 14 }}>chevron_right</span>}
                           </div>
                         </div>
                       );

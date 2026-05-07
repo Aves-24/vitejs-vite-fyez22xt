@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
-import CoachLogPanel from '../components/CoachLogPanel';
-import CoachPlanBanner from '../components/CoachPlanBanner';
+import CoachLogPanel, { CoachLogLatestEntry } from '../components/CoachLogPanel';
+import CoachPlanBanner, { CoachPlanEvent } from '../components/CoachPlanBanner';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 
 const MAX_ACKED = 10;
@@ -46,6 +46,8 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [sessionNotesLoading, setSessionNotesLoading] = useState(true);
   const [unreadCoachIds, setUnreadCoachIds] = useState<Set<string>>(new Set());
   const [openMessageCoach, setOpenMessageCoach] = useState<CoachInfo | null>(null);
+  const [latestPlanEvent, setLatestPlanEvent] = useState<CoachPlanEvent | null>(null);
+  const [latestDiaryEntry, setLatestDiaryEntry] = useState<CoachLogLatestEntry | null>(null);
 
   useEffect(() => {
     if (!pendingOpenCoachId || isLoading) return;
@@ -171,7 +173,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel', { defaultValue: 'Schützen-Bereich' })}</h1>
+            <h1 className="text-lg font-black text-white leading-tight truncate">{t('myCoach.headerLabel')}</h1>
             {!isLoading && coaches.length > 0 && (
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                 {coaches.map(c => {
@@ -203,12 +205,79 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       </div>
 
       {/* TAB BAR */}
-      <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
+      {/* SUMMARY STRIP — najnowszy element z każdej zakładki */}
+      {!isLoading && coaches.length > 0 && (
+        <div className="shrink-0 px-3 pt-2 pb-1 flex gap-2">
+          {/* Plan */}
+          <button
+            onClick={() => setActiveTab('plan')}
+            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">event</span>
+              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabPlan')}</span>
+              {planCount > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{planCount}</span>}
+            </div>
+            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+              {latestPlanEvent ? latestPlanEvent.title : t('myCoach.noUpcoming')}
+            </p>
+            {latestPlanEvent?.date && (
+              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{latestPlanEvent.date}{latestPlanEvent.time ? ` · ${latestPlanEvent.time}` : ''}</p>
+            )}
+          </button>
+
+          {/* Diary */}
+          <button
+            onClick={() => setActiveTab('diary')}
+            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">edit_note</span>
+              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabDiary')}</span>
+              {diaryCount > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{diaryCount}</span>}
+            </div>
+            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+              {latestDiaryEntry ? latestDiaryEntry.text.slice(0, 35) + (latestDiaryEntry.text.length > 35 ? '…' : '') : t('myCoach.noEntries')}
+            </p>
+            {latestDiaryEntry && (
+              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{latestDiaryEntry.authorName}</p>
+            )}
+          </button>
+
+          {/* Tips */}
+          <button
+            onClick={() => setActiveTab('tips')}
+            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">sports</span>
+              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabTips')}</span>
+              {unreadNotes.length > 0 && <span className="text-[7px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{unreadNotes.length}</span>}
+            </div>
+            {(() => {
+              const tip = unreadNotes[0] || readNotes[0];
+              return tip ? (
+                <>
+                  <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+                    {tip.coachNote.slice(0, 35)}{tip.coachNote.length > 35 ? '…' : ''}
+                  </p>
+                  <p className="text-[7px] font-bold text-gray-400 mt-0.5">{tip.date}</p>
+                </>
+              ) : (
+                <p className="text-[9px] font-black text-gray-400 truncate">{t('myCoach.noTips')}</p>
+              );
+            })()}
+          </button>
+        </div>
+      )}
+
+      {/* TAB BAR */}
+      <div className="bg-white shrink-0 z-10 px-3 pt-2 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex">
           {[
-            { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan',  { defaultValue: 'Plan' }),      badge: planCount },
-            { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary', { defaultValue: 'Tagebuch' }),  badge: diaryCount },
-            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips',  { defaultValue: 'Wskazówki' }), badge: unreadNotes.length },
+            { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan'),  badge: planCount },
+            { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary'), badge: diaryCount },
+            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips'),  badge: unreadNotes.length },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             return (
@@ -230,6 +299,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             );
           })}
         </div>
+        {/* Tab description */}
+        <p className="text-[8px] font-bold text-gray-400 text-center mt-1.5 leading-tight px-2">
+          {activeTab === 'plan'  && t('myCoach.planDesc')}
+          {activeTab === 'diary' && t('myCoach.diaryDesc')}
+          {activeTab === 'tips'  && t('myCoach.tipsDesc')}
+        </p>
       </div>
 
       {/* TAB CONTENT */}
@@ -237,7 +312,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
         {isLoading && (
           <div className="text-center py-10">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading')}</span>
           </div>
         )}
 
@@ -250,19 +325,20 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                   userId={userId}
                   compact={false}
                   onCountChange={setPlanCount}
+                  onLatestEvent={setLatestPlanEvent}
                   acknowledgedIds={acknowledgedIds}
                   onAcknowledge={handleAcknowledge}
                 />
                 <div className="text-center mt-4">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
-                    {t('myCoach.planNote', { defaultValue: 'Heute & Morgen — vom Trainer geplant' })}
+                    {t('myCoach.planNote')}
                   </p>
                 </div>
               </>
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">event_busy</span>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noPlan', { defaultValue: 'Kein Plan' })}</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noPlan')}</p>
               </div>
             )
           )}
@@ -277,13 +353,14 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 currentUserId={userId}
                 mode="student"
                 onCountChange={setDiaryCount}
+                onLatestEntry={setLatestDiaryEntry}
                 acknowledgedIds={acknowledgedIds}
                 onAcknowledge={handleAcknowledge}
               />
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">menu_book</span>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noDiary', { defaultValue: 'Noch keine Einträge' })}</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noDiary')}</p>
               </div>
             )
           )}
@@ -293,12 +370,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         <div className={activeTab === 'tips' ? '' : 'hidden'}>
           {sessionNotesLoading ? (
             <div className="text-center py-10">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading', { defaultValue: 'Lädt…' })}</span>
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading')}</span>
             </div>
           ) : unreadNotes.length === 0 && readNotes.length === 0 ? (
             <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
               <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports</span>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noTips', { defaultValue: 'Brak wskazówek' })}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noTips')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -309,9 +386,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                       <span className="material-symbols-outlined text-white text-[15px]">sports</span>
                     </div>
                     <div className="leading-tight">
-                      <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle', { defaultValue: 'Wskazówki do sesji' })}</h3>
+                      <h3 className="text-sm font-black text-[#0a3a2a]">{t('myCoach.sessionNotesTitle')}</h3>
                       <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">
-                        {t('myCoach.sessionNotesSubtitle', { defaultValue: 'Kliknij aby otworzyć trening' })} · {unreadNotes.length}
+                        {t('myCoach.sessionNotesSubtitle')} · {unreadNotes.length}
                       </p>
                     </div>
                   </div>
@@ -334,7 +411,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                               <div className="flex items-baseline justify-between gap-2 mb-0.5">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   {s.distance && <span className="text-[8px] font-black text-blue-700 uppercase tracking-widest">{s.distance}</span>}
-                                  <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                                  <span className="text-[8px] font-bold text-gray-400">{s.score} {t('myCoach.pts')} · {pts}%</span>
                                 </div>
                                 <div className="flex items-center gap-1 shrink-0">
                                   <span className="text-[8px] font-bold text-gray-400">{dateLabel}</span>
@@ -347,7 +424,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                           <button
                             onClick={() => handleAcknowledge(s.id)}
                             className="shrink-0 w-10 flex items-center justify-center self-stretch text-gray-300 hover:text-emerald-500 active:scale-90 transition-all"
-                            title="Wzięte do wiadomości"
+                            title={t('myCoach.acknowledged')}
                           >
                             <span className="material-symbols-outlined text-[20px]">check_circle</span>
                           </button>
@@ -361,7 +438,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 <div className="bg-gray-50 rounded-[20px] border border-gray-100 overflow-hidden">
                   <div className="px-4 py-2 border-b border-gray-100 flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[14px] text-gray-400">check_circle</span>
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.readHistory', { defaultValue: 'Przeczytane' })} · {readNotes.length}</span>
+                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.readHistory')} · {readNotes.length}</span>
                   </div>
                   <div className="divide-y divide-gray-100">
                     {readNotes.map(s => {
@@ -382,7 +459,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                             <div className="flex items-baseline justify-between gap-2 mb-0.5">
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {s.distance && <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">{s.distance}</span>}
-                                <span className="text-[8px] font-bold text-gray-400">{s.score} pkt · {pts}%</span>
+                                <span className="text-[8px] font-bold text-gray-400">{s.score} {t('myCoach.pts')} · {pts}%</span>
                               </div>
                               <span className="text-[8px] font-bold text-gray-400 shrink-0">{dateLabel}</span>
                             </div>

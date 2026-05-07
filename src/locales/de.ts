@@ -154,6 +154,27 @@ export const views = {
     myCoach: "Schütze",
     coach: "Trainer"
   },
+  myCoach: {
+    headerLabel: "Schützen-Bereich",
+    tabPlan: "Plan",
+    tabDiary: "Tagebuch",
+    tabTips: "Hinweise",
+    planDesc: "Bevorstehende Trainings und Wettkämpfe vom Trainer geplant",
+    diaryDesc: "Woran du gerade arbeitest — Trainernotizen",
+    tipsDesc: "Trainer-Feedback zu deinen einzelnen Trainingseinheiten",
+    loading: "Lädt…",
+    planNote: "Heute & Morgen — vom Trainer geplant",
+    noPlan: "Kein Plan",
+    noDiary: "Noch keine Einträge",
+    noTips: "Keine Hinweise",
+    noUpcoming: "Nichts geplant",
+    noEntries: "Keine Einträge",
+    sessionNotesTitle: "Trainingshinweise",
+    sessionNotesSubtitle: "Tippen um Training zu öffnen",
+    readHistory: "Zur Kenntnis genommen",
+    acknowledged: "Zur Kenntnis nehmen",
+    pts: "Ringe"
+  },
   home: {
     archerRanking: "Bogenschützen-Ranking",
     battleSubtitle: "Herausforderungen · Statistiken · Ranking",

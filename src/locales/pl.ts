@@ -154,6 +154,27 @@ export const views = {
     myCoach: "Łucznik",
     coach: "Trener"
   },
+  myCoach: {
+    headerLabel: "Łucznik",
+    tabPlan: "Plan",
+    tabDiary: "Dziennik",
+    tabTips: "Wskazówki",
+    planDesc: "Nadchodzące treningi i zawody zaplanowane przez trenera",
+    diaryDesc: "Nad czym aktualnie pracujesz — notatki trenera",
+    tipsDesc: "Uwagi trenera do Twoich konkretnych treningów",
+    loading: "Ładowanie…",
+    planNote: "Dziś i jutro — zaplanowane przez trenera",
+    noPlan: "Brak planu",
+    noDiary: "Brak wpisów",
+    noTips: "Brak wskazówek",
+    noUpcoming: "Brak zaplanowanych",
+    noEntries: "Brak wpisów",
+    sessionNotesTitle: "Wskazówki do sesji",
+    sessionNotesSubtitle: "Kliknij aby otworzyć trening",
+    readHistory: "Przeczytane",
+    acknowledged: "Wzięte do wiadomości",
+    pts: "pkt"
+  },
   home: {
     archerRanking: "Ranking Łucznika",
     battleSubtitle: "Wyzwania · Statystyki · Ranking",

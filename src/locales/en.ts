@@ -154,6 +154,27 @@ export const views = {
     myCoach: "Archer",
     coach: "Trainer"
   },
+  myCoach: {
+    headerLabel: "Archer",
+    tabPlan: "Plan",
+    tabDiary: "Diary",
+    tabTips: "Tips",
+    planDesc: "Upcoming training sessions and competitions planned by your coach",
+    diaryDesc: "What you are currently working on — coach notes",
+    tipsDesc: "Coach feedback on your specific training sessions",
+    loading: "Loading…",
+    planNote: "Today & tomorrow — planned by coach",
+    noPlan: "No plan",
+    noDiary: "No entries yet",
+    noTips: "No tips",
+    noUpcoming: "Nothing scheduled",
+    noEntries: "No entries",
+    sessionNotesTitle: "Session tips",
+    sessionNotesSubtitle: "Tap to open training",
+    readHistory: "Acknowledged",
+    acknowledged: "Mark as read",
+    pts: "pts"
+  },
   home: {
     archerRanking: "Archer Ranking",
     battleSubtitle: "Challenges · Stats · Ranking",

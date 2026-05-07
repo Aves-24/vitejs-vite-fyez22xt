@@ -17,11 +17,18 @@ interface CoachLogEntry {
   createdAt: number;
 }
 
+export interface CoachLogLatestEntry {
+  text: string;
+  type: EntryType;
+  authorName: string;
+}
+
 interface CoachLogPanelProps {
   studentId: string;
   currentUserId: string;
   mode: 'coach' | 'student';
   onCountChange?: (count: number) => void;
+  onLatestEntry?: (entry: CoachLogLatestEntry | null) => void;
   acknowledgedIds?: Set<string>;
   onAcknowledge?: (id: string) => void;
 }
@@ -36,7 +43,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 300;
 
-export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, acknowledgedIds, onAcknowledge }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, onLatestEntry, acknowledgedIds, onAcknowledge }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -81,6 +88,8 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
         setEntries(list);
         const visibleCount = list.filter(e => !acknowledgedIds?.has(e.id)).length;
         onCountChange?.(visibleCount);
+        const first = list.find(e => !acknowledgedIds?.has(e.id)) || list[0] || null;
+        onLatestEntry?.(first ? { text: first.text, type: first.type, authorName: first.authorName } : null);
       } catch (e) {
         console.error('CoachLog: błąd pobierania', e);
       } finally {

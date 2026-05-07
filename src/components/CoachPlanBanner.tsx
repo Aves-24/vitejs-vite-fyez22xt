@@ -31,11 +31,12 @@ interface CoachPlanBannerProps {
   compact?: boolean;
   onClick?: () => void;
   onCountChange?: (count: number) => void;
+  onLatestEvent?: (event: CoachPlanEvent | null) => void;
   acknowledgedIds?: Set<string>;
   onAcknowledge?: (id: string) => void;
 }
 
-interface CoachPlanEvent {
+export interface CoachPlanEvent {
   id: string;
   title: string;
   date: string;          // YYYY-MM-DD
@@ -45,7 +46,7 @@ interface CoachPlanEvent {
   description?: string;
 }
 
-export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange, acknowledgedIds, onAcknowledge }: CoachPlanBannerProps) {
+export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange, onLatestEvent, acknowledgedIds, onAcknowledge }: CoachPlanBannerProps) {
   const { t } = useTranslation();
   const [events, setEvents] = useState<CoachPlanEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,6 +92,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
         setEvents(filtered);
         const visibleCount = filtered.filter(ev => !acknowledgedIds?.has(ev.id)).length;
         onCountChange?.(compact ? filtered.length : visibleCount);
+        onLatestEvent?.(filtered[0] || null);
       } catch (e) {
         console.error('CoachPlanBanner: błąd pobierania', e);
       }

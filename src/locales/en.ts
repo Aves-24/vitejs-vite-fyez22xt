@@ -233,6 +233,7 @@ export const views = {
     arenaJoinCode: "Or enter Arena PIN",
     arenaJoinBtn: "JOIN",
     arenaCreateBtn: "Create New Arena",
+    arenaClubLabel: "Club",
     arenaNoClubGames: "No active club games",
     arenaInvalidCode: "No Arena found with this code.",
     arenaFinished: "This Arena has already ended.",

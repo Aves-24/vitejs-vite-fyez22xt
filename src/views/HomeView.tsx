@@ -1504,7 +1504,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 <div className="grid grid-cols-1 gap-2">
                   <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm">
                     <span className="material-symbols-outlined text-indigo-400 text-[20px] block mb-1">corporate_fare</span>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">Klubowe</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{t('home.arenaClubLabel')}</p>
                     <p className="text-xl font-black text-[#0a3a2a]">{allActiveBattles.filter(b => b.mode === 'CLUB').length}</p>
                     <span className="text-[8px] font-bold text-gray-300">{t('home.active')}</span>
                   </div>
@@ -1551,18 +1551,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {/* FOOTER — utwórz arenę */}
             <div className="px-6 pt-3 pb-8 border-t border-gray-100 shrink-0 space-y-2">
               <button
-                onClick={() => { setIsClubBattlesModalOpen(false); onNavigate?.('BATTLE_LOBBY'); }}
+                onClick={() => { setIsClubBattlesModalOpen(false); onNewSession(); }}
                 className="w-full py-4 bg-[#0a3a2a] text-white rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
               >
                 <span className="material-symbols-outlined text-[16px]">add_circle</span>
                 {t('home.arenaCreateBtn')}
-              </button>
-              <button
-                onClick={() => { setIsClubBattlesModalOpen(false); onNewSession(); }}
-                className="w-full py-3 bg-gray-100 text-gray-600 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[15px]">sports_score</span>
-                {t('setup.startBtn')}
               </button>
             </div>
 

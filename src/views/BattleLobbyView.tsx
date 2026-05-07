@@ -578,57 +578,53 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white p-4 pt-10 flex flex-col animate-fade-in overflow-y-auto pb-24">
-      {/* Header — tylko back button */}
-      <div className="flex items-center mb-3">
+      {/* Header — back button + scheibenauflage + battle id + scan */}
+      <div className="flex items-stretch gap-2 mb-4">
         <button
           onClick={() => { if (onBack) onBack(); }}
-          className="w-10 h-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center active:scale-90"
+          className="w-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center active:scale-90 flex-shrink-0"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
         </button>
-      </div>
 
-      <div className="bg-indigo-600/10 border border-indigo-500/20 rounded-2xl p-2.5 mb-4 flex items-center justify-center gap-3">
-        <span className="material-symbols-outlined text-indigo-400 text-2xl">target</span>
-        <div className="text-center">
-          <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-1">{t('setup.targetTitle')}</p>
-          <p className="text-lg font-black text-white leading-none">{getFriendlyTargetName(targetType)}</p>
-        </div>
-      </div>
-
-      <div className="text-center mb-4">
-        <div className="flex items-stretch justify-center gap-2 mx-auto max-w-[300px]">
-          <div className="flex-1 bg-white/5 border border-white/10 rounded-[20px] py-2 flex flex-col items-center justify-center">
-             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('battleHistory.title')} ID</span>
-             <h1 className="text-3xl font-black tracking-widest text-indigo-400 leading-none">{battleId}</h1>
+        <div className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0">
+          <span className="material-symbols-outlined text-indigo-400 text-xl flex-shrink-0">target</span>
+          <div className="min-w-0">
+            <p className="text-[8px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-0.5">{t('setup.targetTitle')}</p>
+            <p className="text-sm font-black text-white leading-none truncate">{getFriendlyTargetName(targetType)}</p>
           </div>
-
-          {battleMode === 'LOCAL' && (
-             <button 
-                onClick={() => {
-                  if (!isGameCreated) {
-                      showToast(t('battleLobby.createFirst', 'Zanim kogoś zeskanujesz, utwórz grę (przycisk na dole)!'));
-                  } else if (!isLocalFull) {
-                      setCameraError(false);
-                      setManualJoinId('');
-                      setIsScanning(true);
-                  }
-                }} 
-                className={`w-[70px] rounded-[20px] flex flex-col items-center justify-center transition-all border ${
-                  (isLocalFull || !isGameCreated) 
-                    ? 'bg-red-500/10 border-red-500/30 text-red-500 opacity-50 cursor-not-allowed' 
-                    : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 active:scale-95'
-                }`}
-             >
-               <span className="material-symbols-outlined text-2xl mb-1">
-                 {(isLocalFull || !isGameCreated) ? 'block' : 'qr_code_scanner'}
-               </span>
-               <span className="text-[8px] font-black uppercase tracking-tighter">
-                 {isLocalFull ? 'FULL' : t('battleLobby.scan')}
-               </span>
-             </button>
-          )}
         </div>
+
+        <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-2.5 py-2 flex flex-col items-center justify-center min-w-0">
+          <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('battleHistory.title')} ID</span>
+          <h1 className="text-xl font-black tracking-widest text-indigo-400 leading-none">{battleId}</h1>
+        </div>
+
+        {battleMode === 'LOCAL' && (
+          <button
+            onClick={() => {
+              if (!isGameCreated) {
+                showToast(t('battleLobby.createFirst', 'Zanim kogoś zeskanujesz, utwórz grę (przycisk na dole)!'));
+              } else if (!isLocalFull) {
+                setCameraError(false);
+                setManualJoinId('');
+                setIsScanning(true);
+              }
+            }}
+            className={`w-[60px] flex-shrink-0 rounded-2xl flex flex-col items-center justify-center transition-all border ${
+              (isLocalFull || !isGameCreated)
+                ? 'bg-red-500/10 border-red-500/30 text-red-500 opacity-50 cursor-not-allowed'
+                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-400 active:scale-95'
+            }`}
+          >
+            <span className="material-symbols-outlined text-2xl mb-0.5">
+              {(isLocalFull || !isGameCreated) ? 'block' : 'qr_code_scanner'}
+            </span>
+            <span className="text-[8px] font-black uppercase tracking-tighter">
+              {isLocalFull ? 'FULL' : t('battleLobby.scan')}
+            </span>
+          </button>
+        )}
       </div>
 
       {(!isGameCreated || userId === battleData?.hostId) && (

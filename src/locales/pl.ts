@@ -291,7 +291,10 @@ export const views = {
     justNow: "przed chwilą",
     minutesAgo: "{{count}} min temu",
     hoursAgo: "{{count}} godz. temu",
-    daysAgo: "{{count}} dni temu"
+    daysAgo: "{{count}} dni temu",
+    newMessage: "Nowa wiadomość",
+    newAnnouncement: "Nowe ogłoszenie",
+    newCoachPlan: "Nowy plan od trenera"
   },
   battleHistory: {
     title: "BATTLE",

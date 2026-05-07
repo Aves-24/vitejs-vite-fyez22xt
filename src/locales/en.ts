@@ -291,7 +291,10 @@ export const views = {
     justNow: "just now",
     minutesAgo: "{{count}} min ago",
     hoursAgo: "{{count}} h ago",
-    daysAgo: "{{count}} days ago"
+    daysAgo: "{{count}} days ago",
+    newMessage: "New message",
+    newAnnouncement: "New announcement",
+    newCoachPlan: "New plan from coach"
   },
   battleHistory: {
     title: "BATTLE",

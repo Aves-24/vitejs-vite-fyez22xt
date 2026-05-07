@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import CoachLogPanel, { CoachLogLatestEntry } from '../components/CoachLogPanel';
 import CoachPlanBanner, { CoachPlanEvent } from '../components/CoachPlanBanner';
@@ -35,11 +35,17 @@ interface SessionWithNote {
   timestamp: number;
 }
 
+interface PrivateNote {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
 export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats, pendingOpenCoachId, onClearPending }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips'>('plan');
+  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips' | 'notes'>('plan');
   const [planCount, setPlanCount] = useState(0);
   const [diaryCount, setDiaryCount] = useState(0);
   const [sessionNotes, setSessionNotes] = useState<SessionWithNote[]>([]);
@@ -49,6 +55,14 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [latestPlanEvent, setLatestPlanEvent] = useState<CoachPlanEvent | null>(null);
   const [latestDiaryEntry, setLatestDiaryEntry] = useState<CoachLogLatestEntry | null>(null);
 
+  // Private notes
+  const [privateNotes, setPrivateNotes] = useState<PrivateNote[]>([]);
+  const [privateNotesLoading, setPrivateNotesLoading] = useState(true);
+  const [newNoteText, setNewNoteText] = useState('');
+  const [isSavingNote, setIsSavingNote] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   useEffect(() => {
     if (!pendingOpenCoachId || isLoading) return;
     const coach = coaches.find(c => c.id === pendingOpenCoachId);
@@ -57,7 +71,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       onClearPending?.();
     }
   }, [pendingOpenCoachId, coaches, isLoading]);
-  // ordered array (newest first, max MAX_ACKED) — source of truth for both display and cache
+
   const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
     try {
       const cached = localStorage.getItem(ackedCacheKey(userId));
@@ -75,7 +89,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         if (!userDoc.exists()) { setIsLoading(false); return; }
 
         const data = userDoc.data();
-        // merge Firebase list with local cache — keep newest MAX_ACKED unique IDs
         const remote: string[] = data.acknowledgedItems || [];
         setAcknowledgedList(prev => {
           const merged = [...new Set([...prev, ...remote])].slice(0, MAX_ACKED);
@@ -151,6 +164,34 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     fetchSessionNotes();
   }, [userId]);
 
+  useEffect(() => {
+    const fetchPrivateNotes = async () => {
+      if (!userId) { setPrivateNotesLoading(false); return; }
+      setPrivateNotesLoading(true);
+      try {
+        const snap = await getDocs(query(
+          collection(db, `users/${userId}/privateNotes`),
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        ));
+        const notes: PrivateNote[] = snap.docs.map(d => {
+          const data = d.data();
+          const ts = data.createdAt?.toMillis
+            ? data.createdAt.toMillis()
+            : data.createdAt?.seconds
+            ? data.createdAt.seconds * 1000
+            : Date.now();
+          return { id: d.id, text: data.text || '', createdAt: ts };
+        });
+        setPrivateNotes(notes);
+      } catch (e) {
+        console.error('MyCoachView: błąd pobierania prywatnych notatek', e);
+      }
+      setPrivateNotesLoading(false);
+    };
+    fetchPrivateNotes();
+  }, [userId]);
+
   const handleAcknowledge = useCallback(async (id: string) => {
     setAcknowledgedList(prev => {
       const updated = [id, ...prev.filter(x => x !== id)].slice(0, MAX_ACKED);
@@ -160,8 +201,40 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     });
   }, [userId]);
 
+  const handleAddNote = async () => {
+    if (!newNoteText.trim() || isSavingNote) return;
+    setIsSavingNote(true);
+    try {
+      const ref = await addDoc(collection(db, `users/${userId}/privateNotes`), {
+        text: newNoteText.trim(),
+        createdAt: serverTimestamp(),
+      });
+      setPrivateNotes(prev => [{ id: ref.id, text: newNoteText.trim(), createdAt: Date.now() }, ...prev]);
+      setNewNoteText('');
+      if (textareaRef.current) textareaRef.current.style.height = 'auto';
+    } catch (e) {
+      console.error('MyCoachView: błąd dodawania notatki', e);
+    }
+    setIsSavingNote(false);
+  };
+
+  const handleDeleteNote = async (noteId: string) => {
+    try {
+      await deleteDoc(doc(db, `users/${userId}/privateNotes/${noteId}`));
+      setPrivateNotes(prev => prev.filter(n => n.id !== noteId));
+    } catch (e) {
+      console.error('MyCoachView: błąd usuwania notatki', e);
+    }
+    setConfirmDeleteId(null);
+  };
+
   const unreadNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
   const readNotes = sessionNotes.filter(s => acknowledgedIds.has(s.id)).slice(0, 10);
+
+  const formatNoteDate = (ts: number) => {
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
@@ -204,14 +277,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
       </div>
 
-      {/* TAB BAR */}
-      {/* SUMMARY STRIP — najnowszy element z każdej zakładki */}
-      {!isLoading && coaches.length > 0 && (
-        <div className="shrink-0 px-3 pt-2 pb-1 flex gap-2">
+      {/* SUMMARY STRIP — 2×2 grid */}
+      {!isLoading && (
+        <div className="shrink-0 px-3 pt-2 pb-1 grid grid-cols-2 gap-2">
           {/* Plan */}
           <button
             onClick={() => setActiveTab('plan')}
-            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">event</span>
@@ -229,7 +301,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Diary */}
           <button
             onClick={() => setActiveTab('diary')}
-            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">edit_note</span>
@@ -247,7 +319,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Tips */}
           <button
             onClick={() => setActiveTab('tips')}
-            className={`flex-1 min-w-0 rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-[12px] text-[#0a3a2a]">sports</span>
@@ -268,6 +340,24 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               );
             })()}
           </button>
+
+          {/* Notes */}
+          <button
+            onClick={() => setActiveTab('notes')}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'notes' ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-100 shadow-sm'}`}
+          >
+            <div className="flex items-center gap-1 mb-1">
+              <span className="material-symbols-outlined text-[12px] text-indigo-500">lock</span>
+              <span className="text-[7px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabNotes')}</span>
+              {privateNotes.length > 0 && <span className="text-[7px] font-black text-indigo-600 bg-indigo-50 rounded-full px-1.5 py-0.5">{privateNotes.length}</span>}
+            </div>
+            <p className="text-[9px] font-black text-[#0a3a2a] truncate leading-tight">
+              {privateNotes.length > 0 ? privateNotes[0].text.slice(0, 35) + (privateNotes[0].text.length > 35 ? '…' : '') : t('myCoach.noNotes')}
+            </p>
+            {privateNotes.length > 0 && (
+              <p className="text-[7px] font-bold text-gray-400 mt-0.5">{formatNoteDate(privateNotes[0].createdAt)}</p>
+            )}
+          </button>
         </div>
       )}
 
@@ -278,18 +368,22 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan'),  badge: planCount },
             { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary'), badge: diaryCount },
             { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips'),  badge: unreadNotes.length },
+            { key: 'notes', icon: 'lock',      label: t('myCoach.tabNotes'), badge: 0 },
           ].map(tab => {
             const isActive = activeTab === tab.key;
+            const isNotes = tab.key === 'notes';
             return (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
                 className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl transition-all duration-200 ${
-                  isActive ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md' : 'text-gray-500 active:scale-95'
+                  isActive
+                    ? isNotes ? 'bg-indigo-600 text-white shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
+                    : 'text-gray-500 active:scale-95'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`}>{tab.icon}</span>
-                <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
+                <span className={`material-symbols-outlined text-[18px] ${isActive ? (isNotes ? 'text-white' : 'text-[#fed33e]') : 'text-gray-400'}`}>{tab.icon}</span>
+                <span className="text-[9px] font-black uppercase tracking-wider">{tab.label}</span>
                 {tab.badge > 0 && (
                   <span className={`min-w-[15px] h-[15px] px-0.5 rounded-full text-[8px] font-black flex items-center justify-center shrink-0 ${
                     isActive ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-emerald-600 text-white'
@@ -304,6 +398,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {activeTab === 'plan'  && t('myCoach.planDesc')}
           {activeTab === 'diary' && t('myCoach.diaryDesc')}
           {activeTab === 'tips'  && t('myCoach.tipsDesc')}
+          {activeTab === 'notes' && t('myCoach.notesDesc')}
         </p>
       </div>
 
@@ -475,7 +570,98 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           )}
         </div>
 
+        {/* Prywatne notatki */}
+        <div className={activeTab === 'notes' ? '' : 'hidden'}>
+          {/* Privacy badge */}
+          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl px-3.5 py-2.5 mb-3">
+            <span className="material-symbols-outlined text-[16px] text-indigo-500 shrink-0">lock</span>
+            <p className="text-[10px] font-black text-indigo-700 leading-tight">{t('myCoach.notesPrivacyBadge')}</p>
+          </div>
+
+          {/* Add note form */}
+          <div className="bg-white rounded-[20px] border border-gray-100 shadow-sm p-3 mb-3">
+            <textarea
+              ref={textareaRef}
+              value={newNoteText}
+              onChange={e => {
+                setNewNoteText(e.target.value);
+                e.target.style.height = 'auto';
+                e.target.style.height = `${e.target.scrollHeight}px`;
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleAddNote();
+              }}
+              placeholder={t('myCoach.notesPlaceholder')}
+              rows={2}
+              className="w-full text-[12px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed"
+              style={{ minHeight: '48px' }}
+            />
+            <div className="flex justify-end mt-2">
+              <button
+                onClick={handleAddNote}
+                disabled={!newNoteText.trim() || isSavingNote}
+                className="bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
+              >
+                {t('myCoach.notesAdd')}
+              </button>
+            </div>
+          </div>
+
+          {/* Notes list */}
+          {privateNotesLoading ? (
+            <div className="text-center py-6">
+              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading')}</span>
+            </div>
+          ) : privateNotes.length === 0 ? (
+            <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
+              <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">edit_note</span>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('myCoach.noNotes')}</p>
+              <p className="text-[9px] font-medium text-gray-300 mt-1">{t('myCoach.notesEmpty')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {privateNotes.map(note => (
+                <div key={note.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-3.5 flex items-start gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{note.text}</p>
+                    <p className="text-[8px] font-bold text-gray-300 mt-1.5">{formatNoteDate(note.createdAt)}</p>
+                  </div>
+                  <button
+                    onClick={() => setConfirmDeleteId(note.id)}
+                    className="shrink-0 text-gray-200 hover:text-red-400 active:scale-90 transition-all mt-0.5"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm px-4 pb-8">
+          <div className="bg-white rounded-[24px] p-5 w-full max-w-sm shadow-2xl">
+            <h3 className="text-base font-black text-[#0a3a2a] mb-2">{t('myCoach.notesDeleteTitle')}</h3>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+              >
+                {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
+              </button>
+              <button
+                onClick={() => handleDeleteNote(confirmDeleteId)}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all"
+              >
+                {t('myCoach.notesDeleteConfirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {openMessageCoach && (
         <StudentMessageSheet

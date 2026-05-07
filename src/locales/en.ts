@@ -182,7 +182,16 @@ export const views = {
     sessionNotesSubtitle: "Tap to open training",
     readHistory: "Acknowledged",
     acknowledged: "Mark as read",
-    pts: "pts"
+    pts: "pts",
+    tabNotes: "Notes",
+    notesDesc: "Your private observations — the coach cannot see these",
+    notesPrivacyBadge: "Only you can see these notes",
+    notesPlaceholder: "Add an observation…",
+    notesAdd: "Add",
+    noNotes: "No notes yet",
+    notesEmpty: "Write down your training observations",
+    notesDeleteTitle: "Delete note?",
+    notesDeleteConfirm: "Delete"
   },
   home: {
     archerRanking: "Archer Ranking",

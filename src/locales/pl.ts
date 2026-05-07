@@ -182,7 +182,16 @@ export const views = {
     sessionNotesSubtitle: "Kliknij aby otworzyć trening",
     readHistory: "Przeczytane",
     acknowledged: "Wzięte do wiadomości",
-    pts: "pkt"
+    pts: "pkt",
+    tabNotes: "Notatki",
+    notesDesc: "Twoje prywatne spostrzeżenia — trener ich nie widzi",
+    notesPrivacyBadge: "Tylko Ty widzisz te notatki",
+    notesPlaceholder: "Dodaj spostrzeżenie…",
+    notesAdd: "Dodaj",
+    noNotes: "Brak notatek",
+    notesEmpty: "Zapisuj swoje spostrzeżenia z treningów",
+    notesDeleteTitle: "Usuń notatkę?",
+    notesDeleteConfirm: "Usuń"
   },
   home: {
     archerRanking: "Ranking Łucznika",

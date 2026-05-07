@@ -182,7 +182,16 @@ export const views = {
     sessionNotesSubtitle: "Tippen um Training zu öffnen",
     readHistory: "Zur Kenntnis genommen",
     acknowledged: "Zur Kenntnis nehmen",
-    pts: "Ringe"
+    pts: "Ringe",
+    tabNotes: "Notizen",
+    notesDesc: "Deine privaten Beobachtungen — für den Trainer nicht sichtbar",
+    notesPrivacyBadge: "Nur du siehst diese Notizen",
+    notesPlaceholder: "Beobachtung hinzufügen…",
+    notesAdd: "Hinzufügen",
+    noNotes: "Keine Notizen",
+    notesEmpty: "Schreib deine Trainingsbeobachtungen auf",
+    notesDeleteTitle: "Notiz löschen?",
+    notesDeleteConfirm: "Löschen"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

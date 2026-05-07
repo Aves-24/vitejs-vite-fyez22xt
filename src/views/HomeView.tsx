@@ -301,12 +301,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         const pendingRequests: string[] = d.newCoachRequests || [];
         if (pendingRequests.length > 0) {
+          let senderName: string | undefined;
+          try {
+            const reqSnap = await getDoc(doc(db, 'coachRequests', pendingRequests[pendingRequests.length - 1]));
+            if (reqSnap.exists()) senderName = reqSnap.data().userName || undefined;
+          } catch { /* ignore */ }
+          if (cancelled) return;
+          const count = pendingRequests.length;
           const reqItem: NotifItem = {
             id: 'coach_requests',
             type: 'announcement',
             icon: 'sports',
             iconColor: 'text-orange-500',
-            title: `${pendingRequests.length > 1 ? `${pendingRequests.length} ` : ''}${t('announcements.newCoachRequest', { count: pendingRequests.length })}`,
+            title: count > 1 ? `${count} ${t('announcements.newCoachRequest')}` : t('announcements.newCoachRequest'),
+            senderName,
             timestamp: Date.now(),
             navigateTo: 'ADMIN',
           };

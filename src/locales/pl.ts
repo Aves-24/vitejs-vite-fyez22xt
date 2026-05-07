@@ -122,6 +122,15 @@ export const components = {
     sek: "sek",
     errorPermission: "Brak uprawnień do wysłania wiadomości.",
     errorConnection: "Błąd połączenia. Spróbuj ponownie."
+  },
+  coachPlan: {
+    today: "Dziś",
+    tomorrow: "Jutro",
+    label: "Plan trenera",
+    readHistory: "Przeczytane"
+  },
+  coachLog: {
+    readHistory: "Przeczytane"
   }
 };
 

@@ -450,7 +450,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                         <button
                           key={s.id}
                           onClick={() => s.date && onNavigateToStats?.(s.date)}
-                          className="w-full text-left p-3 flex items-start gap-2.5 active:bg-gray-100 transition-colors group opacity-50"
+                          className="w-full text-left p-3 flex items-start gap-2.5 active:bg-gray-100 transition-colors group opacity-75"
                         >
                           <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">
                             <span className="material-symbols-outlined text-[14px] text-gray-400">sports</span>

@@ -122,6 +122,15 @@ export const components = {
     sek: "sec",
     errorPermission: "No permission to send this message.",
     errorConnection: "Connection error. Please try again."
+  },
+  coachPlan: {
+    today: "Today",
+    tomorrow: "Tomorrow",
+    label: "Coach plan",
+    readHistory: "Read"
+  },
+  coachLog: {
+    readHistory: "Read"
   }
 };
 

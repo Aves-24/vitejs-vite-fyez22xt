@@ -338,7 +338,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
                   {read.map(entry => {
                     const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
                     return (
-                      <div key={entry.id} className="flex items-start p-3 gap-2.5 opacity-40">
+                      <div key={entry.id} className="flex items-start p-3 gap-2.5 opacity-65">
                         <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-gray-100">
                           <span className="material-symbols-outlined text-[14px] text-gray-400">{cfg.icon}</span>
                         </div>

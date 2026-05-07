@@ -223,7 +223,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
           {acknowledgedEvents.map(ev => {
             const dateLabel = formatDateLabel(ev.date, todayStr, tomorrowStr, t);
             return (
-              <div key={ev.id} className="bg-gray-50 rounded-2xl border border-gray-100 flex items-start p-3 gap-3 opacity-50">
+              <div key={ev.id} className="bg-gray-50 rounded-2xl border border-gray-100 flex items-start p-3 gap-3 opacity-75">
                 <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[18px] text-gray-400">sports</span>
                 </div>

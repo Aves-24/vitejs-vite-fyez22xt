@@ -49,6 +49,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [noteReplacementPrompt, setNoteReplacementPrompt] = useState<{ pendingNote: string, oldestNote: any } | null>(null);
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<{ groupId: string; noteId: string } | null>(null);
 
+  const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<string | null>(null);
+
   // Ostatni wpis CoachLog per uczeń
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
 
@@ -408,6 +412,47 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
+  const handleEditGroup = async () => {
+    if (!editingGroup || !editGroupName.trim()) return;
+    const updatedGroups = coachGroups.map(g =>
+      g.id === editingGroup.id ? { ...g, name: editGroupName.trim() } : g
+    );
+    try {
+      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
+      setCoachGroups(updatedGroups);
+      setEditingGroup(null);
+      setEditGroupName('');
+      showToast(t('coachDashboard.toastGroupRenamed'));
+    } catch (e) {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
+  const handleDeleteGroup = async (groupId: string) => {
+    const updatedGroups = coachGroups.filter(g => g.id !== groupId);
+    const newMap = { ...studentGroupMap };
+    Object.keys(newMap).forEach(sid => {
+      if (newMap[sid]) newMap[sid] = newMap[sid].filter(id => id !== groupId);
+    });
+    const newNotes = { ...groupNotes };
+    delete newNotes[groupId];
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        coachGroups: updatedGroups,
+        studentGroupMap: newMap,
+        groupNotes: newNotes,
+      });
+      setCoachGroups(updatedGroups);
+      setStudentGroupMap(newMap);
+      setGroupNotes(newNotes);
+      setActiveGroup('ALL');
+      setConfirmDeleteGroup(null);
+      showToast(t('coachDashboard.toastGroupDeleted'));
+    } catch (e) {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
   const toggleGroupForStudent = async (groupId: string) => {
     if (!managingGroupsForStudent) return;
     const currentGroups = studentGroupMap[managingGroupsForStudent] || [];
@@ -510,15 +555,34 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {t('coachDashboard.allGroups')}
         </button>
         {coachGroups.map(g => (
-          <button 
-            key={g.id}
-            onClick={() => setActiveGroup(g.id)}
-            className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
-              activeGroup === g.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-gray-500 border-gray-100'
-            }`}
-          >
-            {g.name}
-          </button>
+          <div key={g.id} className="shrink-0 flex items-center">
+            <button
+              onClick={() => setActiveGroup(g.id)}
+              className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
+                activeGroup === g.id
+                  ? 'bg-indigo-600 text-white border-indigo-600 rounded-l-xl rounded-r-none'
+                  : 'bg-white text-gray-500 border-gray-100 rounded-xl'
+              }`}
+            >
+              {g.name}
+            </button>
+            {activeGroup === g.id && (
+              <>
+                <button
+                  onClick={() => { setEditingGroup(g); setEditGroupName(g.name); }}
+                  className="h-8 px-2 bg-indigo-500 text-white border-l border-indigo-700 flex items-center justify-center active:opacity-80 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-[13px]">edit</span>
+                </button>
+                <button
+                  onClick={() => setConfirmDeleteGroup(g.id)}
+                  className="h-8 px-2 bg-red-500 text-white rounded-r-xl border-l border-red-700 flex items-center justify-center active:opacity-80 transition-opacity"
+                >
+                  <span className="material-symbols-outlined text-[13px]">delete</span>
+                </button>
+              </>
+            )}
+          </div>
         ))}
         {coachGroups.length < 5 && (
           <button 
@@ -580,14 +644,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
       {activeGroup !== 'ALL' && (
         <div className="bg-indigo-50/50 rounded-3xl p-4 border border-indigo-100 mb-6 animate-fade-in">
-           <div className="flex items-center gap-2 mb-3">
+           <div className="flex items-center gap-2 mb-1">
               <span className="material-symbols-outlined text-indigo-600 text-[18px]">menu_book</span>
               <h3 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest">{t('coachDashboard.journalTitle')}</h3>
               <span className="ml-auto text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalCount', { count: (groupNotes[activeGroup] || []).length })}</span>
            </div>
 
+           <div className="flex items-center gap-1 mb-3">
+             <span className="material-symbols-outlined text-[11px] text-indigo-400">lock</span>
+             <span className="text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalPrivate')}</span>
+           </div>
+
            <div className="relative mb-3">
-             <textarea 
+             <textarea
                value={newNoteText}
                onChange={e => setNewNoteText(e.target.value)}
                placeholder={t('coachDashboard.journalPlaceholder')}
@@ -600,7 +669,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
            </div>
 
            <div className="flex justify-end mb-4">
-             <button 
+             <button
                onClick={handleAddNoteClick}
                disabled={!newNoteText.trim()}
                className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-sm"
@@ -612,20 +681,31 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
            <div className="space-y-2">
              {(() => {
                 const notes = [...(groupNotes[activeGroup] || [])].sort((a, b) => b.timestamp - a.timestamp);
-                return notes.map(note => (
-                  <div key={note.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100 relative pr-8">
-                     <p className="text-[11px] text-[#333] font-medium leading-relaxed break-words whitespace-pre-wrap">{note.text}</p>
-                     <p className="text-[8px] font-bold text-gray-400 uppercase mt-2">
+                return notes.map((note, index) => {
+                  const isNewest = index === 0 && notes.length > 0;
+                  return (
+                    <div key={note.id} className={`p-3 rounded-xl shadow-sm border relative pr-8 ${
+                      isNewest ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-100'
+                    }`}>
+                      {isNewest && (
+                        <div className="flex items-center gap-1 mb-1.5">
+                          <span className="material-symbols-outlined text-[10px] text-indigo-200">new_releases</span>
+                          <span className="text-[8px] font-black text-indigo-200 uppercase tracking-widest">{t('coachDashboard.newestEntry')}</span>
+                        </div>
+                      )}
+                      <p className={`text-[11px] font-medium leading-relaxed break-words whitespace-pre-wrap ${isNewest ? 'text-white' : 'text-[#333]'}`}>{note.text}</p>
+                      <p className={`text-[8px] font-bold uppercase mt-2 ${isNewest ? 'text-indigo-300' : 'text-gray-400'}`}>
                         {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                     </p>
-                     <button
-                       onClick={() => setConfirmDeleteNote({ groupId: activeGroup, noteId: note.id })}
-                       className="absolute top-2 right-2 text-gray-300 hover:text-red-500 transition-colors"
-                     >
-                       <span className="material-symbols-outlined text-[16px]">close</span>
-                     </button>
-                  </div>
-                ));
+                      </p>
+                      <button
+                        onClick={() => setConfirmDeleteNote({ groupId: activeGroup, noteId: note.id })}
+                        className={`absolute top-2 right-2 transition-colors ${isNewest ? 'text-indigo-300 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
+                      >
+                        <span className="material-symbols-outlined text-[16px]">close</span>
+                      </button>
+                    </div>
+                  );
+                });
              })()}
            </div>
         </div>
@@ -995,6 +1075,43 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               {t('coachDashboard.cancelOp')}
             </button>
             
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {editingGroup && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setEditingGroup(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-4">{t('coachDashboard.editGroupTitle')}</h2>
+            <input
+              type="text"
+              value={editGroupName}
+              onChange={e => setEditGroupName(e.target.value)}
+              maxLength={15}
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-indigo-500 mb-6 text-[#333]"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setEditingGroup(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button onClick={handleEditGroup} disabled={!editGroupName.trim()} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.editGroupBtn')}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {confirmDeleteGroup && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center">
+            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
+              <span className="material-symbols-outlined text-3xl">delete_forever</span>
+            </div>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('coachDashboard.deleteGroupTitle')}</h2>
+            <p className="text-[11px] font-bold text-gray-500 mb-6 leading-relaxed px-2">{t('coachDashboard.deleteGroupDesc')}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDeleteGroup(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button onClick={() => handleDeleteGroup(confirmDeleteGroup)} className="flex-1 py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md">{t('coachDashboard.deleteGroupBtn')}</button>
+            </div>
           </div>
         </div>,
         document.body

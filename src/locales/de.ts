@@ -729,7 +729,15 @@ export const views = {
       panelDesc: "Gehe zum dedizierten Panel, um Schüler zu scannen und ihre Ergebnisse live zu analysieren.",
       openPanel: "Trainer-Panel öffnen",
       becomeTitle: "GROT-X Trainer werden",
-      becomeDesc: "Möchtest du die Statistiken und Ausrüstung deiner Schüler analysieren? Kontaktiere den Administrator, um das professionelle Trainer-Modul freizuschalten."
+      becomeDesc: "Möchtest du die Statistiken und Ausrüstung deiner Schüler analysieren? Sende eine Anfrage an den Administrator, um das professionelle Trainer-Modul freizuschalten.",
+      becomeStudentsLabel: "Wie viele Schüler planst du zu haben?",
+      becomeStudentsPlaceholder: "z.B. 10",
+      becomeRequestBtn: "Anfrage an Admin senden",
+      becomeSending: "Wird gesendet...",
+      becomeSent: "Anfrage gesendet!",
+      becomeSentDesc: "Der Administrator wird deine Anfrage in Kürze bearbeiten.",
+      becomeAlreadySent: "Anfrage bereits gesendet — warte auf Antwort des Admins.",
+      becomeError: "Senden fehlgeschlagen. Bitte erneut versuchen."
     },
     tournament: {
       title: "Wettkampf-Modul",

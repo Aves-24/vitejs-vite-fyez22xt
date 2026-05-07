@@ -729,7 +729,15 @@ export const views = {
       panelDesc: "Go to the dedicated panel to scan students and analyze their results live.",
       openPanel: "Open Coach Panel",
       becomeTitle: "Become a GROT-X Coach",
-      becomeDesc: "Want to analyze your students' statistics and equipment? Contact the administrator to unlock the professional coach module."
+      becomeDesc: "Want to analyze your students' statistics and equipment? Send a request to the administrator to unlock the professional coach module.",
+      becomeStudentsLabel: "How many students do you plan to have?",
+      becomeStudentsPlaceholder: "e.g. 10",
+      becomeRequestBtn: "Send request to admin",
+      becomeSending: "Sending...",
+      becomeSent: "Request sent!",
+      becomeSentDesc: "The administrator will review your request shortly.",
+      becomeAlreadySent: "Request already sent — waiting for admin response.",
+      becomeError: "Sending failed. Please try again."
     },
     tournament: {
       title: "Tournament Module",

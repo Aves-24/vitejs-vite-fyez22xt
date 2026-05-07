@@ -233,6 +233,13 @@ service cloud.firestore {
       allow read, write: if isSelf(uid) || isAdmin();
     }
 
+    // ─── /users/{uid}/privateNotes/{noteId} ─────────────────────
+    //  Student-only private notes. Coaches have NO access (by design).
+    match /users/{uid}/privateNotes/{noteId} {
+      allow read, create, delete: if isSelf(uid) || isAdmin();
+      allow update: if false;
+    }
+
     // ─── /coachInvites/{inviteId}  (doc id = "{coachId}_{studentId}") ─
     match /coachInvites/{inviteId} {
       allow read: if isSignedIn() && (

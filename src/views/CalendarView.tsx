@@ -754,6 +754,24 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                               <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
                             </div>
                           </div>
+                          {isCoach && !event.isMirrored && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {(!event.coachStudents || event.coachStudents === 'all') ? (
+                                <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
+                                  {t('calendar.trainerAllStudents')}
+                                </span>
+                              ) : (
+                                (event.coachStudents as string[]).map(sid => {
+                                  const s = coachStudentsList.find(cs => cs.id === sid);
+                                  return s ? (
+                                    <span key={sid} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
+                                      {s.firstName} {s.lastName}
+                                    </span>
+                                  ) : null;
+                                })
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 

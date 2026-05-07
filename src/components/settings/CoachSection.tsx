@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../firebase';
-import { collection, addDoc, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+
+const ADMIN_UID = 'b55wNdZf17gH5wxziuzG9bkaQKo2';
 
 interface CoachSectionProps {
   isCoach: boolean;
@@ -46,13 +48,16 @@ const CoachSection: React.FC<CoachSectionProps> = ({
         return;
       }
 
-      await addDoc(collection(db, 'coachRequests'), {
+      const ref = await addDoc(collection(db, 'coachRequests'), {
         userId,
         userName,
         userEmail,
         desiredStudents: count,
         status: 'pending',
         timestamp: Timestamp.now(),
+      });
+      await updateDoc(doc(db, 'users', ADMIN_UID), {
+        newCoachRequests: arrayUnion(ref.id),
       });
       setStatus('sent');
     } catch {

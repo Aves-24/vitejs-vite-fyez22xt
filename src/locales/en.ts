@@ -347,7 +347,8 @@ export const views = {
     daysAgo: "{{count}} days ago",
     newMessage: "New message",
     newAnnouncement: "New announcement",
-    newCoachPlan: "New plan from coach"
+    newCoachPlan: "New plan from coach",
+    newCoachRequest: "New trainer application"
   },
   battleHistory: {
     title: "BATTLE",

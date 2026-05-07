@@ -299,6 +299,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           setUnreadMessageRole(null);
         }
 
+        const pendingRequests: string[] = d.newCoachRequests || [];
+        if (pendingRequests.length > 0) {
+          const reqItem: NotifItem = {
+            id: 'coach_requests',
+            type: 'announcement',
+            icon: 'sports',
+            iconColor: 'text-orange-500',
+            title: `${pendingRequests.length > 1 ? `${pendingRequests.length} ` : ''}${t('announcements.newCoachRequest', { count: pendingRequests.length })}`,
+            timestamp: Date.now(),
+            navigateTo: 'ADMIN',
+          };
+          setNotifHistory(prev => pushNotif(userId, reqItem, prev));
+        }
+
         setFirstName(d.firstName || '');
         setUserClub(fullClubName);
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));

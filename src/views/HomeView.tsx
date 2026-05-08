@@ -1123,17 +1123,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               )}
             </div>
           ) : (
-            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[20px] px-3 py-1.5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
-              <div className="absolute inset-0 rounded-[20px] overflow-hidden pointer-events-none">
+            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[22px] px-3.5 py-2 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
+              <div className="absolute inset-0 rounded-[22px] overflow-hidden pointer-events-none">
                 <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
-                  <span className="material-symbols-outlined text-[100px]">calendar_month</span>
+                  <span className="material-symbols-outlined text-[110px]">calendar_month</span>
                 </div>
               </div>
               <span className="absolute -top-2 left-5 bg-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
                 {t('home.calendar')}
               </span>
-              <div className="flex items-center gap-2 relative z-10 w-full pt-0.5">
-                <div className="bg-[#fed33e]/80 text-[#0a3a2a] px-1.5 py-1 rounded-lg text-center min-w-[42px] shadow-sm shrink-0">
+              <div className="flex items-center gap-2.5 relative z-10 w-full pt-0.5">
+                <div className="bg-[#fed33e]/80 text-[#0a3a2a] px-2 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0">
                   <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
                   <span className="block text-lg font-black leading-none">{new Date(nextOtherEvent!.date).getDate()}</span>
                 </div>
@@ -1144,7 +1144,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     <span className="truncate">{nextOtherEvent!.address || t('home.noLocation')}</span>
                   </span>
                 </div>
-                <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[24px] shrink-0">arrow_circle_right</span>
+                <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[26px] shrink-0">arrow_circle_right</span>
               </div>
             </div>
           )
@@ -1162,13 +1162,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <div
                 key={event.id}
                 onClick={() => onGoToCalendar(event.id)}
-                className={`relative ${palette.bg} border ${palette.border} rounded-[18px] ${half ? 'px-2 py-1.5' : 'px-3 py-1.5'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
+                className={`relative ${palette.bg} border ${palette.border} rounded-[20px] ${half ? 'px-2.5 py-2' : 'px-3.5 py-2'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
               >
                 <span className={`absolute -top-2 left-4 ${palette.tag} px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
                   {t(labelKey)}
                 </span>
-                <div className="flex items-center gap-2 pt-0.5 w-full">
-                  <div className={`${palette.dateBg} text-[#0a3a2a] px-1.5 py-1 rounded-lg text-center min-w-[40px] shadow-sm shrink-0`}>
+                <div className="flex items-center gap-2.5 pt-0.5 w-full">
+                  <div className={`${palette.dateBg} text-[#0a3a2a] px-2 py-1.5 rounded-xl text-center min-w-[43px] shadow-sm shrink-0`}>
                     <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
                     <span className="block text-lg font-black leading-none">{new Date(event.date).getDate()}</span>
                   </div>
@@ -1180,7 +1180,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     </span>
                   </div>
                   {!half && (
-                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[24px] shrink-0`}>arrow_circle_right</span>
+                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[26px] shrink-0`}>arrow_circle_right</span>
                   )}
                 </div>
               </div>

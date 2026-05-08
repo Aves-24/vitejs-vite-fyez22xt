@@ -80,7 +80,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [showAllTournaments, setShowAllTournaments] = useState(false);
   const [showAllOthers, setShowAllOthers] = useState(false);
-  const [showAllTrainer, setShowAllTrainer] = useState(false);
+  const [showAllTrainerReceived, setShowAllTrainerReceived] = useState(false);
+  const [showAllTrainerSent, setShowAllTrainerSent] = useState(false);
 
   type ArchiveState = { open: boolean; allItems: Event[]; shown: number; loading: boolean };
   const initArch = (): ArchiveState => ({ open: false, allItems: [], shown: 5, loading: false });
@@ -439,13 +440,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const upcomingTournaments = upcomingEvents.filter(e => e.category === 'Turniej' || !e.category);
   const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne');
-  const upcomingTrainer = upcomingEvents.filter(e => e.category === 'Trener');
+  const upcomingTrainerReceived = upcomingEvents.filter(e => e.category === 'Trener' && e.isMirrored);
+  const upcomingTrainerSent = upcomingEvents.filter(e => e.category === 'Trener' && !e.isMirrored);
 
   const nextTournamentId = upcomingTournaments.length > 0 ? upcomingTournaments[0].id : null;
 
   const visibleTournaments = showAllTournaments ? upcomingTournaments : upcomingTournaments.slice(0, 1);
   const visibleOthers = showAllOthers ? upcomingOthers : upcomingOthers.slice(0, 1);
-  const visibleTrainer = showAllTrainer ? upcomingTrainer : upcomingTrainer.slice(0, 1);
+  const visibleTrainerReceived = showAllTrainerReceived ? upcomingTrainerReceived : upcomingTrainerReceived.slice(0, 1);
+  const visibleTrainerSent = showAllTrainerSent ? upcomingTrainerSent : upcomingTrainerSent.slice(0, 1);
 
   const openInGoogleMaps = (address: string) => {
     const encodedAddress = encodeURIComponent(address);
@@ -736,80 +739,85 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               </div>
             )}
 
-            {upcomingTrainer.length > 0 && (
-              <div className="space-y-1">
+            {([
+              { events: upcomingTrainerReceived, visible: visibleTrainerReceived, showAll: showAllTrainerReceived, setShowAll: setShowAllTrainerReceived, isReceived: true },
+              { events: upcomingTrainerSent, visible: visibleTrainerSent, showAll: showAllTrainerSent, setShowAll: setShowAllTrainerSent, isReceived: false },
+            ] as const).map(({ events: trainerEvents, visible, showAll, setShowAll, isReceived }) => (
+              trainerEvents.length > 0 && (
+                <div className="space-y-1" key={isReceived ? 'received' : 'sent'}>
 
-                {visibleTrainer.map((event, index) => {
-                  const isLastVisible = !showAllTrainer && index === visibleTrainer.length - 1;
-                  const hiddenCount = upcomingTrainer.length - visibleTrainer.length;
+                  {visible.map((event, index) => {
+                    const isLastVisible = !showAll && index === visible.length - 1;
+                    const hiddenCount = trainerEvents.length - visible.length;
 
-                  return (
-                    <div
-                      key={event.id}
-                      onClick={() => setViewingEvent(event)}
-                      className={`rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex text-[#0a3a2a] ${event.isMirrored ? 'bg-sky-50 border-sky-100' : 'bg-indigo-50 border-indigo-100'}`}
-                    >
-                      <span className={`absolute top-2 left-3 text-[8px] font-black uppercase tracking-widest opacity-60 ${event.isMirrored ? 'text-sky-500' : 'text-indigo-500'}`}>{t('calendar.tabTrainer')}</span>
-                      <div className="flex-1 p-3 pt-5 flex items-start gap-2.5">
-                        <div className="p-1.5 rounded-xl text-center min-w-[48px] border bg-white shadow-sm text-[10px]">
-                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-lg font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
-                        </div>
-                        <div className="flex-1 pr-2">
-                          <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
-                          <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
-                            <div className="flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
-                            </div>
+                    return (
+                      <div
+                        key={event.id}
+                        onClick={() => setViewingEvent(event)}
+                        className={`rounded-[24px] border shadow-sm relative transition-all cursor-pointer active:scale-[0.98] flex text-[#0a3a2a] ${isReceived ? 'bg-sky-50 border-sky-100' : 'bg-indigo-50 border-indigo-100'}`}
+                      >
+                        <span className={`absolute top-2 left-3 text-[8px] font-black uppercase tracking-widest opacity-60 ${isReceived ? 'text-sky-500' : 'text-indigo-500'}`}>{isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent')}</span>
+                        <div className="flex-1 p-3 pt-5 flex items-start gap-2.5">
+                          <div className="p-1.5 rounded-xl text-center min-w-[48px] border bg-white shadow-sm text-[10px]">
+                            <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
+                            <span className="block text-lg font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
                           </div>
-                          {isCoach && !event.isMirrored && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {(!event.coachStudents || event.coachStudents === 'all') ? (
-                                <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
-                                  {t('calendar.trainerAllStudents')}
-                                </span>
-                              ) : (
-                                (event.coachStudents as string[]).map(sid => {
-                                  const s = coachStudentsList.find(cs => cs.id === sid);
-                                  return s ? (
-                                    <span key={sid} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
-                                      {s.firstName} {s.lastName}
-                                    </span>
-                                  ) : null;
-                                })
-                              )}
+                          <div className="flex-1 pr-2">
+                            <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
+                            <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
+                              <div className="flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
+                              </div>
                             </div>
-                          )}
+                            {isCoach && !isReceived && (
+                              <div className="flex flex-wrap gap-1 mt-1.5">
+                                {(!event.coachStudents || event.coachStudents === 'all') ? (
+                                  <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
+                                    {t('calendar.trainerAllStudents')}
+                                  </span>
+                                ) : (
+                                  (event.coachStudents as string[]).map(sid => {
+                                    const s = coachStudentsList.find(cs => cs.id === sid);
+                                    return s ? (
+                                      <span key={sid} className="px-1.5 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[8px] font-black leading-none">
+                                        {s.firstName} {s.lastName}
+                                      </span>
+                                    ) : null;
+                                  })
+                                )}
+                              </div>
+                            )}
+                          </div>
                         </div>
+
+                        {isLastVisible && hiddenCount > 0 ? (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setShowAll(true); }}
+                            className={`w-12 rounded-r-[24px] flex flex-col items-center justify-center transition-colors shrink-0 border-l ${isReceived ? 'bg-sky-500/10 hover:bg-sky-500/20 active:bg-sky-500/30 border-sky-900/5' : 'bg-indigo-600/10 hover:bg-indigo-600/20 active:bg-indigo-600/30 border-indigo-900/5'}`}
+                          >
+                            <span className={`material-symbols-outlined text-[18px] ${isReceived ? 'text-sky-500/70' : 'text-indigo-600/70'}`}>add</span>
+                            <span className={`font-black text-xs leading-none ${isReceived ? 'text-sky-800' : 'text-indigo-800'}`}>{hiddenCount}</span>
+                          </button>
+                        ) : (
+                          <div className="w-10 flex items-center justify-center opacity-40 shrink-0">
+                            <span className="material-symbols-outlined text-lg">chevron_right</span>
+                          </div>
+                        )}
                       </div>
+                    );
+                  })}
 
-                      {isLastVisible && hiddenCount > 0 ? (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setShowAllTrainer(true); }}
-                          className={`w-12 rounded-r-[24px] flex flex-col items-center justify-center transition-colors shrink-0 border-l ${event.isMirrored ? 'bg-sky-500/10 hover:bg-sky-500/20 active:bg-sky-500/30 border-sky-900/5' : 'bg-indigo-600/10 hover:bg-indigo-600/20 active:bg-indigo-600/30 border-indigo-900/5'}`}
-                        >
-                          <span className={`material-symbols-outlined text-[18px] ${event.isMirrored ? 'text-sky-500/70' : 'text-indigo-600/70'}`}>add</span>
-                          <span className={`font-black text-xs leading-none ${event.isMirrored ? 'text-sky-800' : 'text-indigo-800'}`}>{hiddenCount}</span>
-                        </button>
-                      ) : (
-                        <div className="w-10 flex items-center justify-center opacity-40 shrink-0">
-                          <span className="material-symbols-outlined text-lg">chevron_right</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {showAllTrainer && upcomingTrainer.length > 1 && (
-                  <button
-                    onClick={() => setShowAllTrainer(false)}
-                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
-                  >
-                    {t('calendar.collapseTrainer')}
-                  </button>
-                )}
-              </div>
-            )}
+                  {showAll && trainerEvents.length > 1 && (
+                    <button
+                      onClick={() => setShowAll(false)}
+                      className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                    >
+                      {t('calendar.collapseTrainer')}
+                    </button>
+                  )}
+                </div>
+              )
+            ))}
           </>
         )}
 

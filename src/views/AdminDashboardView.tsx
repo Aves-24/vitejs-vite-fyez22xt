@@ -67,6 +67,12 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ label: string; onConfirm: () => void } | null>(null);
 
+  // Modal usuwania użytkownika — wymaga wpisania imienia, żeby admin
+  // nie usunął konta przez przypadkowe kliknięcie kosza.
+  const [deleteUserModal, setDeleteUserModal] = useState<{ user: any } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -103,8 +109,11 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
       const clubsSnap = await getDocs(query(collection(db, 'clubs'), limit(100)));
       setClubs(clubsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
 
-      // Użytkownicy — pierwsza strona 50 rekordów
-      const usersQ = query(collection(db, 'users'), orderBy('firstName', 'asc'), limit(PAGE_SIZE));
+      // Użytkownicy — pierwsza strona 50 rekordów, sortowane od najnowszych.
+      // UWAGA: Firestore orderBy pomija dokumenty bez pola createdAt — bardzo stare
+      // konta utworzone przed wprowadzeniem tego pola mogą się nie pojawić.
+      // Dla tych przypadków admin może użyć wyszukiwarki po imieniu/nazwisku.
+      const usersQ = query(collection(db, 'users'), orderBy('createdAt', 'desc'), limit(PAGE_SIZE));
       const usersSnap = await getDocs(usersQ);
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setLastVisible(usersSnap.docs[usersSnap.docs.length - 1] ?? null);
@@ -134,7 +143,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
     if (!lastVisible || !hasMore || isLoadingMore) return;
     setIsLoadingMore(true);
     try {
-      const usersQ = query(collection(db, 'users'), orderBy('firstName', 'asc'), startAfter(lastVisible), limit(PAGE_SIZE));
+      const usersQ = query(collection(db, 'users'), orderBy('createdAt', 'desc'), startAfter(lastVisible), limit(PAGE_SIZE));
       const usersSnap = await getDocs(usersQ);
       setUsers(prev => [...prev, ...usersSnap.docs.map(d => ({ id: d.id, ...d.data() }))]);
       setLastVisible(usersSnap.docs[usersSnap.docs.length - 1] ?? null);
@@ -361,6 +370,47 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
     });
   };
 
+  const formatCreatedAt = (createdAt: any): string => {
+    if (!createdAt) return '—';
+    try {
+      const date = typeof createdAt?.toDate === 'function'
+        ? createdAt.toDate()
+        : new Date(createdAt);
+      if (isNaN(date.getTime())) return '—';
+      const locale = i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
+      return date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch { return '—'; }
+  };
+
+  const openDeleteUserModal = (user: any) => {
+    setDeleteConfirmText('');
+    setDeleteUserModal({ user });
+  };
+
+  const executeDeleteUser = async () => {
+    if (!deleteUserModal) return;
+    const target = deleteUserModal.user;
+    setIsDeletingUser(true);
+    try {
+      // Reguły Firestore zezwalają na delete /users/{uid} tylko adminowi.
+      // UWAGA: Firestore nie usuwa subkolekcji kaskadowo (sessions, techShots itd.) —
+      // pozostają jako "sieroty", ale nie są dostępne (reguła read wymaga isSelf lub
+      // relacji coach-student). Konto Firebase Auth pozostaje aktywne — pełne usunięcie
+      // wymaga Cloud Function z Admin SDK.
+      await deleteDoc(doc(db, 'users', target.id));
+      setUsers(prev => prev.filter(u => u.id !== target.id));
+      setSelectedUserIds(prev => prev.filter(id => id !== target.id));
+      setTotalUsersCount(c => Math.max(0, c - 1));
+      showToast(`Usunięto profil: ${target.firstName || ''} ${target.lastName || ''}`.trim());
+      setDeleteUserModal(null);
+      setDeleteConfirmText('');
+    } catch (e) {
+      console.error('Błąd usuwania użytkownika:', e);
+      showToast('Błąd podczas usuwania konta');
+    }
+    setIsDeletingUser(false);
+  };
+
   const toggleClubSelection = (clubId: string) => {
     setSelectedClubIds(prev => {
       if (prev.includes(clubId)) return prev.filter(id => id !== clubId);
@@ -495,7 +545,11 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                 <input type="text" placeholder="Szukaj łucznika..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl p-3 pl-10 text-sm font-bold outline-none focus:border-[#0a3a2a]" />
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-300">search</span>
              </div>
-             {users.filter(u => (u.firstName + " " + u.lastName + " " + u.clubName).toLowerCase().includes(searchQuery.toLowerCase())).map(u => (
+             {users.filter(u => (u.firstName + " " + u.lastName + " " + u.clubName).toLowerCase().includes(searchQuery.toLowerCase())).map(u => {
+                const isAdminAccount = u.email && ADMIN_EMAILS.includes(u.email);
+                const isSelfAccount = u.id === adminUserId;
+                const canDelete = !isAdminAccount && !isSelfAccount;
+                return (
                 <div key={u.id} className={`bg-white border p-4 rounded-2xl shadow-sm flex flex-col gap-1 transition-all ${selectedUserIds.includes(u.id) ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'}`}>
                    <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
@@ -515,15 +569,20 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                          {!u.isPremium && !u.isPremiumPromo && (!u.trialEndsAt || new Date(u.trialEndsAt).getTime() <= Date.now()) && <span className="text-[6px] font-black bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded uppercase">FREE</span>}
                       </div>
                    </div>
-                   
+
+                   <div className="flex items-center gap-1.5 ml-8 mt-0.5">
+                     <span className="material-symbols-outlined text-gray-300 text-[12px]">event</span>
+                     <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dołączył: {formatCreatedAt(u.createdAt)}</span>
+                   </div>
+
                    <div className="flex justify-between items-center mt-1">
                       <p className="text-[10px] text-gray-400 font-bold uppercase ml-8">{u.clubName || 'Brak Klubu'}</p>
-                      
+
                       <div className="flex gap-1">
                         <button onClick={() => toggleUserCoachStatus(u.id, u.isCoach)} className={`px-2 py-1 rounded text-[7px] font-black uppercase ${u.isCoach ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
                            {u.isCoach ? 'Odbierz Trenera' : 'Zrób Trenerem'}
                         </button>
-                        
+
                         {(() => {
                           const effectivePro = u.isPremium || u.isPremiumPromo || (u.trialEndsAt && new Date(u.trialEndsAt).getTime() > Date.now());
                           return (
@@ -550,12 +609,22 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                      </div>
                    )}
 
-                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-50 ml-8">
+                   <div className="flex gap-2 mt-2 pt-2 border-t border-gray-50 ml-8 items-center">
                       <button onClick={() => {setMsgTarget('USER'); setMsgTargetId(u.id); setActiveTab('MESSAGES');}} className="text-[8px] font-black text-indigo-500 uppercase">✉️ Pojedyncza wiadomość</button>
-                      <button onClick={() => { /* Tu w przyszłości podgląd sesji */ }} className="text-[8px] font-black text-emerald-600 uppercase ml-auto opacity-50 cursor-not-allowed">Podgląd aktywności</button>
+                      <button onClick={() => { /* Tu w przyszłości podgląd sesji */ }} className="text-[8px] font-black text-emerald-600 uppercase opacity-50 cursor-not-allowed">Podgląd aktywności</button>
+                      <button
+                        onClick={() => canDelete && openDeleteUserModal(u)}
+                        disabled={!canDelete}
+                        title={!canDelete ? (isSelfAccount ? 'Nie możesz usunąć swojego konta' : 'Nie można usunąć konta administratora') : 'Usuń konto'}
+                        className={`ml-auto flex items-center gap-1 px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-widest border transition-all ${canDelete ? 'bg-red-50 text-red-500 border-red-100 active:scale-90 hover:bg-red-100' : 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'}`}
+                      >
+                        <span className="material-symbols-outlined text-[12px]">delete</span>
+                        Usuń konto
+                      </button>
                    </div>
                 </div>
-             ))}
+                );
+             })}
 
              {hasMore && !searchQuery && (
                <button
@@ -972,6 +1041,69 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
           <span className="material-symbols-outlined text-emerald-400 text-sm">check_circle</span>
           {toastMessage}
         </div>, document.body
+      )}
+
+      {/* Modal usuwania konta — wymaga wpisania imienia użytkownika.
+          Zabezpieczenie przed przypadkowym kliknięciem (operacja nieodwracalna). */}
+      {deleteUserModal && createPortal(
+        (() => {
+          const u = deleteUserModal.user;
+          const fullName = `${u.firstName || ''} ${u.lastName || ''}`.trim();
+          const expectedToken = (u.firstName || u.lastName || u.email || 'USUN').toString().trim();
+          const matches = deleteConfirmText.trim().toLowerCase() === expectedToken.toLowerCase();
+          return (
+            <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+              <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl">
+                <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-red-500 text-2xl">delete_forever</span>
+                </div>
+                <h2 className="text-lg font-black text-[#0a3a2a] text-center mb-1">Usunąć konto użytkownika?</h2>
+                <p className="text-[11px] font-bold text-red-500 text-center uppercase tracking-widest mb-3">Operacja nieodwracalna</p>
+
+                <div className="bg-gray-50 border border-gray-100 rounded-2xl p-3 mb-4">
+                  <p className="text-sm font-black text-[#0a3a2a] leading-tight">{fullName || '(bez imienia)'}</p>
+                  {u.email && <p className="text-[10px] font-bold text-gray-500 break-all mt-0.5">{u.email}</p>}
+                  {u.clubName && <p className="text-[10px] font-bold text-gray-400 uppercase mt-0.5">{u.clubName}</p>}
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-1">Dołączył: {formatCreatedAt(u.createdAt)}</p>
+                </div>
+
+                <p className="text-[11px] font-medium text-gray-600 leading-relaxed mb-3">
+                  Usunięty zostanie profil w bazie. Sesje i historia treningów pozostaną zablokowane (sieroty), a konto Firebase Auth dalej istnieje — pełne usunięcie wymaga Cloud Function.
+                </p>
+
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1 block">
+                  Aby potwierdzić, wpisz: <span className="text-red-500">{expectedToken}</span>
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder={expectedToken}
+                  autoFocus
+                  className="w-full bg-white border border-gray-200 rounded-xl p-3 text-sm font-bold text-[#333] outline-none focus:border-red-400 mb-4"
+                />
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setDeleteUserModal(null); setDeleteConfirmText(''); }}
+                    disabled={isDeletingUser}
+                    className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-black uppercase text-[11px] active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    onClick={executeDeleteUser}
+                    disabled={!matches || isDeletingUser}
+                    className={`flex-1 py-3.5 rounded-xl font-black uppercase text-[11px] transition-all ${matches && !isDeletingUser ? 'bg-red-500 text-white active:scale-95 shadow-md' : 'bg-red-100 text-red-300 cursor-not-allowed'}`}
+                  >
+                    {isDeletingUser ? 'Usuwanie...' : 'Usuń konto'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
 
       {confirmAction && createPortal(

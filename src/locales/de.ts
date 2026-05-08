@@ -508,7 +508,7 @@ export const views = {
     legend: "Legende",
     legendTournament: "Wettkampf",
     legendOther: "Sonstiges",
-    legendTrainerReceived: "Meine Termine vom Trainer",
+    legendTrainerReceived: "Termine vom Trainer",
     legendTrainerSent: "Termine als Trainer",
     days: ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
   },

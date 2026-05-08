@@ -1123,29 +1123,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               )}
             </div>
           ) : (
-            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[20px] px-3 py-1.5 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
-              <div className="absolute inset-0 rounded-[20px] overflow-hidden pointer-events-none">
-                <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
-                  <span className="material-symbols-outlined text-[100px]">calendar_month</span>
-                </div>
+            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
+              <div className="bg-emerald-200 text-emerald-900 px-2.5 py-2 rounded-xl text-center min-w-[52px] shrink-0 shadow-sm">
+                <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                <span className="block text-xl font-black leading-none">{new Date(nextOtherEvent!.date).getDate()}</span>
               </div>
-              <span className="absolute -top-2 left-5 bg-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
-                {t('home.calendar')}
-              </span>
-              <div className="flex items-center gap-2 relative z-10 w-full pt-0.5">
-                <div className="bg-[#fed33e]/80 text-[#0a3a2a] px-1.5 py-1 rounded-lg text-center min-w-[42px] shadow-sm shrink-0">
-                  <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                  <span className="block text-lg font-black leading-none">{new Date(nextOtherEvent!.date).getDate()}</span>
-                </div>
-                <div className="flex-1 min-w-0 pr-1">
-                  <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight mb-0.5">{nextOtherEvent!.title}</h4>
-                  <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
-                    <span className="truncate">{nextOtherEvent!.address || t('home.noLocation')}</span>
-                  </span>
-                </div>
-                <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[24px] shrink-0">arrow_circle_right</span>
+              <div className="flex-1 min-w-0">
+                <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest block mb-0.5">{t('home.calendar')}</span>
+                <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight truncate">{nextOtherEvent!.title}</h4>
+                <span className="text-[9px] font-bold text-emerald-500 flex items-center gap-0.5 mt-0.5">
+                  <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
+                  <span className="truncate">{nextOtherEvent!.address || t('home.noLocation')}</span>
+                </span>
               </div>
+              <span className="material-symbols-outlined text-emerald-300 text-[22px] shrink-0">chevron_right</span>
             </div>
           )
         )}
@@ -1153,48 +1144,67 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* TERMINY TRENERSKIE — jako trener / od trenera */}
         {!isLoading && (nextTrainerSent || nextTrainerReceived) && (() => {
           const both = !!(nextTrainerSent && nextTrainerReceived);
-          const renderCard = (event: any, isMirrored: boolean, half: boolean) => {
-            const palette = isMirrored
-              ? { bg: 'bg-sky-50', border: 'border-sky-200', label: 'text-sky-600', tag: 'bg-sky-200 text-sky-800 border-sky-800', accent: 'text-sky-700/40', dateBg: 'bg-sky-100' }
-              : { bg: 'bg-indigo-50', border: 'border-indigo-200', label: 'text-indigo-600', tag: 'bg-indigo-200 text-indigo-800 border-indigo-800', accent: 'text-indigo-700/40', dateBg: 'bg-indigo-100' };
+
+          // Pełna szerokość — poziomy układ jak karta kalendarza
+          const renderFull = (event: any, isMirrored: boolean) => {
+            const p = isMirrored
+              ? { bg: 'bg-sky-50', border: 'border-sky-100', dateBg: 'bg-sky-200', dateText: 'text-sky-900', label: 'text-sky-400', sub: 'text-sky-500', chevron: 'text-sky-200' }
+              : { bg: 'bg-indigo-50', border: 'border-indigo-100', dateBg: 'bg-indigo-200', dateText: 'text-indigo-900', label: 'text-indigo-400', sub: 'text-indigo-500', chevron: 'text-indigo-200' };
             const labelKey = isMirrored ? 'calendar.legendTrainerReceived' : 'calendar.legendTrainerSent';
             return (
-              <div
-                key={event.id}
-                onClick={() => onGoToCalendar(event.id)}
-                className={`relative ${palette.bg} border ${palette.border} rounded-[18px] ${half ? 'px-2 py-1.5' : 'px-3 py-1.5'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
-              >
-                <span className={`absolute -top-2 left-4 ${palette.tag} px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
-                  {t(labelKey)}
-                </span>
-                <div className="flex items-center gap-2 pt-0.5 w-full">
-                  <div className={`${palette.dateBg} text-[#0a3a2a] px-1.5 py-1 rounded-lg text-center min-w-[40px] shadow-sm shrink-0`}>
+              <div key={event.id} onClick={() => onGoToCalendar(event.id)} className={`${p.bg} border ${p.border} rounded-2xl p-3.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}>
+                <div className={`${p.dateBg} ${p.dateText} px-2.5 py-2 rounded-xl text-center min-w-[52px] shrink-0 shadow-sm`}>
+                  <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                  <span className="block text-xl font-black leading-none">{new Date(event.date).getDate()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className={`text-[8px] font-black ${p.label} uppercase tracking-widest block mb-0.5`}>{t(labelKey)}</span>
+                  <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight truncate">{event.title}</h4>
+                  <span className={`text-[9px] font-bold ${p.sub} flex items-center gap-0.5 mt-0.5`}>
+                    <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
+                    <span className="truncate">{event.time || t('calendar.wholeDay')}</span>
+                  </span>
+                </div>
+                <span className={`material-symbols-outlined ${p.chevron} text-[22px] shrink-0`}>chevron_right</span>
+              </div>
+            );
+          };
+
+          // Pół szerokości — pionowy układ żeby uniknąć tłoczenia tekstu
+          const renderHalf = (event: any, isMirrored: boolean) => {
+            const p = isMirrored
+              ? { bg: 'bg-sky-50', border: 'border-sky-100', dateBg: 'bg-sky-200', dateText: 'text-sky-900', label: 'text-sky-500', sub: 'text-sky-400' }
+              : { bg: 'bg-indigo-50', border: 'border-indigo-100', dateBg: 'bg-indigo-200', dateText: 'text-indigo-900', label: 'text-indigo-500', sub: 'text-indigo-400' };
+            const shortLabel = isMirrored ? t('calendar.tabTrainer') + ' ↓' : t('calendar.tabTrainer') + ' ↑';
+            return (
+              <div key={event.id} onClick={() => onGoToCalendar(event.id)} className={`${p.bg} border ${p.border} rounded-2xl p-3 flex flex-col gap-2 active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}>
+                <span className={`text-[8px] font-black ${p.label} uppercase tracking-widest`}>{shortLabel}</span>
+                <div className="flex items-center gap-2.5">
+                  <div className={`${p.dateBg} ${p.dateText} px-2 py-1.5 rounded-lg text-center min-w-[44px] shrink-0 shadow-sm`}>
                     <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
                     <span className="block text-lg font-black leading-none">{new Date(event.date).getDate()}</span>
                   </div>
-                  <div className="flex-1 min-w-0 pr-0.5">
-                    <h4 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{event.title}</h4>
-                    <span className={`text-[9px] font-bold ${palette.label} uppercase tracking-widest flex items-center gap-0.5`}>
-                      <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{event.title}</h4>
+                    <span className={`text-[9px] font-bold ${p.sub} flex items-center gap-0.5 mt-0.5`}>
+                      <span className="material-symbols-outlined text-[10px] shrink-0">schedule</span>
                       <span className="truncate">{event.time || t('calendar.wholeDay')}</span>
                     </span>
                   </div>
-                  {!half && (
-                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[24px] shrink-0`}>arrow_circle_right</span>
-                  )}
                 </div>
               </div>
             );
           };
+
           if (both) {
             return (
               <div className="grid grid-cols-2 gap-2">
-                {renderCard(nextTrainerReceived, true, true)}
-                {renderCard(nextTrainerSent, false, true)}
+                {renderHalf(nextTrainerReceived, true)}
+                {renderHalf(nextTrainerSent, false)}
               </div>
             );
           }
-          return renderCard(nextTrainerReceived || nextTrainerSent, !!nextTrainerReceived, false);
+          return renderFull(nextTrainerReceived || nextTrainerSent, !!nextTrainerReceived);
         })()}
 
         {/* ─── PASEK STATYSTYK + OSTATNI WYNIK ──────────────────────────────── */}

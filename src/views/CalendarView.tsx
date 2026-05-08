@@ -296,6 +296,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         wasATodo: true,
       });
       localStorage.removeItem(`grotX_todos_${userId}`);
+      localStorage.removeItem(`grotX_tournaments_${userId}`);
     } catch (error) {
       console.error('Błąd oznaczenia jako zrobione:', error);
     }
@@ -356,6 +357,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           await mirrorTrenerEventToStudents(eventData as any, docRef.id, resolvedStudentIds, userId);
         }
       }
+      localStorage.removeItem(`grotX_tournaments_${userId}`);
       setShowForm(false);
       resetForm();
     } catch (error) {
@@ -381,6 +383,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           await deleteMirroredEvent(showDeleteConfirm, studentIds);
         }
         await deleteDoc(doc(db, 'users', userId, 'tournaments', showDeleteConfirm));
+        localStorage.removeItem(`grotX_tournaments_${userId}`);
+        localStorage.removeItem(`grotX_todos_${userId}`);
         setShowDeleteConfirm(null);
         closeViewingModal();
       } catch (error) {

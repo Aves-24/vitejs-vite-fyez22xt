@@ -5,7 +5,6 @@ import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getD
 import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
-import CoachPlanBanner from '../components/CoachPlanBanner';
 import { calculateRank, TARGET_RANKS } from '../utils/rankEngine';
 import { getHandicapBand, HANDICAP_BANDS } from '../utils/handicapEngine';
 
@@ -79,6 +78,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const { t, i18n } = useTranslation();
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
+  const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
+  const [nextTrainerReceived, setNextTrainerReceived] = useState<any | null>(null);
   const [todoItems, setTodoItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [realLastSession, setRealLastSession] = useState<any | null>(null);
@@ -435,6 +436,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cancelled) return;
         setNextTournament(cached.find((e: any) => e.category === 'Turniej' || !e.category) || null);
         setNextOtherEvent(cached.find((e: any) => e.category === 'Inne') || null);
+        setNextTrainerSent(cached.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
+        setNextTrainerReceived(cached.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);
         setIsLoading(false);
         return;
       }
@@ -451,6 +454,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       setNextTournament(all.find((e: any) => e.category === 'Turniej' || !e.category) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
+      setNextTrainerSent(all.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
+      setNextTrainerReceived(all.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);
       setIsLoading(false);
 
       cacheSet(cacheKey, all, CACHE_TTL.TOURNAMENTS);
@@ -1046,19 +1051,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       </div>
 
       <div className="flex flex-col gap-2">
-        
-
-        {/* PLAN OD TRENERA — dziś / jutro */}
-        {!isLoading && (
-          <CoachPlanBanner
-            userId={userId}
-            compact={true}
-            onClick={() => {
-              try { localStorage.setItem(`last_seen_coach_plan_${userId}`, String(Date.now())); } catch { /* ignore */ }
-              onNavigate?.('MY_COACH');
-            }}
-          />
-        )}
 
         {/* NASTĘPNY CEL */}
         {!isLoading && nextTournament && (
@@ -1157,6 +1149,53 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </div>
           )
         )}
+
+        {/* TERMINY TRENERSKIE — jako trener / od trenera */}
+        {!isLoading && (nextTrainerSent || nextTrainerReceived) && (() => {
+          const both = !!(nextTrainerSent && nextTrainerReceived);
+          const renderCard = (event: any, isMirrored: boolean, half: boolean) => {
+            const palette = isMirrored
+              ? { bg: 'bg-sky-50', border: 'border-sky-200', label: 'text-sky-600', tag: 'bg-sky-200 text-sky-800 border-sky-800', accent: 'text-sky-700/40', dateBg: 'bg-sky-100' }
+              : { bg: 'bg-indigo-50', border: 'border-indigo-200', label: 'text-indigo-600', tag: 'bg-indigo-200 text-indigo-800 border-indigo-800', accent: 'text-indigo-700/40', dateBg: 'bg-indigo-100' };
+            const labelKey = isMirrored ? 'calendar.legendTrainerReceived' : 'calendar.legendTrainerSent';
+            return (
+              <div
+                key={event.id}
+                onClick={() => onGoToCalendar(event.id)}
+                className={`relative ${palette.bg} border ${palette.border} rounded-[24px] ${half ? 'px-3 py-2.5' : 'px-4 py-2.5'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
+              >
+                <span className={`absolute -top-2.5 left-5 ${palette.tag} px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
+                  {t(labelKey)}
+                </span>
+                <div className="flex items-center gap-2.5 pt-1 w-full">
+                  <div className={`${palette.dateBg} text-[#0a3a2a] p-2 rounded-xl text-center min-w-[48px] shadow-sm shrink-0`}>
+                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                    <span className="block text-lg font-black">{new Date(event.date).getDate()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0 pr-1">
+                    <h4 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{event.title}</h4>
+                    <span className={`text-[9px] font-bold ${palette.label} uppercase tracking-widest flex items-center gap-0.5 mt-0.5`}>
+                      <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
+                      <span className="truncate">{event.time || t('calendar.wholeDay')}</span>
+                    </span>
+                  </div>
+                  {!half && (
+                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[26px] shrink-0`}>arrow_circle_right</span>
+                  )}
+                </div>
+              </div>
+            );
+          };
+          if (both) {
+            return (
+              <div className="grid grid-cols-2 gap-2">
+                {renderCard(nextTrainerReceived, true, true)}
+                {renderCard(nextTrainerSent, false, true)}
+              </div>
+            );
+          }
+          return renderCard(nextTrainerReceived || nextTrainerSent, !!nextTrainerReceived, false);
+        })()}
 
         {/* ─── PASEK STATYSTYK + OSTATNI WYNIK ──────────────────────────────── */}
         <div className="flex items-stretch gap-2 mt-1">

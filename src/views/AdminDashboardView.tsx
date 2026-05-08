@@ -1052,7 +1052,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
           const expectedToken = (u.firstName || u.lastName || u.email || 'USUN').toString().trim();
           const matches = deleteConfirmText.trim().toLowerCase() === expectedToken.toLowerCase();
           return (
-            <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+            <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-overlay">
               <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl">
                 <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <span className="material-symbols-outlined text-red-500 text-2xl">delete_forever</span>
@@ -1107,7 +1107,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
       )}
 
       {confirmAction && createPortal(
-        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-overlay">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl">
             <div className="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-orange-500 text-2xl">warning</span>
@@ -1126,6 +1126,11 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
         .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        /* Wariant bez translate — dla overlayów pełnoekranowych (fixed inset-0).
+           animate-fade-in stosuje translate(-50%) przeznaczony do toastów; nałożony
+           na fullscreen overlay przesuwa go o pół szerokości viewportu w lewo. */
+        @keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
+        .animate-fade-overlay { animation: fadeOverlay 0.2s ease-out forwards; }
       `}</style>
     </div>
   );

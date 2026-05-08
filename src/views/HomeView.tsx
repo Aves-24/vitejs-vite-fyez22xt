@@ -1162,25 +1162,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <div
                 key={event.id}
                 onClick={() => onGoToCalendar(event.id)}
-                className={`relative ${palette.bg} border ${palette.border} rounded-[24px] ${half ? 'px-3 py-2.5' : 'px-4 py-2.5'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
+                className={`relative ${palette.bg} border ${palette.border} rounded-[16px] ${half ? 'px-1.5 py-1' : 'px-2 py-1'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-1.5`}
               >
-                <span className={`absolute -top-2.5 left-5 ${palette.tag} px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
+                <span className={`absolute -top-1.5 left-3 ${palette.tag} px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
                   {t(labelKey)}
                 </span>
-                <div className="flex items-center gap-2.5 pt-1 w-full">
-                  <div className={`${palette.dateBg} text-[#0a3a2a] p-2 rounded-xl text-center min-w-[48px] shadow-sm shrink-0`}>
+                <div className="flex items-center gap-1.5 pt-0.5 w-full">
+                  <div className={`${palette.dateBg} text-[#0a3a2a] px-1 py-0.5 rounded-md text-center min-w-[34px] shadow-sm shrink-0`}>
                     <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                    <span className="block text-lg font-black">{new Date(event.date).getDate()}</span>
+                    <span className="block text-lg font-black leading-none">{new Date(event.date).getDate()}</span>
                   </div>
-                  <div className="flex-1 min-w-0 pr-1">
+                  <div className="flex-1 min-w-0 pr-0.5">
                     <h4 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{event.title}</h4>
-                    <span className={`text-[9px] font-bold ${palette.label} uppercase tracking-widest flex items-center gap-0.5 mt-0.5`}>
+                    <span className={`text-[9px] font-bold ${palette.label} uppercase tracking-widest flex items-center gap-0.5`}>
                       <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
                       <span className="truncate">{event.time || t('calendar.wholeDay')}</span>
                     </span>
                   </div>
                   {!half && (
-                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[26px] shrink-0`}>arrow_circle_right</span>
+                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[22px] shrink-0`}>arrow_circle_right</span>
                   )}
                 </div>
               </div>

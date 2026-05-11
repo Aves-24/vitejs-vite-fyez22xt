@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
   
   const [isScanning, setIsScanning] = useState(false);
-  const [cameraError, setCameraError] = useState(false);
+  const [cameraError, setCameraError] = useState<string | false>(false);
+  const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -195,44 +196,85 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     return () => unsub();
   }, [userId]);
 
-  useEffect(() => {
-    let html5QrCode: Html5Qrcode | null = null;
+  const stopScanner = async () => {
+    const instance = html5QrCodeRef.current;
+    if (!instance) return;
+    try {
+      if (instance.isScanning) await instance.stop();
+      instance.clear();
+    } catch (e) {
+      console.error('Scanner stop error:', e);
+    } finally {
+      html5QrCodeRef.current = null;
+    }
+  };
 
-    const startScanner = async () => {
-      setCameraError(false);
-      html5QrCode = new Html5Qrcode("reader");
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" }, 
-          { fps: 10, qrbox: { width: 250, height: 250 } },
-          async (decodedText) => {
-            if (html5QrCode && html5QrCode.isScanning) {
-              await html5QrCode.stop();
-              html5QrCode.clear();
-            }
-            setIsScanning(false);
-            await handleAddStudent(decodedText);
-          },
-          undefined 
-        );
-      } catch (err) {
-        console.error("Camera access error:", err);
-        setCameraError(true);
-      }
-    };
+  const startScanner = async () => {
+    setCameraError(false);
+    setIsScanning(true);
 
-    if (isScanning) {
-      setTimeout(startScanner, 100);
+    // Poczekaj na render <div id="reader"> w DOM (mikrotask, zachowuje user-gesture context na iOS).
+    await Promise.resolve();
+    const readerEl = document.getElementById('reader');
+    if (!readerEl) {
+      setCameraError('NoReaderEl');
+      return;
     }
 
-    return () => {
-      if (html5QrCode && html5QrCode.isScanning) {
-        html5QrCode.stop().then(() => {
-          if (html5QrCode) html5QrCode.clear();
-        }).catch(console.error);
+    const instance = new Html5Qrcode('reader');
+    html5QrCodeRef.current = instance;
+
+    const onDecoded = async (decodedText: string) => {
+      await stopScanner();
+      setIsScanning(false);
+      await handleAddStudent(decodedText);
+    };
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    const applyVideoFixes = () => {
+      // iOS Safari: bez playsinline+muted wideo nie wystartuje inline.
+      const video = readerEl.querySelector('video');
+      if (video) {
+        video.setAttribute('playsinline', 'true');
+        video.setAttribute('webkit-playsinline', 'true');
+        video.muted = true;
+        video.play().catch(() => {});
       }
     };
-  }, [isScanning]);
+
+    try {
+      // 1. Próba przez konkretny deviceId tylnej kamery (najlepiej działa na iOS).
+      let started = false;
+      try {
+        const cameras = await Html5Qrcode.getCameras();
+        if (cameras && cameras.length > 0) {
+          const back = cameras.find(c => /back|rear|environment|tył/i.test(c.label)) || cameras[cameras.length - 1];
+          await instance.start(back.id, config, onDecoded, undefined);
+          started = true;
+        }
+      } catch (e) {
+        console.warn('getCameras path failed, falling back to facingMode:', e);
+      }
+
+      // 2. Fallback: facingMode environment.
+      if (!started) {
+        await instance.start({ facingMode: 'environment' }, config, onDecoded, undefined);
+      }
+
+      applyVideoFixes();
+      // Drugi przejazd po krótkim opóźnieniu — video element bywa wstrzykiwany po start().
+      setTimeout(applyVideoFixes, 200);
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      const name = err?.name || err?.message || 'Unknown';
+      setCameraError(String(name));
+      html5QrCodeRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, []);
 
   const handleAddStudent = async (studentId: string) => {
     if (!studentId) return;
@@ -530,7 +572,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
           
           <button 
-            onClick={() => setIsScanning(true)}
+            onClick={() => { startScanner(); }}
             disabled={isLimitReached}
             className={`h-10 px-3 rounded-xl flex items-center gap-1.5 shadow-md transition-all ${
               isLimitReached 
@@ -572,7 +614,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         <div className="bg-white rounded-[32px] p-4 shadow-xl border border-gray-100 mb-6 relative overflow-hidden animate-fade-in-up">
           <div className="flex justify-between items-center mb-4">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.addStudentHeader')}</span>
-            <button onClick={() => setIsScanning(false)} className="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center active:scale-90">
+            <button onClick={async () => { await stopScanner(); setIsScanning(false); }} className="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center active:scale-90">
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
           </div>
@@ -604,14 +646,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             <div className="flex-1 h-px bg-gray-100"></div>
           </div>
 
-          {cameraError ? (
+          <div id="reader" className={`w-full rounded-2xl overflow-hidden border-2 border-indigo-100 bg-gray-50 flex items-center justify-center min-h-[250px] ${cameraError ? 'hidden' : ''}`}></div>
+          {cameraError && (
             <div className="w-full bg-red-50 border border-red-100 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[150px] text-center">
                <span className="material-symbols-outlined text-red-400 text-3xl mb-2">no_photography</span>
                <p className="text-[11px] font-bold text-red-600">{t('coachDashboard.cameraError')}</p>
                <p className="text-[9px] text-red-400 mt-1 uppercase tracking-widest">{t('coachDashboard.cameraErrorDesc')}</p>
+               <p className="text-[9px] text-red-300 mt-2 font-mono">[{cameraError}]</p>
             </div>
-          ) : (
-            <div id="reader" className="w-full rounded-2xl overflow-hidden border-2 border-indigo-100 bg-gray-50 flex items-center justify-center min-h-[250px]"></div>
           )}
         </div>
       )}

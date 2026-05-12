@@ -546,7 +546,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
-  const isLimitReached = students.length >= coachLimit;
+  const isLimitReached = coachLimit > 0 && students.length >= coachLimit;
 
   return (
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+1rem)] relative">

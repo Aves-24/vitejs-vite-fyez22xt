@@ -179,13 +179,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // fetch (dociągamy dane studentów, sortujemy po aktywności).
   useEffect(() => {
     if (!userId) return;
-    let prevStudentsKey = '';
+    let prevStudentsKey: string | null = null;
     const unsub = onSnapshot(doc(db, 'users', userId), (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
+      // Świeży coachLimit z każdego snapshota — admin może go zmienić w locie.
+      setCoachLimit(data.coachLimit || 0);
       const ids = (data.students || []) as string[];
       const key = [...ids].sort().join(',');
-      // Pierwszy snapshot albo zmiana listy studentów → pełny refetch
+      // Pierwszy snapshot (prevStudentsKey === null) albo zmiana listy studentów → pełny refetch
       if (key !== prevStudentsKey) {
         prevStudentsKey = key;
         fetchCoachData();
@@ -258,7 +260,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
       // 2. Fallback: facingMode environment.
       if (!started) {
-        await instance.start({ facingMode: 'environment' }, config, onDecoded, undefined);
+        try {
+          await instance.start({ facingMode: 'environment' }, config, onDecoded, undefined);
+          started = true;
+        } catch (e) {
+          console.warn('environment camera failed, trying any camera:', e);
+        }
+      }
+
+      // 3. Ostatnia deska ratunku: jakakolwiek kamera (np. urządzenia z samym frontem).
+      if (!started) {
+        await instance.start({ facingMode: 'user' }, config, onDecoded, undefined);
       }
 
       applyVideoFixes();

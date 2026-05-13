@@ -85,7 +85,7 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
          <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest flex items-start gap-1 leading-tight">
             <span className="material-symbols-outlined text-[14px] shrink-0">sports</span>
             <span>
-              {t('studentProfile.coachNoteLabel', { date: session.date })} {canEdit && !isEditing ? t('studentProfile.coachNoteEdits', { count: 2 - edits }) : ''}
+              {session.date ? t('studentProfile.coachNoteLabel', { date: session.date }) : t('studentProfile.coachNoteLabelNoDate', { defaultValue: 'Deine Anmerkungen' })} {canEdit && !isEditing ? t('studentProfile.coachNoteEdits', { count: 2 - edits }) : ''}
             </span>
          </span>
          {canEdit && !isEditing && (

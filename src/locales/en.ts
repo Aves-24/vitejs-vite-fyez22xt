@@ -131,7 +131,9 @@ export const components = {
     readHistory: "Read"
   },
   coachLog: {
-    readHistory: "Read"
+    readHistory: "Read",
+    hint: "Note here what you last worked on with the student and what to focus on in the next training sessions.",
+    hintStudent: "Notes from your coach: what you last worked on together and what to focus on in the next training sessions."
   }
 };
 
@@ -170,7 +172,6 @@ export const views = {
     tabDiary: "Diary",
     tabTips: "Tips",
     planDesc: "Upcoming training sessions and competitions planned by your coach",
-    diaryDesc: "What you are currently working on — coach notes",
     tipsDesc: "Coach feedback on your specific training sessions",
     loading: "Loading…",
     planNote: "Today & tomorrow — planned by coach",

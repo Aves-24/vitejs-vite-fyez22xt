@@ -197,6 +197,16 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
         )}
       </div>
 
+      {/* WSKAZÓWKA DLA TRENERA / UCZNIA */}
+      <div className="px-4 py-2 bg-amber-50 border-b border-gray-100 flex items-start gap-1.5">
+        <span className="material-symbols-outlined text-[14px] text-[#0a3a2a] mt-px shrink-0">info</span>
+        <p className="text-[10px] font-semibold text-[#0a3a2a] leading-snug">
+          {mode === 'coach'
+            ? t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })
+            : t('coachLog.hintStudent', { defaultValue: 'Notizen deines Trainers: woran ihr zuletzt gearbeitet habt und worauf du in den nächsten Trainings den Fokus legen solltest.' })}
+        </p>
+      </div>
+
       {/* FORMULARZ DODAWANIA */}
       {mode === 'coach' && isAdding && (
         <div className="p-3 bg-gray-50 border-b border-gray-100 space-y-2 animate-fade-in">

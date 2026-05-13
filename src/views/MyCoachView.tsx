@@ -444,7 +444,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         {/* Tab description */}
         <p className="text-[8px] font-bold text-gray-400 text-center mt-1.5 leading-tight px-2">
           {activeTab === 'plan'  && t('myCoach.planDesc')}
-          {activeTab === 'diary' && t('myCoach.diaryDesc')}
           {activeTab === 'tips'  && t('myCoach.tipsDesc')}
           {activeTab === 'notes' && t('myCoach.notesDesc')}
         </p>

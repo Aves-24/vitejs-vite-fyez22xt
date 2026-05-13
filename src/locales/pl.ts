@@ -131,7 +131,9 @@ export const components = {
     readHistory: "Przeczytane"
   },
   coachLog: {
-    readHistory: "Przeczytane"
+    readHistory: "Przeczytane",
+    hint: "Tutaj notuj, nad czym ostatnio pracowaliście z uczniem i na czym należy skupić się podczas kolejnych treningów.",
+    hintStudent: "Notatki Twojego trenera: nad czym ostatnio pracowaliście i na czym powinieneś skupić się podczas kolejnych treningów."
   }
 };
 
@@ -170,7 +172,6 @@ export const views = {
     tabDiary: "Dziennik",
     tabTips: "Wskazówki",
     planDesc: "Nadchodzące treningi i zawody zaplanowane przez trenera",
-    diaryDesc: "Nad czym aktualnie pracujesz — notatki trenera",
     tipsDesc: "Uwagi trenera do Twoich konkretnych treningów",
     loading: "Ładowanie…",
     planNote: "Dziś i jutro — zaplanowane przez trenera",

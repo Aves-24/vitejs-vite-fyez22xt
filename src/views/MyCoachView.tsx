@@ -367,7 +367,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Tips */}
           <button
             onClick={() => setActiveTab('tips')}
-            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-blue-100 border-blue-300' : 'bg-blue-50 border-blue-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">sports</span>

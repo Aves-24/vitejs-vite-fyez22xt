@@ -57,7 +57,8 @@ export default function App() {
   const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
   
   const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
-  const [focusedDate, setFocusedDate] = useState<string | null>(null); 
+  const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
   
   const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
   
@@ -452,11 +453,12 @@ export default function App() {
         {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} onNavigate={(view, tab) => handleNavigate(view as AppView, tab)} />}
         
         {currentView === 'STATS' && (
-          <StatsView 
-            userId={user?.uid || ''} 
+          <StatsView
+            userId={user?.uid || ''}
             viewingStudentId={viewingStudentId}
             onNavigate={(view: string, tab?: string) => handleNavigate(view as AppView, tab)}
             initialDate={focusedDate || undefined}
+            initialSessionId={focusedSessionId || undefined}
           />
         )}
 
@@ -483,7 +485,7 @@ export default function App() {
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date) => handleNavigate('STATS', undefined, date)} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
       </Suspense>
       </ViewErrorBoundary>
       </main>

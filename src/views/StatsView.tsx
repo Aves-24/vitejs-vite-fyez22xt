@@ -396,11 +396,12 @@ interface StatsViewProps {
   userId: string;
   onNavigate: any;
   initialDate?: string;
+  initialSessionId?: string;
   viewingStudentId?: string | null;
   isEmbedded?: boolean;
 }
 
-export default function StatsView({ userId, onNavigate, initialDate, viewingStudentId, isEmbedded = false }: StatsViewProps) {
+export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, viewingStudentId, isEmbedded = false }: StatsViewProps) {
   const { t, i18n } = useTranslation();
   
   const [activeTab, setActiveTab] = useState<'DAILY' | 'PRO'>('DAILY');
@@ -422,6 +423,7 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const pendingSessionIdRef = useRef(initialSessionId || '');
 
   const todayISO = new Date().toISOString().split('T')[0];
   const daysToShow = isPremium ? 1095 : 30;
@@ -530,7 +532,14 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
     setDailyArrows(daySessions.reduce((acc, s) => acc + (s.arrows || s.totalArrows || 0), 0));
     if (daySessions.length > 0) {
       if (!daySessions.find(s => s.id === selectedSessionId)) {
-        setSelectedSessionId(daySessions[0].id);
+        const pending = pendingSessionIdRef.current;
+        const target = pending ? daySessions.find(s => s.id === pending) : null;
+        if (target) {
+          setSelectedSessionId(pending);
+          pendingSessionIdRef.current = '';
+        } else {
+          setSelectedSessionId(daySessions[0].id);
+        }
       }
     } else {
       setSelectedSessionId('');

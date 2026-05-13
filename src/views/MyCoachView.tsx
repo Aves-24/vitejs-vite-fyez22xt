@@ -13,7 +13,7 @@ interface MyCoachViewProps {
   userId: string;
   onBack: () => void;
   onNavigateToSettings?: () => void;
-  onNavigateToStats?: (date: string) => void;
+  onNavigateToStats?: (date: string, sessionId?: string) => void;
   pendingOpenCoachId?: string | null;
   onClearPending?: () => void;
 }
@@ -443,7 +443,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
         {/* Tab description */}
         <p className="text-[8px] font-bold text-gray-400 text-center mt-1.5 leading-tight px-2">
-          {activeTab === 'plan'  && t('myCoach.planDesc')}
           {activeTab === 'tips'  && t('myCoach.tipsDesc')}
           {activeTab === 'notes' && t('myCoach.notesDesc')}
         </p>
@@ -460,6 +459,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
         {/* Plan */}
         <div className={activeTab === 'plan' ? '' : 'hidden'}>
+          <div className="mb-3 px-3 py-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 rounded-xl flex items-start gap-1.5">
+            <span className="material-symbols-outlined text-[14px] text-[#0a3a2a] mt-px shrink-0">info</span>
+            <p className="text-[10px] font-semibold text-[#0a3a2a] leading-snug">{t('myCoach.planDesc')}</p>
+          </div>
           {!isLoading && (
             coaches.length > 0 ? (
               <>
@@ -543,7 +546,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                       return (
                         <div key={s.id} className="flex items-start">
                           <button
-                            onClick={() => s.date && onNavigateToStats?.(s.date)}
+                            onClick={() => s.date && onNavigateToStats?.(s.date, s.id)}
                             className="flex-1 text-left p-3 flex items-start gap-2.5 active:bg-blue-50 transition-colors group"
                           >
                             <div className="w-7 h-7 rounded-lg bg-blue-50 group-active:bg-blue-100 flex items-center justify-center shrink-0 mt-0.5 transition-colors">
@@ -591,7 +594,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                       return (
                         <button
                           key={s.id}
-                          onClick={() => s.date && onNavigateToStats?.(s.date)}
+                          onClick={() => s.date && onNavigateToStats?.(s.date, s.id)}
                           className="w-full text-left p-3 flex items-start gap-2.5 active:bg-gray-100 transition-colors group opacity-75"
                         >
                           <div className="w-7 h-7 rounded-lg bg-gray-200 flex items-center justify-center shrink-0 mt-0.5">

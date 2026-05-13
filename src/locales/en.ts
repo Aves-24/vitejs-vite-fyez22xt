@@ -171,7 +171,7 @@ export const views = {
     tabPlan: "Plan",
     tabDiary: "Diary",
     tabTips: "Remarks",
-    planDesc: "Upcoming training sessions and competitions planned by your coach",
+    planDesc: "Upcoming trainings and goals planned by your coach",
     tipsDesc: "Coach feedback on your specific training sessions",
     loading: "Loading…",
     planNote: "Today & tomorrow — planned by coach",

@@ -156,13 +156,15 @@ service cloud.firestore {
     }
 
     // ─── /users/{uid}/sessions/{sessionId} ──────────────────────
-    //  Owner full. Coach read-only if in user.coaches AND isNotePublic != false.
+    //  Owner full. Coach read-only if in user.coaches[].
+    //  NOTE: isNotePublic is not enforced here — Firestore list queries
+    //  reject per-document resource.data conditions without a matching
+    //  WHERE clause, which blocks the entire query for coaches.
     match /users/{uid}/sessions/{sessionId} {
       allow read: if isSelf(uid)
         || isAdmin()
         || (isSignedIn()
-            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-            && resource.data.get('isNotePublic', true) != false);
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []));
 
       // Self/Admin create/delete, update with length limits
       allow create, delete: if isSelf(uid) || isAdmin();

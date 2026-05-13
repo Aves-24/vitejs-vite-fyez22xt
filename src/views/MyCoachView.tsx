@@ -349,7 +349,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Diary */}
           <button
             onClick={() => setActiveTab('diary')}
-            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-amber-100 border-amber-300' : 'bg-amber-50 border-amber-100 shadow-sm'}`}
           >
             <div className="flex items-center gap-1 mb-1">
               <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">edit_note</span>

@@ -311,6 +311,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   // LENIWE WYŚWIETLANIE SZCZEGÓŁOWYCH STATYSTYK SESJI (per session.id)
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
+  const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -436,6 +437,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const isDetailedShown = !!(currentSession && expandedSessionIds.has(currentSession.id));
   const toggleDetailedStats = () => {
     if (!currentSession) return;
+    setHighlightedEnd(null);
     setExpandedSessionIds(prev => {
       const next = new Set(prev);
       if (next.has(currentSession.id)) next.delete(currentSession.id);
@@ -676,17 +678,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   )}
                   {isDetailedShown && sessionEnds.length > 0 && (
                     <div className="space-y-2 animate-fade-in">
-                      <SessionTrend submittedEnds={sessionEnds} />
+                      <SessionTrend submittedEnds={sessionEnds} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
                       {(r1Ends.length > 0 || r2Ends.length > 0) && (
                         <div className="flex gap-2 w-full">
                           {r1Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={null} startIndex={0} targetType={currentSession.targetType} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} />
                             </div>
                           )}
                           {r2Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={null} startIndex={6} targetType={currentSession.targetType} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={currentSession.targetType} />
                             </div>
                           )}
                         </div>

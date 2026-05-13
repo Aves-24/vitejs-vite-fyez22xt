@@ -239,7 +239,10 @@ service cloud.firestore {
 
     // ─── /users/{uid}/tournaments/{eventId} ─────────────────────
     match /users/{uid}/tournaments/{eventId} {
-      allow read, write: if isSelf(uid) || isAdmin();
+      allow read: if isSelf(uid) || isAdmin()
+        || (isSignedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []));
+      allow write: if isSelf(uid) || isAdmin();
     }
 
     // ─── /users/{uid}/privateNotes/{noteId} ─────────────────────

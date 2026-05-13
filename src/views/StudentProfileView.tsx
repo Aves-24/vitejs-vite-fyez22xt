@@ -6,6 +6,8 @@ import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 import CoachLogPanel from '../components/CoachLogPanel';
+import SessionTrend from '../components/SessionTrend';
+import RoundTargetSummary from '../components/RoundTargetSummary';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 
 function spCacheGet<T>(key: string): T | null {
@@ -79,10 +81,12 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
 
   return (
     <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 relative mt-2">
-       <div className="flex justify-between items-center mb-1.5">
-         <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1">
-            <span className="material-symbols-outlined text-[14px]">sports</span>
-            {t('studentProfile.coachNoteLabel')} {canEdit && !isEditing ? t('studentProfile.coachNoteEdits', { count: 2 - edits }) : ''}
+       <div className="flex justify-between items-start gap-2 mb-1.5">
+         <span className="text-[9px] font-black text-blue-700 uppercase tracking-widest flex items-start gap-1 leading-tight">
+            <span className="material-symbols-outlined text-[14px] shrink-0">sports</span>
+            <span>
+              {t('studentProfile.coachNoteLabel', { date: session.date })} {canEdit && !isEditing ? t('studentProfile.coachNoteEdits', { count: 2 - edits }) : ''}
+            </span>
          </span>
          {canEdit && !isEditing && (
            <button onClick={() => setIsEditing(true)} className="text-blue-500 hover:text-blue-600 active:scale-90 bg-blue-100 p-1 rounded transition-colors">
@@ -305,6 +309,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
 
+  // LENIWE WYŚWIETLANIE SZCZEGÓŁOWYCH STATYSTYK SESJI (per session.id)
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const fetchStudentData = async () => {
       if (!studentId) return;
@@ -423,6 +430,19 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const currentSession = recentSessions.length > 0 ? recentSessions[currentSessionIndex] : null;
   const sessionHits = currentSession ? calculateHits(currentSession.ends) : { x: 0, ten: 0, nine: 0 };
   const sessionAvg = currentSession && currentSession.arrows > 0 ? (currentSession.score / currentSession.arrows).toFixed(2) : '0.00';
+  const sessionEnds: any[] = currentSession?.ends || [];
+  const r1Ends = sessionEnds.slice(0, 6);
+  const r2Ends = sessionEnds.slice(6, 12);
+  const isDetailedShown = !!(currentSession && expandedSessionIds.has(currentSession.id));
+  const toggleDetailedStats = () => {
+    if (!currentSession) return;
+    setExpandedSessionIds(prev => {
+      const next = new Set(prev);
+      if (next.has(currentSession.id)) next.delete(currentSession.id);
+      else next.add(currentSession.id);
+      return next;
+    });
+  };
 
   const hasAnyPrivateNote = privateNotes.some(n => n.trim().length > 0);
 
@@ -638,6 +658,41 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
                     <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.nine}</p></div>
                   </div>
+                  {sessionEnds.length > 0 && (
+                    <button
+                      onClick={toggleDetailedStats}
+                      className="w-full flex items-center justify-between p-2.5 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="material-symbols-outlined text-emerald-600 text-[16px]">analytics</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
+                          {isDetailedShown ? t('studentProfile.hideDetailedStats') : t('studentProfile.showDetailedStats')}
+                        </span>
+                      </div>
+                      <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${isDetailedShown ? 'rotate-180' : ''}`}>
+                        keyboard_arrow_down
+                      </span>
+                    </button>
+                  )}
+                  {isDetailedShown && sessionEnds.length > 0 && (
+                    <div className="space-y-2 animate-fade-in">
+                      <SessionTrend submittedEnds={sessionEnds} />
+                      {(r1Ends.length > 0 || r2Ends.length > 0) && (
+                        <div className="flex gap-2 w-full">
+                          {r1Ends.length > 0 && (
+                            <div className="flex-1">
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={null} startIndex={0} targetType={currentSession.targetType} />
+                            </div>
+                          )}
+                          {r2Ends.length > 0 && (
+                            <div className="flex-1">
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={null} startIndex={6} targetType={currentSession.targetType} />
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
                     <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>

@@ -442,7 +442,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           })}
         </div>
         {/* Tab description */}
-        <p className="text-[8px] font-bold text-gray-400 text-center mt-1.5 leading-tight px-2">
+        <p className={`text-[8px] font-bold text-center mt-1.5 leading-tight px-2 ${activeTab === 'tips' ? 'text-blue-500' : 'text-gray-400'}`}>
           {activeTab === 'tips'  && t('myCoach.tipsDesc')}
           {activeTab === 'notes' && t('myCoach.notesDesc')}
         </p>

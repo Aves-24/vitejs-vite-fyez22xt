@@ -532,20 +532,24 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     setDailyArrows(daySessions.reduce((acc, s) => acc + (s.arrows || s.totalArrows || 0), 0));
     if (daySessions.length > 0) {
       if (!daySessions.find(s => s.id === selectedSessionId)) {
-        const pending = pendingSessionIdRef.current;
-        const target = pending ? daySessions.find(s => s.id === pending) : null;
-        if (target) {
-          setSelectedSessionId(pending);
-          pendingSessionIdRef.current = '';
-        } else {
-          setSelectedSessionId(daySessions[0].id);
-        }
+        setSelectedSessionId(daySessions[0].id);
       }
     } else {
       setSelectedSessionId('');
       setSelectedSession(null);
     }
   }, [daySessions]);
+
+  useEffect(() => {
+    const pending = pendingSessionIdRef.current;
+    if (!pending || sessions.length === 0) return;
+    const session = sessions.find(s => s.id === pending);
+    if (!session) return;
+    const dateISO = toISO(session.date);
+    if (dateISO) setSelectedDate(dateISO);
+    setSelectedSessionId(pending);
+    pendingSessionIdRef.current = '';
+  }, [sessions]);
 
   useEffect(() => {
     if (selectedSessionId) {

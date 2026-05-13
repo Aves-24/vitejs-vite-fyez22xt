@@ -442,10 +442,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           })}
         </div>
         {/* Tab description */}
-        <p className={`text-[8px] font-bold text-center mt-1.5 leading-tight px-2 ${activeTab === 'tips' ? 'text-blue-500' : 'text-gray-400'}`}>
-          {activeTab === 'tips'  && t('myCoach.tipsDesc')}
-          {activeTab === 'notes' && t('myCoach.notesDesc')}
-        </p>
       </div>
 
       {/* TAB CONTENT */}
@@ -513,6 +509,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
         {/* Wskazówki */}
         <div className={activeTab === 'tips' ? '' : 'hidden'}>
+          <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-1.5">
+            <span className="material-symbols-outlined text-[14px] text-blue-600 mt-px shrink-0">info</span>
+            <p className="text-[10px] font-semibold text-blue-700 leading-snug">{t('myCoach.tipsDesc')}</p>
+          </div>
           {sessionNotesLoading ? (
             <div className="text-center py-10">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading')}</span>
@@ -622,10 +622,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
         {/* Prywatne notatki */}
         <div className={activeTab === 'notes' ? '' : 'hidden'}>
-          {/* Privacy badge */}
-          <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl px-3.5 py-2.5 mb-3">
-            <span className="material-symbols-outlined text-[16px] text-indigo-500 shrink-0">lock</span>
-            <p className="text-[10px] font-black text-indigo-700 leading-tight">{t('myCoach.notesPrivacyBadge')}</p>
+          <div className="mb-3 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-xl flex items-start gap-1.5">
+            <span className="material-symbols-outlined text-[14px] text-indigo-500 mt-px shrink-0">info</span>
+            <p className="text-[10px] font-semibold text-indigo-700 leading-snug">{t('myCoach.notesDesc')}</p>
           </div>
 
           {/* Add note form */}

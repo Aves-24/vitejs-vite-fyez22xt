@@ -6,6 +6,7 @@ import type { Timestamp } from 'firebase/firestore';
 
 export type NotificationType =
   | 'message'
+  | 'coach_note'
   | 'coach_plan'
   | 'announcement'
   | 'coach_request';
@@ -42,6 +43,7 @@ export type NotificationPayload = Omit<NotificationDoc, 'createdAt' | 'readAt'>;
 // Priority order for the bell-icon outline color (highest first)
 export const PRIORITY_ORDER: NotificationType[] = [
   'message',
+  'coach_note',
   'coach_plan',
   'announcement',
   'coach_request',
@@ -77,6 +79,29 @@ export function buildMessageNotification(params: {
       iconColor: 'text-green-600',
       navigateTo: params.recipientRole === 'student' ? 'MY_COACH' : 'COACH',
       extraData: params.senderId,
+    },
+  };
+}
+
+export function buildCoachNoteNotification(params: {
+  sessionId: string;
+  sessionDate?: string;        // for title — "notatka do treningu z DATE"
+  coachName?: string;
+  coachId?: string;
+}): { id: string; payload: NotificationPayload } {
+  return {
+    id: notificationId('coach_note', params.sessionId),
+    payload: {
+      type: 'coach_note',
+      refId: params.sessionId,
+      titleKey: 'announcements.newCoachNote',
+      titleParams: params.sessionDate ? { date: params.sessionDate } : undefined,
+      senderName: params.coachName,
+      senderId: params.coachId,
+      icon: 'rate_review',
+      iconColor: 'text-blue-600',
+      navigateTo: 'MY_COACH',
+      extraData: params.sessionId,
     },
   };
 }

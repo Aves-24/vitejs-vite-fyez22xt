@@ -351,6 +351,7 @@ export const views = {
     newMessage: "Nowa wiadomość",
     newAnnouncement: "Nowe ogłoszenie",
     newCoachPlan: "Nowy plan od trenera",
+    newCoachNote: "Nowa notatka do treningu",
     newCoachRequest: "Nowe zgłoszenie trenera"
   },
   battleHistory: {

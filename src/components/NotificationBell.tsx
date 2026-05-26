@@ -15,6 +15,7 @@ interface Props {
 // Badge color per priority type (matches the old dot-color UX).
 const BADGE_BG: Record<NotificationType, string> = {
   message: 'bg-green-500',
+  coach_note: 'bg-blue-500',
   coach_plan: 'bg-blue-500',
   announcement: 'bg-red-500',
   coach_request: 'bg-orange-500',

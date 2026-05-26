@@ -9,6 +9,8 @@ import CoachLogPanel from '../components/CoachLogPanel';
 import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { createNotification } from '../services/notificationService';
+import { buildCoachNoteNotification } from '../utils/notificationTypes';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -39,7 +41,7 @@ const calculateHits = (ends: any[]) => {
 };
 
 // --- MIKRO-KOMPONENT NOTATKI TRENERA W SESJI ---
-function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, studentId: string, onSaveSuccess: (note: string, editCount: number) => void }) {
+function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { session: any, studentId: string, coachId: string, onSaveSuccess: (note: string, editCount: number) => void }) {
   const { t } = useTranslation();
   const edits = session.coachEditCount || 0;
   const canEdit = edits < 2;
@@ -59,11 +61,11 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
 
   const handleSave = async () => {
     const cleanText = text.trim().slice(0, 100);
-    if (!cleanText && !session.coachNote) { 
-      setIsEditing(false); 
-      return; 
+    if (!cleanText && !session.coachNote) {
+      setIsEditing(false);
+      return;
     }
-    
+
     setIsSaving(true);
     try {
       const newEditCount = edits + 1;
@@ -71,8 +73,32 @@ function CoachNoteModule({ session, studentId, onSaveSuccess }: { session: any, 
         coachNote: cleanText,
         coachEditCount: newEditCount
       });
-      setIsEditing(false); 
+      setIsEditing(false);
       onSaveSuccess(cleanText, newEditCount);
+
+      // Bell notification at student — only on first save (edits === 0),
+      // since createNotification is idempotent and we don't want notification
+      // re-firing on edits (student already saw the original note).
+      if (edits === 0) {
+        (async () => {
+          let coachName: string | undefined;
+          try {
+            const cSnap = await getDoc(doc(db, 'users', coachId));
+            if (cSnap.exists()) {
+              const cd = cSnap.data();
+              coachName = [cd.firstName, cd.lastName].filter(Boolean).join(' ') || undefined;
+            }
+          } catch { /* ignore */ }
+
+          const { id, payload } = buildCoachNoteNotification({
+            sessionId: session.id,
+            sessionDate: session.date,
+            coachId,
+            coachName,
+          });
+          createNotification(studentId, id, payload).catch(() => { /* best effort */ });
+        })();
+      }
     } catch (e) {
       console.error("Błąd zapisu notatki", e);
     }
@@ -710,7 +736,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
                     <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
                   </div>
-                  <CoachNoteModule session={currentSession} studentId={studentId} onSaveSuccess={handleUpdateSessionNote} />
+                  <CoachNoteModule session={currentSession} studentId={studentId} coachId={coachId} onSaveSuccess={handleUpdateSessionNote} />
                 </div>
               </div>
             ) : (
@@ -756,6 +782,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                       <CoachNoteModule
                         session={session}
                         studentId={studentId}
+                        coachId={coachId}
                         onSaveSuccess={(note, editCount) => handleUpdateTechSessionNote(session.id, note, editCount)}
                       />
                     </div>

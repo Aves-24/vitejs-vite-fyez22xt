@@ -45,6 +45,7 @@ function maybePrune(userId: string): void {
 
 const EMPTY_BY_TYPE: Record<NotificationType, number> = {
   message: 0,
+  coach_note: 0,
   coach_plan: 0,
   announcement: 0,
   coach_request: 0,

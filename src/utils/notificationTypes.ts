@@ -29,6 +29,7 @@ export interface NotificationDoc {
   icon: string;
   iconColor: string;
   navigateTo: NavigateTarget;
+  targetTab?: string;                  // optional tab within the destination view
   extraData?: string;
   createdAt: Timestamp;
   readAt: Timestamp | null;
@@ -101,6 +102,7 @@ export function buildCoachNoteNotification(params: {
       icon: 'rate_review',
       iconColor: 'text-blue-600',
       navigateTo: 'MY_COACH',
+      targetTab: 'tips',                 // "Anmerkungen" tab in MyCoachView
       extraData: params.sessionId,
     },
   };

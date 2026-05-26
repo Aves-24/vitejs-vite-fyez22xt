@@ -16,6 +16,8 @@ interface MyCoachViewProps {
   onNavigateToStats?: (date: string, sessionId?: string) => void;
   pendingOpenCoachId?: string | null;
   onClearPending?: () => void;
+  pendingInitialTab?: string | null;
+  onClearPendingTab?: () => void;
 }
 
 interface CoachInfo {
@@ -41,7 +43,7 @@ interface PrivateNote {
   createdAt: number;
 }
 
-export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats, pendingOpenCoachId, onClearPending }: MyCoachViewProps) {
+export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNavigateToStats, pendingOpenCoachId, onClearPending, pendingInitialTab, onClearPendingTab }: MyCoachViewProps) {
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,6 +76,16 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       onClearPending?.();
     }
   }, [pendingOpenCoachId, coaches, isLoading]);
+
+  // Apply initial tab from navigation (e.g. coach_note notification → "tips")
+  useEffect(() => {
+    if (!pendingInitialTab) return;
+    if (pendingInitialTab === 'plan' || pendingInitialTab === 'diary'
+        || pendingInitialTab === 'tips' || pendingInitialTab === 'notes') {
+      setActiveTab(pendingInitialTab);
+    }
+    onClearPendingTab?.();
+  }, [pendingInitialTab]);
 
   const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
     try {

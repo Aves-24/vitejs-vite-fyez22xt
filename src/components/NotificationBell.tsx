@@ -64,7 +64,7 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
     if (!item.readAt) {
       markAsRead(item.id);
     }
-    onNavigate(item.navigateTo, undefined, item.extraData);
+    onNavigate(item.navigateTo, item.targetTab, item.extraData);
   };
 
   const badgeColor = priorityType ? BADGE_BG[priorityType] : 'bg-gray-400';

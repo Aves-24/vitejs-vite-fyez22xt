@@ -72,6 +72,7 @@ export default function App() {
 
   const [activeBattleId, setActiveBattleId] = useState<string | null>(null);
   const [pendingMessageSenderId, setPendingMessageSenderId] = useState<string | null>(null);
+  const [pendingMyCoachTab, setPendingMyCoachTab] = useState<string | null>(null);
   const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
 
@@ -272,6 +273,9 @@ export default function App() {
       setFocusedEventId(extraData || null);
     } else if (view === 'MY_COACH' || view === 'COACH') {
       setPendingMessageSenderId(extraData || null);
+      if (view === 'MY_COACH') {
+        setPendingMyCoachTab(tab || null);
+      }
     }
   };
 
@@ -485,7 +489,7 @@ export default function App() {
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}
       </Suspense>
       </ViewErrorBoundary>
       </main>

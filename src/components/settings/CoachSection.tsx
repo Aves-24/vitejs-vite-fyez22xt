@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import { createNotification } from '../../services/notificationService';
+import { buildCoachRequestNotification } from '../../utils/notificationTypes';
 
 const ADMIN_UID = 'b55wNdZf17gH5wxziuzG9bkaQKo2';
 
@@ -59,6 +61,15 @@ const CoachSection: React.FC<CoachSectionProps> = ({
       await updateDoc(doc(db, 'users', ADMIN_UID), {
         newCoachRequests: arrayUnion(ref.id),
       });
+
+      // Bell notification for admin — fire-and-forget.
+      const { id, payload } = buildCoachRequestNotification({
+        requestId: ref.id,
+        studentName: userName,
+        studentId: userId,
+      });
+      createNotification(ADMIN_UID, id, payload).catch(() => { /* best effort */ });
+
       setStatus('sent');
     } catch {
       setStatus('error');

@@ -6,6 +6,8 @@ import { doc, collection, query, where, getDocs, deleteDoc, updateDoc, writeBatc
 import { recalcUserRank } from '../utils/rankEngine';
 import { useTranslation } from 'react-i18next';
 import StatsView from './StatsView';
+import { createNotification } from '../services/notificationService';
+import { buildAnnouncementNotification } from '../utils/notificationTypes';
 
 interface AdminDashboardViewProps {
   onNavigate: (view: any) => void;
@@ -186,6 +188,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
         }
 
         const batch = writeBatch(db);
+        const annRefs: { recipientId: string; annId: string }[] = [];
         selectedUserIds.forEach(id => {
           const docRef = doc(collection(db, 'announcements'));
           batch.set(docRef, {
@@ -196,13 +199,25 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
             lang: msgLang,
             timestamp: serverTimestamp()
           });
+          annRefs.push({ recipientId: id, annId: docRef.id });
         });
 
         await batch.commit();
+
+        // Bell notifications per recipient — fire-and-forget.
+        annRefs.forEach(({ recipientId, annId }) => {
+          const { id, payload } = buildAnnouncementNotification({
+            announcementId: annId,
+            title: msgTitle,
+            fromCoach: false,
+          });
+          createNotification(recipientId, id, payload).catch(() => { /* best effort */ });
+        });
+
         showToast(`Wysłano masowo do ${selectedUserIds.length} uczniów!`);
         setSelectedUserIds([]); // Czyszczenie koszyka po wysłaniu
       } else {
-        await addDoc(collection(db, 'announcements'), {
+        const annRef = await addDoc(collection(db, 'announcements'), {
           title: msgTitle,
           content: msgContent,
           target: msgTarget,
@@ -210,6 +225,19 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
           lang: msgLang,
           timestamp: serverTimestamp()
         });
+
+        // For target=USER we know the recipient → create notification directly.
+        // For target=ALL/CLUB we cannot enumerate recipients here; those users
+        // pick up the announcement via their HomeView self-sync logic.
+        if (msgTarget === 'USER' && msgTargetId) {
+          const { id, payload } = buildAnnouncementNotification({
+            announcementId: annRef.id,
+            title: msgTitle,
+            fromCoach: false,
+          });
+          createNotification(msgTargetId, id, payload).catch(() => { /* best effort */ });
+        }
+
         showToast("Wysłano komunikat!");
       }
 

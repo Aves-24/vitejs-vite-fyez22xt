@@ -21,6 +21,8 @@ import {
   writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
+import { createNotification } from '../services/notificationService';
+import { buildCoachPlanNotification } from './notificationTypes';
 
 // ─── Typy ────────────────────────────────────────────────────────────────────
 
@@ -100,12 +102,20 @@ export async function mirrorTrenerEventToStudents(
   const coachName = await getCoachName(coachId);
   const payload = buildMirrorPayload(event, coachId, coachName, originEventId);
 
-  // Mirror eventu — `createdAt: serverTimestamp` w payload służy też jako sygnał
-  // dla dzwonka HomeView (porównanie z localStorage lastSeenCoachPlan).
+  // Mirror eventu do tournaments każdego ucznia + notyfikacja w jego inbox.
+  // Każdy mirrored doc ma unikalny Firestore id — używamy go jako refId notyfikacji
+  // (gwarantuje deterministyczną deduplikację: jeden plan = jedna notyfikacja).
   await Promise.all(
-    studentIds.map(sid =>
-      addDoc(collection(db, `users/${sid}/tournaments`), payload)
-    )
+    studentIds.map(async sid => {
+      const ref = await addDoc(collection(db, `users/${sid}/tournaments`), payload);
+      const { id, payload: notifPayload } = buildCoachPlanNotification({
+        eventId: ref.id,
+        coachId,
+        coachName,
+      });
+      // Non-blocking — notification is best-effort, don't fail the mirror op.
+      createNotification(sid, id, notifPayload).catch(() => { /* ignore */ });
+    })
   );
 }
 

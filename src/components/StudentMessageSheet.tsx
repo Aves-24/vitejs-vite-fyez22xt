@@ -3,6 +3,8 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { createNotification, markAsRead as markNotifAsRead } from '../services/notificationService';
+import { buildMessageNotification, notificationId } from '../utils/notificationTypes';
 
 export interface ThreadMessage {
   from: 'student' | 'coach';
@@ -89,6 +91,9 @@ export default function StudentMessageSheet({
             updateDoc(docRef, { [readField]: Date.now() }),
             updateDoc(doc(db, 'users', currentUserId), { unreadMsgFrom: arrayRemove(senderId) }),
           ]);
+          // Also clear the matching bell notification (refId = senderId).
+          markNotifAsRead(currentUserId, notificationId('message', senderId))
+            .catch(() => { /* non-critical — notif may not exist yet */ });
         }
       } catch { /* ignore */ }
       setIsLoading(false);
@@ -129,7 +134,27 @@ export default function StudentMessageSheet({
       }
 
       const recipientId = mode === 'student' ? coachId : studentId;
+      const recipientRole: 'student' | 'coach' = mode === 'student' ? 'coach' : 'student';
       try { await updateDoc(doc(db, 'users', recipientId), { unreadMsgFrom: arrayUnion(currentUserId) }); } catch { /* ignore — notification flag, non-critical */ }
+
+      // Bell notification at recipient — fire and forget, non-blocking.
+      (async () => {
+        let senderName: string | undefined;
+        try {
+          const meSnap = await getDoc(doc(db, 'users', currentUserId));
+          if (meSnap.exists()) {
+            const me = meSnap.data();
+            senderName = [me.firstName, me.lastName].filter(Boolean).join(' ') || undefined;
+          }
+        } catch { /* ignore */ }
+        const { id, payload } = buildMessageNotification({
+          senderId: currentUserId,
+          senderName,
+          recipientRole,
+        });
+        createNotification(recipientId, id, payload).catch(() => { /* best effort */ });
+      })();
+
       localStorage.setItem(cooldownKey(coachId, studentId, mode), String(Date.now()));
       setCooldownSecs(COOLDOWN_MS / 1000);
       setThread(newThread);

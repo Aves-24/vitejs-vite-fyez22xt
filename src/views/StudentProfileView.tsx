@@ -284,6 +284,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [currentSessionIndex, setCurrentSessionIndex] = useState(0);
+  const [recentTechSessions, setRecentTechSessions] = useState<any[]>([]);
   
   const [dailyArrows, setDailyArrows] = useState(0);
   const [monthlyArrows, setMonthlyArrows] = useState(0);
@@ -333,6 +334,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         // Nic się nie zmieniło — używamy cache, 0 dodatkowych odczytów
         setUpcomingTournaments(cached.tournaments);
         setRecentSessions(cached.recentSessions);
+        setRecentTechSessions(cached.recentTechSessions || []);
         setSparkline(cached.sparkline);
         setDailyArrows(cached.dailyArrows);
         setMonthlyArrows(cached.monthlyArrows);
@@ -355,7 +357,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
-      let recentSessions: any[] = [], sparkline: number[] = [];
+      let recentSessions: any[] = [], sparkline: number[] = [], techSessions: any[] = [];
       let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
 
       if (!snap.empty) {
@@ -363,6 +365,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
         recentSessions = nonTech.slice(0, 3);
         sparkline = nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
+        techSessions = all.filter((s: any) => s.type === 'TECHNICAL').slice(0, 3);
+        setRecentTechSessions(techSessions);
         all.forEach((s: any) => {
           const ts: number = s.timestamp?.toMillis ? s.timestamp.toMillis() : (s.timestamp || 0);
           const arrows = s.arrows || 0;
@@ -381,7 +385,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setYearlyArrows(yearTotal);
       setAvg14Days(avg14Days);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
     };
 
     fetchStudentData();
@@ -421,6 +425,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     updatedSessions[currentSessionIndex].coachNote = newNote;
     updatedSessions[currentSessionIndex].coachEditCount = editCount;
     setRecentSessions(updatedSessions);
+  };
+
+  const handleUpdateTechSessionNote = (sessionId: string, newNote: string, editCount: number) => {
+    setRecentTechSessions(prev => prev.map(s =>
+      s.id === sessionId ? { ...s, coachNote: newNote, coachEditCount: editCount } : s
+    ));
   };
 
   if (!student) return <div className="p-10 text-center">{t('studentProfile.loading')}</div>;
@@ -707,6 +717,50 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
                 <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports_score</span>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</p>
+              </div>
+            )}
+
+            {/* SESJE TECHNICZNE UCZNIA */}
+            {recentTechSessions.length > 0 && (
+              <div className="space-y-2 pt-1">
+                <div className="flex items-center gap-1.5 px-1">
+                  <span className="material-symbols-outlined text-emerald-600 text-[16px]">fitness_center</span>
+                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                    {t('studentProfile.techSectionsTitle')}
+                  </span>
+                </div>
+                {recentTechSessions.map(session => (
+                  <div key={session.id} className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="px-4 pt-3 pb-1 flex justify-between items-center">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                          {t('stats.techSessionType')}
+                        </span>
+                      </div>
+                      <div className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1 border border-emerald-100/50">
+                        <span className="material-symbols-outlined text-[12px]">fitness_center</span>
+                        {session.totalArrows || 0} {t('common.arrows')}
+                      </div>
+                    </div>
+                    <div className="px-4 pb-4">
+                      <p className="text-[10px] text-gray-300 font-bold uppercase mb-2">{session.date}</p>
+                      {session.note && (
+                        <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 mb-2">
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
+                            {t('studentProfile.studentNoteLabel')}
+                          </p>
+                          <p className="text-[11px] font-bold text-[#333] italic leading-snug">"{session.note}"</p>
+                        </div>
+                      )}
+                      <CoachNoteModule
+                        session={session}
+                        studentId={studentId}
+                        onSaveSuccess={(note, editCount) => handleUpdateTechSessionNote(session.id, note, editCount)}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 

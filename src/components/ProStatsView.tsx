@@ -51,6 +51,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedDistance, setSelectedDistance] = useState<string>('');
+  const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [hasFullHistory, setHasFullHistory] = useState(false);
@@ -132,7 +133,19 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     }
   }, [distances, selectedDistance]);
 
-  const filteredSessions = useMemo(() => sessions.filter(s => s.distance === selectedDistance), [sessions, selectedDistance]);
+  const sessionsByDistance = useMemo(() => sessions.filter(s => s.distance === selectedDistance), [sessions, selectedDistance]);
+
+  const availableTypes = useMemo(() => {
+    const types = Array.from(new Set(sessionsByDistance.map(s => s.type || 'Trening')));
+    return types;
+  }, [sessionsByDistance]);
+
+  useEffect(() => { setSelectedTypes(new Set()); }, [selectedDistance]);
+
+  const filteredSessions = useMemo(() => {
+    if (selectedTypes.size === 0) return sessionsByDistance;
+    return sessionsByDistance.filter(s => selectedTypes.has(s.type || 'Trening'));
+  }, [sessionsByDistance, selectedTypes]);
 
   const stats = useMemo(() => {
     if (filteredSessions.length === 0) return null;
@@ -298,14 +311,49 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
             return (
               <button key={dist} onClick={() => setSelectedDistance(dist)}
                 className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 flex items-center gap-1 ${
-                  selectedDistance === dist 
-                  ? (isTech ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md') 
+                  selectedDistance === dist
+                  ? (isTech ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md')
                   : 'bg-white text-gray-400 border-gray-100'
                 }`}>
                 {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
                 {dist}
               </button>
             )
+          })}
+        </div>
+      )}
+
+      {availableTypes.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+          {availableTypes.map(type => {
+            const isActive = selectedTypes.has(type);
+            const typeLabel =
+              type === 'Turniej' ? t('stats.sessionInfo.tournament') :
+              type === 'Arena' ? t('stats.sessionInfo.arena') :
+              type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') :
+              type === 'TECHNICAL' ? 'TECH' :
+              t('stats.sessionInfo.typeSolo');
+            const typeColor = isActive
+              ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
+              : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
+              : type === 'WORLD_BATTLE' ? 'bg-emerald-500 text-white border-emerald-500'
+              : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
+              : 'bg-white text-gray-400 border-gray-100';
+            return (
+              <button
+                key={type}
+                onClick={() => {
+                  setSelectedTypes(prev => {
+                    const next = new Set(prev);
+                    if (next.has(type)) next.delete(type); else next.add(type);
+                    return next;
+                  });
+                }}
+                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${typeColor}`}
+              >
+                {typeLabel}
+              </button>
+            );
           })}
         </div>
       )}

@@ -67,6 +67,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [recentScores, setRecentScores] = useState<number[]>([]);
   const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
   const [showTrendModal, setShowTrendModal] = useState(false);
+  const [trendFilterType, setTrendFilterType] = useState('');
+  const [trendFilterDist, setTrendFilterDist] = useState('');
   const [weekStreak, setWeekStreak] = useState<number>(0);
   
   const [firstName, setFirstName] = useState('');
@@ -1637,15 +1639,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
             {(() => {
               const W = 300, H = 100, pad = 12;
-              const sessionsForModal = recentSessions.length >= 2
+              const allSessions = recentSessions.length >= 2
                 ? recentSessions
                 : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 }));
+
+              const availTypes = Array.from(new Set(allSessions.map(s => s.type || 'Trening')));
+              const availDists = Array.from(new Set(allSessions.map(s => s.distance).filter(Boolean))).sort();
+
+              const sessionsForModal = allSessions.filter(s => {
+                const typeOk = !trendFilterType || (s.type || 'Trening') === trendFilterType;
+                const distOk = !trendFilterDist || s.distance === trendFilterDist;
+                return typeOk && distOk;
+              });
+
               const scores = sessionsForModal.map(s => s.score);
-              const minS = Math.min(...scores);
-              const maxS = Math.max(...scores);
+              const minS = scores.length ? Math.min(...scores) : 0;
+              const maxS = scores.length ? Math.max(...scores) : 0;
               const range = maxS - minS || 1;
               const pts = scores.map((s, i) => ({
-                x: pad + (i / (scores.length - 1)) * (W - pad * 2),
+                x: pad + (i / Math.max(scores.length - 1, 1)) * (W - pad * 2),
                 y: H - pad - ((s - minS) / range) * (H - pad * 2),
                 s,
               }));
@@ -1654,36 +1666,78 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               const minIdx = scores.lastIndexOf(minS);
               return (
                 <>
-                  <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
-                    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
-                      <defs>
-                        <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#fed33e" stopOpacity="0.2" />
-                          <stop offset="100%" stopColor="#fed33e" stopOpacity="0" />
-                        </linearGradient>
-                      </defs>
-                      <polygon
-                        points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`}
-                        fill="url(#trendGrad)"
-                      />
-                      <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                      {pts.map((p, i) => {
-                        const isMax = i === maxIdx;
-                        const isMin = i === minIdx;
-                        const isLast = i === pts.length - 1;
-                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'rgba(255,255,255,0.4)';
-                        const r = (isMax || isMin || isLast) ? 5 : 3;
+                  {availTypes.length > 1 && (
+                    <div className="flex gap-1.5 flex-wrap mb-2">
+                      <button onClick={() => setTrendFilterType('')}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${!trendFilterType ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}>
+                        Alle
+                      </button>
+                      {availTypes.map(type => {
+                        const lbl = type === 'Turniej' ? t('home.trendModal.typeTournament') : type === 'Arena' ? t('home.trendModal.typeArena') : type === 'WORLD_BATTLE' ? 'World' : t('home.trendModal.typeTraining');
+                        const active = trendFilterType === type;
+                        const col = active
+                          ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
+                          : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
+                          : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
+                          : 'bg-white text-gray-400 border-gray-200';
                         return (
-                          <g key={i}>
-                            <circle cx={p.x} cy={p.y} r={r} fill={color} />
-                            {(isMax || isMin || isLast) && (
-                              <text x={p.x} y={p.y - 9} fontSize="8" fontWeight="bold" textAnchor="middle" fill={color}>{p.s}</text>
-                            )}
-                          </g>
+                          <button key={type} onClick={() => setTrendFilterType(active ? '' : type)}
+                            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${col}`}>
+                            {lbl}
+                          </button>
                         );
                       })}
-                    </svg>
-                  </div>
+                    </div>
+                  )}
+
+                  {availDists.length > 1 && (
+                    <div className="flex gap-1.5 flex-wrap mb-3">
+                      <button onClick={() => setTrendFilterDist('')}
+                        className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${!trendFilterDist ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-200'}`}>
+                        Alle
+                      </button>
+                      {(availDists as string[]).map((dist: string) => (
+                        <button key={dist} onClick={() => setTrendFilterDist(trendFilterDist === dist ? '' : dist)}
+                          className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${trendFilterDist === dist ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-200'}`}>
+                          {dist}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {scores.length >= 2 ? (
+                    <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
+                      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+                        <defs>
+                          <linearGradient id="trendGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#fed33e" stopOpacity="0.2" />
+                            <stop offset="100%" stopColor="#fed33e" stopOpacity="0" />
+                          </linearGradient>
+                        </defs>
+                        <polygon points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`} fill="url(#trendGrad)" />
+                        <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        {pts.map((p, i) => {
+                          const isMax = i === maxIdx;
+                          const isMin = i === minIdx;
+                          const isLast = i === pts.length - 1;
+                          const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'rgba(255,255,255,0.4)';
+                          const r = (isMax || isMin || isLast) ? 5 : 3;
+                          return (
+                            <g key={i}>
+                              <circle cx={p.x} cy={p.y} r={r} fill={color} />
+                              {(isMax || isMin || isLast) && (
+                                <text x={p.x} y={p.y - 9} fontSize="8" fontWeight="bold" textAnchor="middle" fill={color}>{p.s}</text>
+                              )}
+                            </g>
+                          );
+                        })}
+                      </svg>
+                    </div>
+                  ) : (
+                    <div className="bg-[#0a3a2a] rounded-2xl p-6 mb-4 flex items-center justify-center opacity-50">
+                      <span className="text-white text-[10px] font-black uppercase tracking-widest">Brak danych</span>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     {[...sessionsForModal].reverse().map((sess, i) => {

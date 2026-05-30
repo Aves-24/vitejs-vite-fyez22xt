@@ -870,8 +870,33 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
 
           <div className={`transition-all duration-500 overflow-hidden ${isStatsExpanded ? 'max-h-[2000px] opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'}`}>
             <div className="space-y-4">
-              <div className="animate-fade-in-up">
-                <SessionTrend submittedEnds={submittedEnds} onPointClick={(idx: number) => isPremium ? setHighlightedEnd(highlightedEnd === idx ? null : idx) : null} />
+              <div className="animate-fade-in-up space-y-2">
+                <SessionTrend submittedEnds={submittedEnds} onPointClick={(idx: number) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
+                {highlightedEnd !== null && submittedEnds[highlightedEnd] && (() => {
+                  const end = submittedEnds[highlightedEnd];
+                  const getArrowBg = (val: string) => {
+                    if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] shadow-sm';
+                    if (['8', '7'].includes(val)) return 'bg-[#EB5757] text-white shadow-sm';
+                    if (['6', '5'].includes(val)) return 'bg-[#2F80ED] text-white shadow-sm';
+                    if (['4', '3'].includes(val)) return 'bg-[#333] text-white shadow-sm';
+                    if (val === 'M') return 'bg-purple-900 text-white shadow-sm';
+                    return 'bg-gray-100 text-gray-400';
+                  };
+                  return (
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series', 'Passe')} P{highlightedEnd + 1}</span>
+                        <span className="text-lg font-black text-[#0a3a2a]">{end.total_sum} {t('scoringView.pts', 'pkt')}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        {end.arrows?.map((a: string, i: number) => (
+                          <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
+                        ))}
+                      </div>
+                      <button onClick={() => setHighlightedEnd(null)} className="text-emerald-400 active:scale-90"><span className="material-symbols-outlined text-sm">close</span></button>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="flex gap-2 w-full animate-fade-in-up">

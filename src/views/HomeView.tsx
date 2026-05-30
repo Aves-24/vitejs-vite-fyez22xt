@@ -1705,7 +1705,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     </div>
                   )}
 
-                  {scores.length >= 2 ? (
+                  {scores.length >= 1 ? (
                     <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
                       <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
                         <defs>
@@ -1714,8 +1714,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                             <stop offset="100%" stopColor="#fed33e" stopOpacity="0" />
                           </linearGradient>
                         </defs>
-                        <polygon points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`} fill="url(#trendGrad)" />
-                        <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                        {scores.length >= 2 && (
+                          <>
+                            <polygon points={`${pts[0].x},${H} ${polyline} ${pts[pts.length-1].x},${H}`} fill="url(#trendGrad)" />
+                            <polyline points={polyline} fill="none" stroke="#fed33e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                          </>
+                        )}
                         {pts.map((p, i) => {
                           const isMax = i === maxIdx;
                           const isMin = i === minIdx;
@@ -1735,7 +1739,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     </div>
                   ) : (
                     <div className="bg-[#0a3a2a] rounded-2xl p-6 mb-4 flex items-center justify-center opacity-50">
-                      <span className="text-white text-[10px] font-black uppercase tracking-widest">Brak danych</span>
+                      <span className="text-white text-[10px] font-black uppercase tracking-widest">{t('home.trendModal.noData')}</span>
                     </div>
                   )}
 

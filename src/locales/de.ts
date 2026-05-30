@@ -264,6 +264,7 @@ export const views = {
       typeTraining: "Training",
       typeTournament: "Turnier",
       typeArena: "Arena",
+      noData: "Keine Daten",
     },
     arenaDeleted: "Arena wurde gelöscht.",
     arenaDeleteError: "Fehler beim Löschen.",

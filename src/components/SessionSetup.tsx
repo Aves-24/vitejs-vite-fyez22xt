@@ -403,12 +403,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             <div className="mb-5">
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('sessionSetup.techNotes')}</span>
-                <span className={`text-[9px] font-bold ${techNote.length >= 100 ? 'text-red-500' : 'text-gray-300'}`}>{techNote.length}/100</span>
+                <span className={`text-[9px] font-bold ${techNote.length >= 400 ? 'text-red-500' : 'text-gray-300'}`}>{techNote.length}/400</span>
               </div>
               <textarea
                 value={techNote}
                 onChange={e => setTechNote(e.target.value)}
-                maxLength={100}
+                maxLength={400}
                 placeholder={t('sessionSetup.notePlaceholder')}
                 className="w-full bg-gray-50 border-2 border-gray-100 p-3 rounded-xl font-bold text-sm text-[#0a3a2a] focus:border-emerald-500 outline-none transition-all h-24 resize-none"
               />

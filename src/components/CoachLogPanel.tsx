@@ -41,7 +41,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
   flag:        { color: '#dc2626', bg: '#fee2e2', icon: 'priority_high',  labelKey: 'coachLog.typeFlag',        labelDefault: 'WICHTIG' },
 };
 
-const MAX_TEXT = 300;
+const MAX_TEXT = 400;
 
 export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, onLatestEntry, acknowledgedIds, onAcknowledge }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();

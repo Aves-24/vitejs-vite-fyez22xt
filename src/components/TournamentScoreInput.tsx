@@ -172,43 +172,53 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     }));
 
     try {
-      // [DODANE] Oznaczenie turnieju jako posiadającego wynik, aby zablokować kalendarz
+      // Oznaczenie turnieju jako posiadającego wynik
       if (eventId) {
         await updateDoc(doc(db, 'users', userId, 'tournaments', eventId), {
           hasScore: true
         });
       }
 
-      // ZAPIS ZGODNY ZE STRUKTURĄ STATYSTYK
+      // ZAPIS SESJI
       await addDoc(collection(db, 'users', userId, 'sessions'), {
-        date: todayStr, 
-        timestamp: serverTimestamp(), 
-        distance, 
-        type: 'Turniej', // Kluczowe dla kolorów w kalendarzu
+        date: todayStr,
+        timestamp: serverTimestamp(),
+        distance,
+        type: 'Turniej',
         tournamentName,
         score: stats.totalScore,
-        arrows: competitionArrows, // tylko strzały konkursowe (bez próbnych) — do liczenia średniej
+        arrows: competitionArrows,
         practiceArrows: practiceArrows,
-        xCount: stats.totalX, 
-        tenCount: stats.total10, 
+        xCount: stats.totalX,
+        tenCount: stats.total10,
         nineCount: stats.total9,
-        ends: inputMode === 'DETAILED' ? archivedEnds : [], 
-        note: aiNote.trim(), // Zmienione na 'note'
+        ends: inputMode === 'DETAILED' ? archivedEnds : [],
+        note: aiNote.trim(),
         inputMode: inputMode,
-        targetType: distance === '18m' ? '3-Spot' : 'Full' // Sugestia typu tarczy
+        targetType: distance === '18m' ? '3-Spot' : 'Full'
       });
 
-      const userRef = doc(db, 'users', userId);
-      await updateDoc(userRef, { totalArrows: increment(arrowCount), monthlyArrows: increment(arrowCount) });
-      
-      const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
-      await setDoc(dailyRef, { arrows: increment(arrowCount) }, { merge: true });
-      
+      // Aktualizacje nieblokujące — błędy nie przerywają nawigacji
+      try {
+        const userRef = doc(db, 'users', userId);
+        await updateDoc(userRef, { totalArrows: increment(arrowCount), monthlyArrows: increment(arrowCount) });
+        const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
+        await setDoc(dailyRef, { arrows: increment(arrowCount) }, { merge: true });
+      } catch (secondaryError) {
+        console.warn('Nieblokujący błąd aktualizacji statystyk:', secondaryError);
+      }
+
+      // Zawsze nawiguj po udanym zapisie sesji
       onClose();
       if (onNavigate) {
         onNavigate('STATS', undefined, todayISO);
       }
-    } catch (e) { console.error(e); } finally { setIsSaving(false); }
+    } catch (e) {
+      console.error('Błąd zapisu turnieju:', e);
+      alert(t('auth.errorGeneral') || 'Błąd zapisu. Sprawdź połączenie.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const isFinished = ends.length >= 12;

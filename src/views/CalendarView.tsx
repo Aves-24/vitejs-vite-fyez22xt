@@ -35,7 +35,7 @@ interface CalendarViewProps {
   userId: string; 
   focusedEventId?: string | null;
   clearFocusedEvent?: () => void;
-  onNavigate?: (view: string, tab?: string) => void;
+  onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
 export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, onNavigate }: CalendarViewProps) {

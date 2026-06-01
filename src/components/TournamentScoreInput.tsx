@@ -237,8 +237,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             <span className="text-4xl font-black leading-none">{stats.totalScore}</span>
           </div>
           <div className="flex gap-3 text-right relative z-10">
-            <div><p className="text-[8px] font-bold text-[#fed33e] uppercase mb-0.5">X</p><span className="text-lg font-black text-[#fed33e]">{stats.totalX}</span></div>
             <div><p className="text-[8px] font-bold text-emerald-300 uppercase mb-0.5">10</p><span className="text-lg font-black">{stats.total10}</span></div>
+            <div><p className="text-[8px] font-bold text-[#fed33e] uppercase mb-0.5">X</p><span className="text-lg font-black text-[#fed33e]">{stats.totalX}</span></div>
             <div><p className="text-[8px] font-bold text-gray-300 uppercase mb-0.5">9</p><span className="text-lg font-black text-gray-100">{stats.total9}</span></div>
           </div>
         </div>
@@ -289,8 +289,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
                       <input readOnly={locked} type="number" value={locked ? String(score) : summaryR1} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                     <div><label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                     <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>
@@ -323,8 +323,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
                       <input readOnly={locked} type="number" value={locked ? String(score) : summaryR2} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                     <div><label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                     <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>

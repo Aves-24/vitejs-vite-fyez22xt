@@ -131,7 +131,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     const finalEnds = currentEnd.length > 0 ? [...ends, currentEnd] : ends;
     const todayStr = new Date().toLocaleDateString('pl-PL');
     const todayISO = new Date().toISOString().split('T')[0];
-    const arrowCount = 72 + practiceArrows;
+    const competitionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter(a => a !== 'M').length : 72;
+    const arrowCount = competitionArrows + practiceArrows;
 
     // Konwersja formatu 'ends' dla trybu DETAILED (aby StatsView widziało strzały)
     const archivedEnds = finalEnds.map(end => ({
@@ -155,8 +156,9 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         distance, 
         type: 'Turniej', // Kluczowe dla kolorów w kalendarzu
         tournamentName,
-        score: stats.totalScore, // Zmienione na 'score' (unifikacja)
-        arrows: arrowCount, // Zmienione na 'arrows' (unifikacja)
+        score: stats.totalScore,
+        arrows: competitionArrows, // tylko strzały konkursowe (bez próbnych) — do liczenia średniej
+        practiceArrows: practiceArrows,
         xCount: stats.totalX, 
         tenCount: stats.total10, 
         nineCount: stats.total9,

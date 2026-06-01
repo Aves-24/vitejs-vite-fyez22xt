@@ -246,35 +246,89 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           </div>
         ) : (
           <div className="space-y-[2px]">
-            {/* HISTORIA SZCZEGÓŁOWA */}
-            {(isFinished ? ends : ends.slice(-3)).map((end, eIdx) => {
-                const realEndIdx = isFinished ? eIdx : ends.length - (ends.slice(-3).length - eIdx);
-                return (
-                    <div key={realEndIdx} className="bg-white border border-gray-100 rounded-xl p-1.5 flex items-center shadow-sm opacity-90 transition-all">
-                        <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mr-2 border border-gray-200"><span className="text-[8px] font-black text-gray-400">{realEndIdx + 1}</span></div>
-                        <div className="flex-1 flex gap-1">
-                            {end.map((arrow, aIdx) => (
-                                <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
-                            ))}
-                        </div>
-                        <div className="w-8 text-right"><span className="text-sm font-black text-[#0a3a2a]">{end.reduce((acc, v) => acc + getArrowValue(v), 0)}</span></div>
+            {/* HISTORIA SZCZEGÓŁOWA — podzielona na 2 Durchgangi */}
+            {[0, 1].map(durchgang => {
+              const startIdx = durchgang * 6;
+              const endIdx = startIdx + 6;
+              const durchgangEnds = ends.slice(startIdx, endIdx);
+              const isCurrentDurchgang = ends.length >= startIdx && ends.length < endIdx;
+              const isDurchgangDone = ends.length >= endIdx;
+              const durchgangScore = durchgangEnds.reduce((sum, end) => sum + end.reduce((s, v) => s + getArrowValue(v), 0), 0);
+
+              // Nie pokazuj 2. Durchgandu jeśli jeszcze nie doszliśmy
+              if (durchgang === 1 && ends.length < 6 && currentEnd.length === 0) return null;
+
+              return (
+                <div key={durchgang} className="mb-3">
+                  {/* Nagłówek Durchgangu */}
+                  <div className="flex items-center justify-between px-1 mb-1.5">
+                    <div className="flex items-center gap-2">
+                      <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${durchgang === 0 ? 'bg-[#0a3a2a] text-white' : 'bg-blue-600 text-white'}`}>
+                        Durchgang {durchgang + 1}
+                      </div>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase">Passe {startIdx + 1}–{startIdx + 6}</span>
                     </div>
-                );
-            })}
-            {!isFinished && (
-              <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-1.5 flex items-center shadow-sm">
-                <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-2 border border-emerald-300"><span className="text-[8px] font-black text-emerald-700">{ends.length + 1}</span></div>
-                <div className="flex-1 flex gap-1">
-                  {[...Array(6)].map((_, aIdx) => {
-                    const arrow = currentEnd[aIdx];
-                    return arrow ? (
-                      <button key={aIdx} onClick={() => setEditingTarget({ endIdx: -1, arrowIdx: aIdx })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black shadow-sm border animate-scale-in ${getArrowStyles(arrow, editingTarget?.endIdx === -1 && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
-                    ) : (<div key={aIdx} className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border-2 border-dashed border-emerald-200 bg-white/50 text-transparent">-</div>);
-                  })}
+                    {isDurchgangDone && (
+                      <span className="text-sm font-black text-[#0a3a2a]">{durchgangScore}</span>
+                    )}
+                  </div>
+
+                  {/* Passe tego Durchgangu */}
+                  <div className="space-y-[2px]">
+                    {durchgangEnds.map((end, relIdx) => {
+                      const realEndIdx = startIdx + relIdx;
+                      return (
+                        <div key={realEndIdx} className="bg-white border border-gray-100 rounded-xl p-1.5 flex items-center shadow-sm opacity-90 transition-all">
+                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mr-2 border border-gray-200">
+                            <span className="text-[8px] font-black text-gray-400">{realEndIdx + 1}</span>
+                          </div>
+                          <div className="flex-1 flex gap-1">
+                            {end.map((arrow, aIdx) => (
+                              <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
+                            ))}
+                          </div>
+                          <div className="w-8 text-right">
+                            <span className="text-sm font-black text-[#0a3a2a]">{end.reduce((acc, v) => acc + getArrowValue(v), 0)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Aktywna passe (tylko jeśli jesteśmy w tym Durchgangu) */}
+                    {isCurrentDurchgang && !isFinished && (
+                      <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-1.5 flex items-center shadow-sm">
+                        <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-2 border border-emerald-300">
+                          <span className="text-[8px] font-black text-emerald-700">{ends.length + 1}</span>
+                        </div>
+                        <div className="flex-1 flex gap-1">
+                          {[...Array(6)].map((_, aIdx) => {
+                            const arrow = currentEnd[aIdx];
+                            return arrow ? (
+                              <button key={aIdx} onClick={() => setEditingTarget({ endIdx: -1, arrowIdx: aIdx })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black shadow-sm border animate-scale-in ${getArrowStyles(arrow, editingTarget?.endIdx === -1 && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
+                            ) : (
+                              <div key={aIdx} className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border-2 border-dashed border-emerald-200 bg-white/50 text-transparent">-</div>
+                            );
+                          })}
+                        </div>
+                        <div className="w-8 text-right">
+                          <span className="text-sm font-black text-emerald-800">{currentEnd.reduce((acc, v) => acc + getArrowValue(v), 0)}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Separator po Durchgang 1 */}
+                    {durchgang === 0 && isDurchgangDone && (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="flex-1 h-px bg-gray-200" />
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Durchgang 1: {durchgangScore} pkt</span>
+                        <div className="flex-1 h-px bg-gray-200" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="w-8 text-right"><span className="text-sm font-black text-emerald-800">{currentEnd.reduce((acc, v) => acc + getArrowValue(v), 0)}</span></div>
-              </div>
-            )}
+              );
+            })}
+
             {isFinished && !showKeyboard && (
               <div className="bg-blue-50 border-2 border-blue-100 rounded-[24px] p-4 text-center flex flex-col items-center shadow-sm mt-2">
                 <span className="material-symbols-outlined text-3xl text-blue-500 mb-1">verified</span>

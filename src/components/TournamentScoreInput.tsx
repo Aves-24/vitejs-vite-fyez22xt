@@ -509,7 +509,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-yellow-500 text-[18px]">psychology</span>
         </div>
         
-        <button onClick={saveTournamentScore} disabled={isSaving || (inputMode === 'DETAILED' && ends.length === 0 && currentEnd.length === 0) || (inputMode === 'SUMMARY' && !summaryR1 && !summaryR2)} className={`w-full h-14 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all ${isSaving ? 'bg-gray-400' : 'bg-[#0a3a2a]'}`}>{isSaving ? t('tournamentInput.saving') : t('tournamentInput.saveBtn')}</button>
+        <button onClick={saveTournamentScore} disabled={isSaving || (inputMode === 'DETAILED' && ends.length === 0 && currentEnd.length === 0) || (inputMode === 'SUMMARY' && !hasDetailedData && !summaryR1 && !summaryR2)} className={`w-full h-14 text-white rounded-[20px] font-black text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-all ${isSaving ? 'bg-gray-400' : 'bg-[#0a3a2a]'}`}>{isSaving ? t('tournamentInput.saving') : t('tournamentInput.saveBtn')}</button>
       </div>
 
       <style>{`

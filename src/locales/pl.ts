@@ -83,6 +83,7 @@ export const components = {
     avgPerArrow: "Średnia / strzała",
     avgDurchgang: "Śr. Durchgang",
     avgTotal: "Średnia mecz",
+    practiceArrowsLabel: "Strzały próbne",
     practiceNote: "* Strzały próbne nie są wliczane do średniej",
     fromDetailed: "Dane z trybu szczegółowego. Wróć do Szczegółowo, by edytować passe.",
     fallbackMode: "Tryb awaryjny",

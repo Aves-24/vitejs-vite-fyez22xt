@@ -83,6 +83,7 @@ export const components = {
     avgPerArrow: "Schnitt / Pfeil",
     avgDurchgang: "Ø Durchgang",
     avgTotal: "Ø Gesamt",
+    practiceArrowsLabel: "Probepfeile",
     practiceNote: "* Probepfeile werden nicht in den Schnitt eingerechnet",
     fromDetailed: "Daten aus dem Detailliert-Modus. Zurück zu Detailliert zum Bearbeiten.",
     fallbackMode: "Notfallmodus",

@@ -352,8 +352,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           </div>
         ) : (
           <div className="space-y-[2px]">
-            {/* HISTORIA SZCZEGÓŁOWA — podzielona na 2 Durchgangi */}
-            {[0, 1].map(durchgang => {
+            {/* HISTORIA SZCZEGÓŁOWA — aktywny Durchgang na górze */}
+            {[1, 0].map(durchgang => {
               const startIdx = durchgang * 6;
               const endIdx = startIdx + 6;
               const durchgangEnds = ends.slice(startIdx, endIdx);
@@ -424,11 +424,11 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       );
                     })}
 
-                    {/* Separator po Durchgang 1 */}
-                    {durchgang === 0 && isDurchgangDone && (
-                      <div className="flex items-center gap-2 py-1">
+                    {/* Separator — pokazuje się pod Durchgangiem 2 (który jest u góry) */}
+                    {durchgang === 1 && ends.length >= 6 && (
+                      <div className="flex items-center gap-2 py-1 mt-1">
                         <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Durchgang 1: {durchgangScore} pkt</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">D1: {ends.slice(0,6).reduce((s,e)=>s+e.reduce((a,v)=>a+getArrowValue(v),0),0)} / D2: {durchgangScore}</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                     )}
@@ -484,7 +484,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
         <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 mb-2 mt-1 shadow-sm">
           <div className="flex flex-col">
-            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">Strzały próbne</span>
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('tournamentInput.practiceArrowsLabel')}</span>
             <span className="text-lg font-black text-[#0a3a2a] leading-none">{practiceArrows}</span>
           </div>
           <div className="flex items-center gap-1.5">

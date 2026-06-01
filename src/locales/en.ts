@@ -83,6 +83,7 @@ export const components = {
     avgPerArrow: "Avg / arrow",
     avgDurchgang: "Avg round",
     avgTotal: "Avg match",
+    practiceArrowsLabel: "Practice arrows",
     practiceNote: "* Practice arrows are not included in the average",
     fromDetailed: "Data from detailed mode. Go back to Detailed to edit ends.",
     fallbackMode: "Fallback mode",

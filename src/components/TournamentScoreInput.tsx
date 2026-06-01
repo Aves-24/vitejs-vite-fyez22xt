@@ -40,34 +40,6 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
   const numKeys = ['X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1'];
 
-  // Czy mamy jakiekolwiek dane w trybie szczegółowym?
-  const hasDetailedData = ends.length > 0 || currentEnd.length > 0;
-
-  // Sumy wyliczone z trybu szczegółowego dla każdego Durchgangu
-  const detailedR1 = useMemo(() => {
-    const r1ends = ends.slice(0, 6);
-    let score = 0, x = 0, tens = 0, nines = 0;
-    r1ends.forEach(end => end.forEach(a => {
-      score += getArrowValue(a);
-      if (a === 'X') { x++; tens++; }
-      else if (a === '10') tens++;
-      else if (a === '9') nines++;
-    }));
-    return { score, x, tens, nines };
-  }, [ends]);
-
-  const detailedR2 = useMemo(() => {
-    const r2ends = ends.slice(6, 12);
-    let score = 0, x = 0, tens = 0, nines = 0;
-    r2ends.forEach(end => end.forEach(a => {
-      score += getArrowValue(a);
-      if (a === 'X') { x++; tens++; }
-      else if (a === '10') tens++;
-      else if (a === '9') nines++;
-    }));
-    return { score, x, tens, nines };
-  }, [ends]);
-
   const getArrowValue = (val: string): number => {
     if (val === 'X' || val === '10') return 10;
     if (val === 'M') return 0;
@@ -132,6 +104,34 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       setShowKeyboard(true);
     }
   };
+
+  // Czy mamy jakiekolwiek dane w trybie szczegółowym?
+  const hasDetailedData = ends.length > 0 || currentEnd.length > 0;
+
+  // Sumy wyliczone z trybu szczegółowego dla każdego Durchgangu
+  const detailedR1 = useMemo(() => {
+    const r1ends = ends.slice(0, 6);
+    let score = 0, x = 0, tens = 0, nines = 0;
+    r1ends.forEach(end => end.forEach(a => {
+      score += getArrowValue(a);
+      if (a === 'X') { x++; tens++; }
+      else if (a === '10') tens++;
+      else if (a === '9') nines++;
+    }));
+    return { score, x, tens, nines };
+  }, [ends]);
+
+  const detailedR2 = useMemo(() => {
+    const r2ends = ends.slice(6, 12);
+    let score = 0, x = 0, tens = 0, nines = 0;
+    r2ends.forEach(end => end.forEach(a => {
+      score += getArrowValue(a);
+      if (a === 'X') { x++; tens++; }
+      else if (a === '10') tens++;
+      else if (a === '9') nines++;
+    }));
+    return { score, x, tens, nines };
+  }, [ends]);
 
   const stats = useMemo(() => {
     let totalScore = 0, totalX = 0, total10 = 0, total9 = 0;

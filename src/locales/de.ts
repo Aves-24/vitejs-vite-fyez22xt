@@ -77,7 +77,18 @@ export const components = {
     showKeyboard: "Tastatur anzeigen (Eingabe...)",
     aiPlaceholder: "Notiz für KI (Wind, Stress, neue Sehne)...",
     saving: "Speichern...",
-    saveBtn: "Wettkampfergebnis speichern"
+    saveBtn: "Wettkampfergebnis speichern",
+    durchgang: "Durchgang",
+    passes: "Passen",
+    avgPerArrow: "Schnitt / Pfeil",
+    avgDurchgang: "Ø Durchgang",
+    avgTotal: "Ø Gesamt",
+    practiceNote: "* Probepfeile werden nicht in den Schnitt eingerechnet",
+    fromDetailed: "Daten aus dem Detailliert-Modus. Zurück zu Detailliert zum Bearbeiten.",
+    fallbackMode: "Notfallmodus",
+    fallbackDesc: "Nutzen wenn Wertungskarte verloren. Nur Durchgang-Summen eingeben.",
+    durchgang1: "Durchgang 1",
+    durchgang2: "Durchgang 2"
   },
   weather: {
     windUnit: "km/h",

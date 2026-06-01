@@ -252,15 +252,13 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {hasDetailedData ? (
               <div className="flex items-start gap-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/20 rounded-2xl p-3">
                 <span className="material-symbols-outlined text-[#0a3a2a] text-[18px] shrink-0 mt-0.5">info</span>
-                <p className="text-[9px] font-bold text-[#0a3a2a] leading-relaxed">
-                  Dane pobrane z trybu szczegółowego. Wróć do <strong>Detailliert</strong> żeby edytować poszczególne strzały.
-                </p>
+                <p className="text-[9px] font-bold text-[#0a3a2a] leading-relaxed">{t('tournamentInput.fromDetailed')}</p>
               </div>
             ) : (
               <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3">
                 <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">warning</span>
                 <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
-                  <strong>Tryb awaryjny</strong> — użyj gdy zgubiłeś karteczkę z wynikami passe. Wpisz tylko sumy każdego Durchgangu.
+                  <strong>{t('tournamentInput.fallbackMode')}</strong> — {t('tournamentInput.fallbackDesc')}
                 </p>
               </div>
             )}
@@ -268,34 +266,32 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {/* DURCHGANG 1 */}
             {(() => {
               const locked = hasDetailedData;
-              const r1score = locked ? String(detailedR1.score) : summaryR1;
-              const r1x     = locked ? String(detailedR1.x)     : summaryX1;
-              const r1t     = locked ? String(detailedR1.tens)   : summary10_1;
-              const r1n     = locked ? String(detailedR1.nines)  : summary9_1;
+              const score  = locked ? detailedR1.score : (parseInt(summaryR1) || 0);
+              const arrows = locked ? ends.slice(0,6).flat().filter(a => a !== 'M').length : 36;
+              const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
+              const r1x    = locked ? String(detailedR1.x)    : summaryX1;
+              const r1t    = locked ? String(detailedR1.tens)  : summary10_1;
+              const r1n    = locked ? String(detailedR1.nines) : summary9_1;
               const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-emerald-200'}`;
               return (
                 <div className="bg-emerald-50 rounded-[24px] p-4 border border-emerald-100 shadow-sm">
                   <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 pb-1">
-                    <h3 className="text-[10px] font-black text-emerald-800 uppercase">Durchgang 1</h3>
-                    {locked && ends.slice(0,6).length > 0 && <span className="text-[8px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">{ends.slice(0,6).length}/6 passe</span>}
+                    <h3 className="text-[10px] font-black text-emerald-800 uppercase">{t('tournamentInput.durchgang1')}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        {t('tournamentInput.avgDurchgang')}: <span className="text-[#0a3a2a]">{avg}</span>
+                      </span>
+                      {locked && ends.slice(0,6).length > 0 && <span className="text-[8px] font-black text-emerald-600 bg-emerald-200/60 px-2 py-0.5 rounded-full">{ends.slice(0,6).length}/6 {t('tournamentInput.passes')}</span>}
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
-                      <input readOnly={locked} type="number" value={r1score} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
+                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR1} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label>
-                      <input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">10</label>
-                      <input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label>
-                      <input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>
               );
@@ -304,37 +300,53 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {/* DURCHGANG 2 */}
             {(() => {
               const locked = hasDetailedData;
-              const r2score = locked ? String(detailedR2.score) : summaryR2;
-              const r2x     = locked ? String(detailedR2.x)     : summaryX2;
-              const r2t     = locked ? String(detailedR2.tens)   : summary10_2;
-              const r2n     = locked ? String(detailedR2.nines)  : summary9_2;
+              const score  = locked ? detailedR2.score : (parseInt(summaryR2) || 0);
+              const arrows = locked ? ends.slice(6,12).flat().filter(a => a !== 'M').length : 36;
+              const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
+              const r2x    = locked ? String(detailedR2.x)    : summaryX2;
+              const r2t    = locked ? String(detailedR2.tens)  : summary10_2;
+              const r2n    = locked ? String(detailedR2.nines) : summary9_2;
               const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-blue-100'}`;
               return (
                 <div className="bg-blue-50/50 rounded-[24px] p-4 border border-blue-100 shadow-sm">
                   <div className="flex items-center justify-between mb-3 border-b border-blue-200/50 pb-1">
-                    <h3 className="text-[10px] font-black text-blue-800 uppercase">Durchgang 2</h3>
-                    {locked && ends.slice(6,12).length > 0 && <span className="text-[8px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{ends.slice(6,12).length}/6 passe</span>}
+                    <h3 className="text-[10px] font-black text-blue-800 uppercase">{t('tournamentInput.durchgang2')}</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                        {t('tournamentInput.avgDurchgang')}: <span className="text-blue-900">{avg}</span>
+                      </span>
+                      {locked && ends.slice(6,12).length > 0 && <span className="text-[8px] font-black text-blue-600 bg-blue-200/60 px-2 py-0.5 rounded-full">{ends.slice(6,12).length}/6 {t('tournamentInput.passes')}</span>}
+                    </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
                       <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
-                      <input readOnly={locked} type="number" value={r2score} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
+                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR2} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label>
-                      <input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">10</label>
-                      <input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label>
-                      <input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} />
-                    </div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>
               );
+            })()}
+
+            {/* ŚREDNIA CAŁEGO MECZU */}
+            {(() => {
+              const totalScore = stats.totalScore;
+              const totalArrows = hasDetailedData
+                ? ends.flat().filter(a => a !== 'M').length
+                : ((parseInt(summaryR1) || 0) > 0 || (parseInt(summaryR2) || 0) > 0 ? 72 : 0);
+              const avg = totalArrows > 0 ? (totalScore / totalArrows).toFixed(2) : '—';
+              return totalScore > 0 ? (
+                <div className="bg-[#0a3a2a] rounded-[24px] p-4 shadow-md flex items-center justify-between">
+                  <div>
+                    <p className="text-[9px] font-black text-emerald-300 uppercase tracking-widest mb-0.5">{t('tournamentInput.avgTotal')}</p>
+                    <p className="text-[8px] font-bold text-emerald-400/60">{t('tournamentInput.practiceNote')}</p>
+                  </div>
+                  <span className="text-3xl font-black text-white">{avg}</span>
+                </div>
+              ) : null;
             })()}
 
           </div>

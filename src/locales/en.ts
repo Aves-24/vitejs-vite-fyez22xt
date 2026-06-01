@@ -77,7 +77,18 @@ export const components = {
     showKeyboard: "Show keyboard (Typing...)",
     aiPlaceholder: "Note for AI (wind, stress, new bowstring)...",
     saving: "Saving...",
-    saveBtn: "Save Tournament Result"
+    saveBtn: "Save Tournament Result",
+    durchgang: "Round",
+    passes: "ends",
+    avgPerArrow: "Avg / arrow",
+    avgDurchgang: "Avg round",
+    avgTotal: "Avg match",
+    practiceNote: "* Practice arrows are not included in the average",
+    fromDetailed: "Data from detailed mode. Go back to Detailed to edit ends.",
+    fallbackMode: "Fallback mode",
+    fallbackDesc: "Use when you lost your scorecard. Enter round totals only.",
+    durchgang1: "Round 1",
+    durchgang2: "Round 2"
   },
   weather: {
     windUnit: "km/h",

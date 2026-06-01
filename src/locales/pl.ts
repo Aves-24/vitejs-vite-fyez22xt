@@ -77,7 +77,18 @@ export const components = {
     showKeyboard: "Pokaż klawiaturę (Wpisywanie...)",
     aiPlaceholder: "Notatka dla AI (wiało, stres, nowa cięciwa)...",
     saving: "Zapisywanie...",
-    saveBtn: "Zapisz Wynik Zawodów"
+    saveBtn: "Zapisz Wynik Zawodów",
+    durchgang: "Durchgang",
+    passes: "passe",
+    avgPerArrow: "Średnia / strzała",
+    avgDurchgang: "Śr. Durchgang",
+    avgTotal: "Średnia mecz",
+    practiceNote: "* Strzały próbne nie są wliczane do średniej",
+    fromDetailed: "Dane z trybu szczegółowego. Wróć do Szczegółowo, by edytować passe.",
+    fallbackMode: "Tryb awaryjny",
+    fallbackDesc: "Użyj gdy zgubiłeś karteczkę. Wpisz tylko sumy każdego Durchgangu.",
+    durchgang1: "Durchgang 1",
+    durchgang2: "Durchgang 2"
   },
   weather: {
     windUnit: "km/h",

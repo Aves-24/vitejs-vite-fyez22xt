@@ -379,28 +379,9 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                     )}
                   </div>
 
-                  {/* Passe tego Durchgangu */}
+                  {/* Passe tego Durchgangu — aktywna na górze, historia odwrócona */}
                   <div className="space-y-[2px]">
-                    {durchgangEnds.map((end, relIdx) => {
-                      const realEndIdx = startIdx + relIdx;
-                      return (
-                        <div key={realEndIdx} className="bg-white border border-gray-100 rounded-xl p-1.5 flex items-center shadow-sm opacity-90 transition-all">
-                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mr-2 border border-gray-200">
-                            <span className="text-[8px] font-black text-gray-400">{realEndIdx + 1}</span>
-                          </div>
-                          <div className="flex-1 flex gap-1">
-                            {end.map((arrow, aIdx) => (
-                              <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
-                            ))}
-                          </div>
-                          <div className="w-8 text-right">
-                            <span className="text-sm font-black text-[#0a3a2a]">{end.reduce((acc, v) => acc + getArrowValue(v), 0)}</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Aktywna passe (tylko jeśli jesteśmy w tym Durchgangu) */}
+                    {/* Aktywna passe na górze */}
                     {isCurrentDurchgang && !isFinished && (
                       <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-1.5 flex items-center shadow-sm">
                         <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-2 border border-emerald-300">
@@ -421,6 +402,27 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                         </div>
                       </div>
                     )}
+
+                    {/* Historia passe — od najnowszej do najstarszej */}
+                    {[...durchgangEnds].reverse().map((end, revIdx) => {
+                      const relIdx = durchgangEnds.length - 1 - revIdx;
+                      const realEndIdx = startIdx + relIdx;
+                      return (
+                        <div key={realEndIdx} className="bg-white border border-gray-100 rounded-xl p-1.5 flex items-center shadow-sm opacity-90 transition-all">
+                          <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mr-2 border border-gray-200">
+                            <span className="text-[8px] font-black text-gray-400">{realEndIdx + 1}</span>
+                          </div>
+                          <div className="flex-1 flex gap-1">
+                            {end.map((arrow, aIdx) => (
+                              <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
+                            ))}
+                          </div>
+                          <div className="w-8 text-right">
+                            <span className="text-sm font-black text-[#0a3a2a]">{end.reduce((acc, v) => acc + getArrowValue(v), 0)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
 
                     {/* Separator po Durchgang 1 */}
                     {durchgang === 0 && isDurchgangDone && (

@@ -40,6 +40,34 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
   const numKeys = ['X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1'];
 
+  // Czy mamy jakiekolwiek dane w trybie szczegółowym?
+  const hasDetailedData = ends.length > 0 || currentEnd.length > 0;
+
+  // Sumy wyliczone z trybu szczegółowego dla każdego Durchgangu
+  const detailedR1 = useMemo(() => {
+    const r1ends = ends.slice(0, 6);
+    let score = 0, x = 0, tens = 0, nines = 0;
+    r1ends.forEach(end => end.forEach(a => {
+      score += getArrowValue(a);
+      if (a === 'X') { x++; tens++; }
+      else if (a === '10') tens++;
+      else if (a === '9') nines++;
+    }));
+    return { score, x, tens, nines };
+  }, [ends]);
+
+  const detailedR2 = useMemo(() => {
+    const r2ends = ends.slice(6, 12);
+    let score = 0, x = 0, tens = 0, nines = 0;
+    r2ends.forEach(end => end.forEach(a => {
+      score += getArrowValue(a);
+      if (a === 'X') { x++; tens++; }
+      else if (a === '10') tens++;
+      else if (a === '9') nines++;
+    }));
+    return { score, x, tens, nines };
+  }, [ends]);
+
   const getArrowValue = (val: string): number => {
     if (val === 'X' || val === '10') return 10;
     if (val === 'M') return 0;
@@ -107,7 +135,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
   const stats = useMemo(() => {
     let totalScore = 0, totalX = 0, total10 = 0, total9 = 0;
-    if (inputMode === 'DETAILED') {
+    // Detailliert lub Summary z danymi z detailliert → zawsze licz z detailliert
+    if (inputMode === 'DETAILED' || hasDetailedData) {
       const allArrows = [...ends.flat(), ...currentEnd];
       allArrows.forEach(arrow => {
         totalScore += getArrowValue(arrow);
@@ -116,6 +145,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         else if (arrow === '9') total9++;
       });
     } else {
+      // Tryb awaryjny — tylko ręczne sumy
       totalScore = (parseInt(summaryR1) || 0) + (parseInt(summaryR2) || 0);
       totalX = (parseInt(summaryX1) || 0) + (parseInt(summaryX2) || 0);
       const t10_1 = (parseInt(summary10_1) || 0) + (parseInt(summaryX1) || 0);
@@ -124,7 +154,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       total9 = (parseInt(summary9_1) || 0) + (parseInt(summary9_2) || 0);
     }
     return { totalScore, totalX, total10, total9 };
-  }, [ends, currentEnd, inputMode, summaryR1, summaryR2, summaryX1, summaryX2, summary10_1, summary10_2, summary9_1, summary9_2]);
+  }, [ends, currentEnd, inputMode, hasDetailedData, summaryR1, summaryR2, summaryX1, summaryX2, summary10_1, summary10_2, summary9_1, summary9_2]);
 
   const saveTournamentScore = async () => {
     setIsSaving(true);
@@ -195,7 +225,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       <div className="px-5 mb-3 shrink-0">
         <div className="flex p-1 bg-gray-100 rounded-2xl">
           <button onClick={() => setInputMode('DETAILED')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${inputMode === 'DETAILED' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('tournamentInput.modeDetailed')}</button>
-          <button onClick={() => setInputMode('SUMMARY')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${inputMode === 'SUMMARY' ? 'bg-emerald-100 text-emerald-800 shadow-md' : 'text-gray-400'}`}>{t('tournamentInput.modeSummary')}</button>
+          <button onClick={() => setInputMode('SUMMARY')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${inputMode === 'SUMMARY' ? (hasDetailedData ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-amber-100 text-amber-800 shadow-md') : 'text-gray-400'}`}>{t('tournamentInput.modeSummary')}</button>
         </div>
       </div>
 
@@ -217,32 +247,96 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       <div className="flex-1 overflow-y-auto px-5 pb-2">
         {inputMode === 'SUMMARY' ? (
           <div className="space-y-4 animate-fade-in">
-            {/* RUNDA 1 */}
-            <div className="bg-emerald-50 rounded-[24px] p-4 border border-emerald-100 shadow-sm">
-                <h3 className="text-[10px] font-black text-emerald-800 uppercase mb-3 border-b border-emerald-200/50 pb-1">{t('scoring.round')} 1</h3>
-                <div className="grid grid-cols-4 gap-2">
+
+            {/* BANER INFO */}
+            {hasDetailedData ? (
+              <div className="flex items-start gap-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/20 rounded-2xl p-3">
+                <span className="material-symbols-outlined text-[#0a3a2a] text-[18px] shrink-0 mt-0.5">info</span>
+                <p className="text-[9px] font-bold text-[#0a3a2a] leading-relaxed">
+                  Dane pobrane z trybu szczegółowego. Wróć do <strong>Detailliert</strong> żeby edytować poszczególne strzały.
+                </p>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3">
+                <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">warning</span>
+                <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
+                  <strong>Tryb awaryjny</strong> — użyj gdy zgubiłeś karteczkę z wynikami passe. Wpisz tylko sumy każdego Durchgangu.
+                </p>
+              </div>
+            )}
+
+            {/* DURCHGANG 1 */}
+            {(() => {
+              const locked = hasDetailedData;
+              const r1score = locked ? String(detailedR1.score) : summaryR1;
+              const r1x     = locked ? String(detailedR1.x)     : summaryX1;
+              const r1t     = locked ? String(detailedR1.tens)   : summary10_1;
+              const r1n     = locked ? String(detailedR1.nines)  : summary9_1;
+              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-emerald-200'}`;
+              return (
+                <div className="bg-emerald-50 rounded-[24px] p-4 border border-emerald-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 pb-1">
+                    <h3 className="text-[10px] font-black text-emerald-800 uppercase">Durchgang 1</h3>
+                    {locked && ends.slice(0,6).length > 0 && <span className="text-[8px] font-black text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded-full">{ends.slice(0,6).length}/6 passe</span>}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center">{t('tournamentInput.points')}</label>
-                      <input type="number" value={summaryR1} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 360)) setSummaryR1(e.target.value); }} placeholder="0" className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-center text-base font-black focus:outline-none" />
+                      <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
+                      <input readOnly={locked} type="number" value={r1score} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-[#fed33e] uppercase block text-center">X</label><input type="number" value={summaryX1} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummaryX1(e.target.value); }} placeholder="0" className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
-                    <div><label className="text-[8px] font-bold text-emerald-700 uppercase block text-center">10</label><input type="number" value={summary10_1} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummary10_1(e.target.value); }} placeholder="0" className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
-                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center">9</label><input type="number" value={summary9_1} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummary9_1(e.target.value); }} placeholder="0" className="w-full bg-white border border-emerald-200 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
-                </div>
-            </div>
-            {/* RUNDA 2 */}
-            <div className="bg-blue-50/50 rounded-[24px] p-4 border border-blue-100 shadow-sm">
-                <h3 className="text-[10px] font-black text-blue-800 uppercase mb-3 border-b border-blue-200/50 pb-1">{t('scoring.round')} 2</h3>
-                <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-[8px] font-bold text-blue-700 uppercase block text-center">{t('tournamentInput.points')}</label>
-                      <input type="number" value={summaryR2} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 360)) setSummaryR2(e.target.value); }} placeholder="0" className="w-full bg-white border border-blue-100 rounded-xl p-2 text-center text-base font-black focus:outline-none" />
+                      <label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label>
+                      <input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-[#fed33e] uppercase block text-center">X</label><input type="number" value={summaryX2} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummaryX2(e.target.value); }} placeholder="0" className="w-full bg-white border border-blue-100 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
-                    <div><label className="text-[8px] font-bold text-blue-700 uppercase block text-center">10</label><input type="number" value={summary10_2} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummary10_2(e.target.value); }} placeholder="0" className="w-full bg-white border border-blue-100 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
-                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center">9</label><input type="number" value={summary9_2} onChange={e => { const val = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(val) && val <= 36)) setSummary9_2(e.target.value); }} placeholder="0" className="w-full bg-white border border-blue-100 rounded-xl p-2 text-center text-base font-black focus:outline-none" /></div>
+                    <div>
+                      <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">10</label>
+                      <input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label>
+                      <input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                  </div>
                 </div>
-            </div>
+              );
+            })()}
+
+            {/* DURCHGANG 2 */}
+            {(() => {
+              const locked = hasDetailedData;
+              const r2score = locked ? String(detailedR2.score) : summaryR2;
+              const r2x     = locked ? String(detailedR2.x)     : summaryX2;
+              const r2t     = locked ? String(detailedR2.tens)   : summary10_2;
+              const r2n     = locked ? String(detailedR2.nines)  : summary9_2;
+              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-blue-100'}`;
+              return (
+                <div className="bg-blue-50/50 rounded-[24px] p-4 border border-blue-100 shadow-sm">
+                  <div className="flex items-center justify-between mb-3 border-b border-blue-200/50 pb-1">
+                    <h3 className="text-[10px] font-black text-blue-800 uppercase">Durchgang 2</h3>
+                    {locked && ends.slice(6,12).length > 0 && <span className="text-[8px] font-black text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">{ends.slice(6,12).length}/6 passe</span>}
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    <div>
+                      <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
+                      <input readOnly={locked} type="number" value={r2score} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label>
+                      <input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">10</label>
+                      <input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label>
+                      <input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
           </div>
         ) : (
           <div className="space-y-[2px]">

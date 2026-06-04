@@ -62,6 +62,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [realLastSession, setRealLastSession] = useState<any | null>(null);
   
   const [monthlyTotal, setMonthlyTotal] = useState<number>(0);
+  const [prevMonthlyTotal, setPrevMonthlyTotal] = useState<number>(0);
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [avg14Days, setAvg14Days] = useState<string>('0.0');
   const [recentScores, setRecentScores] = useState<number[]>([]);
@@ -432,6 +433,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       if (cached) {
         setMonthlyTotal(cached.monthly);
+        if (cached.prevMonthly != null) setPrevMonthlyTotal(cached.prevMonthly);
         setYearlyTotal(cached.yearly);
         setAvg14Days(cached.avg14);
         if (cached.recentScores) setRecentScores(cached.recentScores);
@@ -442,6 +444,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+      const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).getTime();
       const startOfYear  = new Date(now.getFullYear(), 0, 1);
       const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
@@ -452,7 +455,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromDate(startOfYear))));
         if (cancelled) return;
 
-        let m = 0, y = 0, s14 = 0, a14 = 0;
+        let m = 0, pm = 0, y = 0, s14 = 0, a14 = 0;
 
         snapYear.forEach(docSnap => {
           const data = docSnap.data();
@@ -463,6 +466,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           y += arr;
           if (ts >= startOfMonth) m += arr;
+          else if (ts >= startOfPrevMonth) pm += arr;
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += arr; s14 += sc; }
         });
 
@@ -472,11 +476,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const pz = profileSnap.data().pfeilzaehler || {};
           const yearStr = String(now.getFullYear());
           const monthKey = `${yearStr}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const prevMonthNum = now.getMonth() === 0 ? 12 : now.getMonth();
+          const prevYearStr = now.getMonth() === 0 ? String(now.getFullYear() - 1) : yearStr;
+          const prevMonthKey = `${prevYearStr}_${String(prevMonthNum).padStart(2, '0')}`;
           Object.entries(pz).forEach(([key, val]) => {
             if (key.startsWith(yearStr)) {
               y += (val as number);
               if (key === monthKey) m += (val as number);
             }
+            if (key === prevMonthKey) pm += (val as number);
           });
         }
 
@@ -516,13 +524,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         }
 
         setMonthlyTotal(m);
+        setPrevMonthlyTotal(pm);
         setYearlyTotal(y);
         setAvg14Days(avg14);
         setRecentScores(recent);
         setRecentSessions(recentFull);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { monthly: m, yearly: y, avg14, recentScores: recent, recentSessions: recentFull, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { monthly: m, prevMonthly: pm, yearly: y, avg14, recentScores: recent, recentSessions: recentFull, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -1128,6 +1137,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         stats={{
           daily: 0,
           monthly: monthlyTotal,
+          prevMonthly: prevMonthlyTotal,
           yearly: yearlyTotal,
           avg14: avg14Days
         }}

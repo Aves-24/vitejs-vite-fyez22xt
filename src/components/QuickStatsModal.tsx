@@ -13,6 +13,7 @@ interface QuickStatsModalProps {
   stats: {
     daily: number;
     monthly: number;
+    prevMonthly?: number;
     yearly: number;
     avg14: string;
   };
@@ -40,7 +41,7 @@ function quickStatsCacheSet(uid: string, arrows: number[], points: number[]): vo
 }
 
 export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, userId, initialTab = 'ARROWS', stats }: QuickStatsModalProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ARROWS' | 'POINTS'>(initialTab);
   const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
   const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
@@ -147,6 +148,21 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
   const maxArrows = Math.max(...weeklyArrows, 1);
   const maxPoints = Math.max(...weeklyPoints, 10);
 
+  const now = new Date();
+  const currentMonthName = now.toLocaleString(i18n.language, { month: 'long' }).toUpperCase();
+  const prevMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    .toLocaleString(i18n.language, { month: 'short' }).toUpperCase();
+
+  const getWeekLabel = (i: number): string => {
+    const weeksAgo = 11 - i;
+    const d = new Date();
+    d.setDate(d.getDate() - weeksAgo * 7);
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+
   const ProPaywall = () => (
     <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-[#fcfdfe]/10 backdrop-blur-[2px]">
       <button
@@ -205,8 +221,11 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 </div>
                 <div className="w-[1px] h-8 bg-white/10"></div>
                 <div className="text-center flex-1 relative z-10">
-                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest block mb-1">{t('home.month')}</span>
+                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest block mb-1">{currentMonthName}</span>
                   <p className="text-2xl font-black">{stats.monthly}</p>
+                  {(stats.prevMonthly ?? 0) > 0 && (
+                    <span className="text-[7px] font-bold text-white/40 block mt-0.5">{prevMonthName}: {stats.prevMonthly}</span>
+                  )}
                 </div>
                 <div className="w-[1px] h-8 bg-white/10"></div>
                 <div className="text-center flex-1 relative z-10">
@@ -236,7 +255,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                                 )}
                                 <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
                               </div>
-                              <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">T{12 - i}</span>
+                              <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
                             </div>
                           );
                         })
@@ -278,7 +297,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                                 )}
                                 <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxPoints) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxPoints) : '#e5e7eb' }}></div>
                               </div>
-                              <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">T{12 - i}</span>
+                              <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
                             </div>
                           );
                         })

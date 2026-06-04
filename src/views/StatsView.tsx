@@ -389,7 +389,7 @@ interface Session {
   id: string; score: number; arrows: number; distance: string; date: string; timestamp: any;
   type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
-  isNotePublic?: boolean; totalArrows?: number;
+  isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; practiceArrows?: number;
 }
 
 interface StatsViewProps {
@@ -420,6 +420,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [lastVisible, setLastVisible] = useState<QueryDocumentSnapshot | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [dailyArrows, setDailyArrows] = useState(0);
+  const [dailyPfeilzaehler, setDailyPfeilzaehler] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -444,6 +445,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
           isTrial = new Date(d.trialEndsAt).getTime() > Date.now();
         }
         setIsPremium(isBought || isPromo || isTrial);
+
+        const pz = d.pfeilzaehler || {};
+        const today = new Date();
+        const todayKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}`;
+        setDailyPfeilzaehler(pz[todayKey] || 0);
       }
     };
 
@@ -529,7 +535,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   }, [viewingStudentId, hasAutoSelectedDate, initialDate, isLoading, sessions, daySessions]);
 
   useEffect(() => {
-    setDailyArrows(daySessions.reduce((acc, s) => acc + (s.arrows || s.totalArrows || 0), 0));
+    setDailyArrows(
+      daySessions.reduce((acc, s) =>
+        acc + (s.shotArrows ?? s.arrows ?? s.totalArrows ?? 0) + (s.practiceArrows || 0), 0)
+      + dailyPfeilzaehler
+    );
     if (daySessions.length > 0) {
       if (!daySessions.find(s => s.id === selectedSessionId)) {
         setSelectedSessionId(daySessions[0].id);
@@ -538,7 +548,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       setSelectedSessionId('');
       setSelectedSession(null);
     }
-  }, [daySessions]);
+  }, [daySessions, dailyPfeilzaehler]);
 
   useEffect(() => {
     const pending = pendingSessionIdRef.current;

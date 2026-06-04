@@ -488,9 +488,13 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       const didWinWorld   = isWorldBattle && globalStats.score > opponentScore;
       const worldXp       = isWorldBattle ? WORLD_XP_PARTICIPATION + (didWinWorld ? WORLD_XP_WIN : 0) : 0;
 
+      const shotArrows = submittedEnds.reduce((total: number, end: any) =>
+        total + (end.arrows?.filter((a: string) => a && a.length > 0).length || 0), 0);
+
       await addDoc(collection(db, `users/${userId}/sessions`), {
         score: globalStats.score,
         arrows: globalStats.count,
+        shotArrows,
         distance: distance,
         targetType: targetType,
         date: new Date().toLocaleDateString('pl-PL'),

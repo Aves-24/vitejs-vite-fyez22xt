@@ -669,20 +669,22 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                 }
 
                 return (
-                  <button key={dStr} onClick={() => setSelectedDate(dStr)} className={`relative flex-shrink-0 w-12 h-[76px] rounded-2xl flex flex-col items-center justify-center transition-all snap-center border-2 ${bg} ${txt} ${brd} ${isSel ? 'scale-110 shadow-lg ring-2 ring-emerald-500/50 z-10' : 'opacity-80 active:scale-95'} ${dayActs.length === 0 ? 'opacity-30 border-dashed border-gray-200' : ''}`}>
-                    <span className="text-[7px] font-black uppercase mb-0.5 opacity-70">{d.toLocaleDateString(i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' })}</span>
-                    <span className="text-base font-black leading-none">{dStr.split('-')[2]}</span>
+                  <div key={dStr} className="relative flex-shrink-0 flex flex-col items-center gap-1 snap-center">
+                    <button onClick={() => setSelectedDate(dStr)} className={`relative w-12 h-16 rounded-2xl flex flex-col items-center justify-center transition-all border-2 ${bg} ${txt} ${brd} ${isSel ? 'scale-110 shadow-lg ring-2 ring-emerald-500/50 z-10' : 'opacity-80 active:scale-95'} ${dayActs.length === 0 ? 'opacity-30 border-dashed border-gray-200' : ''}`}>
+                      <span className="text-[7px] font-black uppercase mb-1 opacity-70">{d.toLocaleDateString(i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' })}</span>
+                      <span className="text-lg font-black leading-none">{dStr.split('-')[2]}</span>
+                      {dayActs.length > 1 && (
+                        <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full text-[6px] font-black flex items-center justify-center text-white ${dayActs.some(a => a.type === 'TECHNICAL') && dayActs.some(a => a.type !== 'TECHNICAL') ? 'bg-purple-500' : 'bg-red-500'}`}>
+                          {dayActs.length}
+                        </span>
+                      )}
+                    </button>
                     {displayScore !== null ? (
-                      <span className="text-[9px] font-black leading-none mt-1 opacity-90">{displayScore}</span>
+                      <span className="text-[9px] font-black leading-none text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-md">{displayScore}</span>
                     ) : (
-                      <span className="text-[9px] leading-none mt-1 opacity-0">—</span>
+                      <span className="h-[18px]" />
                     )}
-                    {dayActs.length > 1 && (
-                       <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full text-[6px] font-black flex items-center justify-center text-white ${dayActs.some(a => a.type === 'TECHNICAL') && dayActs.some(a => a.type !== 'TECHNICAL') ? 'bg-purple-500' : 'bg-red-500'}`}>
-                         {dayActs.length}
-                       </span>
-                    )}
-                  </button>
+                  </div>
                 );
               }).reverse()}
             </div>

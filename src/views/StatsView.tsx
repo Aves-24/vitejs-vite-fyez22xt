@@ -633,8 +633,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
       {activeTab === 'DAILY' && (
         <>
-          <div className={`mb-4 ${isEmbedded ? 'px-0' : 'px-2'}`}>
-            <div ref={scrollRef} className="flex gap-2 overflow-x-auto hide-scrollbar py-4 px-2 snap-x">
+          <div className={`mb-2 ${isEmbedded ? 'px-0' : 'px-2'}`}>
+            <div ref={scrollRef} className="flex gap-2 overflow-x-auto hide-scrollbar pt-4 pb-2 px-2 snap-x">
               {Array.from({ length: daysToShow }, (_, i) => {
                 const d = new Date(); d.setDate(d.getDate() - i);
                 const dStr = d.toISOString().split('T')[0];

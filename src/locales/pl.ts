@@ -235,6 +235,8 @@ export const views = {
     day: "Dziś",
     avg14d: "Średnia 14 dni",
     yearly: "Rok",
+    refresh: "Odśwież statystyki",
+    refreshing: "Aktualizuję…",
     pfeilzähler: "Licznik strzał",
     techAdd: "Dodaj Techniczne",
     lastResult: "Ostatni Wynik",

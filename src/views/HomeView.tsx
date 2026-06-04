@@ -77,8 +77,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [aiAdvice, setAiAdvice] = useState('');
   const [showQR, setShowQR] = useState(false);
   
-  const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false); 
+  const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false);
   const [quickStatsInitialTab, setQuickStatsInitialTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
+  const [refreshNonce, setRefreshNonce] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [activeInvite, setActiveInvite] = useState<any | null>(null);
   const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]); 
@@ -420,7 +422,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     };
     fetchLastSession();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, refreshNonce]);
 
   // ─── STABILNE STATYSTYKI Z CACHE'EM (JEDNO ZAPYTANIE) ──────────────────
   useEffect(() => {
@@ -549,7 +551,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       cancelled = true;
       window.removeEventListener('grotx-stats-updated', onStatsUpdated);
     };
-  }, [userId]);
+  }, [userId, refreshNonce]);
+
+  const handleRefresh = () => {
+    if (isRefreshing || !userId) return;
+    setIsRefreshing(true);
+    localStorage.removeItem(`grotX_stats_v5_${userId}`);
+    localStorage.removeItem(`grotX_quickStats_${userId}`);
+    localStorage.removeItem(`grotX_lastSession_${userId}`);
+    localStorage.removeItem(`grotX_tournaments_${userId}`);
+    localStorage.removeItem(`grotX_todos_${userId}`);
+    localStorage.removeItem(`grotX_announcements_${userId}_${i18n.language}`);
+    setRefreshNonce(n => n + 1);
+    setTimeout(() => setIsRefreshing(false), 2500);
+  };
 
   const handleSafeJoin = async (battleId: string, distance: string, targetType: string, currentParticipants: string[], battleMode?: string, hostLevel?: number) => {
     // WORLD matchmaking — filtr rang: abs(userLevel - hostLevel) <= 1
@@ -1036,6 +1051,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </span>
         </button>
         </div>
+
+        {/* ─── PRZYCISK ODŚWIEŻENIA STATYSTYK ─────────────────────────────────── */}
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="flex items-center justify-center gap-1.5 w-full py-1.5 text-gray-300 active:text-gray-400 transition-colors disabled:opacity-50"
+        >
+          <span className={`material-symbols-outlined text-[14px] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
+          <span className="text-[9px] font-bold uppercase tracking-widest">
+            {isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Statistiken aktualisieren' })}
+          </span>
+        </button>
 
         {/* ─── MULTIPLAYER ARENA + RANKING — obok siebie ───────────────────── */}
         <div className="mt-2 grid grid-cols-2 gap-2">

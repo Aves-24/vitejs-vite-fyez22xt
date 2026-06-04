@@ -442,7 +442,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
 
   const getStats = (ends: any[], active: string[] = []) => {
     let x=0, t=0, n=0, score=0, count=0;
-    const proc = (v: string) => { if (!v || v === 'M') return; count++; if (v === 'X') { x++; t++; score += 10; } else if (v === '10') { t++; score += 10; } else if (v === '9') { n++; score += 9; } else { score += parseInt(v); } };
+    const proc = (v: string) => { if (!v) return; count++; if (v === 'X') { x++; t++; score += 10; } else if (v === '10') { t++; score += 10; } else if (v === '9') { n++; score += 9; } else if (v !== 'M') { score += parseInt(v); } };
     ends.forEach(e => e.arrows?.forEach(proc)); active.forEach(proc);
     const avg = count > 0 ? (score / count).toFixed(2) : '0.00';
     return { x, t, n, score, count, avg };
@@ -488,15 +488,14 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       const didWinWorld   = isWorldBattle && globalStats.score > opponentScore;
       const worldXp       = isWorldBattle ? WORLD_XP_PARTICIPATION + (didWinWorld ? WORLD_XP_WIN : 0) : 0;
 
-      const scoreArrows = globalStats.count; // non-M arrows — do liczenia średniej
-      const sessionArrows = submittedEnds.reduce((total: number, end: any) =>
-        total + (end.arrows?.filter((a: string) => a && a.length > 0).length || 0), 0); // wszystkie fizyczne strzały z sesji (z M)
+      // globalStats.count już zawiera M (liczymy jako wystrzelone strzały)
+      const sessionArrows = globalStats.count;
       const practiceCount = practiceArrowsProp || 0;
 
       await addDoc(collection(db, `users/${userId}/sessions`), {
         score: globalStats.score,
-        scoreArrows,      // non-M, do średniej
-        sessionArrows,    // fizyczne strzały treningowe (z M)
+        scoreArrows: sessionArrows, // = sessionArrows, M liczone do średniej
+        sessionArrows,              // fizyczne strzały treningowe
         practiceArrows: practiceCount,
         arrows: sessionArrows + practiceCount, // łączna suma do wyświetlania
         distance: distance,

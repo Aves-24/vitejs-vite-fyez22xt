@@ -161,8 +161,9 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     const finalEnds = currentEnd.length > 0 ? [...ends, currentEnd] : ends;
     const todayStr = new Date().toLocaleDateString('pl-PL');
     const todayISO = new Date().toISOString().split('T')[0];
-    const scoreArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a !== 'M').length : 72; // non-M, do średniej
-    const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : 72; // fizyczne strzały konkursowe (z M)
+    // M = wystrzelona strzała (0 pkt), liczy do średniej i do łącznej liczby
+    const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : 72;
+    const scoreArrows = sessionArrows; // M wliczone do mianownika średniej
 
     // Konwersja formatu 'ends' dla trybu DETAILED (aby StatsView widziało strzały)
     const archivedEnds = finalEnds.map(end => ({

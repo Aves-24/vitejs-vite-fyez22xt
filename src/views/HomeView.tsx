@@ -470,7 +470,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const isTechnical = data.type === 'TECHNICAL';
 
           y += arr;
-          if (ts >= startOfDay) { d += arr; if (data.practiceArrows) d += data.practiceArrows; }
+          // Nowy model: arrows = sessionArrows + practiceArrows (już zsumowane)
+          // Stary model: arrows = non-M, practiceArrows osobno
+          const sessionTotal = data.scoreArrows !== undefined
+            ? arr
+            : arr + (data.practiceArrows || 0);
+          if (ts >= startOfDay) d += sessionTotal;
           if (ts >= startOfMonth) m += arr;
           else if (ts >= startOfPrevMonth) pm += arr;
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += arr; s14 += sc; }

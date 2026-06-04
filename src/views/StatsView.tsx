@@ -389,7 +389,7 @@ interface Session {
   id: string; score: number; arrows: number; distance: string; date: string; timestamp: any;
   type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
-  isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; practiceArrows?: number;
+  isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; scoreArrows?: number; sessionArrows?: number; practiceArrows?: number;
 }
 
 interface StatsViewProps {
@@ -536,8 +536,12 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
   useEffect(() => {
     setDailyArrows(
-      daySessions.reduce((acc, s) =>
-        acc + (s.shotArrows ?? s.arrows ?? s.totalArrows ?? 0) + (s.practiceArrows || 0), 0)
+      daySessions.reduce((acc, s) => {
+        // Nowy model: arrows = sessionArrows + practiceArrows
+        // Stary model: arrows = non-M arrows (bez próbnych)
+        const total = s.arrows ?? s.totalArrows ?? 0;
+        return acc + total;
+      }, 0)
       + dailyPfeilzaehler
     );
     if (daySessions.length > 0) {
@@ -747,7 +751,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
                   <div className="grid grid-cols-3 gap-2 mb-4">
                     <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.score')}</span><span className="text-2xl font-black text-[#0a3a2a]">{selectedSession.score || 0}</span></div>
-                    <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.average')}</span><span className="text-2xl font-black text-[#0a3a2a]">{((selectedSession.score || 0) / (selectedSession.arrows || 1)).toFixed(2)}</span></div>
+                    <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.average')}</span><span className="text-2xl font-black text-[#0a3a2a]">{((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1)).toFixed(2)}</span></div>
                     <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.dailyArrows', 'Strzały dzisiaj')}</span><span className="text-2xl font-black text-emerald-600">{dailyArrows}</span></div>
                   </div>
 

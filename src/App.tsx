@@ -55,6 +55,7 @@ export default function App() {
   const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>('PROFIL');
   const [sessionDistance, setSessionDistance] = useState<string>('70m');
   const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
+  const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(0);
   
   const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
@@ -279,7 +280,7 @@ export default function App() {
     }
   };
 
-  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null) => {
+  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0) => {
     if (!user) return;
     try {
       if (forceClear) {
@@ -294,7 +295,8 @@ export default function App() {
       
       setSessionDistance(distance);
       setSessionTargetType(targetType);
-      setActiveBattleId(battleId); 
+      setSessionPracticeArrows(practiceArrows);
+      setActiveBattleId(battleId);
       setCurrentView('SCORING');
     } catch (error) {
       console.error("Błąd startu sesji:", error);
@@ -439,7 +441,7 @@ export default function App() {
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         
-        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} targetType={sessionTargetType} battleId={activeBattleId} onNavigate={handleNavigate} />}
+        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} targetType={sessionTargetType} battleId={activeBattleId} practiceArrows={sessionPracticeArrows} onNavigate={handleNavigate} />}
         {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} userEmail={user?.email || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate as any} />}
         
         {currentView === 'BATTLE_LOBBY' && (

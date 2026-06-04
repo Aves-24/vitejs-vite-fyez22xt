@@ -161,8 +161,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     const finalEnds = currentEnd.length > 0 ? [...ends, currentEnd] : ends;
     const todayStr = new Date().toLocaleDateString('pl-PL');
     const todayISO = new Date().toISOString().split('T')[0];
-    const competitionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter(a => a !== 'M').length : 72;
-    const arrowCount = competitionArrows + practiceArrows;
+    const scoreArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a !== 'M').length : 72; // non-M, do średniej
+    const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : 72; // fizyczne strzały konkursowe (z M)
 
     // Konwersja formatu 'ends' dla trybu DETAILED (aby StatsView widziało strzały)
     const archivedEnds = finalEnds.map(end => ({
@@ -187,8 +187,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         type: 'Turniej',
         tournamentName,
         score: stats.totalScore,
-        arrows: competitionArrows,
+        scoreArrows,
+        sessionArrows,
         practiceArrows: practiceArrows,
+        arrows: sessionArrows + practiceArrows,
         xCount: stats.totalX,
         tenCount: stats.total10,
         nineCount: stats.total9,
@@ -201,9 +203,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       // Aktualizacje nieblokujące — błędy nie przerywają nawigacji
       try {
         const userRef = doc(db, 'users', userId);
-        await updateDoc(userRef, { totalArrows: increment(arrowCount), monthlyArrows: increment(arrowCount) });
+        const totalCount = sessionArrows + practiceArrows;
+        await updateDoc(userRef, { totalArrows: increment(totalCount), monthlyArrows: increment(totalCount) });
         const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
-        await setDoc(dailyRef, { arrows: increment(arrowCount) }, { merge: true });
+        await setDoc(dailyRef, { arrows: increment(totalCount) }, { merge: true });
       } catch (secondaryError) {
         console.warn('Nieblokujący błąd aktualizacji statystyk:', secondaryError);
       }

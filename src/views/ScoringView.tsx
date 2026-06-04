@@ -183,7 +183,7 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function ScoringView({ userId, distance = "70m", targetType = "Full", battleId = null, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+export default function ScoringView({ userId, distance = "70m", targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
@@ -488,13 +488,17 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       const didWinWorld   = isWorldBattle && globalStats.score > opponentScore;
       const worldXp       = isWorldBattle ? WORLD_XP_PARTICIPATION + (didWinWorld ? WORLD_XP_WIN : 0) : 0;
 
-      const shotArrows = submittedEnds.reduce((total: number, end: any) =>
-        total + (end.arrows?.filter((a: string) => a && a.length > 0).length || 0), 0);
+      const scoreArrows = globalStats.count; // non-M arrows — do liczenia średniej
+      const sessionArrows = submittedEnds.reduce((total: number, end: any) =>
+        total + (end.arrows?.filter((a: string) => a && a.length > 0).length || 0), 0); // wszystkie fizyczne strzały z sesji (z M)
+      const practiceCount = practiceArrowsProp || 0;
 
       await addDoc(collection(db, `users/${userId}/sessions`), {
         score: globalStats.score,
-        arrows: globalStats.count,
-        shotArrows,
+        scoreArrows,      // non-M, do średniej
+        sessionArrows,    // fizyczne strzały treningowe (z M)
+        practiceArrows: practiceCount,
+        arrows: sessionArrows + practiceCount, // łączna suma do wyświetlania
         distance: distance,
         targetType: targetType,
         date: new Date().toLocaleDateString('pl-PL'),

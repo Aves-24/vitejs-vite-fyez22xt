@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 interface SessionSetupProps {
   userId: string;
   activeDistances: any[];
-  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null) => void;
+  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number) => void;
   onUpdateDistances?: (newDistances: any[]) => void; 
   onNavigate?: (view: string, tab?: string) => void; 
   onGoToBattle?: (distance: string, targetType: string) => void;
@@ -141,7 +141,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
-    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null); }
+    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined); }
   };
 
   const openSightEditor = () => {
@@ -351,7 +351,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         
         {hasUnsaved && (
           <button 
-            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null)} 
+            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined)}
             className="w-full py-4 mt-2 rounded-[20px] font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-sm">history</span>
@@ -445,7 +445,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
-            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
+            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
         </div>

@@ -643,6 +643,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                 
                 let bg = "bg-white", txt = "text-gray-400", brd = "border-gray-100";
                 
+                let displayScore: number | null = null;
+
                 if (dayActs.length > 0) {
                   const hasTournament = dayActs.some(a => a.type === 'Turniej');
                   const hasArena = dayActs.some(a => a.type === 'Arena');
@@ -654,12 +656,27 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                   else if (hasArena) { bg = "bg-blue-500"; txt = "text-white"; brd = "border-blue-500"; }
                   else if (hasNormalTraining) { bg = "bg-[#fed33e]"; txt = "text-[#5d4a00]"; brd = "border-[#e5bd38]"; }
                   else if (hasTech) { bg = "bg-emerald-100"; txt = "text-emerald-700"; brd = "border-emerald-300"; }
+
+                  const scoredSessions = hasTournament
+                    ? dayActs.filter(a => a.type === 'Turniej')
+                    : hasNormalTraining
+                    ? dayActs.filter(a => a.type !== 'Turniej' && a.type !== 'Arena' && a.type !== 'TECHNICAL')
+                    : hasArena
+                    ? dayActs.filter(a => a.type === 'Arena')
+                    : [];
+                  const scores = scoredSessions.map(a => a.score || 0).filter(s => s > 0);
+                  if (scores.length > 0) displayScore = Math.max(...scores);
                 }
-                
+
                 return (
-                  <button key={dStr} onClick={() => setSelectedDate(dStr)} className={`relative flex-shrink-0 w-12 h-16 rounded-2xl flex flex-col items-center justify-center transition-all snap-center border-2 ${bg} ${txt} ${brd} ${isSel ? 'scale-110 shadow-lg ring-2 ring-emerald-500/50 z-10' : 'opacity-80 active:scale-95'} ${dayActs.length === 0 ? 'opacity-30 border-dashed border-gray-200' : ''}`}>
-                    <span className="text-[7px] font-black uppercase mb-1 opacity-70">{d.toLocaleDateString(i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' })}</span>
-                    <span className="text-lg font-black leading-none">{dStr.split('-')[2]}</span>
+                  <button key={dStr} onClick={() => setSelectedDate(dStr)} className={`relative flex-shrink-0 w-12 h-[76px] rounded-2xl flex flex-col items-center justify-center transition-all snap-center border-2 ${bg} ${txt} ${brd} ${isSel ? 'scale-110 shadow-lg ring-2 ring-emerald-500/50 z-10' : 'opacity-80 active:scale-95'} ${dayActs.length === 0 ? 'opacity-30 border-dashed border-gray-200' : ''}`}>
+                    <span className="text-[7px] font-black uppercase mb-0.5 opacity-70">{d.toLocaleDateString(i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-US', { weekday: 'short' })}</span>
+                    <span className="text-base font-black leading-none">{dStr.split('-')[2]}</span>
+                    {displayScore !== null ? (
+                      <span className="text-[9px] font-black leading-none mt-1 opacity-90">{displayScore}</span>
+                    ) : (
+                      <span className="text-[9px] leading-none mt-1 opacity-0">—</span>
+                    )}
                     {dayActs.length > 1 && (
                        <span className={`absolute -top-1 -right-1 w-3 h-3 rounded-full text-[6px] font-black flex items-center justify-center text-white ${dayActs.some(a => a.type === 'TECHNICAL') && dayActs.some(a => a.type !== 'TECHNICAL') ? 'bg-purple-500' : 'bg-red-500'}`}>
                          {dayActs.length}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from './config/archeryRules';
 import { useTranslation } from 'react-i18next';
 
@@ -300,6 +300,33 @@ export default function App() {
       setSessionPracticeArrows(practiceArrows);
       setActiveBattleId(battleId);
       setCurrentView('SCORING');
+
+      // Odejmij strzały próbne z profilu pfeilzaehler — są już zapisane w sesji,
+      // żeby nie liczyć ich podwójnie w statystykach miesięcznych
+      if (practiceArrows > 0) {
+        const today = new Date();
+        const dayKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}`;
+        const monthKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}`;
+        const userRef = doc(db, 'users', user.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const pz = snap.data().pfeilzaehler || {};
+          const updates: Record<string, any> = {};
+          // Odejmij od klucza dziennego (nowy format)
+          if ((pz[dayKey] || 0) > 0) {
+            const newVal = Math.max(0, (pz[dayKey] || 0) - practiceArrows);
+            updates[`pfeilzaehler.${dayKey}`] = newVal > 0 ? newVal : null;
+          }
+          // Odejmij od klucza miesięcznego (stary format) jeśli istnieje
+          if ((pz[monthKey] || 0) > 0) {
+            const newVal = Math.max(0, (pz[monthKey] || 0) - practiceArrows);
+            updates[`pfeilzaehler.${monthKey}`] = newVal > 0 ? newVal : null;
+          }
+          if (Object.keys(updates).length > 0) {
+            updateDoc(userRef, updates).catch(() => {});
+          }
+        }
+      }
     } catch (error) {
       console.error("Błąd startu sesji:", error);
     }

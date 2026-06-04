@@ -15,6 +15,7 @@ import CoachInvitePopup from './components/CoachInvitePopup';
 import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
+import { migrateArrowModel } from './utils/migrateArrowModel';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -127,6 +128,7 @@ export default function App() {
       setUser(currentUser);
       setIsAuthLoading(false);
       if (!currentUser) setIsDataReady(true);
+      if (currentUser) migrateArrowModel(currentUser.uid).catch(() => {});
     });
     return () => unsubscribe();
   }, []);

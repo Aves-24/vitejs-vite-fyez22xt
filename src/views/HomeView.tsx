@@ -464,7 +464,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         snapYear.forEach(docSnap => {
           const data = docSnap.data();
-          const arr = data.arrows || data.totalArrows || 0;
+          const arr = data.arrows || data.totalArrows || 0; // total (session + practice) — do liczników
+          const scoreArr = data.scoreArrows || data.arrows || 0; // tylko strzały z punktacją — do średniej
           const sc  = data.score  || 0;
           const ts  = getSafeTime(data.timestamp);
           const isTechnical = data.type === 'TECHNICAL';
@@ -478,7 +479,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           if (ts >= startOfDay) d += sessionTotal;
           if (ts >= startOfMonth) m += arr;
           else if (ts >= startOfPrevMonth) pm += arr;
-          if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += arr; s14 += sc; }
+          if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += scoreArr; s14 += sc; }
         });
 
         // Pfeilzähler: strzały zapisane na profilu (nie tworzą sesji)

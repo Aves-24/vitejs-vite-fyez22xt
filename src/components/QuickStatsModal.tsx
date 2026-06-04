@@ -90,11 +90,12 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
 
           if (diffWeeks < 12) {
             const idx = 11 - diffWeeks;
-            const arr = data.arrows || data.totalArrows || 0;
+            const arr = data.arrows || data.totalArrows || 0; // total (z próbnymi) — do wykresu
+            const scoreArr = data.scoreArrows || data.arrows || 0; // tylko strzały z punktacją — do średniej
             arrowsByWeek[idx] += arr;
-            if (data.arrows > 0) {
+            if (scoreArr > 0) {
               scoresByWeek[idx] += (data.score || 0);
-              countByWeek[idx] += (data.arrows || 0);
+              countByWeek[idx] += scoreArr;
             }
           }
         });

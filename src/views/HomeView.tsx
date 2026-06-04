@@ -1065,17 +1065,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         </button>
         </div>
 
-        {/* ─── PRZYCISK ODŚWIEŻENIA STATYSTYK ─────────────────────────────────── */}
-        <button
-          onClick={handleRefresh}
-          disabled={isRefreshing}
-          className="flex items-center justify-center gap-1.5 w-full py-1.5 text-gray-300 active:text-gray-400 transition-colors disabled:opacity-50"
-        >
-          <span className={`material-symbols-outlined text-[14px] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
-          <span className="text-[9px] font-bold uppercase tracking-widest">
-            {isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Statistiken aktualisieren' })}
-          </span>
-        </button>
 
         {/* ─── MULTIPLAYER ARENA + RANKING — obok siebie ───────────────────── */}
         <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1158,10 +1147,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         {/* AI COACH — tymczasowo ukryte */}
 
-        {/* BUILD TIMESTAMP + CURRENT TIME */}
-        <div className="text-center mt-1 space-y-0.5">
-          <span className="text-[9px] text-gray-300 tracking-wide block">build: {__BUILD_TIME__}</span>
-          <span className="text-[9px] text-[#fed33e] font-bold tracking-wide block">now: {new Date().toLocaleTimeString('pl-PL')}</span>
+        {/* BUILD TIMESTAMP + CURRENT TIME + REFRESH */}
+        <div className="flex items-center justify-center gap-3 mt-1">
+          <div className="text-center space-y-0.5">
+            <span className="text-[9px] text-gray-300 tracking-wide block">build: {__BUILD_TIME__}</span>
+            <span className="text-[9px] text-[#fed33e] font-bold tracking-wide block">now: {new Date().toLocaleTimeString('pl-PL')}</span>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title={isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Statistiken aktualisieren' })}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 active:text-gray-500 active:bg-gray-100 transition-all disabled:opacity-40"
+          >
+            <span className={`material-symbols-outlined text-[18px] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
+          </button>
         </div>
 
       </div>

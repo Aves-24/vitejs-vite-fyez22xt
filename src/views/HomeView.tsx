@@ -1148,19 +1148,22 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* AI COACH — tymczasowo ukryte */}
 
         {/* BUILD TIMESTAMP + CURRENT TIME + REFRESH */}
-        <div className="flex items-center justify-center gap-3 mt-1">
-          <div className="text-center space-y-0.5">
-            <span className="text-[9px] text-gray-300 tracking-wide block">build: {__BUILD_TIME__}</span>
-            <span className="text-[9px] text-[#fed33e] font-bold tracking-wide block">now: {new Date().toLocaleTimeString('pl-PL')}</span>
-          </div>
+        <div className="flex flex-col items-center gap-2 mt-2">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            title={isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Statistiken aktualisieren' })}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-gray-300 active:text-gray-500 active:bg-gray-100 transition-all disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 active:bg-gray-200 transition-all disabled:opacity-40 shadow-sm"
           >
-            <span className={`material-symbols-outlined text-[18px] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
+            <span className={`material-symbols-outlined text-[16px] text-[#0a3a2a] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
+            <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">
+              {isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Aktualisieren' })}
+            </span>
           </button>
+          <div className="flex items-center gap-2">
+            <span className="text-[8px] text-gray-300 tracking-wide">build: {__BUILD_TIME__}</span>
+            <span className="text-gray-200">·</span>
+            <span className="text-[8px] text-[#fed33e]/60 font-bold tracking-wide">{new Date().toLocaleTimeString('pl-PL')}</span>
+          </div>
         </div>
 
       </div>

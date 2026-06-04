@@ -62,9 +62,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setIsSavingCounter(true);
     try {
       const now = new Date();
-      const monthKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const dayKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
       await updateDoc(doc(db, 'users', userId), {
-        [`pfeilzaehler.${monthKey}`]: increment(count),
+        [`pfeilzaehler.${dayKey}`]: increment(count),
       });
       setTechArrows('0');
       localStorage.removeItem(`grotX_techCounter_${userId}`);

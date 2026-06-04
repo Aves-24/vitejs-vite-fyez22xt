@@ -481,16 +481,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (!cancelled && profileSnap.exists()) {
           const pz = profileSnap.data().pfeilzaehler || {};
           const yearStr = String(now.getFullYear());
-          const monthKey = `${yearStr}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const monthPrefix = `${yearStr}_${String(now.getMonth() + 1).padStart(2, '0')}`;
+          const dayKey = `${monthPrefix}_${String(now.getDate()).padStart(2, '0')}`;
           const prevMonthNum = now.getMonth() === 0 ? 12 : now.getMonth();
           const prevYearStr = now.getMonth() === 0 ? String(now.getFullYear() - 1) : yearStr;
-          const prevMonthKey = `${prevYearStr}_${String(prevMonthNum).padStart(2, '0')}`;
+          const prevMonthPrefix = `${prevYearStr}_${String(prevMonthNum).padStart(2, '0')}`;
           Object.entries(pz).forEach(([key, val]) => {
             if (key.startsWith(yearStr)) {
               y += (val as number);
-              if (key === monthKey) m += (val as number);
+              if (key.startsWith(monthPrefix)) m += (val as number);
+              if (key === dayKey) d += (val as number);
             }
-            if (key === prevMonthKey) pm += (val as number);
+            if (key.startsWith(prevMonthPrefix)) pm += (val as number);
           });
         }
 

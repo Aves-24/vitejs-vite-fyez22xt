@@ -90,10 +90,11 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
 
           if (diffWeeks < 12) {
             const idx = 11 - diffWeeks;
-            const arr = data.arrows || data.totalArrows || 0; // total (z próbnymi) — do wykresu
-            const scoreArr = data.scoreArrows || data.arrows || 0; // tylko strzały z punktacją — do średniej
+            const arr = data.arrows || data.totalArrows || 0;
+            const scoreArr = data.scoreArrows || data.arrows || 0;
+            const isTechnical = data.type === 'TECHNICAL';
             arrowsByWeek[idx] += arr;
-            if (scoreArr > 0) {
+            if (!isTechnical && scoreArr > 0) {
               scoresByWeek[idx] += (data.score || 0);
               countByWeek[idx] += scoreArr;
             }

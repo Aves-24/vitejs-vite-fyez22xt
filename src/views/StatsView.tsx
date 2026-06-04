@@ -313,7 +313,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
                         {session.isNotePublic !== false ? 'visibility' : 'visibility_off'}
                     </span>
                  )}
-                 {canEdit && !isEditing ? <span className="text-[8px] opacity-50 ml-1">({2 - edits} edycje)</span> : ''}
+                 {canEdit && !isEditing ? <span className="text-[8px] opacity-50 ml-1">{t('stats.noteEditsLeft', { count: 2 - edits })}</span> : ''}
               </span>
               {canEdit && !isEditing && (
                 <button onClick={() => setIsEditing(true)} className="text-emerald-500 hover:text-emerald-700 active:scale-90 transition-all bg-white rounded-md p-1 shadow-sm border border-emerald-100">

@@ -804,6 +804,7 @@ export const views = {
     deleteConfirm: "Yes, delete this session anyway.",
     noTechSessions: "No technical training sessions saved.",
     yourNotes: "Your Notes",
+    noteEditsLeft: "({{count}} edits)",
     studentFindings: "Student's Findings",
     sharedWithCoach: "Shared with coach",
     private: "Private",

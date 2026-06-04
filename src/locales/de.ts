@@ -804,6 +804,7 @@ export const views = {
     deleteConfirm: "Ja, trotzdem Training löschen.",
     noTechSessions: "Keine technischen Trainingseinheiten gespeichert.",
     yourNotes: "Deine Notizen",
+    noteEditsLeft: "({{count}} Bearb.)",
     studentFindings: "Erkenntnisse des Schülers",
     sharedWithCoach: "Mit Trainer geteilt",
     private: "Privat",

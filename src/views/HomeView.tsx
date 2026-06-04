@@ -82,6 +82,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [quickStatsInitialTab, setQuickStatsInitialTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
   const [refreshNonce, setRefreshNonce] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const MAX_DAILY_REFRESHES = 2;
+  const getRefreshData = () => {
+    try {
+      const raw = localStorage.getItem(`grotX_refreshLimit_${userId}`);
+      if (!raw) return { count: 0, date: '' };
+      return JSON.parse(raw) as { count: number; date: string };
+    } catch { return { count: 0, date: '' }; }
+  };
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const refreshData = getRefreshData();
+  const refreshesLeft = refreshData.date === todayStr
+    ? Math.max(0, MAX_DAILY_REFRESHES - refreshData.count)
+    : MAX_DAILY_REFRESHES;
   
   const [activeInvite, setActiveInvite] = useState<any | null>(null);
   const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]); 
@@ -567,7 +580,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   }, [userId, refreshNonce]);
 
   const handleRefresh = () => {
-    if (isRefreshing || !userId) return;
+    if (isRefreshing || !userId || refreshesLeft <= 0) return;
+    const current = getRefreshData();
+    const newCount = current.date === todayStr ? current.count + 1 : 1;
+    localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
     localStorage.removeItem(`grotX_stats_v5_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
@@ -1151,13 +1167,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         <div className="flex flex-col items-center gap-2 mt-2">
           <button
             onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 active:bg-gray-200 transition-all disabled:opacity-40 shadow-sm"
+            disabled={isRefreshing || refreshesLeft <= 0}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all shadow-sm relative ${
+              refreshesLeft <= 0
+                ? 'bg-gray-100 opacity-40 cursor-not-allowed'
+                : 'bg-gray-100 active:bg-gray-200'
+            }`}
           >
             <span className={`material-symbols-outlined text-[16px] text-[#0a3a2a] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
             <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">
-              {isRefreshing ? t('home.refreshing', { defaultValue: 'Aktualisiere…' }) : t('home.refresh', { defaultValue: 'Aktualisieren' })}
+              {isRefreshing
+                ? t('home.refreshing', { defaultValue: 'Aktualisiere…' })
+                : t('home.refresh', { defaultValue: 'Aktualisieren' })}
             </span>
+            {!isRefreshing && (
+              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black leading-none ${
+                refreshesLeft > 0 ? 'bg-[#0a3a2a] text-white' : 'bg-gray-300 text-gray-500'
+              }`}>
+                {refreshesLeft}
+              </span>
+            )}
           </button>
           <div className="flex items-center gap-2">
             <span className="text-[8px] text-gray-300 tracking-wide">build: {__BUILD_TIME__}</span>

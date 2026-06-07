@@ -84,7 +84,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
               className="flex items-center gap-0.5 text-[9px] font-black text-emerald-600 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-[12px]">edit</span>
-              {t('common.edit', 'Edytuj')}
+              {t('common.edit')}
             </button>
           )}
         </div>
@@ -177,7 +177,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
                 onClick={handleCancelEdit}
                 className="flex-1 py-2 rounded-xl bg-gray-100 text-gray-500 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
               >
-                {t('common.cancel', 'Anuluj')}
+                {t('common.cancel')}
               </button>
               <button
                 onClick={handleSaveTopics}
@@ -186,7 +186,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
               >
                 {isSaving
                   ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                  : t('common.save', 'Zapisz')
+                  : t('common.save')
                 }
               </button>
             </div>

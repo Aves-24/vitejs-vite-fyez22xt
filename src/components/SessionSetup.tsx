@@ -18,7 +18,7 @@ const ADMIN_IDS = ['Lglbqv96HlO2LoN98yxrIeaQS172', 'b55wNdZf17gH5wxziuzG9bkaQKo2
 
 
 export default function SessionSetup({ userId, activeDistances, onStartSession, onUpdateDistances, onNavigate, onGoToBattle, hasActiveSession }: SessionSetupProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [selectedTarget, setSelectedTarget] = useState<string>('122cm');
   
@@ -479,7 +479,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                         </span>
                         <div className="min-w-0">
                           <span className="text-[11px] font-black text-[#0a3a2a] block">{t(`sessionSetup.topic_${sub.id}`)}</span>
-                          {i18n.language !== 'de' && (
+                          {t(`sessionSetup.topic_${sub.id}`) !== sub.term && (
                             <span className="text-[8px] text-gray-400 font-bold">{sub.term}</span>
                           )}
                         </div>

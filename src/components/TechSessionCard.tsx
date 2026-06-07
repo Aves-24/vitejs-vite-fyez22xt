@@ -13,7 +13,7 @@ interface TechSessionCardProps {
 }
 
 export default function TechSessionCard({ session, noteComponent, onDelete, canDelete, userId }: TechSessionCardProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const [isEditingTopics, setIsEditingTopics] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(session.topics || []);
@@ -161,7 +161,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
                       </span>
                       <div className="min-w-0">
                         <span className="text-[11px] font-black text-[#0a3a2a] block">{t(`sessionSetup.topic_${sub.id}`)}</span>
-                        {i18n.language !== 'de' && (
+                        {t(`sessionSetup.topic_${sub.id}`) !== sub.term && (
                           <span className="text-[8px] text-gray-400 font-bold">{sub.term}</span>
                         )}
                       </div>

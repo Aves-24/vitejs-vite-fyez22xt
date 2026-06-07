@@ -785,7 +785,9 @@ export const views = {
     arrowCounter: "Licznik strzał",
     saveCounter: "Zapisz",
     notePlaceholder: "Np. Praca nad stabilizacją łuku w lewej ręce...",
-    saveBtn: "Zatwierdź i zapisz"
+    saveBtn: "Zatwierdź i zapisz",
+    trainingTopics: "Tematy treningowe",
+    topicsSelected: "wybranych"
   },
   stats: {
     title: "Statystyki",

@@ -785,7 +785,9 @@ export const views = {
     arrowCounter: "Pfeilzähler",
     saveCounter: "Speichern",
     notePlaceholder: "z.B. Arbeit an der Bogenstabilisierung in der linken Hand...",
-    saveBtn: "Bestätigen & Speichern"
+    saveBtn: "Bestätigen & Speichern",
+    trainingTopics: "Trainingsthemen",
+    topicsSelected: "ausgewählt"
   },
   stats: {
     title: "Statistiken",

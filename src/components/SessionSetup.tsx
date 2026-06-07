@@ -15,6 +15,76 @@ interface SessionSetupProps {
 
 const ADMIN_IDS = ['Lglbqv96HlO2LoN98yxrIeaQS172', 'b55wNdZf17gH5wxziuzG9bkaQKo2'];
 
+const TRAINING_TOPICS = [
+  {
+    id: 'fundamenty',
+    num: '1',
+    label: 'Fundamenty i Postawa',
+    subtopics: [
+      { id: 'fusstellung', label: 'Fußstellung', sub: 'Ustawienie stóp' },
+      { id: 'tform', label: 'T-Form', sub: 'T-forma' },
+      { id: 'gewicht', label: 'Gewichtsverteilung', sub: 'Rozkład ciężaru' },
+      { id: 'kopf', label: 'Kopfhaltung', sub: 'Pozycja głowy' },
+      { id: 'mindset', label: 'Mentale Einstellung', sub: 'Nastawienie' },
+    ],
+  },
+  {
+    id: 'naciag',
+    num: '2',
+    label: 'Podniesienie i Naciąg',
+    subtopics: [
+      { id: 'voranschlag', label: 'Voranschlag', sub: 'Pozycja startowa' },
+      { id: 'bogengriff', label: 'Bogengriff', sub: 'Podparcie łuku' },
+      { id: 'bogenarm', label: 'Bogenarmhaltung', sub: 'Pozycja ramienia łukowego' },
+      { id: 'ellenbogen', label: 'Ellenbogenrotation', sub: 'Rotacja łokcia' },
+      { id: 'hook', label: 'Sehnenfinger-Griff', sub: 'Układ palców na cięciwie' },
+      { id: 'auszug', label: 'Auszug', sub: 'Naciąganie łuku' },
+      { id: 'schulter', label: 'Schulter tief', sub: 'Obniżenie barku' },
+      { id: 'anker', label: 'Ankerpunkt', sub: 'Zakotwiczenie' },
+      { id: 'sehne', label: 'Sehnenbeschattung', sub: 'Osiowość cięciwy' },
+    ],
+  },
+  {
+    id: 'celowanie',
+    num: '3',
+    label: 'Celowanie i Ekspansja',
+    subtopics: [
+      { id: 'zielen', label: 'Zielen', sub: 'Celowanie' },
+      { id: 'rucken', label: 'Rückenspannung', sub: 'Praca łopatek' },
+      { id: 'expansion', label: 'Expansion', sub: 'Ruch liniowy do tyłu' },
+      { id: 'klicker', label: 'Klickerkontrolle', sub: 'Kontrola klikera' },
+      { id: 'atem', label: 'Atemtechnik', sub: 'Rytm oddechowy' },
+      { id: 'visual', label: 'Visualisierung', sub: 'Wizualizacja' },
+    ],
+  },
+  {
+    id: 'zwolnienie',
+    num: '4',
+    label: 'Zwolnienie i Finał',
+    subtopics: [
+      { id: 'losen', label: 'Lösen', sub: 'Spuszczenie cięciwy' },
+      { id: 'nachhalten', label: 'Nachhalten', sub: 'Wytrzymanie po strzale' },
+      { id: 'rhythmus', label: 'Schussrhythmus', sub: 'Płynność i rytm' },
+    ],
+  },
+  {
+    id: 'taktyka',
+    num: '5',
+    label: 'Taktyka i Sprzęt',
+    subtopics: [
+      { id: 'visier', label: 'Vierreinstellung', sub: 'Regulacja celownika' },
+      { id: 'wind', label: 'Windschießen', sub: 'Strzelanie na wietrze' },
+      { id: 'zeit', label: 'Zeitmanagement', sub: 'Dyscyplina czasu' },
+      { id: 'psycho', label: 'Ergebnispsychologie', sub: 'Radzenie sobie z presją' },
+      { id: 'routine', label: 'Schussroutine', sub: 'Rutyna między strzałami' },
+      { id: 'bogeneinstellung', label: 'Bogeneinstellung', sub: 'Strojenie łuku' },
+      { id: 'pfeilabstimmung', label: 'Pfeilabstimmung', sub: 'Dobór i ustawienie strzał' },
+      { id: 'stabilisator', label: 'Stabilisator', sub: 'Ustawienie stabilizatorów' },
+      { id: 'nockpunkt', label: 'Nockpunkt', sub: 'Punkt nałożenia strzały' },
+    ],
+  },
+];
+
 export default function SessionSetup({ userId, activeDistances, onStartSession, onUpdateDistances, onNavigate, onGoToBattle, hasActiveSession }: SessionSetupProps) {
   const { t } = useTranslation();
   const [selectedDistance, setSelectedDistance] = useState<string>('');
@@ -40,6 +110,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [techNote, setTechNote] = useState('');
   const [isSavingTech, setIsSavingTech] = useState(false);
   const [counterSaved, setCounterSaved] = useState(false);
+  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+
+  const toggleTopic = (id: string) => {
+    setSelectedTopics(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
+  };
 
   const [isSavingCounter, setIsSavingCounter] = useState(false);
 
@@ -160,6 +236,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         arrows: count,
         totalArrows: count,
         note: techNote,
+        topics: selectedTopics,
         createdAt: serverTimestamp(),
         type: 'TECHNICAL',
         timestamp: Timestamp.fromDate(new Date()),
@@ -168,6 +245,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       setShowTechModal(false);
       setTechArrows('0');
       setTechNote('');
+      setSelectedTopics([]);
+      setExpandedCategory(null);
       localStorage.removeItem(`grotX_techCounter_${userId}`);
       invalidateStatsCache();
       if (onNavigate) onNavigate('STATS');
@@ -378,25 +457,103 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </div>
 
             {/* LICZNIK STRZAŁ */}
-            <div className="bg-[#0a3a2a]/5 rounded-[20px] border-2 border-[#0a3a2a]/10 px-3 py-3 mb-4">
-              <span className="text-[13px] font-black text-[#0a3a2a] uppercase tracking-widest block mb-2.5 text-center">{t('sessionSetup.arrowCounter')}</span>
-              <div className="flex items-center gap-2">
+            <div className="bg-[#0a3a2a]/5 rounded-[20px] border-2 border-[#0a3a2a]/10 px-3 py-2 mb-3">
+              <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest block mb-1.5 text-center">{t('sessionSetup.arrowCounter')}</span>
+              <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') + 6)))}
-                  className="flex-1 py-3 bg-emerald-500 text-white rounded-xl font-black text-base active:scale-95 transition-all"
+                  className="flex-1 py-2 bg-emerald-500 text-white rounded-xl font-black text-sm active:scale-95 transition-all"
                 >+6</button>
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') + 1)))}
-                  className="flex-1 py-3 bg-emerald-100 text-emerald-700 rounded-xl font-black text-base active:scale-95 transition-all"
+                  className="flex-1 py-2 bg-emerald-100 text-emerald-700 rounded-xl font-black text-sm active:scale-95 transition-all"
                 >+1</button>
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') - 1)))}
-                  className="flex-1 py-3 bg-red-50 text-red-500 rounded-xl font-black text-base active:scale-95 transition-all border border-red-100"
+                  className="flex-1 py-2 bg-red-50 text-red-500 rounded-xl font-black text-sm active:scale-95 transition-all border border-red-100"
                 >−1</button>
-                <div className="flex-1 py-3 bg-[#0a3a2a] text-white rounded-xl font-black text-2xl flex items-center justify-center">
+                <div className="flex-1 py-2 bg-[#0a3a2a] text-white rounded-xl font-black text-xl flex items-center justify-center">
                   {techArrows || '0'}
                 </div>
               </div>
+            </div>
+
+            {/* TEMATY */}
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('sessionSetup.trainingTopics')}</span>
+                {selectedTopics.length > 0 && (
+                  <span className="text-[9px] font-black text-emerald-600">{selectedTopics.length} {t('sessionSetup.topicsSelected')}</span>
+                )}
+              </div>
+
+              {/* Wybrane tematy jako chipy */}
+              {selectedTopics.length > 0 && (
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {selectedTopics.map(id => {
+                    const sub = TRAINING_TOPICS.flatMap(c => c.subtopics).find(s => s.id === id);
+                    if (!sub) return null;
+                    return (
+                      <button key={id} onClick={() => toggleTopic(id)}
+                        className="flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black active:scale-95 transition-all">
+                        {sub.sub}
+                        <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Przyciski kategorii */}
+              <div className="grid grid-cols-5 gap-1 mb-1">
+                {TRAINING_TOPICS.map(cat => {
+                  const hasSelected = cat.subtopics.some(s => selectedTopics.includes(s.id));
+                  return (
+                    <button key={cat.id}
+                      onClick={() => setExpandedCategory(v => v === cat.id ? null : cat.id)}
+                      className={`py-1.5 rounded-xl text-[9px] font-black text-center leading-tight transition-all relative ${
+                        expandedCategory === cat.id
+                          ? 'bg-emerald-600 text-white'
+                          : hasSelected
+                          ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200'
+                          : 'bg-gray-50 text-gray-500 border border-gray-100'
+                      }`}>
+                      {cat.num}
+                      {hasSelected && expandedCategory !== cat.id && (
+                        <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Rozwinięte podtematy */}
+              {expandedCategory && (
+                <div className="bg-gray-50 rounded-xl p-2 space-y-0.5 border border-gray-100">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">
+                    {TRAINING_TOPICS.find(c => c.id === expandedCategory)?.label}
+                  </p>
+                  {TRAINING_TOPICS.find(c => c.id === expandedCategory)?.subtopics.map(sub => {
+                    const checked = selectedTopics.includes(sub.id);
+                    return (
+                      <button key={sub.id} onClick={() => toggleTopic(sub.id)}
+                        className={`w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-left transition-all active:scale-[0.98] ${
+                          checked ? 'bg-emerald-100' : 'hover:bg-gray-100'
+                        }`}>
+                        <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          checked ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 bg-white'
+                        }`}>
+                          {checked && <span className="material-symbols-outlined text-white text-[11px]">check</span>}
+                        </span>
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-black text-[#0a3a2a] block">{sub.sub}</span>
+                          <span className="text-[8px] text-gray-400 font-bold">{sub.label}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* NOTATKI */}

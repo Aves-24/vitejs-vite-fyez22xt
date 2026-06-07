@@ -785,7 +785,9 @@ export const views = {
     arrowCounter: "Arrow counter",
     saveCounter: "Save",
     notePlaceholder: "e.g. Work on bow stabilization in the left hand...",
-    saveBtn: "Confirm & Save"
+    saveBtn: "Confirm & Save",
+    trainingTopics: "Training topics",
+    topicsSelected: "selected"
   },
   stats: {
     title: "Stats",

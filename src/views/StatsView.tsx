@@ -725,10 +725,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
             <div className={`space-y-4 animate-fade-in-up pb-20 ${isEmbedded ? 'px-0' : 'px-4'}`}>
               
               {selectedSession.type === 'TECHNICAL' ? (
-                <TechSessionCard 
+                <TechSessionCard
                   session={selectedSession}
                   canDelete={!viewingStudentId}
                   onDelete={() => setShowDeleteModal(true)}
+                  userId={viewingStudentId ? undefined : userId}
                   noteComponent={<NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />}
                 />
               ) : (

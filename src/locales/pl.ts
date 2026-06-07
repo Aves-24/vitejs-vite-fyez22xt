@@ -211,7 +211,10 @@ export const views = {
     notesDeleteConfirm: "Usuń",
     notesMic: "Mikrofon",
     notesMicStop: "Stop",
-    notesMicRecording: "Nagrywanie…"
+    notesMicRecording: "Nagrywanie…",
+    requiresCoach: "Wymaga trenera",
+    requiresCoachDesc: "Plan, Dziennik i Uwagi są dostępne tylko gdy masz przypisanego trenera.",
+    addCoach: "Dodaj trenera w Ustawieniach"
   },
   home: {
     archerRanking: "Ranking Łucznika",

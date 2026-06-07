@@ -211,7 +211,10 @@ export const views = {
     notesDeleteConfirm: "Delete",
     notesMic: "Microphone",
     notesMicStop: "Stop",
-    notesMicRecording: "Recording…"
+    notesMicRecording: "Recording…",
+    requiresCoach: "Coach required",
+    requiresCoachDesc: "Plan, Diary and Tips are only available when you have a coach assigned.",
+    addCoach: "Add a coach in Settings"
   },
   home: {
     archerRanking: "Archer Ranking",

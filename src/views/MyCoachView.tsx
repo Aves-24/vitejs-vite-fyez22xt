@@ -48,6 +48,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips' | 'notes'>('plan');
+
+  const hasCoach = !isLoading && coaches.length > 0;
+  const COACH_TABS = ['plan', 'diary', 'tips'];
   const [planCount, setPlanCount] = useState(0);
   const [diaryCount, setDiaryCount] = useState(0);
   const [sessionNotes, setSessionNotes] = useState<SessionWithNote[]>([]);
@@ -343,17 +346,20 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Plan */}
           <button
             onClick={() => setActiveTab('plan')}
-            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all relative overflow-hidden ${
+              !hasCoach ? 'bg-gray-50 border-gray-100 opacity-60' :
+              activeTab === 'plan' ? 'bg-[#0a3a2a]/5 border-[#0a3a2a]/20' : 'bg-white border-gray-100 shadow-sm'
+            }`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">event</span>
+              <span className={`material-symbols-outlined text-[14px] ${hasCoach ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>{hasCoach ? 'event' : 'lock'}</span>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabPlan')}</span>
-              {planCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{planCount}</span>}
+              {hasCoach && planCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{planCount}</span>}
             </div>
             <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
-              {latestPlanEvent ? latestPlanEvent.title : t('myCoach.noUpcoming')}
+              {hasCoach ? (latestPlanEvent ? latestPlanEvent.title : t('myCoach.noUpcoming')) : t('myCoach.requiresCoach')}
             </p>
-            {latestPlanEvent?.date && (
+            {hasCoach && latestPlanEvent?.date && (
               <p className="text-[9px] font-bold text-gray-400 mt-0.5">{latestPlanEvent.date}{latestPlanEvent.time ? ` · ${latestPlanEvent.time}` : ''}</p>
             )}
           </button>
@@ -361,17 +367,22 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Diary */}
           <button
             onClick={() => setActiveTab('diary')}
-            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'diary' ? 'bg-amber-100 border-amber-300' : 'bg-amber-50 border-amber-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all relative overflow-hidden ${
+              !hasCoach ? 'bg-gray-50 border-gray-100 opacity-60' :
+              activeTab === 'diary' ? 'bg-amber-100 border-amber-300' : 'bg-amber-50 border-amber-100 shadow-sm'
+            }`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">edit_note</span>
+              <span className={`material-symbols-outlined text-[14px] ${hasCoach ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>{hasCoach ? 'edit_note' : 'lock'}</span>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabDiary')}</span>
-              {diaryCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{diaryCount}</span>}
+              {hasCoach && diaryCount > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{diaryCount}</span>}
             </div>
             <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">
-              {latestDiaryEntry ? latestDiaryEntry.text.slice(0, 35) + (latestDiaryEntry.text.length > 35 ? '…' : '') : t('myCoach.noEntries')}
+              {hasCoach
+                ? (latestDiaryEntry ? latestDiaryEntry.text.slice(0, 35) + (latestDiaryEntry.text.length > 35 ? '…' : '') : t('myCoach.noEntries'))
+                : t('myCoach.requiresCoach')}
             </p>
-            {latestDiaryEntry && (
+            {hasCoach && latestDiaryEntry && (
               <p className="text-[9px] font-bold text-gray-400 mt-0.5">{latestDiaryEntry.authorName}</p>
             )}
           </button>
@@ -379,14 +390,17 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           {/* Tips */}
           <button
             onClick={() => setActiveTab('tips')}
-            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all ${activeTab === 'tips' ? 'bg-blue-100 border-blue-300' : 'bg-blue-50 border-blue-100 shadow-sm'}`}
+            className={`rounded-xl p-2.5 border text-left active:scale-95 transition-all relative overflow-hidden ${
+              !hasCoach ? 'bg-gray-50 border-gray-100 opacity-60' :
+              activeTab === 'tips' ? 'bg-blue-100 border-blue-300' : 'bg-blue-50 border-blue-100 shadow-sm'
+            }`}
           >
             <div className="flex items-center gap-1 mb-1">
-              <span className="material-symbols-outlined text-[14px] text-[#0a3a2a]">sports</span>
+              <span className={`material-symbols-outlined text-[14px] ${hasCoach ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>{hasCoach ? 'sports' : 'lock'}</span>
               <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest flex-1">{t('myCoach.tabTips')}</span>
-              {unreadNotes.length > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{unreadNotes.length}</span>}
+              {hasCoach && unreadNotes.length > 0 && <span className="text-[9px] font-black text-emerald-600 bg-emerald-50 rounded-full px-1.5 py-0.5">{unreadNotes.length}</span>}
             </div>
-            {(() => {
+            {hasCoach ? (() => {
               const tip = unreadNotes[0] || readNotes[0];
               return tip ? (
                 <>
@@ -398,7 +412,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               ) : (
                 <p className="text-[11px] font-black text-gray-400 truncate">{t('myCoach.noTips')}</p>
               );
-            })()}
+            })() : (
+              <p className="text-[11px] font-black text-[#0a3a2a] truncate leading-tight">{t('myCoach.requiresCoach')}</p>
+            )}
           </button>
 
           {/* Notes */}
@@ -432,6 +448,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           ].map(tab => {
             const isActive = activeTab === tab.key;
             const isNotes = tab.key === 'notes';
+            const isLocked = !hasCoach && COACH_TABS.includes(tab.key);
             return (
               <button
                 key={tab.key}
@@ -439,12 +456,14 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive
                     ? isNotes ? 'bg-indigo-600 text-white shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
-                    : 'text-gray-500 active:scale-95'
+                    : isLocked ? 'text-gray-300' : 'text-gray-500 active:scale-95'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] ${isActive ? (isNotes ? 'text-white' : 'text-[#fed33e]') : 'text-gray-400'}`}>{tab.icon}</span>
+                <span className={`material-symbols-outlined text-[18px] ${isActive ? (isNotes ? 'text-white' : 'text-[#fed33e]') : isLocked ? 'text-gray-300' : 'text-gray-400'}`}>
+                  {isLocked ? 'lock' : tab.icon}
+                </span>
                 <span className="text-[9px] font-black uppercase tracking-wider">{tab.label}</span>
-                {tab.badge > 0 && (
+                {!isLocked && tab.badge > 0 && (
                   <span className={`min-w-[15px] h-[15px] px-0.5 rounded-full text-[8px] font-black flex items-center justify-center shrink-0 ${
                     isActive ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-emerald-600 text-white'
                   }`}>{tab.badge}</span>
@@ -465,8 +484,28 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           </div>
         )}
 
+        {/* Ekran "wymaga trenera" — wspólny dla Plan/Diary/Tips */}
+        {!isLoading && !hasCoach && COACH_TABS.includes(activeTab) && (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-gray-300 text-3xl">lock</span>
+            </div>
+            <h3 className="text-base font-black text-[#0a3a2a] mb-2">{t('myCoach.requiresCoach')}</h3>
+            <p className="text-[11px] font-bold text-gray-400 leading-snug mb-5 max-w-[240px]">{t('myCoach.requiresCoachDesc')}</p>
+            {onNavigateToSettings && (
+              <button
+                onClick={onNavigateToSettings}
+                className="flex items-center gap-2 bg-[#0a3a2a] text-white px-4 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[14px]">settings</span>
+                {t('myCoach.addCoach')}
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Plan */}
-        <div className={activeTab === 'plan' ? '' : 'hidden'}>
+        <div className={activeTab === 'plan' && (hasCoach || isLoading) ? '' : 'hidden'}>
           <div className="mb-3 px-3 py-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 rounded-xl flex items-start gap-1.5">
             <span className="material-symbols-outlined text-[14px] text-[#0a3a2a] mt-px shrink-0">info</span>
             <p className="text-[10px] font-semibold text-[#0a3a2a] leading-snug">{t('myCoach.planDesc')}</p>
@@ -498,7 +537,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
 
         {/* Tagebuch */}
-        <div className={activeTab === 'diary' ? '' : 'hidden'}>
+        <div className={activeTab === 'diary' && (hasCoach || isLoading) ? '' : 'hidden'}>
           {!isLoading && (
             coaches.length > 0 ? (
               <CoachLogPanel
@@ -520,7 +559,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         </div>
 
         {/* Wskazówki */}
-        <div className={activeTab === 'tips' ? '' : 'hidden'}>
+        <div className={activeTab === 'tips' && (hasCoach || isLoading) ? '' : 'hidden'}>
           <div className="mb-3 px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-1.5">
             <span className="material-symbols-outlined text-[14px] text-blue-600 mt-px shrink-0">info</span>
             <p className="text-[10px] font-semibold text-blue-700 leading-snug">{t('myCoach.tipsDesc')}</p>

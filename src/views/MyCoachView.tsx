@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import CoachLogPanel, { CoachLogLatestEntry } from '../components/CoachLogPanel';
 import CoachPlanBanner, { CoachPlanEvent } from '../components/CoachPlanBanner';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+import TopicPicker from '../components/TopicPicker';
 
 const MAX_ACKED = 50;
 const ackedCacheKey = (uid: string) => `grotX_acked_${uid}`;
@@ -40,6 +41,7 @@ interface SessionWithNote {
 interface PrivateNote {
   id: string;
   text: string;
+  topics?: string[];
   createdAt: number;
 }
 
@@ -64,6 +66,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const [privateNotes, setPrivateNotes] = useState<PrivateNote[]>([]);
   const [privateNotesLoading, setPrivateNotesLoading] = useState(true);
   const [newNoteText, setNewNoteText] = useState('');
+  const [newNoteTopics, setNewNoteTopics] = useState<string[]>([]);
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -199,7 +202,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             : data.createdAt?.seconds
             ? data.createdAt.seconds * 1000
             : Date.now();
-          return { id: d.id, text: data.text || '', createdAt: ts };
+          return { id: d.id, text: data.text || '', topics: data.topics || [], createdAt: ts };
         });
         setPrivateNotes(notes);
       } catch (e) {
@@ -227,10 +230,12 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     try {
       const ref = await addDoc(collection(db, `users/${userId}/privateNotes`), {
         text: newNoteText.trim(),
+        topics: newNoteTopics,
         createdAt: serverTimestamp(),
       });
-      setPrivateNotes(prev => [{ id: ref.id, text: newNoteText.trim(), createdAt: Date.now() }, ...prev]);
+      setPrivateNotes(prev => [{ id: ref.id, text: newNoteText.trim(), topics: newNoteTopics, createdAt: Date.now() }, ...prev]);
       setNewNoteText('');
+      setNewNoteTopics([]);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (e) {
       console.error('MyCoachView: błąd dodawania notatki', e);
@@ -704,6 +709,9 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               className="w-full text-[12px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed"
               style={{ minHeight: '48px' }}
             />
+            <div className="mt-2 mb-1">
+              <TopicPicker selectedTopics={newNoteTopics} onChange={setNewNoteTopics} />
+            </div>
             <div className="flex items-center justify-between mt-2">
               {hasSpeechAPI ? (
                 <button
@@ -747,6 +755,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                   <div className="p-3.5 flex items-start gap-3">
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{note.text}</p>
+                      {note.topics && note.topics.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {note.topics.map(id => (
+                            <span key={id} className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-2 py-0.5 rounded-full text-[8px] font-black">
+                              {t(`sessionSetup.topic_${id}`)}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <p className="text-[8px] font-bold text-gray-300 mt-1.5">{formatNoteDate(note.createdAt)}</p>
                     </div>
                     <button

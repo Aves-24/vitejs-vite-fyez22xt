@@ -4,6 +4,7 @@ import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, getDoc, se
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import TopicPicker from './TopicPicker';
 
 // --- TYPY WPISÓW ---
 type EntryType = 'observation' | 'tip' | 'goal' | 'flag';
@@ -14,6 +15,7 @@ interface CoachLogEntry {
   authorName: string;
   text: string;
   type: EntryType;
+  topics?: string[];
   createdAt: number;
 }
 
@@ -53,6 +55,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
   const [isAdding, setIsAdding] = useState(false);
   const [text, setText] = useState('');
   const [type, setType] = useState<EntryType>('observation');
+  const [logTopics, setLogTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -82,6 +85,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
             authorName: data.authorName || 'Coach',
             text: data.text || '',
             type: (data.type as EntryType) || 'observation',
+            topics: data.topics || [],
             createdAt,
           };
         });
@@ -130,19 +134,21 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
         authorName: authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
         text: cleanText,
         type,
+        topics: logTopics,
         createdAt: serverTimestamp(),
       });
-      // Optymistyczna aktualizacja — wpis pojawia się od razu, bez refetchu
       setEntries(prev => [{
         id: docRef.id,
         authorId: currentUserId,
         authorName: authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
         text: cleanText,
         type,
+        topics: logTopics,
         createdAt: Date.now(),
       }, ...prev]);
       setText('');
       setType('observation');
+      setLogTopics([]);
       setIsAdding(false);
     } catch (e) {
       console.error('CoachLog: błąd zapisu', e);
@@ -260,6 +266,11 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
             <p className="text-[8px] font-bold text-red-500 mt-1">{voice.error}</p>
           )}
 
+          {/* Picker tematów */}
+          <div className="pt-1">
+            <TopicPicker selectedTopics={logTopics} onChange={setLogTopics} />
+          </div>
+
           {/* Stopka — licznik + przyciski */}
           <div className="flex justify-between items-center">
             <span className={`text-[8px] font-bold ${text.length >= MAX_TEXT ? 'text-red-500' : 'text-gray-400'}`}>{text.length}/{MAX_TEXT}</span>
@@ -320,6 +331,15 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
                         </div>
                         <p className="text-[11px] font-bold text-[#333] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
                         <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                        {entry.topics && entry.topics.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {entry.topics.map(id => (
+                              <span key={id} className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[8px] font-black">
+                                {t(`sessionSetup.topic_${id}`)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                       {canDelete && (
                         <button onClick={() => setConfirmDelete(entry.id)} className="text-gray-300 hover:text-red-500 transition-colors shrink-0 p-0.5">
@@ -361,6 +381,15 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
                           </div>
                           <p className="text-[11px] font-bold text-gray-500 leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
                           <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+                          {entry.topics && entry.topics.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {entry.topics.map(id => (
+                                <span key={id} className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[8px] font-black">
+                                  {t(`sessionSetup.topic_${id}`)}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );

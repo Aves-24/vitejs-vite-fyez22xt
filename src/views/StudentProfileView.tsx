@@ -11,6 +11,9 @@ import RoundTargetSummary from '../components/RoundTargetSummary';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
+import TopicPicker from '../components/TopicPicker';
+import { TRAINING_TOPICS } from '../constants/trainingTopics';
+const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -48,6 +51,7 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
 
   const [isEditing, setIsEditing] = useState(!session.coachNote && canEdit);
   const [text, setText] = useState(session.coachNote || '');
+  const [coachTopics, setCoachTopics] = useState<string[]>(session.coachTopics || []);
   const [isSaving, setIsSaving] = useState(false);
   const voice = useVoiceInput({
     onResult: (result) => setText((prev: string) => (prev + ' ' + result).trim().slice(0, 100)),
@@ -56,6 +60,7 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
 
   useEffect(() => {
     setText(session.coachNote || '');
+    setCoachTopics(session.coachTopics || []);
     setIsEditing(!session.coachNote && (session.coachEditCount || 0) < 2);
   }, [session.id, session.coachNote, session.coachEditCount]);
 
@@ -71,7 +76,8 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
       const newEditCount = edits + 1;
       await updateDoc(doc(db, `users/${studentId}/sessions`, session.id), {
         coachNote: cleanText,
-        coachEditCount: newEditCount
+        coachEditCount: newEditCount,
+        coachTopics,
       });
       setIsEditing(false);
       onSaveSuccess(cleanText, newEditCount);
@@ -147,14 +153,17 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
                </button>
              )}
            </div>
-           <div className="flex justify-between items-center mt-1">
+           <div className="mt-2">
+             <TopicPicker selectedTopics={coachTopics} onChange={setCoachTopics} />
+           </div>
+           <div className="flex justify-between items-center mt-2">
              <div className="flex items-center gap-2">
                <span className="text-[9px] font-bold text-blue-400/70">{text.length}/100</span>
                {voice.error && <span className="text-[8px] font-bold text-red-500">{voice.error}</span>}
              </div>
              <div className="flex gap-2">
                 {session.coachNote && (
-                  <button onClick={() => { setIsEditing(false); setText(session.coachNote); }} className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">{t('studentProfile.coachNoteCancel')}</button>
+                  <button onClick={() => { setIsEditing(false); setText(session.coachNote); setCoachTopics(session.coachTopics || []); }} className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">{t('studentProfile.coachNoteCancel')}</button>
                 )}
                 <button
                   onClick={handleSave}
@@ -167,9 +176,24 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
            </div>
          </div>
        ) : (
-         <p className="text-[11px] text-[#0a3a2a] font-bold italic leading-snug">
-           {session.coachNote ? `"${session.coachNote}"` : <span className="text-blue-600/50 font-medium">{t('studentProfile.coachNoteEmpty')}</span>}
-         </p>
+         <>
+           <p className="text-[11px] text-[#0a3a2a] font-bold italic leading-snug">
+             {session.coachNote ? `"${session.coachNote}"` : <span className="text-blue-600/50 font-medium">{t('studentProfile.coachNoteEmpty')}</span>}
+           </p>
+           {coachTopics.length > 0 && (
+             <div className="flex flex-wrap gap-1 mt-2">
+               {coachTopics.map(id => {
+                 const sub = TRAINING_TOPICS_FLAT.find(s => s.id === id);
+                 if (!sub) return null;
+                 return (
+                   <span key={id} className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full text-[9px] font-black">
+                     {t(`sessionSetup.topic_${sub.id}`)}
+                   </span>
+                 );
+               })}
+             </div>
+           )}
+         </>
        )}
     </div>
   );

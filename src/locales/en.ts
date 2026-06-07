@@ -213,6 +213,7 @@ export const views = {
     notesMicStop: "Stop",
     notesMicRecording: "Recording…",
     requiresCoach: "Coach required",
+    tabTopics: "Topics",
     requiresCoachDesc: "Plan, Diary and Tips are only available when you have a coach assigned.",
     addCoach: "Add a coach in Settings"
   },
@@ -1170,5 +1171,16 @@ export const views = {
     setupInstructionsTitle: "Device Setup Instructions",
     setupInstructions: "1. HEIGHT\nPosition your device so the camera lens is exactly at your shoulder height. This prevents image distortion and provides the most natural view of your archery geometry.\n\n2. DISTANCE AND PLACEMENT\nPlace the device on the line where you stand, at arm's length (measured to fingertips).\n\n3. OBSERVATION POSITION\nChoose the angle based on what you want to analyze:\n\nBehind you: to monitor scapula movement and elbow line.\n\nFrom chest side: to monitor release hand movement and release moment.\n\n4. TIP\nRemember to position the device perpendicular to you — this will help you avoid errors in posture assessment.",
     setupInstructionsClose: "Close",
+  },
+  topicFeed: {
+    desc: "Select a topic to see all entries from trainings, notes and coach feedback.",
+    noEntries: "No entries for this topic",
+    entriesCount: "entries",
+    noText: "No content",
+    sourceTechnical: "Technical training",
+    sourceCoachNote: "Coach note",
+    sourcePrivateNote: "Private note",
+    sourceCoachLog: "Coach diary",
+    sourceCalendar: "Calendar",
   },
 };

@@ -6,6 +6,7 @@ import CoachLogPanel, { CoachLogLatestEntry } from '../components/CoachLogPanel'
 import CoachPlanBanner, { CoachPlanEvent } from '../components/CoachPlanBanner';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import TopicPicker from '../components/TopicPicker';
+import TopicFeedTab from '../components/TopicFeedTab';
 
 const MAX_ACKED = 50;
 const ackedCacheKey = (uid: string) => `grotX_acked_${uid}`;
@@ -49,7 +50,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
   const { t } = useTranslation();
   const [coaches, setCoaches] = useState<CoachInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips' | 'notes'>('plan');
+  const [activeTab, setActiveTab] = useState<'plan' | 'diary' | 'tips' | 'notes' | 'topics'>('plan');
 
   const hasCoach = !isLoading && coaches.length > 0;
   const COACH_TABS = ['plan', 'diary', 'tips'];
@@ -446,13 +447,15 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       <div className="bg-white shrink-0 z-10 px-3 pt-2 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex">
           {[
-            { key: 'plan',  icon: 'event',     label: t('myCoach.tabPlan'),  badge: planCount },
-            { key: 'diary', icon: 'edit_note', label: t('myCoach.tabDiary'), badge: diaryCount },
-            { key: 'tips',  icon: 'sports',    label: t('myCoach.tabTips'),  badge: unreadNotes.length },
-            { key: 'notes', icon: 'lock',      label: t('myCoach.tabNotes'), badge: 0 },
+            { key: 'plan',   icon: 'event',      label: t('myCoach.tabPlan'),   badge: planCount },
+            { key: 'diary',  icon: 'edit_note',  label: t('myCoach.tabDiary'),  badge: diaryCount },
+            { key: 'tips',   icon: 'sports',     label: t('myCoach.tabTips'),   badge: unreadNotes.length },
+            { key: 'notes',  icon: 'lock',       label: t('myCoach.tabNotes'),  badge: 0 },
+            { key: 'topics', icon: 'psychology', label: t('myCoach.tabTopics'), badge: 0 },
           ].map(tab => {
             const isActive = activeTab === tab.key;
             const isNotes = tab.key === 'notes';
+            const isTopics = tab.key === 'topics';
             const isLocked = !hasCoach && COACH_TABS.includes(tab.key);
             return (
               <button
@@ -460,11 +463,13 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 onClick={() => setActiveTab(tab.key as any)}
                 className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive
-                    ? isNotes ? 'bg-indigo-600 text-white shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
+                    ? isNotes ? 'bg-indigo-600 text-white shadow-md'
+                      : isTopics ? 'bg-emerald-600 text-white shadow-md'
+                      : 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
                     : isLocked ? 'text-gray-300' : 'text-gray-500 active:scale-95'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] ${isActive ? (isNotes ? 'text-white' : 'text-[#fed33e]') : isLocked ? 'text-gray-300' : 'text-gray-400'}`}>
+                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-white' : isLocked ? 'text-gray-300' : 'text-gray-400'}`}>
                   {isLocked ? 'lock' : tab.icon}
                 </span>
                 <span className="text-[9px] font-black uppercase tracking-wider">{tab.label}</span>
@@ -794,6 +799,11 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               ))}
             </div>
           )}
+        </div>
+
+        {/* Tematy */}
+        <div className={activeTab === 'topics' ? '' : 'hidden'}>
+          <TopicFeedTab userId={userId} />
         </div>
 
       </div>

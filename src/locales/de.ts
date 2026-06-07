@@ -213,6 +213,7 @@ export const views = {
     notesMicStop: "Stop",
     notesMicRecording: "Aufnahme…",
     requiresCoach: "Trainer erforderlich",
+    tabTopics: "Themen",
     requiresCoachDesc: "Plan, Tagebuch und Anmerkungen sind nur verfügbar, wenn du einen Trainer zugewiesen hast.",
     addCoach: "Trainer in den Einstellungen hinzufügen"
   },
@@ -1170,5 +1171,16 @@ export const views = {
     setupInstructionsTitle: "Anleitung zum Geräteplatzierung",
     setupInstructions: "1. HÖHE\nPositioniere dein Gerät so, dass die Kamera genau auf Schulterhöhe ist. Dies verhindert Bildverzerrung und bietet die natürlichste Ansicht deiner Schießtechnik.\n\n2. ABSTAND UND PLATZIERUNG\nPlatziere das Gerät auf der Linie, auf der du stehst, in Armlänge Entfernung (bis zu den Fingerspitzen gemessen).\n\n3. BEOBACHTUNGSPOSITION\nWähle den Winkel basierend auf dem, was du analysieren möchtest:\n\nVon hinten: um die Scapula-Bewegung und die Ellbogenlinie zu kontrollieren.\n\nVon der Brustseite: um die Handbewegung und den Freigabemoment zu kontrollieren.\n\n4. TIPP\nDenk daran, das Gerät senkrecht zu dir zu positionieren — dies hilft dir, Fehler bei der Haltungsbewertung zu vermeiden.",
     setupInstructionsClose: "Schließen",
+  },
+  topicFeed: {
+    desc: "Wähle ein Thema, um alle Einträge aus Trainings, Notizen und Traineranmerkungen zu sehen.",
+    noEntries: "Keine Einträge für dieses Thema",
+    entriesCount: "Einträge",
+    noText: "Kein Inhalt",
+    sourceTechnical: "Technisches Training",
+    sourceCoachNote: "Traineranmerkung",
+    sourcePrivateNote: "Private Notiz",
+    sourceCoachLog: "Trainer-Tagebuch",
+    sourceCalendar: "Kalender",
   },
 };

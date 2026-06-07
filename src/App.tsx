@@ -359,12 +359,10 @@ export default function App() {
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
               {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
-            {hasCoach && (
-              <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                <span className="material-symbols-outlined text-[26px] font-bold">school</span>
-                {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach', { defaultValue: 'Schütze' })}</span>}
-              </button>
-            )}
+            <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+              <span className="material-symbols-outlined text-[26px] font-bold">school</span>
+              {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach')}</span>}
+            </button>
           </div>
           
           <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">

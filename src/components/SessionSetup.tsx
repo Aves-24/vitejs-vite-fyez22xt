@@ -15,78 +15,74 @@ interface SessionSetupProps {
 
 const ADMIN_IDS = ['Lglbqv96HlO2LoN98yxrIeaQS172', 'b55wNdZf17gH5wxziuzG9bkaQKo2'];
 
+// term = zawsze niemiecki termin techniczny (wyświetlany jako podpis)
 const TRAINING_TOPICS = [
   {
     id: 'fundamenty',
     num: '1',
-    label: 'Fundamenty i Postawa',
     subtopics: [
-      { id: 'fusstellung', label: 'Fußstellung', sub: 'Ustawienie stóp' },
-      { id: 'tform', label: 'T-Form', sub: 'T-forma' },
-      { id: 'gewicht', label: 'Gewichtsverteilung', sub: 'Rozkład ciężaru' },
-      { id: 'kopf', label: 'Kopfhaltung', sub: 'Pozycja głowy' },
-      { id: 'mindset', label: 'Mentale Einstellung', sub: 'Nastawienie' },
+      { id: 'fusstellung',      term: 'Fußstellung' },
+      { id: 'tform',            term: 'T-Form' },
+      { id: 'gewicht',          term: 'Gewichtsverteilung' },
+      { id: 'kopf',             term: 'Kopfhaltung' },
+      { id: 'mindset',          term: 'Mentale Einstellung' },
     ],
   },
   {
     id: 'naciag',
     num: '2',
-    label: 'Podniesienie i Naciąg',
     subtopics: [
-      { id: 'voranschlag', label: 'Voranschlag', sub: 'Pozycja startowa' },
-      { id: 'bogengriff', label: 'Bogengriff', sub: 'Podparcie łuku' },
-      { id: 'bogenarm', label: 'Bogenarmhaltung', sub: 'Pozycja ramienia łukowego' },
-      { id: 'ellenbogen', label: 'Ellenbogenrotation', sub: 'Rotacja łokcia' },
-      { id: 'hook', label: 'Sehnenfinger-Griff', sub: 'Układ palców na cięciwie' },
-      { id: 'auszug', label: 'Auszug', sub: 'Naciąganie łuku' },
-      { id: 'schulter', label: 'Schulter tief', sub: 'Obniżenie barku' },
-      { id: 'anker', label: 'Ankerpunkt', sub: 'Zakotwiczenie' },
-      { id: 'sehne', label: 'Sehnenbeschattung', sub: 'Osiowość cięciwy' },
+      { id: 'voranschlag',      term: 'Voranschlag' },
+      { id: 'bogengriff',       term: 'Bogengriff' },
+      { id: 'bogenarm',         term: 'Bogenarmhaltung' },
+      { id: 'ellenbogen',       term: 'Ellenbogenrotation' },
+      { id: 'hook',             term: 'Sehnenfinger-Griff' },
+      { id: 'auszug',           term: 'Auszug' },
+      { id: 'schulter',         term: 'Schulter tief' },
+      { id: 'anker',            term: 'Ankerpunkt' },
+      { id: 'sehne',            term: 'Sehnenbeschattung' },
     ],
   },
   {
     id: 'celowanie',
     num: '3',
-    label: 'Celowanie i Ekspansja',
     subtopics: [
-      { id: 'zielen', label: 'Zielen', sub: 'Celowanie' },
-      { id: 'rucken', label: 'Rückenspannung', sub: 'Praca łopatek' },
-      { id: 'expansion', label: 'Expansion', sub: 'Ruch liniowy do tyłu' },
-      { id: 'klicker', label: 'Klickerkontrolle', sub: 'Kontrola klikera' },
-      { id: 'atem', label: 'Atemtechnik', sub: 'Rytm oddechowy' },
-      { id: 'visual', label: 'Visualisierung', sub: 'Wizualizacja' },
+      { id: 'zielen',           term: 'Zielen' },
+      { id: 'rucken',           term: 'Rückenspannung' },
+      { id: 'expansion',        term: 'Expansion' },
+      { id: 'klicker',          term: 'Klickerkontrolle' },
+      { id: 'atem',             term: 'Atemtechnik' },
+      { id: 'visual',           term: 'Visualisierung' },
     ],
   },
   {
     id: 'zwolnienie',
     num: '4',
-    label: 'Zwolnienie i Finał',
     subtopics: [
-      { id: 'losen', label: 'Lösen', sub: 'Spuszczenie cięciwy' },
-      { id: 'nachhalten', label: 'Nachhalten', sub: 'Wytrzymanie po strzale' },
-      { id: 'rhythmus', label: 'Schussrhythmus', sub: 'Płynność i rytm' },
+      { id: 'losen',            term: 'Lösen' },
+      { id: 'nachhalten',       term: 'Nachhalten' },
+      { id: 'rhythmus',         term: 'Schussrhythmus' },
     ],
   },
   {
     id: 'taktyka',
     num: '5',
-    label: 'Taktyka i Sprzęt',
     subtopics: [
-      { id: 'visier', label: 'Vierreinstellung', sub: 'Regulacja celownika' },
-      { id: 'wind', label: 'Windschießen', sub: 'Strzelanie na wietrze' },
-      { id: 'zeit', label: 'Zeitmanagement', sub: 'Dyscyplina czasu' },
-      { id: 'psycho', label: 'Ergebnispsychologie', sub: 'Radzenie sobie z presją' },
-      { id: 'routine', label: 'Schussroutine', sub: 'Rutyna między strzałami' },
-      { id: 'bogeneinstellung', label: 'Bogeneinstellung', sub: 'Strojenie łuku' },
-      { id: 'pfeilabstimmung', label: 'Pfeilabstimmung', sub: 'Dobór i ustawienie strzał' },
-      { id: 'stabilisator', label: 'Stabilisator', sub: 'Ustawienie stabilizatorów' },
-      { id: 'nockpunkt', label: 'Nockpunkt', sub: 'Punkt nałożenia strzały' },
+      { id: 'visier',           term: 'Vierreinstellung' },
+      { id: 'wind',             term: 'Windschießen' },
+      { id: 'zeit',             term: 'Zeitmanagement' },
+      { id: 'psycho',           term: 'Ergebnispsychologie' },
+      { id: 'routine',          term: 'Schussroutine' },
+      { id: 'bogeneinstellung', term: 'Bogeneinstellung' },
+      { id: 'pfeilabstimmung',  term: 'Pfeilabstimmung' },
+      { id: 'stabilisator',     term: 'Stabilisator' },
+      { id: 'nockpunkt',        term: 'Nockpunkt' },
     ],
   },
 ];
 
 export default function SessionSetup({ userId, activeDistances, onStartSession, onUpdateDistances, onNavigate, onGoToBattle, hasActiveSession }: SessionSetupProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [selectedTarget, setSelectedTarget] = useState<string>('122cm');
   
@@ -496,7 +492,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     return (
                       <button key={id} onClick={() => toggleTopic(id)}
                         className="flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black active:scale-95 transition-all">
-                        {sub.sub}
+                        {t(`sessionSetup.topic_${sub.id}`)}
                         <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>
                       </button>
                     );
@@ -531,7 +527,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               {expandedCategory && (
                 <div className="bg-gray-50 rounded-xl p-2 space-y-0.5 border border-gray-100">
                   <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">
-                    {TRAINING_TOPICS.find(c => c.id === expandedCategory)?.label}
+                    {t(`sessionSetup.topicCat_${expandedCategory}`)}
                   </p>
                   {TRAINING_TOPICS.find(c => c.id === expandedCategory)?.subtopics.map(sub => {
                     const checked = selectedTopics.includes(sub.id);
@@ -546,8 +542,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                           {checked && <span className="material-symbols-outlined text-white text-[11px]">check</span>}
                         </span>
                         <div className="min-w-0">
-                          <span className="text-[11px] font-black text-[#0a3a2a] block">{sub.sub}</span>
-                          <span className="text-[8px] text-gray-400 font-bold">{sub.label}</span>
+                          <span className="text-[11px] font-black text-[#0a3a2a] block">{t(`sessionSetup.topic_${sub.id}`)}</span>
+                          {i18n.language !== 'de' && (
+                            <span className="text-[8px] text-gray-400 font-bold">{sub.term}</span>
+                          )}
                         </div>
                       </button>
                     );

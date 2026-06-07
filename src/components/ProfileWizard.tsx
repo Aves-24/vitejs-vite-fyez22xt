@@ -285,14 +285,6 @@ export default function ProfileWizard(props: ProfileWizardProps) {
         )}
       </div>
 
-      {/* BANER MOTYWACYJNY — widoczny na każdym kroku */}
-      <div className="px-5 py-2 bg-[#0a3a2a]/5 border-b border-[#0a3a2a]/10 shrink-0 flex items-center gap-2">
-        <span className="material-symbols-outlined text-[#0a3a2a] text-[16px] shrink-0">info</span>
-        <p className="text-[10px] font-black text-[#0a3a2a]/70 leading-tight">
-          {t('settings.wizard.completionNote')}
-        </p>
-      </div>
-
       <div className="flex-1 overflow-y-auto px-5 py-6 bg-[#fcfdfe]">
 
         {props.wizardStep === 1 && (
@@ -308,44 +300,38 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             </div>
 
             <div className="space-y-4">
-              {/* Sekcja Nazwiska i Imienia */}
               <div className="grid grid-cols-2 gap-2">
                 {renderField(t('settings.wizard.firstName') + " *", t('settings.wizard.firstName'), props.firstName, (e:any)=>props.setFirstName(e.target.value))}
                 {renderField(t('settings.wizard.lastName') + " " + t('common.optional'), t('settings.wizard.lastName'), props.lastName, (e:any)=>props.setLastName(e.target.value))}
               </div>
 
-              {/* Nowe pole na pseudonim */}
-              {props.setNickname && renderField(t('settings.nicknameLabel'), "np. Robin Hood", props.nickname || '', (e:any)=>props.setNickname!(e.target.value))}
-
-              
-
               <div className="pt-2 border-t border-gray-100 space-y-3">
-                 <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{t('settings.wizard.team')}</h3>
-                 
-                 <div className="relative">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.country')}</label>
-                    <select value={props.country} onChange={e=>props.setCountry(e.target.value)} className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500">
-                      {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                 </div>
-                 
-                 <div className="relative">
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.clubCity')}</label>
-                    <input list="wizard-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder={t('common.clubCityPlaceholder')} className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
-                    <datalist id="wizard-cities">
-                       {props.availableCities.map((c) => <option key={`city-${c}`} value={c} />)}
-                    </datalist>
-                 </div>
+                <h3 className="text-[10px] font-black text-gray-600 uppercase tracking-widest">{t('settings.wizard.team')}</h3>
 
-                 <div>
-                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">{t('settings.wizard.clubName')}</label>
-                    <ClubPicker
-                      value={props.club}
-                      onChange={props.setClub}
-                      availableClubs={props.availableClubs}
-                      citySelected={!!props.clubCity.trim()}
-                    />
-                 </div>
+                <div className="relative">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.country')}</label>
+                  <select value={props.country} onChange={e=>props.setCountry(e.target.value)} className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500">
+                    {countryOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                <div className="relative">
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.clubCity')}</label>
+                  <input list="wizard-cities" type="text" value={props.clubCity} onChange={e => { props.setClubCity(e.target.value); props.setClub(''); }} placeholder={t('common.clubCityPlaceholder')} className="w-full mt-1 bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold outline-none focus:border-emerald-500" />
+                  <datalist id="wizard-cities">
+                    {props.availableCities.map((c) => <option key={`city-${c}`} value={c} />)}
+                  </datalist>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block mb-1">{t('settings.wizard.clubName')}</label>
+                  <ClubPicker
+                    value={props.club}
+                    onChange={props.setClub}
+                    availableClubs={props.availableClubs}
+                    citySelected={!!props.clubCity.trim()}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -669,23 +655,79 @@ export default function ProfileWizard(props: ProfileWizardProps) {
       </div>
 
       <div className="p-3 border-t border-gray-100 flex gap-2 shrink-0 bg-white pb-[max(1rem,env(safe-area-inset-bottom))]">
-        {props.wizardStep > 1 && props.wizardStep < 6 && (
-          <button onClick={() => props.setWizardStep(s => s - 1)} className="flex-1 py-3 rounded-xl font-black text-xs text-gray-500 bg-gray-100 active:scale-95 transition-all">{t('settings.wizard.btnBack')}</button>
-        )}
-        
-        {props.wizardStep < 6 ? (
-          <button onClick={handleWizardNext} disabled={props.wizardStep===1 && !props.firstName} className="flex-[2] py-3 rounded-xl font-black text-xs text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all disabled:opacity-50">{t('settings.wizard.btnNext')}</button>
-        ) : null}
 
-        {props.wizardStep === 6 && (
+        {/* Krok 1: Zapisz i zakończ + Dalej */}
+        {props.wizardStep === 1 && (
           <>
-            <button onClick={() => props.setWizardStep(7)} className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-gray-500 bg-gray-100 active:scale-95 transition-all">{t('settings.wizard.btnSkip')}</button>
-            <button onClick={handleAddTournamentAndNext} disabled={isSavingLocal || !tournamentTitle || !tDay || !tMonth || !tYear} className="flex-[2] py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100">
+            <button
+              onClick={() => finishWizard(false)}
+              disabled={isSavingLocal || !props.firstName}
+              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
+            </button>
+            <button
+              onClick={handleWizardNext}
+              disabled={!props.firstName}
+              className="flex-[2] py-3 rounded-xl font-black text-xs text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all disabled:opacity-50"
+            >
               {t('settings.wizard.btnNext')}
             </button>
           </>
         )}
 
+        {/* Kroki 2–5: Wstecz + Zapisz i wyjdź + Dalej */}
+        {props.wizardStep > 1 && props.wizardStep < 6 && (
+          <>
+            <button
+              onClick={() => props.setWizardStep(s => s - 1)}
+              className="py-3 px-3 rounded-xl font-black text-xs text-gray-500 bg-gray-100 active:scale-95 transition-all"
+            >
+              {t('settings.wizard.btnBack')}
+            </button>
+            <button
+              onClick={() => finishWizard(false)}
+              disabled={isSavingLocal}
+              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
+            </button>
+            <button
+              onClick={handleWizardNext}
+              className="flex-[2] py-3 rounded-xl font-black text-xs text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all"
+            >
+              {t('settings.wizard.btnNext')}
+            </button>
+          </>
+        )}
+
+        {/* Krok 6: Zapisz i wyjdź + Pomiń + Dodaj i dalej */}
+        {props.wizardStep === 6 && (
+          <>
+            <button
+              onClick={() => finishWizard(false)}
+              disabled={isSavingLocal}
+              className="py-3 px-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
+            </button>
+            <button
+              onClick={() => props.setWizardStep(7)}
+              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-gray-500 bg-gray-100 active:scale-95 transition-all"
+            >
+              {t('settings.wizard.btnSkip')}
+            </button>
+            <button
+              onClick={handleAddTournamentAndNext}
+              disabled={isSavingLocal || !tournamentTitle || !tDay || !tMonth || !tYear}
+              className="flex-[2] py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
+            >
+              {t('settings.wizard.btnNext')}
+            </button>
+          </>
+        )}
+
+        {/* Krok 7: Wstecz + Zapisz i zakończ */}
         {props.wizardStep === 7 && (
           <>
             <button

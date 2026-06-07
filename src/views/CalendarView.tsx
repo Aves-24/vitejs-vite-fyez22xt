@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 // IMPORTUJEMY NOWY KOMPONENT:
 import TournamentScoreInput from '../components/TournamentScoreInput';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
+import TopicPicker from '../components/TopicPicker';
 
 interface Event {
   id: string;
@@ -20,6 +21,7 @@ interface Event {
   distance?: string;
   hasScore?: boolean;
   coachStudents?: 'all' | string[];
+  topics?: string[];
   todo?: boolean;
   wasATodo?: boolean;
   isMirrored?: boolean;
@@ -73,6 +75,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [newAddress, setNewAddress] = useState('');
   const [newNote, setNewNote] = useState('');
   const [newDistance, setNewDistance] = useState('70m');
+  const [newTopics, setNewTopics] = useState<string[]>([]);
   const calendarPickerRef = useRef<HTMLInputElement>(null);
   
   const [isPremium, setIsPremium] = useState(false);
@@ -222,6 +225,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewDistance('70m');
     setNewCategory('Turniej');
     setNewCoachStudents([]);
+    setNewTopics([]);
     setNewIsTodo(false);
   };
 
@@ -262,9 +266,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewNote(viewingEvent.note);
     if (viewingEvent.distance) setNewDistance(viewingEvent.distance);
     setNewCoachStudents(viewingEvent.coachStudents || []);
+    setNewTopics(viewingEvent.topics || []);
 
     setViewingEvent(null);
-    setShowForm(true);    
+    setShowForm(true);
   };
 
   // Walidacja wpisanej daty. Zwraca komunikat błędu albo pusty string gdy OK.
@@ -334,6 +339,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     };
     if (newCategory === 'Trener') {
       eventData.coachStudents = newCoachStudents;
+      eventData.topics = newTopics;
     }
 
     // Rozwiąż listę studentIds dla mirror (all → pełna lista)
@@ -1071,7 +1077,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
                <input type="text" placeholder={t('calendar.formCity')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none" value={newAddress} onChange={e => setNewAddress(e.target.value)} />
                <textarea maxLength={120} placeholder={t('calendar.formNotes')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold h-20 resize-none focus:outline-none" value={newNote} onChange={e => setNewNote(e.target.value)} />
-               
+
+               {newCategory === 'Trener' && (
+                 <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                   <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
+                 </div>
+               )}
+
                <button
                  onClick={saveEvent}
                  disabled={isSaving || !newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))}
@@ -1254,6 +1266,24 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           })}
                         </div>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {viewingEvent.category === 'Trener' && viewingEvent.topics && viewingEvent.topics.length > 0 && (
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-emerald-500">
+                      <span className="material-symbols-outlined text-[16px]">psychology</span>
+                    </div>
+                    <div className="flex flex-col flex-1 mt-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1.5">{t('sessionSetup.trainingTopics')}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {viewingEvent.topics.map((id: string) => (
+                          <span key={id} className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black">
+                            {t(`sessionSetup.topic_${id}`)}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}

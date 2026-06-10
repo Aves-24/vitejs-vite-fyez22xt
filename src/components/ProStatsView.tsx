@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, getDocs, where, Timestamp } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
+import { getRecentSessions } from '../lib/recentSessions';
 
 interface Session {
   id: string;
@@ -45,8 +46,6 @@ function proStatsCacheSet(uid: string, sessions: Session[], full: boolean): void
   } catch { /* ignore quota errors */ }
 }
 
-const TWELVE_WEEKS_MS = 84 * 24 * 60 * 60 * 1000;
-
 export default function ProStatsView({ userId, isPremium, onNavigate }: ProStatsViewProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -73,17 +72,11 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
       return;
     }
 
-    // Domyślnie ładujemy tylko ostatnie 12 tygodni — wystarcza do wykresów i heatmapy
+    // Domyślnie ładujemy tylko ostatnie 12 tygodni — wystarcza do wykresów i heatmapy.
+    // Źródło współdzielone z QuickStatsModal (dedup w pamięci + cache IndexedDB).
     const fetchRecentSessions = async () => {
       try {
-        const twelveWeeksAgo = new Date(Date.now() - TWELVE_WEEKS_MS);
-        const q = query(
-          collection(db, `users/${userId}/sessions`),
-          where('timestamp', '>=', Timestamp.fromDate(twelveWeeksAgo)),
-          orderBy('timestamp', 'asc')
-        );
-        const snap = await getDocs(q);
-        const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Session));
+        const data = (await getRecentSessions(userId)) as Session[];
         setSessions(data);
         setHasFullHistory(false);
         proStatsCacheSet(userId, data, false);
@@ -248,14 +241,24 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
 
     const hasVolumeData = volumeChartData.some(d => d.value > 0);
 
+    return {
+      totalArrows, maxScore, maxScoreDate, maxScoreArrows, chartData, allTimeAvg, recentAvg,
+      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg, volumeChartData,
+      hasVolumeData
+    };
+  }, [filteredSessions, t]);
+
+  // Heatmapa liczona osobno — zależy tylko od limitu i zbioru sesji,
+  // więc zmiana "Ost. 5/10/20" nie przelicza stref, wolumenu ani wykresów.
+  const heatmap = useMemo(() => {
     const recentForHeatmap = filteredSessions.slice(-heatmapLimit);
     const heatmapDots: any[] = [];
     let heatmapTargetType = 'Full';
-    
+
     if (recentForHeatmap.length > 0) {
        const lastSession = recentForHeatmap[recentForHeatmap.length - 1];
-       heatmapTargetType = selectedDistance.includes('18') 
-         ? '3-Spot' 
+       heatmapTargetType = selectedDistance.includes('18')
+         ? '3-Spot'
          : (lastSession.targetType && lastSession.targetType !== 'Full' ? lastSession.targetType : 'Full');
 
        recentForHeatmap.forEach(session => {
@@ -269,12 +272,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
        });
     }
 
-    return { 
-      totalArrows, maxScore, maxScoreDate, maxScoreArrows, chartData, allTimeAvg, recentAvg,
-      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg, volumeChartData,
-      hasVolumeData, heatmapDots, heatmapTargetType, heatmapSessionsCount: recentForHeatmap.length
-    };
-  }, [filteredSessions, heatmapLimit, selectedDistance, t]);
+    return { heatmapDots, heatmapTargetType, heatmapSessionsCount: recentForHeatmap.length };
+  }, [filteredSessions, heatmapLimit, selectedDistance]);
 
   if (!isPremium) {
     return (
@@ -412,11 +411,11 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
               </div>
             </div>
 
-            {stats.heatmapDots.length > 0 && (
+            {heatmap.heatmapDots.length > 0 && (
               <HeatmapSection
-                dots={stats.heatmapDots}
-                targetType={stats.heatmapTargetType}
-                sessionCount={stats.heatmapSessionsCount}
+                dots={heatmap.heatmapDots}
+                targetType={heatmap.heatmapTargetType}
+                sessionCount={heatmap.heatmapSessionsCount}
                 heatmapLimit={heatmapLimit}
                 setHeatmapLimit={setHeatmapLimit}
                 distance={selectedDistance}
@@ -738,9 +737,8 @@ function useSightTips(dots: any[], targetType: string, distance: string) {
   return { ok: false, pills, mm };
 }
 
-function SightTip({ dots, targetType, distance }: { dots: any[], targetType: string, distance: string }) {
+function SightTip({ tips }: { tips: ReturnType<typeof useSightTips> }) {
   const { t } = useTranslation();
-  const tips = useSightTips(dots, targetType, distance);
   if (!tips) return null;
 
   if (tips.ok) {
@@ -796,7 +794,7 @@ function HeatmapSection({ dots, targetType, sessionCount, heatmapLimit, setHeatm
 
       {/* SIGHT TIP + INFO BUTTON in one row */}
       <div className="mt-3 flex items-center gap-2 flex-wrap">
-        <div className="flex-1"><SightTip dots={dots} targetType={targetType} distance={distance} /></div>
+        <div className="flex-1"><SightTip tips={tips} /></div>
         <button onClick={() => setShowInfo(true)}
           className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center active:scale-95 transition-all shrink-0 shadow-sm">
           <span className="material-symbols-outlined text-white text-[14px]">info</span>

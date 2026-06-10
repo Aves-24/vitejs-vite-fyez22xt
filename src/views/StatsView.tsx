@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, startAfter, doc, getDoc, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -489,10 +489,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         startAfter(lastVisible),
         limit(20)
       );
-      const snap = await new Promise<any>((resolve) => {
-        const unsub = onSnapshot(q, resolve);
-        setTimeout(() => unsub(), 5000);
-      });
+      const snap = await getDocs(q);
       const newData = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Session));
       setSessions(prev => [...prev, ...newData]);
       setLastVisible(snap.docs[snap.docs.length - 1] || null);
@@ -512,7 +509,19 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     return d; 
   };
 
-  const daySessions = useMemo(() => sessions.filter(s => toISO(s.date) === selectedDate), [sessions, selectedDate]);
+  // Grupujemy sesje po dacie ISO raz — pasek dni (do 1095 komórek) i daySessions
+  // czytają z mapy zamiast filtrować całą tablicę dla każdego dnia.
+  const sessionsByISODate = useMemo(() => {
+    const map = new Map<string, Session[]>();
+    sessions.forEach(s => {
+      const iso = toISO(s.date);
+      const arr = map.get(iso);
+      if (arr) arr.push(s); else map.set(iso, [s]);
+    });
+    return map;
+  }, [sessions]);
+
+  const daySessions = useMemo(() => sessionsByISODate.get(selectedDate) || [], [sessionsByISODate, selectedDate]);
 
   // Tryb trenera (viewingStudentId): gdy otworzy profil ucznia i dzisiaj nie ma
   // treningu, automatycznie wybierz datę OSTATNIEJ sesji ucznia. Odpala się
@@ -652,7 +661,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
               {Array.from({ length: daysToShow }, (_, i) => {
                 const d = new Date(); d.setDate(d.getDate() - i);
                 const dStr = d.toISOString().split('T')[0];
-                const dayActs = sessions.filter(s => toISO(s.date) === dStr);
+                const dayActs = sessionsByISODate.get(dStr) || [];
                 const isSel = selectedDate === dStr;
                 
                 let bg = "bg-white", txt = "text-gray-400", brd = "border-gray-100";

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
+import { invalidateRecentSessions } from '../lib/recentSessions';
 import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
@@ -583,6 +584,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       localStorage.removeItem(`grotX_stats_v3_${userId}`);
       localStorage.removeItem(`grotX_stats_v4_${userId}`);
       localStorage.removeItem(`grotX_lastSession_${userId}`);
+      invalidateRecentSessions(userId); // wyczyść dedup w pamięci wspólnego źródła sesji
       window.dispatchEvent(new Event('session_state_changed'));
 
       onNavigate('HOME');

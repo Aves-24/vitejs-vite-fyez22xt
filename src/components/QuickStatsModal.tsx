@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { db } from '../firebase';
 import { collection, query, getDocs, orderBy, where, Timestamp } from 'firebase/firestore';
+import { getRecentSessions } from '../lib/recentSessions';
 
 interface QuickStatsModalProps {
   isOpen: boolean;
@@ -72,8 +73,9 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
         const twelveWeeksAgo = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000);
         const tsFilter = Timestamp.fromDate(twelveWeeksAgo);
 
-        const [sessSnap, techSnap] = await Promise.all([
-          getDocs(query(collection(db, `users/${userId}/sessions`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc'))),
+        // Sesje ze wspólnego źródła (dedup z ProStatsView); techShots osobno.
+        const [sessions, techSnap] = await Promise.all([
+          getRecentSessions(userId),
           getDocs(query(collection(db, `users/${userId}/techShots`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc'))).catch(() => ({ forEach: () => {} } as any)),
         ]);
 
@@ -82,8 +84,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
         const scoresByWeek = Array(12).fill(0);
         const countByWeek = Array(12).fill(0);
 
-        sessSnap.forEach(doc => {
-          const data = doc.data();
+        sessions.forEach(data => {
           const ts = typeof data.timestamp === 'number' ? data.timestamp : data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now();
           const diffTime = Math.max(0, now.getTime() - ts);
           const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));

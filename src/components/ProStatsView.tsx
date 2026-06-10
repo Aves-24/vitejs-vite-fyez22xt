@@ -4,6 +4,8 @@ import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
 import { getRecentSessions } from '../lib/recentSessions';
+import RingePraezisionPanel from './stats/RingePraezisionPanel';
+import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
 
 interface Session {
   id: string;
@@ -275,6 +277,66 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     return { heatmapDots, heatmapTargetType, heatmapSessionsCount: recentForHeatmap.length };
   }, [filteredSessions, heatmapLimit, selectedDistance]);
 
+  // PRZEGLĄD GLOBALNY (wszystkie dystanse) — liczony z już wczytanych sesji,
+  // więc 0 dodatkowych odczytów Firestore. Daje trenerowi szybki obraz formy.
+  const overview = useMemo(() => {
+    const getTs = (s: any): number => {
+      const ts = s.timestamp;
+      if (!ts) return 0;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (ts.seconds) return ts.seconds * 1000;
+      return 0;
+    };
+    const now = Date.now();
+    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+    const mean = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
+
+    // Sesje z wynikiem, bez technicznych — do średnich i krzywej
+    const scored: CurveSession[] = sessions
+      .filter(s => s.type !== 'TECHNICAL' && (s.score || 0) > 0)
+      .map(s => ({
+        score: s.score || 0,
+        arrows: s.arrows || s.totalArrows || 0,
+        ts: getTs(s),
+        date: s.date || '',
+        distance: s.distance || '',
+        type: s.type || 'Trening',
+        title: (s as any).title || (s as any).tournamentName || '',
+      } as CurveSession & { arrows: number }))
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0));
+
+    const last3 = scored.slice(-3) as Array<CurveSession & { arrows: number }>;
+    const monthScored = (scored as Array<CurveSession & { arrows: number }>).filter(s => (s.ts || 0) >= startOfMonth);
+
+    // Słupki 12-tygodniowe (globalne) — strzały (wszystkie) + punkty/strzałę (bez TECH)
+    const weeklyArrows = Array(12).fill(0);
+    const wScore = Array(12).fill(0);
+    const wScoreArrows = Array(12).fill(0);
+    sessions.forEach(s => {
+      const ts = getTs(s);
+      const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
+      if (diffWeeks < 12) {
+        const idx = 11 - diffWeeks;
+        const arr = s.arrows || s.totalArrows || 0;
+        const scoreArr = (s as any).scoreArrows ?? s.arrows ?? 0;
+        weeklyArrows[idx] += arr;
+        if (s.type !== 'TECHNICAL' && scoreArr > 0) { wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr; }
+      }
+    });
+    const weeklyPoints = wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0);
+
+    return {
+      avgArrows3: mean(last3.map(s => s.arrows)),
+      avgPoints3: mean(last3.map(s => s.score)),
+      avgArrowsMonth: mean(monthScored.map(s => s.arrows)),
+      avgPointsMonth: mean(monthScored.map(s => s.score)),
+      weeklyArrows,
+      weeklyPoints,
+      recent: scored.slice(-15) as CurveSession[],
+    };
+  }, [sessions]);
+
   if (!isPremium) {
     return (
       <div className="flex flex-col items-center justify-center pt-10 px-6 animate-fade-in-up">
@@ -302,7 +364,27 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
 
   return (
     <div className="animate-fade-in-up space-y-4 px-4 pb-10">
-      
+
+      {/* PRZEGLĄD GLOBALNY — widoczny też dla trenera przeglądającego ucznia */}
+      {overview.recent.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 mt-1">
+            <span className="material-symbols-outlined text-emerald-500 text-[18px]">insights</span>
+            <h2 className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('stats.pro.overviewTitle', 'Przegląd')}</h2>
+          </div>
+          <RingePraezisionPanel
+            avgArrows3={overview.avgArrows3}
+            avgPoints3={overview.avgPoints3}
+            avgArrowsMonth={overview.avgArrowsMonth}
+            avgPointsMonth={overview.avgPointsMonth}
+            weeklyArrows={overview.weeklyArrows}
+            weeklyPoints={overview.weeklyPoints}
+          />
+          <ErgebniskurvePanel sessions={overview.recent} />
+          <div className="h-px bg-gray-100 my-2" />
+        </div>
+      )}
+
       {distances.length > 0 && (
         <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
           {distances.map(dist => {
@@ -497,17 +579,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('stats.pro.tooFewSessions', 'Zbyt mało danych. Zapisz więcej treningów.')}</span>
                 </div>
               )}
-            </div>
-
-            <div className="bg-[#0a3a2a] rounded-[32px] shadow-sm p-5">
-              <div className="flex justify-between items-center mb-6">
-                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('stats.pro.progressCurve')}</span>
-                <span className="bg-emerald-50/10 text-emerald-300 px-3 py-1 rounded-full text-[9px] font-black uppercase">{t('stats.pro.trainingsCount', '{{count}} TRENINGÓW', { count: stats.chartData.length })}</span>
-              </div>
-              
-              <div className="relative w-full h-[180px] mt-4">
-                <ProgressChart data={stats.chartData} />
-              </div>
             </div>
 
             <div className="text-center">
@@ -983,64 +1054,6 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
       {dispersion?.type === 'spots' && dispersion.spots.map((s, i) => (
         <DispersionContour key={i} mx={s.mx} my={s.my} path={s.path} />
       ))}
-    </svg>
-  );
-}
-
-// LOGIKA WYKRESU LINIOWEGO (PROGRES)
-function ProgressChart({ data }: { data: { date: string, avg: number, score: number }[] }) {
-  const { t } = useTranslation();
-  if (data.length < 2) return <div className="h-full flex items-center justify-center text-[10px] font-bold text-emerald-600/50 uppercase text-center px-10">{t('stats.pro.chart.tooFewData', 'Zbyt mało danych do wygenerowania krzywej')}</div>;
-
-  const minAvg = Math.min(...data.map(d => d.avg));
-  const maxAvg = Math.max(...data.map(d => d.avg));
-  const padding = (maxAvg - minAvg) * 0.2 || 0.5; 
-  
-  const w = 300, h = 140;
-  
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((d.avg - (minAvg - padding)) / ((maxAvg + padding) - (minAvg - padding))) * h;
-    return { x, y, avg: d.avg, date: d.date, score: d.score };
-  });
-
-  const pathD = `M ${points.map(p => `${p.x},${p.y}`).join(' L ')}`;
-  const areaD = `${pathD} L ${w},${h} L 0,${h} Z`;
-
-  return (
-    <svg viewBox={`-15 -15 ${w + 30} ${h + 30}`} className="w-full h-full overflow-visible">
-      {[0, 0.5, 1].map(ratio => {
-        const y = h * ratio;
-        const val = (maxAvg + padding) - (((maxAvg + padding) - (minAvg - padding)) * ratio);
-        return (
-          <g key={ratio}>
-            <line x1="0" y1={y} x2={w} y2={y} stroke="#ffffff" strokeOpacity="0.1" strokeWidth="1" strokeDasharray="4 4" />
-            <text x="-5" y={y + 3} fontSize="8" fontWeight="bold" fill="#34d399" textAnchor="end">{val.toFixed(1)}</text>
-          </g>
-        );
-      })}
-      
-      <defs>
-        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#10b981" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <path d={areaD} fill="url(#chartFill)" className="animate-fade-in" />
-      
-      <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="animate-draw-line" />
-      
-      {points.map((p, i) => (
-        <g key={i} className="group cursor-pointer relative z-10">
-          <circle cx={p.x} cy={p.y} r="4" fill="#0a3a2a" stroke="#10b981" strokeWidth="2.5" className="transition-all duration-300 group-hover:r-[6px]" />
-          <g className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            <rect x={p.x - 25} y={p.y - 30} width="50" height="20" rx="4" fill="#ffffff" />
-            <text x={p.x} y={p.y - 17} fontSize="8" fontWeight="black" fill="#0a3a2a" textAnchor="middle">{p.score} {t('scoringView.pts', 'pkt')}</text>
-            <text x={p.x} y={p.y + 15} fontSize="7" fontWeight="bold" fill="#10b981" textAnchor="middle">{p.date}</text>
-          </g>
-        </g>
-      ))}
-      <style>{`.animate-draw-line { stroke-dasharray: 1000; stroke-dashoffset: 1000; animation: draw 1.5s ease-out forwards; } @keyframes draw { to { stroke-dashoffset: 0; } }`}</style>
     </svg>
   );
 }

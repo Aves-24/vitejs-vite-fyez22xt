@@ -915,6 +915,7 @@ export const views = {
       unitPtsArrow: "pkt/strz.",
       zonesTitle: "Strefy trafień (Cały sezon)",
       progressCurve: "Krzywa Postępu (Średnia)",
+      overviewTitle: "Przegląd",
       trainingsCount: "{{count}} TRENINGÓW",
       totalDistArrows: "Łącznie na tym dystansie: {{count}} strzał",
       unlockDesc: "Odblokuj mapę rozrzutu, wykresy formy, wskaźnik zmęczenia i pełne dane.",

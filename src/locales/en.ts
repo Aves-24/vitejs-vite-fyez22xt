@@ -915,6 +915,7 @@ export const views = {
       unitPtsArrow: "pts/arrow",
       zonesTitle: "Hit zones (All season)",
       progressCurve: "Progress Curve (Average)",
+      overviewTitle: "Overview",
       trainingsCount: "{{count}} TRAINING SESSIONS",
       totalDistArrows: "Total at this distance: {{count}} arrows",
       unlockDesc: "Unlock scatter map, form charts, endurance index and full data.",

@@ -915,6 +915,7 @@ export const views = {
       unitPtsArrow: "Ringe/Pfeil",
       zonesTitle: "Trefferzonen (Gesamte Saison)",
       progressCurve: "Fortschrittskurve (Schnitt)",
+      overviewTitle: "Übersicht",
       trainingsCount: "{{count}} TRAININGS",
       totalDistArrows: "Gesamt auf dieser Distanz: {{count}} Pfeile",
       unlockDesc: "Schalte Streuungskarte, Formkurven, Ausdauerindex und vollständige Daten frei.",

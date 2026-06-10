@@ -66,8 +66,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [prevMonthlyTotal, setPrevMonthlyTotal] = useState<number>(0);
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [avg14Days, setAvg14Days] = useState<string>('0.0');
+  const [avgMonth, setAvgMonth] = useState<string>('0.0');
   const [recentScores, setRecentScores] = useState<number[]>([]);
   const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
+  // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
+  // snapshotu co liczniki, dzięki czemu modal nie robi już osobnego odczytu.
+  const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
+  const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [trendFilterType, setTrendFilterType] = useState('');
   const [trendFilterDist, setTrendFilterDist] = useState('');
@@ -453,8 +458,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.prevMonthly != null) setPrevMonthlyTotal(cached.prevMonthly);
         setYearlyTotal(cached.yearly);
         setAvg14Days(cached.avg14);
+        if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
         if (cached.recentScores) setRecentScores(cached.recentScores);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
+        if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
+        if (cached.weeklyPoints) setWeeklyPoints(cached.weeklyPoints);
         if (cached.weekStreak !== undefined) setWeekStreak(cached.weekStreak);
         return;
       }
@@ -469,11 +477,21 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const sessionsRef = collection(db, `users/${userId}/sessions`);
 
       try {
-        // Jedno zapytanie dla całego roku — cache 30 min, działa też offline
-        const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromDate(startOfYear))));
+        // Jedno zapytanie — cache 30 min, działa też offline. Pobieramy od
+        // wcześniejszej z dwóch granic: początek roku (liczniki) lub 12 tyg.
+        // wstecz (słupki QuickStats), by w styczniu nie zgubić grudnia.
+        const startOfYearMs = startOfYear.getTime();
+        const twelveWeeksAgoMs = now.getTime() - 84 * 24 * 60 * 60 * 1000;
+        const fetchFromMs = Math.min(startOfYearMs, twelveWeeksAgoMs);
+        const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromDate(new Date(fetchFromMs)))));
         if (cancelled) return;
 
-        let d = 0, m = 0, pm = 0, y = 0, s14 = 0, a14 = 0;
+        let d = 0, m = 0, pm = 0, y = 0, s14 = 0, a14 = 0, sMonth = 0, aMonth = 0;
+
+        // Słupki 12-tygodniowe (rolling) — to samo okno co dawniej w QuickStats.
+        const weekArrows = Array(12).fill(0);
+        const weekScore = Array(12).fill(0);
+        const weekScoreArrows = Array(12).fill(0);
 
         snapYear.forEach(docSnap => {
           const data = docSnap.data();
@@ -483,7 +501,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const ts  = getSafeTime(data.timestamp);
           const isTechnical = data.type === 'TECHNICAL';
 
-          y += arr;
+          // Strażnik: snapshot może sięgać poprzedniego roku (rolling 12 tyg.),
+          // więc roczny licznik liczymy tylko od początku bieżącego roku.
+          if (ts >= startOfYearMs) y += arr;
           // Nowy model: arrows = sessionArrows + practiceArrows (już zsumowane)
           // Stary model: arrows = non-M, practiceArrows osobno
           const sessionTotal = data.scoreArrows !== undefined
@@ -493,7 +513,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           if (ts >= startOfMonth) m += arr;
           else if (ts >= startOfPrevMonth) pm += arr;
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += scoreArr; s14 += sc; }
+          if (ts >= startOfMonth && !isTechnical) { aMonth += scoreArr; sMonth += sc; }
+
+          const diffWeeks = Math.floor(Math.max(0, now.getTime() - ts) / (1000 * 60 * 60 * 24 * 7));
+          if (diffWeeks < 12) {
+            const idx = 11 - diffWeeks;
+            weekArrows[idx] += arr;
+            if (!isTechnical && scoreArr > 0) { weekScore[idx] += sc; weekScoreArrows[idx] += scoreArr; }
+          }
         });
+
+        const weekPoints = weekScore.map((sc, i) => weekScoreArrows[i] > 0 ? sc / weekScoreArrows[i] : 0);
 
         // Pfeilzähler: strzały zapisane na profilu (nie tworzą sesji)
         const profileSnap = await getDoc(doc(db, 'users', userId));
@@ -516,6 +546,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         }
 
         const avg14 = a14 > 0 ? (s14 / a14).toFixed(1) : '0.0';
+        const avgM = aMonth > 0 ? (sMonth / aMonth).toFixed(1) : '0.0';
 
         // ─── SPARKLINE: ostatnie 6 sesji z wynikiem > 0 ──────────────────────
         const sessionList = snapYear.docs
@@ -555,11 +586,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setPrevMonthlyTotal(pm);
         setYearlyTotal(y);
         setAvg14Days(avg14);
+        setAvgMonth(avgM);
         setRecentScores(recent);
         setRecentSessions(recentFull);
+        setWeeklyArrows(weekArrows);
+        setWeeklyPoints(weekPoints);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, recentScores: recent, recentSessions: recentFull, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgMonth: avgM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -1205,12 +1239,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         userId={userId}
         onNavigate={onNavigate as any}
         initialTab={quickStatsInitialTab}
+        weeklyArrows={weeklyArrows}
+        weeklyPoints={weeklyPoints}
         stats={{
           daily: dailyTotal,
           monthly: monthlyTotal,
           prevMonthly: prevMonthlyTotal,
           yearly: yearlyTotal,
-          avg14: avg14Days
+          avg14: avg14Days,
+          avgMonth: avgMonth
         }}
       />
 

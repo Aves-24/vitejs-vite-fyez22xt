@@ -1,52 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db } from '../firebase';
-import { collection, query, getDocs, orderBy, where, Timestamp } from 'firebase/firestore';
-import { getRecentSessions } from '../lib/recentSessions';
 
 interface QuickStatsModalProps {
   isOpen: boolean;
   onClose: () => void;
   isPremium: boolean;
   onNavigate: (view: any, tab?: string) => void;
-  userId: string; 
+  userId: string;
   initialTab?: 'ARROWS' | 'POINTS'; // Nowy opcjonalny prop
+  // Słupki 12-tygodniowe liczone przez rodzica (HomeView z rocznego snapshotu,
+  // StudentProfileView leniwie) — modal nie robi już własnego odczytu z Firestore.
+  weeklyArrows?: number[];
+  weeklyPoints?: number[];
   stats: {
     daily: number;
     monthly: number;
     prevMonthly?: number;
     yearly: number;
     avg14: string;
+    avgMonth?: string;
   };
 }
 
-// Cache ważny do końca bieżącego dnia (północ)
-const CACHE_KEY = (uid: string) => `grotX_quickStats_${uid}`;
+const EMPTY_WEEKS: number[] = Array(12).fill(0);
 
-function quickStatsCacheGet(uid: string): { arrows: number[]; points: number[] } | null {
-  try {
-    const raw = localStorage.getItem(CACHE_KEY(uid));
-    if (!raw) return null;
-    const { data, expiresAt } = JSON.parse(raw);
-    if (Date.now() > expiresAt) { localStorage.removeItem(CACHE_KEY(uid)); return null; }
-    return data;
-  } catch { return null; }
-}
-
-function quickStatsCacheSet(uid: string, arrows: number[], points: number[]): void {
-  try {
-    const midnight = new Date();
-    midnight.setHours(24, 0, 0, 0);
-    localStorage.setItem(CACHE_KEY(uid), JSON.stringify({ data: { arrows, points }, expiresAt: midnight.getTime() }));
-  } catch { /* ignore */ }
-}
-
-export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, userId, initialTab = 'ARROWS', stats }: QuickStatsModalProps) {
+export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, stats }: QuickStatsModalProps) {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ARROWS' | 'POINTS'>(initialTab);
-  const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
-  const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
 
   // Zmiana: Aktualizuj zakładkę, gdy modal się otwiera z nowym initialTab
   useEffect(() => {
@@ -54,82 +34,6 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
       setActiveTab(initialTab);
     }
   }, [isOpen, initialTab]);
-
-  useEffect(() => {
-    if (!isOpen || !isPremium || !userId) return;
-
-    // Sprawdź cache — odśwież tylko jeśli brak lub nowy dzień
-    const cached = quickStatsCacheGet(userId);
-    if (cached) {
-      setWeeklyArrows(cached.arrows);
-      setWeeklyPoints(cached.points);
-      return;
-    }
-
-    const fetchHistory = async () => {
-      setIsLoadingHistory(true);
-      try {
-        // Pobieramy tylko ostatnie 12 tygodni — chart pokazuje max 12 tygodni wstecz
-        const twelveWeeksAgo = new Date(Date.now() - 84 * 24 * 60 * 60 * 1000);
-        const tsFilter = Timestamp.fromDate(twelveWeeksAgo);
-
-        // Sesje ze wspólnego źródła (dedup z ProStatsView); techShots osobno.
-        const [sessions, techSnap] = await Promise.all([
-          getRecentSessions(userId),
-          getDocs(query(collection(db, `users/${userId}/techShots`), where('timestamp', '>=', tsFilter), orderBy('timestamp', 'desc'))).catch(() => ({ forEach: () => {} } as any)),
-        ]);
-
-        const now = new Date();
-        const arrowsByWeek = Array(12).fill(0);
-        const scoresByWeek = Array(12).fill(0);
-        const countByWeek = Array(12).fill(0);
-
-        sessions.forEach(data => {
-          const ts = typeof data.timestamp === 'number' ? data.timestamp : data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now();
-          const diffTime = Math.max(0, now.getTime() - ts);
-          const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-
-          if (diffWeeks < 12) {
-            const idx = 11 - diffWeeks;
-            const arr = data.arrows || data.totalArrows || 0;
-            const scoreArr = data.scoreArrows || data.arrows || 0;
-            const isTechnical = data.type === 'TECHNICAL';
-            arrowsByWeek[idx] += arr;
-            if (!isTechnical && scoreArr > 0) {
-              scoresByWeek[idx] += (data.score || 0);
-              countByWeek[idx] += scoreArr;
-            }
-          }
-        });
-
-        techSnap.forEach((doc: any) => {
-          const data = doc.data();
-          const ts = typeof data.timestamp === 'number' ? data.timestamp : data.timestamp?.toMillis ? data.timestamp.toMillis() : Date.now();
-          const diffTime = Math.max(0, now.getTime() - ts);
-          const diffWeeks = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 7));
-
-          if (diffWeeks < 12) {
-            const idx = 11 - diffWeeks;
-            arrowsByWeek[idx] += (data.count || 0);
-          }
-        });
-
-        const avgPointsByWeek = scoresByWeek.map((score, idx) =>
-          countByWeek[idx] > 0 ? score / countByWeek[idx] : 0
-        );
-
-        setWeeklyArrows(arrowsByWeek);
-        setWeeklyPoints(avgPointsByWeek);
-        quickStatsCacheSet(userId, arrowsByWeek, avgPointsByWeek);
-      } catch (error) {
-        console.error("Błąd pobierania historii dla QuickStats:", error);
-      } finally {
-        setIsLoadingHistory(false);
-      }
-    };
-
-    fetchHistory();
-  }, [isOpen, isPremium, userId]);
 
   if (!isOpen) return null;
 
@@ -242,10 +146,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 <div className={`relative transition-all duration-500 ${!isPremium ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
                   <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
                     <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-                      {isLoadingHistory ? (
-                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase">Ładowanie...</div>
-                      ) : (
-                        weeklyArrows.map((val, i) => {
+                      {weeklyArrows.map((val, i) => {
                           const isMax = val > 0 && val === maxArrows;
                           return (
                             <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
@@ -261,8 +162,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                               <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
                             </div>
                           );
-                        })
-                      )}
+                        })}
                     </div>
                   </div>
                 </div>
@@ -273,10 +173,17 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
 
           {activeTab === 'POINTS' && (
             <div className="space-y-6 animate-fade-in">
-              <div className="bg-white border-2 border-emerald-50 p-6 rounded-[32px] flex flex-col items-center justify-center shadow-sm">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('home.avg14d')}</span>
-                <p className="text-5xl font-black text-emerald-600 leading-none">{stats.avg14}</p>
-                <span className="text-[9px] font-bold text-emerald-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'SCHNITT 14 TAGE' })}</span>
+              <div className="bg-white border-2 border-emerald-50 p-6 rounded-[32px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
+                <div className="flex flex-col items-center justify-center flex-1 px-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('home.avg14d')}</span>
+                  <p className="text-5xl font-black text-emerald-600 leading-none">{stats.avg14}</p>
+                  <span className="text-[9px] font-bold text-emerald-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'SCHNITT 14 TAGE' })}</span>
+                </div>
+                <div className="flex flex-col items-center justify-center flex-1 px-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
+                  <p className="text-5xl font-black text-[#0a3a2a] leading-none">{stats.avgMonth ?? '0.0'}</p>
+                  <span className="text-[9px] font-bold text-gray-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'SCHNITT 14 TAGE' })}</span>
+                </div>
               </div>
 
               <div className="relative">
@@ -284,10 +191,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 <div className={`relative transition-all duration-500 ${!isPremium ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
                   <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
                     <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-                      {isLoadingHistory ? (
-                        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-gray-400 uppercase">Ładowanie...</div>
-                      ) : (
-                        weeklyPoints.map((val, i) => {
+                      {weeklyPoints.map((val, i) => {
                           const isMax = val > 0 && val === maxPoints;
                           return (
                             <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
@@ -303,8 +207,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                               <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
                             </div>
                           );
-                        })
-                      )}
+                        })}
                     </div>
                   </div>
                 </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
+import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
@@ -341,6 +342,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [monthlyArrows, setMonthlyArrows] = useState(0);
   const [yearlyArrows, setYearlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
+  const [avgMonth, setAvgMonth] = useState('0.0');
   const [sparkline, setSparkline] = useState<number[]>([]);
 
   const [trendFilterType, setTrendFilterType] = useState<string>('');
@@ -348,6 +350,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false);
   const [quickStatsTab, setQuickStatsTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
+  // Słupki 12-tygodniowe liczone leniwie dopiero przy otwarciu QuickStats
+  // (widok ucznia ładuje tylko 15 ostatnich sesji do reszty UI).
+  const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
+  const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
   
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -394,6 +400,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         setMonthlyArrows(cached.monthlyArrows);
         setYearlyArrows(cached.yearlyArrows);
         setAvg14Days(cached.avg14Days);
+        if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
         return;
       }
 
@@ -412,7 +419,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
       let recentSessions: any[] = [], sparkline: number[] = [], techSessions: any[] = [];
-      let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
+      let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0, tScoreMonth = 0, tArrowsMonth = 0;
 
       if (!snap.empty) {
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -429,22 +436,58 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           if (ts >= startOfMonth) monthTotal += arrows;
           if (ts >= startOfYear)  yearTotal  += arrows;
           if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') { tScore14 += (s.score || 0); tArrows14 += arrows; }
+          if (ts >= startOfMonth && s.type !== 'TECHNICAL') { tScoreMonth += (s.score || 0); tArrowsMonth += arrows; }
         });
       }
 
       const avg14Days = tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0';
+      const avgMonthVal = tArrowsMonth > 0 ? (tScoreMonth / tArrowsMonth).toFixed(1) : '0.0';
       setRecentSessions(recentSessions);
       setSparkline(sparkline);
       setDailyArrows(dayTotal);
       setMonthlyArrows(monthTotal);
       setYearlyArrows(yearTotal);
       setAvg14Days(avg14Days);
+      setAvgMonth(avgMonthVal);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgMonth: avgMonthVal });
     };
 
     fetchStudentData();
   }, [studentId]);
+
+  // Leniwe słupki 12-tygodniowe dla QuickStats ucznia — liczone dopiero przy
+  // otwarciu modala, ze wspólnego źródła (cache IndexedDB + dedup w pamięci).
+  useEffect(() => {
+    if (!isQuickStatsOpen || !studentId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const sessions = await getRecentSessions(studentId);
+        if (cancelled) return;
+        const now = Date.now();
+        const wArrows = Array(12).fill(0);
+        const wScore = Array(12).fill(0);
+        const wScoreArrows = Array(12).fill(0);
+        sessions.forEach((data: any) => {
+          const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : (typeof data.timestamp === 'number' ? data.timestamp : 0);
+          const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
+          if (diffWeeks < 12) {
+            const idx = 11 - diffWeeks;
+            const arr = data.arrows || data.totalArrows || 0;
+            const scoreArr = data.scoreArrows || data.arrows || 0;
+            wArrows[idx] += arr;
+            if (data.type !== 'TECHNICAL' && scoreArr > 0) { wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr; }
+          }
+        });
+        setWeeklyArrows(wArrows);
+        setWeeklyPoints(wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0));
+      } catch (e) {
+        console.error('Błąd liczenia słupków QuickStats ucznia:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isQuickStatsOpen, studentId]);
 
   useEffect(() => {
     const fetchPrivateNote = async () => {
@@ -869,7 +912,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         onNavigate={onNavigate}
         userId={studentId}
         initialTab={quickStatsTab}
-        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days }}
+        weeklyArrows={weeklyArrows}
+        weeklyPoints={weeklyPoints}
+        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgMonth }}
       />
 
       {/* MODAL: KRZYWA WYNIKÓW UCZNIA */}

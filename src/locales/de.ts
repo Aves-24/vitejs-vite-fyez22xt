@@ -280,6 +280,7 @@ export const views = {
       trendArrows: "Trend: Geschossene Pfeile (52 Wo.)",
       trendPoints: "Trend: Ringschnitt (52 Wo.)",
       avgPoints: "Ringe pro Pfeil",
+      avgMonthLabel: "Schnitt Monat",
       unlockTrend: "Jahrestrend freischalten",
       buyPro: "GROT-X PRO freischalten"
     },

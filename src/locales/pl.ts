@@ -280,6 +280,7 @@ export const views = {
       trendArrows: "Trend: Wystrzelone Strzały (52 tyg.)",
       trendPoints: "Trend: Średnia Punktowa (52 tyg.)",
       avgPoints: "Punkty na strzałę",
+      avgMonthLabel: "Średnia miesiąc",
       unlockTrend: "Odblokuj Trend Roczny",
       buyPro: "Odblokuj GROT-X PRO"
     },

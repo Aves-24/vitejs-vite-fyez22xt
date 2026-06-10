@@ -63,14 +63,21 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
   const prevMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1)
     .toLocaleString(i18n.language, { month: 'short' }).toUpperCase();
 
+  // Etykieta tygodnia jako numer tygodnia kalendarzowego (ISO-8601), np. "KW 23"
   const getWeekLabel = (i: number): string => {
     const weeksAgo = 11 - i;
     const d = new Date();
     d.setDate(d.getDate() - weeksAgo * 7);
     const day = d.getDay();
     const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    return `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+    d.setDate(d.getDate() + diff); // poniedziałek danego tygodnia
+    // Numer tygodnia ISO: czwartek tego tygodnia decyduje o roku
+    const target = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = target.getUTCDay() || 7;
+    target.setUTCDate(target.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+    const week = Math.ceil((((target.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return `KW ${week}`;
   };
 
   const ProPaywall = () => (

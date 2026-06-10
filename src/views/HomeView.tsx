@@ -66,9 +66,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [prevMonthlyTotal, setPrevMonthlyTotal] = useState<number>(0);
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [avg14Days, setAvg14Days] = useState<string>('0.0');
-  const [avgMonth, setAvgMonth] = useState<string>('0.0');
-  // Średnia liczba Ringe (suma pkt) z 3 ostatnich sesji z wynikiem (bez technicznych)
-  const [avgLast3, setAvgLast3] = useState<number>(0);
+  // Średnie strzałów i punktów (na sesję) — z 3 ostatnich sesji oraz z miesiąca.
+  // Liczone z sesji z wynikiem (trening/turniej), bez technicznych.
+  const [avgArrows3, setAvgArrows3] = useState<number>(0);
+  const [avgPoints3, setAvgPoints3] = useState<number>(0);
+  const [avgArrowsMonth, setAvgArrowsMonth] = useState<number>(0);
+  const [avgPointsMonth, setAvgPointsMonth] = useState<number>(0);
   const [recentScores, setRecentScores] = useState<number[]>([]);
   const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
@@ -451,7 +454,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v7_${userId}`;
+      const cacheKey = `grotX_stats_v8_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -460,8 +463,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.prevMonthly != null) setPrevMonthlyTotal(cached.prevMonthly);
         setYearlyTotal(cached.yearly);
         setAvg14Days(cached.avg14);
-        if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
-        if (cached.avgLast3 != null) setAvgLast3(cached.avgLast3);
+        if (cached.avgArrows3 != null) setAvgArrows3(cached.avgArrows3);
+        if (cached.avgPoints3 != null) setAvgPoints3(cached.avgPoints3);
+        if (cached.avgArrowsMonth != null) setAvgArrowsMonth(cached.avgArrowsMonth);
+        if (cached.avgPointsMonth != null) setAvgPointsMonth(cached.avgPointsMonth);
         if (cached.recentScores) setRecentScores(cached.recentScores);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
@@ -489,7 +494,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromDate(new Date(fetchFromMs)))));
         if (cancelled) return;
 
-        let d = 0, m = 0, pm = 0, y = 0, s14 = 0, a14 = 0, sMonth = 0, aMonth = 0;
+        let d = 0, m = 0, pm = 0, y = 0, s14 = 0, a14 = 0;
+        // Miesiąc — sumy na sesję (tylko sesje z wynikiem, bez technicznych)
+        let monthCount = 0, monthArrows = 0, monthScore = 0;
 
         // Słupki 12-tygodniowe (rolling) — to samo okno co dawniej w QuickStats.
         const weekArrows = Array(12).fill(0);
@@ -516,7 +523,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           if (ts >= startOfMonth) m += arr;
           else if (ts >= startOfPrevMonth) pm += arr;
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += scoreArr; s14 += sc; }
-          if (ts >= startOfMonth && !isTechnical) { aMonth += scoreArr; sMonth += sc; }
+          if (ts >= startOfMonth && !isTechnical && sc > 0) { monthCount++; monthArrows += arr; monthScore += sc; }
 
           const diffWeeks = Math.floor(Math.max(0, now.getTime() - ts) / (1000 * 60 * 60 * 24 * 7));
           if (diffWeeks < 12) {
@@ -549,22 +556,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         }
 
         const avg14 = a14 > 0 ? (s14 / a14).toFixed(1) : '0.0';
-        const avgM = aMonth > 0 ? (sMonth / aMonth).toFixed(1) : '0.0';
+        const avgArrowsM = monthCount > 0 ? Math.round(monthArrows / monthCount) : 0;
+        const avgPointsM = monthCount > 0 ? Math.round(monthScore / monthCount) : 0;
 
         // ─── SPARKLINE: ostatnie 6 sesji z wynikiem > 0 ──────────────────────
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { score: dd.score || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '' };
+            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '' };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
         const recent = sessionList.slice(-6).map(s => s.score);
         const recentFull = sessionList.slice(-10);
 
-        // ─── ŚREDNIA RINGE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
+        // ─── ŚREDNIE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
         const last3NonTech = sessionList.filter(s => s.type !== 'TECHNICAL').slice(-3);
-        const avgL3 = last3NonTech.length
+        const avgArrows3v = last3NonTech.length
+          ? Math.round(last3NonTech.reduce((acc, s) => acc + s.arrows, 0) / last3NonTech.length)
+          : 0;
+        const avgPoints3v = last3NonTech.length
           ? Math.round(last3NonTech.reduce((acc, s) => acc + s.score, 0) / last3NonTech.length)
           : 0;
 
@@ -595,15 +606,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setPrevMonthlyTotal(pm);
         setYearlyTotal(y);
         setAvg14Days(avg14);
-        setAvgMonth(avgM);
-        setAvgLast3(avgL3);
+        setAvgArrows3(avgArrows3v);
+        setAvgPoints3(avgPoints3v);
+        setAvgArrowsMonth(avgArrowsM);
+        setAvgPointsMonth(avgPointsM);
         setRecentScores(recent);
         setRecentSessions(recentFull);
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgMonth: avgM, avgLast3: avgL3, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -613,7 +626,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v7_${userId}`);
+      localStorage.removeItem(`grotX_stats_v8_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -629,7 +642,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v7_${userId}`);
+    localStorage.removeItem(`grotX_stats_v8_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1257,8 +1270,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           prevMonthly: prevMonthlyTotal,
           yearly: yearlyTotal,
           avg14: avg14Days,
-          avgMonth: avgMonth,
-          avgLast3: avgLast3
+          avgArrows3: avgArrows3,
+          avgPoints3: avgPoints3,
+          avgArrowsMonth: avgArrowsMonth,
+          avgPointsMonth: avgPointsMonth
         }}
       />
 

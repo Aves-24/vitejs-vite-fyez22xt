@@ -342,8 +342,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [monthlyArrows, setMonthlyArrows] = useState(0);
   const [yearlyArrows, setYearlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
-  const [avgMonth, setAvgMonth] = useState('0.0');
-  const [avgLast3, setAvgLast3] = useState(0);
+  const [avgArrows3, setAvgArrows3] = useState(0);
+  const [avgPoints3, setAvgPoints3] = useState(0);
+  const [avgArrowsMonth, setAvgArrowsMonth] = useState(0);
+  const [avgPointsMonth, setAvgPointsMonth] = useState(0);
   const [sparkline, setSparkline] = useState<number[]>([]);
 
   const [trendFilterType, setTrendFilterType] = useState<string>('');
@@ -388,7 +390,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const rawTs = studentData?.lastSessionTimestamp;
       const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
 
-      const cacheKey = `grotX_studentProfile_v3_${studentId}`;
+      const cacheKey = `grotX_studentProfile_v4_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
 
       if (cached && cached.lastSessionTimestamp === lastTs) {
@@ -401,8 +403,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         setMonthlyArrows(cached.monthlyArrows);
         setYearlyArrows(cached.yearlyArrows);
         setAvg14Days(cached.avg14Days);
-        if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
-        if (cached.avgLast3 != null) setAvgLast3(cached.avgLast3);
+        if (cached.avgArrows3 != null) setAvgArrows3(cached.avgArrows3);
+        if (cached.avgPoints3 != null) setAvgPoints3(cached.avgPoints3);
+        if (cached.avgArrowsMonth != null) setAvgArrowsMonth(cached.avgArrowsMonth);
+        if (cached.avgPointsMonth != null) setAvgPointsMonth(cached.avgPointsMonth);
         return;
       }
 
@@ -421,7 +425,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
       let recentSessions: any[] = [], sparkline: number[] = [], techSessions: any[] = [];
-      let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0, tScoreMonth = 0, tArrowsMonth = 0;
+      let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
+      // Miesiąc — sumy na sesję (sesje z wynikiem, bez technicznych)
+      let monthCount = 0, monthArrowsSum = 0, monthScoreSum = 0;
 
       if (!snap.empty) {
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -438,18 +444,22 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           if (ts >= startOfMonth) monthTotal += arrows;
           if (ts >= startOfYear)  yearTotal  += arrows;
           if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') { tScore14 += (s.score || 0); tArrows14 += arrows; }
-          if (ts >= startOfMonth && s.type !== 'TECHNICAL') { tScoreMonth += (s.score || 0); tArrowsMonth += arrows; }
+          if (ts >= startOfMonth && s.type !== 'TECHNICAL' && (s.score || 0) > 0) { monthCount++; monthArrowsSum += arrows; monthScoreSum += (s.score || 0); }
         });
       }
 
       const avg14Days = tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0';
-      const avgMonthVal = tArrowsMonth > 0 ? (tScoreMonth / tArrowsMonth).toFixed(1) : '0.0';
-      // Średnia Ringe (suma pkt) z 3 ostatnich sesji z wynikiem, bez technicznych.
-      // `all` jest posortowane malejąco (timestamp desc), więc bierzemy pierwsze 3.
+      const avgArrowsMonthVal = monthCount > 0 ? Math.round(monthArrowsSum / monthCount) : 0;
+      const avgPointsMonthVal = monthCount > 0 ? Math.round(monthScoreSum / monthCount) : 0;
+      // Średnie na sesję z 3 ostatnich sesji z wynikiem, bez technicznych.
+      // snap jest posortowany malejąco (timestamp desc), więc bierzemy pierwsze 3.
       const last3NonTech = (snap.empty ? [] : snap.docs.map(d => d.data()))
         .filter((s: any) => (s.score || 0) > 0 && s.type !== 'TECHNICAL')
         .slice(0, 3);
-      const avgLast3Val = last3NonTech.length
+      const avgArrows3Val = last3NonTech.length
+        ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.arrows || 0), 0) / last3NonTech.length)
+        : 0;
+      const avgPoints3Val = last3NonTech.length
         ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.score || 0), 0) / last3NonTech.length)
         : 0;
       setRecentSessions(recentSessions);
@@ -458,10 +468,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setMonthlyArrows(monthTotal);
       setYearlyArrows(yearTotal);
       setAvg14Days(avg14Days);
-      setAvgMonth(avgMonthVal);
-      setAvgLast3(avgLast3Val);
+      setAvgArrows3(avgArrows3Val);
+      setAvgPoints3(avgPoints3Val);
+      setAvgArrowsMonth(avgArrowsMonthVal);
+      setAvgPointsMonth(avgPointsMonthVal);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgMonth: avgMonthVal, avgLast3: avgLast3Val });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgArrows3: avgArrows3Val, avgPoints3: avgPoints3Val, avgArrowsMonth: avgArrowsMonthVal, avgPointsMonth: avgPointsMonthVal });
     };
 
     fetchStudentData();
@@ -925,7 +937,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         initialTab={quickStatsTab}
         weeklyArrows={weeklyArrows}
         weeklyPoints={weeklyPoints}
-        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgMonth, avgLast3 }}
+        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth }}
       />
 
       {/* MODAL: KRZYWA WYNIKÓW UCZNIA */}

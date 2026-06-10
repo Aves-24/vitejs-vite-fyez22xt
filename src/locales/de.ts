@@ -283,6 +283,7 @@ export const views = {
       avgMonthLabel: "Schnitt Monat",
       avgLast3Label: "Ø Letzte 3",
       ringeLabel: "Ringe",
+      pfeileLabel: "Pfeile",
       unlockTrend: "Jahrestrend freischalten",
       buyPro: "GROT-X PRO freischalten"
     },

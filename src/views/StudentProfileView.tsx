@@ -387,7 +387,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const rawTs = studentData?.lastSessionTimestamp;
       const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
 
-      const cacheKey = `grotX_studentProfile_${studentId}`;
+      const cacheKey = `grotX_studentProfile_v2_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
 
       if (cached && cached.lastSessionTimestamp === lastTs) {

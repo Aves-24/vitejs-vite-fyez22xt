@@ -449,7 +449,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v5_${userId}`;
+      const cacheKey = `grotX_stats_v6_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -603,7 +603,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v5_${userId}`);
+      localStorage.removeItem(`grotX_stats_v6_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -619,7 +619,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v5_${userId}`);
+    localStorage.removeItem(`grotX_stats_v6_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);

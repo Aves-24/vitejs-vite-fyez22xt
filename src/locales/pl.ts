@@ -215,7 +215,11 @@ export const views = {
     requiresCoach: "Wymaga trenera",
     tabTopics: "Tematy",
     requiresCoachDesc: "Plan, Dziennik i Uwagi są dostępne tylko gdy masz przypisanego trenera.",
-    addCoach: "Dodaj trenera w Ustawieniach"
+    addCoach: "Dodaj trenera w Ustawieniach",
+    groupCoach: "Od trenera",
+    groupMine: "Moje",
+    lockedHint: "Dodaj trenera, aby odblokować",
+    topicsHint: "Tematy treningowe ze wszystkich źródeł"
   },
   home: {
     archerRanking: "Ranking Łucznika",

@@ -215,7 +215,11 @@ export const views = {
     requiresCoach: "Coach required",
     tabTopics: "Topics",
     requiresCoachDesc: "Plan, Diary and Tips are only available when you have a coach assigned.",
-    addCoach: "Add a coach in Settings"
+    addCoach: "Add a coach in Settings",
+    groupCoach: "From coach",
+    groupMine: "Personal",
+    lockedHint: "Add a coach to unlock",
+    topicsHint: "Training topics from all sources"
   },
   home: {
     archerRanking: "Archer Ranking",

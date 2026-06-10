@@ -215,7 +215,11 @@ export const views = {
     requiresCoach: "Trainer erforderlich",
     tabTopics: "Themen",
     requiresCoachDesc: "Plan, Tagebuch und Anmerkungen sind nur verfügbar, wenn du einen Trainer zugewiesen hast.",
-    addCoach: "Trainer in den Einstellungen hinzufügen"
+    addCoach: "Trainer in den Einstellungen hinzufügen",
+    groupCoach: "Vom Trainer",
+    groupMine: "Privat",
+    lockedHint: "Trainer hinzufügen zum Freischalten",
+    topicsHint: "Trainingsthemen aus allen Quellen"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

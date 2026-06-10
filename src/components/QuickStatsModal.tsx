@@ -19,6 +19,7 @@ interface QuickStatsModalProps {
     yearly: number;
     avg14: string;
     avgMonth?: string;
+    avgLast3?: number; // średnia Ringe (suma pkt) z 3 ostatnich sesji
   };
 }
 
@@ -174,15 +175,17 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
           {activeTab === 'POINTS' && (
             <div className="space-y-6 animate-fade-in">
               <div className="bg-white border-2 border-emerald-50 p-6 rounded-[32px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
+                {/* LEWA: Ringe (suma pkt) — średnia z 3 ostatnich sesji */}
                 <div className="flex flex-col items-center justify-center flex-1 px-2">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('home.avg14d')}</span>
-                  <p className="text-5xl font-black text-emerald-600 leading-none">{stats.avg14}</p>
-                  <span className="text-[9px] font-bold text-emerald-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'SCHNITT 14 TAGE' })}</span>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">{t('home.quickStats.avgLast3Label', { defaultValue: 'Ø Letzte 3' })}</span>
+                  <p className="text-5xl font-black text-emerald-600 leading-none">{stats.avgLast3 ? stats.avgLast3 : '–'}</p>
+                  <span className="text-[9px] font-bold text-emerald-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
                 </div>
+                {/* PRAWA: Präzision (pkt/strzałę) — średnia miesięczna */}
                 <div className="flex flex-col items-center justify-center flex-1 px-2">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2 text-center">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
                   <p className="text-5xl font-black text-[#0a3a2a] leading-none">{stats.avgMonth ?? '0.0'}</p>
-                  <span className="text-[9px] font-bold text-gray-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'SCHNITT 14 TAGE' })}</span>
+                  <span className="text-[9px] font-bold text-gray-400 mt-2 uppercase tracking-tighter">{t('home.quickStats.avgPoints', { defaultValue: 'Ringe pro Pfeil' })}</span>
                 </div>
               </div>
 

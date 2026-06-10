@@ -281,6 +281,8 @@ export const views = {
       trendPoints: "Trend: Ringschnitt (52 Wo.)",
       avgPoints: "Ringe pro Pfeil",
       avgMonthLabel: "Schnitt Monat",
+      avgLast3Label: "Ø Letzte 3",
+      ringeLabel: "Ringe",
       unlockTrend: "Jahrestrend freischalten",
       buyPro: "GROT-X PRO freischalten"
     },

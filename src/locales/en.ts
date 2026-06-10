@@ -281,6 +281,8 @@ export const views = {
       trendPoints: "Trend: Point Average (52 weeks)",
       avgPoints: "Points per arrow",
       avgMonthLabel: "Monthly average",
+      avgLast3Label: "Ø Last 3",
+      ringeLabel: "Rings (total)",
       unlockTrend: "Unlock Yearly Trend",
       buyPro: "Unlock GROT-X PRO"
     },

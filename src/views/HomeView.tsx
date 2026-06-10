@@ -67,6 +67,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [yearlyTotal, setYearlyTotal] = useState<number>(0);
   const [avg14Days, setAvg14Days] = useState<string>('0.0');
   const [avgMonth, setAvgMonth] = useState<string>('0.0');
+  // Średnia liczba Ringe (suma pkt) z 3 ostatnich sesji z wynikiem (bez technicznych)
+  const [avgLast3, setAvgLast3] = useState<number>(0);
   const [recentScores, setRecentScores] = useState<number[]>([]);
   const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
@@ -449,7 +451,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v6_${userId}`;
+      const cacheKey = `grotX_stats_v7_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -459,6 +461,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setYearlyTotal(cached.yearly);
         setAvg14Days(cached.avg14);
         if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
+        if (cached.avgLast3 != null) setAvgLast3(cached.avgLast3);
         if (cached.recentScores) setRecentScores(cached.recentScores);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
@@ -559,6 +562,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const recent = sessionList.slice(-6).map(s => s.score);
         const recentFull = sessionList.slice(-10);
 
+        // ─── ŚREDNIA RINGE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
+        const last3NonTech = sessionList.filter(s => s.type !== 'TECHNICAL').slice(-3);
+        const avgL3 = last3NonTech.length
+          ? Math.round(last3NonTech.reduce((acc, s) => acc + s.score, 0) / last3NonTech.length)
+          : 0;
+
         // ─── STREAK TYGODNIOWY: ile tygodni z rzędu (min. 1 sesja/tydzień) ──
         const getWeekStart = (ts: number) => {
           const d = new Date(ts);
@@ -587,13 +596,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setYearlyTotal(y);
         setAvg14Days(avg14);
         setAvgMonth(avgM);
+        setAvgLast3(avgL3);
         setRecentScores(recent);
         setRecentSessions(recentFull);
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgMonth: avgM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgMonth: avgM, avgLast3: avgL3, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -603,7 +613,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v6_${userId}`);
+      localStorage.removeItem(`grotX_stats_v7_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -619,7 +629,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v6_${userId}`);
+    localStorage.removeItem(`grotX_stats_v7_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1247,7 +1257,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           prevMonthly: prevMonthlyTotal,
           yearly: yearlyTotal,
           avg14: avg14Days,
-          avgMonth: avgMonth
+          avgMonth: avgMonth,
+          avgLast3: avgLast3
         }}
       />
 

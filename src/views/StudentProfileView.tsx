@@ -343,6 +343,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [yearlyArrows, setYearlyArrows] = useState(0);
   const [avg14Days, setAvg14Days] = useState('0.0');
   const [avgMonth, setAvgMonth] = useState('0.0');
+  const [avgLast3, setAvgLast3] = useState(0);
   const [sparkline, setSparkline] = useState<number[]>([]);
 
   const [trendFilterType, setTrendFilterType] = useState<string>('');
@@ -387,7 +388,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const rawTs = studentData?.lastSessionTimestamp;
       const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
 
-      const cacheKey = `grotX_studentProfile_v2_${studentId}`;
+      const cacheKey = `grotX_studentProfile_v3_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
 
       if (cached && cached.lastSessionTimestamp === lastTs) {
@@ -401,6 +402,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         setYearlyArrows(cached.yearlyArrows);
         setAvg14Days(cached.avg14Days);
         if (cached.avgMonth != null) setAvgMonth(cached.avgMonth);
+        if (cached.avgLast3 != null) setAvgLast3(cached.avgLast3);
         return;
       }
 
@@ -442,6 +444,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const avg14Days = tArrows14 > 0 ? (tScore14 / tArrows14).toFixed(1) : '0.0';
       const avgMonthVal = tArrowsMonth > 0 ? (tScoreMonth / tArrowsMonth).toFixed(1) : '0.0';
+      // Średnia Ringe (suma pkt) z 3 ostatnich sesji z wynikiem, bez technicznych.
+      // `all` jest posortowane malejąco (timestamp desc), więc bierzemy pierwsze 3.
+      const last3NonTech = (snap.empty ? [] : snap.docs.map(d => d.data()))
+        .filter((s: any) => (s.score || 0) > 0 && s.type !== 'TECHNICAL')
+        .slice(0, 3);
+      const avgLast3Val = last3NonTech.length
+        ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.score || 0), 0) / last3NonTech.length)
+        : 0;
       setRecentSessions(recentSessions);
       setSparkline(sparkline);
       setDailyArrows(dayTotal);
@@ -449,8 +459,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setYearlyArrows(yearTotal);
       setAvg14Days(avg14Days);
       setAvgMonth(avgMonthVal);
+      setAvgLast3(avgLast3Val);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgMonth: avgMonthVal });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgMonth: avgMonthVal, avgLast3: avgLast3Val });
     };
 
     fetchStudentData();
@@ -914,7 +925,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         initialTab={quickStatsTab}
         weeklyArrows={weeklyArrows}
         weeklyPoints={weeklyPoints}
-        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgMonth }}
+        stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgMonth, avgLast3 }}
       />
 
       {/* MODAL: KRZYWA WYNIKÓW UCZNIA */}

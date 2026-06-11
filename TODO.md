@@ -624,9 +624,14 @@ konta testowego, otwarcie /legal/datenschutz.html.
 
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 
-- [ ] **C11. Service worker (vite-plugin-pwa)** — offline na strzelnicy,
-      warunek dobrego TWA/Capacitor. `icon-512.png` ✅ wygenerowana (upscale
-      z 192px — PODMIENIĆ na oryginalną grafikę 512×512 przed publikacją!)
+- [~] **C11. Service worker** ✅ SW live (2026-06-11) — WŁASNY generator
+      `scripts/generate-sw.mjs` (post-build), NIE vite-plugin-pwa (0.12.x =
+      ostatnia zgodna z Vite 2, nie buduje się na Node 24). Precache 36 plików
+      (app shell + legal), fonty lazy CacheFirst, nawigacje network-first
+      z offline fallback, sw.js z no-cache w vercel.json+firebase.json.
+      Przy C16 (upgrade stacku) NIE wracać do pluginu — generator działa.
+      ⬜ POZOSTAJE: `icon-512.png` = rozmyty upscale z 192px — PODMIENIĆ
+      na oryginalną grafikę 512×512 przed publikacją w sklepach!
 - [ ] **C12. Wrapper natywny** — decyzja: Capacitor (iOS+Android z jednego kodu,
       zalecane) vs TWA (tylko Android). App Store NIE przyjmuje czystych PWA.
 - [x] **C13. Data Safety / Privacy Nutrition Labels** ✅ — `LEGAL_DATA_INVENTORY.md`

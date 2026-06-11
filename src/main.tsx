@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 import './tailwind.css';
 import App from './App';
 import './i18n'; // <--- DODANE: Aktywacja systemu tłumaczeń i autodetekcji języka
@@ -39,9 +39,11 @@ if (import.meta.env.DEV) {
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
-ReactDOM.render(
+// React 18: createRoot zamiast ReactDOM.render (concurrent features).
+// StrictMode w dev montuje komponenty 2x — efekty z subskrypcjami (onSnapshot)
+// muszą mieć poprawne cleanupy (mają — patrz App.tsx).
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>,
-  document.getElementById('root')
+  </React.StrictMode>
 );

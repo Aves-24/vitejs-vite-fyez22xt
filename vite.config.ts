@@ -11,7 +11,13 @@ const buildStamp =
   `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Prod build: console.log/info/debug oznaczone jako "pure" — minifier je wycina.
+  // Logi diagnostyczne (np. "Trener AI: ...") ujawniały dane usera w konsoli produkcyjnej.
+  // console.error i console.warn zostają — potrzebne do diagnostyki błędów na produkcji.
+  esbuild: command === 'build'
+    ? { pure: ['console.log', 'console.info', 'console.debug'] }
+    : {},
   server: {
     headers: {
       // signInWithPopup wymaga aby popup mógł komunikować się z openerem.
@@ -45,4 +51,4 @@ export default defineConfig({
       },
     },
   },
-})
+}))

@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+import { getPublicProfile } from '../utils/publicProfile';
 
 interface CoachDashboardViewProps {
   userId: string;
@@ -94,27 +95,24 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const studentIds = data.students || [];
         
         if (studentIds.length > 0) {
+          // [RODO C6] Pojedyncze getDoc zamiast zapytań `in` po users:
+          // reguła relacyjna (trener w coaches[] ucznia) działa per-dokument,
+          // a zapytania listowe po users odrzucane są w całości.
+          const studentDocs = await Promise.all(
+            (studentIds as string[]).map(sid => getDoc(doc(db, 'users', sid)).catch(() => null))
+          );
           const studentsData = [];
-          const chunks = [];
-          for (let i = 0; i < studentIds.length; i += 10) {
-            chunks.push(studentIds.slice(i, i + 10));
-          }
+          for (const d of studentDocs) {
+            if (!d || !d.exists()) continue;
+            const studentData = { id: d.id, ...d.data() } as any;
 
-          for (const chunk of chunks) {
-            const q = query(collection(db, 'users'), where('__name__', 'in', chunk));
-            const snap = await getDocs(q);
+            // Dane denormalizowane — zapisywane przez ScoringView przy każdym zapisie sesji
+            const ts = studentData.lastSessionTimestamp;
+            studentData.exactLastActivity = ts?.toMillis
+              ? ts.toMillis()
+              : (ts?.seconds ? ts.seconds * 1000 : (ts || 0));
 
-            for (const d of snap.docs) {
-              const studentData = { id: d.id, ...d.data() } as any;
-
-              // Dane denormalizowane — zapisywane przez ScoringView przy każdym zapisie sesji
-              const ts = studentData.lastSessionTimestamp;
-              studentData.exactLastActivity = ts?.toMillis
-                ? ts.toMillis()
-                : (ts?.seconds ? ts.seconds * 1000 : (ts || 0));
-
-              studentsData.push(studentData);
-            }
+            studentsData.push(studentData);
           }
           
           studentsData.sort((a, b) => {
@@ -305,8 +303,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
 
     try {
-      const studentDoc = await getDoc(doc(db, 'users', studentId));
-      if (!studentDoc.exists()) {
+      // [RODO C6] Przed zaproszeniem nie ma relacji, więc users/{studentId}
+      // jest niedostępny — istnienie konta weryfikujemy po publicznym lustrze.
+      const studentPub = await getPublicProfile(studentId);
+      if (!studentPub) {
         showToast(t('coachDashboard.toastNotFound'));
         return;
       }

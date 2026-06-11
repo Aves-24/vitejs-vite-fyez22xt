@@ -124,16 +124,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           if (coachFlag) {
             const studentIds: string[] = data.students || [];
             if (studentIds.length > 0) {
+              // [RODO C6] Pojedyncze getDoc zamiast zapytań `in` — reguła
+              // relacyjna na users działa per-dokument, nie dla list query.
               const loaded: CoachStudent[] = [];
-              for (let i = 0; i < studentIds.length; i += 10) {
-                const chunk = studentIds.slice(i, i + 10);
-                const sq = query(collection(db, 'users'), where('__name__', 'in', chunk));
-                const snap = await getDocs(sq);
-                snap.docs.forEach(d => {
+              const docs = await Promise.all(
+                studentIds.map(sid => getDoc(doc(db, 'users', sid)).catch(() => null))
+              );
+              docs.forEach(d => {
+                if (d && d.exists()) {
                   const sd = d.data();
                   loaded.push({ id: d.id, firstName: sd.firstName || '', lastName: sd.lastName || '' });
-                });
-              }
+                }
+              });
               setCoachStudentsList(loaded);
             }
             setCoachGroups(data.coachGroups || []);

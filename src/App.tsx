@@ -16,6 +16,7 @@ import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
+import { syncPublicProfile } from './utils/publicProfile';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -119,8 +120,23 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 1800); 
+    }, 900);
     return () => clearTimeout(timer);
+  }, []);
+
+  // [C14] Historia przeglądarki: systemowy przycisk "wstecz" (Android/PWA)
+  // cofa widok zamiast zamykać aplikację. handleNavigate/handleStartSession
+  // pushują stan; popstate przywraca poprzedni widok. Google odrzuca w review
+  // TWA, w których back natychmiast zabija appkę.
+  useEffect(() => {
+    window.history.replaceState({ view: 'HOME' }, '');
+    const onPopState = (e: PopStateEvent) => {
+      const v: AppView = (e.state && e.state.view) || 'HOME';
+      setCurrentView(v);
+      if (v !== 'STATS' && v !== 'STUDENT_PROFILE') setViewingStudentId(null);
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
   useEffect(() => {
@@ -152,6 +168,11 @@ export default function App() {
     const unsub = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
+
+        // [RODO C6] Lustro publicznego profilu — users/{uid} nie jest już
+        // czytelny dla obcych; popupy zaproszeń i lobby czytają profiles_public.
+        // Zapis tylko przy realnej zmianie treści (cache w syncPublicProfile).
+        syncPublicProfile(user.uid, data).catch(() => {});
         if (data.userDistances && data.userDistances.length > 0) {
           setUserDistances(data.userDistances);
         } else {
@@ -255,6 +276,8 @@ export default function App() {
   }, [isDataReady, showSplash, isAuthLoading]);
 
   const handleNavigate = (view: AppView, tab?: string, extraData?: string, optionalStudentId?: string) => {
+    // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
+    if (view !== currentView) window.history.pushState({ view }, '');
     setCurrentView(view);
     
     if (view !== 'STATS' && view !== 'STUDENT_PROFILE') {
@@ -299,6 +322,8 @@ export default function App() {
       setSessionTargetType(targetType);
       setSessionPracticeArrows(practiceArrows);
       setActiveBattleId(battleId);
+      // [C14] SCORING omija handleNavigate — wpis do historii ręcznie
+      if (currentView !== 'SCORING') window.history.pushState({ view: 'SCORING' }, '');
       setCurrentView('SCORING');
 
       // Odejmij strzały próbne z profilu pfeilzaehler — są już zapisane w sesji,

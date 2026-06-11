@@ -13,7 +13,8 @@ import ProfileSection from '../components/settings/ProfileSection';
 import ProSection from '../components/settings/ProSection';
 import CoachSection from '../components/settings/CoachSection';
 import TournamentSection from '../components/settings/TournamentSection';
-import BowSection from '../components/settings/BowSection'; 
+import BowSection from '../components/settings/BowSection';
+import PrivacySection from '../components/settings/PrivacySection';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
@@ -172,8 +173,17 @@ export default function SettingsView({
           setIsCoach(data.isCoach || false); setCoachLimit(data.coachLimit || 0); setStudentsCount((data.students || []).length);
 
           if ((data.coaches || []).length > 0) {
-            const coachesSnap = await getDocs(query(collection(db, 'users'), where('__name__', 'in', data.coaches)));
-            setMyCoachesData(coachesSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+            // [RODO C6] Pojedyncze getDoc zamiast zapytania `in`: reguła
+            // relacyjna (uczeń w students[] trenera) działa per-dokument,
+            // ale zapytania listowe po users odrzuca w całości.
+            const coachDocs = await Promise.all(
+              (data.coaches as string[]).map(cid => getDoc(doc(db, 'users', cid)).catch(() => null))
+            );
+            setMyCoachesData(
+              coachDocs
+                .filter((d): d is NonNullable<typeof d> => !!d && d.exists())
+                .map(d => ({ id: d.id, ...d.data() }))
+            );
           }
           if (data.startYear !== undefined) setStartYear(data.startYear);
           if (data.competitionLevel) setCompetitionLevel(data.competitionLevel);
@@ -340,15 +350,20 @@ export default function SettingsView({
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {activeTab === 'PROFIL' && (
-          <ProfileSection 
-            {...{ firstName, setFirstName, lastName, setLastName, nickname, setNickname, country, setCountry, clubCity, setClubCity, club, setClub, gender, setGender, bDay, setBDay, bMonth, setBMonth, bYear, setBYear, height, setHeight, handedness, setHandedness, startYear, setStartYear, competitionLevel, setCompetitionLevel, showFullName, setShowFullName, showClub, setShowClub, showRegion, setShowRegion }}
-            countryOptions={t('settings.lists.countries', { returnObjects: true }) as string[]}
-            availableCities={Array.from(new Set(globalClubs.map(c => c.city)))}
-            availableClubs={Array.from(new Set(globalClubs.filter(c => c.city === clubCity).map(c => c.name)))}
-            competitionLevels={t('settings.lists.compLevels', { returnObjects: true }) as string[]}
-            onStartWizard={() => setWizardStep(1)}
-            onLogout={() => setShowLogoutConfirm(true)}
-          />
+          <>
+            <ProfileSection
+              {...{ firstName, setFirstName, lastName, setLastName, nickname, setNickname, country, setCountry, clubCity, setClubCity, club, setClub, gender, setGender, bDay, setBDay, bMonth, setBMonth, bYear, setBYear, height, setHeight, handedness, setHandedness, startYear, setStartYear, competitionLevel, setCompetitionLevel, showFullName, setShowFullName, showClub, setShowClub, showRegion, setShowRegion }}
+              countryOptions={t('settings.lists.countries', { returnObjects: true }) as string[]}
+              availableCities={Array.from(new Set(globalClubs.map(c => c.city)))}
+              availableClubs={Array.from(new Set(globalClubs.filter(c => c.city === clubCity).map(c => c.name)))}
+              competitionLevels={t('settings.lists.compLevels', { returnObjects: true }) as string[]}
+              onStartWizard={() => setWizardStep(1)}
+              onLogout={() => setShowLogoutConfirm(true)}
+            />
+            {/* [RODO] Eksport danych (art. 20), usunięcie konta (art. 17),
+                linki do polityki prywatności i Impressum */}
+            <PrivacySection userId={userId} />
+          </>
         )}
 
         {/* Zaktualizowana sekcja VISIER dla iOS */}

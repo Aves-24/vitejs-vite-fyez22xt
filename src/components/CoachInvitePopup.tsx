@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import {
   collection, query, where, onSnapshot,
-  doc, updateDoc, arrayUnion, deleteDoc, getDoc
+  doc, updateDoc, arrayUnion, deleteDoc
 } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { getPublicProfile } from '../utils/publicProfile';
 
 interface CoachInvitePopupProps {
   userId: string;
@@ -43,20 +44,15 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
       const items: Invite[] = [];
       for (const d of snap.docs) {
         const data = d.data() as any;
-        // Dociągnij imię/klub trenera do wyświetlenia w popupie
+        // [RODO C6] Dane trenera z publicznego lustra profiles_public —
+        // przed akceptacją zaproszenia nie ma relacji, więc users/{coachId}
+        // nie jest czytelny dla ucznia.
         let coachName = t('coachInvite.unknownCoach', 'Trener');
         let coachClub = '';
-        try {
-          const coachSnap = await getDoc(doc(db, 'users', data.coachId));
-          if (coachSnap.exists()) {
-            const c = coachSnap.data();
-            const first = c.firstName || '';
-            const last = c.lastName || '';
-            coachName = `${first} ${last}`.trim() || coachName;
-            coachClub = c.clubName || c.club || '';
-          }
-        } catch (e) {
-          console.warn('Nie udało się pobrać danych trenera:', e);
+        const pub = await getPublicProfile(data.coachId);
+        if (pub) {
+          coachName = pub.displayName || coachName;
+          coachClub = pub.club || '';
         }
         items.push({
           id: d.id,

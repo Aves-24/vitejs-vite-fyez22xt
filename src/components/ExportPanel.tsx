@@ -22,32 +22,28 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Wczytywanie polskiej czcionki Unicode do PDF
+  // Wczytywanie polskiej czcionki Unicode do PDF.
+  // Czcionki self-hosted w public/fonts/ (wcześniej cdnjs.cloudflare.com) —
+  // brak wycieku IP do zewnętrznego CDN, eksport działa też offline.
+  const fetchFontAsBase64 = async (path: string): Promise<string> => {
+    const response = await fetch(path);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  };
+
   const loadCustomFont = async (doc: jsPDF) => {
     try {
-      const response = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Regular.ttf');
-      const buffer = await response.arrayBuffer();
-      
-      let binary = '';
-      const bytes = new Uint8Array(buffer);
-      const len = bytes.byteLength;
-      for (let i = 0; i < len; i++) {
-        binary += String.fromCharCode(bytes[i]);
-      }
-      const base64 = window.btoa(binary);
-
-      doc.addFileToVFS('Roboto-Regular.ttf', base64);
+      doc.addFileToVFS('Roboto-Regular.ttf', await fetchFontAsBase64('/fonts/Roboto-Regular.ttf'));
       doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal', 'Identity-H');
-      
-      // Ładujemy też pogrubioną czcionkę dla ładnych nagłówków
-      const responseBold = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/fonts/Roboto/Roboto-Medium.ttf');
-      const bufferBold = await responseBold.arrayBuffer();
-      let binaryBold = '';
-      const bytesBold = new Uint8Array(bufferBold);
-      for (let i = 0; i < bytesBold.byteLength; i++) binaryBold += String.fromCharCode(bytesBold[i]);
-      doc.addFileToVFS('Roboto-Medium.ttf', window.btoa(binaryBold));
+
+      // Pogrubiona czcionka dla nagłówków
+      doc.addFileToVFS('Roboto-Medium.ttf', await fetchFontAsBase64('/fonts/Roboto-Medium.ttf'));
       doc.addFont('Roboto-Medium.ttf', 'Roboto', 'bold', 'Identity-H');
-      
+
       return true;
     } catch (error) {
       console.warn("Nie udało się załadować czcionki.", error);

@@ -1,21 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { auth } from '../firebase';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signInWithPopup, 
+import { auth, db } from '../firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
   GoogleAuthProvider,
-  sendPasswordResetEmail 
+  sendPasswordResetEmail,
+  getAdditionalUserInfo
 } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { PRIVACY_POLICY_VERSION, privacyPolicyUrl } from '../utils/legalLinks';
+
+// [RODO] Zapis zgody na politykę prywatności w profilu — rozliczalność (art. 7 ust. 1).
+// Merge: dokument users/{uid} może jeszcze nie istnieć (tworzy go App.tsx) lub już istnieć.
+async function writePrivacyConsent(uid: string) {
+  try {
+    await setDoc(doc(db, 'users', uid), {
+      privacyConsent: { version: PRIVACY_POLICY_VERSION, acceptedAt: Date.now() }
+    }, { merge: true });
+  } catch (e) {
+    console.error('Zapis privacyConsent nieudany:', e);
+  }
+}
 
 export default function AuthView() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -62,7 +78,14 @@ export default function AuthView() {
       } else if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // [RODO] Rejestracja wymaga aktywnej akceptacji polityki prywatności (opt-in).
+        if (!acceptedPrivacy) {
+          safeSetError(t('auth.privacyRequired'));
+          safeSetIsLoading(false);
+          return;
+        }
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await writePrivacyConsent(cred.user.uid);
       }
     } catch (err: any) {
       console.error(err);
@@ -81,7 +104,12 @@ export default function AuthView() {
     safeSetIsLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const result = await signInWithPopup(auth, provider);
+      // [RODO] Nowe konto Google = pierwsza rejestracja → zapis zgody
+      // (informacja o akceptacji widnieje przy przycisku Google).
+      if (getAdditionalUserInfo(result)?.isNewUser) {
+        await writePrivacyConsent(result.user.uid);
+      }
     } catch (err: any) {
       console.error(err);
       safeSetError(t('auth.googleError'));
@@ -152,9 +180,32 @@ export default function AuthView() {
             </div>
           )}
           
-          <button 
-            type="submit" 
-            disabled={isLoading}
+          {!isLogin && !isForgotPassword && (
+            <label className="flex items-start gap-3 px-1 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedPrivacy}
+                onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-[#0a3a2a] shrink-0"
+              />
+              <span className="text-[11px] font-bold text-gray-500 leading-snug">
+                {t('auth.privacyAccept')}{' '}
+                <a
+                  href={privacyPolicyUrl(i18n.language)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="text-emerald-600 font-black underline decoration-emerald-200 underline-offset-2"
+                >
+                  {t('auth.privacyPolicy')}
+                </a>
+              </span>
+            </label>
+          )}
+
+          <button
+            type="submit"
+            disabled={isLoading || (!isLogin && !isForgotPassword && !acceptedPrivacy)}
             className="w-full py-4.5 bg-[#0a3a2a] text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 mt-4"
           >
             {isLoading ? (
@@ -213,6 +264,18 @@ export default function AuthView() {
               </svg>
               {t('auth.googleAuth')}
             </button>
+
+            <p className="text-center text-[9px] font-bold text-gray-400 leading-snug px-6">
+              {t('auth.privacyGoogleNote')}{' '}
+              <a
+                href={privacyPolicyUrl(i18n.language)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 underline decoration-emerald-200 underline-offset-2"
+              >
+                ↗
+              </a>
+            </p>
           </div>
         )}
       </div>

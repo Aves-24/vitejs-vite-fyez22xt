@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
-import { useTranslation } from 'react-i18next'; 
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { useTranslation } from 'react-i18next';
+import { getPublicProfile } from '../utils/publicProfile';
 
 interface BattleHistoryViewProps {
   userId: string;
@@ -63,14 +64,14 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
         });
         setBattleParticipants(pDetails);
       } else {
-        // Fallback dla starych bitew bez pola participantsData
+        // Fallback dla starych bitew bez pola participantsData.
+        // [RODO C6] profiles_public zamiast users/{uid} (brak relacji z przeciwnikiem).
         const pDetails = await Promise.all(battle.participants.map(async (pId: string) => {
-          const uSnap = await getDoc(doc(db, 'users', pId));
-          const ud = uSnap.exists() ? uSnap.data() : {};
+          const pub = await getPublicProfile(pId);
           return {
             id: pId,
-            name: ud.firstName || t('battleLobby.archer'),
-            countryCode: ud.countryCode || 'DE'
+            name: pub?.displayName || t('battleLobby.archer'),
+            countryCode: pub?.country || 'DE'
           };
         }));
         setBattleParticipants(pDetails);

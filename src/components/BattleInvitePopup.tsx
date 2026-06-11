@@ -3,9 +3,10 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import {
   collection, query, where, onSnapshot,
-  doc, updateDoc, arrayUnion, arrayRemove, deleteField, getDoc
+  doc, updateDoc, arrayUnion, arrayRemove, deleteField
 } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { getPublicProfile } from '../utils/publicProfile';
 
 interface BattleInvitePopupProps {
   userId: string;
@@ -46,19 +47,14 @@ export default function BattleInvitePopup({ userId, onJoinBattle }: BattleInvite
         const participants: string[] = data.participants || [];
         if (participants.includes(userId)) continue;
 
+        // [RODO C6] Dane hosta z publicznego lustra profiles_public —
+        // pełny users/{uid} nie jest już czytelny dla obcych.
         let hostName = t('battleInvite.unknownHost', 'Zawodnik');
         let hostClub = '';
-        try {
-          const hostSnap = await getDoc(doc(db, 'users', data.hostId));
-          if (hostSnap.exists()) {
-            const c = hostSnap.data();
-            const first = c.firstName || '';
-            const last = c.lastName || '';
-            hostName = `${first} ${last}`.trim() || c.nickname || hostName;
-            hostClub = c.clubName || c.club || '';
-          }
-        } catch (e) {
-          console.warn('Nie udało się pobrać danych hosta:', e);
+        const pub = await getPublicProfile(data.hostId);
+        if (pub) {
+          hostName = pub.displayName || hostName;
+          hostClub = pub.club || '';
         }
 
         items.push({

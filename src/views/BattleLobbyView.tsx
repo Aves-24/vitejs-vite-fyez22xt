@@ -5,6 +5,7 @@ import WorldQueueView from './WorldQueueView';
 import { doc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, arrayUnion, arrayRemove, getDoc, deleteDoc, deleteField } from 'firebase/firestore';
 import { Html5Qrcode } from 'html5-qrcode';
 import { useTranslation } from 'react-i18next';
+import { getPublicProfile } from '../utils/publicProfile';
 
 interface BattleLobbyViewProps {
   userId: string;
@@ -345,14 +346,15 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
               && !participants.some(p => p.id === decodedText)
               && !pendingInvites.includes(decodedText)
               && decodedText !== userId) {
-            const scannedSnap = await getDoc(doc(db, 'users', decodedText));
-            const sd = scannedSnap.exists() ? scannedSnap.data() : {};
+            // [RODO C6] Dane zapraszanego z profiles_public (lustro już
+            // respektuje flagi prywatności) — users/{uid} czytelny tylko w relacji.
+            const pub = await getPublicProfile(decodedText);
             await updateDoc(doc(db, 'battles', battleId), {
               pendingInvites: arrayUnion(decodedText),
               [`participantsData.${decodedText}`]: {
-                name: formatUserName(sd, sd.showFullName !== false, sd.showNickname !== false) || t('battleLobby.archer'),
-                club: formatUserClub(sd, sd.showClub !== false, sd.showRegion !== false) || t('battleLobby.unaffiliated'),
-                country: sd.countryCode || 'PL'
+                name: pub?.displayName || t('battleLobby.archer'),
+                club: pub?.club || t('battleLobby.unaffiliated'),
+                country: pub?.country || 'PL'
               }
             });
             showToast(t('battleLobby.inviteSent', 'Zaproszenie wysłane'));
@@ -854,14 +856,14 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
                       && !participants.some(p => p.id === uid)
                       && !pendingInvites.includes(uid)
                       && uid !== userId) {
-                    const scannedSnap = await getDoc(doc(db, 'users', uid));
-                    const sd = scannedSnap.exists() ? scannedSnap.data() : {};
+                    // [RODO C6] profiles_public zamiast users/{uid}
+                    const pub = await getPublicProfile(uid);
                     await updateDoc(doc(db, 'battles', battleId), {
                       pendingInvites: arrayUnion(uid),
                       [`participantsData.${uid}`]: {
-                        name: `${sd.firstName || ''} ${sd.lastName || ''}`.trim() || uid,
-                        club: sd.clubName || '',
-                        country: sd.countryCode || 'PL'
+                        name: pub?.displayName || t('battleLobby.archer'),
+                        club: pub?.club || '',
+                        country: pub?.country || 'PL'
                       }
                     });
                     showToast(t('battleLobby.inviteSent', 'Zaproszenie wysłane'));

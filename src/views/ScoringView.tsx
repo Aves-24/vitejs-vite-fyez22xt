@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { invalidateRecentSessions } from '../lib/recentSessions';
 import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
+import { getPublicProfile } from '../utils/publicProfile';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { calculateSessionHandicap, calculateCurrentHandicap } from '../utils/handicapEngine';
@@ -140,42 +141,9 @@ function TargetZoomModal({ roundTitle, ends, targetType, startIndex, onClose, t 
   );
 }
 
-const formatUserName = (userData: any) => {
-  if (!userData) return '';
-  const showFull = userData.showFullName !== false;
-  const showNick = userData.showNickname !== false;
-  const fName = userData.firstName || '';
-  const lName = userData.lastName || '';
-  const nick = userData.nickname || '';
-
-  const baseName = showFull
-    ? `${fName} ${lName}`.trim()
-    : `${fName} ${lName ? lName.charAt(0) + '.' : ''}`.trim();
-
-  if (showNick && nick) {
-     if (baseName) {
-        return `${fName} "${nick}" ${showFull ? lName : (lName ? lName.charAt(0) + '.' : '')}`.trim();
-     }
-     return nick; 
-  }
-  if (!baseName && nick && !showNick) return 'Łucznik';
-  return baseName || nick; 
-};
-
-const formatUserClub = (userData: any) => {
-  if (!userData) return '';
-  const showCl = userData.showClub !== false;
-  const showReg = userData.showRegion !== false;
-  const cName = userData.clubName || '';
-  const cCity = userData.clubCity || '';
-  
-  const parts = [];
-  if (showCl && cName) parts.push(cName);
-  if (showReg && cCity) parts.push(cCity);
-  
-  if (parts.length === 0) return 'Niezrzeszony';
-  return parts.join(' - ');
-};
+// [RODO C6] formatUserName/formatUserClub przeniesione do
+// utils/publicProfile.ts (buildPublicProfile) — dane przeciwników
+// czytane z profiles_public, już sformatowane.
 
 const getFlagEmoji = (countryCode: string) => {
   const code = countryCode?.toUpperCase();
@@ -312,14 +280,16 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
           } else {
             setBattleGuests([]);
           }
+          // [RODO C6] Dane przeciwników z profiles_public — users/{uid}
+          // czytelny tylko w relacji trener↔uczeń. Własny wpis nadal
+          // formatowany lokalnie (fallback gdy lustro jeszcze nie istnieje).
           const pDetails = await Promise.all(bData.participants.map(async (pId: string) => {
-            const uSnap = await getDoc(doc(db, 'users', pId));
-            const ud = uSnap.exists() ? uSnap.data() : {};
+            const pub = await getPublicProfile(pId);
             return {
               id: pId,
-              name: formatUserName(ud),
-              club: formatUserClub(ud),
-              countryCode: ud.countryCode || 'DE'
+              name: pub?.displayName || (bData.participantsData?.[pId]?.name ?? ''),
+              club: pub?.club || (bData.participantsData?.[pId]?.club ?? ''),
+              countryCode: pub?.country || (bData.participantsData?.[pId]?.country ?? 'DE')
             };
           }));
           setBattleParticipants(pDetails);

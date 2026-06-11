@@ -549,5 +549,112 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
 
 ---
 
-*Ostatnia aktualizacja:* 2026-04-24  
-*Status:* ✅ **COMPLETE** — Ready for production
+# TODO — Faza C: Store Readiness + RODO/GDPR (App Store & Play Store)
+
+**Data startu:** 2026-06-11
+**Cel:** Publikacja w App Store i Play Store. Priorytet #1: zgodność RODO/GDPR
+(Niemcy — Datenschutzerklärung, Polska — Polityka prywatności, EN — Privacy Policy).
+
+## 🔴 Priorytet 1 — RODO / Prawo (blokery publikacji)
+
+- [x] **C1. Polityka prywatności w 3 językach** ✅ (2026-06-11)
+      - `public/legal/datenschutz.html` (DE), `polityka-prywatnosci.html` (PL),
+        `privacy-policy.html` (EN), `impressum.html` (DE, §5 DDG)
+      - Linki w aplikacji: PrivacySection (Ustawienia → Profil) + ekran rejestracji
+      - ✅ Dane administratora uzupełnione (2026-06-11): Aves-24, Inh. Rafal
+        Woropaj, Krefeld; USt-IdNr. DE 265847286; organ nadzorczy: LDI NRW.
+        Wariant: aplikacja prowadzona pod Gewerbe (decyzja użytkownika).
+      - ⚠️ OTWARTE: finalna weryfikacja tekstów przez prawnika; sprawdzić czy
+        Tätigkeitsbeschreibung Gewerbe obejmuje rozwój/dystrybucję software
+- [x] **C2. Zgoda przy rejestracji** ✅ — checkbox w AuthView (blokuje rejestrację),
+      adnotacja przy logowaniu Google; zapis `privacyConsent {version, acceptedAt}`
+      (utils/legalLinks.ts — wersjonowanie polityki)
+- [x] **C3. Usuwanie konta self-service** ✅ — PrivacySection: re-auth (hasło lub
+      popup Google) → zdjęcie relacji trener↔uczeń → kasowanie subkolekcji,
+      world_queue/world_stats/profiles_public, coachInvites → users doc → deleteUser.
+      Rules: delete self na users, world_stats; coachLog kasowalny przez właściciela.
+- [x] **C4. Eksport danych** ✅ — "Eksportuj moje dane (JSON)" w PrivacySection
+- [x] **C5. Self-host fontów** ✅ — Material Symbols → public/fonts/ (woff2,
+      preload w index.html, @font-face w tailwind.css); CDN Google usunięty.
+      Przyszła optymalizacja: subset fontu (teraz 3,9 MB, cache immutable).
+- [x] **C6. Minimalizacja ekspozycji danych** ✅ — users read: self/admin/relacja;
+      nowa kolekcja `profiles_public` (lustro w App.tsx, utils/publicProfile.ts);
+      przepięci konsumenci: BattleInvitePopup, CoachInvitePopup, BattleLobbyView,
+      BattleHistoryView, ScoringView, CoachDashboardView (+ zapytania `in`→getDoc
+      w SettingsView, CalendarView, CoachDashboardView)
+
+## 🟠 Priorytet 2 — Bezpieczeństwo (rules hardening, szybkie)
+
+- [x] **C7. Rules: walidacja `trialEndsAt`** ✅ (validTrialEndsAt — max now+31 dni,
+      przy create i jednorazowym zapisie w Path B)
+- [x] **C8. Rules: `email_verified == true` w `isAdmin()`** ✅
+- [x] **C9. Nagłówki bezpieczeństwa** ✅ — CSP (Firebase/recaptcha/open-meteo),
+      X-Content-Type-Options, Referrer-Policy, Permissions-Policy
+      (camera/geolocation=self, microphone=()), frame-ancestors; cache /fonts/**
+      ⚠️ Po deployu PRZETESTOWAĆ: logowanie Google (popup!), App Check,
+      pogodę, kamerę QR — CSP może wymagać korekt na realnych urządzeniach.
+- [~] **C10. Konsola Firebase (RĘCZNIE — wymaga zalogowania właściciela):**
+      1. [x] Authentication → Settings → Password policy ✅ (2026-06-11)
+            Erzwingung erfordern; wielka+mała litera+cyfra; min. 8 znaków
+      2. [x] Authentication → User actions → email enumeration protection ✅
+            (włączone; + Erstellen/Löschen aktywne — Löschen wymagane dla usuwania konta)
+      3. [ ] Firestore → Disaster recovery → Point-in-Time Recovery
+            ⛔ WYMAGA PLANU BLAZE — decyzja użytkownika 2026-06-11: zostajemy
+            na Spark, wracamy do PITR tuż przed publikacją (razem z App Check
+            enforcement w produkcji + Cloud Function proxy pogody C21).
+            Przy przejściu na Blaze: ustawić budget alert!
+      4. [ ] Google Cloud Console → zaakceptować Data Processing Addendum (art. 28 RODO)
+
+### 🚀 Checklist wdrożenia zmian C1–C9 (jedna sesja):
+```
+npm run build                                  # ✅ przechodzi (2026-06-11)
+npx firebase deploy --only firestore:rules     # nowe reguły (C3/C6/C7/C8)
+npx firebase deploy --only hosting             # strony legal, fonty, nagłówki
+```
+Po deployu: smoke test logowania (e-mail + Google), zaproszenia trener/battle
+(nazwy z profiles_public pojawią się po pierwszym otwarciu appki przez danego
+użytkownika — wcześniej fallback "Zawodnik"/"Trener"), eksport i usunięcie
+konta testowego, otwarcie /legal/datenschutz.html.
+
+## 🟡 Priorytet 3 — Gotowość sklepowa
+
+- [ ] **C11. Service worker (vite-plugin-pwa)** — offline na strzelnicy,
+      warunek dobrego TWA/Capacitor. `icon-512.png` ✅ wygenerowana (upscale
+      z 192px — PODMIENIĆ na oryginalną grafikę 512×512 przed publikacją!)
+- [ ] **C12. Wrapper natywny** — decyzja: Capacitor (iOS+Android z jednego kodu,
+      zalecane) vs TWA (tylko Android). App Store NIE przyjmuje czystych PWA.
+- [x] **C13. Data Safety / Privacy Nutrition Labels** ✅ — `LEGAL_DATA_INVENTORY.md`
+      (pełny inwentarz + mapowanie na formularze Play i Apple). Same formularze
+      wypełnia się ręcznie w konsolach sklepów przy publikacji.
+- [x] **C14. Obsługa przycisku "wstecz"** ✅ (2026-06-11) — history.pushState
+      w handleNavigate/handleStartSession + popstate-listener w App.tsx;
+      back cofa widok zamiast zamykać PWA. Przetestować na realnym Androidzie!
+- [x] **C15. Self-host fontów PDF** ✅ — Roboto Regular/Medium w public/fonts/,
+      ExportPanel fetchuje lokalnie (offline + brak wycieku IP do Cloudflare)
+
+## 🟢 Priorytet 4 — Jakość / nowoczesność
+
+- [ ] **C16. Upgrade stacku** — React 18, Vite 6, TS 5
+- [ ] **C17. Testy rules na emulatorze** (@firebase/rules-unit-testing) + CI
+- [ ] **C18. Prawdziwy AI coach lub zmiana nazwy** (obecnie mock w CoachAIPanel)
+- [x] **C19. ClubSearch usunięty** ✅ — nie był nigdzie importowany (martwy kod
+      z placeholderem klucza API); skasowany też typ window.google w vite-env.d.ts
+- [ ] **C20. Dark mode, ~~zoom~~, ~~splash~~** — ✅ zoom odblokowany
+      (maximum-scale=5, WCAG), ✅ splash skrócony 1800→900 ms;
+      ZOSTAŁO: dark mode (większa praca — osobna sesja)
+- [ ] **C21. Pogoda: licencja komercyjna / proxy PRZED startem płatności premium**
+      — darmowe API Open-Meteo jest tylko non-commercial (appki z subskrypcjami
+      wprost wymienione jako komercyjne → ryzyko blokady IP bez ostrzeżenia).
+      Dopóki nikt nie płaci — OK. Z chwilą podpięcia Stripe:
+      a) najlepiej: Cloud Function proxy `getWeather(lat, lon)` + cache 15–30 min
+         (klucz poza klientem, wymienialny dostawca, mniej calli), dostawca:
+         Open-Meteo Standard (~29 €/mies., minimalna zmiana kodu) lub
+         MET Norway (0 €, wymaga proxy przez User-Agent)
+      b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
+         wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
+
+---
+
+*Ostatnia aktualizacja:* 2026-06-11
+*Status Fazy B (hardening):* ✅ COMPLETE
+*Status Fazy C (store readiness):* 🔄 IN PROGRESS

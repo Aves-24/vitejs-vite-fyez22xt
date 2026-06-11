@@ -30,14 +30,22 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == uid;
     }
     function isAdmin() {
-      // NOTE: app does not enforce email verification currently, so we rely on
-      // Firebase's "one email = one account" invariant. Migrate to custom claims
+      // email_verified wymagane: bez tego rejestracja e-mail+hasło na cudzy
+      // (jeszcze niezajęty) adres dawałaby uprawnienia admina. Konta Google
+      // mają email_verified == true automatycznie. Migrate to custom claims
       // (request.auth.token.admin == true) when Cloud Functions land.
       return isSignedIn()
+        && request.auth.token.email_verified == true
         && request.auth.token.email in [
              'info@aves-24.de',
              'rafal.woropaj@googlemail.com'
            ];
+    }
+    // trialEndsAt: klient może zapisać tylko sensowną wartość — maks. 31 dni
+    // od teraz. Bez tego limitu można sobie ustawić trial "na zawsze".
+    function validTrialEndsAt(data) {
+      return data.trialEndsAt is number
+        && data.trialEndsAt <= request.time.toMillis() + 31 * 24 * 60 * 60 * 1000;
     }
     // Fields NEVER writable by the client on /users/{uid}
     function protectedUserFields() {
@@ -67,17 +75,30 @@ service cloud.firestore {
     }
 
     // ─── /users/{uid} ───────────────────────────────────────────
+    //  [RODO C6] Pełny profil (e-mail, data urodzenia, nazwisko) czytelny
+    //  TYLKO dla: właściciela, admina i osób w relacji trener↔uczeń.
+    //  Dane do publicznego wyświetlania → /profiles_public/{uid}.
+    //  UWAGA: warunki na resource.data działają dla getDoc per-dokument;
+    //  zapytania listowe po users (poza adminem) NIE przejdą — klienci
+    //  czytają pojedynczo (SettingsView, CoachDashboard, MyCoach).
     match /users/{uid} {
-      allow read: if isSignedIn();
+      allow read: if isSelf(uid)
+        || isAdmin()
+        || (isSignedIn()
+            && (request.auth.uid in resource.data.get('coaches', [])
+                || request.auth.uid in resource.data.get('students', [])));
 
       allow create: if isSelf(uid)
-        && !request.resource.data.keys().hasAny(protectedUserFields());
+        && !request.resource.data.keys().hasAny(protectedUserFields())
+        && (!request.resource.data.keys().hasAny(['trialEndsAt'])
+            || validTrialEndsAt(request.resource.data));
 
       // Path A — admin full
       allow update: if isAdmin();
 
       // Path B — self-edit profile (no protected fields, no relations)
-      // trialEndsAt may be written once on first-time init (when not previously set);
+      // trialEndsAt may be written once on first-time init (when not previously set)
+      // and only with a bounded value (max now + 31 days, see validTrialEndsAt);
       // once present it is locked — client cannot change it (matches code comment).
       allow update: if isSelf(uid)
         && noneAffected(['isPremium', 'isPremiumPromo',
@@ -85,7 +106,8 @@ service cloud.firestore {
                          'worldWins', 'worldLosses', 'worldXP',
                          'students', 'coaches'])
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trialEndsAt'])
-            || !resource.data.keys().hasAny(['trialEndsAt']));
+            || (!resource.data.keys().hasAny(['trialEndsAt'])
+                && validTrialEndsAt(request.resource.data)));
 
       // Path C — student accepting invite: own doc, diff = ['coaches'],
       //          +1 entry, last entry has matching coachInvite.
@@ -151,8 +173,28 @@ service cloud.firestore {
         && listLen(request.resource.data, 'newCoachRequests')
              == listLen(resource.data, 'newCoachRequests') + 1;
 
-      // DELETE: admin only
-      allow delete: if isAdmin();
+      // DELETE: właściciel (RODO art. 17 — usuwanie konta w aplikacji,
+      // wymóg Apple/Google dla appek z kontami) lub admin.
+      allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── /profiles_public/{uid} ─────────────────────────────────
+    //  [RODO C6] Publiczne lustro profilu — wyłącznie dane, które
+    //  użytkownik zgodził się pokazywać (flagi showFullName/showClub itd.
+    //  egzekwuje klient w buildPublicProfile; tu twarde limity pól).
+    //  Pisane przez App.tsx przy zmianie users/{uid}.
+    match /profiles_public/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(
+             ['displayName', 'club', 'country', 'level', 'updatedAt'])
+        && request.resource.data.get('displayName', '') is string
+        && request.resource.data.get('displayName', '').size() <= 80
+        && request.resource.data.get('club', '') is string
+        && request.resource.data.get('club', '').size() <= 120
+        && request.resource.data.get('country', '') is string
+        && request.resource.data.get('country', '').size() <= 40;
+      allow delete: if isSelf(uid) || isAdmin();
     }
 
     // ─── /users/{uid}/sessions/{sessionId} ──────────────────────
@@ -194,7 +236,8 @@ service cloud.firestore {
     //  Wspólny dziennik trenerski — wszyscy trenerzy ucznia widzą wpisy
     //  każdego z trenerów (continuity przy zastępstwach). Uczeń też może
     //  czytać (przyszły MyCoachView). Edycja zablokowana, kasować może
-    //  tylko autor wpisu lub admin.
+    //  autor wpisu, admin lub uczeń-właściciel (RODO art. 17 — wpisy dotyczą
+    //  ucznia i muszą zniknąć przy usuwaniu jego konta).
     match /users/{uid}/coachLog/{entryId} {
       allow read: if isSelf(uid)
         || isAdmin()
@@ -211,8 +254,9 @@ service cloud.firestore {
 
       allow update: if false;
 
-      allow delete: if isSignedIn()
-        && (resource.data.authorId == request.auth.uid || isAdmin());
+      allow delete: if isSelf(uid)
+        || (isSignedIn() && resource.data.authorId == request.auth.uid)
+        || isAdmin();
     }
 
     // ─── /users/{uid}/studentMessages/{studentId} ───────────────
@@ -404,7 +448,8 @@ service cloud.firestore {
         && request.resource.data.get('worldXP', 0)
              <= resource.data.get('worldXP', 0) + 100;
 
-      allow delete: if isAdmin();
+      // Właściciel może usunąć własny wpis (RODO art. 17 — usuwanie konta).
+      allow delete: if isSelf(userId) || isAdmin();
     }
 
     // ─── /clubs/{clubId} ────────────────────────────────────────

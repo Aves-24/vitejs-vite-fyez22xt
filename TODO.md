@@ -646,7 +646,13 @@ konta testowego, otwarcie /legal/datenschutz.html.
 ## 🟢 Priorytet 4 — Jakość / nowoczesność
 
 - [ ] **C16. Upgrade stacku** — React 18, Vite 6, TS 5
-- [ ] **C17. Testy rules na emulatorze** (@firebase/rules-unit-testing) + CI
+- [x] **C17. Testy rules na emulatorze + CI** ✅ (2026-06-11) —
+      `tests/rules/firestore.rules.test.mjs` (40 asercji, T1-T7 + RODO),
+      `npm run test:rules`, `.github/workflows/ci.yml` (lint+build oraz
+      rules-tests na temurin 21, cache emulatora). CI ZIELONE (run ca442cf).
+      ⚠️ Lokalnie na tym PC emulator NIE startuje (AV/Norton blokuje loopback
+      Javy — testowane Java 21/11, tmpdir, IPv4) — weryfikacja przez CI.
+      Portable JRE: C:\Users\Lager 1\.local\jre21 (gdyby AV dostał wyjątek).
 - [ ] **C18. Prawdziwy AI coach lub zmiana nazwy** (obecnie mock w CoachAIPanel)
 - [x] **C19. ClubSearch usunięty** ✅ — nie był nigdzie importowany (martwy kod
       z placeholderem klucza API); skasowany też typ window.google w vite-env.d.ts

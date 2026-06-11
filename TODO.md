@@ -591,8 +591,14 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
 - [x] **C9. Nagłówki bezpieczeństwa** ✅ — CSP (Firebase/recaptcha/open-meteo),
       X-Content-Type-Options, Referrer-Policy, Permissions-Policy
       (camera/geolocation=self, microphone=()), frame-ancestors; cache /fonts/**
-      ⚠️ Po deployu PRZETESTOWAĆ: logowanie Google (popup!), App Check,
-      pogodę, kamerę QR — CSP może wymagać korekt na realnych urządzeniach.
+      ✅ PRZETESTOWANE (2026-06-11, prod = Vercel): logowanie Google OK,
+      App Check OK, pogoda OK, eksport danych OK, sekcja Prywatność OK.
+      Korekty CSP po testach: connect-src +www.google.com (reCAPTCHA clr),
+      script-src +apis.google.com (gapi dla popup auth).
+      ℹ️ PRODUKCJA = VERCEL (vitejs-vite-fyez22xt.vercel.app, decyzja 2026-06-11);
+      nagłówki w vercel.json (lustro firebase.json — zmieniać OBA pliki!).
+      Firebase Hosting zostaje jako zapasowy. Ostrzeżenie COOP przy popup
+      Google = znane, kosmetyczne (Firebase signInWithPopup), ignorować.
 - [~] **C10. Konsola Firebase (RĘCZNIE — wymaga zalogowania właściciela):**
       1. [x] Authentication → Settings → Password policy ✅ (2026-06-11)
             Erzwingung erfordern; wielka+mała litera+cyfra; min. 8 znaków

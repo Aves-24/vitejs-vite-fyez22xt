@@ -980,7 +980,10 @@ export const views = {
       weeklyArrows: "Pfeilanzahl (Wöchentlich)",
       weeklyArrowsShort: "Pfeile / Woche (12 Wo.)",
       sessionListTitle: "Trainingsliste",
-      scopeFor: "Daten für",
+      distAnalysisTitle: "Distanz-Analyse",
+      distAnalysisSub: "Daten unten beziehen sich auf die Auswahl",
+      distLabel: "Distanz",
+      typeLabel: "Trainingsart",
       tooFewSessions: "Zu wenig Daten. Speichere mehr Trainingseinheiten.",
       arrows: "Pfeile",
       zones: {

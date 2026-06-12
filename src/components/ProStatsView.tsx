@@ -403,57 +403,82 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
         </div>
       )}
 
+      {/* PANEL ANALIZY DYSTANSU — nagłówek sekcji + filtry w jednej karcie.
+          Wszystko poniżej tej karty dotyczy wybranego dystansu/typów. */}
       {distances.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-          {distances.map(dist => {
-            const isTech = dist === 'TECH';
-            return (
-              <button key={dist} onClick={() => setSelectedDistance(dist)}
-                className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 flex items-center gap-1 ${
-                  selectedDistance === dist
-                  ? (isTech ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md')
-                  : 'bg-white text-gray-400 border-gray-100'
-                }`}>
-                {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
-                {dist}
-              </button>
-            )
-          })}
-        </div>
-      )}
+        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-9 h-9 rounded-xl bg-[#0a3a2a] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[#fed33e] text-[18px]">filter_center_focus</span>
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest leading-none">{t('stats.pro.distAnalysisTitle', 'Analiza dystansu')}</h2>
+                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">{t('stats.pro.distAnalysisSub', 'Dane poniżej dotyczą wyboru')}</p>
+              </div>
+            </div>
+            <div className="bg-[#fed33e] text-[#0a3a2a] px-4 py-2 rounded-2xl shadow-sm shrink-0">
+              <span className="text-sm font-black uppercase tracking-tighter leading-none">{selectedDistance}</span>
+            </div>
+          </div>
 
-      {availableTypes.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-          {availableTypes.map(type => {
-            const isActive = selectedTypes.has(type);
-            const typeLabel =
-              type === 'Turniej' ? t('stats.sessionInfo.tournament') :
-              type === 'Arena' ? t('stats.sessionInfo.arena') :
-              type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') :
-              type === 'TECHNICAL' ? 'TECH' :
-              t('stats.sessionInfo.typeSolo');
-            const typeColor = isActive
-              ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
-              : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
-              : type === 'WORLD_BATTLE' ? 'bg-emerald-500 text-white border-emerald-500'
-              : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
-              : 'bg-white text-gray-400 border-gray-100';
-            return (
-              <button
-                key={type}
-                onClick={() => {
-                  setSelectedTypes(prev => {
-                    const next = new Set(prev);
-                    if (next.has(type)) next.delete(type); else next.add(type);
-                    return next;
-                  });
-                }}
-                className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${typeColor}`}
-              >
-                {typeLabel}
-              </button>
-            );
-          })}
+          <div>
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2 ml-1">{t('stats.pro.distLabel', 'Dystans')}</span>
+            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+              {distances.map(dist => {
+                const isTech = dist === 'TECH';
+                return (
+                  <button key={dist} onClick={() => setSelectedDistance(dist)}
+                    className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 flex items-center gap-1 ${
+                      selectedDistance === dist
+                      ? (isTech ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md')
+                      : 'bg-gray-50 text-gray-400 border-gray-100'
+                    }`}>
+                    {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
+                    {dist}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {availableTypes.length > 1 && (
+            <div>
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2 ml-1">{t('stats.pro.typeLabel', 'Typ treningu')}</span>
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                {availableTypes.map(type => {
+                  const isActive = selectedTypes.has(type);
+                  const typeLabel =
+                    type === 'Turniej' ? t('stats.sessionInfo.tournament') :
+                    type === 'Arena' ? t('stats.sessionInfo.arena') :
+                    type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') :
+                    type === 'TECHNICAL' ? 'TECH' :
+                    t('stats.sessionInfo.typeSolo');
+                  const typeColor = isActive
+                    ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
+                    : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
+                    : type === 'WORLD_BATTLE' ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
+                    : 'bg-gray-50 text-gray-400 border-gray-100';
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setSelectedTypes(prev => {
+                          const next = new Set(prev);
+                          if (next.has(type)) next.delete(type); else next.add(type);
+                          return next;
+                        });
+                      }}
+                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${typeColor}`}
+                    >
+                      {typeLabel}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -468,19 +493,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
           >
             {isLoadingAll ? t('stats.pro.loading', 'Ładuję...') : t('stats.pro.allHistory', 'Cała historia')}
           </button>
-        </div>
-      )}
-
-      {/* SEPARATOR ZAKRESU: wszystko poniżej dotyczy wybranego dystansu */}
-      {selectedDistance && (
-        <div className="flex items-center gap-3 pt-2">
-          <div className="h-px bg-gray-200 flex-1" />
-          <div className="flex items-center gap-2 bg-[#0a3a2a] text-white rounded-full pl-3 pr-4 py-1.5 shadow-md shrink-0">
-            <span className="material-symbols-outlined text-[#fed33e] text-[15px]">filter_center_focus</span>
-            <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">{t('stats.pro.scopeFor', 'Dane dla')}</span>
-            <span className="text-[11px] font-black uppercase tracking-tighter text-[#fed33e]">{selectedDistance}</span>
-          </div>
-          <div className="h-px bg-gray-200 flex-1" />
         </div>
       )}
 

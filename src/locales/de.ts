@@ -921,7 +921,24 @@ export const views = {
       error: "Dominanter Fehler",
       historyRecord: "Passenprotokoll",
       tenSum: "Summe 10er",
-      nineSum: "Summe 9er"
+      nineSum: "Summe 9er",
+      bio: {
+        coachFirst: "Wenn dein Trainer es nicht anders sieht — hier ist unser Tipp für dich:",
+        rightyNote: "Die Richtungstipps gelten für Rechtshänder (bei Linkshändern links/rechts vertauschen).",
+        whatToDo: "Was du prüfen kannst",
+        tendencyTitle: "Trefferbild-Tendenz",
+        tendencyAbout: "Zeigt, wo die Mitte deiner Gruppe im Schnitt relativ zur Scheibenmitte liegt. Das ist eine konstante, systematische Abweichung. Korrigiere zuerst das Visier — ist die Gruppe eng, aber verschoben, ist es meist nur eine Visiereinstellung. Wandert die Gruppe trotz korrektem Visier immer in dieselbe Richtung, liegt die Ursache in der Technik.",
+        tendCenter: "Die Gruppenmitte liegt zentral — Zielen und Visier sind korrekt eingestellt. Konzentriere dich jetzt auf die Enge der Gruppe (siehe „Dominanter Fehler“).",
+        tendLeft: "Pfeile landen links. Typische Ursachen: Sehnenbild zu weit rechts beim Zielen, Griff-Torsion (Torque), nachgebender oder zu „defensiver“ Bogenarm. Prüfe: neutraler Griffdruck ohne Verdrehen, Bogenarm aktiv ins Ziel drücken, immer dasselbe Sehnenbild am Mittelstück.",
+        tendRight: "Pfeile landen rechts. Typische Ursachen: Zupfen an der Sehne beim Lösen (Plucking), Bogen nach rechts gekippt (Cant), Sehnenbild zu weit links. Prüfe: sauberes Lösen nach hinten entlang des Halses (Ellbogen nach hinten, nicht nach außen), senkrechter Bogen, konstantes Sehnenbild.",
+        tendUp: "Pfeile landen zu hoch. Typische Ursachen: zu viel Druck auf den unteren Griff, stärker gekrümmter Zeigefinger, längerer Auszug, offener Kiefer statt geschlossener Zähne. Prüfe: gleichmäßiger, zentrierter Griffdruck und ein wiederholbarer Anker.",
+        tendDown: "Pfeile landen zu tief. Typische Ursachen: Auszugslängen-Kollaps, absinkender Bogenarm, Sehnenkontakt mit Kleidung oder Brust. Prüfe: Rückenspannung bis zum Ende halten, kräftiges Nachhalten, Sehnenkontakt mit Kleidung beseitigen.",
+        errorTitle: "Dominanter Fehler",
+        errorAbout: "Zeigt die Form der Streuung — in welche Richtung sich deine Gruppe am stärksten zieht. Das lässt sich NICHT über das Visier beheben; es geht um technische Konstanz Schuss für Schuss.",
+        errSymm: "Die Streuung ist horizontal und vertikal gleichmäßig — keine dominante Fehlerachse, gute technische Balance. Arbeite daran, die Gruppe insgesamt zu verkleinern: gleicher Rhythmus und gleiches Timing bei jedem Schuss sowie Kondition.",
+        errHoriz: "Überwiegend horizontale Streuung (links–rechts). Hauptverdächtiger ist das Sehnenbild (String Alignment) — dein „hinteres Visier“. Eine inkonstante Sehnenposition am Mittelstück erzeugt horizontale Streuung. Dazu kommen Griff-Torsion, Zupfen und Bogen-Cant. Lege EIN konstantes Sehnenbild fest und wiederhole es bei jedem Schuss; neutraler Griff; sauberes Lösen nach hinten.",
+        errVert: "Überwiegend vertikale Streuung (oben–unten). Hauptverdächtige: inkonstanter Anker, wechselnder Fingerdruck auf der Sehne, Lösequalität, Auszugslängen-Kollaps, nachgebender Bogenarm. Vertikale Streuung wächst besonders auf längeren Distanzen (gewölbte Flugbahn). Arbeite an konstantem Anker und Fingerdruck, durchgehender Rückenspannung (Klicker) und vollem Nachhalten."
+      }
     },
     pro: {
       loading: "Historische Daten werden analysiert...",

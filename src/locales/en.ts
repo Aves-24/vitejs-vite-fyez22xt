@@ -921,7 +921,24 @@ export const views = {
       error: "Dominant error",
       historyRecord: "End log",
       tenSum: "Sum 10s",
-      nineSum: "Sum 9s"
+      nineSum: "Sum 9s",
+      bio: {
+        coachFirst: "Unless your coach sees it differently — here is our tip for you:",
+        rightyNote: "Directional tips assume a right-handed archer (reverse left/right if you shoot left-handed).",
+        whatToDo: "What to check",
+        tendencyTitle: "Grouping direction",
+        tendencyAbout: "Shows where the centre of your group sits on average relative to the centre of the target. This is a steady, systematic offset. Adjust your sight first — if the group is tight but shifted, it is usually just a sight setting. If the group keeps drifting the same way despite a correct sight, the cause is in your technique.",
+        tendCenter: "Your group centre is on target — aiming and sight are set correctly. Now focus on group tightness (see \"Dominant error\").",
+        tendLeft: "Arrows land left. Common causes: string picture sitting to the right at aim, grip torque, or a collapsing / overly \"defensive\" bow arm. Check: neutral grip pressure without twisting, actively drive the bow arm into the target, keep the same string picture against the riser every shot.",
+        tendRight: "Arrows land right. Common causes: plucking the string on release, canting the bow to the right, or string picture sitting to the left. Check: a clean rearward release along the neck (elbow back, not out), a vertical bow, a consistent string picture.",
+        tendUp: "Arrows land high. Common causes: too much pressure on the lower grip, more index-finger curl, a longer draw, or an open jaw instead of teeth together. Check: consistent, centred grip pressure and a repeatable anchor.",
+        tendDown: "Arrows land low. Common causes: draw-length collapse, a dropping bow arm, or string contact with clothing or chest. Check: hold back tension to the end, strong follow-through, remove string contact with clothing.",
+        errorTitle: "Dominant error",
+        errorAbout: "Shows the shape of your spread — which way your group stretches the most. This cannot be fixed with the sight; it is about technical consistency shot after shot.",
+        errSymm: "Spread is even horizontally and vertically — no dominant error axis, good technical balance. Work on shrinking the group overall: the same rhythm and timing each shot, plus fitness.",
+        errHoriz: "Mostly horizontal spread (left–right). The prime suspect is string alignment — your \"rear sight\". An inconsistent string position against the riser produces horizontal spread. Add grip torque, plucking, and bow cant. Settle on ONE consistent string picture and repeat it every shot; neutral grip; a clean rearward release.",
+        errVert: "Mostly vertical spread (up–down). Prime suspects: inconsistent anchor, varying finger pressure on the string, release quality, draw-length collapse, a collapsing bow arm. Vertical spread grows especially at longer distances (arched trajectory). Work on a steady anchor and finger pressure, continuous back tension (clicker), and a full follow-through."
+      }
     },
     pro: {
       loading: "Analyzing historical data...",

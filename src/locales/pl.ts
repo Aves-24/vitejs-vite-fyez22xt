@@ -921,7 +921,24 @@ export const views = {
       error: "Dominujący błąd",
       historyRecord: "Zapis serii",
       tenSum: "Suma 10s",
-      nineSum: "Suma 9s"
+      nineSum: "Suma 9s",
+      bio: {
+        coachFirst: "Jeśli Twój trener nie widzi tego inaczej — oto nasza wskazówka dla Ciebie:",
+        rightyNote: "Wskazówki kierunkowe dotyczą łuczników praworęcznych (dla leworęcznych odwróć lewo/prawo).",
+        whatToDo: "Co możesz sprawdzić",
+        tendencyTitle: "Kierunek grupowania",
+        tendencyAbout: "Pokazuje, gdzie średnio siada środek Twojej grupy względem środka tarczy. To stałe, systematyczne odchylenie. Najpierw skoryguj wizjer — jeśli grupa jest zwarta, ale przesunięta, to zwykle tylko ustawienie celownika. Jeśli mimo dobrze ustawionego wizjera grupa wciąż wędruje w tę samą stronę, przyczyna leży w technice.",
+        tendCenter: "Środek grupy jest w centrum — celowanie i wizjer ustawione prawidłowo. Skup się teraz na zwartości grupy (patrz „Dominujący błąd”).",
+        tendLeft: "Strzały lecą w lewo. Typowe przyczyny: cięciwa przesunięta w prawo w obrazie celowania, skręcanie chwytu (torque), ustępujące lub zbyt „obronne” ramię łuku. Sprawdź: neutralny nacisk chwytu bez skręcania, aktywne wpychanie ramienia łuku w cel, zawsze ten sam obraz cięciwy względem riser.",
+        tendRight: "Strzały lecą w prawo. Typowe przyczyny: przeciąganie cięciwy przy zwolnieniu (plucking), odchylenie łuku w prawo (cant), cięciwa przesunięta w lewo. Sprawdź: czyste zwolnienie do tyłu wzdłuż szyi (łokieć w tył, nie na zewnątrz), pionowy łuk, stały obraz cięciwy.",
+        tendUp: "Strzały lecą za wysoko. Typowe przyczyny: zbyt duży nacisk dolną częścią chwytu, mocniejsze podwinięcie palca wskazującego, wydłużony naciąg, otwarta szczęka zamiast zwartych zębów. Sprawdź: stały, wyśrodkowany nacisk chwytu i powtarzalną kotwicę.",
+        tendDown: "Strzały lecą za nisko. Typowe przyczyny: kolaps długości naciągu, opadające ramię łuku, kontakt cięciwy z ubraniem lub klatką piersiową. Sprawdź: utrzymaj napięcie pleców do końca, mocny follow-through, usuń kontakt cięciwy z ubraniem.",
+        errorTitle: "Dominujący błąd",
+        errorAbout: "Pokazuje kształt rozrzutu — w którą stronę Twoja grupa najbardziej się rozciąga. Tego NIE naprawisz wizjerem; to kwestia spójności techniki strzał po strzale.",
+        errSymm: "Rozrzut jest równomierny w poziomie i pionie — brak dominującej osi błędu, dobra równowaga techniki. Pracuj nad ogólnym zmniejszaniem grupy: ten sam rytm i timing każdego strzału oraz kondycja.",
+        errHoriz: "Rozrzut głównie poziomy (lewo–prawo). Główny podejrzany to obraz cięciwy (string alignment) — Twój „tylny celownik”. Niespójna pozycja cięciwy względem riser daje rozrzut w poziomie. Dochodzą: skręt chwytu, przeciąganie cięciwy, odchylanie łuku. Ustal JEDEN stały obraz cięciwy i powtarzaj go co strzał; neutralny chwyt; czyste zwolnienie do tyłu.",
+        errVert: "Rozrzut głównie pionowy (góra–dół). Główni podejrzani: niespójna kotwica, zmienny nacisk palców na cięciwie, jakość zwolnienia, kolaps długości naciągu, ustępujące ramię łuku. Rozrzut pionowy rośnie szczególnie na dłuższych dystansach (łukowa trajektoria). Pracuj nad stałą kotwicą i naciskiem palców, ciągłym napięciem pleców (clicker) i pełnym follow-through."
+      }
     },
     pro: {
       loading: "Analizowanie danych historycznych...",

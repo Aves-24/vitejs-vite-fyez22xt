@@ -423,6 +423,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [dailyPfeilzaehler, setDailyPfeilzaehler] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
+  // [C20+] Modal podpowiedzi biomechaniki: 'tendency' | 'error' | null
+  const [bioInfo, setBioInfo] = useState<null | 'tendency' | 'error'>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingSessionIdRef = useRef(initialSessionId || '');
 
@@ -826,21 +828,35 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       </div>
 
                       {spreadData && (
-                        <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm mt-4">
+                        <div className="bg-white dark:bg-[#1a201d] rounded-2xl border border-gray-100 p-4 shadow-sm mt-4">
                           <div className="flex justify-between items-center mb-3">
                             <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.biomechanics')}</h3>
                             <span className="material-symbols-outlined text-gray-300 text-sm">troubleshoot</span>
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-indigo-50/50 rounded-xl p-3 border border-indigo-100/50">
-                              <span className="text-[8px] font-bold text-indigo-400 uppercase block mb-0.5">{t('stats.cards.tendency')}</span>
-                              <span className="text-xs font-black text-[#0a3a2a] block leading-tight">
+                            <div className="relative bg-indigo-50 rounded-xl p-3 pr-8 border border-indigo-100">
+                              <button
+                                onClick={() => setBioInfo('tendency')}
+                                aria-label="info"
+                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center active:scale-90 transition-all shadow-sm"
+                              >
+                                <span className="material-symbols-outlined text-white text-[13px]">info</span>
+                              </button>
+                              <span className="text-[8px] font-black text-indigo-500 dark:text-indigo-300 uppercase block mb-1 tracking-wide">{t('stats.cards.tendency')}</span>
+                              <span className="text-sm font-black text-[#0a3a2a] dark:text-white block leading-tight">
                                 {t(spreadData.hKey)} / {t(spreadData.vKey)}
                               </span>
                             </div>
-                            <div className="bg-orange-50/50 rounded-xl p-3 border border-orange-100/50">
-                              <span className="text-[8px] font-bold text-orange-400 uppercase block mb-0.5">{t('stats.cards.error')}</span>
-                              <span className="text-xs font-black text-[#0a3a2a] block leading-tight">{t(spreadData.errorKey)}</span>
+                            <div className="relative bg-orange-50 rounded-xl p-3 pr-8 border border-orange-100">
+                              <button
+                                onClick={() => setBioInfo('error')}
+                                aria-label="info"
+                                className="absolute top-2 right-2 w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center active:scale-90 transition-all shadow-sm"
+                              >
+                                <span className="material-symbols-outlined text-white text-[13px]">info</span>
+                              </button>
+                              <span className="text-[8px] font-black text-orange-500 dark:text-orange-300 uppercase block mb-1 tracking-wide">{t('stats.cards.error')}</span>
+                              <span className="text-sm font-black text-[#0a3a2a] dark:text-white block leading-tight">{t(spreadData.errorKey)}</span>
                             </div>
                           </div>
                         </div>
@@ -920,6 +936,69 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       )}
 
       {zoomedRoundData && <TargetZoomModal roundTitle={zoomedRoundData.title} ends={zoomedRoundData.ends} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
+
+      {/* [C20+] MODAL PODPOWIEDZI BIOMECHANIKI */}
+      {bioInfo && spreadData && typeof document !== 'undefined' && createPortal(
+        (() => {
+          const suffix = (k: string) => k.split('.').pop() || '';
+          const tendMap: Record<string, string> = { left: 'tendLeft', right: 'tendRight', up: 'tendUp', down: 'tendDown', center: 'tendCenter' };
+          const errMap: Record<string, string> = { symm: 'errSymm', horiz: 'errHoriz', vert: 'errVert' };
+          const isTend = bioInfo === 'tendency';
+          // Lista wskazówek: dla tendencji obie osie (pomijając center, chyba że obie center)
+          const tips: string[] = [];
+          if (isTend) {
+            const h = suffix(spreadData.hKey), v = suffix(spreadData.vKey);
+            if (h !== 'center') tips.push(tendMap[h]);
+            if (v !== 'center') tips.push(tendMap[v]);
+            if (tips.length === 0) tips.push('tendCenter');
+          } else {
+            tips.push(errMap[suffix(spreadData.errorKey)]);
+          }
+          const accent = isTend ? 'bg-indigo-500' : 'bg-orange-500';
+          return (
+            <div className="fixed inset-0 z-[100000] flex items-start justify-center pt-12 px-4 bg-black/50 backdrop-blur-sm animate-fade-in overflow-y-auto" onClick={() => setBioInfo(null)}>
+              <div className="bg-white dark:bg-[#1a201d] rounded-[32px] w-full max-w-md p-6 shadow-2xl my-8" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className={`w-10 h-10 rounded-full ${accent} flex items-center justify-center shrink-0`}>
+                    <span className="material-symbols-outlined text-white text-[18px]">{isTend ? 'my_location' : 'scatter_plot'}</span>
+                  </div>
+                  <h2 className="text-[13px] font-black text-[#0a3a2a] dark:text-white uppercase tracking-widest">{t(isTend ? 'stats.cards.bio.tendencyTitle' : 'stats.cards.bio.errorTitle')}</h2>
+                </div>
+
+                {/* Wartość bieżąca */}
+                <div className="text-sm font-black text-[#0a3a2a] dark:text-white mb-3">
+                  {isTend ? `${t(spreadData.hKey)} / ${t(spreadData.vKey)}` : t(spreadData.errorKey)}
+                </div>
+
+                {/* Disclaimer: trener pierwszy */}
+                <div className="bg-[#0a3a2a]/5 dark:bg-white/5 border border-[#0a3a2a]/10 dark:border-white/10 rounded-2xl p-3 mb-4">
+                  <p className="text-[11px] font-bold text-[#0a3a2a] dark:text-[#9adbc0] leading-relaxed">{t('stats.cards.bio.coachFirst')}</p>
+                </div>
+
+                {/* Czym jest metryka */}
+                <p className="text-[12px] font-bold text-gray-500 dark:text-gray-300 leading-relaxed mb-4">{t(isTend ? 'stats.cards.bio.tendencyAbout' : 'stats.cards.bio.errorAbout')}</p>
+
+                {/* Co sprawdzić — dynamiczne wskazówki */}
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('stats.cards.bio.whatToDo')}</p>
+                <div className="space-y-2 mb-4">
+                  {tips.map((tipKey, i) => (
+                    <div key={i} className="bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-2xl p-3">
+                      <p className="text-[11px] font-bold text-[#0a3a2a] dark:text-gray-200 leading-relaxed">{t(`stats.cards.bio.${tipKey}`)}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[9px] font-bold text-gray-300 dark:text-gray-500 text-center mb-4">{t('stats.cards.bio.rightyNote')}</p>
+
+                <button onClick={() => setBioInfo(null)} className="w-full py-3 bg-[#0a3a2a] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all">
+                  OK
+                </button>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
 
       {/* PSYCHOLOGICZNY MODAL USUWANIA */}
       {showDeleteModal && typeof document !== 'undefined' && createPortal(

@@ -625,7 +625,17 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       </div>
 
       {activeTab === 'PRO' && (
-        <ProStatsView userId={userId} isPremium={isPremium} onNavigate={onNavigate} />
+        <ProStatsView
+          userId={userId}
+          isPremium={isPremium}
+          onNavigate={onNavigate}
+          onOpenSession={(sessionId, date) => {
+            const iso = toISO(date);
+            if (iso) setSelectedDate(iso);
+            setSelectedSessionId(sessionId);
+            setActiveTab('DAILY');
+          }}
+        />
       )}
 
       {activeTab === 'DAILY' && (

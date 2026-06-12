@@ -974,6 +974,7 @@ export const views = {
       heatmapFrom: "Visualisierung aus",
       sessions: "Sitzungen",
       training: "Training",
+      openSession: "Einheit ansehen",
       arrowsCount: "Pfeilen",
       enduranceTitle: "Ausdauerindex",
       enduranceSub: "Aus den letzten {{count}} Einheiten",

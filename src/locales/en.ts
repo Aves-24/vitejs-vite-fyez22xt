@@ -974,6 +974,7 @@ export const views = {
       heatmapFrom: "Visualization from",
       sessions: "sessions",
       training: "Session",
+      openSession: "View session",
       arrowsCount: "arrows",
       enduranceTitle: "Endurance Index",
       enduranceSub: "From last {{count}} sessions",

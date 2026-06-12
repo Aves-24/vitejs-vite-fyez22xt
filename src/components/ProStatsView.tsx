@@ -29,6 +29,8 @@ interface ProStatsViewProps {
   userId: string;
   isPremium: boolean;
   onNavigate: (view: string, tab?: string) => void;
+  // Otwiera szczegóły sesji (zakładka DZIENNIK w StatsView)
+  onOpenSession?: (sessionId: string, date: string) => void;
 }
 
 const PRO_STATS_CACHE_KEY = (uid: string) => `grotX_proStats_${uid}`;
@@ -51,7 +53,7 @@ function proStatsCacheSet(uid: string, sessions: Session[], full: boolean): void
   } catch { /* ignore quota errors */ }
 }
 
-export default function ProStatsView({ userId, isPremium, onNavigate }: ProStatsViewProps) {
+export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession }: ProStatsViewProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedDistance, setSelectedDistance] = useState<string>('');
@@ -286,7 +288,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     const sessions = [...recent].reverse().map(s => {
       const dots: any[] = [];
       s.ends?.forEach((e: any) => e.dots?.forEach((d: any) => { if (d.x != null && d.y != null) dots.push(d); }));
-      return { dots, date: s.date || '', score: s.score || 0 };
+      return { id: s.id, dots, date: s.date || '', score: s.score || 0 };
     });
 
     return { sessions, targetType };
@@ -569,6 +571,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
                 sessions={heatmapData.sessions}
                 targetType={heatmapData.targetType}
                 distance={selectedDistance}
+                onOpenSession={onOpenSession}
               />
             )}
 
@@ -940,10 +943,10 @@ function SightTip({ tips }: { tips: ReturnType<typeof useSightTips> }) {
   );
 }
 
-interface HSession { dots: any[]; date: string; score: number; }
+interface HSession { id: string; dots: any[]; date: string; score: number; }
 
-function HeatmapSection({ sessions, targetType, distance }: {
-  sessions: HSession[]; targetType: string; distance: string;
+function HeatmapSection({ sessions, targetType, distance, onOpenSession }: {
+  sessions: HSession[]; targetType: string; distance: string; onOpenSession?: (sessionId: string, date: string) => void;
 }) {
   const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
@@ -1017,6 +1020,16 @@ function HeatmapSection({ sessions, targetType, distance }: {
           <button onClick={() => playing ? setPlaying(false) : startPlay()}
             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${playing ? 'bg-red-500 text-white' : 'bg-[#0a3a2a] text-[#fed33e]'}`}>
             <span className="material-symbols-outlined text-[16px]">{playing ? 'pause' : 'play_arrow'}</span>
+          </button>
+        )}
+        {/* ODNOŚNIK DO SESJI — widoczny po wybraniu pojedynczego treningu */}
+        {singleIdx !== null && onOpenSession && sessions[singleIdx] && (
+          <button
+            onClick={() => onOpenSession(sessions[singleIdx].id, sessions[singleIdx].date)}
+            className="ml-auto flex items-center gap-1.5 bg-emerald-500 text-white pl-3 pr-2.5 py-1.5 rounded-lg shadow-sm active:scale-95 transition-all shrink-0 animate-fade-in"
+          >
+            <span className="text-[9px] font-black uppercase tracking-widest">{t('stats.pro.openSession', 'Zobacz sesję')}</span>
+            <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
           </button>
         )}
       </div>

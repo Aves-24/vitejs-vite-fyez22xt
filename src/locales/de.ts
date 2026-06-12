@@ -978,6 +978,8 @@ export const views = {
       firstHalf: "1. Hälfte (Ø)",
       secondHalf: "2. Hälfte (Ø)",
       weeklyArrows: "Pfeilanzahl (Wöchentlich)",
+      weeklyArrowsShort: "Pfeile / Woche (12 Wo.)",
+      sessionListTitle: "Trainingsliste",
       tooFewSessions: "Zu wenig Daten. Speichere mehr Trainingseinheiten.",
       arrows: "Pfeile",
       zones: {

@@ -55,7 +55,7 @@ export default function RingePraezisionPanel({
 
       {/* SŁUPKI TYGODNIOWE: wysokość = strzały, nad słupkiem średnia punktów */}
       <div className="relative">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyArrows', 'Strzały / Tydzień')} (12 {t('stats.pro.weeksShort', 'Tyg.')})</h3>
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')}</h3>
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-32 relative">

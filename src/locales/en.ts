@@ -978,6 +978,8 @@ export const views = {
       firstHalf: "1st Half (Avg.)",
       secondHalf: "2nd Half (Avg.)",
       weeklyArrows: "Arrow Count (Weekly)",
+      weeklyArrowsShort: "Arrows / week (12 wk.)",
+      sessionListTitle: "Session list",
       tooFewSessions: "Too little data. Save more training sessions.",
       arrows: "Arrows",
       zones: {

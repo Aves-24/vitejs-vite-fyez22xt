@@ -978,6 +978,8 @@ export const views = {
       firstHalf: "I Połowa (Śr.)",
       secondHalf: "II Połowa (Śr.)",
       weeklyArrows: "Liczba Strzał (Tygodniowo)",
+      weeklyArrowsShort: "Strzały / tydzień (12 tyg.)",
+      sessionListTitle: "Lista treningów",
       tooFewSessions: "Zbyt mało danych. Zapisz więcej treningów.",
       arrows: "Strzał",
       zones: {

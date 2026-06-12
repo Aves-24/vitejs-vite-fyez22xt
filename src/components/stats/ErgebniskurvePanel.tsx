@@ -16,6 +16,7 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate }: { session
   const { t } = useTranslation();
   const [filterType, setFilterType] = useState('');
   const [filterDist, setFilterDist] = useState('');
+  const [listOpen, setListOpen] = useState(false);
 
   const W = 300, H = 100, pad = 12;
 
@@ -128,8 +129,24 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate }: { session
         </div>
       )}
 
-      <div className="space-y-1.5">
-        {[...filtered].reverse().slice(0, 15).map((sess, i) => {
+      {filtered.length > 0 && (
+        <button
+          onClick={() => setListOpen(o => !o)}
+          className="w-full flex items-center justify-between bg-gray-50 hover:bg-gray-100 rounded-xl px-4 py-3 border border-gray-100 transition-all active:scale-[0.99]"
+        >
+          <span className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-emerald-500" style={{ fontSize: 16 }}>list</span>
+            <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">
+              {t('stats.pro.sessionListTitle', 'Lista treningów')}
+            </span>
+            <span className="text-[9px] font-black text-white bg-emerald-500 rounded-full px-2 py-0.5">{Math.min(filtered.length, 15)}</span>
+          </span>
+          <span className={`material-symbols-outlined text-gray-400 transition-transform ${listOpen ? 'rotate-180' : ''}`} style={{ fontSize: 20 }}>expand_more</span>
+        </button>
+      )}
+
+      <div className={`space-y-1.5 overflow-hidden transition-all ${listOpen ? 'mt-2' : 'max-h-0'}`}>
+        {listOpen && [...filtered].reverse().slice(0, 15).map((sess, i) => {
           const isTurniej = sess.type === 'Turniej';
           const isArena = sess.type === 'Arena';
           const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';

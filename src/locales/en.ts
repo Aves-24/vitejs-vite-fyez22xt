@@ -287,7 +287,7 @@ export const views = {
       trendPoints: "Trend: Point Average (52 weeks)",
       avgPoints: "Points per arrow",
       avgMonthLabel: "Monthly average",
-      avgLast3Label: "Ø Last 3",
+      avgLast3Label: "Average last 3",
       ringeLabel: "Rings",
       pfeileLabel: "Arrows",
       unlockTrend: "Unlock Yearly Trend",

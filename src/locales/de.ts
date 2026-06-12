@@ -287,7 +287,7 @@ export const views = {
       trendPoints: "Trend: Ringschnitt (52 Wo.)",
       avgPoints: "Ringe pro Pfeil",
       avgMonthLabel: "Schnitt Monat",
-      avgLast3Label: "Ø Letzte 3",
+      avgLast3Label: "Schnitt Letzte 3",
       ringeLabel: "Ringe",
       pfeileLabel: "Pfeile",
       unlockTrend: "Jahrestrend freischalten",

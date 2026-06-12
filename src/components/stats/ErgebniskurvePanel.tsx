@@ -14,20 +14,13 @@ export interface CurveSession {
 
 export default function ErgebniskurvePanel({ sessions, onSelectDate }: { sessions: CurveSession[]; onSelectDate?: (iso: string) => void }) {
   const { t } = useTranslation();
-  const [filterType, setFilterType] = useState('');
-  const [filterDist, setFilterDist] = useState('');
   const [listOpen, setListOpen] = useState(false);
 
   const W = 300, H = 100, pad = 12;
 
-  const availTypes = Array.from(new Set(sessions.map(s => s.type || 'Trening')));
-  const availDists = Array.from(new Set(sessions.map(s => s.distance).filter(Boolean))).sort() as string[];
-
-  const filtered = sessions.filter(s => {
-    const typeOk = !filterType || (s.type || 'Trening') === filterType;
-    const distOk = !filterDist || s.distance === filterDist;
-    return typeOk && distOk;
-  });
+  // Ogólna krzywa — bez filtrów typ/dystans; filtrowanie per-dystans
+  // jest w sekcji poniżej separatora "Dane dla: ...".
+  const filtered = sessions;
 
   const scores = filtered.map(s => s.score);
   const minS = scores.length ? Math.min(...scores) : 0;
@@ -51,45 +44,6 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate }: { session
         </div>
         <span className="material-symbols-outlined text-emerald-100 text-3xl">show_chart</span>
       </div>
-
-      {availTypes.length > 1 && (
-        <div className="flex gap-1.5 flex-wrap mb-2">
-          <button onClick={() => setFilterType('')}
-            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${!filterType ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}>
-            Alle
-          </button>
-          {availTypes.map(type => {
-            const lbl = type === 'Turniej' ? t('home.trendModal.typeTournament') : type === 'Arena' ? t('home.trendModal.typeArena') : type === 'WORLD_BATTLE' ? 'World' : t('home.trendModal.typeTraining');
-            const active = filterType === type;
-            const col = active
-              ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
-              : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
-              : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
-              : 'bg-white text-gray-400 border-gray-200';
-            return (
-              <button key={type} onClick={() => setFilterType(active ? '' : type)}
-                className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${col}`}>
-                {lbl}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {availDists.length > 1 && (
-        <div className="flex gap-1.5 flex-wrap mb-3">
-          <button onClick={() => setFilterDist('')}
-            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${!filterDist ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-200'}`}>
-            Alle
-          </button>
-          {availDists.map(dist => (
-            <button key={dist} onClick={() => setFilterDist(filterDist === dist ? '' : dist)}
-              className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${filterDist === dist ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-gray-400 border-gray-200'}`}>
-              {dist}
-            </button>
-          ))}
-        </div>
-      )}
 
       {scores.length >= 1 ? (
         <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">

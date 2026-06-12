@@ -287,7 +287,7 @@ export const views = {
       trendPoints: "Trend: Średnia Punktowa (52 tyg.)",
       avgPoints: "Punkty na strzałę",
       avgMonthLabel: "Średnia miesiąc",
-      avgLast3Label: "Ø Ostatnie 3",
+      avgLast3Label: "Średnia ostatnie 3",
       ringeLabel: "Punkty",
       pfeileLabel: "Strzały",
       unlockTrend: "Odblokuj Trend Roczny",

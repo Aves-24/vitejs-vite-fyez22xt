@@ -108,6 +108,8 @@ export default function DelayMirrorView({ onBack }: Props) {
   const fullRecorderRef = useRef<MediaRecorder | null>(null);
   const fullChunksRef = useRef<BlobPart[]>([]);
   const fullMimeRef = useRef<string>('video/webm');
+  // Cleanup pipeline'u canvas-rotate (tryb poziomy): rAF + hidden video + canvas stream
+  const rotateCleanupRef = useRef<(() => void) | null>(null);
   const [lastBlob, setLastBlob] = useState<Blob | null>(null);
 
   // Persist delay setting + sync ref
@@ -170,6 +172,10 @@ export default function DelayMirrorView({ onBack }: Props) {
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
     fullChunksRef.current = [];
+    if (rotateCleanupRef.current) {
+      try { rotateCleanupRef.current(); } catch { /* ignore */ }
+      rotateCleanupRef.current = null;
+    }
     setLastBlob(null);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
@@ -471,13 +477,67 @@ export default function DelayMirrorView({ onBack }: Props) {
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
-      const fullRec = new MediaRecorder(stream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
-      fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
-      // Brak timeslice — encoder produkuje jeden kompletny plik z prawidlowym
-      // moov/duration zamiast fragmentow fMP4. Rozwiazuje problem iOS/WhatsApp
-      // gdzie timeslice=1000ms dawalo moov z duration ~3s.
-      fullRec.start();
-      fullRecorderRef.current = fullRec;
+      const startFullRec = (recStream: MediaStream) => {
+        const fullRec = new MediaRecorder(recStream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
+        fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
+        // Brak timeslice — encoder produkuje jeden kompletny plik z prawidlowym
+        // moov/duration zamiast fragmentow fMP4. Rozwiazuje problem iOS/WhatsApp
+        // gdzie timeslice=1000ms dawalo moov z duration ~3s.
+        fullRec.start();
+        fullRecorderRef.current = fullRec;
+      };
+      if (manualLandscape && isPortrait) {
+        // Tryb poziomy przy zablokowanym portrait: kamera daje klatki pionowe,
+        // a UI tylko obraca je CSS-em — udostepniony plik bylby obrocony o 90°.
+        // Nagrywamy wiec z canvasa, ktory obraca klatki tak, jak widzi je user
+        // w podgladzie (rotate +90, zgodnie z _uiForceRotate).
+        const hv = document.createElement('video');
+        hv.muted = true;
+        hv.playsInline = true;
+        hv.srcObject = stream;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        let raf = 0;
+        const draw = () => {
+          raf = requestAnimationFrame(draw);
+          if (!ctx || hv.videoWidth === 0) return;
+          const portraitFrame = hv.videoHeight > hv.videoWidth;
+          const cw = portraitFrame ? hv.videoHeight : hv.videoWidth;
+          const ch = portraitFrame ? hv.videoWidth : hv.videoHeight;
+          if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+          if (portraitFrame) {
+            ctx.save();
+            ctx.translate(cw, 0);
+            ctx.rotate(Math.PI / 2);
+            ctx.drawImage(hv, 0, 0);
+            ctx.restore();
+          } else {
+            // Stream juz landscape (np. tablet) — bez obrotu
+            ctx.drawImage(hv, 0, 0);
+          }
+        };
+        // Recorder startuje dopiero gdy znamy wymiary klatki — inaczej
+        // pierwsze chunki mialyby domyslny rozmiar canvasa 300x150.
+        hv.onloadedmetadata = () => {
+          if (rotateCleanupRef.current === null) return; // pauza zanim kamera ruszyla
+          draw();
+          const cStream = canvas.captureStream(30);
+          startFullRec(cStream);
+          const prevCleanup = rotateCleanupRef.current;
+          rotateCleanupRef.current = () => {
+            prevCleanup();
+            cStream.getTracks().forEach(tr => tr.stop());
+          };
+        };
+        rotateCleanupRef.current = () => {
+          cancelAnimationFrame(raf);
+          hv.pause();
+          hv.srcObject = null;
+        };
+        hv.play().catch(() => { /* autoplay — i tak rysujemy z rAF */ });
+      } else {
+        startFullRec(stream);
+      }
       setLastBlob(null);
     } catch { /* ignore — MSE delay nadal dziala */ }
 
@@ -489,7 +549,7 @@ export default function DelayMirrorView({ onBack }: Props) {
     pendingMSERef.current = { stream, codec: streamCodec };
     setMirrorState('buffering');
     setBufferMs(0);
-  }, []);
+  }, [manualLandscape, isPortrait]);
 
   useEffect(() => {
     if (mirrorState === 'buffering' && pendingMSERef.current && delayedVideoRef.current) {
@@ -546,8 +606,16 @@ export default function DelayMirrorView({ onBack }: Props) {
           if (fullChunksRef.current.length > 0) {
             setLastBlob(new Blob(fullChunksRef.current, { type: fullMimeRef.current }));
           }
+          // Canvas-rotate pipeline zwalniamy dopiero po flushu recordera
+          if (rotateCleanupRef.current) {
+            try { rotateCleanupRef.current(); } catch { /* ignore */ }
+            rotateCleanupRef.current = null;
+          }
         };
         fr.stop();
+      } else if (rotateCleanupRef.current) {
+        try { rotateCleanupRef.current(); } catch { /* ignore */ }
+        rotateCleanupRef.current = null;
       }
     } catch { /* ignore */ }
     fullRecorderRef.current = null;

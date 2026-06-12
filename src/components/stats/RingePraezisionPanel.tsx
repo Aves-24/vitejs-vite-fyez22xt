@@ -28,34 +28,34 @@ export default function RingePraezisionPanel({
   return (
     <div className="space-y-6">
       {/* KARTY ŚREDNICH: Ostatnie 3 / Miesiąc — każda: punkty + strzały na sesję */}
-      <div className="bg-white border-2 border-emerald-50 p-6 rounded-[32px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
-        <div className="flex flex-col items-center justify-center flex-1 px-2 gap-3">
+      <div className="bg-white border-2 border-emerald-50 p-4 rounded-[28px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
+        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-2">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgLast3Label', { defaultValue: 'Ø Letzte 3' })}</span>
           <div className="text-center">
-            <p className="text-3xl font-black text-emerald-600 leading-none">{avgPoints3 ? avgPoints3 : '–'}</p>
-            <span className="text-[8px] font-bold text-emerald-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
+            <p className="text-2xl font-black text-emerald-600 leading-none">{avgPoints3 ? avgPoints3 : '–'}</p>
+            <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-[#0a3a2a] leading-none">{perArrow3 ? perArrow3.toFixed(1) : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
+            <p className="text-base font-black text-[#0a3a2a] leading-none">{perArrow3 ? perArrow3.toFixed(1) : '–'}</p>
+            <span className="text-[8px] font-bold text-gray-400 mt-0.5 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center flex-1 px-2 gap-3">
+        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-2">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
           <div className="text-center">
-            <p className="text-3xl font-black text-emerald-600 leading-none">{avgPointsMonth ? avgPointsMonth : '–'}</p>
-            <span className="text-[8px] font-bold text-emerald-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
+            <p className="text-2xl font-black text-emerald-600 leading-none">{avgPointsMonth ? avgPointsMonth : '–'}</p>
+            <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-[#0a3a2a] leading-none">{perArrowMonth ? perArrowMonth.toFixed(1) : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
+            <p className="text-base font-black text-[#0a3a2a] leading-none">{perArrowMonth ? perArrowMonth.toFixed(1) : '–'}</p>
+            <span className="text-[8px] font-bold text-gray-400 mt-0.5 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
           </div>
         </div>
       </div>
 
       {/* SŁUPKI TYGODNIOWE: wysokość = strzały, nad słupkiem średnia punktów */}
       <div className="relative">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">TREND (12 WO.)</h3>
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyArrows', 'Strzały / Tydzień')} (12 {t('stats.pro.weeksShort', 'Tyg.')})</h3>
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-32 relative">

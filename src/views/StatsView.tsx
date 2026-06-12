@@ -439,14 +439,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     const q = query(
       collection(db, `users/${targetUserId}/sessions`),
       orderBy('timestamp', 'desc'),
-      limit(20)
+      limit(15)
     );
 
     const unsub = onSnapshot(q, (snap) => {
       const data = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Session));
       setSessions(data);
       setLastVisible(snap.docs[snap.docs.length - 1] || null);
-      setHasMore(snap.docs.length === 20);
+      setHasMore(snap.docs.length === 15);
       setIsLoading(false);
     });
 
@@ -461,13 +461,13 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         collection(db, `users/${targetUserId}/sessions`),
         orderBy('timestamp', 'desc'),
         startAfter(lastVisible),
-        limit(20)
+        limit(15)
       );
       const snap = await getDocs(q);
       const newData = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Session));
       setSessions(prev => [...prev, ...newData]);
       setLastVisible(snap.docs[snap.docs.length - 1] || null);
-      setHasMore(snap.docs.length === 20);
+      setHasMore(snap.docs.length === 15);
     } catch (e) {
       console.error('Load more error:', e);
     }

@@ -129,7 +129,7 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate }: { session
       )}
 
       <div className="space-y-1.5">
-        {[...filtered].reverse().map((sess, i) => {
+        {[...filtered].reverse().slice(0, 15).map((sess, i) => {
           const isTurniej = sess.type === 'Turniej';
           const isArena = sess.type === 'Arena';
           const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';

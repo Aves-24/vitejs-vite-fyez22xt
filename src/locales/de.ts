@@ -973,6 +973,7 @@ export const views = {
       allHistory: "Gesamte Historie",
       heatmapFrom: "Visualisierung aus",
       sessions: "Sitzungen",
+      training: "Training",
       arrowsCount: "Pfeilen",
       enduranceTitle: "Ausdauerindex",
       enduranceSub: "Aus den letzten {{count}} Einheiten",

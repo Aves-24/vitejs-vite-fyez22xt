@@ -973,6 +973,7 @@ export const views = {
       allHistory: "Full history",
       heatmapFrom: "Visualization from",
       sessions: "sessions",
+      training: "Session",
       arrowsCount: "arrows",
       enduranceTitle: "Endurance Index",
       enduranceSub: "From last {{count}} sessions",

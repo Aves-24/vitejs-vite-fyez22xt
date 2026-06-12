@@ -60,7 +60,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
   const [isLoadingAll, setIsLoadingAll] = useState(false);
   const [hasFullHistory, setHasFullHistory] = useState(false);
 
-  const [heatmapLimit, setHeatmapLimit] = useState<number>(20);
   // Ręczność łucznika dla wskazówek biomechaniki (lustro lewo/prawo dla LH)
   const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
 
@@ -267,32 +266,31 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     };
   }, [filteredSessions]);
 
-  // Heatmapa liczona osobno — zależy tylko od limitu i zbioru sesji,
-  // więc zmiana "Ost. 5/10/20" nie przelicza stref, wolumenu ani wykresów.
-  const heatmap = useMemo(() => {
-    const recentForHeatmap = filteredSessions.slice(-heatmapLimit);
-    const heatmapDots: any[] = [];
-    let heatmapTargetType = 'Full';
+  // Heatmapa: do 15 ostatnich sesji dystansu (z trafieniami), każda osobno —
+  // pozwala scrubować trening po treningu lub agregować ostatnie N.
+  // sessions[0] = najnowszy trening.
+  const heatmapData = useMemo(() => {
+    const hasDots = (s: Session) => s.ends?.some((e: any) => e.dots?.some((d: any) => d.x != null && d.y != null));
+    const withDots = filteredSessions.filter(hasDots);
+    const recent = withDots.slice(-15); // chronologicznie: najstarszy..najnowszy
 
-    if (recentForHeatmap.length > 0) {
-       const lastSession = recentForHeatmap[recentForHeatmap.length - 1];
-       heatmapTargetType = selectedDistance.includes('18')
-         ? '3-Spot'
-         : (lastSession.targetType && lastSession.targetType !== 'Full' ? lastSession.targetType : 'Full');
-
-       recentForHeatmap.forEach(session => {
-          session.ends?.forEach((end: any) => {
-             end.dots?.forEach((dot: any) => {
-                if (dot.x !== null && dot.y !== null) {
-                   heatmapDots.push(dot);
-                }
-             });
-          });
-       });
+    let targetType = 'Full';
+    if (recent.length > 0) {
+      const last = recent[recent.length - 1];
+      targetType = selectedDistance.includes('18')
+        ? '3-Spot'
+        : (last.targetType && last.targetType !== 'Full' ? last.targetType : 'Full');
     }
 
-    return { heatmapDots, heatmapTargetType, heatmapSessionsCount: recentForHeatmap.length };
-  }, [filteredSessions, heatmapLimit, selectedDistance]);
+    // newest-first; każda sesja → jej własne kropki
+    const sessions = [...recent].reverse().map(s => {
+      const dots: any[] = [];
+      s.ends?.forEach((e: any) => e.dots?.forEach((d: any) => { if (d.x != null && d.y != null) dots.push(d); }));
+      return { dots, date: s.date || '', score: s.score || 0 };
+    });
+
+    return { sessions, targetType };
+  }, [filteredSessions, selectedDistance]);
 
   // Biomechanika z 3 ostatnich treningów wybranego dystansu — stabilniejszy
   // obraz niż pojedyncza sesja. Każdą sesję centrujemy wg jej typu tarczy.
@@ -566,13 +564,10 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
               </div>
             </div>
 
-            {heatmap.heatmapDots.length > 0 && (
+            {heatmapData.sessions.length > 0 && (
               <HeatmapSection
-                dots={heatmap.heatmapDots}
-                targetType={heatmap.heatmapTargetType}
-                sessionCount={heatmap.heatmapSessionsCount}
-                heatmapLimit={heatmapLimit}
-                setHeatmapLimit={setHeatmapLimit}
+                sessions={heatmapData.sessions}
+                targetType={heatmapData.targetType}
                 distance={selectedDistance}
               />
             )}
@@ -945,33 +940,103 @@ function SightTip({ tips }: { tips: ReturnType<typeof useSightTips> }) {
   );
 }
 
-function HeatmapSection({ dots, targetType, sessionCount, heatmapLimit, setHeatmapLimit, distance }: {
-  dots: any[]; targetType: string; sessionCount: number; heatmapLimit: number; setHeatmapLimit: (n: number) => void; distance: string;
+interface HSession { dots: any[]; date: string; score: number; }
+
+function HeatmapSection({ sessions, targetType, distance }: {
+  sessions: HSession[]; targetType: string; distance: string;
 }) {
   const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
-  const tips = useSightTips(dots, targetType, distance);
+  // singleIdx !== null → pojedynczy trening; w przeciwnym razie agregat aggN.
+  // sessions[0] = najnowszy → numer chipa = idx+1 (czyli "1" to najnowszy).
+  const [singleIdx, setSingleIdx] = useState<number | null>(null);
+  const [aggN, setAggN] = useState<number>(Math.min(10, sessions.length));
+  const [playing, setPlaying] = useState(false);
+
+  // Reset przy zmianie zbioru sesji (np. inny dystans)
+  useEffect(() => {
+    setSingleIdx(null);
+    setAggN(Math.min(10, sessions.length));
+    setPlaying(false);
+  }, [sessions]);
+
+  // PLAY: co sekundę od najstarszego (najwyższy idx) do najnowszego (idx 0).
+  useEffect(() => {
+    if (!playing) return;
+    const id = setInterval(() => {
+      setSingleIdx(prev => prev === null ? 0 : Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [playing]);
+
+  // Zatrzymaj odtwarzanie po dojściu do najnowszego treningu (idx 0).
+  useEffect(() => {
+    if (playing && singleIdx === 0) setPlaying(false);
+  }, [playing, singleIdx]);
+
+  const startPlay = () => {
+    if (sessions.length < 2) return;
+    setSingleIdx(sessions.length - 1); // start od najstarszego
+    setPlaying(true);
+  };
+
+  const activeDots = singleIdx !== null
+    ? (sessions[singleIdx]?.dots ?? [])
+    : sessions.slice(0, aggN).flatMap(s => s.dots);
+
+  const tips = useSightTips(activeDots, targetType, distance);
+
+  const subtitle = singleIdx !== null
+    ? `${t('stats.pro.training', 'Trening')} #${singleIdx + 1}${sessions[singleIdx]?.date ? ` • ${sessions[singleIdx].date}` : ''} • ${sessions[singleIdx]?.dots.length ?? 0} ${t('stats.pro.arrowsCount', 'strzał')}`
+    : `${Math.min(aggN, sessions.length)} ${t('stats.pro.sessions', 'sesji')} • ${activeDots.length} ${t('stats.pro.arrowsCount', 'strzał')}`;
 
   return (
     <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 relative overflow-hidden">
-      <div className="flex justify-between items-start mb-4">
+      <div className="flex justify-between items-start mb-3">
         <div>
           <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{t('stats.pro.heatmapTitle', 'Heatmapa Rozrzutu')}</h3>
-          <p className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">{t('stats.pro.heatmapFrom', 'Wizualizacja z')} {sessionCount} {t('stats.pro.sessions', 'sesji')} ({dots.length} {t('stats.pro.arrowsCount', 'strzał')})</p>
-          <div className="flex gap-1 mt-2.5 bg-gray-50 p-1 rounded-lg w-max border border-gray-100">
-            {[5, 10, 20].map(num => (
-              <button key={num} onClick={() => setHeatmapLimit(num)}
-                className={`px-3 py-1 rounded-md text-[9px] font-black uppercase transition-all ${heatmapLimit === num ? 'bg-white text-emerald-600 shadow-sm border border-gray-100' : 'text-gray-400'}`}>
-                {t('stats.pro.lastN', 'Ost.')} {num}
-              </button>
-            ))}
-          </div>
+          <p className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">{subtitle}</p>
         </div>
         <span className="material-symbols-outlined text-emerald-100 text-3xl">radar</span>
       </div>
 
+      {/* STEROWNIK: agregaty + play + numerowany scrubber treningów */}
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+        <div className="flex gap-1 bg-gray-50 p-1 rounded-lg border border-gray-100">
+          {[3, 10].map(num => {
+            const active = singleIdx === null && aggN === num;
+            return (
+              <button key={num} onClick={() => { setPlaying(false); setSingleIdx(null); setAggN(num); }}
+                className={`px-2.5 py-1 rounded-md text-[9px] font-black uppercase transition-all ${active ? 'bg-white text-emerald-600 shadow-sm border border-gray-100' : 'text-gray-400'}`}>
+                {t('stats.pro.lastN', 'Ost.')} {num}
+              </button>
+            );
+          })}
+        </div>
+        {sessions.length >= 2 && (
+          <button onClick={() => playing ? setPlaying(false) : startPlay()}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all active:scale-90 ${playing ? 'bg-red-500 text-white' : 'bg-[#0a3a2a] text-[#fed33e]'}`}>
+            <span className="material-symbols-outlined text-[16px]">{playing ? 'pause' : 'play_arrow'}</span>
+          </button>
+        )}
+      </div>
+
+      {/* NUMEROWANY SCRUBBER — 1 = najnowszy trening */}
+      <div className="flex gap-1 overflow-x-auto hide-scrollbar mb-3 pb-1">
+        {sessions.map((s, idx) => {
+          const active = singleIdx === idx;
+          return (
+            <button key={idx} onClick={() => { setPlaying(false); setSingleIdx(idx); }}
+              title={s.date}
+              className={`w-6 h-6 rounded-md text-[9px] font-black shrink-0 transition-all flex items-center justify-center ${active ? 'bg-emerald-500 text-white shadow-sm scale-110' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}>
+              {idx + 1}
+            </button>
+          );
+        })}
+      </div>
+
       <div className="bg-gray-50 rounded-2xl overflow-hidden flex items-center justify-center border border-gray-100">
-        <HeatmapTarget dots={dots} targetType={targetType} />
+        <HeatmapTarget dots={activeDots} targetType={targetType} />
       </div>
 
       {/* SIGHT TIP + INFO BUTTON in one row */}

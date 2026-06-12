@@ -143,7 +143,7 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setIsAuthLoading(false);
-      if (!currentUser) setIsDataReady(true);
+      if (!currentUser) { setIsDataReady(true); setCurrentView('HOME'); }
       if (currentUser) migrateArrowModel(currentUser.uid).catch(() => {});
     });
     return () => unsubscribe();

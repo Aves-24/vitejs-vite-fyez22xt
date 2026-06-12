@@ -645,7 +645,8 @@ konta testowego, otwarcie /legal/datenschutz.html.
 
 ## 🟢 Priorytet 4 — Jakość / nowoczesność
 
-- [ ] **C16. Upgrade stacku** — React 18, Vite 6, TS 5
+- [x] **C16. Upgrade stacku** ✅ (2026-06-12) — React 18, Vite 6, TS 5;
+      branch zmergowany do main po zielonym CI i lokalnym buildzie (9s, SW OK)
 - [x] **C17. Testy rules na emulatorze + CI** ✅ (2026-06-11) —
       `tests/rules/firestore.rules.test.mjs` (40 asercji, T1-T7 + RODO),
       `npm run test:rules`, `.github/workflows/ci.yml` (lint+build oraz

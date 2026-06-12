@@ -21,6 +21,9 @@ export default function RingePraezisionPanel({
 }: Props) {
   const { t } = useTranslation();
   const maxArrows = Math.max(...weeklyArrows, 1);
+  // Średnia na strzał = Ø punktów na sesję / Ø strzał na sesję = Σpkt/Σstrzał (dokładna).
+  const perArrow3 = avgArrows3 > 0 ? avgPoints3 / avgArrows3 : 0;
+  const perArrowMonth = avgArrowsMonth > 0 ? avgPointsMonth / avgArrowsMonth : 0;
 
   return (
     <div className="space-y-6">
@@ -33,8 +36,8 @@ export default function RingePraezisionPanel({
             <span className="text-[8px] font-bold text-emerald-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-[#0a3a2a] leading-none">{avgArrows3 ? avgArrows3 : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.pfeileLabel', { defaultValue: 'Pfeile' })}</span>
+            <p className="text-xl font-black text-[#0a3a2a] leading-none">{perArrow3 ? perArrow3.toFixed(1) : '–'}</p>
+            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
           </div>
         </div>
         <div className="flex flex-col items-center justify-center flex-1 px-2 gap-3">
@@ -44,8 +47,8 @@ export default function RingePraezisionPanel({
             <span className="text-[8px] font-bold text-emerald-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">
-            <p className="text-xl font-black text-[#0a3a2a] leading-none">{avgArrowsMonth ? avgArrowsMonth : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('home.quickStats.pfeileLabel', { defaultValue: 'Pfeile' })}</span>
+            <p className="text-xl font-black text-[#0a3a2a] leading-none">{perArrowMonth ? perArrowMonth.toFixed(1) : '–'}</p>
+            <span className="text-[8px] font-bold text-gray-400 mt-1 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
           </div>
         </div>
       </div>

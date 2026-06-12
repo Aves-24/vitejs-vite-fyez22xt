@@ -980,6 +980,7 @@ export const views = {
       weeklyArrows: "Liczba Strzał (Tygodniowo)",
       weeklyArrowsShort: "Strzały / tydzień (12 tyg.)",
       sessionListTitle: "Lista treningów",
+      scopeFor: "Dane dla",
       tooFewSessions: "Zbyt mało danych. Zapisz więcej treningów.",
       arrows: "Strzał",
       zones: {

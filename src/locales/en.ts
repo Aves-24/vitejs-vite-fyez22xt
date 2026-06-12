@@ -980,6 +980,7 @@ export const views = {
       weeklyArrows: "Arrow Count (Weekly)",
       weeklyArrowsShort: "Arrows / week (12 wk.)",
       sessionListTitle: "Session list",
+      scopeFor: "Data for",
       tooFewSessions: "Too little data. Save more training sessions.",
       arrows: "Arrows",
       zones: {

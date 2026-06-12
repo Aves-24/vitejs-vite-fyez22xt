@@ -169,6 +169,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     let firstHalfScore = 0, firstHalfArrows = 0;
     let secondHalfScore = 0, secondHalfArrows = 0;
 
+    const weeklyVolume = Array(12).fill(0);
+    const now = Date.now();
+
     const chartData = filteredSessions.map(s => {
       // Dla TECH sumujemy totalArrows, dla zwykłych arrows
       const arrowsToCount = s.distance === 'TECH' ? (s.totalArrows || 0) : (s.arrows || 0);
@@ -208,6 +211,23 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
         });
       }
 
+      let ts = Date.now();
+      if (s.timestamp) {
+         if (typeof s.timestamp === 'number') {
+            ts = s.timestamp;
+         } else if (typeof s.timestamp.toMillis === 'function') {
+            ts = s.timestamp.toMillis();
+         } else if (s.timestamp.seconds) {
+            ts = s.timestamp.seconds * 1000;
+         }
+      }
+
+      const diffDays = (now - ts) / (1000 * 60 * 60 * 24);
+      const weekIndex = Math.floor(diffDays / 7);
+      if (weekIndex >= 0 && weekIndex < 12) {
+         weeklyVolume[11 - weekIndex] += arrowsToCount;
+      }
+
       return {
         date: s.date,
         avg: s.arrows > 0 ? (s.score / s.arrows) : 0,
@@ -226,11 +246,20 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     const shAvg = secondHalfArrows > 0 ? (secondHalfScore / secondHalfArrows) : 0;
     const fatigueDrop = shAvg - fhAvg;
 
+    const volumeChartData = weeklyVolume.map((val, idx) => {
+       let label = `T-${11 - idx}`;
+       if (idx === 11) label = t('stats.pro.sight.now');
+       return { label, value: val };
+    });
+
+    const hasVolumeData = volumeChartData.some(d => d.value > 0);
+
     return {
       totalArrows, maxScore, maxScoreDate, maxScoreArrows, chartData, allTimeAvg, recentAvg,
-      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg
+      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg, volumeChartData,
+      hasVolumeData
     };
-  }, [filteredSessions]);
+  }, [filteredSessions, t]);
 
   // Heatmapa liczona osobno — zależy tylko od limitu i zbioru sesji,
   // więc zmiana "Ost. 5/10/20" nie przelicza stref, wolumenu ani wykresów.
@@ -442,6 +471,19 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
         </div>
       )}
 
+      {/* SEPARATOR ZAKRESU: wszystko poniżej dotyczy wybranego dystansu */}
+      {selectedDistance && (
+        <div className="flex items-center gap-3 pt-2">
+          <div className="h-px bg-gray-200 flex-1" />
+          <div className="flex items-center gap-2 bg-[#0a3a2a] text-white rounded-full pl-3 pr-4 py-1.5 shadow-md shrink-0">
+            <span className="material-symbols-outlined text-[#fed33e] text-[15px]">filter_center_focus</span>
+            <span className="text-[9px] font-black uppercase tracking-widest text-gray-300">{t('stats.pro.scopeFor', 'Dane dla')}</span>
+            <span className="text-[11px] font-black uppercase tracking-tighter text-[#fed33e]">{selectedDistance}</span>
+          </div>
+          <div className="h-px bg-gray-200 flex-1" />
+        </div>
+      )}
+
       {stats ? (
         selectedDistance === 'TECH' ? (
           // OTO NASZ NOWY WIDOK DLA TRENINGU TECHNICZNEGO
@@ -560,6 +602,24 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
                 </div>
               </div>
             )}
+
+            {/* WYKRES OBJĘTOŚCI — strzały tygodniowo dla WYBRANEGO dystansu */}
+            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrows', 'Liczba Strzał (Tygodniowo)')} · {selectedDistance}</span>
+                <span className="material-symbols-outlined text-gray-300 text-sm">bar_chart</span>
+              </div>
+
+              {stats.hasVolumeData ? (
+                <div className="h-[120px]">
+                   <VolumeBarChart data={stats.volumeChartData} />
+                </div>
+              ) : (
+                <div className="h-[120px] flex items-center justify-center opacity-40">
+                   <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('stats.pro.tooFewSessions', 'Zbyt mało danych. Zapisz więcej treningów.')}</span>
+                </div>
+              )}
+            </div>
 
             <div className="text-center">
               <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('stats.pro.totalDistArrows', 'Łącznie na tym dystansie: {{count}} strzał', { count: stats.totalArrows })}</span>
@@ -1035,6 +1095,34 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
         <DispersionContour key={i} mx={s.mx} my={s.my} path={s.path} />
       ))}
     </svg>
+  );
+}
+
+// WYKRES SŁUPKOWY — strzały tygodniowo (12 tyg.) dla wybranego dystansu
+function VolumeBarChart({ data }: { data: { label: string, value: number }[] }) {
+  if (data.length === 0) return null;
+
+  const maxVal = Math.max(...data.map(d => d.value));
+  const heightPercent = 70;
+
+  return (
+    <div className="w-full h-full flex items-end justify-between gap-1 pb-2">
+      {data.map((item, idx) => {
+        const barHeight = maxVal > 0 ? (item.value / maxVal) * heightPercent : 0;
+        return (
+          <div key={idx} className="flex-1 flex flex-col items-center justify-end group h-full">
+            <span className="text-[8px] font-black text-indigo-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{item.value}</span>
+            <div
+              className="w-full bg-indigo-100 rounded-t-sm relative overflow-hidden transition-all duration-500 group-hover:bg-indigo-200"
+              style={{ height: `${Math.max(barHeight, 2)}%` }}
+            >
+               <div className="absolute bottom-0 w-full h-full bg-indigo-500 opacity-80"></div>
+            </div>
+            <span className="text-[7px] font-bold text-gray-400 mt-1 truncate w-full text-center">{item.label}</span>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

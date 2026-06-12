@@ -657,9 +657,12 @@ konta testowego, otwarcie /legal/datenschutz.html.
 - [ ] **C18. Prawdziwy AI coach lub zmiana nazwy** (obecnie mock w CoachAIPanel)
 - [x] **C19. ClubSearch usunięty** ✅ — nie był nigdzie importowany (martwy kod
       z placeholderem klucza API); skasowany też typ window.google w vite-env.d.ts
-- [ ] **C20. Dark mode, ~~zoom~~, ~~splash~~** — ✅ zoom odblokowany
-      (maximum-scale=5, WCAG), ✅ splash skrócony 1800→900 ms;
-      ZOSTAŁO: dark mode (większa praca — osobna sesja)
+- [x] **C20. Dark mode, zoom, splash** ✅ (2026-06-12) — ✅ zoom odblokowany
+      (maximum-scale=5, WCAG), ✅ splash skrócony 1800→900 ms, ✅ dark mode:
+      warstwa remapu CSS w tailwind.css (~35 klas pod html.dark, zero zmian
+      w widokach), przełącznik Jasny/Ciemny/Systemowy w Ustawienia→Język,
+      anty-flash public/theme-init.js (CSP blokuje inline), utils/theme.ts.
+      Akcenty (emerald-50, amber-50 itp.) niezmapowane — poprawki po testach.
 - [ ] **C21. Pogoda: licencja komercyjna / proxy PRZED startem płatności premium**
       — darmowe API Open-Meteo jest tylko non-commercial (appki z subskrypcjami
       wprost wymienione jako komercyjne → ryzyko blokady IP bez ostrzeżenia).

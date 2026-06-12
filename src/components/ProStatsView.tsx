@@ -652,7 +652,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
               </div>
 
               {stats.hasVolumeData ? (
-                <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
+                <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
                   <div className="flex items-end justify-between gap-1 w-full h-32 relative">
                     {stats.weeklyVolume.map((val: number, i: number) => {
                       const maxArrows = Math.max(...stats.weeklyVolume, 1);

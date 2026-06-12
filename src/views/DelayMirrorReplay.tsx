@@ -21,6 +21,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
   // (vw/vh nie dziala w manual landscape bo outer container jest rotowany).
   const [replayBox, setReplayBox] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
+  // Orientacja klatek nagrania (z metadanych) — decyduje czy player musi obracac
+  const [sourceIsPortrait, setSourceIsPortrait] = useState(false);
 
   // Mierz wrapper replay video — wymagane bo vw/vh nie dziala wewnatrz manual
   // landscape (outer wrapper jest rotowany przez transform).
@@ -134,7 +136,10 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
   };
 
   const hasFullBlob = blob !== null;
-  const needsRotate = displayAsLandscape;
+  // Rotacja tylko gdy plik ma PIONOWE klatki a UI jest poziome. Nagrania
+  // z trybu poziomego sa juz obrocone w pliku (canvas-rotate pipeline),
+  // wiec dodatkowy obrot by je polozyl na boku.
+  const needsRotate = displayAsLandscape && sourceIsPortrait;
 
   return (
     <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
@@ -174,10 +179,10 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
                 style={{
                   // Pre-rotate: width = visual height, height = visual width.
                   // Uzywamy zmierzonego boxa parenta (px) zamiast vw/vh.
-                  width: needsRotate ? `${replayBox.h}px` : undefined,
-                  height: needsRotate ? `${replayBox.w}px` : undefined,
+                  width: needsRotate ? `${replayBox.h}px` : displayAsLandscape ? `${replayBox.w}px` : undefined,
+                  height: needsRotate ? `${replayBox.w}px` : displayAsLandscape ? `${replayBox.h}px` : undefined,
                   maxWidth: needsRotate ? undefined : '100%',
-                  maxHeight: needsRotate ? undefined : '40vh',
+                  maxHeight: needsRotate || displayAsLandscape ? undefined : '40vh',
                   objectFit: 'contain',
                   display: 'block',
                   // Mirror — live preview ma scaleX(-1), recording surowy.
@@ -188,6 +193,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;
                   setReplayDuration(v.duration || 0);
+                  setSourceIsPortrait(v.videoHeight > v.videoWidth);
                 }}
                 onTimeUpdate={(e) => setReplayTime(e.currentTarget.currentTime)}
                 onPlay={() => setReplayPlaying(true)}

@@ -975,6 +975,7 @@ export const views = {
       sessions: "sessions",
       arrowsCount: "arrows",
       enduranceTitle: "Endurance Index",
+      enduranceSub: "From last {{count}} sessions",
       firstHalf: "1st Half (Avg.)",
       secondHalf: "2nd Half (Avg.)",
       weeklyArrows: "Arrow Count (Weekly)",

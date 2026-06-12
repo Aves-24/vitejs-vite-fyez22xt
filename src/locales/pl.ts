@@ -975,6 +975,7 @@ export const views = {
       sessions: "sesji",
       arrowsCount: "strzał",
       enduranceTitle: "Wskaźnik Wytrzymałości",
+      enduranceSub: "Z {{count}} ostatnich sesji",
       firstHalf: "I Połowa (Śr.)",
       secondHalf: "II Połowa (Śr.)",
       weeklyArrows: "Liczba Strzał (Tygodniowo)",

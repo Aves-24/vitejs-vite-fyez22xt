@@ -167,9 +167,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     const zones = { gold: 0, red: 0, blue: 0, black: 0, white: 0, miss: 0 };
     let totalArrowsWithDetails = 0;
 
-    let firstHalfScore = 0, firstHalfArrows = 0;
-    let secondHalfScore = 0, secondHalfArrows = 0;
-
     const weeklyVolume = Array(12).fill(0);
     const weeklyScore = Array(12).fill(0);
     const weeklyScoreArrows = Array(12).fill(0);
@@ -188,20 +185,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
       }
 
       if (s.ends && s.ends.length > 0) {
-        const midPoint = Math.floor(s.ends.length / 2);
-        
-        s.ends.forEach((end, idx) => {
-          const endSum = end.total_sum || 0;
-          const endArrCount = end.arrows?.length || 0;
-          
-          if (idx < midPoint) {
-            firstHalfScore += endSum;
-            firstHalfArrows += endArrCount;
-          } else {
-            secondHalfScore += endSum;
-            secondHalfArrows += endArrCount;
-          }
-
+        s.ends.forEach((end) => {
           end.arrows?.forEach((arrow: string) => {
             totalArrowsWithDetails++;
             if (['X', '10', '9'].includes(arrow)) zones.gold++;
@@ -251,16 +235,34 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     const recentAvg = recentArrows > 0 ? (recentScore / recentArrows) : 0;
     const formTrend = recentAvg - allTimeAvg;
 
+    // WSKAŹNIK WYTRZYMAŁOŚCI: liczony z 10 OSTATNICH sesji dystansu (z danymi
+    // pasz). Każdą sesję dzielimy w połowie i porównujemy I vs II część —
+    // świeższy obraz zmęczenia niż uśrednianie całej historii.
+    let firstHalfScore = 0, firstHalfArrows = 0;
+    let secondHalfScore = 0, secondHalfArrows = 0;
+    const enduranceSessions = filteredSessions
+      .filter(s => s.ends && s.ends.length > 0)
+      .slice(-10);
+    enduranceSessions.forEach(s => {
+      const midPoint = Math.floor(s.ends!.length / 2);
+      s.ends!.forEach((end: any, idx: number) => {
+        const endSum = end.total_sum || 0;
+        const endArrCount = end.arrows?.length || 0;
+        if (idx < midPoint) { firstHalfScore += endSum; firstHalfArrows += endArrCount; }
+        else { secondHalfScore += endSum; secondHalfArrows += endArrCount; }
+      });
+    });
     const fhAvg = firstHalfArrows > 0 ? (firstHalfScore / firstHalfArrows) : 0;
     const shAvg = secondHalfArrows > 0 ? (secondHalfScore / secondHalfArrows) : 0;
     const fatigueDrop = shAvg - fhAvg;
+    const enduranceCount = enduranceSessions.length;
 
     const weeklyPoints = weeklyScore.map((sc, i) => weeklyScoreArrows[i] > 0 ? sc / weeklyScoreArrows[i] : 0);
     const hasVolumeData = weeklyVolume.some((v: number) => v > 0);
 
     return {
       totalArrows, maxScore, maxScoreDate, maxScoreArrows, chartData, allTimeAvg, recentAvg,
-      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg,
+      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg, enduranceCount,
       weeklyVolume, weeklyPoints, hasVolumeData
     };
   }, [filteredSessions]);
@@ -586,8 +588,11 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
 
             {stats.fhAvg > 0 && stats.shAvg > 0 && (
               <div className="bg-white rounded-[24px] border border-gray-100 p-4 shadow-sm">
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.enduranceTitle', 'Wskaźnik Wytrzymałości')}</h3>
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.enduranceTitle', 'Wskaźnik Wytrzymałości')}</h3>
+                    <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">{t('stats.pro.enduranceSub', { count: stats.enduranceCount, defaultValue: 'Z {{count}} ostatnich sesji' })}</p>
+                  </div>
                   <span className="material-symbols-outlined text-gray-300 text-sm">battery_charging_full</span>
                 </div>
                 <div className="flex items-center justify-between">

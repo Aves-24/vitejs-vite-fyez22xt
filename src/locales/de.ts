@@ -975,6 +975,7 @@ export const views = {
       sessions: "Sitzungen",
       arrowsCount: "Pfeilen",
       enduranceTitle: "Ausdauerindex",
+      enduranceSub: "Aus den letzten {{count}} Einheiten",
       firstHalf: "1. Hälfte (Ø)",
       secondHalf: "2. Hälfte (Ø)",
       weeklyArrows: "Pfeilanzahl (Wöchentlich)",

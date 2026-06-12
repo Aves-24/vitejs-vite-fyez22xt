@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import DelayMirrorGrid from './DelayMirrorGrid';
 
 interface Props {
   blob: Blob | null;
   displayAsLandscape: boolean;
+  showGridInitial?: boolean;
   onResume: () => void;
   onEndSession: () => void;
 }
 
-export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, onEndSession }: Props) {
+export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession }: Props) {
   const { t } = useTranslation();
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBoxRef = useRef<HTMLDivElement>(null);
@@ -23,6 +25,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
   const [shareState, setShareState] = useState<'idle' | 'sharing' | 'saved' | 'error'>('idle');
   // Orientacja klatek nagrania (z metadanych) — decyduje czy player musi obracac
   const [sourceIsPortrait, setSourceIsPortrait] = useState(false);
+  // Siatka pozycjonowania — dziedziczy stan z nagrywania, przelaczalna
+  const [showGrid, setShowGrid] = useState(showGridInitial);
 
   // Mierz wrapper replay video — wymagane bo vw/vh nie dziala wewnatrz manual
   // landscape (outer wrapper jest rotowany przez transform).
@@ -170,7 +174,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
                       transformOrigin: 'center center',
                       lineHeight: 0,
                     }
-                  : { display: 'inline-block', lineHeight: 0 }
+                  : { display: 'inline-block', lineHeight: 0, position: 'relative' }
               }
             >
               <video
@@ -207,6 +211,9 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
                 playsInline
                 loop
               />
+              {/* Siatka pozycjonowania — identyczna jak przy nagrywaniu,
+                  procentowa wiec pokrywa sie 1:1 z kadrem video */}
+              {showGrid && <DelayMirrorGrid />}
             </div>
           </div>
 
@@ -223,6 +230,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, onResume, 
               className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
             >
               <span className="material-symbols-outlined text-xl">{replayPlaying ? 'pause' : 'play_arrow'}</span>
+            </button>
+            <button
+              onClick={() => setShowGrid(v => !v)}
+              className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all flex-shrink-0 border ${
+                showGrid
+                  ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+                  : 'bg-white/10 text-white/60 border-white/10'
+              }`}
+              title="Siatka"
+            >
+              <span className="material-symbols-outlined text-lg">grid_on</span>
             </button>
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
             <input

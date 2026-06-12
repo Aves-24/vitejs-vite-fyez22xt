@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import DelayMirrorReplay from './DelayMirrorReplay';
-import DelayMirrorGrid from './DelayMirrorGrid';
+import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -96,6 +96,9 @@ export default function DelayMirrorView({ onBack }: Props) {
   const [cameraZoom, setCameraZoom] = useState<number>(1);
   const [showDelayPicker, setShowDelayPicker] = useState(false);
   const [showGrid, setShowGrid] = useState(false);
+  // Ref dla petli rysujacej nagranie — siatke mozna przelaczac w trakcie
+  const showGridRef = useRef(showGrid);
+  useEffect(() => { showGridRef.current = showGrid; }, [showGrid]);
   const [recordingPaused, setRecordingPaused] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
@@ -487,58 +490,56 @@ export default function DelayMirrorView({ onBack }: Props) {
         fullRec.start();
         fullRecorderRef.current = fullRec;
       };
-      if (manualLandscape && isPortrait) {
-        // Tryb poziomy przy zablokowanym portrait: kamera daje klatki pionowe,
-        // a UI tylko obraca je CSS-em — udostepniony plik bylby obrocony o 90°.
-        // Nagrywamy wiec z canvasa, ktory obraca klatki tak, jak widzi je user
-        // w podgladzie (rotate +90, zgodnie z _uiForceRotate).
-        const hv = document.createElement('video');
-        hv.muted = true;
-        hv.playsInline = true;
-        hv.srcObject = stream;
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        let raf = 0;
-        const draw = () => {
-          raf = requestAnimationFrame(draw);
-          if (!ctx || hv.videoWidth === 0) return;
-          const portraitFrame = hv.videoHeight > hv.videoWidth;
-          const cw = portraitFrame ? hv.videoHeight : hv.videoWidth;
-          const ch = portraitFrame ? hv.videoWidth : hv.videoHeight;
-          if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
-          if (portraitFrame) {
-            ctx.save();
-            ctx.translate(cw, 0);
-            ctx.rotate(Math.PI / 2);
-            ctx.drawImage(hv, 0, 0);
-            ctx.restore();
-          } else {
-            // Stream juz landscape (np. tablet) — bez obrotu
-            ctx.drawImage(hv, 0, 0);
-          }
-        };
-        // Recorder startuje dopiero gdy znamy wymiary klatki — inaczej
-        // pierwsze chunki mialyby domyslny rozmiar canvasa 300x150.
-        hv.onloadedmetadata = () => {
-          if (rotateCleanupRef.current === null) return; // pauza zanim kamera ruszyla
-          draw();
-          const cStream = canvas.captureStream(30);
-          startFullRec(cStream);
-          const prevCleanup = rotateCleanupRef.current;
-          rotateCleanupRef.current = () => {
-            prevCleanup();
-            cStream.getTracks().forEach(tr => tr.stop());
-          };
-        };
+      // Pelny recorder ZAWSZE nagrywa z canvasa (nie z surowego streamu):
+      // 1. Tryb poziomy przy zablokowanym portrait: kamera daje klatki pionowe,
+      //    a UI tylko obraca je CSS-em — plik bez obrotu bylby polozony na boku.
+      // 2. Siatka pozycjonowania: wypalana w klatki gdy wlaczona (mozna
+      //    przelaczac w trakcie nagrania — czytamy ref, nie state).
+      const rotateFile = manualLandscape && isPortrait;
+      const hv = document.createElement('video');
+      hv.muted = true;
+      hv.playsInline = true;
+      hv.srcObject = stream;
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      let raf = 0;
+      const draw = () => {
+        raf = requestAnimationFrame(draw);
+        if (!ctx || hv.videoWidth === 0) return;
+        const doRotate = rotateFile && hv.videoHeight > hv.videoWidth;
+        const cw = doRotate ? hv.videoHeight : hv.videoWidth;
+        const ch = doRotate ? hv.videoWidth : hv.videoHeight;
+        if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+        if (doRotate) {
+          ctx.save();
+          ctx.translate(cw, 0);
+          ctx.rotate(Math.PI / 2);
+          ctx.drawImage(hv, 0, 0);
+          ctx.restore();
+        } else {
+          ctx.drawImage(hv, 0, 0);
+        }
+        if (showGridRef.current) drawGridOnCanvas(ctx, cw, ch);
+      };
+      // Recorder startuje dopiero gdy znamy wymiary klatki — inaczej
+      // pierwsze chunki mialyby domyslny rozmiar canvasa 300x150.
+      hv.onloadedmetadata = () => {
+        if (rotateCleanupRef.current === null) return; // pauza zanim kamera ruszyla
+        draw();
+        const cStream = canvas.captureStream(30);
+        startFullRec(cStream);
+        const prevCleanup = rotateCleanupRef.current;
         rotateCleanupRef.current = () => {
-          cancelAnimationFrame(raf);
-          hv.pause();
-          hv.srcObject = null;
+          prevCleanup();
+          cStream.getTracks().forEach(tr => tr.stop());
         };
-        hv.play().catch(() => { /* autoplay — i tak rysujemy z rAF */ });
-      } else {
-        startFullRec(stream);
-      }
+      };
+      rotateCleanupRef.current = () => {
+        cancelAnimationFrame(raf);
+        hv.pause();
+        hv.srcObject = null;
+      };
+      hv.play().catch(() => { /* autoplay — i tak rysujemy z rAF */ });
       setLastBlob(null);
     } catch { /* ignore — MSE delay nadal dziala */ }
 

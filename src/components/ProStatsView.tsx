@@ -1179,6 +1179,20 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
   const vbW = 300, vbH = isFullFace ? 300 : 400;
   const heatURL = useHeatmapDataURL(dots, vbW, vbH);
 
+  // CROSSFADE: trzymamy poprzednią klatkę pod spodem, nowa wjeżdża fade-inem
+  // (ważne przy Play — przejścia między treningami są płynne, nie skokowe).
+  const [frames, setFrames] = useState<{ url: string; key: number }[]>([]);
+  useEffect(() => {
+    if (!heatURL) { setFrames([]); return; }
+    setFrames(prev => [...prev.slice(-1), { url: heatURL, key: Date.now() }]);
+  }, [heatURL]);
+  useEffect(() => {
+    if (frames.length > 1) {
+      const id = setTimeout(() => setFrames(p => p.slice(-1)), 450);
+      return () => clearTimeout(id);
+    }
+  }, [frames]);
+
   // Dispersion contour — single for full face, per-spot for spot targets
   const dispersion = useMemo(() => {
     if (dots.length < 2) return null;
@@ -1230,19 +1244,28 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
         </g>
       )}
 
-      {/* THERMAL HEATMAP — normal compositing, alpha=0 where cold so target shows through */}
-      {heatURL && (
-        <image href={heatURL} x="0" y="0" width={vbW} height={vbH}
-          style={{ imageRendering: 'auto' }} />
-      )}
-
-      {/* DISPERSION CONTOUR — single for full face, per-spot for spot targets */}
-      {dispersion?.type === 'single' && (
-        <DispersionContour mx={dispersion.mx} my={dispersion.my} path={dispersion.path} />
-      )}
-      {dispersion?.type === 'spots' && dispersion.spots.map((s, i) => (
-        <DispersionContour key={i} mx={s.mx} my={s.my} path={s.path} />
+      {/* THERMAL HEATMAP — crossfade między klatkami (Play przechodzi płynnie);
+          poprzednia klatka pod spodem, nowa pojawia się fade-inem 0.4s */}
+      <style>{`@keyframes gxHeatFade { from { opacity: 0; } to { opacity: 1; } }`}</style>
+      {frames.map((f, i) => (
+        <image key={f.key} href={f.url} x="0" y="0" width={vbW} height={vbH}
+          style={{ imageRendering: 'auto', animation: i === frames.length - 1 ? 'gxHeatFade 0.4s ease-out' : undefined }} />
       ))}
+
+      {/* DISPERSION CONTOUR — single for full face, per-spot for spot targets;
+          keyed by path so each change fades in alongside the heat layer */}
+      {dispersion?.type === 'single' && (
+        <g key={dispersion.path} style={{ animation: 'gxHeatFade 0.4s ease-out' }}>
+          <DispersionContour mx={dispersion.mx} my={dispersion.my} path={dispersion.path} />
+        </g>
+      )}
+      {dispersion?.type === 'spots' && (
+        <g key={dispersion.spots.map(s => s.path).join('|')} style={{ animation: 'gxHeatFade 0.4s ease-out' }}>
+          {dispersion.spots.map((s, i) => (
+            <DispersionContour key={i} mx={s.mx} my={s.my} path={s.path} />
+          ))}
+        </g>
+      )}
     </svg>
   );
 }

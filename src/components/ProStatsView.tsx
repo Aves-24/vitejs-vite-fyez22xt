@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
 import { getRecentSessions } from '../lib/recentSessions';
 import RingePraezisionPanel from './stats/RingePraezisionPanel';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
+import BiomechCard from './BiomechCard';
+import { calculateSpreadSessions } from '../utils/spread';
 
 interface Session {
   id: string;
@@ -58,6 +60,16 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
   const [hasFullHistory, setHasFullHistory] = useState(false);
 
   const [heatmapLimit, setHeatmapLimit] = useState<number>(20);
+  // Ręczność łucznika dla wskazówek biomechaniki (lustro lewo/prawo dla LH)
+  const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    getDoc(doc(db, 'users', userId))
+      .then(s => { if (alive) setHandedness((s.data()?.handedness as 'RH' | 'LH') || null); })
+      .catch(() => { if (alive) setHandedness(null); });
+    return () => { alive = false; };
+  }, [userId]);
 
   useEffect(() => {
     if (!userId || !isPremium) {
@@ -276,6 +288,13 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
 
     return { heatmapDots, heatmapTargetType, heatmapSessionsCount: recentForHeatmap.length };
   }, [filteredSessions, heatmapLimit, selectedDistance]);
+
+  // Biomechanika z 3 ostatnich treningów wybranego dystansu — stabilniejszy
+  // obraz niż pojedyncza sesja. Każdą sesję centrujemy wg jej typu tarczy.
+  const spread3 = useMemo(() => {
+    const last3 = filteredSessions.slice(-3);
+    return { result: calculateSpreadSessions(last3), count: last3.length };
+  }, [filteredSessions]);
 
   // PRZEGLĄD GLOBALNY (wszystkie dystanse) — liczony z już wczytanych sesji,
   // więc 0 dodatkowych odczytów Firestore. Daje trenerowi szybki obraz formy.
@@ -501,6 +520,15 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
                 heatmapLimit={heatmapLimit}
                 setHeatmapLimit={setHeatmapLimit}
                 distance={selectedDistance}
+              />
+            )}
+
+            {spread3.result && spread3.count > 0 && (
+              <BiomechCard
+                spread={spread3.result}
+                handedness={handedness}
+                onNavigate={onNavigate}
+                subtitle={t('stats.cards.bio.lastTrainings', { count: spread3.count })}
               />
             )}
 

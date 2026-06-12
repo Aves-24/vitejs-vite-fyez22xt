@@ -925,6 +925,7 @@ export const views = {
       bio: {
         coachFirst: "Wenn dein Trainer es nicht anders sieht — hier ist unser Tipp für dich:",
         whatToDo: "Was du prüfen kannst",
+        lastTrainings: "letzte {{count}} Trainings",
         handPromptTitle: "Hand einstellen, um die Tipps zu personalisieren",
         handPrompt: "Die Links/Rechts-Tipps hängen davon ab, ob du mit rechts oder links schießt. Stelle das in deinem Profil ein, dann passen wir die Hinweise an dich an.",
         handCta: "Hand im Profil einstellen",

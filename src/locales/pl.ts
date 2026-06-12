@@ -925,6 +925,7 @@ export const views = {
       bio: {
         coachFirst: "Jeśli Twój trener nie widzi tego inaczej — oto nasza wskazówka dla Ciebie:",
         whatToDo: "Co możesz sprawdzić",
+        lastTrainings: "ostatnie {{count}} treningi",
         handPromptTitle: "Ustaw rękę, by spersonalizować wskazówki",
         handPrompt: "Wskazówki lewo/prawo zależą od tego, czy strzelasz prawą czy lewą ręką. Uzupełnij to w ustawieniach profilu, a dopasujemy podpowiedzi do Ciebie.",
         handCta: "Ustaw rękę w profilu",

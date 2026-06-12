@@ -925,6 +925,7 @@ export const views = {
       bio: {
         coachFirst: "Unless your coach sees it differently — here is our tip for you:",
         whatToDo: "What to check",
+        lastTrainings: "last {{count}} trainings",
         handPromptTitle: "Set your handedness to personalise the tips",
         handPrompt: "Left/right tips depend on whether you shoot right- or left-handed. Set this in your profile and we'll tailor the advice to you.",
         handCta: "Set handedness in profile",

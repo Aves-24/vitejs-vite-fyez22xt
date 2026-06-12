@@ -425,6 +425,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
   // [C20+] Modal podpowiedzi biomechaniki: 'tendency' | 'error' | null
   const [bioInfo, setBioInfo] = useState<null | 'tendency' | 'error'>(null);
+  // Ręczność łucznika (RH/LH) — decyduje o lustrzanym odbiciu wskazówek lewo/prawo.
+  // null = nieustawiona w profilu → pokazujemy prośbę o uzupełnienie.
+  const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingSessionIdRef = useRef(initialSessionId || '');
 
@@ -452,6 +455,17 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         const today = new Date();
         const todayKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}`;
         setDailyPfeilzaehler(pz[todayKey] || 0);
+      }
+
+      // Ręczność: gdy oglądamy własne staty czytamy z `userId`, przy podglądzie
+      // ucznia (trener) z jego profilu — wskazówki kierunkowe są dla łucznika.
+      if (viewingStudentId) {
+        try {
+          const sDoc = await getDoc(doc(db, 'users', viewingStudentId));
+          setHandedness((sDoc.data()?.handedness as 'RH' | 'LH') || null);
+        } catch { setHandedness(null); }
+      } else {
+        setHandedness((d?.handedness as 'RH' | 'LH') || null);
       }
     };
 
@@ -941,7 +955,13 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       {bioInfo && spreadData && typeof document !== 'undefined' && createPortal(
         (() => {
           const suffix = (k: string) => k.split('.').pop() || '';
-          const tendMap: Record<string, string> = { left: 'tendLeft', right: 'tendRight', up: 'tendUp', down: 'tendDown', center: 'tendCenter' };
+          const isLH = handedness === 'LH';
+          // Wskazówki lewo/prawo są lustrzane dla leworęcznych; góra/dół/symetria bez zmian.
+          const tendMap: Record<string, string> = {
+            left: isLH ? 'tendLeftLH' : 'tendLeft',
+            right: isLH ? 'tendRightLH' : 'tendRight',
+            up: 'tendUp', down: 'tendDown', center: 'tendCenter',
+          };
           const errMap: Record<string, string> = { symm: 'errSymm', horiz: 'errHoriz', vert: 'errVert' };
           const isTend = bioInfo === 'tendency';
           // Lista wskazówek: dla tendencji obie osie (pomijając center, chyba że obie center)
@@ -988,7 +1008,29 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                   ))}
                 </div>
 
-                <p className="text-[9px] font-bold text-gray-300 dark:text-gray-500 text-center mb-4">{t('stats.cards.bio.rightyNote')}</p>
+                {/* Personalizacja wg ręczności */}
+                {handedness === null ? (
+                  <div className="bg-amber-50 border border-amber-100 rounded-2xl p-3 mb-4">
+                    <p className="text-[10px] font-black text-amber-700 uppercase tracking-wide mb-1">{t('stats.cards.bio.handPromptTitle')}</p>
+                    <p className="text-[11px] font-bold text-gray-500 dark:text-gray-300 leading-relaxed mb-3">{t('stats.cards.bio.handPrompt')}</p>
+                    <button
+                      onClick={() => { setBioInfo(null); onNavigate('SETTINGS', 'PROFIL'); }}
+                      className="w-full py-2.5 bg-[#0a3a2a] text-[#fed33e] rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">person</span>
+                      {t('stats.cards.bio.handCta')}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => { setBioInfo(null); onNavigate('SETTINGS', 'PROFIL'); }}
+                    className="w-full flex items-center justify-center gap-1.5 text-[9px] font-bold text-gray-400 dark:text-gray-500 mb-4 active:scale-95 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[12px]">{isLH ? 'back_hand' : 'front_hand'}</span>
+                    {t(isLH ? 'stats.cards.bio.adjustedLH' : 'stats.cards.bio.adjustedRH')}
+                    <span className="material-symbols-outlined text-[12px]">chevron_right</span>
+                  </button>
+                )}
 
                 <button onClick={() => setBioInfo(null)} className="w-full py-3 bg-[#0a3a2a] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all">
                   OK

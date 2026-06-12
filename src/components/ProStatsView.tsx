@@ -8,6 +8,7 @@ import RingePraezisionPanel from './stats/RingePraezisionPanel';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
 import BiomechCard from './BiomechCard';
 import { calculateSpreadSessions } from '../utils/spread';
+import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
 
 interface Session {
   id: string;
@@ -170,6 +171,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     let secondHalfScore = 0, secondHalfArrows = 0;
 
     const weeklyVolume = Array(12).fill(0);
+    const weeklyScore = Array(12).fill(0);
+    const weeklyScoreArrows = Array(12).fill(0);
     const now = Date.now();
 
     const chartData = filteredSessions.map(s => {
@@ -225,7 +228,13 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
       const diffDays = (now - ts) / (1000 * 60 * 60 * 24);
       const weekIndex = Math.floor(diffDays / 7);
       if (weekIndex >= 0 && weekIndex < 12) {
-         weeklyVolume[11 - weekIndex] += arrowsToCount;
+         const idx = 11 - weekIndex;
+         weeklyVolume[idx] += arrowsToCount;
+         const scoreArr = (s as any).scoreArrows ?? s.arrows ?? 0;
+         if (s.distance !== 'TECH' && scoreArr > 0 && (s.score || 0) > 0) {
+            weeklyScore[idx] += (s.score || 0);
+            weeklyScoreArrows[idx] += scoreArr;
+         }
       }
 
       return {
@@ -246,20 +255,15 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
     const shAvg = secondHalfArrows > 0 ? (secondHalfScore / secondHalfArrows) : 0;
     const fatigueDrop = shAvg - fhAvg;
 
-    const volumeChartData = weeklyVolume.map((val, idx) => {
-       let label = `T-${11 - idx}`;
-       if (idx === 11) label = t('stats.pro.sight.now');
-       return { label, value: val };
-    });
-
-    const hasVolumeData = volumeChartData.some(d => d.value > 0);
+    const weeklyPoints = weeklyScore.map((sc, i) => weeklyScoreArrows[i] > 0 ? sc / weeklyScoreArrows[i] : 0);
+    const hasVolumeData = weeklyVolume.some((v: number) => v > 0);
 
     return {
       totalArrows, maxScore, maxScoreDate, maxScoreArrows, chartData, allTimeAvg, recentAvg,
-      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg, volumeChartData,
-      hasVolumeData
+      formTrend, zones, totalArrowsWithDetails, fatigueDrop, fhAvg, shAvg,
+      weeklyVolume, weeklyPoints, hasVolumeData
     };
-  }, [filteredSessions, t]);
+  }, [filteredSessions]);
 
   // Heatmapa liczona osobno — zależy tylko od limitu i zbioru sesji,
   // więc zmiana "Ost. 5/10/20" nie przelicza stref, wolumenu ani wykresów.
@@ -293,6 +297,30 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
   const spread3 = useMemo(() => {
     const last3 = filteredSessions.slice(-3);
     return { result: calculateSpreadSessions(last3), count: last3.length };
+  }, [filteredSessions]);
+
+  // Krzywa wyników dla wybranego dystansu (ostatnie 15 sesji z wynikiem)
+  const distCurve = useMemo<CurveSession[]>(() => {
+    const getTs = (s: any): number => {
+      const ts = s.timestamp;
+      if (!ts) return 0;
+      if (typeof ts === 'number') return ts;
+      if (typeof ts.toMillis === 'function') return ts.toMillis();
+      if (ts.seconds) return ts.seconds * 1000;
+      return 0;
+    };
+    return filteredSessions
+      .filter(s => s.type !== 'TECHNICAL' && (s.score || 0) > 0)
+      .map(s => ({
+        score: s.score || 0,
+        ts: getTs(s),
+        date: s.date || '',
+        distance: s.distance || '',
+        type: s.type || 'Trening',
+        title: (s as any).title || (s as any).tournamentName || '',
+      } as CurveSession))
+      .sort((a, b) => (a.ts || 0) - (b.ts || 0))
+      .slice(-15);
   }, [filteredSessions]);
 
   // PRZEGLĄD GLOBALNY (wszystkie dystanse) — liczony z już wczytanych sesji,
@@ -398,7 +426,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
             weeklyArrows={overview.weeklyArrows}
             weeklyPoints={overview.weeklyPoints}
           />
-          <ErgebniskurvePanel sessions={overview.recent} />
+          <ErgebniskurvePanel sessions={overview.recent} scopeLabel={t('stats.pro.allDistances', 'Wszystkie dystanse')} />
           <div className="h-px bg-gray-100 my-2" />
         </div>
       )}
@@ -615,16 +643,37 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
               </div>
             )}
 
-            {/* WYKRES OBJĘTOŚCI — strzały tygodniowo dla WYBRANEGO dystansu */}
+            {/* WYKRES OBJĘTOŚCI — strzały tygodniowo dla WYBRANEGO dystansu,
+                ten sam styl co słupki w przeglądzie globalnym */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrows', 'Liczba Strzał (Tygodniowo)')} · {selectedDistance}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')} · {selectedDistance}</span>
                 <span className="material-symbols-outlined text-gray-300 text-sm">bar_chart</span>
               </div>
 
               {stats.hasVolumeData ? (
-                <div className="h-[120px]">
-                   <VolumeBarChart data={stats.volumeChartData} />
+                <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
+                  <div className="flex items-end justify-between gap-1 w-full h-32 relative">
+                    {stats.weeklyVolume.map((val: number, i: number) => {
+                      const maxArrows = Math.max(...stats.weeklyVolume, 1);
+                      const isMax = val > 0 && val === maxArrows;
+                      const pts = stats.weeklyPoints[i];
+                      return (
+                        <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
+                          <div className="w-full relative flex items-end justify-center h-full">
+                            {val > 0 && (
+                              <span className="absolute -top-8 flex flex-col items-center leading-tight">
+                                {pts > 0 && <span className="text-[8px] font-black text-emerald-600">{pts.toFixed(1)}</span>}
+                                <span className={`text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>{val}</span>
+                              </span>
+                            )}
+                            <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
+                          </div>
+                          <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ) : (
                 <div className="h-[120px] flex items-center justify-center opacity-40">
@@ -632,6 +681,11 @@ export default function ProStatsView({ userId, isPremium, onNavigate }: ProStats
                 </div>
               )}
             </div>
+
+            {/* KRZYWA WYNIKÓW dla wybranego dystansu — ta sama co w przeglądzie */}
+            {distCurve.length > 0 && (
+              <ErgebniskurvePanel sessions={distCurve} scopeLabel={selectedDistance} />
+            )}
 
             <div className="text-center">
               <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('stats.pro.totalDistArrows', 'Łącznie na tym dystansie: {{count}} strzał', { count: stats.totalArrows })}</span>
@@ -1110,31 +1164,4 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
   );
 }
 
-// WYKRES SŁUPKOWY — strzały tygodniowo (12 tyg.) dla wybranego dystansu
-function VolumeBarChart({ data }: { data: { label: string, value: number }[] }) {
-  if (data.length === 0) return null;
-
-  const maxVal = Math.max(...data.map(d => d.value));
-  const heightPercent = 70;
-
-  return (
-    <div className="w-full h-full flex items-end justify-between gap-1 pb-2">
-      {data.map((item, idx) => {
-        const barHeight = maxVal > 0 ? (item.value / maxVal) * heightPercent : 0;
-        return (
-          <div key={idx} className="flex-1 flex flex-col items-center justify-end group h-full">
-            <span className="text-[8px] font-black text-indigo-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity">{item.value}</span>
-            <div
-              className="w-full bg-indigo-100 rounded-t-sm relative overflow-hidden transition-all duration-500 group-hover:bg-indigo-200"
-              style={{ height: `${Math.max(barHeight, 2)}%` }}
-            >
-               <div className="absolute bottom-0 w-full h-full bg-indigo-500 opacity-80"></div>
-            </div>
-            <span className="text-[7px] font-bold text-gray-400 mt-1 truncate w-full text-center">{item.label}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
 

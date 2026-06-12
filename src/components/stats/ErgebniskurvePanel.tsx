@@ -12,7 +12,7 @@ export interface CurveSession {
   title?: string;
 }
 
-export default function ErgebniskurvePanel({ sessions, onSelectDate }: { sessions: CurveSession[]; onSelectDate?: (iso: string) => void }) {
+export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel }: { sessions: CurveSession[]; onSelectDate?: (iso: string) => void; scopeLabel?: string }) {
   const { t } = useTranslation();
   const [listOpen, setListOpen] = useState(false);
 
@@ -42,7 +42,12 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate }: { session
           <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">{t('home.trendModal.subtitle')}</span>
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('home.trendModal.title')}</h3>
         </div>
-        <span className="material-symbols-outlined text-emerald-100 text-3xl">show_chart</span>
+        <div className="flex items-center gap-2">
+          {scopeLabel && (
+            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{scopeLabel}</span>
+          )}
+          <span className="material-symbols-outlined text-emerald-100 text-3xl">show_chart</span>
+        </div>
       </div>
 
       {scores.length >= 1 ? (

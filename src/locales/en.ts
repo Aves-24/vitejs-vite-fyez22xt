@@ -980,6 +980,7 @@ export const views = {
       weeklyArrows: "Arrow Count (Weekly)",
       weeklyArrowsShort: "Arrows / week (12 wk.)",
       sessionListTitle: "Session list",
+      allDistances: "All distances",
       distAnalysisTitle: "Distance analysis",
       distAnalysisSub: "Data below reflects your selection",
       distLabel: "Distance",

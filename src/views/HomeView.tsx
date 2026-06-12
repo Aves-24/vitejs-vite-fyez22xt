@@ -1060,7 +1060,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
               return (
                 <div className="flex items-center gap-1.5 w-full min-w-0">
-                  <svg viewBox={`0 0 ${W} ${H}`} className="flex-1 min-w-0" style={{ overflow: 'visible' }}>
+                  <svg viewBox={`0 0 ${W} ${H}`} className="gx-trend flex-1 min-w-0" style={{ overflow: 'visible' }}>
                     <polyline points={polyline} fill="none" stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
                     {pts.map((p, i) => {
                       const isMax = i === maxIdx;

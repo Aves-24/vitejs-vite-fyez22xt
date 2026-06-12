@@ -78,10 +78,64 @@
 .dark .hover\:bg-gray-100:hover { background-color: #262e29; }
 .dark .hover\:bg-gray-200:hover { background-color: #313a34; }
 
-/* Tła z przezroczystością (backdrop chips, np. przycisk home) */
-.dark .bg-white\/90 { background-color: rgba(26, 32, 29, 0.9); }
-.dark .bg-white\/80 { background-color: rgba(26, 32, 29, 0.8); }
-.dark .bg-white\/70 { background-color: rgba(26, 32, 29, 0.7); }
+/* Chipy bg-white/70-90 (etykieta "Trening", przycisk home, kontrolki tarczy)
+   celowo NIE są mapowane — zostają białe jak w jasnym motywie (feedback usera). */
+
+/* Tła akcentowe *-50/100 → ciemne odcienie (chipy, plakietki, pola statystyk).
+   Bez remapu świeciły jasno, a remapowany jasny tekst ginął na nich
+   (np. suma passe w ScoringView: jasna zieleń na jasnej zieleni). */
+.dark .bg-emerald-50 { background-color: #11271d; }
+.dark .bg-emerald-100 { background-color: #173326; }
+.dark .hover\:bg-emerald-100:hover { background-color: #1a3a2b; }
+.dark .bg-red-50 { background-color: #2b1717; }
+.dark .bg-indigo-50 { background-color: #1a1c33; }
+.dark .bg-blue-50 { background-color: #13202f; }
+.dark .bg-orange-50 { background-color: #2b1d10; }
+.dark .bg-yellow-50 { background-color: #2a2510; }
+.dark .bg-amber-50 { background-color: #2a2310; }
+.dark .bg-purple-50 { background-color: #231a2e; }
+.dark .bg-emerald-50\/50 { background-color: rgba(17, 39, 29, 0.5); }
+.dark .bg-emerald-50\/30 { background-color: rgba(17, 39, 29, 0.3); }
+.dark .bg-emerald-50\/20 { background-color: rgba(17, 39, 29, 0.2); }
+.dark .bg-gray-50\/50 { background-color: rgba(22, 28, 25, 0.5); }
+
+/* Bordery akcentowe pasujące do ciemnych teł wyżej */
+.dark .border-emerald-100 { border-color: #1d4030; }
+.dark .border-emerald-200 { border-color: #245238; }
+.dark .border-red-100 { border-color: #3d1f1f; }
+.dark .border-red-200 { border-color: #4d2727; }
+.dark .border-indigo-100 { border-color: #262a4d; }
+.dark .border-indigo-200 { border-color: #303566; }
+.dark .border-blue-100 { border-color: #1b3048; }
+.dark .border-blue-200 { border-color: #234060; }
+.dark .border-amber-100 { border-color: #45390f; }
+.dark .border-yellow-100 { border-color: #453f0f; }
+.dark .border-yellow-200 { border-color: #57500f; }
+.dark .border-orange-200 { border-color: #5a3a14; }
+
+/* Ciemne teksty akcentowe → jaśniejsze odcienie (czytelne na ciemnych tłach) */
+.dark .text-emerald-700 { color: #4fc08d; }
+.dark .text-emerald-800 { color: #7ed0ab; }
+.dark .text-blue-700 { color: #6aaae8; }
+.dark .text-blue-800 { color: #8ec0f0; }
+.dark .text-blue-900 { color: #aed4f5; }
+.dark .text-indigo-700 { color: #8d96e8; }
+.dark .text-indigo-800 { color: #a7aef0; }
+.dark .text-indigo-900 { color: #c0c6f5; }
+.dark .text-red-700 { color: #f08c8c; }
+.dark .text-amber-700 { color: #e8b04f; }
+.dark .text-amber-800 { color: #f0c270; }
+.dark .text-amber-900 { color: #f5d391; }
+.dark .text-orange-700 { color: #eda05e; }
+
+/* Żółte średnie na home (x̄₁₄, ostatni wynik przy wykresie) — ciemna
+   musztarda nieczytelna na ciemnym, podbijamy do brand yellow */
+.dark .text-\[\#725b00\] { color: #fed33e; }
+.dark .text-\[\#725b00\]\/70 { color: rgba(254, 211, 62, 0.7); }
+
+/* Krzywa wyników na home (inline SVG) — patrz klasa gx-trend w HomeView */
+.dark .gx-trend polyline { stroke: #9adbc0; }
+.dark .gx-trend circle[fill="#0a3a2a"] { fill: #9adbc0; }
 
 /* Teksty ciemne → jasne */
 .dark .text-\[\#333\] { color: #e6e8e7; }

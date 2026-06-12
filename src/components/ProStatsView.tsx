@@ -1188,7 +1188,7 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
   }, [heatURL]);
   useEffect(() => {
     if (frames.length > 1) {
-      const id = setTimeout(() => setFrames(p => p.slice(-1)), 450);
+      const id = setTimeout(() => setFrames(p => p.slice(-1)), 850);
       return () => clearTimeout(id);
     }
   }, [frames]);
@@ -1244,23 +1244,32 @@ function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }
         </g>
       )}
 
-      {/* THERMAL HEATMAP — crossfade między klatkami (Play przechodzi płynnie);
-          poprzednia klatka pod spodem, nowa pojawia się fade-inem 0.4s */}
-      <style>{`@keyframes gxHeatFade { from { opacity: 0; } to { opacity: 1; } }`}</style>
-      {frames.map((f, i) => (
-        <image key={f.key} href={f.url} x="0" y="0" width={vbW} height={vbH}
-          style={{ imageRendering: 'auto', animation: i === frames.length - 1 ? 'gxHeatFade 0.4s ease-out' : undefined }} />
-      ))}
+      {/* THERMAL HEATMAP — prawdziwy crossfade: stara klatka wygasza się
+          (fade-out), nowa wjeżdża fade-inem; oba po 0.8s, ease-in-out */}
+      <style>{`
+        @keyframes gxHeatFadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes gxHeatFadeOut { from { opacity: 1; } to { opacity: 0; } }
+      `}</style>
+      {frames.map((f, i) => {
+        const isCurrent = i === frames.length - 1;
+        const anim = frames.length > 1
+          ? (isCurrent ? 'gxHeatFadeIn 0.8s ease-in-out forwards' : 'gxHeatFadeOut 0.8s ease-in-out forwards')
+          : undefined;
+        return (
+          <image key={f.key} href={f.url} x="0" y="0" width={vbW} height={vbH}
+            style={{ imageRendering: 'auto', animation: anim }} />
+        );
+      })}
 
       {/* DISPERSION CONTOUR — single for full face, per-spot for spot targets;
           keyed by path so each change fades in alongside the heat layer */}
       {dispersion?.type === 'single' && (
-        <g key={dispersion.path} style={{ animation: 'gxHeatFade 0.4s ease-out' }}>
+        <g key={dispersion.path} style={{ animation: 'gxHeatFadeIn 0.8s ease-in-out' }}>
           <DispersionContour mx={dispersion.mx} my={dispersion.my} path={dispersion.path} />
         </g>
       )}
       {dispersion?.type === 'spots' && (
-        <g key={dispersion.spots.map(s => s.path).join('|')} style={{ animation: 'gxHeatFade 0.4s ease-out' }}>
+        <g key={dispersion.spots.map(s => s.path).join('|')} style={{ animation: 'gxHeatFadeIn 0.8s ease-in-out' }}>
           {dispersion.spots.map((s, i) => (
             <DispersionContour key={i} mx={s.mx} my={s.my} path={s.path} />
           ))}

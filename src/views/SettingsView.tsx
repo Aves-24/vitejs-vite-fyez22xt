@@ -15,6 +15,7 @@ import CoachSection from '../components/settings/CoachSection';
 import TournamentSection from '../components/settings/TournamentSection';
 import BowSection from '../components/settings/BowSection';
 import PrivacySection from '../components/settings/PrivacySection';
+import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
@@ -36,8 +37,10 @@ export default function SettingsView({
   userId, userEmail = '', distances, onToggleDistance, onUpdateTargetType, onUpdateAllDistances, initialTab = 'PROFIL', autoStartWizard = false, onNavigate
 }: SettingsViewProps) {
   
-  const { t, i18n } = useTranslation(); 
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab as SettingsTab);
+  // [C20] Motyw (jasny/ciemny/system) — źródło prawdy w localStorage (utils/theme)
+  const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference());
   const [isSaving, setIsSaving] = useState(false);
   const [placeId, setPlaceId] = useState<string>('');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
@@ -433,6 +436,22 @@ export default function SettingsView({
               <button key={lang.id} onClick={() => i18n.changeLanguage(lang.id)} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${i18n.language === lang.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
                 <span className="font-black text-[#333] text-sm">{lang.name}</span>
                 {i18n.language === lang.id && <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>}
+              </button>
+            ))}
+
+            {/* [C20] Motyw — jasny / ciemny / systemowy */}
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pt-4 pb-1 px-1">{t('settings.themeTitle')}</p>
+            {([
+              { id: 'light', icon: 'light_mode', label: t('settings.themeLight') },
+              { id: 'dark', icon: 'dark_mode', label: t('settings.themeDark') },
+              { id: 'system', icon: 'contrast', label: t('settings.themeSystem') },
+            ] as { id: ThemePreference; icon: string; label: string }[]).map(opt => (
+              <button key={opt.id} onClick={() => { setThemePreference(opt.id); setThemePref(opt.id); }} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${themePref === opt.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
+                <span className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-gray-500 text-xl">{opt.icon}</span>
+                  <span className="font-black text-[#333] text-sm">{opt.label}</span>
+                </span>
+                {themePref === opt.id && <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>}
               </button>
             ))}
           </div>

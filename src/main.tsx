@@ -3,6 +3,11 @@ import { createRoot } from 'react-dom/client';
 import './tailwind.css';
 import App from './App';
 import './i18n'; // <--- DODANE: Aktywacja systemu tłumaczeń i autodetekcji języka
+import { initTheme } from './utils/theme';
+
+// [C20] Dark mode — aplikuje zapisany motyw + nasłuch zmian systemowych.
+// Anty-flash robi public/theme-init.js (przed pierwszym renderem).
+initTheme();
 
 // [C11] Service worker — offline na strzelnicy. Generowany w buildzie przez
 // scripts/generate-sw.mjs (nie istnieje w dev, stąd guard na PROD).

@@ -52,3 +52,65 @@
     user-select: auto;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   [C20] DARK MODE — remap najczęstszych klas jasnego motywu pod html.dark.
+   Strategia: zamiast dopisywać dark:-warianty w ~1400 miejscach w 84 plikach,
+   nadpisujemy tu ~30 powtarzalnych klas kolorów. Specyficzność .dark .klasa
+   (0,2,0) wygrywa z utility (0,1,0). Paleta: neutralna ciemna zieleń
+   (tonacja brandu #0a3a2a) + bez zmian dla akcentów (#fed33e, red, green).
+   UWAGA: text-gray-100/200/300 celowo NIE są mapowane — używane na ciemnych
+   nagłówkach (bg-[#0a3a2a]) jako jasny tekst, w dark mode dalej pasują.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.dark { color-scheme: dark; }
+.dark body { background-color: #0b100e; }
+
+/* Tła — app shell, karty, sekcje */
+.dark .bg-\[\#fcfdfe\] { background-color: #0f1512; }
+.dark .bg-\[\#f8f9fa\] { background-color: #141a17; }
+.dark .bg-white { background-color: #1a201d; }
+.dark .bg-gray-50 { background-color: #161c19; }
+.dark .bg-gray-100 { background-color: #232a26; }
+.dark .bg-gray-200 { background-color: #2d352f; }
+.dark .bg-gray-300 { background-color: #3a443d; }
+.dark .hover\:bg-gray-50:hover { background-color: #1d2420; }
+.dark .hover\:bg-gray-100:hover { background-color: #262e29; }
+.dark .hover\:bg-gray-200:hover { background-color: #313a34; }
+
+/* Tła z przezroczystością (backdrop chips, np. przycisk home) */
+.dark .bg-white\/90 { background-color: rgba(26, 32, 29, 0.9); }
+.dark .bg-white\/80 { background-color: rgba(26, 32, 29, 0.8); }
+.dark .bg-white\/70 { background-color: rgba(26, 32, 29, 0.7); }
+
+/* Teksty ciemne → jasne */
+.dark .text-\[\#333\] { color: #e6e8e7; }
+.dark .text-gray-800 { color: #dfe2e0; }
+.dark .text-gray-700 { color: #ccd0cd; }
+.dark .text-gray-600 { color: #aeb4b0; }
+.dark .text-gray-500 { color: #939994; }
+.dark .text-gray-400 { color: #878e89; }
+
+/* Bordery i dividery */
+.dark .border-gray-50 { border-color: #202723; }
+.dark .border-gray-100 { border-color: #262d29; }
+.dark .border-gray-200 { border-color: #313933; }
+.dark .border-gray-300 { border-color: #3d4640; }
+.dark .border-white { border-color: #1a201d; }
+.dark .divide-gray-50 > :not([hidden]) ~ :not([hidden]) { border-color: #202723; }
+.dark .divide-gray-100 > :not([hidden]) ~ :not([hidden]) { border-color: #262d29; }
+
+/* Cienie — na ciemnym tle subtelniejsze, ciemniejsze */
+.dark .shadow-sm { --tw-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.35); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); }
+.dark .shadow-lg { --tw-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.45); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); }
+.dark .shadow-2xl { --tw-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.6); box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow); }
+
+/* Placeholdery w formularzach */
+.dark input::placeholder, .dark textarea::placeholder { color: #6b736e; }
+
+/* Brand: ciemnozielone nagłówki → jasna zieleń (na ciemnym tle nieczytelne).
+   WYJĄTEK: tekst na żółtych przyciskach (bg-[#fed33e]/[#F2C94C]) zostaje
+   ciemny — wyższa specyficzność (0,3,0) wygrywa z remapem (0,2,0). */
+.dark .text-\[\#0a3a2a\] { color: #7fd6b2; }
+.dark .bg-\[\#fed33e\].text-\[\#0a3a2a\] { color: #0a3a2a; }
+.dark .bg-\[\#F2C94C\].text-\[\#0a3a2a\] { color: #0a3a2a; }

@@ -42,7 +42,7 @@ const getArrowBg = (val: string) => {
 function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[], t: any }) {
   const [open, setOpen] = useState(false);
 
-  const renderDurchgang = (ends: any[], idx: number) => {
+  const renderDurchgang = (ends: any[], idx: number, startIndex: number) => {
     const sum = ends.reduce((acc, e) => acc + (e.total_sum ?? (e.arrows?.reduce((a: number, v: string) => a + (v === 'X' ? 10 : v === 'M' ? 0 : Number(v) || 0), 0) ?? 0)), 0);
     return (
       <div key={idx} className="flex-1 min-w-0">
@@ -61,7 +61,7 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
           <tbody>
             {ends.map((end: any, i: number) => (
               <tr key={i} className="border-t border-gray-100">
-                <td className="py-1 pl-1 font-black text-gray-500">P{i + 1}</td>
+                <td className="py-1 pl-1 font-black text-gray-500">P{startIndex + i + 1}</td>
                 <td className="py-1">
                   <div className="flex gap-0.5 justify-center flex-wrap">
                     {end.arrows?.map((a: string, j: number) => (
@@ -89,8 +89,8 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
       </button>
       {open && (
         <div className="px-3 pb-3 pt-1 flex flex-col gap-4 animate-fade-in">
-          {renderDurchgang(r1Ends, 0)}
-          {r2Ends.length > 0 && renderDurchgang(r2Ends, 1)}
+          {renderDurchgang(r1Ends, 0, 0)}
+          {r2Ends.length > 0 && renderDurchgang(r2Ends, 1, r1Ends.length)}
         </div>
       )}
     </div>

@@ -922,6 +922,10 @@ export const views = {
       historyRecord: "Passenprotokoll",
       tenSum: "Summe 10er",
       nineSum: "Summe 9er",
+      detailTable: "Passen-Detailtabelle",
+      durchgang: "Durchgang",
+      endLabel: "Passe",
+      sumLabel: "Summe",
       bio: {
         coachFirst: "Wenn dein Trainer es nicht anders sieht — hier ist unser Tipp für dich:",
         whatToDo: "Was du prüfen kannst",

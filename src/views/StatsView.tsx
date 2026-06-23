@@ -37,6 +37,66 @@ const getArrowBg = (val: string) => {
 };
 
 
+// Zwijana, szczegółowa tabela z rozbiciem na dwa Durchgänge (Runda 1 / Runda 2).
+// Standardowo zwinięta — rozwijana kliknięciem nagłówka.
+function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[], t: any }) {
+  const [open, setOpen] = useState(false);
+
+  const renderDurchgang = (ends: any[], idx: number) => {
+    const sum = ends.reduce((acc, e) => acc + (e.total_sum ?? (e.arrows?.reduce((a: number, v: string) => a + (v === 'X' ? 10 : v === 'M' ? 0 : Number(v) || 0), 0) ?? 0)), 0);
+    return (
+      <div key={idx} className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1.5 px-1">
+          <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('stats.cards.durchgang')} {idx + 1}</span>
+          <span className="text-[10px] font-black text-[#0a3a2a]">{sum}</span>
+        </div>
+        <table className="w-full border-collapse text-[10px]">
+          <thead>
+            <tr className="text-gray-400">
+              <th className="text-left font-black uppercase py-1 pl-1 w-8">{t('stats.cards.endLabel')}</th>
+              <th className="text-center font-black uppercase py-1">{t('scoringView.arrows')}</th>
+              <th className="text-right font-black uppercase py-1 pr-1 w-9">{t('stats.cards.sumLabel')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {ends.map((end: any, i: number) => (
+              <tr key={i} className="border-t border-gray-100">
+                <td className="py-1 pl-1 font-black text-gray-500">P{i + 1}</td>
+                <td className="py-1">
+                  <div className="flex gap-0.5 justify-center flex-wrap">
+                    {end.arrows?.map((a: string, j: number) => (
+                      <span key={j} className={`w-5 h-5 rounded-md flex items-center justify-center text-[9px] font-black ${getArrowBg(a)}`}>{a}</span>
+                    ))}
+                  </div>
+                </td>
+                <td className="py-1 pr-1 text-right font-black text-[#0a3a2a]">{end.total_sum ?? ''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 transition-colors">
+        <span className="text-[10px] font-black uppercase tracking-widest text-[#0a3a2a] flex items-center gap-1.5">
+          <span className="material-symbols-outlined text-[15px] text-emerald-600">table_chart</span>
+          {t('stats.cards.detailTable')}
+        </span>
+        <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>expand_more</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 flex flex-col gap-4 animate-fade-in">
+          {renderDurchgang(r1Ends, 0)}
+          {r2Ends.length > 0 && renderDurchgang(r2Ends, 1)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetType: string, activeEnd: number | null }) {
   const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
   const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot' || targetType === '3-Spot (Vertical)';
@@ -601,7 +661,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
             </div>
             <div className="w-[1.5px] h-[14px] bg-gray-200 rounded-full mx-2"></div>
             <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none pt-0.5 whitespace-nowrap">
-              STATY
+              {t('stats.title')}
             </h1>
           </div>
         </div>
@@ -772,6 +832,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                           <div><p className="text-[8px] font-bold text-gray-300 uppercase">{t('stats.cards.nineSum')}</p><p className="text-xl font-black">{totalHits.nine}</p></div>
                         </div>
                       </div>
+
+                      <RoundDetailTable r1Ends={r1Ends} r2Ends={r2Ends} t={t} />
 
                       <div className="space-y-2 relative">
                         <SessionTrend submittedEnds={currentEnds} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />

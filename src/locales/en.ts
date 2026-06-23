@@ -922,6 +922,10 @@ export const views = {
       historyRecord: "End log",
       tenSum: "Sum 10s",
       nineSum: "Sum 9s",
+      detailTable: "Detailed round table",
+      durchgang: "Round",
+      endLabel: "End",
+      sumLabel: "Sum",
       bio: {
         coachFirst: "Unless your coach sees it differently — here is our tip for you:",
         whatToDo: "What to check",

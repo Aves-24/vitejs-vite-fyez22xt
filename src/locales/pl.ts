@@ -922,6 +922,10 @@ export const views = {
       historyRecord: "Zapis serii",
       tenSum: "Suma 10s",
       nineSum: "Suma 9s",
+      detailTable: "Szczegółowa tabela serii",
+      durchgang: "Runda",
+      endLabel: "Seria",
+      sumLabel: "Suma",
       bio: {
         coachFirst: "Jeśli Twój trener nie widzi tego inaczej — oto nasza wskazówka dla Ciebie:",
         whatToDo: "Co możesz sprawdzić",

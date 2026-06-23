@@ -157,9 +157,14 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
   );
 }
 
-function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
+function TargetZoomModal({ rounds, initial, targetType, onClose, t }: any) {
+  const [roundIdx, setRoundIdx] = useState<number>(initial || 0);
   const [activeEnd, setActiveEnd] = useState<number | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
+
+  const round = rounds[roundIdx] || rounds[0];
+  const ends = round.ends;
+  const startIndex = round.startIndex || 0;
 
   // Heatmapa dla CAŁEJ rundy — zbieramy wszystkie kropki ze wszystkich serii
   // (ta sama logika i przestrzeń współrzędnych co w zakładce PRO Progress).
@@ -168,6 +173,9 @@ function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
     [ends]
   );
 
+  // Reset wyboru serii przy zmianie rundy (P-numery i sumy się przeliczają).
+  const switchRound = (idx: number) => { setRoundIdx(idx); setActiveEnd(null); };
+
   if (typeof document === 'undefined') return null;
   return createPortal(
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-center justify-center p-4 transition-opacity duration-300" onClick={onClose}>
@@ -175,16 +183,25 @@ function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 text-gray-500 rounded-full active:scale-90 transition-all z-10">
           <span className="material-symbols-outlined font-bold text-xl">close</span>
         </button>
-        <div className="text-center mb-4 w-full px-8 mt-2">
+        <div className="text-center mb-3 w-full px-8 mt-2">
            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">{t('stats.zoom.title', 'Podgląd Rozrzutu')}</span>
-           <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{roundTitle}</h3>
+           <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{round.title}</h3>
         </div>
+
+        {/* PRZEŁĄCZNIK RUND — zmiana rundy bez zamykania okna */}
+        {rounds.length > 1 && (
+          <div className="flex gap-1.5 mb-3 shrink-0">
+            {rounds.map((r: any, i: number) => (
+              <button key={i} onClick={() => switchRound(i)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95 ${roundIdx === i ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-md' : 'bg-white text-gray-400 border-gray-200'}`}>{r.title}</button>
+            ))}
+          </div>
+        )}
 
         {/* PRZEŁĄCZNIK HEATMAPY — włącz/wyłącz termowizyjny rozrzut tej rundy */}
         <button
           onClick={() => setShowHeatmap(v => !v)}
           disabled={heatDots.length < 2}
-          className={`mb-4 flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border active:scale-95 disabled:opacity-30 ${showHeatmap ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
+          className={`mb-3 flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border active:scale-95 disabled:opacity-30 ${showHeatmap ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
         >
           <span className="material-symbols-outlined text-[15px]">{showHeatmap ? 'whatshot' : 'local_fire_department'}</span>
           {t('stats.zoom.heatmap', 'Heatmapa')}
@@ -195,9 +212,12 @@ function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
 
         {!showHeatmap && (
           <div className="flex gap-1.5 mb-4 justify-center w-full overflow-x-auto hide-scrollbar px-2 shrink-0">
-            <button onClick={() => setActiveEnd(null)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all ${activeEnd === null ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>{t('stats.zoom.all', 'WSZYSTKIE')}</button>
-            {ends.map((_: any, i: number) => (
-              <button key={i} onClick={() => setActiveEnd(i)} className={`w-10 py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center ${activeEnd === i ? 'bg-[#fed33e] text-[#0a3a2a] shadow-md border border-[#e5bd38]' : 'bg-gray-100 text-gray-500 active:bg-gray-200 border border-transparent'}`}>P{i + 1}</button>
+            <button onClick={() => setActiveEnd(null)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all self-start ${activeEnd === null ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>{t('stats.zoom.all', 'WSZYSTKIE')}</button>
+            {ends.map((end: any, i: number) => (
+              <button key={i} onClick={() => setActiveEnd(i)} className={`w-10 py-1.5 rounded-xl text-[10px] font-black transition-all flex flex-col items-center justify-center leading-tight ${activeEnd === i ? 'bg-[#fed33e] text-[#0a3a2a] shadow-md border border-[#e5bd38]' : 'bg-gray-100 text-gray-500 active:bg-gray-200 border border-transparent'}`}>
+                <span>P{startIndex + i + 1}</span>
+                <span className="text-[9px] font-black opacity-70">{end.total_sum ?? end.arrows?.reduce((a: number, v: string) => a + (v === 'X' ? 10 : v === 'M' ? 0 : Number(v) || 0), 0) ?? 0}</span>
+              </button>
             ))}
           </div>
         )}
@@ -884,14 +904,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({title:`${t('scoring.round')} 1`, ends:r1Ends, targetType: displayTargetType, t:t})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r1Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r1Hits.x}</span><span>10: {r1Hits.ten}</span><span>9: {r1Hits.nine}</span>
                           </div>
                         </div>
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({title:`${t('scoring.round')} 2`, ends:r2Ends, targetType: displayTargetType, t:t})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>
@@ -976,7 +996,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         </>
       )}
 
-      {zoomedRoundData && <TargetZoomModal roundTitle={zoomedRoundData.title} ends={zoomedRoundData.ends} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
+      {zoomedRoundData && <TargetZoomModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
 
       {/* PSYCHOLOGICZNY MODAL USUWANIA */}
       {showDeleteModal && typeof document !== 'undefined' && createPortal(

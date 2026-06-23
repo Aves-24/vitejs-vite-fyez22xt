@@ -1035,7 +1035,8 @@ export const views = {
     },
     zoom: {
       title: "Shot Grouping Analysis",
-      all: "ALL"
+      all: "ALL",
+      heatmap: "Heatmap"
     }
   },
   coachDashboard: {

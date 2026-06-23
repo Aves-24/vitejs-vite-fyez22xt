@@ -9,6 +9,7 @@ import ProStatsView from '../components/ProStatsView';
 import ExportPanel from '../components/ExportPanel';
 import TechSessionCard from '../components/TechSessionCard';
 import BiomechCard from '../components/BiomechCard';
+import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 
@@ -158,6 +159,15 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
 
 function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
   const [activeEnd, setActiveEnd] = useState<number | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
+
+  // Heatmapa dla CAŁEJ rundy — zbieramy wszystkie kropki ze wszystkich serii
+  // (ta sama logika i przestrzeń współrzędnych co w zakładce PRO Progress).
+  const heatDots = useMemo(
+    () => ends.flatMap((end: any) => (end.dots || []).filter((d: any) => d.x != null && d.y != null)),
+    [ends]
+  );
+
   if (typeof document === 'undefined') return null;
   return createPortal(
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-center justify-center p-4 transition-opacity duration-300" onClick={onClose}>
@@ -165,19 +175,37 @@ function TargetZoomModal({ roundTitle, ends, targetType, onClose, t }: any) {
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 text-gray-500 rounded-full active:scale-90 transition-all z-10">
           <span className="material-symbols-outlined font-bold text-xl">close</span>
         </button>
-        <div className="text-center mb-6 w-full px-8 mt-2">
+        <div className="text-center mb-4 w-full px-8 mt-2">
            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">{t('stats.zoom.title', 'Podgląd Rozrzutu')}</span>
            <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{roundTitle}</h3>
         </div>
-        <div className="flex gap-1.5 mb-6 justify-center w-full overflow-x-auto hide-scrollbar px-2 shrink-0">
-          <button onClick={() => setActiveEnd(null)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all ${activeEnd === null ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>{t('stats.zoom.all', 'WSZYSTKIE')}</button>
-          {ends.map((_: any, i: number) => (
-            <button key={i} onClick={() => setActiveEnd(i)} className={`w-10 py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center ${activeEnd === i ? 'bg-[#fed33e] text-[#0a3a2a] shadow-md border border-[#e5bd38]' : 'bg-gray-100 text-gray-500 active:bg-gray-200 border border-transparent'}`}>P{i + 1}</button>
-          ))}
-        </div>
-        <div className="flex-1 w-full flex flex-col items-center justify-start bg-gray-50 rounded-2xl border border-gray-100 p-2 overflow-hidden">
+
+        {/* PRZEŁĄCZNIK HEATMAPY — włącz/wyłącz termowizyjny rozrzut tej rundy */}
+        <button
+          onClick={() => setShowHeatmap(v => !v)}
+          disabled={heatDots.length < 2}
+          className={`mb-4 flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border active:scale-95 disabled:opacity-30 ${showHeatmap ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
+        >
+          <span className="material-symbols-outlined text-[15px]">{showHeatmap ? 'whatshot' : 'local_fire_department'}</span>
+          {t('stats.zoom.heatmap', 'Heatmapa')}
+          <span className={`ml-1 w-7 h-3.5 rounded-full relative transition-colors ${showHeatmap ? 'bg-[#fed33e]' : 'bg-gray-300'}`}>
+            <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${showHeatmap ? 'left-[15px]' : 'left-0.5'}`} />
+          </span>
+        </button>
+
+        {!showHeatmap && (
+          <div className="flex gap-1.5 mb-4 justify-center w-full overflow-x-auto hide-scrollbar px-2 shrink-0">
+            <button onClick={() => setActiveEnd(null)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all ${activeEnd === null ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>{t('stats.zoom.all', 'WSZYSTKIE')}</button>
+            {ends.map((_: any, i: number) => (
+              <button key={i} onClick={() => setActiveEnd(i)} className={`w-10 py-2 rounded-xl text-[10px] font-black transition-all flex items-center justify-center ${activeEnd === i ? 'bg-[#fed33e] text-[#0a3a2a] shadow-md border border-[#e5bd38]' : 'bg-gray-100 text-gray-500 active:bg-gray-200 border border-transparent'}`}>P{i + 1}</button>
+            ))}
+          </div>
+        )}
+        <div className="flex-1 w-full flex flex-col items-center justify-center bg-gray-50 rounded-2xl border border-gray-100 p-2 overflow-hidden">
           <div className="w-full pt-4">
-            <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} />
+            {showHeatmap
+              ? <HeatmapTarget dots={heatDots} targetType={targetType} />
+              : <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} />}
           </div>
         </div>
       </div>

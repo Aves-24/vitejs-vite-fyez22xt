@@ -1035,7 +1035,8 @@ export const views = {
     },
     zoom: {
       title: "Fokusanalyse",
-      all: "ALLE"
+      all: "ALLE",
+      heatmap: "Heatmap"
     }
   },
   coachDashboard: {

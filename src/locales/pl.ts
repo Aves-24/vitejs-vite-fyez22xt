@@ -1035,7 +1035,8 @@ export const views = {
     },
     zoom: {
       title: "Analiza skupienia",
-      all: "WSZYSTKIE"
+      all: "WSZYSTKIE",
+      heatmap: "Heatmapa"
     }
   },
   coachDashboard: {

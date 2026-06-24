@@ -4,6 +4,8 @@ import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, getDoc, se
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { createNotification } from '../services/notificationService';
+import { buildCoachLogNotification } from '../utils/notificationTypes';
 import TopicPicker from './TopicPicker';
 
 // --- TYPY WPISÓW ---
@@ -165,6 +167,15 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
       setType('observation');
       setLogTopics([]);
       setIsAdding(false);
+
+      // Powiadomienie u ucznia (dzwonek na Home) — trener dodał wpis w Tagebuch.
+      // Idempotentne po id wpisu; best-effort.
+      const { id, payload } = buildCoachLogNotification({
+        entryId: docRef.id,
+        coachId: currentUserId,
+        coachName: authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
+      });
+      createNotification(studentId, id, payload).catch(() => { /* best effort */ });
     } catch (e) {
       console.error('CoachLog: błąd zapisu', e);
     }

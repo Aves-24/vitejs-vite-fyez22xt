@@ -7,6 +7,7 @@ import type { Timestamp } from 'firebase/firestore';
 export type NotificationType =
   | 'message'
   | 'coach_note'
+  | 'coach_log'
   | 'coach_plan'
   | 'announcement'
   | 'coach_request';
@@ -45,6 +46,7 @@ export type NotificationPayload = Omit<NotificationDoc, 'createdAt' | 'readAt'>;
 export const PRIORITY_ORDER: NotificationType[] = [
   'message',
   'coach_note',
+  'coach_log',
   'coach_plan',
   'announcement',
   'coach_request',
@@ -104,6 +106,28 @@ export function buildCoachNoteNotification(params: {
       navigateTo: 'MY_COACH',
       targetTab: 'tips',                 // "Anmerkungen" tab in MyCoachView
       extraData: params.sessionId,
+    },
+  };
+}
+
+export function buildCoachLogNotification(params: {
+  entryId: string;            // coachLog doc id
+  coachName?: string;
+  coachId?: string;
+}): { id: string; payload: NotificationPayload } {
+  return {
+    id: notificationId('coach_log', params.entryId),
+    payload: {
+      type: 'coach_log',
+      refId: params.entryId,
+      titleKey: 'announcements.newCoachLog',
+      senderName: params.coachName,
+      senderId: params.coachId,
+      icon: 'menu_book',
+      iconColor: 'text-amber-500',
+      navigateTo: 'MY_COACH',
+      targetTab: 'diary',                // "Tagebuch" tab in MyCoachView
+      extraData: params.entryId,
     },
   };
 }

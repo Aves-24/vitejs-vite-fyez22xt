@@ -388,6 +388,7 @@ export const views = {
     newAnnouncement: "Neue Ankündigung",
     newCoachPlan: "Neuer Plan vom Trainer",
     newCoachNote: "Neue Trainings-Anmerkung",
+    newCoachLog: "Neuer Eintrag im Tagebuch",
     newCoachRequest: "Neue Trainer-Bewerbung"
   },
   battleHistory: {

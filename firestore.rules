@@ -311,7 +311,7 @@ service cloud.firestore {
       allow read: if isSelf(uid) || isAdmin();
 
       allow create: if isSignedIn()
-        && request.resource.data.type in ['message', 'coach_note', 'coach_plan', 'announcement', 'coach_request']
+        && request.resource.data.type in ['message', 'coach_note', 'coach_log', 'coach_plan', 'announcement', 'coach_request']
         && request.resource.data.refId is string
         && request.resource.data.refId.size() > 0
         && request.resource.data.refId.size() <= 200
@@ -331,6 +331,10 @@ service cloud.firestore {
           ||
           // coach_note: sender is coach of recipient (note on student's training session)
           (request.resource.data.type == 'coach_note'
+           && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []))
+          ||
+          // coach_log: sender is coach of recipient (entry in shared Trainer-Tagebuch)
+          (request.resource.data.type == 'coach_log'
            && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []))
           ||
           // coach_plan: sender is coach of recipient

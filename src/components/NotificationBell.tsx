@@ -16,6 +16,7 @@ interface Props {
 const BADGE_BG: Record<NotificationType, string> = {
   message: 'bg-green-500',
   coach_note: 'bg-blue-500',
+  coach_log: 'bg-amber-500',
   coach_plan: 'bg-blue-500',
   announcement: 'bg-red-500',
   coach_request: 'bg-orange-500',

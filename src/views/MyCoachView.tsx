@@ -50,7 +50,6 @@ function normalizeAcks(raw: any): AckState {
 function loadCachedAcks(uid: string): AckState {
   try {
     const cached = localStorage.getItem(ackedCacheKey(uid));
-    console.log('[ACK-DEBUG] loadCachedAcks raw for', uid, '=', cached);
     return cached ? normalizeAcks(JSON.parse(cached)) : EMPTY_ACKS;
   } catch { return EMPTY_ACKS; }
 }
@@ -155,16 +154,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
 
   // Zapis stanu: localStorage (szybki cache) + Firestore (źródło prawdy).
   const persistAcks = useCallback((next: AckState) => {
-    try {
-      localStorage.setItem(ackedCacheKey(userId), JSON.stringify(next));
-      console.log('[ACK-DEBUG] localStorage WRITE ok', JSON.stringify(next));
-    } catch (e) { console.error('[ACK-DEBUG] localStorage WRITE FAILED', e); }
+    try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(next)); } catch { /* ignore */ }
     const field: Record<string, string[]> = { ...next.map };
     if (next.legacy.length) field.legacy = next.legacy;
-    console.log('[ACK-DEBUG] firestore WRITE attempt', JSON.stringify(field));
-    updateDoc(doc(db, 'users', userId), { acknowledgedItems: field })
-      .then(() => console.log('[ACK-DEBUG] firestore WRITE ok'))
-      .catch((e) => console.error('[ACK-DEBUG] firestore WRITE FAILED', e?.code, e?.message, e));
+    updateDoc(doc(db, 'users', userId), { acknowledgedItems: field }).catch(() => { /* ignore */ });
   }, [userId]);
 
   const handleAcknowledge = useCallback((panel: AckPanel, id: string) => {
@@ -196,19 +189,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         const folded = legacy.filter(x => existing.has(x));
         const mergedPanel = [...new Set([...prev.map[panel], ...folded])].filter(x => existing.has(x));
         if (folded.length) legacy = legacy.filter(x => !existing.has(x));
-        if (!sameArr(mergedPanel, prev.map[panel])) {
-          console.warn('[ACK-DEBUG] reconcile PRUNE', panel,
-            'before=', JSON.stringify(prev.map[panel]),
-            'after=', JSON.stringify(mergedPanel),
-            'reported=', JSON.stringify(ids));
-          map[panel] = mergedPanel; changed = true;
-        }
+        if (!sameArr(mergedPanel, prev.map[panel])) { map[panel] = mergedPanel; changed = true; }
       }
       const allReported = panels.every(p => reported[p] !== undefined);
-      if (allReported && legacy.length) {
-        console.warn('[ACK-DEBUG] reconcile CLEAR legacy', JSON.stringify(legacy));
-        legacy = []; changed = true;
-      }
+      if (allReported && legacy.length) { legacy = []; changed = true; }
       if (!changed) return prev;
       const next: AckState = { map, legacy };
       persistAcks(next);
@@ -239,7 +223,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         if (!userDoc.exists()) { markAcksLoaded(); setIsLoading(false); return; }
 
         const data = userDoc.data();
-        console.log('[ACK-DEBUG] firestore READ acknowledgedItems =', JSON.stringify(data.acknowledgedItems));
         const remote = normalizeAcks(data.acknowledgedItems);
         setAckState(prev => {
           const merged: AckState = {

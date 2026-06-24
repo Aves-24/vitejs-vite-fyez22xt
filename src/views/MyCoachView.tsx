@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, orderBy, limit, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -8,8 +8,52 @@ import StudentMessageSheet from '../components/StudentMessageSheet';
 import TopicPicker from '../components/TopicPicker';
 import TopicFeedTab from '../components/TopicFeedTab';
 
-const MAX_ACKED = 50;
 const ackedCacheKey = (uid: string) => `grotX_acked_${uid}`;
+
+// --- STAN „PRZECZYTANE" (per-panel) ---
+// Każdy panel (Plan / Tagebuch / Anmerkungen) ma własną listę potwierdzonych
+// ID wpisów. Brak wspólnego limitu => nic widocznego nie jest nigdy eksmitowane.
+// `legacy` to ID ze starego, płaskiego formatu (string[]) — przypisywane do
+// właściwego panelu przy pierwszym załadowaniu (po istnieniu wpisu).
+type AckPanel = 'plan' | 'diary' | 'notes';
+interface AckState {
+  map: Record<AckPanel, string[]>;
+  legacy: string[];
+}
+
+const EMPTY_ACKS: AckState = { map: { plan: [], diary: [], notes: [] }, legacy: [] };
+
+function sameArr(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+// Normalizuje wartość z Firestore/localStorage do AckState.
+// Akceptuje: nowy format { map, legacy }, surową mapę { plan, diary, notes }
+// oraz stary płaski string[] (→ legacy).
+function normalizeAcks(raw: any): AckState {
+  if (Array.isArray(raw)) {
+    return { map: { plan: [], diary: [], notes: [] }, legacy: [...new Set(raw as string[])] };
+  }
+  if (raw && typeof raw === 'object') {
+    const src = raw.map && typeof raw.map === 'object' ? raw.map : raw;
+    const arr = (v: any): string[] => (Array.isArray(v) ? v : []);
+    return {
+      map: { plan: arr(src.plan), diary: arr(src.diary), notes: arr(src.notes) },
+      legacy: arr(raw.legacy),
+    };
+  }
+  return { map: { plan: [], diary: [], notes: [] }, legacy: [] };
+}
+
+function loadCachedAcks(uid: string): AckState {
+  try {
+    const cached = localStorage.getItem(ackedCacheKey(uid));
+    console.log('[ACK-DEBUG] loadCachedAcks raw for', uid, '=', cached);
+    return cached ? normalizeAcks(JSON.parse(cached)) : EMPTY_ACKS;
+  } catch { return EMPTY_ACKS; }
+}
 
 interface MyCoachViewProps {
   userId: string;
@@ -94,13 +138,97 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     onClearPendingTab?.();
   }, [pendingInitialTab]);
 
-  const [acknowledgedList, setAcknowledgedList] = useState<string[]>(() => {
+  const [ackState, setAckState] = useState<AckState>(() => loadCachedAcks(userId));
+  const [acksLoaded, setAcksLoaded] = useState(false);
+  const acksLoadedRef = useRef(false);
+  // Ostatnio załadowane ID wpisów zgłoszone przez każdy panel — baza do
+  // przycinania martwych potwierdzeń i migracji `legacy`.
+  const entriesRef = useRef<Partial<Record<AckPanel, string[]>>>({});
+
+  // Zbiory potwierdzonych ID per panel. legacy dorzucamy do każdego panelu —
+  // jest to bezpieczne, bo ID wpisów są globalnie unikalne (ID Tagebuch nie
+  // trafi na zdarzenie Plan). Stabilna tożsamość (useMemo) chroni efekty dzieci
+  // przed pętlą przeliczania.
+  const planAckIds = useMemo(() => new Set([...ackState.map.plan, ...ackState.legacy]), [ackState]);
+  const diaryAckIds = useMemo(() => new Set([...ackState.map.diary, ...ackState.legacy]), [ackState]);
+  const notesAckIds = useMemo(() => new Set([...ackState.map.notes, ...ackState.legacy]), [ackState]);
+
+  // Zapis stanu: localStorage (szybki cache) + Firestore (źródło prawdy).
+  const persistAcks = useCallback((next: AckState) => {
     try {
-      const cached = localStorage.getItem(ackedCacheKey(userId));
-      return cached ? JSON.parse(cached) : [];
-    } catch { return []; }
-  });
-  const acknowledgedIds = new Set(acknowledgedList);
+      localStorage.setItem(ackedCacheKey(userId), JSON.stringify(next));
+      console.log('[ACK-DEBUG] localStorage WRITE ok', JSON.stringify(next));
+    } catch (e) { console.error('[ACK-DEBUG] localStorage WRITE FAILED', e); }
+    const field: Record<string, string[]> = { ...next.map };
+    if (next.legacy.length) field.legacy = next.legacy;
+    console.log('[ACK-DEBUG] firestore WRITE attempt', JSON.stringify(field));
+    updateDoc(doc(db, 'users', userId), { acknowledgedItems: field })
+      .then(() => console.log('[ACK-DEBUG] firestore WRITE ok'))
+      .catch((e) => console.error('[ACK-DEBUG] firestore WRITE FAILED', e?.code, e?.message, e));
+  }, [userId]);
+
+  const handleAcknowledge = useCallback((panel: AckPanel, id: string) => {
+    setAckState(prev => {
+      const map = { ...prev.map, [panel]: [id, ...prev.map[panel].filter(x => x !== id)] };
+      const legacy = prev.legacy.filter(x => x !== id);
+      const next: AckState = { map, legacy };
+      persistAcks(next);
+      return next;
+    });
+  }, [persistAcks]);
+
+  // Uzgadnia stan z realnie istniejącymi wpisami: dorzuca pasujące legacy do
+  // właściwego panelu, usuwa potwierdzenia wpisów, które już nie istnieją, a gdy
+  // wszystkie panele się zgłosiły — kasuje resztki legacy. Działa dopiero po
+  // załadowaniu z Firestore, by nie nadpisać zdalnych potwierdzeń pustką.
+  const reconcile = useCallback(() => {
+    if (!acksLoadedRef.current) return;
+    setAckState(prev => {
+      const reported = entriesRef.current;
+      const panels: AckPanel[] = ['plan', 'diary', 'notes'];
+      let legacy = prev.legacy;
+      const map: AckState['map'] = { ...prev.map };
+      let changed = false;
+      for (const panel of panels) {
+        const ids = reported[panel];
+        if (!ids) continue;
+        const existing = new Set(ids);
+        const folded = legacy.filter(x => existing.has(x));
+        const mergedPanel = [...new Set([...prev.map[panel], ...folded])].filter(x => existing.has(x));
+        if (folded.length) legacy = legacy.filter(x => !existing.has(x));
+        if (!sameArr(mergedPanel, prev.map[panel])) {
+          console.warn('[ACK-DEBUG] reconcile PRUNE', panel,
+            'before=', JSON.stringify(prev.map[panel]),
+            'after=', JSON.stringify(mergedPanel),
+            'reported=', JSON.stringify(ids));
+          map[panel] = mergedPanel; changed = true;
+        }
+      }
+      const allReported = panels.every(p => reported[p] !== undefined);
+      if (allReported && legacy.length) {
+        console.warn('[ACK-DEBUG] reconcile CLEAR legacy', JSON.stringify(legacy));
+        legacy = []; changed = true;
+      }
+      if (!changed) return prev;
+      const next: AckState = { map, legacy };
+      persistAcks(next);
+      return next;
+    });
+  }, [persistAcks]);
+
+  const reportEntries = useCallback((panel: AckPanel, ids: string[]) => {
+    entriesRef.current[panel] = ids;
+    reconcile();
+  }, [reconcile]);
+
+  // Wywoływane po wczytaniu potwierdzeń z Firestore. Odblokowuje renderowanie
+  // podziału przeczytane/nieprzeczytane i uruchamia uzgodnienie dla paneli,
+  // które zgłosiły swoje wpisy wcześniej (przed zakończeniem ładowania).
+  const markAcksLoaded = useCallback(() => {
+    acksLoadedRef.current = true;
+    setAcksLoaded(true);
+    reconcile();
+  }, [reconcile]);
 
   useEffect(() => {
     const fetchCoaches = async () => {
@@ -108,15 +236,24 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       setIsLoading(true);
       try {
         const userDoc = await getDoc(doc(db, 'users', userId));
-        if (!userDoc.exists()) { setIsLoading(false); return; }
+        if (!userDoc.exists()) { markAcksLoaded(); setIsLoading(false); return; }
 
         const data = userDoc.data();
-        const remote: string[] = data.acknowledgedItems || [];
-        setAcknowledgedList(prev => {
-          const merged = [...new Set([...prev, ...remote])].slice(0, MAX_ACKED);
+        console.log('[ACK-DEBUG] firestore READ acknowledgedItems =', JSON.stringify(data.acknowledgedItems));
+        const remote = normalizeAcks(data.acknowledgedItems);
+        setAckState(prev => {
+          const merged: AckState = {
+            map: {
+              plan: [...new Set([...prev.map.plan, ...remote.map.plan])],
+              diary: [...new Set([...prev.map.diary, ...remote.map.diary])],
+              notes: [...new Set([...prev.map.notes, ...remote.map.notes])],
+            },
+            legacy: [...new Set([...prev.legacy, ...remote.legacy])],
+          };
           try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(merged)); } catch { /* ignore */ }
           return merged;
         });
+        markAcksLoaded();
 
         const coachIds: string[] = data.coaches || [];
         if (coachIds.length === 0) { setCoaches([]); setIsLoading(false); return; }
@@ -146,6 +283,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
         setUnreadCoachIds(unread);
       } catch (e) {
         console.error('MyCoachView: błąd pobierania trenerów', e);
+        markAcksLoaded();
       }
       setIsLoading(false);
     };
@@ -178,6 +316,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
           });
         });
         setSessionNotes(withNote);
+        reportEntries('notes', withNote.map(s => s.id));
       } catch (e) {
         console.error('MyCoachView: błąd pobierania notatek sesji', e);
       }
@@ -212,17 +351,6 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
       setPrivateNotesLoading(false);
     };
     fetchPrivateNotes();
-  }, [userId]);
-
-  const handleAcknowledge = useCallback((id: string) => {
-    let toSave: string[] = [];
-    setAcknowledgedList(prev => {
-      const updated = [id, ...prev.filter(x => x !== id)].slice(0, MAX_ACKED);
-      toSave = updated;
-      return updated;
-    });
-    try { localStorage.setItem(ackedCacheKey(userId), JSON.stringify(toSave)); } catch { /* ignore */ }
-    updateDoc(doc(db, 'users', userId), { acknowledgedItems: toSave }).catch(() => { /* ignore */ });
   }, [userId]);
 
   const handleAddNote = async () => {
@@ -297,8 +425,8 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
     setConfirmDeleteId(null);
   };
 
-  const unreadNotes = sessionNotes.filter(s => !acknowledgedIds.has(s.id));
-  const readNotes = sessionNotes.filter(s => acknowledgedIds.has(s.id)).slice(0, 10);
+  const unreadNotes = sessionNotes.filter(s => !notesAckIds.has(s.id));
+  const readNotes = sessionNotes.filter(s => notesAckIds.has(s.id)).slice(0, 10);
 
   const formatNoteDate = (ts: number) => {
     const d = new Date(ts);
@@ -388,20 +516,20 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
               <h2 className="text-[11px] font-black text-gray-400 uppercase tracking-widest px-1 mb-2">{t('myCoach.groupCoach')}</h2>
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-50 overflow-hidden">
                 <DashRow
-                  section="plan" icon="event" accent="bg-[#0a3a2a]" badge={planCount} locked={!hasCoach}
+                  section="plan" icon="event" accent="bg-[#0a3a2a]" badge={acksLoaded ? planCount : 0} locked={!hasCoach}
                   title={t('myCoach.tabPlan')}
                   subtitle={!hasCoach ? t('myCoach.lockedHint')
                     : latestPlanEvent ? `${latestPlanEvent.title}${latestPlanEvent.date ? ` · ${latestPlanEvent.date}` : ''}`
                     : t('myCoach.noUpcoming')}
                 />
                 <DashRow
-                  section="diary" icon="edit_note" accent="bg-amber-500" badge={diaryCount} locked={!hasCoach}
+                  section="diary" icon="edit_note" accent="bg-amber-500" badge={acksLoaded ? diaryCount : 0} locked={!hasCoach}
                   title={t('myCoach.tabDiary')}
                   subtitle={!hasCoach ? t('myCoach.lockedHint')
                     : latestDiaryEntry ? trunc(latestDiaryEntry.text) : t('myCoach.noEntries')}
                 />
                 <DashRow
-                  section="tips" icon="sports" accent="bg-blue-600" badge={unreadNotes.length} locked={!hasCoach}
+                  section="tips" icon="sports" accent="bg-blue-600" badge={acksLoaded ? unreadNotes.length : 0} locked={!hasCoach}
                   title={t('myCoach.tabTips')}
                   subtitle={!hasCoach ? t('myCoach.lockedHint')
                     : tip ? trunc(tip.coachNote) : t('myCoach.noTips')}
@@ -472,8 +600,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                   compact={false}
                   onCountChange={setPlanCount}
                   onLatestEvent={setLatestPlanEvent}
-                  acknowledgedIds={acknowledgedIds}
-                  onAcknowledge={handleAcknowledge}
+                  acknowledgedIds={planAckIds}
+                  onAcknowledge={(id) => handleAcknowledge('plan', id)}
+                  acksReady={acksLoaded}
+                  onEntriesLoaded={(ids) => reportEntries('plan', ids)}
                 />
                 <div className="text-center mt-4">
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">
@@ -500,8 +630,10 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                 mode="student"
                 onCountChange={setDiaryCount}
                 onLatestEntry={setLatestDiaryEntry}
-                acknowledgedIds={acknowledgedIds}
-                onAcknowledge={handleAcknowledge}
+                acknowledgedIds={diaryAckIds}
+                onAcknowledge={(id) => handleAcknowledge('diary', id)}
+                acksReady={acksLoaded}
+                onEntriesLoaded={(ids) => reportEntries('diary', ids)}
               />
             ) : (
               <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
@@ -518,7 +650,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
             <span className="material-symbols-outlined text-[14px] text-blue-600 mt-px shrink-0">info</span>
             <p className="text-[10px] font-semibold text-blue-700 leading-snug">{t('myCoach.tipsDesc')}</p>
           </div>
-          {sessionNotesLoading ? (
+          {(sessionNotesLoading || !acksLoaded) ? (
             <div className="text-center py-10">
               <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('myCoach.loading')}</span>
             </div>
@@ -572,7 +704,7 @@ export default function MyCoachView({ userId, onBack, onNavigateToSettings, onNa
                             </div>
                           </button>
                           <button
-                            onClick={() => handleAcknowledge(s.id)}
+                            onClick={() => handleAcknowledge('notes', s.id)}
                             className="shrink-0 w-10 flex items-center justify-center self-stretch text-gray-300 hover:text-emerald-500 active:scale-90 transition-all"
                             title={t('myCoach.acknowledged')}
                           >

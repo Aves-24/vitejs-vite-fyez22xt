@@ -34,6 +34,11 @@ interface CoachPlanBannerProps {
   onLatestEvent?: (event: CoachPlanEvent | null) => void;
   acknowledgedIds?: Set<string>;
   onAcknowledge?: (id: string) => void;
+  // True once acknowledgements have loaded from Firestore — gates rendering so
+  // events don't flash as unread before the read-state is known.
+  acksReady?: boolean;
+  // Reports IDs of currently-loaded events so the parent can prune stale acks.
+  onEntriesLoaded?: (ids: string[]) => void;
 }
 
 export interface CoachPlanEvent {
@@ -46,7 +51,7 @@ export interface CoachPlanEvent {
   description?: string;
 }
 
-export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange, onLatestEvent, acknowledgedIds, onAcknowledge }: CoachPlanBannerProps) {
+export default function CoachPlanBanner({ userId, compact = false, onClick, onCountChange, onLatestEvent, acknowledgedIds, onAcknowledge, acksReady, onEntriesLoaded }: CoachPlanBannerProps) {
   const { t } = useTranslation();
   const [events, setEvents] = useState<CoachPlanEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,9 +95,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
           : sorted.filter(ev => ev.date >= todayStr);
 
         setEvents(filtered);
-        const visibleCount = filtered.filter(ev => !acknowledgedIds?.has(ev.id)).length;
-        onCountChange?.(compact ? filtered.length : visibleCount);
-        onLatestEvent?.(filtered[0] || null);
+        onEntriesLoaded?.(filtered.map(ev => ev.id));
       } catch (e) {
         console.error('CoachPlanBanner: błąd pobierania', e);
       }
@@ -101,7 +104,15 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
     fetchPlan();
   }, [userId, compact]);
 
-  if (isLoading || events.length === 0) return null;
+  // Licznik + podgląd reaktywnie względem potwierdzeń (nie tylko przy pobraniu).
+  useEffect(() => {
+    if (isLoading) return;
+    const visibleCount = events.filter(ev => !acknowledgedIds?.has(ev.id)).length;
+    onCountChange?.(compact ? events.length : visibleCount);
+    onLatestEvent?.(events[0] || null);
+  }, [events, acknowledgedIds, isLoading, compact]);
+
+  if (isLoading || acksReady === false || events.length === 0) return null;
 
   const { todayStr, tomorrowStr } = getDateStrings();
 

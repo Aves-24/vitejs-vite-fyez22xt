@@ -33,6 +33,13 @@ interface CoachLogPanelProps {
   onLatestEntry?: (entry: CoachLogLatestEntry | null) => void;
   acknowledgedIds?: Set<string>;
   onAcknowledge?: (id: string) => void;
+  // True once the acknowledgement state has been loaded from Firestore.
+  // While false we must NOT paint entries as unread (avoids the "everything
+  // unread" flash when localStorage was evicted).
+  acksReady?: boolean;
+  // Reports the IDs of all currently-loaded entries so the parent can prune
+  // stale acknowledgements (entries the coach deleted) and migrate legacy IDs.
+  onEntriesLoaded?: (ids: string[]) => void;
 }
 
 // Konfiguracja typów wpisu — kolor, ikona, etykieta
@@ -45,7 +52,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 400;
 
-export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, onLatestEntry, acknowledgedIds, onAcknowledge }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, onLatestEntry, acknowledgedIds, onAcknowledge, acksReady, onEntriesLoaded }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -90,10 +97,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
           };
         });
         setEntries(list);
-        const visibleCount = list.filter(e => !acknowledgedIds?.has(e.id)).length;
-        onCountChange?.(visibleCount);
-        const first = list.find(e => !acknowledgedIds?.has(e.id)) || list[0] || null;
-        onLatestEntry?.(first ? { text: first.text, type: first.type, authorName: first.authorName } : null);
+        onEntriesLoaded?.(list.map(e => e.id));
       } catch (e) {
         console.error('CoachLog: błąd pobierania', e);
       } finally {
@@ -102,6 +106,17 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
     };
     fetchEntries();
   }, [studentId]);
+
+  // --- LICZNIK + PODGLĄD (reaktywne względem potwierdzeń) ---
+  // Liczone na każdej zmianie entries/acknowledgedIds, a nie tylko przy pobraniu —
+  // dzięki temu badge nie pokazuje zawyżonej liczby, zanim dociągną się potwierdzenia.
+  useEffect(() => {
+    if (isLoading) return;
+    const visibleCount = entries.filter(e => !acknowledgedIds?.has(e.id)).length;
+    onCountChange?.(visibleCount);
+    const first = entries.find(e => !acknowledgedIds?.has(e.id)) || entries[0] || null;
+    onLatestEntry?.(first ? { text: first.text, type: first.type, authorName: first.authorName } : null);
+  }, [entries, acknowledgedIds, isLoading]);
 
   // --- POBIERANIE WŁASNEGO IMIENIA (tylko mode='coach') ---
   useEffect(() => {
@@ -295,7 +310,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
 
       {/* LISTA WPISÓW */}
       <div className="divide-y divide-gray-50">
-        {isLoading ? (
+        {(isLoading || acksReady === false) ? (
           <div className="p-6 text-center">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('coachLog.loading', { defaultValue: 'Lädt…' })}</span>
           </div>

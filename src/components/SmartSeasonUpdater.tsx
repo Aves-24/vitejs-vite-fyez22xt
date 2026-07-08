@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from '../config/archeryRules';
+import { loadPrivateProfile, getAgeCategory } from '../utils/privateProfile';
 import { useTranslation } from 'react-i18next'; // <--- DODANE
 
 const MASTER_DISTANCES = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
@@ -39,7 +40,13 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           const data = docSnap.data();
           console.log("Trener AI: Pobrałem dane z bazy:", data);
 
-          if (!data.birthDate) {
+          // [RODO C21] birthDate/gender żyją w users/{uid}/private/profile;
+          // data.birthDate/gender to fallback dla kont sprzed migracji.
+          const priv = await loadPrivateProfile(userId);
+          const birthDate: string | undefined = priv?.birthDate || data.birthDate;
+          const gender = (priv?.gender || data.gender || 'M') as 'M' | 'K';
+
+          if (!birthDate) {
             console.log("Trener AI: Użytkownik nie ma zapisanej daty urodzenia. Kończę działanie.");
             return;
           }
@@ -49,7 +56,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           setCurrentYearStr(currentYear.toString());
 
           // Rozbijamy datę YYYY-MM-DD
-          const [bYearStr, bMonthStr, bDayStr] = data.birthDate.split('-');
+          const [bYearStr, bMonthStr, bDayStr] = birthDate.split('-');
           const bMonth = parseInt(bMonthStr, 10);
           const bDay = parseInt(bDayStr, 10);
           
@@ -61,7 +68,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             console.log("Trener AI: Wykryto nowy rok! Przeliczam dystanse...");
             
             const currentBow = (data.bowType || 'Klasyczny (Recurve)') as BowType;
-            const currentGender = (data.gender || 'M') as 'M' | 'K';
+            const currentGender = gender;
             const birthYearNum = parseInt(bYearStr, 10) || 1990;
 
             const recHala = getRecommendation(currentBow, birthYearNum, 'Hala (Indoor)', currentGender);
@@ -84,9 +91,11 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             
             setHasClassChanged(changed);
 
+            // Nowy rok = możliwa zmiana kategorii wiekowej (wiek kalendarzowy)
             await setDoc(profileRef, {
               userDistances: updatedDistances,
-              lastNewYearGreeting: currentYear
+              lastNewYearGreeting: currentYear,
+              ageCategory: getAgeCategory(birthDate, gender)
             }, { merge: true });
 
             setModalType('NEW_YEAR');

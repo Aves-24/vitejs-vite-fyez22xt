@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { invalidateRecentSessions } from '../lib/recentSessions';
 import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
-import { getPublicProfile } from '../utils/publicProfile';
+import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { calculateSessionHandicap, calculateCurrentHandicap } from '../utils/handicapEngine';
@@ -532,12 +532,16 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
 
       if (isWorldBattle) {
         try {
-          const worldDisplayName = `${ud.firstName || ''} ${ud.lastName ? ud.lastName[0] + '.' : ''}`.trim();
+          // [PRYWATNOŚĆ] world_stats czyta każdy zalogowany — nazwa i klub
+          // przechodzą przez flagi prywatności (buildPublicProfile). Dla WORLD
+          // nazwisko jest ZAWSZE skrócone do inicjału (showFullName: false) —
+          // flagi mogą tylko dodatkowo ograniczyć (nickname, ukrycie klubu).
+          const pub = buildPublicProfile({ ...ud, showFullName: false });
           await updateWorldStatsOnly(
             userId,
-            worldDisplayName,
-            ud.clubName  || '',
-            ud.countryCode || '',
+            pub.displayName || 'Schütze',
+            pub.club,
+            pub.country,
             ud.level     || 1,
             didWinWorld,
             worldXp,

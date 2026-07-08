@@ -938,9 +938,10 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
       {showWorldQueue && (
         <WorldQueueView
           userId={userId}
-          firstName={currentUserData?.firstName || ''}
-          lastName={currentUserData?.lastName || ''}
-          clubName={currentUserData?.clubName || ''}
+          /* [PRYWATNOŚĆ] WORLD: nazwisko zawsze skrócone do inicjału (showFull=false),
+             nickname i klub wg flag użytkownika — spójnie z world_stats. */
+          displayName={formatUserName(currentUserData, false, showNickname) || t('battleLobby.archer')}
+          clubName={formatUserClub(currentUserData, showClub, showRegion)}
           country={currentUserData?.countryCode || 'PL'}
           userLevel={userLevel}
           distance={distance}

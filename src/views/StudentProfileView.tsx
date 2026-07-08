@@ -592,6 +592,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('studentProfile.headerLabel')}</p>
             <h1 className="text-2xl font-black text-white leading-tight truncate">{student.firstName} {student.lastName}</h1>
+            {student.ageCategory && (
+              <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-0.5">{student.ageCategory}</p>
+            )}
           </div>
           
           {/* PRZYCISKI PO PRAWEJ STRONIE (Sprzęt i Notatka) */}

@@ -10,7 +10,6 @@ import {
   leaveWorldQueue,
   tryMatchOpponent,
   expandSearchRadius,
-  formatWorldDisplayName,
   MATCH_TIMEOUT_MS,
   EXPAND_TO_2_MS,
   EXPAND_TO_3_MS,
@@ -19,8 +18,9 @@ import { TARGET_RANKS } from '../utils/rankEngine';
 
 interface Props {
   userId:      string;
-  firstName:   string;
-  lastName:    string;
+  // Przefiltrowane flagami prywatności (BattleLobbyView: buildPublicProfile
+  // z wymuszonym inicjałem nazwiska) — trafia do world_queue i battles.
+  displayName: string;
   clubName:    string;
   country:     string;
   userLevel:   number;
@@ -39,7 +39,7 @@ const formatTime = (ms: number): string => {
 };
 
 export default function WorldQueueView({
-  userId, firstName, lastName, clubName, country,
+  userId, displayName, clubName, country,
   userLevel, distance, targetType,
   onMatchFound, onCancel,
 }: Props) {
@@ -70,11 +70,11 @@ export default function WorldQueueView({
   useEffect(() => {
     let cancelled = false;
 
-    const myDisplayName = formatWorldDisplayName(firstName, lastName);
+    const myDisplayName = displayName || 'Schütze';
 
     const start = async () => {
       // 1. Dołącz do kolejki
-      await joinWorldQueue(userId, firstName, lastName, clubName, country, userLevel);
+      await joinWorldQueue(userId, myDisplayName, clubName, country, userLevel);
       if (cancelled) { await leaveWorldQueue(userId); return; }
 
       // 2. Natychmiastowa pierwsza próba — czy ktoś już czeka?
@@ -124,7 +124,7 @@ export default function WorldQueueView({
         return;
       }
 
-      const myDisplayName = formatWorldDisplayName(firstName, lastName);
+      const myDisplayName = displayName || 'Schütze';
 
       // Rozszerzenie do ±2 po 90 s
       if (elapsed >= EXPAND_TO_2_MS && !expansionDone2.current) {

@@ -17,6 +17,7 @@ import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
 import { syncPublicProfile } from './utils/publicProfile';
+import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -83,6 +84,7 @@ export default function App() {
   // próbujemy MAX raz na sesję, niezależnie od wyniku. Bez tego optimistic
   // update / server reject Firestore'a tworzy pętlę 50+ błędów.
   const trialFallbackAttemptedRef = useRef(false);
+  const privateMigrationAttemptedRef = useRef(false);
 
   // --- WAKE LOCK (Globalna blokada gaszenia ekranu) ---
   useEffect(() => {
@@ -176,11 +178,12 @@ export default function App() {
         if (data.userDistances && data.userDistances.length > 0) {
           setUserDistances(data.userDistances);
         } else {
-          // Brak dystansów — generujemy na podstawie danych profilu (wiek, płeć, łuk)
+          // Brak dystansów — generujemy na podstawie danych profilu (wiek, płeć, łuk).
+          // [RODO C21] birthDate/gender żyją w users/{uid}/private/profile;
+          // data.birthDate to fallback dla kont sprzed migracji.
           const allDists = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
-          if (data.birthDate && data.bowType) {
-            const birthYear = new Date(data.birthDate).getFullYear();
-            const gender: 'M' | 'K' = data.gender || 'M';
+          const applyRecommended = (birthDate: string, gender: 'M' | 'K') => {
+            const birthYear = new Date(birthDate).getFullYear();
             const bow = data.bowType as BowType;
             const recH = getRecommendation(bow, birthYear, 'Hala (Indoor)', gender);
             const recT = getRecommendation(bow, birthYear, 'Tory (Outdoor)', gender);
@@ -190,12 +193,23 @@ export default function App() {
               targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : '122cm',
               sightExtension: '', sightHeight: '', sightSide: '', sightMark: ''
             })));
-          } else {
+          };
+          const applyMinimal = () => {
             // Brak danych profilu (nowy użytkownik przed wizardem) — minimalne defaults
             setUserDistances(allDists.map(m => ({
               m, active: m === '18m' || m === '70m',
               targetType: '122cm', sightExtension: '', sightHeight: '', sightSide: '', sightMark: ''
             })));
+          };
+          if (data.birthDate && data.bowType) {
+            applyRecommended(data.birthDate, data.gender || 'M');
+          } else if (data.bowType) {
+            loadPrivateProfile(user.uid).then(priv => {
+              if (priv?.birthDate) applyRecommended(priv.birthDate, priv.gender || 'M');
+              else applyMinimal();
+            }).catch(applyMinimal);
+          } else {
+            applyMinimal();
           }
         }
         
@@ -219,6 +233,16 @@ export default function App() {
           setDoc(doc(db, 'users', user.uid), {
             trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
           }, { merge: true }).catch(e => console.error('trialEndsAt fallback failed:', e));
+        }
+
+        // [RODO C21] Jednorazowa migracja pól wrażliwych (email/birthDate/gender)
+        // do users/{uid}/private/profile — od tej pory reguły blokują ich obecność
+        // w głównym dokumencie (czytelnym dla relacji trener↔uczeń).
+        if (!privateMigrationAttemptedRef.current
+            && (data.email !== undefined || data.birthDate !== undefined || data.gender !== undefined)) {
+          privateMigrationAttemptedRef.current = true;
+          migrateSensitiveFields(user.uid, data)
+            .catch(e => console.error('Migracja pól prywatnych nieudana:', e));
         }
 
         if (!data.firstName) {

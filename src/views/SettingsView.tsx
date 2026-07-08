@@ -16,6 +16,7 @@ import TournamentSection from '../components/settings/TournamentSection';
 import BowSection from '../components/settings/BowSection';
 import PrivacySection from '../components/settings/PrivacySection';
 import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
+import { loadPrivateProfile, savePrivateProfile, getAgeCategory } from '../utils/privateProfile';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
@@ -155,8 +156,13 @@ export default function SettingsView({
           if (data.clubCity) setClubCity(data.clubCity);
           if (data.placeId) setPlaceId(data.placeId);
           if (data.trialEndsAt !== undefined) setTrialEndsAt(data.trialEndsAt || null);
+          // [RODO C21] birthDate/gender → users/{uid}/private/profile.
+          // Legacy fallback (data.gender/birthDate) dla kont sprzed migracji.
           if (data.gender) setGender(data.gender || 'M');
           if (data.birthDate) setBirthDate(data.birthDate);
+          const priv = await loadPrivateProfile(userId);
+          if (priv?.gender) setGender(priv.gender);
+          if (priv?.birthDate) setBirthDate(priv.birthDate);
           if (data.country) setCountry(data.country);
           if (data.height) setHeight(data.height);
           if (data.handedness) setHandedness(data.handedness || 'RH');
@@ -234,14 +240,19 @@ export default function SettingsView({
       // przy tworzeniu konta; reguła Firestore blokuje jakąkolwiek zmianę tego pola
       // gdy jest już obecne w dokumencie. Stare konta bez trialEndsAt obsługuje
       // osobny fallback w App.tsx (onSnapshot handler).
+      // [RODO C21] gender/birthDate NIE trafiają do users/{uid} (czytelnego dla
+      // relacji trener↔uczeń) — idą do users/{uid}/private/profile. Trener
+      // dostaje wyliczoną kategorię wiekową (ageCategory) zamiast daty urodzenia.
       const payload: any = {
         firstName, lastName, nickname, club, clubName: club, clubCity, placeId, countryCode: cCode,
-        gender, birthDate, country, height, handedness,
+        country, height, handedness,
         bowType, lbs, riser, limbs, stabilizers, sight,
         startYear, competitionLevel, userDistances: finalDistances,
         showFullName, showClub, showRegion
       };
+      if (birthDate) payload.ageCategory = getAgeCategory(birthDate, gender);
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
+      await savePrivateProfile(userId, { birthDate, gender });
       if (wizardStep === 0) showToast(t('settings.successSave'));
     } catch (error) {
       console.error("Save error:", error);

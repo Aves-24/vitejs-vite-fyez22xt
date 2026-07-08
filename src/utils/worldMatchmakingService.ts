@@ -41,33 +41,23 @@ export interface WorldStats {
   lastWorldBattle: Timestamp;
 }
 
-// ─── Privacy helper ───────────────────────────────────────────────────────────
-// Zwraca "Jan K." zamiast pełnego nazwiska
-export const formatWorldDisplayName = (
-  firstName: string,
-  lastName: string
-): string => {
-  if (!firstName) return 'Łucznik';
-  const initial = lastName ? ` ${lastName[0].toUpperCase()}.` : '';
-  return `${firstName}${initial}`;
-};
-
 // ─── Queue management ─────────────────────────────────────────────────────────
 
+// displayName/clubName przychodzą już przefiltrowane flagami prywatności
+// (buildPublicProfile z wymuszonym inicjałem nazwiska — patrz WorldQueueView).
 export const joinWorldQueue = async (
-  userId:    string,
-  firstName: string,
-  lastName:  string,
-  clubName:  string,
-  country:   string,
-  level:     number,
+  userId:      string,
+  displayName: string,
+  clubName:    string,
+  country:     string,
+  level:       number,
 ): Promise<void> => {
   // Wyczyść stary wpis (ochrona przed duplikatami)
   await leaveWorldQueue(userId);
 
   const entry: QueueEntry = {
     userId,
-    displayName: formatWorldDisplayName(firstName, lastName),
+    displayName: displayName || 'Schütze',
     clubName:    clubName || '',
     country:     country  || '',
     level,
@@ -206,57 +196,6 @@ export const tryMatchOpponent = async (
 };
 
 // ─── Post-battle ──────────────────────────────────────────────────────────────
-
-// Zapisuje wynik w world_stats i dodaje XP do profilu użytkownika
-export const recordWorldBattleResult = async (
-  userId:      string,
-  displayName: string,
-  clubName:    string,
-  country:     string,
-  level:       number,
-  didWin:      boolean,
-): Promise<void> => {
-  const xpEarned = WORLD_XP_PARTICIPATION + (didWin ? WORLD_XP_WIN : 0);
-
-  // ── world_stats ──
-  const statsRef  = doc(db, 'world_stats', userId);
-  const statsSnap = await getDoc(statsRef);
-
-  if (statsSnap.exists()) {
-    const d = statsSnap.data();
-    await updateDoc(statsRef, {
-      worldWins:       (d.worldWins   || 0) + (didWin ? 1 : 0),
-      worldLosses:     (d.worldLosses || 0) + (didWin ? 0 : 1),
-      worldXP:         (d.worldXP     || 0) + xpEarned,
-      level,
-      displayName,
-      clubName,
-      country,
-      lastWorldBattle: Timestamp.fromDate(new Date()),
-    });
-  } else {
-    await setDoc(statsRef, {
-      userId,
-      displayName,
-      clubName,
-      country,
-      level,
-      worldWins:       didWin ? 1 : 0,
-      worldLosses:     didWin ? 0 : 1,
-      worldXP:         xpEarned,
-      lastWorldBattle: Timestamp.fromDate(new Date()),
-    });
-  }
-
-  // ── XP w profilu użytkownika ──
-  const userRef  = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (userSnap.exists()) {
-    await updateDoc(userRef, {
-      xp: (userSnap.data().xp || 0) + xpEarned,
-    });
-  }
-};
 
 // Aktualizuje tylko world_stats (bez XP użytkownika — XP doliczane osobno w ScoringView)
 export const updateWorldStatsOnly = async (

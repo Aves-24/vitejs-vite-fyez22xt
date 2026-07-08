@@ -73,10 +73,33 @@ service cloud.firestore {
     function coachInviteExists(coachId, studentId) {
       return exists(/databases/$(database)/documents/coachInvites/$(coachId + '_' + studentId));
     }
+    // [RODO] Pola wrażliwe NIE mogą istnieć w users/{uid} (czytelnym dla
+    // relacji trener↔uczeń) — żyją w users/{uid}/private/profile.
+    // Sprawdzamy stan dokumentu PO zapisie: usunięcie pól (migracja) przechodzi,
+    // dodanie/zmiana — nie.
+    function sensitiveUserFields() {
+      return ['email', 'birthDate', 'gender'];
+    }
+    // world_stats: dokument publiczny (leaderboard) — twardy kształt i limity
+    // długości, żeby nikt nie doklejał obcych pól ani kilometrowych nazw.
+    function validWorldStatsShape(data) {
+      return data.keys().hasOnly(
+               ['userId', 'displayName', 'clubName', 'country', 'level',
+                'worldWins', 'worldLosses', 'worldXP', 'lastWorldBattle'])
+        && data.get('displayName', '') is string
+        && data.get('displayName', '').size() <= 80
+        && data.get('clubName', '') is string
+        && data.get('clubName', '').size() <= 120
+        && data.get('country', '') is string
+        && data.get('country', '').size() <= 40;
+    }
 
     // ─── /users/{uid} ───────────────────────────────────────────
-    //  [RODO C6] Pełny profil (e-mail, data urodzenia, nazwisko) czytelny
-    //  TYLKO dla: właściciela, admina i osób w relacji trener↔uczeń.
+    //  [RODO C6] Profil czytelny TYLKO dla: właściciela, admina i osób
+    //  w relacji trener↔uczeń (dashboard trenera: rangi, sprzęt, lastSession*).
+    //  [RODO C21] Pola wrażliwe (e-mail, data urodzenia, płeć) NIE istnieją
+    //  w tym dokumencie — patrz users/{uid}/private/profile; trener widzi
+    //  wyliczoną kategorię wiekową (ageCategory).
     //  Dane do publicznego wyświetlania → /profiles_public/{uid}.
     //  UWAGA: warunki na resource.data działają dla getDoc per-dokument;
     //  zapytania listowe po users (poza adminem) NIE przejdą — klienci
@@ -90,6 +113,7 @@ service cloud.firestore {
 
       allow create: if isSelf(uid)
         && !request.resource.data.keys().hasAny(protectedUserFields())
+        && !request.resource.data.keys().hasAny(sensitiveUserFields())
         && (!request.resource.data.keys().hasAny(['trialEndsAt'])
             || validTrialEndsAt(request.resource.data));
 
@@ -105,6 +129,10 @@ service cloud.firestore {
                          'coachLimit', 'role',
                          'worldWins', 'worldLosses', 'worldXP',
                          'students', 'coaches'])
+        // Pola wrażliwe: nietknięte (legacy doc sprzed migracji) LUB nieobecne
+        // po zapisie (migracja je usuwa). Dodanie/zmiana — zablokowane.
+        && (noneAffected(sensitiveUserFields())
+            || !request.resource.data.keys().hasAny(sensitiveUserFields()))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trialEndsAt'])
             || (!resource.data.keys().hasAny(['trialEndsAt'])
                 && validTrialEndsAt(request.resource.data)));
@@ -176,6 +204,15 @@ service cloud.firestore {
       // DELETE: właściciel (RODO art. 17 — usuwanie konta w aplikacji,
       // wymóg Apple/Google dla appek z kontami) lub admin.
       allow delete: if isSelf(uid) || isAdmin();
+    }
+
+    // ─── /users/{uid}/private/{docId} ───────────────────────────
+    //  [RODO] Pola wrażliwe (birthDate, gender) — TYLKO właściciel i admin.
+    //  Trener widzi wyliczoną kategorię wiekową (users/{uid}.ageCategory),
+    //  nie datę urodzenia. E-mail nie jest przechowywany w Firestore
+    //  (żyje w Firebase Auth).
+    match /users/{uid}/private/{docId} {
+      allow read, write: if isSelf(uid) || isAdmin();
     }
 
     // ─── /profiles_public/{uid} ─────────────────────────────────
@@ -432,13 +469,21 @@ service cloud.firestore {
     match /world_stats/{userId} {
       allow read: if isSignedIn();
 
+      // Create z ograniczeniami zamiast zer: updateWorldStatsOnly tworzy
+      // dokument dopiero PO pierwszej bitwie (od razu z 1 win/loss + XP) —
+      // wymóg samych zer po cichu odrzucał pierwszy zapis na leaderboard.
       allow create: if isSelf(userId)
-        && request.resource.data.get('worldWins', 0) == 0
-        && request.resource.data.get('worldLosses', 0) == 0
-        && request.resource.data.get('worldXP', 0) == 0;
+        && validWorldStatsShape(request.resource.data)
+        && request.resource.data.get('worldWins', 0) >= 0
+        && request.resource.data.get('worldWins', 0) <= 1
+        && request.resource.data.get('worldLosses', 0) >= 0
+        && request.resource.data.get('worldLosses', 0) <= 1
+        && request.resource.data.get('worldXP', 0) >= 0
+        && request.resource.data.get('worldXP', 0) <= 100;
 
       // Per-update bounds: at most +1 win, +1 loss, +100 XP, no decrements.
       allow update: if isSelf(userId)
+        && validWorldStatsShape(request.resource.data)
         && request.resource.data.get('worldWins', 0)
              >= resource.data.get('worldWins', 0)
         && request.resource.data.get('worldWins', 0)

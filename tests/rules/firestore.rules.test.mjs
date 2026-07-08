@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let env;
@@ -161,12 +161,27 @@ test('T3: profiles_public NIE dla niezalogowanych', async () => {
 
 // ─── T4: Oszustwa rankingowe ─────────────────────────────────────
 
-test('T4: world_stats create tylko z zerami', async () => {
+test('T4: world_stats create ograniczone (max 1 win/loss, 100 XP)', async () => {
   await assertFails(setDoc(doc(bob(), 'world_stats/bob'), {
     worldWins: 50, worldLosses: 0, worldXP: 9999,
   }));
+  // Pierwsza bitwa tworzy dokument od razu z wynikiem — musi przejść
   await assertSucceeds(setDoc(doc(bob(), 'world_stats/bob'), {
-    worldWins: 0, worldLosses: 0, worldXP: 0,
+    userId: 'bob', displayName: 'Bob B.', clubName: 'KS Grot', country: 'DE',
+    level: 3, worldWins: 1, worldLosses: 0, worldXP: 15,
+  }));
+});
+
+test('T4: world_stats — obce pola odrzucone (hasOnly)', async () => {
+  await assertFails(setDoc(doc(bob(), 'world_stats/bob'), {
+    worldWins: 0, worldLosses: 0, worldXP: 0, email: 'leak@example.com',
+  }));
+  await assertFails(updateDoc(doc(alice(), 'world_stats/alice'), { hacked: true }));
+});
+
+test('T4: world_stats displayName > 80 znaków odrzucone', async () => {
+  await assertFails(setDoc(doc(bob(), 'world_stats/bob'), {
+    displayName: 'x'.repeat(81), worldWins: 0, worldLosses: 0, worldXP: 0,
   }));
 });
 
@@ -302,4 +317,64 @@ test('profiles_public: tylko właściciel pisze swoje lustro', async () => {
   await assertSucceeds(setDoc(doc(alice(), 'profiles_public/alice'), {
     displayName: 'Alice', club: 'KS Grot', country: 'DE', level: 6, updatedAt: Date.now(),
   }));
+});
+
+// ─── RODO C21: pola wrażliwe (email/birthDate/gender) poza users/{uid} ──
+
+test('C21: private/profile — właściciel i admin czytają, trener w relacji NIE', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/private/profile'), {
+      birthDate: '2010-05-01', gender: 'K',
+    });
+  });
+  await assertSucceeds(getDoc(doc(alice(), 'users/alice/private/profile')));
+  await assertSucceeds(getDoc(doc(admin(), 'users/alice/private/profile')));
+  await assertFails(getDoc(doc(coach1(), 'users/alice/private/profile')));
+  await assertFails(getDoc(doc(bob(), 'users/alice/private/profile')));
+});
+
+test('C21: private/profile pisze tylko właściciel', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice/private/profile'), {
+    birthDate: '2010-05-01', gender: 'K',
+  }));
+  await assertFails(setDoc(doc(bob(), 'users/alice/private/profile'), {
+    birthDate: '1900-01-01',
+  }));
+});
+
+test('C21: nie można dodać email/birthDate/gender do users/{uid}', async () => {
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { birthDate: '1990-01-01' }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { email: 'x@y.z' }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { gender: 'M' }));
+});
+
+test('C21: create users/{uid} z polem wrażliwym odrzucone', async () => {
+  await env.clearFirestore();
+  await assertFails(setDoc(doc(alice(), 'users/alice'), {
+    displayName: 'Alice', email: 'a@b.c',
+  }));
+  await assertFails(setDoc(doc(alice(), 'users/alice'), {
+    displayName: 'Alice', birthDate: '1990-01-01',
+  }));
+});
+
+test('C21: migracja — usunięcie pól wrażliwych + zapis ageCategory przechodzi', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'users/alice'), {
+      email: 'old@x.de', birthDate: '2000-01-01', gender: 'K',
+    });
+  });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    email: deleteField(), birthDate: deleteField(), gender: deleteField(),
+    ageCategory: 'Damen',
+  }));
+});
+
+test('C21: legacy doc — zapis profilu NIE dotykający pól wrażliwych przechodzi', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'users/alice'), { birthDate: '2000-01-01' });
+  });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { clubName: 'Nowy Klub' }));
+  // ...ale zmiana wartości pola wrażliwego — odrzucona
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { birthDate: '1999-12-31' }));
 });

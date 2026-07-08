@@ -179,6 +179,20 @@ export const views = {
     privacyRequired: "Please accept the Privacy Policy to create an account.",
     privacyGoogleNote: "By continuing with Google you accept the Privacy Policy."
   },
+  parentalConsent: {
+    title: "Parental consent required",
+    intro: "You are under {{age}}, so you may only use the app with the consent of a parent or legal guardian. Please have them confirm below.",
+    guardianEmail: "Parent / guardian email",
+    guardianEmailPlaceholder: "guardian's email",
+    affirm: "As a parent or legal guardian, I consent to this child using the app and I accept the",
+    privacyPolicy: "Privacy Policy",
+    confirmBtn: "Confirm consent",
+    logout: "Log out",
+    note: "We store the consent as a record (Art. 8 GDPR). It can be withdrawn by deleting the account in Settings.",
+    errorEmail: "Please enter a valid guardian email address.",
+    errorAffirm: "Please tick the consent box to continue.",
+    errorSave: "Could not save consent. Please try again."
+  },
   nav: {
     home: "Home",
     calendar: "Schedule",

@@ -1,6 +1,7 @@
 # GROT-X — Inwentarz danych (RODO + formularze sklepowe)
 
-**Wersja:** 1.1 · 2026-07-08 (C21: e-mail/DOB/płeć poza zasięgiem relacji trener↔uczeń)
+**Wersja:** 1.2 · 2026-07-08 (C22: zgoda opiekuna dla <16 lat — art. 8 RODO)
+**Poprzednio:** 1.1 · 2026-07-08 (C21: e-mail/DOB/płeć poza zasięgiem relacji trener↔uczeń)
 **Cel:** jedno źródło prawdy dla (a) polityki prywatności, (b) Google Play
 „Data safety", (c) Apple „App Privacy" (Nutrition Labels).
 **Zasada:** każda zmiana w zbieranych danych = aktualizacja tego pliku,
@@ -33,6 +34,16 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 19 | Sygnały reCAPTCHA v3 | Google (App Check) | anty-abuse | art. 6(1)(f) | Google (procesor) |
 | 20 | Local Storage (aktywna sesja, język, cache Firestore) | urządzenie użytkownika | działanie offline | technicznie niezbędne (§25(2) TDDDG) | nikt |
 | 21 | Zgoda na politykę (`privacyConsent`) | `users/{uid}` | rozliczalność (art. 7(1)) | art. 6(1)(c) | właściciel, admin |
+| 22 | Zgoda opiekuna dla <16 lat (`parentalConsent`: wersja, timestamp, data ur. w chwili zgody) | `users/{uid}/private/profile` | rozliczalność zgody dla małoletnich (art. 8) | art. 6(1)(c) + art. 8 | właściciel, admin |
+| 23 | E-mail rodzica/opiekuna (dowód zgody <16) | `users/{uid}/private/profile` | weryfikacja zgody opiekuna (art. 8(2) — „reasonable efforts") | art. 6(1)(c) + art. 8 | właściciel, admin |
+
+**Małoletni (art. 8 RODO):** próg zgody cyfrowej = **16 lat** (Niemcy i Polska;
+używamy 16 na sztywno — surowszy próg pokrywa też kraje z niższym progiem 13–15).
+Poniżej 16 lat aplikacja wymaga oświadczenia rodzica/opiekuna + jego e-maila
+(bramka `ParentalConsentGate`) — proporcjonalne „reasonable efforts" dla usługi
+niskiego ryzyka bez danych zdrowotnych/płatniczych. Twarda weryfikacja (link
+mailowy do opiekuna) planowana z Cloud Functions (Blaze). Aplikacja z założenia
+obsługuje młodzież (kategorie WA Schüler C/B/A), więc małoletni to grupa docelowa.
 
 **NIE zbieramy:** analytics/trackerów reklamowych, kontaktów, zdjęć z galerii,
 danych zdrowotnych, danych płatniczych (premium = przyszłość, wtedy aktualizacja!).

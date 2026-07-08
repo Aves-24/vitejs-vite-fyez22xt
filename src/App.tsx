@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import HomeView from './views/HomeView';
 import SessionSetup from './components/SessionSetup';
 import SmartSeasonUpdater from './components/SmartSeasonUpdater';
+import ParentalConsentGate from './components/ParentalConsentGate';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import BattleInvitePopup from './components/BattleInvitePopup';
@@ -493,6 +494,10 @@ export default function App() {
       )}
 
       <SmartSeasonUpdater userId={user?.uid || ''} />
+
+      {/* [RODO art. 8] Bramka zgody opiekuna dla użytkowników < 16 lat.
+          Blokuje aplikację małoletniemu bez potwierdzonej zgody rodzica. */}
+      {user?.uid && <ParentalConsentGate userId={user.uid} />}
 
       {/* [BEZPIECZEŃSTWO] Globalny listener zaproszeń trenerskich — pokazuje
           popup "Trener X chce Cię obserwować" zanim coach dostanie dostęp.

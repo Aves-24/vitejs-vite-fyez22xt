@@ -253,6 +253,9 @@ export default function SettingsView({
       if (birthDate) payload.ageCategory = getAgeCategory(birthDate, gender);
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
       await savePrivateProfile(userId, { birthDate, gender });
+      // [RODO art. 8] Data urodzenia mogła się zmienić — bramka zgody opiekuna
+      // (ParentalConsentGate) przelicza się na to zdarzenie.
+      window.dispatchEvent(new Event('profile_saved'));
       if (wizardStep === 0) showToast(t('settings.successSave'));
     } catch (error) {
       console.error("Save error:", error);

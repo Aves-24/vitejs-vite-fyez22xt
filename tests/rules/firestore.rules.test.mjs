@@ -378,3 +378,30 @@ test('C21: legacy doc — zapis profilu NIE dotykający pól wrażliwych przecho
   // ...ale zmiana wartości pola wrażliwego — odrzucona
   await assertFails(updateDoc(doc(alice(), 'users/alice'), { birthDate: '1999-12-31' }));
 });
+
+// ─── RODO art. 8: zgoda opiekuna (parentalConsent) ──────────────
+
+test('C22: parentalConsent + e-mail opiekuna w private/profile — obcy/trener nie czyta', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/private/profile'), {
+      birthDate: '2014-03-01',
+      parentalConsent: { version: '1.0', acceptedAt: Date.now(),
+        guardianEmail: 'parent@example.com', birthDateAtConsent: '2014-03-01' },
+    });
+  });
+  await assertSucceeds(getDoc(doc(alice(), 'users/alice/private/profile')));
+  await assertFails(getDoc(doc(coach1(), 'users/alice/private/profile')));
+  await assertFails(getDoc(doc(bob(), 'users/alice/private/profile')));
+});
+
+test('C22: właściciel zapisuje własną zgodę opiekuna', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice/private/profile'), {
+    parentalConsent: { version: '1.0', acceptedAt: Date.now(),
+      guardianEmail: 'parent@example.com', birthDateAtConsent: '2014-03-01' },
+  }, { merge: true }));
+  // obcy nie zapisze zgody w cudzym dokumencie
+  await assertFails(setDoc(doc(bob(), 'users/alice/private/profile'), {
+    parentalConsent: { version: '1.0', acceptedAt: Date.now(),
+      guardianEmail: 'attacker@example.com', birthDateAtConsent: '2014-03-01' },
+  }, { merge: true }));
+});

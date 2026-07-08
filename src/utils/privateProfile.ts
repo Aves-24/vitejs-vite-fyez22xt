@@ -1,5 +1,6 @@
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
+import { PRIVACY_POLICY_VERSION } from './legalLinks';
 
 // ═══════════════════════════════════════════════════════════════════
 //  [RODO C21] Profil prywatny — users/{uid}/private/profile
@@ -14,9 +15,67 @@ import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore'
 //  (users/{uid}.ageCategory) — wystarcza do turniejów, nie zdradza DOB.
 // ═══════════════════════════════════════════════════════════════════
 
+// [RODO art. 8] Zgoda opiekuna dla użytkownika < 16 lat (próg DE i PL).
+// „Reasonable efforts": oświadczenie opiekuna + jego e-mail jako dowód.
+// Twarda weryfikacja (link mailowy) dojdzie z Cloud Functions (Blaze).
+export interface ParentalConsent {
+  version: string;            // wersja polityki w chwili zgody
+  acceptedAt: number;         // ms
+  guardianEmail: string;      // e-mail rodzica/opiekuna (dowód)
+  birthDateAtConsent: string; // ISO — wykrycie późniejszej zmiany daty ur.
+}
+
 export interface PrivateProfile {
   birthDate?: string;      // ISO YYYY-MM-DD
   gender?: 'M' | 'K';
+  parentalConsent?: ParentalConsent;
+}
+
+// [RODO art. 8] Wiek progowy zgody cyfrowej dla Niemiec i Polski = 16 lat.
+// Używamy 16 na sztywno (surowszy próg jest zawsze zgodny — kraje z niższym
+// progiem, np. 13, też są pokryte). Zmiana wymaga świadomej decyzji prawnej.
+export const DIGITAL_CONSENT_AGE = 16;
+
+// Pełny wiek ukończony (uwzględnia miesiąc/dzień) — do celów prawnych,
+// inaczej niż kategoria WA liczona po samym roczniku.
+export function computeAge(birthDate: string, now: Date = new Date()): number {
+  const b = new Date(birthDate);
+  if (isNaN(b.getTime())) return NaN;
+  let age = now.getFullYear() - b.getFullYear();
+  const m = now.getMonth() - b.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--;
+  return age;
+}
+
+export function isMinorUnderConsentAge(birthDate: string | undefined): boolean {
+  if (!birthDate) return false; // bez daty nie orzekamy — wizard i tak ją wymusi
+  const age = computeAge(birthDate);
+  return !isNaN(age) && age < DIGITAL_CONSENT_AGE;
+}
+
+// Czy trzeba pokazać bramkę zgody opiekuna:
+//  - użytkownik < 16 lat, ORAZ
+//  - brak zgody / zgoda do innej daty urodzenia / starsza wersja polityki.
+export function needsParentalConsent(priv: PrivateProfile | null | undefined): boolean {
+  const birthDate = priv?.birthDate;
+  if (!isMinorUnderConsentAge(birthDate)) return false;
+  const c = priv?.parentalConsent;
+  if (!c) return true;
+  return c.birthDateAtConsent !== birthDate || c.version !== PRIVACY_POLICY_VERSION;
+}
+
+export async function saveParentalConsent(
+  uid: string,
+  birthDate: string,
+  guardianEmail: string,
+): Promise<void> {
+  const consent: ParentalConsent = {
+    version: PRIVACY_POLICY_VERSION,
+    acceptedAt: Date.now(),
+    guardianEmail: guardianEmail.trim(),
+    birthDateAtConsent: birthDate,
+  };
+  await setDoc(doc(db, 'users', uid, 'private', 'profile'), { parentalConsent: consent }, { merge: true });
 }
 
 // Kategorie wiekowe DSB — progi zgodne z getRecommendation (archeryRules.ts):

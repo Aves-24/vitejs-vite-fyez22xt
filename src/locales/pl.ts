@@ -179,6 +179,20 @@ export const views = {
     privacyRequired: "Aby utworzyć konto, zaakceptuj Politykę prywatności.",
     privacyGoogleNote: "Kontynuując przez Google akceptujesz Politykę prywatności."
   },
+  parentalConsent: {
+    title: "Potrzebna zgoda rodzica",
+    intro: "Masz mniej niż {{age}} lat, dlatego z aplikacji możesz korzystać tylko za zgodą rodzica lub opiekuna prawnego. Poproś go o potwierdzenie poniżej.",
+    guardianEmail: "E-mail rodzica / opiekuna",
+    guardianEmailPlaceholder: "e-mail opiekuna",
+    affirm: "Jako rodzic lub opiekun prawny wyrażam zgodę na korzystanie z aplikacji przez to dziecko i akceptuję",
+    privacyPolicy: "Politykę prywatności",
+    confirmBtn: "Potwierdzam zgodę",
+    logout: "Wyloguj",
+    note: "Zgodę zapisujemy jako dowód (art. 8 RODO). Możesz ją wycofać, usuwając konto w Ustawieniach.",
+    errorEmail: "Podaj prawidłowy adres e-mail opiekuna.",
+    errorAffirm: "Zaznacz zgodę, aby kontynuować.",
+    errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
+  },
   nav: {
     home: "Ekran główny",
     calendar: "Terminarz",

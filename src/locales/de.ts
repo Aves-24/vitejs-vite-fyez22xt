@@ -179,6 +179,20 @@ export const views = {
     privacyRequired: "Bitte akzeptiere die Datenschutzerklärung, um ein Konto zu erstellen.",
     privacyGoogleNote: "Mit der Anmeldung über Google akzeptierst du die Datenschutzerklärung."
   },
+  parentalConsent: {
+    title: "Einwilligung der Eltern erforderlich",
+    intro: "Du bist unter {{age}} Jahre alt und darfst die App daher nur mit Einwilligung eines Elternteils oder Erziehungsberechtigten nutzen. Bitte lass die Einwilligung unten bestätigen.",
+    guardianEmail: "E-Mail des Elternteils / Erziehungsberechtigten",
+    guardianEmailPlaceholder: "E-Mail der Aufsichtsperson",
+    affirm: "Als Elternteil oder Erziehungsberechtigter willige ich in die Nutzung der App durch dieses Kind ein und akzeptiere die",
+    privacyPolicy: "Datenschutzerklärung",
+    confirmBtn: "Einwilligung bestätigen",
+    logout: "Abmelden",
+    note: "Wir speichern die Einwilligung als Nachweis (Art. 8 DSGVO). Sie kann durch Löschen des Kontos in den Einstellungen widerrufen werden.",
+    errorEmail: "Bitte gib eine gültige E-Mail-Adresse der Aufsichtsperson ein.",
+    errorAffirm: "Bitte bestätige die Einwilligung, um fortzufahren.",
+    errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
+  },
   nav: {
     home: "Startseite",
     calendar: "Kalender",

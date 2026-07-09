@@ -83,6 +83,8 @@ Console (Firebase) — wymóg art. 28 RODO.
 
 ## 5. Wersjonowanie zgód
 
-- Polityka prywatności: **v1.0** (2026-06-11)
-- Pole w profilu: `privacyConsent: { version: '1.0', acceptedAt: <timestamp> }`
-- Przy istotnej zmianie polityki → podbić wersję → appka prosi o ponowną akceptację.
+- Polityka prywatności: **v1.1** (2026-07-08) — dodano sekcję o zgodzie opiekuna <16 (C22). Poprzednio v1.0 (2026-06-11).
+- Źródło wersji w kodzie: `PRIVACY_POLICY_VERSION` w `src/utils/legalLinks.ts` (używane przy zapisie `privacyConsent` i `parentalConsent`).
+- Pole w profilu: `privacyConsent: { version: '1.1', acceptedAt: <timestamp> }`
+- Zgoda opiekuna: `parentalConsent: { version: '1.1', acceptedAt, guardianEmail, birthDateAtConsent }` w `users/{uid}/private/profile`.
+- Przy istotnej zmianie polityki → podbić wersję → bramka zgody opiekuna prosi małoletnich o ponowną akceptację (ogólnej zgody na razie nie wymuszamy ponownie).

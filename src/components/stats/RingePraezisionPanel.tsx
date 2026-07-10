@@ -95,12 +95,13 @@ export default function RingePraezisionPanel({
       </div>
 
       {/* SŁUPKI TYGODNIOWE: wysokość = średnia ringów/strzałę (skala 0–10),
-          nad słupkiem wartość średniej. FREE: chipy + wykres zablurowane (80%),
-          nagłówek zostaje widoczny — tak jak "TREND (12 WO.)" w zakładce Pfeile. */}
+          nad słupkiem wartość średniej. FREE: tylko wykres zablurowany (80%),
+          nagłówek i chipy dystansów zostają widoczne i klikalne — dzięki temu
+          widać średnie per dystans w kartach nawet bez PRO. */}
       <div className="relative">
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         {distances.length > 1 && (
-          <div className={`flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2 transition-all duration-500 ${locked ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2">
             {[ALL_DIST, ...distances].map(dist => (
               <button key={dist} onClick={() => setSelectedDist(dist)}
                 className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${

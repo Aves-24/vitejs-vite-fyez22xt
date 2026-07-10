@@ -85,6 +85,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [trendFilterType, setTrendFilterType] = useState('');
   const [trendFilterDist, setTrendFilterDist] = useState('');
+  // Lista w modalu Ergebniskurve: FREE widzi 4 wpisy, PRO startuje od 10
+  // i dociąga po 10 aż do max 50 przyciskiem "Pokaż więcej".
+  const TREND_LIST_MAX = 50;
+  const [trendVisibleCount, setTrendVisibleCount] = useState(10);
+  useEffect(() => {
+    if (showTrendModal) setTrendVisibleCount(10);
+  }, [showTrendModal, trendFilterType, trendFilterDist]);
   const [weekStreak, setWeekStreak] = useState<number>(0);
   
   const [firstName, setFirstName] = useState('');
@@ -458,7 +465,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v12_${userId}`;
+      const cacheKey = `grotX_stats_v13_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -604,7 +611,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
         const recent = sessionList.slice(-6).map(s => s.score);
-        const recentFull = sessionList.slice(-10);
+        // Do 50 — modal Ergebniskurve dociąga więcej przyciskiem "Pokaż więcej" (tylko PRO)
+        const recentFull = sessionList.slice(-50);
 
         // ─── ŚREDNIE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
         const last3NonTech = sessionList.filter(s => s.type !== 'TECHNICAL').slice(-3);
@@ -684,7 +692,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v12_${userId}`);
+      localStorage.removeItem(`grotX_stats_v13_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -700,7 +708,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v12_${userId}`);
+    localStorage.removeItem(`grotX_stats_v13_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1949,42 +1957,71 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     </div>
                   )}
 
-                  <div className="space-y-1.5">
-                    {[...sessionsForModal].reverse().map((sess, i) => {
-                      const isTurniej = sess.type === 'Turniej';
-                      const isArena = sess.type === 'Arena';
-                      const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
-                      const label = isTurniej
-                        ? ((sess as any).title || t('home.trendModal.typeTournament'))
-                        : isArena ? t('home.trendModal.typeArena') : t('home.trendModal.typeTraining');
-                      const dateStr = sess.ts
-                        ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()
-                        : '';
-                      const isoDate = sess.date || (sess.ts ? new Date(sess.ts).toISOString().split('T')[0] : '');
-                      const handleSessionClick = isoDate ? () => {
-                        setShowTrendModal(false);
-                        onNavigate?.('STATS', undefined, isoDate);
-                      } : undefined;
-                      return (
-                        <div
-                          key={i}
-                          className={`flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 transition-all ${handleSessionClick ? 'cursor-pointer active:scale-[0.98] active:bg-gray-100' : ''}`}
-                          onClick={handleSessionClick}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
-                            <span className="text-[9px] font-black text-gray-500 truncate">{label}</span>
-                            <span className="text-[9px] font-bold text-gray-300 shrink-0">{sess.distance}</span>
-                          </div>
-                          <div className="flex items-center gap-3 shrink-0">
-                            {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
-                            <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
-                            {handleSessionClick && <span className="material-symbols-outlined text-gray-300" style={{ fontSize: 14 }}>chevron_right</span>}
-                          </div>
+                  {(() => {
+                    const reversed = [...sessionsForModal].reverse();
+                    // FREE: sztywno 4 wpisy. PRO: startuje od 10, dociąga po 10 aż do 50.
+                    const cap = isPremium ? Math.min(trendVisibleCount, TREND_LIST_MAX) : 4;
+                    const visible = reversed.slice(0, cap);
+                    const canLoadMorePro = isPremium && reversed.length > cap && cap < TREND_LIST_MAX;
+                    const hiddenForFree = !isPremium && reversed.length > 4;
+                    return (
+                      <>
+                        <div className="space-y-1.5">
+                          {visible.map((sess, i) => {
+                            const isTurniej = sess.type === 'Turniej';
+                            const isArena = sess.type === 'Arena';
+                            const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
+                            const label = isTurniej
+                              ? ((sess as any).title || t('home.trendModal.typeTournament'))
+                              : isArena ? t('home.trendModal.typeArena') : t('home.trendModal.typeTraining');
+                            const dateStr = sess.ts
+                              ? (() => { const d = new Date(sess.ts); return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}`; })()
+                              : '';
+                            const isoDate = sess.date || (sess.ts ? new Date(sess.ts).toISOString().split('T')[0] : '');
+                            const handleSessionClick = isoDate ? () => {
+                              setShowTrendModal(false);
+                              onNavigate?.('STATS', undefined, isoDate);
+                            } : undefined;
+                            return (
+                              <div
+                                key={i}
+                                className={`flex items-center justify-between bg-gray-50 rounded-xl px-3 py-2 border border-gray-100 transition-all ${handleSessionClick ? 'cursor-pointer active:scale-[0.98] active:bg-gray-100' : ''}`}
+                                onClick={handleSessionClick}
+                              >
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+                                  <span className="text-[9px] font-black text-gray-500 truncate">{label}</span>
+                                  <span className="text-[9px] font-bold text-gray-300 shrink-0">{sess.distance}</span>
+                                </div>
+                                <div className="flex items-center gap-3 shrink-0">
+                                  {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
+                                  <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
+                                  {handleSessionClick && <span className="material-symbols-outlined text-gray-300" style={{ fontSize: 14 }}>chevron_right</span>}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                  </div>
+                        {canLoadMorePro && (
+                          <button
+                            onClick={() => setTrendVisibleCount(c => Math.min(c + 10, TREND_LIST_MAX))}
+                            className="w-full mt-3 py-2.5 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-100 text-[9px] font-black text-gray-500 uppercase tracking-widest transition-all active:scale-[0.99]"
+                          >
+                            {t('home.trendModal.loadMore', { defaultValue: 'Pokaż więcej' })}
+                          </button>
+                        )}
+                        {hiddenForFree && (
+                          <button
+                            onClick={() => { setShowTrendModal(false); onNavigate?.('SETTINGS', 'PRO'); }}
+                            className="w-full mt-3 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[9px] font-black uppercase tracking-widest transition-all active:scale-[0.99] flex items-center justify-center gap-1.5"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>diamond</span>
+                            {t('home.trendModal.unlockMore', { defaultValue: 'Odblokuj PRO, by zobaczyć więcej' })}
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </>
               );
             })()}

@@ -315,6 +315,8 @@ export const views = {
       typeTournament: "Turniej",
       typeArena: "Arena",
       noData: "Brak danych",
+      loadMore: "Pokaż więcej",
+      unlockMore: "Odblokuj PRO, by zobaczyć więcej",
     },
     arenaDeleted: "Arena została usunięta.",
     arenaDeleteError: "Błąd podczas usuwania.",

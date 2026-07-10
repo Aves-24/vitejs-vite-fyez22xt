@@ -315,6 +315,8 @@ export const views = {
       typeTournament: "Turnier",
       typeArena: "Arena",
       noData: "Keine Daten",
+      loadMore: "Mehr anzeigen",
+      unlockMore: "GROT-X PRO freischalten für mehr",
     },
     arenaDeleted: "Arena wurde gelöscht.",
     arenaDeleteError: "Fehler beim Löschen.",

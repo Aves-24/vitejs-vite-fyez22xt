@@ -3,9 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { getScaleColor, getWeekLabelKW } from '../../lib/statsChart';
 
 // Panel "Ringe & Präzision": karty średnich (3 ostatnie / miesiąc) + słupki
-// tygodniowe (wysokość = średnia ringów/strzałę w skali 0–10, mała liczba
-// strzał nad słupkiem jako kontekst). Prezentacyjny — dane liczy rodzic.
-// Używany w QuickStatsModal oraz w przeglądzie ProStats.
+// tygodniowe (wysokość = średnia ringów/strzałę w skali 0–10).
+// Prezentacyjny — dane liczy rodzic. Używany w QuickStatsModal
+// oraz w przeglądzie ProStats.
 interface Props {
   avgArrows3: number;
   avgPoints3: number;
@@ -18,7 +18,7 @@ interface Props {
 }
 
 export default function RingePraezisionPanel({
-  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyArrows, weeklyPoints, locked = false, onUnlock,
+  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, locked = false, onUnlock,
 }: Props) {
   const { t } = useTranslation();
   const maxPoints = Math.max(...weeklyPoints, 0);
@@ -55,23 +55,19 @@ export default function RingePraezisionPanel({
       </div>
 
       {/* SŁUPKI TYGODNIOWE: wysokość = średnia ringów/strzałę (skala 0–10),
-          nad słupkiem średnia + mała liczba strzał jako kontekst */}
+          nad słupkiem wartość średniej */}
       <div className="relative">
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-32 relative">
               {weeklyPoints.map((pts, i) => {
-                const arrows = weeklyArrows[i];
                 const isBest = pts > 0 && pts === maxPoints;
                 return (
                   <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
                     <div className="w-full relative flex items-end justify-center h-full">
                       {pts > 0 && (
-                        <span className="absolute -top-8 flex flex-col items-center leading-tight">
-                          <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
-                          {arrows > 0 && <span className="text-[8px] font-bold text-gray-400">{arrows}</span>}
-                        </span>
+                        <span className={`absolute -top-5 text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
                       )}
                       <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : '#e5e7eb' }}></div>
                     </div>

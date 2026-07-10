@@ -121,9 +121,10 @@ export default function App() {
   // ----------------------------------------------------
 
   useEffect(() => {
+    // Minimalny czas splasha = tyle, żeby animacja logo (0.6s) zdążyła dojechać.
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 900);
+    }, 650);
     return () => clearTimeout(timer);
   }, []);
 
@@ -294,9 +295,7 @@ export default function App() {
 
   useEffect(() => {
     if (isDataReady && !showSplash && !isAuthLoading) {
-      setTimeout(() => {
-        setFadeOutSplash(true);
-      }, 100);
+      setFadeOutSplash(true);
     }
   }, [isDataReady, showSplash, isAuthLoading]);
 
@@ -468,13 +467,13 @@ export default function App() {
     <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-hidden max-w-md mx-auto shadow-2xl">
       
       {(!isDataReady || !fadeOutSplash) && (
-        <div className={`fixed inset-0 z-[100000] bg-[#fcfdfe] flex flex-col items-center justify-center transition-opacity duration-700 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-500 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
            <div className="flex items-baseline relative h-20">
               <div className="animate-grot-train flex items-baseline">
-                <span className="text-5xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-</span>
+                <span className="text-5xl font-black text-white tracking-tighter leading-none">GROT-</span>
               </div>
               <div className="animate-x-train flex items-baseline">
-                <span className="text-5xl font-black text-[#0a3a2a] tracking-tighter leading-none">X</span>
+                <span className="text-5xl font-black text-white tracking-tighter leading-none">X</span>
                 <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.48em] shadow-sm"></div>
               </div>
            </div>
@@ -485,8 +484,8 @@ export default function App() {
                 70% { transform: translateX(10px); }
                 100% { transform: translateX(0); opacity: 1; }
               }
-              .animate-x-train { animation: trainMove 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
-              .animate-grot-train { animation: trainMove 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; animation-delay: 0.2s; }
+              .animate-x-train { animation: trainMove 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+              .animate-grot-train { animation: trainMove 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; animation-delay: 0.15s; }
               @keyframes pulse-slow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
               .animate-pulse-slow { animation: pulse-slow 2.5s infinite ease-in-out; }
            `}</style>

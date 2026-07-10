@@ -30,6 +30,23 @@
          IP do Google bez zgody). @font-face w src/tailwind.css. -->
     <link rel="preload" href="/fonts/material-symbols-outlined.woff2" as="font" type="font/woff2" crossorigin />
 
+    <!-- Szybszy pierwszy start dnia: DNS+TLS do backendów Firebase/reCAPTCHA
+         zestawiane równolegle z pobieraniem JS, zamiast dopiero przy pierwszym
+         requeście auth/Firestore. -->
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+    <link rel="preconnect" href="https://securetoken.googleapis.com" />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    <link rel="preconnect" href="https://www.google.com" />
+
+    <!-- Zielone tło od pierwszej klatki: zanim dojedzie CSS i zamontuje się
+         React, ekran ma kolor splasha PWA (#0a3a2a) zamiast białego błysku.
+         Po załadowaniu CSS klasa bg-gray-100 na <body> nadpisuje regułę
+         elementową, a #root przestaje być :empty po mount. -->
+    <style>
+      body { background: #0a3a2a; }
+      #root:empty { min-height: 100vh; background: #0a3a2a; }
+    </style>
+
     <title>GROT-X</title>
     <link rel="manifest" href="/manifest.json" />
   </head>

@@ -71,11 +71,23 @@ self.addEventListener('fetch', (e) => {
   if (url.origin !== self.location.origin) return;
 
   // Nawigacje (SPA): sieć najpierw (świeży index.html → nowy SW przy deployu),
-  // offline → index.html z cache'u. To daje działanie appki na strzelnicy.
+  // ale z limitem 2.5 s — na wolnym łączu (pierwsze otwarcie dnia, słaby
+  // zasięg na strzelnicy) app startuje z cache'u zamiast wisieć na fetchu.
+  // Offline → index.html z cache'u.
   if (req.mode === 'navigate') {
-    e.respondWith(
-      fetch(req).catch(() => caches.match('/index.html'))
-    );
+    e.respondWith((async () => {
+      const cached = await caches.match('/index.html');
+      if (!cached) return fetch(req); // pierwsza instalacja — nie ma fallbacku
+      try {
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 2500);
+        const res = await fetch(req, { signal: ctrl.signal });
+        clearTimeout(t);
+        return res;
+      } catch {
+        return cached;
+      }
+    })());
     return;
   }
 

@@ -114,38 +114,42 @@ export default function RingePraezisionPanel({
             ))}
           </div>
         )}
-        <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
-          <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-4 pt-10 border border-gray-100">
-            <div className="flex items-end justify-between gap-1 w-full h-28 relative">
-              {shownPoints.map((pts, i) => {
-                const isBest = pts > 0 && pts === maxPoints;
-                const sessAvg = shownSessionAvg?.[i] || 0;
-                return (
-                  <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
-                    <div className="w-full relative flex items-end justify-center h-full">
-                      {pts > 0 && (
-                        <span className="absolute -top-8 flex flex-col items-center leading-tight">
-                          <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
-                          {sessAvg > 0 && <span className="text-[8px] font-bold text-gray-400">{sessAvg}</span>}
-                        </span>
-                      )}
-                      <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : '#e5e7eb' }}></div>
+        {/* Nakładka odblokowania jest zagnieżdżona TYLKO w obrębie wykresu — inaczej
+            jej backdrop-blur rozciągnąłby się na nagłówek i chipy powyżej. */}
+        <div className="relative">
+          <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
+            <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-4 pt-10 border border-gray-100">
+              <div className="flex items-end justify-between gap-1 w-full h-28 relative">
+                {shownPoints.map((pts, i) => {
+                  const isBest = pts > 0 && pts === maxPoints;
+                  const sessAvg = shownSessionAvg?.[i] || 0;
+                  return (
+                    <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
+                      <div className="w-full relative flex items-end justify-center h-full">
+                        {pts > 0 && (
+                          <span className="absolute -top-8 flex flex-col items-center leading-tight">
+                            <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
+                            {sessAvg > 0 && <span className="text-[8px] font-bold text-gray-400">{sessAvg}</span>}
+                          </span>
+                        )}
+                        <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : '#e5e7eb' }}></div>
+                      </div>
+                      <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
                     </div>
-                    <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
+          {locked && onUnlock && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-[#fcfdfe]/10 backdrop-blur-[2px]">
+              <button onClick={onUnlock} className="bg-[#0a3a2a] text-[#fed33e] px-8 py-3 rounded-full font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all flex items-center gap-2 border border-emerald-900/50">
+                <span className="material-symbols-outlined text-[14px]">diamond</span>
+                <span>{t('home.quickStats.buyPro', { defaultValue: 'GROT-X PRO' })}</span>
+              </button>
+            </div>
+          )}
         </div>
-        {locked && onUnlock && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-[#fcfdfe]/10 backdrop-blur-[2px]">
-            <button onClick={onUnlock} className="bg-[#0a3a2a] text-[#fed33e] px-8 py-3 rounded-full font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all flex items-center gap-2 border border-emerald-900/50">
-              <span className="material-symbols-outlined text-[14px]">diamond</span>
-              <span>{t('home.quickStats.buyPro', { defaultValue: 'GROT-X PRO' })}</span>
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

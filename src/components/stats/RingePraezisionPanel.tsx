@@ -67,7 +67,10 @@ export default function RingePraezisionPanel({
   const perArrowMonth = cardArrowsMonth > 0 ? cardPointsMonth / cardArrowsMonth : 0;
 
   return (
-    <div className="space-y-4">
+    <div className="relative">
+    {/* FREE vs PRO: w wersji darmowej cała zawartość (karty + chipy + wykres)
+        z blurem 80%; w PRO wszystko widoczne. Przycisk odblokowania na wierzchu. */}
+    <div className={`space-y-4 transition-all duration-500 ${locked ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
       {/* KARTY ŚREDNICH: Ostatnie 3 / Miesiąc — każda: punkty + strzały na sesję */}
       <div className="bg-white border-2 border-emerald-50 p-3 rounded-[28px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
         <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
@@ -99,7 +102,7 @@ export default function RingePraezisionPanel({
       <div className="relative">
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         {distances.length > 1 && (
-          <div className={`flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2 transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2">
             {[ALL_DIST, ...distances].map(dist => (
               <button key={dist} onClick={() => setSelectedDist(dist)}
                 className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${
@@ -112,7 +115,7 @@ export default function RingePraezisionPanel({
             ))}
           </div>
         )}
-        <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
+        <div className="relative">
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-4 pt-10 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-28 relative">
               {shownPoints.map((pts, i) => {
@@ -136,15 +139,16 @@ export default function RingePraezisionPanel({
             </div>
           </div>
         </div>
-        {locked && onUnlock && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-[#fcfdfe]/10 backdrop-blur-[2px]">
-            <button onClick={onUnlock} className="bg-[#0a3a2a] text-[#fed33e] px-8 py-3 rounded-full font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all flex items-center gap-2 border border-emerald-900/50">
-              <span className="material-symbols-outlined text-[14px]">diamond</span>
-              <span>{t('home.quickStats.buyPro', { defaultValue: 'GROT-X PRO' })}</span>
-            </button>
-          </div>
-        )}
       </div>
+    </div>
+    {locked && onUnlock && (
+      <div className="absolute inset-0 flex flex-col items-center justify-center z-30 bg-[#fcfdfe]/10 backdrop-blur-[2px]">
+        <button onClick={onUnlock} className="bg-[#0a3a2a] text-[#fed33e] px-8 py-3 rounded-full font-black uppercase text-[10px] tracking-widest shadow-2xl active:scale-95 transition-all flex items-center gap-2 border border-emerald-900/50">
+          <span className="material-symbols-outlined text-[14px]">diamond</span>
+          <span>{t('home.quickStats.buyPro', { defaultValue: 'GROT-X PRO' })}</span>
+        </button>
+      </div>
+    )}
     </div>
   );
 }

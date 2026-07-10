@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { getScaleColor, getWeekLabelKW } from '../../lib/statsChart';
 
 // Panel "Ringe & Präzision": karty średnich (3 ostatnie / miesiąc) + słupki
-// tygodniowe (strzały, ze średnią punktów nad słupkiem). Prezentacyjny —
-// dane liczy rodzic. Używany w QuickStatsModal oraz w przeglądzie ProStats.
+// tygodniowe (wysokość = średnia ringów/strzałę w skali 0–10, mała liczba
+// strzał nad słupkiem jako kontekst). Prezentacyjny — dane liczy rodzic.
+// Używany w QuickStatsModal oraz w przeglądzie ProStats.
 interface Props {
   avgArrows3: number;
   avgPoints3: number;
@@ -20,7 +21,7 @@ export default function RingePraezisionPanel({
   avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyArrows, weeklyPoints, locked = false, onUnlock,
 }: Props) {
   const { t } = useTranslation();
-  const maxArrows = Math.max(...weeklyArrows, 1);
+  const maxPoints = Math.max(...weeklyPoints, 0);
   // Średnia na strzał = Ø punktów na sesję / Ø strzał na sesję = Σpkt/Σstrzał (dokładna).
   const perArrow3 = avgArrows3 > 0 ? avgPoints3 / avgArrows3 : 0;
   const perArrowMonth = avgArrowsMonth > 0 ? avgPointsMonth / avgArrowsMonth : 0;
@@ -53,25 +54,26 @@ export default function RingePraezisionPanel({
         </div>
       </div>
 
-      {/* SŁUPKI TYGODNIOWE: wysokość = strzały, nad słupkiem średnia punktów */}
+      {/* SŁUPKI TYGODNIOWE: wysokość = średnia ringów/strzałę (skala 0–10),
+          nad słupkiem średnia + mała liczba strzał jako kontekst */}
       <div className="relative">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')}</h3>
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-              {weeklyArrows.map((val, i) => {
-                const isMax = val > 0 && val === maxArrows;
-                const pts = weeklyPoints[i];
+              {weeklyPoints.map((pts, i) => {
+                const arrows = weeklyArrows[i];
+                const isBest = pts > 0 && pts === maxPoints;
                 return (
                   <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
                     <div className="w-full relative flex items-end justify-center h-full">
-                      {val > 0 && (
+                      {pts > 0 && (
                         <span className="absolute -top-8 flex flex-col items-center leading-tight">
-                          {pts > 0 && <span className="text-[8px] font-black text-emerald-600">{pts.toFixed(1)}</span>}
-                          <span className={`text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>{val}</span>
+                          <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
+                          {arrows > 0 && <span className="text-[8px] font-bold text-gray-400">{arrows}</span>}
                         </span>
                       )}
-                      <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
+                      <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : '#e5e7eb' }}></div>
                     </div>
                     <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
                   </div>

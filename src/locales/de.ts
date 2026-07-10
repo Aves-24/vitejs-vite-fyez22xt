@@ -1001,6 +1001,7 @@ export const views = {
       secondHalf: "2. Hälfte (Ø)",
       weeklyArrows: "Pfeilanzahl (Wöchentlich)",
       weeklyArrowsShort: "Pfeile / Woche (12 Wo.)",
+      weeklyPointsShort: "Ringschnitt / Woche (12 Wo.)",
       sessionListTitle: "Trainingsliste",
       allDistances: "Alle Distanzen",
       distAnalysisTitle: "Distanz-Analyse",

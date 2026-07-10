@@ -1001,6 +1001,7 @@ export const views = {
       secondHalf: "II Połowa (Śr.)",
       weeklyArrows: "Liczba Strzał (Tygodniowo)",
       weeklyArrowsShort: "Strzały / tydzień (12 tyg.)",
+      weeklyPointsShort: "Średnia ringów / tydzień (12 tyg.)",
       sessionListTitle: "Lista treningów",
       allDistances: "Wszystkie dystanse",
       distAnalysisTitle: "Analiza dystansu",

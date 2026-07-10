@@ -1001,6 +1001,7 @@ export const views = {
       secondHalf: "2nd Half (Avg.)",
       weeklyArrows: "Arrow Count (Weekly)",
       weeklyArrowsShort: "Arrows / week (12 wk.)",
+      weeklyPointsShort: "Ring avg / week (12 wk.)",
       sessionListTitle: "Session list",
       allDistances: "All distances",
       distAnalysisTitle: "Distance analysis",

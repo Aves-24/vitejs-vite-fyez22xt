@@ -369,6 +369,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     const weeklyArrows = Array(12).fill(0);
     const wScore = Array(12).fill(0);
     const wScoreArrows = Array(12).fill(0);
+    const wSessions = Array(12).fill(0);
     sessions.forEach(s => {
       const ts = getTs(s);
       const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
@@ -377,7 +378,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         const arr = s.arrows || s.totalArrows || 0;
         const scoreArr = (s as any).scoreArrows ?? s.arrows ?? 0;
         weeklyArrows[idx] += arr;
-        if (s.type !== 'TECHNICAL' && scoreArr > 0) { wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr; }
+        if (s.type !== 'TECHNICAL' && scoreArr > 0 && (s.score || 0) > 0) { wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr; wSessions[idx]++; }
       }
     });
     // Pfeilzähler (klucze dzienne YYYY_MM_DD) — dolicz do słupków strzał;
@@ -399,6 +400,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       avgPointsMonth: mean(monthScored.map(s => s.score)),
       weeklyArrows,
       weeklyPoints,
+      weeklySessionAvg: wScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0),
       recent: scored.slice(-15) as CurveSession[],
     };
   }, [sessions, pfeilzaehler]);
@@ -445,6 +447,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
             avgPointsMonth={overview.avgPointsMonth}
             weeklyArrows={overview.weeklyArrows}
             weeklyPoints={overview.weeklyPoints}
+            weeklySessionAvg={overview.weeklySessionAvg}
           />
           <ErgebniskurvePanel sessions={overview.recent} scopeLabel={t('stats.pro.allDistances', 'Wszystkie dystanse')} />
           <div className="h-px bg-gray-100 my-2" />

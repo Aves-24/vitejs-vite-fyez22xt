@@ -359,6 +359,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
   const [weeklyPointsByDist, setWeeklyPointsByDist] = useState<Record<string, number[]>>({});
   const [avgByDist, setAvgByDist] = useState<Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }>>({});
+  const [weeklySessionAvg, setWeeklySessionAvg] = useState<number[]>(Array(12).fill(0));
+  const [weeklySessionAvgByDist, setWeeklySessionAvgByDist] = useState<Record<string, number[]>>({});
   
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -494,8 +496,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const wArrows = Array(12).fill(0);
         const wScore = Array(12).fill(0);
         const wScoreArrows = Array(12).fill(0);
+        const wSessions = Array(12).fill(0);
         const wScoreByDist: Record<string, number[]> = {};
         const wScoreArrowsByDist: Record<string, number[]> = {};
+        const wSessionsByDist: Record<string, number[]> = {};
         sessions.forEach((data: any) => {
           const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : (typeof data.timestamp === 'number' ? data.timestamp : 0);
           const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
@@ -504,23 +508,27 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             const arr = data.arrows || data.totalArrows || 0;
             const scoreArr = data.scoreArrows || data.arrows || 0;
             wArrows[idx] += arr;
-            if (data.type !== 'TECHNICAL' && scoreArr > 0) {
-              wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr;
+            if (data.type !== 'TECHNICAL' && scoreArr > 0 && (data.score || 0) > 0) {
+              wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr; wSessions[idx]++;
               const dist = data.distance || '';
               if (dist && dist !== 'TECH') {
-                if (!wScoreByDist[dist]) { wScoreByDist[dist] = Array(12).fill(0); wScoreArrowsByDist[dist] = Array(12).fill(0); }
-                wScoreByDist[dist][idx] += (data.score || 0); wScoreArrowsByDist[dist][idx] += scoreArr;
+                if (!wScoreByDist[dist]) { wScoreByDist[dist] = Array(12).fill(0); wScoreArrowsByDist[dist] = Array(12).fill(0); wSessionsByDist[dist] = Array(12).fill(0); }
+                wScoreByDist[dist][idx] += (data.score || 0); wScoreArrowsByDist[dist][idx] += scoreArr; wSessionsByDist[dist][idx]++;
               }
             }
           }
         });
         setWeeklyArrows(wArrows);
         setWeeklyPoints(wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0));
+        setWeeklySessionAvg(wScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0));
         const byDist: Record<string, number[]> = {};
+        const sessAvgByDist: Record<string, number[]> = {};
         Object.keys(wScoreByDist).forEach(dist => {
           byDist[dist] = wScoreByDist[dist].map((sc, i) => wScoreArrowsByDist[dist][i] > 0 ? sc / wScoreArrowsByDist[dist][i] : 0);
+          sessAvgByDist[dist] = wScoreByDist[dist].map((sc, i) => wSessionsByDist[dist][i] > 0 ? Math.round(sc / wSessionsByDist[dist][i]) : 0);
         });
         setWeeklyPointsByDist(byDist);
+        setWeeklySessionAvgByDist(sessAvgByDist);
 
         // ─── ŚREDNIE KART PER DYSTANS (Ø Letzte 3 / Schnitt Monat) ──
         const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
@@ -986,6 +994,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         weeklyPoints={weeklyPoints}
         weeklyPointsByDistance={weeklyPointsByDist}
         avgByDistance={avgByDist}
+        weeklySessionAvg={weeklySessionAvg}
+        weeklySessionAvgByDistance={weeklySessionAvgByDist}
         stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth }}
       />
 

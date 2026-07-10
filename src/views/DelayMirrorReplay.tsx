@@ -8,9 +8,12 @@ interface Props {
   showGridInitial?: boolean;
   onResume: () => void;
   onEndSession: () => void;
+  // FREE ma pełny podgląd i replay; zapis/udostępnienie klipu to jedyny gate PRO.
+  isPremium?: boolean;
+  onUpgrade?: () => void;
 }
 
-export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession }: Props) {
+export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession, isPremium = true, onUpgrade }: Props) {
   const { t } = useTranslation();
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBoxRef = useRef<HTMLDivElement>(null);
@@ -331,19 +334,29 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {t('delayMirror.resumeBtn')}
         </button>
         {hasFullBlob && (
-          <button
-            onClick={shareVideo}
-            disabled={shareState === 'sharing'}
-            className={`${displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
-          >
-            <span className="material-symbols-outlined text-lg">
-              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-            </span>
-            {shareState === 'sharing' && t('delayMirror.shareSharing')}
-            {shareState === 'saved' && t('delayMirror.shareSaved')}
-            {shareState === 'error' && t('delayMirror.shareError')}
-            {shareState === 'idle' && t('delayMirror.shareIdle')}
-          </button>
+          isPremium ? (
+            <button
+              onClick={shareVideo}
+              disabled={shareState === 'sharing'}
+              className={`${displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
+            >
+              <span className="material-symbols-outlined text-lg">
+                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              </span>
+              {shareState === 'sharing' && t('delayMirror.shareSharing')}
+              {shareState === 'saved' && t('delayMirror.shareSaved')}
+              {shareState === 'error' && t('delayMirror.shareError')}
+              {shareState === 'idle' && t('delayMirror.shareIdle')}
+            </button>
+          ) : (
+            <button
+              onClick={onUpgrade}
+              className={`${displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-[#fed33e]/15 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30`}
+            >
+              <span className="material-symbols-outlined text-lg">diamond</span>
+              {t('delayMirror.savePro', { defaultValue: 'Zapisz wideo — PRO' })}
+            </button>
+          )
         )}
         <button
           onClick={onEndSession}

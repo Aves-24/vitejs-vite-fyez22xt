@@ -10,10 +10,11 @@ const MIN_DELAY_S = 1;
 const MAX_DELAY_S = 30;
 const STORAGE_KEY = 'delayMirror.delaySeconds';
 
-type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error' | 'freeLive';
+type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error';
 
 interface Props {
   onBack: () => void;
+  onUpgrade?: () => void;
 }
 
 // Pelny codec do "Udostepnij" (kompletny plik) — preferuj mp4 dla WhatsApp/iOS.
@@ -57,7 +58,7 @@ function getStreamCodec(): string | null {
   return null;
 }
 
-export default function DelayMirrorView({ onBack }: Props) {
+export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const { t } = useTranslation();
   const [isPremium, setIsPremium] = useState(false);
   const [delaySeconds, setDelaySeconds] = useState<number>(() => {
@@ -210,7 +211,7 @@ export default function DelayMirrorView({ onBack }: Props) {
   // po rotacji która remontuje drzewo). Bez tego ref jest null w momencie
   // wywołania getUserMedia i PiP pozostaje czarny.
   useEffect(() => {
-    if ((mirrorState === 'positioning' || mirrorState === 'freeLive') && liveVideoRef.current && streamRef.current) {
+    if (mirrorState === 'positioning' && liveVideoRef.current && streamRef.current) {
       liveVideoRef.current.srcObject = streamRef.current;
       liveVideoRef.current.play().catch(() => { /* autoplay może odmówić */ });
     }
@@ -561,30 +562,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     }
   }, [mirrorState, runMSE]);
 
-  // Tryb FREE — samo getUserMedia, bez MediaRecorder, bez delay
-  const startFreeLive = useCallback(async () => {
-    setMirrorState('requesting');
-    setErrorMsg('');
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      });
-    } catch (err: unknown) {
-      const e = err as { name?: string; message?: string };
-      setErrorMsg(e.name === 'NotAllowedError' ? t('delayMirror.permissionDenied') : `${t('delayMirror.cameraError')}: ${e.message || '?'}`);
-      setMirrorState('error');
-      return;
-    }
-    streamRef.current = stream;
-    isPausedRef.current = false;
-    detectZoomCaps(stream);
-    setRecSeconds(0);
-    timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
-    setMirrorState('freeLive');
-  }, [t, detectZoomCaps]);
-
   const pauseMirror = useCallback(() => {
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
@@ -724,52 +701,6 @@ export default function DelayMirrorView({ onBack }: Props) {
         <div style={screenStyle} className="bg-black flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
-      </>
-    );
-  }
-
-  if (!isPremium && mirrorState !== 'freeLive' && mirrorState !== 'requesting' && mirrorState !== 'error') {
-    return (
-      <>
-      {orientationToggle}
-      <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
-          <span className="material-symbols-outlined text-3xl">arrow_back</span>
-        </button>
-        <div className="w-16 h-16 bg-[#fed33e]/10 rounded-2xl flex items-center justify-center mb-5">
-          <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>
-        </div>
-        <h2 className="text-2xl font-black text-white text-center mb-2">{t('delayMirror.title')}</h2>
-        <p className="text-gray-400 text-center text-sm mb-1 leading-relaxed">
-          {t('delayMirror.description', { seconds: delaySeconds })}
-        </p>
-        <p className="text-[#fed33e]/80 text-center text-xs mb-8 leading-relaxed">
-          {t('delayMirror.proRequired')}
-        </p>
-        <div className="w-full max-w-xs">
-          <div className="bg-white/5 rounded-2xl p-4 mb-4 space-y-2">
-            {[t('delayMirror.feature1', { seconds: delaySeconds }), t('delayMirror.feature2'), t('delayMirror.feature3'), t('delayMirror.feature4')].map(f => (
-              <div key={f} className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#fed33e] text-base">check_circle</span>
-                <span className="text-white/70 text-xs">{f}</span>
-              </div>
-            ))}
-          </div>
-          <button
-            onClick={startFreeLive}
-            className="w-full py-3 mb-2 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20"
-          >
-            <span className="material-symbols-outlined text-lg">videocam</span>
-            {t('delayMirror.livePreviewBtn')}
-          </button>
-          <button
-            onClick={onBack}
-            className="w-full py-3 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all"
-          >
-            {t('delayMirror.back')}
-          </button>
-        </div>
-      </div>
       </>
     );
   }
@@ -1039,62 +970,6 @@ export default function DelayMirrorView({ onBack }: Props) {
     );
   }
 
-  // Tryb FREE — czarne tło, tylko mała kamerka live + CTA upgrade
-  if (mirrorState === 'freeLive') {
-    return (
-      <>
-      {orientationToggle}
-      <div style={screenStyle} className="bg-black flex flex-col items-center justify-center px-8">
-        <div className="rounded-2xl overflow-hidden border-2 border-[#fed33e]/40 shadow-2xl mb-6 relative"
-             style={{ width: _displayAsLandscape ? '60vw' : '50vw', maxWidth: _displayAsLandscape ? 280 : 200, aspectRatio: liveAspect }}>
-          <video
-            ref={liveVideoRef}
-            className="w-full h-full object-cover"
-            style={{ transform: 'scaleX(-1)' }}
-            playsInline
-            muted
-          />
-          <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1">
-            <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white text-[10px] font-bold uppercase tracking-widest">LIVE</span>
-          </div>
-          <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[10px] text-white text-center py-1 font-bold uppercase tracking-widest">
-            {formatTime(recSeconds)}
-          </div>
-        </div>
-        {zoomCaps && (
-          <div className="flex gap-2 bg-black/55 backdrop-blur-sm rounded-2xl p-1.5 border border-white/10 mb-3">
-            {[
-              { v: zoomCaps.min, label: `${zoomCaps.min}x` },
-              { v: 1, label: '1x' },
-            ].map(opt => (
-              <button
-                key={opt.label}
-                onClick={() => applyZoom(opt.v)}
-                className={`px-4 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
-                  Math.abs(cameraZoom - opt.v) < 0.05
-                    ? 'bg-[#fed33e] text-[#0a3a2a]'
-                    : 'text-white/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <p className="text-[#fed33e]/90 text-center text-xs font-bold mb-1">{t('delayMirror.proRequired')}</p>
-        <p className="text-white/50 text-center text-xs mb-6 px-4 leading-relaxed">{t('delayMirror.livePreviewInfo')}</p>
-        <button
-          onClick={stopMirror}
-          className="px-10 py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all border border-white/20"
-        >
-          {t('delayMirror.stop')}
-        </button>
-      </div>
-      </>
-    );
-  }
-
   return (
     <>
     {orientationToggle}
@@ -1137,6 +1012,8 @@ export default function DelayMirrorView({ onBack }: Props) {
           showGridInitial={showGrid}
           onResume={resumeMirror}
           onEndSession={endSession}
+          isPremium={isPremium}
+          onUpgrade={() => onUpgrade?.()}
         />
       )}
 

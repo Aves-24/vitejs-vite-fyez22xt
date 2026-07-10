@@ -1247,6 +1247,7 @@ export const views = {
     resumeBtn: "I'm back",
     endSession: "End session",
     shareIdle: "Share video",
+    savePro: "Save video — PRO",
     shareSharing: "Sharing…",
     shareProcessing: "Preparing video…",
     shareSaved: "Saved to disk",

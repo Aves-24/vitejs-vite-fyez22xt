@@ -1247,6 +1247,7 @@ export const views = {
     resumeBtn: "Wróciłem",
     endSession: "Zakończ sesję",
     shareIdle: "Udostępnij wideo",
+    savePro: "Zapisz wideo — PRO",
     shareSharing: "Udostępnianie…",
     shareProcessing: "Przygotowywanie wideo…",
     shareSaved: "Zapisano na dysku",

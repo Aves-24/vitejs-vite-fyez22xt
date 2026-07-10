@@ -12,9 +12,11 @@ export interface CurveSession {
   title?: string;
 }
 
-export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel }: { sessions: CurveSession[]; onSelectDate?: (iso: string) => void; scopeLabel?: string }) {
+export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel, isPremium = true, onUnlock }: { sessions: CurveSession[]; onSelectDate?: (iso: string) => void; scopeLabel?: string; isPremium?: boolean; onUnlock?: () => void }) {
   const { t } = useTranslation();
   const [listOpen, setListOpen] = useState(false);
+  // FREE: krzywa (SVG) w pełni, ale lista sesji ograniczona do 4 wpisów.
+  const LIST_MAX = isPremium ? 15 : 4;
 
   const W = 300, H = 100, pad = 12;
 
@@ -98,14 +100,14 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel 
             <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">
               {t('stats.pro.sessionListTitle', 'Lista treningów')}
             </span>
-            <span className="text-[9px] font-black text-white bg-emerald-500 rounded-full px-2 py-0.5">{Math.min(filtered.length, 15)}</span>
+            <span className="text-[9px] font-black text-white bg-emerald-500 rounded-full px-2 py-0.5">{Math.min(filtered.length, LIST_MAX)}</span>
           </span>
           <span className={`material-symbols-outlined text-gray-400 transition-transform ${listOpen ? 'rotate-180' : ''}`} style={{ fontSize: 20 }}>expand_more</span>
         </button>
       )}
 
       <div className={`space-y-1.5 overflow-hidden transition-all ${listOpen ? 'mt-2' : 'max-h-0'}`}>
-        {listOpen && [...filtered].reverse().slice(0, 15).map((sess, i) => {
+        {listOpen && [...filtered].reverse().slice(0, LIST_MAX).map((sess, i) => {
           const isTurniej = sess.type === 'Turniej';
           const isArena = sess.type === 'Arena';
           const dot = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';
@@ -136,6 +138,15 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel 
             </div>
           );
         })}
+        {listOpen && !isPremium && filtered.length > LIST_MAX && (
+          <button
+            onClick={onUnlock}
+            className="w-full mt-1 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[9px] font-black uppercase tracking-widest transition-all active:scale-[0.99] flex items-center justify-center gap-1.5"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>diamond</span>
+            {t('home.trendModal.unlockMore', { defaultValue: 'Odblokuj PRO, by zobaczyć więcej' })}
+          </button>
+        )}
       </div>
     </div>
   );

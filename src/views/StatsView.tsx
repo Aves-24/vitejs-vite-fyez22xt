@@ -728,7 +728,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         >
           <span className={`material-symbols-outlined text-[14px] ${activeTab === 'PRO' ? 'text-[#fed33e]' : 'text-yellow-500'}`}>diamond</span>
           {t('stats.tabPro')}
-          {!isPremium && <span className="material-symbols-outlined text-[12px]">lock</span>}
         </button>
       </div>
 

@@ -82,7 +82,10 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   }, [userId]);
 
   useEffect(() => {
-    if (!userId || !isPremium) {
+    // FREE też pobiera dane — widzi Przegląd + karty PB/720/trend. Reszta paneli
+    // pod bramą PRO. Źródło współdzielone (getRecentSessions), więc 0 dodatkowych
+    // odczytów Firestore względem QuickStats/StudentProfile.
+    if (!userId) {
       setIsLoading(false);
       return;
     }
@@ -405,21 +408,21 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     };
   }, [sessions, pfeilzaehler]);
 
-  if (!isPremium) {
-    return (
-      <div className="flex flex-col items-center justify-center pt-10 px-6 animate-fade-in-up">
-        <div className="w-20 h-20 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center shadow-lg mb-6">
-          <span className="material-symbols-outlined text-white text-4xl">diamond</span>
-        </div>
-        <h2 className="text-2xl font-black text-[#0a3a2a] text-center tracking-tighter uppercase leading-tight mb-2">GROT-X PRO</h2>
-        <p className="text-xs text-gray-500 font-bold text-center mb-8 px-4">{t('stats.pro.unlockDesc', 'Odblokuj mapę rozrzutu, wykresy formy, wskaźnik zmęczenia i pełne dane.')}</p>
-        <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="w-full py-4 bg-[#0a3a2a] text-[#fed33e] rounded-2xl font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2">
-          <span className="material-symbols-outlined text-[16px]">diamond</span>
-          {t('stats.pro.btnUnlock', 'Odblokuj GROT-X PRO')}
-        </button>
+  // Karta-brama PRO: zastępuje głębsze panele (mapa rozrzutu, biomechanika,
+  // wytrzymałość, strefy, objętość, krzywa per dystans) dla użytkownika FREE.
+  const ProLockCard = () => (
+    <div className="flex flex-col items-center justify-center py-10 px-6 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 text-center">
+      <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center shadow-md mb-4">
+        <span className="material-symbols-outlined text-white text-3xl">diamond</span>
       </div>
-    );
-  }
+      <h2 className="text-lg font-black text-[#0a3a2a] tracking-tighter uppercase leading-tight mb-1">GROT-X PRO</h2>
+      <p className="text-[11px] text-gray-500 font-bold mb-5 px-2">{t('stats.pro.unlockDesc', 'Odblokuj mapę rozrzutu, wykresy formy, wskaźnik zmęczenia i pełne dane.')}</p>
+      <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="w-full max-w-[240px] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2">
+        <span className="material-symbols-outlined text-[14px]">diamond</span>
+        {t('stats.pro.btnUnlock', 'Odblokuj GROT-X PRO')}
+      </button>
+    </div>
+  );
 
   if (isLoading) return <div className="p-10 text-center animate-pulse text-gray-400 mt-20">{t('stats.pro.loading', 'Wczytywanie...')}</div>;
 
@@ -448,8 +451,10 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
             weeklyArrows={overview.weeklyArrows}
             weeklyPoints={overview.weeklyPoints}
             weeklySessionAvg={overview.weeklySessionAvg}
+            locked={!isPremium}
+            onUnlock={() => onNavigate('SETTINGS', 'PRO')}
           />
-          <ErgebniskurvePanel sessions={overview.recent} scopeLabel={t('stats.pro.allDistances', 'Wszystkie dystanse')} />
+          <ErgebniskurvePanel sessions={overview.recent} scopeLabel={t('stats.pro.allDistances', 'Wszystkie dystanse')} isPremium={isPremium} onUnlock={() => onNavigate('SETTINGS', 'PRO')} />
           <div className="h-px bg-gray-100 my-2" />
         </div>
       )}
@@ -533,8 +538,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         </div>
       )}
 
-      {/* Baner informujący o zakresie danych + opcja załadowania pełnej historii */}
-      {!hasFullHistory && (
+      {/* Baner „cała historia" — tylko PRO (ładuje do 500 sesji z Firestore) */}
+      {isPremium && !hasFullHistory && (
         <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
           <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">{t('stats.pro.last12weeks', 'Statystyki z ostatnich 12 tyg.')}</p>
           <button
@@ -549,8 +554,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
       {stats ? (
         selectedDistance === 'TECH' ? (
-          // OTO NASZ NOWY WIDOK DLA TRENINGU TECHNICZNEGO
-          <TechProHistory sessions={filteredSessions} />
+          // WIDOK TRENINGU TECHNICZNEGO — tylko PRO
+          isPremium ? <TechProHistory sessions={filteredSessions} /> : <ProLockCard />
         ) : (
           // KLASYCZNY WIDOK PRO DLA NORMALNYCH DYSTANSÓW
           <>
@@ -587,6 +592,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
               </div>
             </div>
 
+            {/* Poniżej — głęboka analiza tylko dla PRO. FREE widzi kartę-bramę. */}
+            {!isPremium ? <ProLockCard /> : (
+            <>
             {heatmapData.sessions.length > 0 && (
               <HeatmapSection
                 sessions={heatmapData.sessions}
@@ -714,6 +722,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
             <div className="text-center">
               <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('stats.pro.totalDistArrows', 'Łącznie na tym dystansie: {{count}} strzał', { count: stats.totalArrows })}</span>
             </div>
+            </>
+            )}
           </>
         )
       ) : (

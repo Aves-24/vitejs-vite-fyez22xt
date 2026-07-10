@@ -152,30 +152,34 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
 
               <div className="relative">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">TREND (12 WO.)</h3>
-                <div className={`relative transition-all duration-500 ${!isPremium ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
-                  <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
-                    <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-                      {weeklyArrows.map((val, i) => {
-                          const isMax = val > 0 && val === maxArrows;
-                          return (
-                            <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
-                              <div className="w-full relative flex items-end justify-center h-full">
-                                {/* [ZMIANA] Wyświetlamy wartość dla KAŻDEGO słupka > 0 */}
-                                {val > 0 && (
-                                  <span className={`absolute -top-5 text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                                    {val}
-                                  </span>
-                                )}
-                                <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
+                {/* Nakładka odblokowania zagnieżdżona TYLKO w obrębie wykresu — inaczej
+                    jej backdrop-blur rozciągnąłby się też na tytuł powyżej. */}
+                <div className="relative">
+                  <div className={`relative transition-all duration-500 ${!isPremium ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
+                    <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
+                      <div className="flex items-end justify-between gap-1 w-full h-32 relative">
+                        {weeklyArrows.map((val, i) => {
+                            const isMax = val > 0 && val === maxArrows;
+                            return (
+                              <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
+                                <div className="w-full relative flex items-end justify-center h-full">
+                                  {/* [ZMIANA] Wyświetlamy wartość dla KAŻDEGO słupka > 0 */}
+                                  {val > 0 && (
+                                    <span className={`absolute -top-5 text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+                                      {val}
+                                    </span>
+                                  )}
+                                  <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
+                                </div>
+                                <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
                               </div>
-                              <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                      </div>
                     </div>
                   </div>
+                  {!isPremium && <ProPaywall />}
                 </div>
-                {!isPremium && <ProPaywall />}
               </div>
             </div>
           )}

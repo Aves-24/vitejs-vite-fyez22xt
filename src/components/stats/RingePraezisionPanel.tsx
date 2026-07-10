@@ -50,10 +50,10 @@ export default function RingePraezisionPanel({
   const perArrowMonth = avgArrowsMonth > 0 ? avgPointsMonth / avgArrowsMonth : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* KARTY ŚREDNICH: Ostatnie 3 / Miesiąc — każda: punkty + strzały na sesję */}
-      <div className="bg-white border-2 border-emerald-50 p-4 rounded-[28px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
-        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-2">
+      <div className="bg-white border-2 border-emerald-50 p-3 rounded-[28px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
+        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgLast3Label', { defaultValue: 'Ø Letzte 3' })}</span>
           <div className="text-center">
             <p className="text-2xl font-black text-emerald-600 leading-none">{avgPoints3 ? avgPoints3 : '–'}</p>
@@ -64,7 +64,7 @@ export default function RingePraezisionPanel({
             <span className="text-[8px] font-bold text-gray-400 mt-0.5 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
           </div>
         </div>
-        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-2">
+        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
           <div className="text-center">
             <p className="text-2xl font-black text-emerald-600 leading-none">{avgPointsMonth ? avgPointsMonth : '–'}</p>
@@ -80,9 +80,9 @@ export default function RingePraezisionPanel({
       {/* SŁUPKI TYGODNIOWE: wysokość = średnia ringów/strzałę (skala 0–10),
           nad słupkiem wartość średniej */}
       <div className="relative">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
+        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         {distances.length > 1 && (
-          <div className={`flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-3 transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
+          <div className={`flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2 transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
             {[ALL_DIST, ...distances].map(dist => (
               <button key={dist} onClick={() => setSelectedDist(dist)}
                 className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${
@@ -96,8 +96,8 @@ export default function RingePraezisionPanel({
           </div>
         )}
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
-          <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
-            <div className="flex items-end justify-between gap-1 w-full h-32 relative">
+          <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-4 pt-10 border border-gray-100">
+            <div className="flex items-end justify-between gap-1 w-full h-28 relative">
               {shownPoints.map((pts, i) => {
                 const isBest = pts > 0 && pts === maxPoints;
                 return (

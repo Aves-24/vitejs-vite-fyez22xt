@@ -893,6 +893,7 @@ export const views = {
     loading: "Loading...",
     noSessions: "No training sessions on this day",
     unlockDetails: "PRO Historical Details",
+    unlockAnalysis: "Target spread, biomechanics & AI in PRO",
     unlockBtn: "Unlock",
     notePlaceholder: "Describe findings, paste video link (max 250 chars)...",
     shareWithCoach: "Share with coach",

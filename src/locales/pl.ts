@@ -893,6 +893,7 @@ export const views = {
     loading: "Ładowanie...",
     noSessions: "Brak treningów w tym dniu",
     unlockDetails: "Szczegóły historyczne PRO",
+    unlockAnalysis: "Rozrzut na tarczy, biomechanika i AI w PRO",
     unlockBtn: "Odblokuj",
     notePlaceholder: "Opisz wnioski, wklej link do wideo (max 250 znaków)...",
     shareWithCoach: "Udostępnij trenerowi",

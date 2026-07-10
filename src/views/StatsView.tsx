@@ -859,9 +859,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
                   <NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />
 
-                  {hasFullAccess ? (
                     <div className="space-y-5 mt-4">
-                      
+                      {/* FREE (dowolny dzień z okna 30 dni): pogoda, rozbicie X/10/9,
+                          tabela rund, przebieg serii — surowe dane własnej sesji. */}
                       {selectedSession.weather && (
                         <div className="flex gap-3 bg-gray-50/50 p-2 rounded-xl w-max border border-gray-100">
                           <div className="flex items-center gap-1"><span className="material-symbols-outlined text-sm text-blue-400">device_thermostat</span><span className="text-[10px] font-black">{selectedSession.weather.temp}°C</span></div>
@@ -902,6 +902,10 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         )}
                       </div>
 
+                      {/* PRO (miniony dzień): wizualny rozrzut na tarczy, biomechanika,
+                          AI, eksport. Dziś zostaje darmowe — hasFullAccess === true. */}
+                      {hasFullAccess ? (
+                      <>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         <div className="space-y-2 flex flex-col">
                           <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
@@ -942,6 +946,17 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                           )}
                         </div>
                       )}
+                      </>
+                      ) : (
+                        <div className="mt-4 p-6 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center">
+                          <span className="material-symbols-outlined text-[#F2C94C] text-3xl mb-2">diamond</span>
+                          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('stats.unlockAnalysis', { defaultValue: 'Rozrzut na tarczy, biomechanika i AI w PRO' })}</p>
+                          <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="mt-3 px-6 py-2 bg-[#0a3a2a] text-[#fed33e] rounded-full text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
+                            <span className="material-symbols-outlined text-[12px]">diamond</span>
+                            GROT-X PRO
+                          </button>
+                        </div>
+                      )}
 
                       {!viewingStudentId && (
                         <button
@@ -954,16 +969,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       )}
 
                     </div>
-                  ) : (
-                    <div className="mt-4 p-8 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center">
-                      <span className="material-symbols-outlined text-[#F2C94C] text-3xl mb-2">diamond</span>
-                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('stats.unlockDetails')}</p>
-                      <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="mt-3 px-6 py-2 bg-[#0a3a2a] text-[#fed33e] rounded-full text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-[12px]">diamond</span>
-                        GROT-X PRO
-                      </button>
-                    </div>
-                  )}
                 </div>
               )}
 

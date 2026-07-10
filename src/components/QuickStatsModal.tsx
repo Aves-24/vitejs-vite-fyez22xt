@@ -16,6 +16,8 @@ interface QuickStatsModalProps {
   weeklyPoints?: number[];
   // Średnie tygodniowe per dystans — włącza chipy dystansów w zakładce Ringe & Präzision
   weeklyPointsByDistance?: Record<string, number[]>;
+  // Średnie kart per dystans — karty u góry zmieniają się po wybraniu chipa
+  avgByDistance?: Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }>;
   stats: {
     daily: number;
     monthly: number;
@@ -32,7 +34,7 @@ interface QuickStatsModalProps {
 
 const EMPTY_WEEKS: number[] = Array(12).fill(0);
 
-export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, weeklyPointsByDistance, stats }: QuickStatsModalProps) {
+export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, weeklyPointsByDistance, avgByDistance, stats }: QuickStatsModalProps) {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ARROWS' | 'POINTS'>(initialTab);
 
@@ -185,6 +187,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 weeklyArrows={weeklyArrows}
                 weeklyPoints={weeklyPoints}
                 weeklyPointsByDistance={weeklyPointsByDistance}
+                avgByDistance={avgByDistance}
                 locked={!isPremium}
                 onUnlock={handleGoToPro}
               />

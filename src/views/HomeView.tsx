@@ -79,6 +79,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
   const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
   const [weeklyPointsByDist, setWeeklyPointsByDist] = useState<Record<string, number[]>>({});
+  const [avgByDist, setAvgByDist] = useState<Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }>>({});
   const [showTrendModal, setShowTrendModal] = useState(false);
   const [trendFilterType, setTrendFilterType] = useState('');
   const [trendFilterDist, setTrendFilterDist] = useState('');
@@ -455,7 +456,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v10_${userId}`;
+      const cacheKey = `grotX_stats_v11_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -473,6 +474,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
         if (cached.weeklyPoints) setWeeklyPoints(cached.weeklyPoints);
         if (cached.weeklyPointsByDist) setWeeklyPointsByDist(cached.weeklyPointsByDist);
+        if (cached.avgByDist) setAvgByDist(cached.avgByDist);
         if (cached.weekStreak !== undefined) setWeekStreak(cached.weekStreak);
         return;
       }
@@ -603,6 +605,24 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           ? Math.round(last3NonTech.reduce((acc, s) => acc + s.score, 0) / last3NonTech.length)
           : 0;
 
+        // ─── ŚREDNIE PER DYSTANS (karty w zakładce Ringe & Präzision) ──
+        // Ta sama logika co globalna, ale grupowana po dystansie.
+        const avgByDist: Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }> = {};
+        const nonTechScored = sessionList.filter(s => s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH');
+        const meanRound = (arr: typeof nonTechScored, key: 'arrows' | 'score') =>
+          arr.length ? Math.round(arr.reduce((acc, s) => acc + (s[key] || 0), 0) / arr.length) : 0;
+        Array.from(new Set(nonTechScored.map(s => s.distance))).forEach(dist => {
+          const ds = nonTechScored.filter(s => s.distance === dist);
+          const l3 = ds.slice(-3);
+          const mo = ds.filter(s => s.ts >= startOfMonth);
+          avgByDist[dist] = {
+            avgArrows3: meanRound(l3, 'arrows'),
+            avgPoints3: meanRound(l3, 'score'),
+            avgArrowsMonth: meanRound(mo, 'arrows'),
+            avgPointsMonth: meanRound(mo, 'score'),
+          };
+        });
+
         // ─── STREAK TYGODNIOWY: ile tygodni z rzędu (min. 1 sesja/tydzień) ──
         const getWeekStart = (ts: number) => {
           const d = new Date(ts);
@@ -639,9 +659,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
         setWeeklyPointsByDist(weekPointsByDist);
+        setAvgByDist(avgByDist);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, weekStreak: streak }, CACHE_TTL.STATS);
+        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -651,7 +672,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v10_${userId}`);
+      localStorage.removeItem(`grotX_stats_v11_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -667,7 +688,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v10_${userId}`);
+    localStorage.removeItem(`grotX_stats_v11_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1290,6 +1311,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         weeklyArrows={weeklyArrows}
         weeklyPoints={weeklyPoints}
         weeklyPointsByDistance={weeklyPointsByDist}
+        avgByDistance={avgByDist}
         stats={{
           daily: dailyTotal,
           monthly: monthlyTotal,

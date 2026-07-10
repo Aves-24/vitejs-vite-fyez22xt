@@ -17,6 +17,9 @@ interface Props {
   // chipy dystansów (QuickStats). ProStats ich nie przekazuje (ma własną
   // sekcję Distanz-Analyse), więc tam wykres zostaje globalny.
   weeklyPointsByDistance?: Record<string, number[]>;
+  // Średnie kart (Ø Letzte 3 / Schnitt Monat) per dystans — po kliknięciu chipa
+  // karty u góry pokazują wartości z wybranego dystansu zamiast globalnych.
+  avgByDistance?: Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }>;
   locked?: boolean;      // rozmycie słupków + przycisk odblokowania (gdy nie premium)
   onUnlock?: () => void;
 }
@@ -24,7 +27,7 @@ interface Props {
 const ALL_DIST = 'ALL';
 
 export default function RingePraezisionPanel({
-  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, weeklyPointsByDistance, locked = false, onUnlock,
+  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, weeklyPointsByDistance, avgByDistance, locked = false, onUnlock,
 }: Props) {
   const { t } = useTranslation();
   const [selectedDist, setSelectedDist] = useState<string>(ALL_DIST);
@@ -45,9 +48,16 @@ export default function RingePraezisionPanel({
     ? weeklyPoints
     : (weeklyPointsByDistance?.[activeDist] || weeklyPoints);
   const maxPoints = Math.max(...shownPoints, 0);
+
+  // Karty średnich: po wybraniu dystansu pokazują jego wartości, "Alle" — globalne.
+  const activeAvg = activeDist !== ALL_DIST ? avgByDistance?.[activeDist] : undefined;
+  const cardPoints3 = activeAvg ? activeAvg.avgPoints3 : avgPoints3;
+  const cardArrows3 = activeAvg ? activeAvg.avgArrows3 : avgArrows3;
+  const cardPointsMonth = activeAvg ? activeAvg.avgPointsMonth : avgPointsMonth;
+  const cardArrowsMonth = activeAvg ? activeAvg.avgArrowsMonth : avgArrowsMonth;
   // Średnia na strzał = Ø punktów na sesję / Ø strzał na sesję = Σpkt/Σstrzał (dokładna).
-  const perArrow3 = avgArrows3 > 0 ? avgPoints3 / avgArrows3 : 0;
-  const perArrowMonth = avgArrowsMonth > 0 ? avgPointsMonth / avgArrowsMonth : 0;
+  const perArrow3 = cardArrows3 > 0 ? cardPoints3 / cardArrows3 : 0;
+  const perArrowMonth = cardArrowsMonth > 0 ? cardPointsMonth / cardArrowsMonth : 0;
 
   return (
     <div className="space-y-4">
@@ -56,7 +66,7 @@ export default function RingePraezisionPanel({
         <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgLast3Label', { defaultValue: 'Ø Letzte 3' })}</span>
           <div className="text-center">
-            <p className="text-2xl font-black text-emerald-600 leading-none">{avgPoints3 ? avgPoints3 : '–'}</p>
+            <p className="text-2xl font-black text-emerald-600 leading-none">{cardPoints3 ? cardPoints3 : '–'}</p>
             <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">
@@ -67,7 +77,7 @@ export default function RingePraezisionPanel({
         <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
           <div className="text-center">
-            <p className="text-2xl font-black text-emerald-600 leading-none">{avgPointsMonth ? avgPointsMonth : '–'}</p>
+            <p className="text-2xl font-black text-emerald-600 leading-none">{cardPointsMonth ? cardPointsMonth : '–'}</p>
             <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
           </div>
           <div className="text-center">

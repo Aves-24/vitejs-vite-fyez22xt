@@ -358,6 +358,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
   const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
   const [weeklyPointsByDist, setWeeklyPointsByDist] = useState<Record<string, number[]>>({});
+  const [avgByDist, setAvgByDist] = useState<Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }>>({});
   
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -520,6 +521,34 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           byDist[dist] = wScoreByDist[dist].map((sc, i) => wScoreArrowsByDist[dist][i] > 0 ? sc / wScoreArrowsByDist[dist][i] : 0);
         });
         setWeeklyPointsByDist(byDist);
+
+        // ─── ŚREDNIE KART PER DYSTANS (Ø Letzte 3 / Schnitt Monat) ──
+        const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+        const scoredNonTech = sessions
+          .map((s: any) => ({
+            arrows: s.arrows || s.totalArrows || 0,
+            score: s.score || 0,
+            distance: s.distance || '',
+            type: s.type || 'Trening',
+            ts: s.timestamp?.toMillis ? s.timestamp.toMillis() : (typeof s.timestamp === 'number' ? s.timestamp : 0),
+          }))
+          .filter((s: any) => s.score > 0 && s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH')
+          .sort((a: any, b: any) => a.ts - b.ts);
+        const meanRound = (arr: any[], key: 'arrows' | 'score') =>
+          arr.length ? Math.round(arr.reduce((acc: number, s: any) => acc + (s[key] || 0), 0) / arr.length) : 0;
+        const aByDist: Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }> = {};
+        Array.from(new Set(scoredNonTech.map((s: any) => s.distance))).forEach(dist => {
+          const ds = scoredNonTech.filter((s: any) => s.distance === dist);
+          const l3 = ds.slice(-3);
+          const mo = ds.filter((s: any) => s.ts >= startOfMonth);
+          aByDist[dist as string] = {
+            avgArrows3: meanRound(l3, 'arrows'),
+            avgPoints3: meanRound(l3, 'score'),
+            avgArrowsMonth: meanRound(mo, 'arrows'),
+            avgPointsMonth: meanRound(mo, 'score'),
+          };
+        });
+        setAvgByDist(aByDist);
       } catch (e) {
         console.error('Błąd liczenia słupków QuickStats ucznia:', e);
       }
@@ -956,6 +985,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         weeklyArrows={weeklyArrows}
         weeklyPoints={weeklyPoints}
         weeklyPointsByDistance={weeklyPointsByDist}
+        avgByDistance={avgByDist}
         stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth }}
       />
 

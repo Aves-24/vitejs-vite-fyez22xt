@@ -454,7 +454,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v8_${userId}`;
+      const cacheKey = `grotX_stats_v9_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -552,6 +552,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               if (key === dayKey) d += (val as number);
             }
             if (key.startsWith(prevMonthPrefix)) pm += (val as number);
+            // Klucze dzienne (YYYY_MM_DD) doliczamy też do słupków 12-tyg.,
+            // żeby wykres zgadzał się z licznikami Tag/Monat/Jahr powyżej.
+            const parts = key.split('_');
+            if (parts.length === 3) {
+              const pzTs = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime();
+              const pzWeeks = Math.floor(Math.max(0, now.getTime() - pzTs) / (1000 * 60 * 60 * 24 * 7));
+              if (pzWeeks < 12) weekArrows[11 - pzWeeks] += (Number(val) || 0);
+            }
           });
         }
 
@@ -626,7 +634,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v8_${userId}`);
+      localStorage.removeItem(`grotX_stats_v9_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -642,7 +650,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v8_${userId}`);
+    localStorage.removeItem(`grotX_stats_v9_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);

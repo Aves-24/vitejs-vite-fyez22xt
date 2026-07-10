@@ -65,11 +65,18 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
   // Ręczność łucznika dla wskazówek biomechaniki (lustro lewo/prawo dla LH)
   const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
+  // Pfeilzähler — strzały zapisane na profilu bez sesji (np. próbne);
+  // doliczane do słupków tygodniowych, żeby zgadzały się z licznikami na Home
+  const [pfeilzaehler, setPfeilzaehler] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let alive = true;
     getDoc(doc(db, 'users', userId))
-      .then(s => { if (alive) setHandedness((s.data()?.handedness as 'RH' | 'LH') || null); })
+      .then(s => {
+        if (!alive) return;
+        setHandedness((s.data()?.handedness as 'RH' | 'LH') || null);
+        setPfeilzaehler((s.data()?.pfeilzaehler as Record<string, number>) || {});
+      })
       .catch(() => { if (alive) setHandedness(null); });
     return () => { alive = false; };
   }, [userId]);
@@ -373,6 +380,16 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         if (s.type !== 'TECHNICAL' && scoreArr > 0) { wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr; }
       }
     });
+    // Pfeilzähler (klucze dzienne YYYY_MM_DD) — dolicz do słupków strzał;
+    // średniej pkt/strzałę nie zmienia, bo te strzały nie mają punktacji
+    Object.entries(pfeilzaehler).forEach(([key, val]) => {
+      const parts = key.split('_');
+      if (parts.length !== 3) return;
+      const ts = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime();
+      const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
+      if (diffWeeks < 12) weeklyArrows[11 - diffWeeks] += (Number(val) || 0);
+    });
+
     const weeklyPoints = wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0);
 
     return {
@@ -384,7 +401,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       weeklyPoints,
       recent: scored.slice(-15) as CurveSession[],
     };
-  }, [sessions]);
+  }, [sessions, pfeilzaehler]);
 
   if (!isPremium) {
     return (

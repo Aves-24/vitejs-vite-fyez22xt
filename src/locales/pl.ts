@@ -304,6 +304,7 @@ export const views = {
       avgLast3Label: "Średnia ostatnie 3",
       ringeLabel: "Punkty",
       pfeileLabel: "Strzały",
+      allDistShort: "Wszystkie",
       unlockTrend: "Odblokuj Trend Roczny",
       buyPro: "Odblokuj GROT-X PRO"
     },

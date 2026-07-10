@@ -304,6 +304,7 @@ export const views = {
       avgLast3Label: "Schnitt Letzte 3",
       ringeLabel: "Ringe",
       pfeileLabel: "Pfeile",
+      allDistShort: "Alle",
       unlockTrend: "Jahrestrend freischalten",
       buyPro: "GROT-X PRO freischalten"
     },

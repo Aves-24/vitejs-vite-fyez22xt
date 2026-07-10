@@ -304,6 +304,7 @@ export const views = {
       avgLast3Label: "Average last 3",
       ringeLabel: "Rings",
       pfeileLabel: "Arrows",
+      allDistShort: "All",
       unlockTrend: "Unlock Yearly Trend",
       buyPro: "Unlock GROT-X PRO"
     },

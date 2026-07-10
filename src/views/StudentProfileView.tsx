@@ -357,6 +357,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // (widok ucznia ładuje tylko 15 ostatnich sesji do reszty UI).
   const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
   const [weeklyPoints, setWeeklyPoints] = useState<number[]>(Array(12).fill(0));
+  const [weeklyPointsByDist, setWeeklyPointsByDist] = useState<Record<string, number[]>>({});
   
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
@@ -492,6 +493,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const wArrows = Array(12).fill(0);
         const wScore = Array(12).fill(0);
         const wScoreArrows = Array(12).fill(0);
+        const wScoreByDist: Record<string, number[]> = {};
+        const wScoreArrowsByDist: Record<string, number[]> = {};
         sessions.forEach((data: any) => {
           const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : (typeof data.timestamp === 'number' ? data.timestamp : 0);
           const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
@@ -500,11 +503,23 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             const arr = data.arrows || data.totalArrows || 0;
             const scoreArr = data.scoreArrows || data.arrows || 0;
             wArrows[idx] += arr;
-            if (data.type !== 'TECHNICAL' && scoreArr > 0) { wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr; }
+            if (data.type !== 'TECHNICAL' && scoreArr > 0) {
+              wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr;
+              const dist = data.distance || '';
+              if (dist && dist !== 'TECH') {
+                if (!wScoreByDist[dist]) { wScoreByDist[dist] = Array(12).fill(0); wScoreArrowsByDist[dist] = Array(12).fill(0); }
+                wScoreByDist[dist][idx] += (data.score || 0); wScoreArrowsByDist[dist][idx] += scoreArr;
+              }
+            }
           }
         });
         setWeeklyArrows(wArrows);
         setWeeklyPoints(wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0));
+        const byDist: Record<string, number[]> = {};
+        Object.keys(wScoreByDist).forEach(dist => {
+          byDist[dist] = wScoreByDist[dist].map((sc, i) => wScoreArrowsByDist[dist][i] > 0 ? sc / wScoreArrowsByDist[dist][i] : 0);
+        });
+        setWeeklyPointsByDist(byDist);
       } catch (e) {
         console.error('Błąd liczenia słupków QuickStats ucznia:', e);
       }
@@ -940,6 +955,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         initialTab={quickStatsTab}
         weeklyArrows={weeklyArrows}
         weeklyPoints={weeklyPoints}
+        weeklyPointsByDistance={weeklyPointsByDist}
         stats={{ daily: dailyArrows, monthly: monthlyArrows, yearly: yearlyArrows, avg14: avg14Days, avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth }}
       />
 

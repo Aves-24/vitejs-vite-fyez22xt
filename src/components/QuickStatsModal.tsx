@@ -14,6 +14,8 @@ interface QuickStatsModalProps {
   // StudentProfileView leniwie) — modal nie robi już własnego odczytu z Firestore.
   weeklyArrows?: number[];
   weeklyPoints?: number[];
+  // Średnie tygodniowe per dystans — włącza chipy dystansów w zakładce Ringe & Präzision
+  weeklyPointsByDistance?: Record<string, number[]>;
   stats: {
     daily: number;
     monthly: number;
@@ -30,7 +32,7 @@ interface QuickStatsModalProps {
 
 const EMPTY_WEEKS: number[] = Array(12).fill(0);
 
-export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, stats }: QuickStatsModalProps) {
+export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, weeklyPointsByDistance, stats }: QuickStatsModalProps) {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ARROWS' | 'POINTS'>(initialTab);
 
@@ -182,6 +184,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 avgPointsMonth={stats.avgPointsMonth || 0}
                 weeklyArrows={weeklyArrows}
                 weeklyPoints={weeklyPoints}
+                weeklyPointsByDistance={weeklyPointsByDistance}
                 locked={!isPremium}
                 onUnlock={handleGoToPro}
               />

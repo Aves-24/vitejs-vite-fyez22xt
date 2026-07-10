@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getScaleColor, getWeekLabelKW } from '../../lib/statsChart';
 
@@ -13,15 +13,38 @@ interface Props {
   avgPointsMonth: number;
   weeklyArrows: number[];
   weeklyPoints: number[];
+  // Średnie tygodniowe per dystans — gdy podane, nad wykresem pojawiają się
+  // chipy dystansów (QuickStats). ProStats ich nie przekazuje (ma własną
+  // sekcję Distanz-Analyse), więc tam wykres zostaje globalny.
+  weeklyPointsByDistance?: Record<string, number[]>;
   locked?: boolean;      // rozmycie słupków + przycisk odblokowania (gdy nie premium)
   onUnlock?: () => void;
 }
 
+const ALL_DIST = 'ALL';
+
 export default function RingePraezisionPanel({
-  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, locked = false, onUnlock,
+  avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, weeklyPointsByDistance, locked = false, onUnlock,
 }: Props) {
   const { t } = useTranslation();
-  const maxPoints = Math.max(...weeklyPoints, 0);
+  const [selectedDist, setSelectedDist] = useState<string>(ALL_DIST);
+
+  // Chipy tylko dla dystansów, które mają jakiekolwiek punktowane tygodnie
+  // (bez TECH — trening techniczny nie ma ringów), posortowane rosnąco.
+  const distances = useMemo(() => {
+    if (!weeklyPointsByDistance) return [];
+    return Object.entries(weeklyPointsByDistance)
+      .filter(([dist, pts]) => dist && dist !== 'TECH' && pts.some(p => p > 0))
+      .map(([dist]) => dist)
+      .sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0));
+  }, [weeklyPointsByDistance]);
+
+  // Gdy wybrany dystans zniknął z danych (np. odświeżenie), wróć do "Wszystkie"
+  const activeDist = selectedDist !== ALL_DIST && !distances.includes(selectedDist) ? ALL_DIST : selectedDist;
+  const shownPoints = activeDist === ALL_DIST
+    ? weeklyPoints
+    : (weeklyPointsByDistance?.[activeDist] || weeklyPoints);
+  const maxPoints = Math.max(...shownPoints, 0);
   // Średnia na strzał = Ø punktów na sesję / Ø strzał na sesję = Σpkt/Σstrzał (dokładna).
   const perArrow3 = avgArrows3 > 0 ? avgPoints3 / avgArrows3 : 0;
   const perArrowMonth = avgArrowsMonth > 0 ? avgPointsMonth / avgArrowsMonth : 0;
@@ -58,10 +81,24 @@ export default function RingePraezisionPanel({
           nad słupkiem wartość średniej */}
       <div className="relative">
         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
+        {distances.length > 1 && (
+          <div className={`flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-3 transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
+            {[ALL_DIST, ...distances].map(dist => (
+              <button key={dist} onClick={() => setSelectedDist(dist)}
+                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${
+                  activeDist === dist
+                    ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md'
+                    : 'bg-gray-50 text-gray-400 border-gray-100'
+                }`}>
+                {dist === ALL_DIST ? t('home.quickStats.allDistShort', { defaultValue: 'Wszystkie' }) : dist}
+              </button>
+            ))}
+          </div>
+        )}
         <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-30 pointer-events-none' : ''}`}>
           <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
             <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-              {weeklyPoints.map((pts, i) => {
+              {shownPoints.map((pts, i) => {
                 const isBest = pts > 0 && pts === maxPoints;
                 return (
                   <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">

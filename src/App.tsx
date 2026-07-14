@@ -431,7 +431,7 @@ export default function App() {
                 </span>
             </button>
             <span className={`text-[9px] font-black ${hasActiveSession ? 'text-red-500' : 'text-[#8B6508]'} uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm`}>
-              {hasActiveSession ? 'W TOKU' : 'Trening'}
+              {hasActiveSession ? t('nav.inProgress') : t('nav.training')}
             </span>
           </div>
 

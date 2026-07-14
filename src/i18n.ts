@@ -14,9 +14,15 @@ i18n
     debug: false,
     fallbackLng: 'en',
     detection: {
-      order: ['localStorage'],
+      // localStorage = świadomy wybór użytkownika (ma priorytet);
+      // navigator = język przeglądarki dla pierwszej wizyty (zamiast twardego EN)
+      order: ['localStorage', 'navigator'],
       caches: ['localStorage'],
     },
+    // 'de-DE' / 'pl-PL' z navigatora mapujemy na nasze zasoby 'de' / 'pl'
+    load: 'languageOnly',
+    supportedLngs: ['pl', 'en', 'de'],
+    nonExplicitSupportedLngs: true,
     interpolation: {
       escapeValue: false, // React samo escape'uje wartości, chroniąc przed XSS
     },

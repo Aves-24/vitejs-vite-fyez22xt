@@ -199,7 +199,9 @@ export const views = {
     stats: "Stats",
     settings: "Settings",
     myCoach: "Archer",
-    coach: "Trainer"
+    coach: "Trainer",
+    training: "Training",
+    inProgress: "LIVE"
   },
   myCoach: {
     headerLabel: "Archer",

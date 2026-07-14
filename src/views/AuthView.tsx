@@ -123,6 +123,25 @@ export default function AuthView() {
       {/* Ozdobniki tła */}
       <div className="absolute top-[-100px] left-[-50px] w-64 h-64 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
       <div className="absolute top-[-50px] right-[-50px] w-64 h-64 bg-yellow-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+
+      {/* Przełącznik języka — widoczny przed zalogowaniem, żeby pierwsza wizyta
+          nie utknęła w obcym języku (wybór zapisuje się w localStorage) */}
+      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-5 z-20 flex gap-1">
+        {(['pl', 'de', 'en'] as const).map(lng => (
+          <button
+            key={lng}
+            type="button"
+            onClick={() => i18n.changeLanguage(lng)}
+            className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+              (i18n.resolvedLanguage || i18n.language) === lng
+                ? 'bg-[#0a3a2a] text-white shadow-md'
+                : 'bg-white/80 text-gray-400 border border-gray-100'
+            }`}
+          >
+            {lng}
+          </button>
+        ))}
+      </div>
       
       <div className="relative z-10 w-full space-y-8 flex flex-col items-center">
         {/* LOGO */}

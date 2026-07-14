@@ -160,6 +160,8 @@ export const views = {
     password: "Password",
     loginBtn: "Login",
     registerBtn: "Create Account",
+    tabLogin: "Log in",
+    tabRegister: "Create account",
     switchLogin: "Login",
     switchRegister: "Sign up",
     noAccount: "Don't have an account?",
@@ -177,7 +179,20 @@ export const views = {
     privacyAccept: "I accept the",
     privacyPolicy: "Privacy Policy",
     privacyRequired: "Please accept the Privacy Policy to create an account.",
-    privacyGoogleNote: "By continuing with Google you accept the Privacy Policy."
+    privacyGoogleNote: "By continuing with Google you accept the Privacy Policy.",
+    guestBtn: "Try without an account",
+    guestNote: "Guest data is automatically deleted after 24 hours."
+  },
+  guest: {
+    banner: "Guest mode — data expires in {{time}}.",
+    bannerCta: "Create account",
+    blockedFeature: "Battles and rankings require a full account.",
+    upgradeTitle: "Keep your data",
+    upgradeDesc: "Create an account and your guest trainings and settings will stay with you permanently.",
+    upgradeBtn: "Create account",
+    upgradeGoogle: "Continue with Google",
+    emailInUse: "This e-mail already has an account. Sign out of guest mode and log into it.",
+    weakPassword: "Password must be at least 6 characters."
   },
   parentalConsent: {
     title: "Parental consent required",
@@ -748,7 +763,14 @@ export const views = {
       completionNote: "Carefully completing the assistant is the key to full GROT-X functionality — don't skip any step!",
       welcomeTitle1: "Welcome,",
       welcomeTitle2: "to",
-      welcomeBtn: "GOT IT, LET'S START"
+      welcomeBtn: "GOT IT, LET'S START",
+      gateNameLabel: "What should we call you?",
+      gateNamePlaceholder: "Your name or nickname",
+      gateNameHint: "Your name creates your profile — enter it to continue.",
+      gateContinueSetup: "Continue setup",
+      gateContinueNote: "Highly recommended — takes 2 minutes, but you can finish later in Settings.",
+      gateStartTraining: "Start training",
+      gateGoHome: "Go to home screen"
     },
     sight: {
       distTarget: "Distance / Face",

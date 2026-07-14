@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { guestExpiryFields } from '../utils/guestMode';
 
 interface TournamentScoreInputProps {
   userId: string;
@@ -198,7 +199,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         ends: inputMode === 'DETAILED' ? archivedEnds : [],
         note: aiNote.trim(),
         inputMode: inputMode,
-        targetType: distance === '18m' ? '3-Spot' : 'Full'
+        targetType: distance === '18m' ? '3-Spot' : 'Full',
+        ...guestExpiryFields() // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       });
 
       // Aktualizacje nieblokujące — błędy nie przerywają nawigacji
@@ -207,7 +209,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         const totalCount = sessionArrows + practiceArrows;
         await updateDoc(userRef, { totalArrows: increment(totalCount), monthlyArrows: increment(totalCount) });
         const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
-        await setDoc(dailyRef, { arrows: increment(totalCount) }, { merge: true });
+        await setDoc(dailyRef, { arrows: increment(totalCount), ...guestExpiryFields() }, { merge: true });
       } catch (secondaryError) {
         console.warn('Nieblokujący błąd aktualizacji statystyk:', secondaryError);
       }

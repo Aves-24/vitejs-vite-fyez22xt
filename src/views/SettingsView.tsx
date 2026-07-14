@@ -17,6 +17,7 @@ import BowSection from '../components/settings/BowSection';
 import PrivacySection from '../components/settings/PrivacySection';
 import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
 import { loadPrivateProfile, savePrivateProfile, getAgeCategory } from '../utils/privateProfile';
+import { guestExpiryFields } from '../utils/guestMode';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
@@ -248,7 +249,9 @@ export default function SettingsView({
         country, height, handedness,
         bowType, lbs, riser, limbs, stabilizers, sight,
         startYear, competitionLevel, userDistances: finalDistances,
-        showFullName, showClub, showRegion
+        showFullName, showClub, showRegion,
+        // [GOŚĆ] Odświeża expiresAt na dokumencie gościa (no-op dla kont pełnych)
+        ...guestExpiryFields()
       };
       if (birthDate) payload.ageCategory = getAgeCategory(birthDate, gender);
       await setDoc(doc(db, 'users', userId), payload, { merge: true });

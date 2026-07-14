@@ -19,6 +19,8 @@ import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
 import { syncPublicProfile } from './utils/publicProfile';
 import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
+import { guestExpiryFields, isGuestUser } from './utils/guestMode';
+import GuestBanner from './components/GuestBanner';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -80,6 +82,9 @@ export default function App() {
   const [pendingMyCoachTab, setPendingMyCoachTab] = useState<string | null>(null);
   const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
+  // [GOŚĆ] Komunikat o funkcji niedostępnej w trybie gościa (battles/ranking)
+  const [guestBlockMsg, setGuestBlockMsg] = useState<boolean>(false);
+  const guestBlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Pętla ochronna dla jednorazowego fallback-write trialEndsAt:
   // próbujemy MAX raz na sesję, niezależnie od wyniku. Bez tego optimistic
@@ -275,11 +280,14 @@ export default function App() {
         }
       } else {
         // Dokument nie istnieje — tworzymy go natychmiast z minimalnym rekordem
-        // żeby użytkownik zawsze miał konto w Firebase nawet jeśli przerwie wizard
+        // żeby użytkownik zawsze miał konto w Firebase nawet jeśli przerwie wizard.
+        // [GOŚĆ] Konto anonimowe dostaje expiresAt (+24h od utworzenia) — TTL
+        // Firestore skasuje dokument po terminie; upgrade konta zdejmuje pole.
         setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           createdAt: serverTimestamp(),
           trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          ...guestExpiryFields(),
         }, { merge: true }).catch(e => console.error('Błąd tworzenia profilu:', e));
 
         setAutoStartWizard(true);
@@ -300,6 +308,14 @@ export default function App() {
   }, [isDataReady, showSplash, isAuthLoading]);
 
   const handleNavigate = (view: AppView, tab?: string, extraData?: string, optionalStudentId?: string) => {
+    // [GOŚĆ] Battles i ranking światowy wymagają konta — goście nie trafiają
+    // do world_stats/battles (duchy w rankingu, TTL skasowałby ich wpisy).
+    if (isGuestUser() && ['BATTLE_LOBBY', 'BATTLE_HISTORY', 'WORLD_LEADERBOARD'].includes(view)) {
+      setGuestBlockMsg(true);
+      if (guestBlockTimerRef.current) clearTimeout(guestBlockTimerRef.current);
+      guestBlockTimerRef.current = setTimeout(() => setGuestBlockMsg(false), 3500);
+      return;
+    }
     // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
     if (view !== currentView) window.history.pushState({ view }, '');
     setCurrentView(view);
@@ -497,6 +513,18 @@ export default function App() {
       {/* [RODO art. 8] Bramka zgody opiekuna dla użytkowników < 16 lat.
           Blokuje aplikację małoletniemu bez potwierdzonej zgody rodzica. */}
       {user?.uid && <ParentalConsentGate userId={user.uid} />}
+
+      {/* [GOŚĆ] Stały baner na Home: odliczanie do wygaśnięcia danych +
+          upgrade konta (linkWithCredential zachowuje uid i dorobek). */}
+      {user?.uid && currentView === 'HOME' && <GuestBanner userId={user.uid} />}
+
+      {/* [GOŚĆ] Toast: funkcja wymaga pełnego konta */}
+      {guestBlockMsg && (
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[300000] bg-[#0a3a2a] text-white px-5 py-3.5 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-2xl border border-emerald-900 flex items-center gap-2.5 text-center max-w-[90%] w-max">
+          <span className="material-symbols-outlined text-[#fed33e] text-base">lock</span>
+          {t('guest.blockedFeature')}
+        </div>
+      )}
 
       {/* [BEZPIECZEŃSTWO] Globalny listener zaproszeń trenerskich — pokazuje
           popup "Trener X chce Cię obserwować" zanim coach dostanie dostęp.

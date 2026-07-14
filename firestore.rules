@@ -29,6 +29,13 @@ service cloud.firestore {
     function isSelf(uid) {
       return isSignedIn() && request.auth.uid == uid;
     }
+    // [GOŚĆ] Konto anonimowe (tryb gościa, dane TTL 24h) — bez dostępu do
+    // funkcji społecznościowych: battles, ranking światowy, relacje trenerskie,
+    // publiczne lustro profilu. TTL skasowałby ich wpisy → duchy w rankingach.
+    function isAnon() {
+      return isSignedIn()
+        && request.auth.token.firebase.sign_in_provider == 'anonymous';
+    }
     function isAdmin() {
       // email_verified wymagane: bez tego rejestracja e-mail+hasło na cudzy
       // (jeszcze niezajęty) adres dawałaby uprawnienia admina. Konta Google
@@ -223,6 +230,7 @@ service cloud.firestore {
     match /profiles_public/{uid} {
       allow read: if isSignedIn();
       allow create, update: if isSelf(uid)
+        && !isAnon()
         && request.resource.data.keys().hasOnly(
              ['displayName', 'club', 'country', 'level', 'updatedAt'])
         && request.resource.data.get('displayName', '') is string
@@ -402,6 +410,7 @@ service cloud.firestore {
         request.auth.uid == resource.data.studentId
       );
       allow create: if isSignedIn()
+        && !isAnon()
         && request.resource.data.coachId == request.auth.uid
         && inviteId == request.resource.data.coachId + '_' + request.resource.data.studentId
         && request.resource.data.studentId is string
@@ -418,6 +427,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
 
       allow create: if isSignedIn()
+        && !isAnon()
         && request.resource.data.hostId == request.auth.uid
         && request.resource.data.participants is list
         && request.auth.uid in request.resource.data.participants
@@ -460,8 +470,9 @@ service cloud.firestore {
     match /world_queue/{entryId} {
       allow read: if isSelf(entryId) || isAdmin();
       allow create: if isSelf(entryId)
+        && !isAnon()
         && request.resource.data.userId == request.auth.uid;
-      allow update: if isSelf(entryId);
+      allow update: if isSelf(entryId) && !isAnon();
       allow delete: if isSelf(entryId) || isAdmin();
     }
 
@@ -473,6 +484,7 @@ service cloud.firestore {
       // dokument dopiero PO pierwszej bitwie (od razu z 1 win/loss + XP) —
       // wymóg samych zer po cichu odrzucał pierwszy zapis na leaderboard.
       allow create: if isSelf(userId)
+        && !isAnon()
         && validWorldStatsShape(request.resource.data)
         && request.resource.data.get('worldWins', 0) >= 0
         && request.resource.data.get('worldWins', 0) <= 1
@@ -483,6 +495,7 @@ service cloud.firestore {
 
       // Per-update bounds: at most +1 win, +1 loss, +100 XP, no decrements.
       allow update: if isSelf(userId)
+        && !isAnon()
         && validWorldStatsShape(request.resource.data)
         && request.resource.data.get('worldWins', 0)
              >= resource.data.get('worldWins', 0)

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import ClubPicker from './ClubPicker';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase'; 
-import { collection, addDoc } from 'firebase/firestore'; 
+import { collection, addDoc } from 'firebase/firestore';
+import { guestExpiryFields } from '../utils/guestMode';
 import { useTranslation } from 'react-i18next';
 import { BowType } from '../config/archeryRules';
 
@@ -151,7 +152,8 @@ export default function ProfileWizard(props: ProfileWizardProps) {
       try {
         await addDoc(collection(db, 'users', props.userId, 'tournaments'), {
           category: 'Turniej', title: tournamentTitle, date: finalDate, time: tournamentTime,
-          address: tournamentLocation, note: tournamentNote, type: selectedTDist // Zapis wybranego kafelka
+          address: tournamentLocation, note: tournamentNote, type: selectedTDist, // Zapis wybranego kafelka
+          ...guestExpiryFields() // [GOŚĆ] wpisy gościa wygasają po 24h (TTL)
         });
       } catch (e) { console.error(e); }
       setIsSavingLocal(false);
@@ -167,7 +169,8 @@ export default function ProfileWizard(props: ProfileWizardProps) {
       try {
         await addDoc(collection(db, 'users', props.userId, 'tournaments'), {
           category: 'Inne', title: privateEventTitle, date: finalDate, time: privateEventTime,
-          address: privateEventAddress, note: privateEventNote, type: 'Wydarzenie łucznicze'
+          address: privateEventAddress, note: privateEventNote, type: 'Wydarzenie łucznicze',
+          ...guestExpiryFields() // [GOŚĆ] wpisy gościa wygasają po 24h (TTL)
         });
       } catch (e) { console.error(e); }
     }
@@ -210,62 +213,109 @@ export default function ProfileWizard(props: ProfileWizardProps) {
   const totalSteps = 7;
   const uName = props.nickname || props.firstName || t('settings.wizard.firstName');
 
-  // [POPRAWKA Z-INDEX] EKRAN POWITALNY (Zero Screen)
+  // [BRAMKA IMIENIA] Ekran powitalny — imię jest obowiązkowe (tworzy profil
+  // w Firebase), ale dalsza konfiguracja to wybór użytkownika: pełny kreator,
+  // prosto do treningu albo na stronę główną. KAŻDA ścieżka najpierw zapisuje
+  // imię do bazy przez onSaveSettings.
   if (showWelcome) {
+    const gateNameOk = !!props.firstName.trim();
+
+    const saveNameThen = async (after: () => void) => {
+      if (!gateNameOk || isSavingLocal) return;
+      setIsSavingLocal(true);
+      try {
+        await props.onSaveSettings(undefined);
+      } catch {
+        // Zapis nieudany (offline / reguły) — zostajemy na bramce,
+        // użytkownik nie traci wpisanego imienia.
+        setIsSavingLocal(false);
+        return;
+      }
+      setIsSavingLocal(false);
+      after();
+    };
+
+    const gateContinueSetup = () => saveNameThen(() => {
+      setShowWelcome(false); // imię już w bazie — wchodzimy w krok 1 kreatora
+    });
+    const gateGo = (view: 'SETUP' | 'HOME') => saveNameThen(() => {
+      setShowWelcome(false);
+      props.setWizardStep(0);
+      if (props.onNavigate) props.onNavigate(view);
+    });
+
     return createPortal(
-      <div className="fixed inset-0 mx-auto w-full max-w-md z-[30000] bg-[#0a3a2a] flex flex-col items-center justify-center p-6 animate-fade-in-up shadow-2xl">
-        <div className="absolute inset-0 bg-emerald-900/20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent"></div>
-        <div className="relative z-10 flex flex-col items-center">
-          <span className="material-symbols-outlined text-[80px] text-[#fed33e] mb-4 animate-bounce-subtle">auto_awesome</span>
-          <h1 className="text-3xl font-black text-white mb-2 text-center flex flex-col items-center leading-snug">
-            <span>{t('settings.wizard.welcomeTitle1')}</span>
-            <span className="flex items-baseline gap-1.5">
+      <div className="fixed inset-0 mx-auto w-full max-w-md z-[30000] bg-[#0a3a2a] flex flex-col p-6 animate-fade-in-up shadow-2xl overflow-y-auto">
+        <div className="absolute inset-0 bg-emerald-900/20 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent pointer-events-none"></div>
+
+        <div className="relative z-10 flex flex-col flex-1 justify-between gap-5 py-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+
+          {/* ~1/4: Logo + imię (obowiązkowe) */}
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[26%]">
+            <h1 className="text-2xl font-black text-white text-center leading-snug flex items-baseline gap-1.5">
+              <span>{t('settings.wizard.welcomeTitle1')}</span>
               <span>{t('settings.wizard.welcomeTitle2')}</span>
               <span className="inline-flex items-baseline">
-                <span>Grot-X</span>
-                <span className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm"></span>
+                <span>GROT-X</span>
+                <span className="w-2 h-2 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.4em] shadow-sm"></span>
               </span>
-              <span>.</span>
-            </span>
-          </h1>
-          <p className="text-base font-black text-[#fed33e] text-center mb-4 uppercase tracking-wide">
-            {t('settings.wizard.assistantTitle', { steps: totalSteps })}
-          </p>
-
-          <div className="w-full bg-emerald-900/40 rounded-2xl p-4 mb-6 border border-emerald-700/40">
-            <p className="text-[13px] font-black text-white text-center leading-relaxed mb-2">
-              {t('settings.wizard.motivationBanner')}
+            </h1>
+            <label className="text-[11px] font-black text-[#fed33e] uppercase tracking-[0.15em] text-center mt-2">
+              {t('settings.wizard.gateNameLabel')}
+            </label>
+            <input
+              type="text"
+              value={props.firstName}
+              onChange={e => props.setFirstName(e.target.value)}
+              placeholder={t('settings.wizard.gateNamePlaceholder')}
+              autoFocus
+              className="w-full max-w-xs bg-emerald-900/40 border-2 border-emerald-700/60 rounded-2xl p-4 text-center text-lg font-black text-white outline-none focus:border-[#fed33e] transition-all placeholder:text-emerald-200/30 placeholder:text-sm placeholder:font-bold"
+            />
+            <p className={`text-[10px] font-bold text-center px-4 transition-opacity ${gateNameOk ? 'opacity-0' : 'text-emerald-200/60'}`}>
+              {t('settings.wizard.gateNameHint')}
             </p>
-            <ul className="space-y-1.5">
-              {[
-                t('settings.wizard.welcomeBenefit0'),
-                t('settings.wizard.benefit1'),
-                t('settings.wizard.welcomeBenefit2'),
-                t('settings.wizard.benefit2'),
-              ].map((item, i) => (
-                <li key={i} className="flex items-start gap-2 text-[11px] font-bold text-emerald-100/90">
-                  <span className="material-symbols-outlined text-[#fed33e] text-[14px] mt-0.5 shrink-0">check_circle</span>
-                  {item}
-                </li>
-              ))}
-            </ul>
           </div>
 
-          <p className="text-[11px] font-bold text-emerald-200/60 text-center mb-8 px-2">
-            {t('settings.wizard.laterNote')}
-          </p>
+          {/* ~1/4: Kontynuuj konfigurację (zalecane) */}
+          <div className="flex-1 flex flex-col justify-center gap-2 min-h-[22%]">
+            <button
+              onClick={gateContinueSetup}
+              disabled={!gateNameOk || isSavingLocal}
+              className="w-full py-5 bg-[#fed33e] text-[#5d4a00] rounded-3xl font-black text-sm uppercase tracking-widest shadow-[0_10px_30px_rgba(254,211,62,0.3)] active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl">{isSavingLocal ? 'sync' : 'tune'}</span>
+              {t('settings.wizard.gateContinueSetup')}
+            </button>
+            <p className="text-[10px] font-bold text-emerald-200/70 text-center px-6 leading-snug">
+              {t('settings.wizard.gateContinueNote')}
+            </p>
+          </div>
 
-          <button
-            onClick={() => setShowWelcome(false)}
-            className="w-full max-w-xs py-4 bg-[#fed33e] text-[#5d4a00] rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(254,211,62,0.3)] active:scale-95 transition-all"
-          >
-            {t('settings.wizard.welcomeBtn', 'ROZUMIEM, ZACZYNAMY')}
-          </button>
+          {/* ~1/4: Rozpocznij trening */}
+          <div className="flex-1 flex flex-col justify-center min-h-[22%]">
+            <button
+              onClick={() => gateGo('SETUP')}
+              disabled={!gateNameOk || isSavingLocal}
+              className="w-full py-5 bg-emerald-900/40 border-2 border-emerald-600/60 text-white rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-xl text-[#fed33e]">target</span>
+              {t('settings.wizard.gateStartTraining')}
+            </button>
+          </div>
+
+          {/* Dół: Przejdź do strony głównej */}
+          <div className="flex flex-col items-center justify-end pb-2">
+            <button
+              onClick={() => gateGo('HOME')}
+              disabled={!gateNameOk || isSavingLocal}
+              className="text-[11px] font-black text-emerald-200/70 uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 flex items-center gap-1.5 py-3 px-4"
+            >
+              {t('settings.wizard.gateGoHome')}
+              <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </button>
+          </div>
+
         </div>
-        <style>{`
-          .animate-bounce-subtle { animation: bounce-subtle 2s infinite ease-in-out; }
-          @keyframes bounce-subtle { 0%, 100% { transform: translateY(-5px); } 50% { transform: translateY(5px); } }
-        `}</style>
       </div>,
       document.body
     );

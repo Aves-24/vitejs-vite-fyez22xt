@@ -1,6 +1,7 @@
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { PRIVACY_POLICY_VERSION } from './legalLinks';
+import { guestExpiryFields } from './guestMode';
 
 // ═══════════════════════════════════════════════════════════════════
 //  [RODO C21] Profil prywatny — users/{uid}/private/profile
@@ -105,10 +106,12 @@ export async function loadPrivateProfile(uid: string): Promise<PrivateProfile | 
 }
 
 export async function savePrivateProfile(uid: string, data: PrivateProfile): Promise<void> {
-  const payload: Record<string, string> = {};
+  const payload: Record<string, any> = {};
   if (data.birthDate) payload.birthDate = data.birthDate;
   if (data.gender) payload.gender = data.gender;
   if (Object.keys(payload).length === 0) return;
+  // [GOŚĆ] Dane wrażliwe gościa też wygasają po 24h (TTL na grupie 'private')
+  Object.assign(payload, guestExpiryFields());
   await setDoc(doc(db, 'users', uid, 'private', 'profile'), payload, { merge: true });
 }
 

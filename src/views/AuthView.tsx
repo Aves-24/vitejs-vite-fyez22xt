@@ -5,6 +5,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
+  signInAnonymously,
   GoogleAuthProvider,
   sendPasswordResetEmail,
   getAdditionalUserInfo
@@ -99,6 +100,23 @@ export default function AuthView() {
     }
   };
 
+  // [TRYB GOŚCIA] Konto anonimowe Firebase — pełna aplikacja bez rejestracji,
+  // ale wszystkie dane wygasają 24h po utworzeniu konta (TTL Firestore).
+  // Baner na Home przypomina o rejestracji; upgrade (linkWithCredential)
+  // zachowuje uid i cały dorobek.
+  const handleGuestAuth = async () => {
+    safeSetError('');
+    safeSetIsLoading(true);
+    try {
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      console.error(err);
+      safeSetError(t('auth.errorGeneral'));
+    } finally {
+      safeSetIsLoading(false);
+    }
+  };
+
   const handleGoogleAuth = async () => {
     safeSetError('');
     safeSetIsLoading(true);
@@ -154,6 +172,27 @@ export default function AuthView() {
             {isForgotPassword ? t('auth.resetTitle') : t('auth.subtitle')}
           </p>
         </div>
+
+        {/* Zakładki Zaloguj / Załóż konto — obie ścieżki widoczne od razu,
+            nowy użytkownik nie musi szukać małego linku do rejestracji */}
+        {!isForgotPassword && (
+          <div className="w-full flex p-1 bg-gray-100 rounded-2xl">
+            <button
+              type="button"
+              onClick={() => { setIsLogin(true); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
+            >
+              {t('auth.tabLogin')}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setIsLogin(false); setError(''); }}
+              className={`flex-1 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
+            >
+              {t('auth.tabRegister')}
+            </button>
+          </div>
+        )}
 
         {error && (
           <div className="w-full bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl text-[11px] font-bold text-center animate-fade-in-up">
@@ -250,19 +289,6 @@ export default function AuthView() {
 
         {!isForgotPassword && (
           <div className="w-full space-y-6">
-            <button 
-              type="button" 
-              onClick={() => { setIsLogin(!isLogin); setError(''); }}
-              className="w-full text-center group"
-            >
-              <span className="text-xs font-bold text-gray-400 group-hover:text-emerald-600 transition-colors">
-                {isLogin ? t('auth.noAccount') : t('auth.haveAccount')}{' '}
-                <span className="text-emerald-600 font-black underline decoration-emerald-200 underline-offset-4 ml-1">
-                  {isLogin ? t('auth.switchRegister') : t('auth.switchLogin')}
-                </span>
-              </span>
-            </button>
-
             <div className="flex items-center gap-4 px-4">
               <div className="h-[1px] bg-gray-100 flex-1"></div>
               <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">{t('auth.or')}</span>
@@ -295,6 +321,20 @@ export default function AuthView() {
                 ↗
               </a>
             </p>
+
+            <button
+              onClick={handleGuestAuth}
+              disabled={isLoading}
+              type="button"
+              className="w-full text-center py-2 active:scale-95 transition-all"
+            >
+              <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest underline decoration-gray-200 underline-offset-4">
+                {t('auth.guestBtn')}
+              </span>
+              <span className="block text-[9px] font-bold text-gray-300 mt-1 normal-case tracking-normal">
+                {t('auth.guestNote')}
+              </span>
+            </button>
           </div>
         )}
       </div>

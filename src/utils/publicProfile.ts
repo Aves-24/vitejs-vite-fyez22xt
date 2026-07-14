@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -65,6 +65,9 @@ export function buildPublicProfile(data: Record<string, any>): PublicProfile {
 const lastSynced = new Map<string, string>();
 
 export async function syncPublicProfile(uid: string, userData: Record<string, any>): Promise<void> {
+  // [GOŚĆ] Konta anonimowe nie mają publicznego lustra — nie pojawiają się
+  // w popupach zaproszeń/lobby, a TTL nie musi czyścić profiles_public.
+  if (auth.currentUser?.isAnonymous) return;
   const profile = buildPublicProfile(userData);
   const serialized = JSON.stringify(profile);
   if (lastSynced.get(uid) === serialized) return;

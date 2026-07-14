@@ -7,6 +7,7 @@ import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { calculateSessionHandicap, calculateCurrentHandicap } from '../utils/handicapEngine';
+import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend'; 
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
@@ -478,6 +479,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
         weather: currentWeather,
         ends: submittedEnds,
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
+        ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       });
 
       // Denormalizacja + aktualizacja XP i rangi

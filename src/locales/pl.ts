@@ -160,6 +160,8 @@ export const views = {
     password: "Hasło",
     loginBtn: "Zaloguj się",
     registerBtn: "Utwórz konto",
+    tabLogin: "Zaloguj się",
+    tabRegister: "Załóż konto",
     switchLogin: "Zaloguj się",
     switchRegister: "Zarejestruj się",
     noAccount: "Nie masz konta?",
@@ -177,7 +179,20 @@ export const views = {
     privacyAccept: "Akceptuję",
     privacyPolicy: "Politykę prywatności",
     privacyRequired: "Aby utworzyć konto, zaakceptuj Politykę prywatności.",
-    privacyGoogleNote: "Kontynuując przez Google akceptujesz Politykę prywatności."
+    privacyGoogleNote: "Kontynuując przez Google akceptujesz Politykę prywatności.",
+    guestBtn: "Wypróbuj bez konta",
+    guestNote: "Dane trybu gościa są automatycznie usuwane po 24 godzinach."
+  },
+  guest: {
+    banner: "Tryb gościa — dane wygasną za {{time}}.",
+    bannerCta: "Załóż konto",
+    blockedFeature: "Pojedynki i ranking wymagają pełnego konta.",
+    upgradeTitle: "Zachowaj swoje dane",
+    upgradeDesc: "Załóż konto, a treningi i ustawienia z trybu gościa zostaną z Tobą na stałe.",
+    upgradeBtn: "Utwórz konto",
+    upgradeGoogle: "Kontynuuj z Google",
+    emailInUse: "Ten e-mail ma już konto. Wyloguj się z trybu gościa i zaloguj na nie.",
+    weakPassword: "Hasło musi mieć co najmniej 6 znaków."
   },
   parentalConsent: {
     title: "Potrzebna zgoda rodzica",
@@ -748,7 +763,14 @@ export const views = {
       completionNote: "Skrupulatne wypełnienie asystenta to klucz do pełnej funkcjonalności GROT-X — nie pomijaj żadnego kroku!",
       welcomeTitle1: "Witaj,",
       welcomeTitle2: "w",
-      welcomeBtn: "ROZUMIEM, ZACZYNAMY"
+      welcomeBtn: "ROZUMIEM, ZACZYNAMY",
+      gateNameLabel: "Jak mamy się do Ciebie zwracać?",
+      gateNamePlaceholder: "Twoje imię lub ksywka",
+      gateNameHint: "Imię utworzy Twój profil — podaj je, aby kontynuować.",
+      gateContinueSetup: "Kontynuuj konfigurację",
+      gateContinueNote: "Bardzo zalecane — zajmie 2 minuty, ale możesz dokończyć później w Ustawieniach.",
+      gateStartTraining: "Rozpocznij trening",
+      gateGoHome: "Przejdź do strony głównej"
     },
     sight: {
       distTarget: "Dystans / Tarcza",

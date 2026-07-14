@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 // IMPORTUJEMY NOWY KOMPONENT:
 import TournamentScoreInput from '../components/TournamentScoreInput';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
+import { guestExpiryFields } from '../utils/guestMode';
 import TopicPicker from '../components/TopicPicker';
 
 interface Event {
@@ -359,7 +360,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           await updateMirroredEvent(editingEventId, eventData as any, resolvedStudentIds, userId);
         }
       } else {
-        const docRef = await addDoc(collection(db, 'users', userId, 'tournaments'), eventData);
+        // [GOŚĆ] wpisy kalendarza gościa wygasają po 24h (TTL)
+        const docRef = await addDoc(collection(db, 'users', userId, 'tournaments'), { ...eventData, ...guestExpiryFields() });
         if (newIsTodo) localStorage.removeItem(`grotX_todos_${userId}`);
         // Mirror nowego eventu do uczniów
         if (newCategory === 'Trener' && resolvedStudentIds.length > 0) {

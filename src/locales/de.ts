@@ -160,6 +160,8 @@ export const views = {
     password: "Passwort",
     loginBtn: "Anmelden",
     registerBtn: "Konto erstellen",
+    tabLogin: "Anmelden",
+    tabRegister: "Konto erstellen",
     switchLogin: "Anmelden",
     switchRegister: "Registrieren",
     noAccount: "Noch kein Konto?",
@@ -177,7 +179,20 @@ export const views = {
     privacyAccept: "Ich akzeptiere die",
     privacyPolicy: "Datenschutzerklärung",
     privacyRequired: "Bitte akzeptiere die Datenschutzerklärung, um ein Konto zu erstellen.",
-    privacyGoogleNote: "Mit der Anmeldung über Google akzeptierst du die Datenschutzerklärung."
+    privacyGoogleNote: "Mit der Anmeldung über Google akzeptierst du die Datenschutzerklärung.",
+    guestBtn: "Ohne Konto ausprobieren",
+    guestNote: "Gast-Daten werden nach 24 Stunden automatisch gelöscht."
+  },
+  guest: {
+    banner: "Gastmodus — Daten verfallen in {{time}}.",
+    bannerCta: "Konto erstellen",
+    blockedFeature: "Duelle und Rangliste erfordern ein vollständiges Konto.",
+    upgradeTitle: "Behalte deine Daten",
+    upgradeDesc: "Erstelle ein Konto und deine Trainings und Einstellungen aus dem Gastmodus bleiben dauerhaft erhalten.",
+    upgradeBtn: "Konto erstellen",
+    upgradeGoogle: "Weiter mit Google",
+    emailInUse: "Diese E-Mail hat bereits ein Konto. Melde dich vom Gastmodus ab und logge dich dort ein.",
+    weakPassword: "Das Passwort muss mindestens 6 Zeichen haben."
   },
   parentalConsent: {
     title: "Einwilligung der Eltern erforderlich",
@@ -748,7 +763,14 @@ export const views = {
       completionNote: "Das sorgfältige Ausfüllen des Assistenten ist der Schlüssel zur vollen Funktionalität von GROT-X — überspringe keinen Schritt!",
       welcomeTitle1: "Willkommen,",
       welcomeTitle2: "bei",
-      welcomeBtn: "VERSTANDEN, LOS GEHT'S"
+      welcomeBtn: "VERSTANDEN, LOS GEHT'S",
+      gateNameLabel: "Wie dürfen wir dich nennen?",
+      gateNamePlaceholder: "Dein Name oder Spitzname",
+      gateNameHint: "Dein Name erstellt dein Profil — gib ihn ein, um fortzufahren.",
+      gateContinueSetup: "Konfiguration fortsetzen",
+      gateContinueNote: "Sehr empfohlen — dauert 2 Minuten, kann aber später in den Einstellungen abgeschlossen werden.",
+      gateStartTraining: "Training starten",
+      gateGoHome: "Zum Startbildschirm"
     },
     sight: {
       distTarget: "Distanz / Auflage",

@@ -137,14 +137,14 @@ export default function AuthView() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfdfe] flex flex-col items-center justify-center p-6 relative overflow-hidden max-w-md mx-auto">
+    <div className="min-h-screen bg-[#fcfdfe] flex flex-col items-center justify-center p-5 relative overflow-hidden max-w-md mx-auto">
       {/* Ozdobniki tła */}
       <div className="absolute top-[-100px] left-[-50px] w-64 h-64 bg-emerald-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
       <div className="absolute top-[-50px] right-[-50px] w-64 h-64 bg-yellow-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
 
       {/* Przełącznik języka — widoczny przed zalogowaniem, żeby pierwsza wizyta
           nie utknęła w obcym języku (wybór zapisuje się w localStorage) */}
-      <div className="absolute top-[max(1.25rem,env(safe-area-inset-top))] right-5 z-20 flex gap-1">
+      <div className="absolute top-[max(0.5rem,env(safe-area-inset-top))] right-5 z-20 flex gap-1">
         {(['pl', 'de', 'en'] as const).map(lng => (
           <button
             key={lng}
@@ -161,12 +161,12 @@ export default function AuthView() {
         ))}
       </div>
       
-      <div className="relative z-10 w-full space-y-8 flex flex-col items-center">
+      <div className="relative z-10 w-full space-y-3 flex flex-col items-center">
         {/* LOGO */}
-        <div className="text-center w-full">
-          <div className="flex items-baseline justify-center mb-2">
-            <span className="text-5xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-            <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.1em] animate-pulse"></div>
+        <div className="text-center w-full pt-5">
+          <div className="flex items-baseline justify-center mb-1.5">
+            <span className="text-4xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
+            <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.1em] animate-pulse"></div>
           </div>
           <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] opacity-80">
             {isForgotPassword ? t('auth.resetTitle') : t('auth.subtitle')}
@@ -180,14 +180,14 @@ export default function AuthView() {
             <button
               type="button"
               onClick={() => { setIsLogin(true); setError(''); }}
-              className={`flex-1 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
+              className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
             >
               {t('auth.tabLogin')}
             </button>
             <button
               type="button"
               onClick={() => { setIsLogin(false); setError(''); }}
-              className={`flex-1 py-3 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
+              className={`flex-1 py-2 rounded-xl text-[11px] font-black uppercase tracking-widest transition-all ${!isLogin ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}
             >
               {t('auth.tabRegister')}
             </button>
@@ -200,7 +200,7 @@ export default function AuthView() {
           </div>
         )}
 
-        <form onSubmit={handleEmailAuth} className="w-full bg-white p-8 rounded-[40px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-50 space-y-5">
+        <form onSubmit={handleEmailAuth} className="w-full bg-white p-5 rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-gray-50 space-y-3">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('auth.email')}</label>
             <input 
@@ -208,7 +208,7 @@ export default function AuthView() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold text-[#0a3a2a] outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300"
+              className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-3 text-sm font-bold text-[#0a3a2a] outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300"
               placeholder="e-mail"
             />
           </div>
@@ -232,7 +232,7 @@ export default function AuthView() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold text-[#0a3a2a] outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300"
+                className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-3 text-sm font-bold text-[#0a3a2a] outline-none focus:border-emerald-500 transition-all placeholder:text-gray-300"
                 placeholder="••••••••"
               />
             </div>
@@ -264,7 +264,7 @@ export default function AuthView() {
           <button
             type="submit"
             disabled={isLoading || (!isLogin && !isForgotPassword && !acceptedPrivacy)}
-            className="w-full py-4.5 bg-[#0a3a2a] text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 mt-4"
+            className="w-full py-3.5 bg-[#0a3a2a] text-white rounded-2xl font-black text-xs uppercase tracking-[0.15em] shadow-xl active:scale-95 transition-all flex justify-center items-center gap-2 disabled:opacity-50 mt-1"
           >
             {isLoading ? (
               <span className="material-symbols-outlined animate-spin text-lg">sync</span>
@@ -288,7 +288,7 @@ export default function AuthView() {
         </form>
 
         {!isForgotPassword && (
-          <div className="w-full space-y-6">
+          <div className="w-full space-y-2.5">
             <div className="flex items-center gap-4 px-4">
               <div className="h-[1px] bg-gray-100 flex-1"></div>
               <span className="text-[9px] font-black text-gray-300 uppercase tracking-[0.2em]">{t('auth.or')}</span>
@@ -299,7 +299,7 @@ export default function AuthView() {
               onClick={handleGoogleAuth}
               disabled={isLoading}
               type="button"
-              className="w-full bg-white border border-gray-100 py-4 rounded-2xl font-black text-[11px] text-[#333] shadow-sm active:scale-95 transition-all flex justify-center items-center gap-3 uppercase tracking-widest"
+              className="w-full bg-white border border-gray-100 py-3.5 rounded-2xl font-black text-[11px] text-[#333] shadow-sm active:scale-95 transition-all flex justify-center items-center gap-3 uppercase tracking-widest"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -322,16 +322,17 @@ export default function AuthView() {
               </a>
             </p>
 
+            {/* Tryb gościa — wyraźny żółty przycisk (akcent marki), nie mały link */}
             <button
               onClick={handleGuestAuth}
               disabled={isLoading}
               type="button"
-              className="w-full text-center py-2 active:scale-95 transition-all"
+              className="w-full py-3 bg-[#fed33e] rounded-2xl shadow-[0_8px_24px_rgba(254,211,62,0.35)] active:scale-95 transition-all text-center"
             >
-              <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest underline decoration-gray-200 underline-offset-4">
+              <span className="text-[11px] font-black text-[#5d4a00] uppercase tracking-widest">
                 {t('auth.guestBtn')}
               </span>
-              <span className="block text-[9px] font-bold text-gray-300 mt-1 normal-case tracking-normal">
+              <span className="block text-[9px] font-bold text-[#5d4a00]/70 mt-0.5 normal-case tracking-normal">
                 {t('auth.guestNote')}
               </span>
             </button>

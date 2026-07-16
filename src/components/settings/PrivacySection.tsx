@@ -40,6 +40,9 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
   };
 
   const isPasswordUser = auth.currentUser?.providerData.some(p => p.providerId === 'password');
+  // [GOŚĆ] Konto anonimowe nie ma żadnego providera — re-autentykacja jest
+  // niemożliwa (popup Google kończy się błędem) i niepotrzebna.
+  const isAnonymousUser = !!auth.currentUser?.isAnonymous;
   const confirmWord = t('settings.deleteConfirmWord');
 
   // ─── RODO art. 20: eksport wszystkich danych użytkownika do JSON ───
@@ -102,8 +105,11 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
     try {
       // 1. Re-autentykacja PRZED kasowaniem — deleteUser wymaga świeżego
       //    logowania; lepiej odpaść tutaj niż zostawić konto wpół-usunięte.
+      //    Gość (anonimowy) nie ma providera — krok pomijamy w całości.
       try {
-        if (isPasswordUser) {
+        if (isAnonymousUser) {
+          // brak re-autentykacji dla konta anonimowego
+        } else if (isPasswordUser) {
           const cred = EmailAuthProvider.credential(user.email || '', password);
           await reauthenticateWithCredential(user, cred);
         } else {
@@ -243,9 +249,9 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
                   className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold outline-none focus:border-red-400"
                 />
               </div>
-            ) : (
+            ) : !isAnonymousUser ? (
               <p className="text-[10px] font-bold text-gray-400">{t('settings.deleteReauthGoogle')}</p>
-            )}
+            ) : null}
 
             <button
               onClick={handleDelete}

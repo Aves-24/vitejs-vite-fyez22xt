@@ -133,9 +133,9 @@ export default function GuestBanner({ userId }: GuestBannerProps) {
 
       {/* Modal upgrade'u konta */}
       {showUpgrade && createPortal(
-        <div className="fixed inset-0 z-[250000] bg-black/60 flex items-end justify-center" onClick={() => !isBusy && setShowUpgrade(false)}>
+        <div className="fixed inset-0 z-[250000] bg-black/60 flex items-start justify-center overflow-y-auto pt-[max(2.5rem,env(safe-area-inset-top))] px-3 pb-6" onClick={() => !isBusy && setShowUpgrade(false)}>
           <div
-            className="w-full max-w-md bg-white rounded-t-[32px] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-4 animate-fade-in-up"
+            className="w-full max-w-md bg-white rounded-[32px] p-6 space-y-4 animate-fade-in-up"
             onClick={e => e.stopPropagation()}
           >
             <div className="text-center">

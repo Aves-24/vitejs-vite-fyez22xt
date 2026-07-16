@@ -250,14 +250,14 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         <div className="relative z-10 flex flex-col flex-1 justify-between gap-5 py-[max(0.5rem,env(safe-area-inset-top))] pb-[max(0.5rem,env(safe-area-inset-bottom))]">
 
-          {/* ~1/4: Logo + imię (obowiązkowe) */}
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[26%]">
+          {/* Logo + imię (obowiązkowe) — przyciski podniesione do góry, luz idzie w dół (spacer niżej) */}
+          <div className="flex flex-col items-center justify-center gap-3 pt-6">
             <h1 className="text-2xl font-black text-white text-center leading-snug flex items-baseline gap-1.5">
               <span>{t('settings.wizard.welcomeTitle1')}</span>
               <span>{t('settings.wizard.welcomeTitle2')}</span>
               <span className="inline-flex items-baseline">
                 <span>GROT-X</span>
-                <span className="w-2 h-2 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.4em] shadow-sm"></span>
+                <span className="w-2 h-2 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.18em] shadow-sm"></span>
               </span>
             </h1>
             <label className="text-[11px] font-black text-[#fed33e] uppercase tracking-[0.15em] text-center mt-2">
@@ -276,8 +276,8 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             </p>
           </div>
 
-          {/* ~1/4: Kontynuuj konfigurację (zalecane) */}
-          <div className="flex-1 flex flex-col justify-center gap-2 min-h-[22%]">
+          {/* Kontynuuj konfigurację (zalecane) */}
+          <div className="flex flex-col justify-center gap-2 mt-4">
             <button
               onClick={gateContinueSetup}
               disabled={!gateNameOk || isSavingLocal}
@@ -286,22 +286,25 @@ export default function ProfileWizard(props: ProfileWizardProps) {
               <span className="material-symbols-outlined text-xl">{isSavingLocal ? 'sync' : 'tune'}</span>
               {t('settings.wizard.gateContinueSetup')}
             </button>
-            <p className="text-[10px] font-bold text-emerald-200/70 text-center px-6 leading-snug">
+            <p className="text-xs font-bold text-emerald-200/80 text-center px-6 leading-snug">
               {t('settings.wizard.gateContinueNote')}
             </p>
           </div>
 
-          {/* ~1/4: Rozpocznij trening */}
-          <div className="flex-1 flex flex-col justify-center min-h-[22%]">
+          {/* Rozpocznij trening — bez zielonego tła, wyraźna żółta ramka */}
+          <div className="flex flex-col justify-center mt-1">
             <button
               onClick={() => gateGo('SETUP')}
               disabled={!gateNameOk || isSavingLocal}
-              className="w-full py-5 bg-emerald-900/40 border-2 border-emerald-600/60 text-white rounded-3xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
+              className="w-full py-5 bg-transparent border-2 border-[#fed33e] text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-[0_0_25px_rgba(254,211,62,0.15)] active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-xl text-[#fed33e]">target</span>
               {t('settings.wizard.gateStartTraining')}
             </button>
           </div>
+
+          {/* Spacer — spycha link do strony głównej na dół, przyciski zostają u góry */}
+          <div className="flex-1" />
 
           {/* Dół: Przejdź do strony głównej */}
           <div className="flex flex-col items-center justify-end pb-2">

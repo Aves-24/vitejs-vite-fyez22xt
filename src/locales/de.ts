@@ -103,6 +103,21 @@ export const components = {
     season_indoor: "Hallensaison (Indoor)",
     season_outdoor: "Freiluftsaison (Outdoor)"
   },
+  // DSB-Altersklassen — Anzeige-Labels (kanonischer Wert in der DB bleibt
+  // deutsch, siehe formatAgeCategory in utils/privateProfile.ts)
+  ageCategory: {
+    schuelerC: "Schüler C",
+    schuelerB: "Schüler B",
+    schuelerA: "Schüler A",
+    jugend: "Jugend",
+    junioren: "Junioren",
+    damen: "Damen",
+    herren: "Herren",
+    master: "Master",
+    senioren: "Senioren",
+    genderM: "m",
+    genderF: "w",
+  },
   common: {
     comingSoon: "In Kürze verfügbar",
     noClubsFound: "Kein passender Verein gefunden",

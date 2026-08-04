@@ -103,6 +103,21 @@ export const components = {
     season_indoor: "Indoor",
     season_outdoor: "Outdoor"
   },
+  // DSB age classes — display labels (canonical DB value stays German,
+  // see formatAgeCategory in utils/privateProfile.ts)
+  ageCategory: {
+    schuelerC: "Kids (U11)",
+    schuelerB: "Youth (11–12)",
+    schuelerA: "Youth (13–14)",
+    jugend: "Junior (15–17)",
+    junioren: "Junior (18–20)",
+    damen: "Women",
+    herren: "Men",
+    master: "Master (50–65)",
+    senioren: "Senior (66+)",
+    genderM: "M",
+    genderF: "W",
+  },
   common: {
     comingSoon: "Coming soon",
     noClubsFound: "No matching clubs found",

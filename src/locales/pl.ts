@@ -103,6 +103,35 @@ export const components = {
     season_indoor: "Sezon Halowy (Indoor)",
     season_outdoor: "Sezon Polowy (Outdoor)"
   },
+  // Kategorie wiekowe DSB — etykiety wyświetlane (kanoniczna wartość w bazie
+  // pozostaje niemiecka, patrz formatAgeCategory w utils/privateProfile.ts)
+  ageCategory: {
+    // Progi wg oficjalnej Sportordnung DSB (Bogen, Sportjahr 2026-2028):
+    // Schüler C 9-10, B 11-12, A 13-14, Jugend 15-17, Junioren 18-20,
+    // Herren/Damen 21-49, Masters 50-65, Senioren 66+.
+    schuelerC: "Dzieci (do 10 lat)",
+    schuelerB: "Młodzik mł. (11–12)",
+    schuelerA: "Młodzik (13–14)",
+    jugend: "Kadet (15–17)",
+    junioren: "Junior (18–20)",
+    damen: "Seniorki (21–49)",
+    herren: "Seniorzy (21–49)",
+    master: "Master (50–65)",
+    senioren: "Weteran (66+)",
+    genderM: "M",
+    genderF: "K",
+  },
+  // Kategorie wiekowe PZŁucz — pokazywane widzom z językiem PL zamiast klas
+  // DSB (users/{uid}.ageCategoryPL, patrz getAgeCategoryPL w privateProfile.ts)
+  ageCategoryPL: {
+    dzieci: "Dzieci (do 11 lat)",
+    mlodzik: "Młodzik (12–14)",
+    kadet: "Junior mł. (15–17)",
+    junior: "Junior (18–20)",
+    mlodziezowiec: "Młodzieżowiec (21–23)",
+    senior: "Senior (24–49)",
+    master: "Master (50+)",
+  },
   common: {
     comingSoon: "Wkrótce dostępne",
     noClubsFound: "Brak pasujących klubów",

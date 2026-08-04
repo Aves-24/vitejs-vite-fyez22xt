@@ -81,6 +81,10 @@ export async function saveParentalConsent(
 
 // Kategorie wiekowe DSB — progi zgodne z getRecommendation (archeryRules.ts):
 // wiek liczony kalendarzowo (rok bieżący − rok urodzenia).
+// UWAGA: zwracana nazwa (np. "Jugend w") to KANONICZNA wartość zapisywana
+// w users/{uid}.ageCategory — nie tłumaczyć przy zapisie! Tłumaczenie robi
+// formatAgeCategory dopiero przy wyświetlaniu (język czytelnika ≠ język
+// właściciela profilu, a stare dokumenty już zawierają nazwy niemieckie).
 export function getAgeCategory(birthDate: string, gender: 'M' | 'K'): string {
   const birthYear = new Date(birthDate).getFullYear();
   if (!birthYear || isNaN(birthYear)) return '';
@@ -94,6 +98,84 @@ export function getAgeCategory(birthDate: string, gender: 'M' | 'K'): string {
   if (age <= 49) return gender === 'K' ? 'Damen' : 'Herren';
   if (age <= 65) return 'Master' + sfx;
   return 'Senioren' + sfx;
+}
+
+// Kategorie wiekowe PZŁucz — przedziały NIE pokrywają się z DSB (np. Młodzik
+// 12–14 vs Schüler B 11–12, Młodzieżowiec 21–23 wewnątrz Herren 21–49), więc
+// polskiej kategorii NIE da się wyliczyć z klasy DSB. Liczymy ją osobno z daty
+// urodzenia przy każdym zapisie profilu i przechowujemy obok ageCategory
+// (users/{uid}.ageCategoryPL). Zapis kanoniczny: slug ASCII + ' m'/' w'.
+export function getAgeCategoryPL(birthDate: string, gender: 'M' | 'K'): string {
+  const birthYear = new Date(birthDate).getFullYear();
+  if (!birthYear || isNaN(birthYear)) return '';
+  const age = new Date().getFullYear() - birthYear;
+  const sfx = gender === 'K' ? ' w' : ' m';
+  if (age <= 11) return 'dzieci' + sfx;
+  if (age <= 14) return 'mlodzik' + sfx;
+  if (age <= 17) return 'kadet' + sfx;         // junior młodszy
+  if (age <= 20) return 'junior' + sfx;
+  if (age <= 23) return 'mlodziezowiec' + sfx; // U24
+  if (age <= 49) return 'senior' + sfx;        // klasa otwarta (Master od 50 wygrywa)
+  return 'master' + sfx;
+}
+
+const AGE_CATEGORY_PL_SLUGS = new Set([
+  'dzieci', 'mlodzik', 'kadet', 'junior', 'mlodziezowiec', 'senior', 'master',
+]);
+
+// Mapa kanonicznych nazw DSB → klucze i18n (sekcja `ageCategory` w locales).
+const AGE_CATEGORY_I18N_KEYS: Record<string, string> = {
+  'Schüler C': 'schuelerC',
+  'Schüler B': 'schuelerB',
+  'Schüler A': 'schuelerA',
+  'Jugend': 'jugend',
+  'Junioren': 'junioren',
+  'Damen': 'damen',
+  'Herren': 'herren',
+  'Master': 'master',
+  'Senioren': 'senioren',
+};
+
+// Tłumaczenie zapisanej kategorii (np. "Jugend w" → PL "Junior mł. 15–17 · K").
+// Nieznany format (przyszłe/ręczne wartości) wraca bez zmian — bezpieczny fallback.
+export function formatAgeCategory(
+  stored: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!stored) return '';
+  const m = stored.match(/^(.+?)(?: (m|w))?$/);
+  if (!m) return stored;
+  const key = AGE_CATEGORY_I18N_KEYS[m[1]];
+  if (!key) return stored;
+  const label = t(`ageCategory.${key}`, { defaultValue: m[1] });
+  if (!m[2]) return label; // Damen/Herren — płeć już w nazwie
+  const gender = t(m[2] === 'w' ? 'ageCategory.genderF' : 'ageCategory.genderM', {
+    defaultValue: m[2],
+  });
+  return `${label} · ${gender}`;
+}
+
+// Kategoria dla oglądającego: widz z językiem PL dostaje kategorię PZŁucz
+// (jeśli profil ją ma — stare konta uzupełnią ją przy najbliższym zapisie),
+// pozostali (i fallback) — przetłumaczoną klasę DSB.
+export function formatViewerAgeCategory(
+  dsbCategory: string | null | undefined,
+  plCategory: string | null | undefined,
+  language: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (language.startsWith('pl') && plCategory) {
+    const m = plCategory.match(/^([a-z]+)(?: (m|w))?$/);
+    if (m && AGE_CATEGORY_PL_SLUGS.has(m[1])) {
+      const label = t(`ageCategoryPL.${m[1]}`, { defaultValue: m[1] });
+      if (!m[2]) return label;
+      const gender = t(m[2] === 'w' ? 'ageCategory.genderF' : 'ageCategory.genderM', {
+        defaultValue: m[2],
+      });
+      return `${label} · ${gender}`;
+    }
+  }
+  return formatAgeCategory(dsbCategory, t);
 }
 
 export async function loadPrivateProfile(uid: string): Promise<PrivateProfile | null> {
@@ -130,6 +212,7 @@ export async function migrateSensitiveFields(uid: string, data: Record<string, a
   };
   if (data.birthDate) {
     update.ageCategory = getAgeCategory(data.birthDate, data.gender || 'M');
+    update.ageCategoryPL = getAgeCategoryPL(data.birthDate, data.gender || 'M');
   }
   await updateDoc(doc(db, 'users', uid), update);
 }

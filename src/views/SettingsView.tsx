@@ -16,7 +16,7 @@ import TournamentSection from '../components/settings/TournamentSection';
 import BowSection from '../components/settings/BowSection';
 import PrivacySection from '../components/settings/PrivacySection';
 import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
-import { loadPrivateProfile, savePrivateProfile, getAgeCategory } from '../utils/privateProfile';
+import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { guestExpiryFields } from '../utils/guestMode';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
@@ -253,7 +253,10 @@ export default function SettingsView({
         // [GOŚĆ] Odświeża expiresAt na dokumencie gościa (no-op dla kont pełnych)
         ...guestExpiryFields()
       };
-      if (birthDate) payload.ageCategory = getAgeCategory(birthDate, gender);
+      if (birthDate) {
+        payload.ageCategory = getAgeCategory(birthDate, gender);
+        payload.ageCategoryPL = getAgeCategoryPL(birthDate, gender);
+      }
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
       await savePrivateProfile(userId, { birthDate, gender });
       // [RODO art. 8] Data urodzenia mogła się zmienić — bramka zgody opiekuna

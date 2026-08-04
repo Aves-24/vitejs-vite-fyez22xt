@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from '../config/archeryRules';
-import { loadPrivateProfile, getAgeCategory } from '../utils/privateProfile';
+import { loadPrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { useTranslation } from 'react-i18next'; // <--- DODANE
 
 const MASTER_DISTANCES = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
@@ -95,7 +95,8 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             await setDoc(profileRef, {
               userDistances: updatedDistances,
               lastNewYearGreeting: currentYear,
-              ageCategory: getAgeCategory(birthDate, gender)
+              ageCategory: getAgeCategory(birthDate, gender),
+              ageCategoryPL: getAgeCategoryPL(birthDate, gender)
             }, { merge: true });
 
             setModalType('NEW_YEAR');

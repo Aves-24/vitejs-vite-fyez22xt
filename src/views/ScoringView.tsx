@@ -869,7 +869,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
                   return (
                     <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series', 'Passe')} P{highlightedEnd + 1}</span>
+                        <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series')} {highlightedEnd + 1}</span>
                         <span className="text-lg font-black text-[#0a3a2a]">{end.total_sum} {t('scoringView.pts', 'pkt')}</span>
                       </div>
                       <div className="flex gap-1">

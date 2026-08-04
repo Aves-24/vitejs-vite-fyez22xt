@@ -377,7 +377,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
                       <button
                         onClick={() => onAcknowledge!(entry.id)}
                         className="shrink-0 w-10 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-50"
-                        title="Wzięte do wiadomości"
+                        title={t('coachLog.acknowledged')}
                       >
                         <span className="material-symbols-outlined text-[20px]">check_circle</span>
                       </button>

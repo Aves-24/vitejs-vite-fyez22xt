@@ -840,7 +840,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
                 type="text"
                 value={manualJoinId}
                 onChange={e => setManualJoinId(e.target.value)}
-                placeholder="UID uczestnika..."
+                placeholder={t('battleLobby.uidPlaceholder')}
                 className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-indigo-400"
                 autoFocus
               />

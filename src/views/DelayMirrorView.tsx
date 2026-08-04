@@ -755,7 +755,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
           : 'bg-white/10 text-white/60 border-white/10'
       }`}
-      title="Siatka"
+      title={t('delayMirror.grid')}
     >
       <span className="material-symbols-outlined text-xl">grid_on</span>
     </button>

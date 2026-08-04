@@ -277,12 +277,13 @@ const analyzeLink = (url: string): LinkSafety => {
 };
 
 const SafeLink = ({ url }: { url: string }) => {
+  const { t } = useTranslation();
   const { domain, isShortener, isIDN, isValid } = analyzeLink(url);
 
   // Niepoprawny URL — wyświetl jako zwykły tekst (nie linkuj).
   if (!isValid) {
     return (
-      <span className="text-gray-500 break-words" title="Nieprawidłowy URL">
+      <span className="text-gray-500 break-words" title={t('stats.invalidUrl')}>
         {url}
       </span>
     );
@@ -888,7 +889,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         {previewEnd && (
                           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
                              <div className="flex flex-col">
-                               <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series')} P{highlightedEnd! + 1}</span>
+                               <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series')} {highlightedEnd! + 1}</span>
                                <span className="text-lg font-black text-[#0a3a2a]">{previewEnd.total_sum} {t('scoringView.pts')}</span>
                              </div>
                              <div className="flex gap-1">

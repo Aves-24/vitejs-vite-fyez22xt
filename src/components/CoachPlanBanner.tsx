@@ -215,7 +215,7 @@ export default function CoachPlanBanner({ userId, compact = false, onClick, onCo
               <button
                 onClick={() => onAcknowledge(ev.id)}
                 className="shrink-0 w-11 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-100 rounded-r-2xl"
-                title="Wzięte do wiadomości"
+                title={t('coachPlan.acknowledged')}
               >
                 <span className="material-symbols-outlined text-[22px]">check_circle</span>
               </button>

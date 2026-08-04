@@ -1552,7 +1552,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <div className="flex gap-2 w-full">
                 <input
                   type="text"
-                  placeholder="NP. AB12CD"
+                  placeholder={t('home.arenaCodePlaceholder')}
                   maxLength={6}
                   value={manualBattleCode}
                   onChange={(e) => setManualBattleCode(e.target.value.toUpperCase())}

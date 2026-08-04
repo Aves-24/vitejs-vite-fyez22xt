@@ -178,7 +178,7 @@ export default function TopicFeedTab({ userId }: TopicFeedTabProps) {
         {!isLoading && entries.length > 0 && (
           <div className="space-y-2">
             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-3">
-              {entries.length} {t('topicFeed.entriesCount')}
+              {t('topicFeed.entriesCount', { count: entries.length })}
             </p>
             {entries.map(entry => {
               const cfg = SOURCE_CONFIG[entry.source];

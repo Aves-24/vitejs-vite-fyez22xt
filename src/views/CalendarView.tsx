@@ -923,7 +923,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         <div className="flex-1 pr-1.5">
                           <h3 className="font-black text-xs leading-tight line-through decoration-gray-300">{event.title}</h3>
                           <p className="text-[7px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
-                            {event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
+                            {event.category === 'Turniej' || !event.category ? t('calendar.archivePastTournament') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                           </p>
                           {(event.category === 'Turniej' || !event.category) && (() => {
                             const res = archResults[event.id];

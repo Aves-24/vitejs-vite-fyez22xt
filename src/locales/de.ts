@@ -616,6 +616,7 @@ export const views = {
     archiveEmpty: "Keine Einträge",
     archivePts: "Pkt",
     archiveNoScore: "Kein Ergebnis",
+    archivePastTournament: "Absolvierter Wettkampf",
     legend: "Legende",
     legendTournament: "Wettkampf",
     legendOther: "Sonstiges",

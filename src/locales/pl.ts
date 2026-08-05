@@ -632,6 +632,7 @@ export const views = {
     archiveEmpty: "Brak wpisów",
     archivePts: "pkt",
     archiveNoScore: "Brak wyniku",
+    archivePastTournament: "Odbyte Zawody",
     legend: "Legenda",
     legendTournament: "Zawody",
     legendOther: "Inne",

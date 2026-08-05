@@ -95,6 +95,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [archTrainerSent, setArchTrainerSent] = useState<ArchiveState>(initArch());
   const [archTodo, setArchTodo] = useState<ArchiveState>(initArch());
 
+  // Wyniki dobrane do archiwalnych zawodów (id wydarzenia → dystans i punkty)
+  type ArchiveResult = { score: number; distance: string };
+  const [archResults, setArchResults] = useState<Record<string, ArchiveResult>>({});
+
   const [newIsTodo, setNewIsTodo] = useState(false);
   const [todoEvents, setTodoEvents] = useState<Event[]>([]);
 
@@ -445,7 +449,49 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       ));
       const allItems = snap.docs.map(d => ({ id: d.id, ...d.data() } as Event)).filter(filterFn);
       setter({ open: true, allItems, shown: 5, loading: false });
+      if (cutoffType === 'turniej') loadArchiveResults(allItems);
     } catch { setter(p => ({ ...p, loading: false, open: false })); }
+  };
+
+  // Sesje zapisywane są z datą w formacie pl-PL ("5.08.2026"), a wydarzenia w ISO.
+  const sessionDateToISO = (d: string) => {
+    if (!d) return '';
+    const p = d.split('.');
+    return p.length === 3 ? `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` : d;
+  };
+
+  // Sesje zapisane od 08.2026 niosą `eventId` i wiążą się z wpisem wprost.
+  // Starsze go nie mają, więc dla nich zostaje dopasowanie po dacie, a przy
+  // kilku startach tego samego dnia dodatkowo po nazwie zawodów.
+  const loadArchiveResults = async (items: Event[]) => {
+    const scored = items.filter(e => e.hasScore);
+    if (scored.length === 0) return;
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'users', userId, 'sessions'),
+        where('type', '==', 'Turniej')
+      ));
+      type ScoredSession = { eventId?: string; date?: string; score?: number; distance?: string; tournamentName?: string };
+      const byEventId = new Map<string, ScoredSession>();
+      const byDate = new Map<string, ScoredSession[]>();
+      snap.docs.forEach(d => {
+        const s = d.data() as ScoredSession;
+        if (s.eventId) byEventId.set(s.eventId, s);
+        const iso = sessionDateToISO(s.date || '');
+        if (!iso) return;
+        const bucket = byDate.get(iso);
+        if (bucket) bucket.push(s); else byDate.set(iso, [s]);
+      });
+      const found: Record<string, ArchiveResult> = {};
+      scored.forEach(e => {
+        const sameDay = byDate.get(e.date) || [];
+        const match = byEventId.get(e.id)
+          || sameDay.find(s => !s.eventId && s.tournamentName === e.title)
+          || sameDay.find(s => !s.eventId);
+        if (match) found[e.id] = { score: match.score || 0, distance: match.distance || e.distance || '' };
+      });
+      setArchResults(p => ({ ...p, ...found }));
+    } catch { /* wynik jest dodatkiem — jego brak nie blokuje archiwum */ }
   };
 
   const upcomingTournaments = upcomingEvents.filter(e => e.category === 'Turniej' || !e.category);
@@ -879,6 +925,24 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           <p className="text-[7px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
                             {event.category === 'Turniej' ? t('calendar.upcomingTournaments') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                           </p>
+                          {(event.category === 'Turniej' || !event.category) && (() => {
+                            const res = archResults[event.id];
+                            const dist = res?.distance || event.distance;
+                            return (
+                              <div className="flex items-center gap-1 mt-1">
+                                {dist && (
+                                  <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none">{dist}</span>
+                                )}
+                                {res ? (
+                                  <span className="bg-[#0a3a2a] text-[#fed33e] text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none">
+                                    {res.score} {t('calendar.archivePts')}
+                                  </span>
+                                ) : (
+                                  <span className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">{t('calendar.archiveNoScore')}</span>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                       <div className="w-8 flex items-center justify-center opacity-30 shrink-0">

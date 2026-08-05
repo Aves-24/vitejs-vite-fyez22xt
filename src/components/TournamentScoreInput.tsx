@@ -188,6 +188,9 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         distance,
         type: 'Turniej',
         tournamentName,
+        // Twarde powiązanie z wpisem w terminarzu — archiwum czyta po nim wynik
+        // zamiast zgadywać po dacie i nazwie zawodów.
+        ...(eventId ? { eventId } : {}),
         score: stats.totalScore,
         scoreArrows,
         sessionArrows,

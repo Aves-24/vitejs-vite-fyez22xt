@@ -614,6 +614,8 @@ export const views = {
     archiveTodo: "Archive: Tasks",
     archiveLoadMore: "Load 5 more",
     archiveEmpty: "No entries",
+    archivePts: "pts",
+    archiveNoScore: "No result",
     legend: "Legend",
     legendTournament: "Tournament",
     legendOther: "Other",

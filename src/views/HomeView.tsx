@@ -967,7 +967,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
               <div className="flex-1 min-w-0 pr-2">
                 <h3 className="font-black text-[17px] leading-tight mb-1">{nextTournament.title}</h3>
-                <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-widest block leading-none mb-1">{nextTournament.type}</span>
+                {/* Etykieta budowana na bieżąco — pole `type` w bazie jest zapisane w języku
+                    twórcy wydarzenia, więc stare wpisy pokazywałyby np. niemiecki tekst. */}
+                <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-widest block leading-none mb-1">
+                  {`${t('calendar.upcomingTournaments')}${nextTournament.distance ? ` ${nextTournament.distance}` : ''}`}
+                </span>
                 <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-0.5">
                   <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
                   <span>{nextTournament.address || t('home.noLocation')}</span>

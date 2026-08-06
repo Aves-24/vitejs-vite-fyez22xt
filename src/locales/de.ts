@@ -970,6 +970,12 @@ export const views = {
       noTournaments: "Keine Wettkampfstarts erfasst",
       freeLimitTitle: "Du siehst das letzte Jahr",
       freeLimitDesc: "Mit PRO vergleichst du Starts bis 5 Jahre zurück",
+      rename: {
+        title: "Wettkampfnamen korrigieren",
+        hint: "Die Änderung gilt für alle Starts dieser Serie, auch auf anderen Distanzen.",
+        affected: "Zu ändernde Starts:",
+        mergeWarning: "Dieser Name gehört bereits zur Serie „{{name}}\" — beide werden zusammengeführt."
+      },
       form: {
         openBtn: "Vergangenen Start nachtragen",
         badge: "Historischer Start",

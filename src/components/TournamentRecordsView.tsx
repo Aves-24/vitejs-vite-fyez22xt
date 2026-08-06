@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, Timestamp, writeBatch, doc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import HistoricalStartForm from './HistoricalStartForm';
@@ -71,6 +71,9 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [openSeries, setOpenSeries] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [renamingKey, setRenamingKey] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
 
   const load = useCallback(async (useCache: boolean) => {
     if (!userId) return;
@@ -99,6 +102,36 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
   }, [userId, isPremium]);
 
   useEffect(() => { load(true); }, [load]);
+
+  // Poprawka literówki w nazwie. Zmiana obejmuje wszystkie starty w serii,
+  // niezależnie od aktywnego filtra dystansu — inaczej seria rozpadłaby się
+  // na starą i nową nazwę. Jeśli nowa nazwa normalizuje się do klucza innej
+  // serii, obie po prostu zlewają się w jedną.
+  const seriesSessions = useCallback(
+    (key: string) => sessions.filter(
+      s => s.type === 'Turniej' && !!s.tournamentName && seriesKeyFromTitle(s.tournamentName) === key
+    ),
+    [sessions]
+  );
+
+  const applyRename = async () => {
+    const next = renameValue.trim();
+    if (!renamingKey || !next || isRenaming) return;
+    setIsRenaming(true);
+    try {
+      const affected = seriesSessions(renamingKey);
+      const batch = writeBatch(db);
+      affected.forEach(s => batch.update(doc(db, 'users', userId, 'sessions', s.id), { tournamentName: next }));
+      await batch.commit();
+      cacheClear(userId, isPremium);
+      await load(false);
+      // Stary klucz przestaje istnieć (a przy scaleniu znika cała pozycja),
+      // więc rozwinięcie trzeba zwinąć, żeby nie wskazywało w próżnię.
+      setOpenSeries(null);
+      setRenamingKey(null);
+    } catch { /* nieudany zapis zostawia okno otwarte */ }
+    setIsRenaming(false);
+  };
 
   // Sesje techniczne i bez wyniku nie biorą udziału w żadnym rekordzie.
   const scored = useMemo(
@@ -164,6 +197,14 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
       });
     return Array.from(byKey.values());
   }, [scored]);
+
+  // Nowa nazwa może normalizować się do klucza innej, już istniejącej serii —
+  // wtedy zapis połączy obie. Uprzedzamy o tym, zamiast robić to po cichu.
+  const titleMergesInto = (candidate: string, ownKey: string): string | null => {
+    const key = seriesKeyFromTitle(candidate);
+    if (!key || key === ownKey) return null;
+    return knownSeries.find(s => seriesKeyFromTitle(s.name) === key)?.name || null;
+  };
 
   const fmtAvg = (v: number) => v.toFixed(2).replace('.', i18n.language === 'en' ? '.' : ',');
 
@@ -259,23 +300,37 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
               const isOpen = openSeries === ser.key;
               return (
                 <div key={ser.key} className="rounded-[20px] border border-gray-100 bg-white shadow-sm overflow-hidden">
-                  <button
-                    onClick={() => setOpenSeries(isOpen ? null : ser.key)}
-                    className="w-full flex items-center gap-2.5 p-3 active:bg-gray-50 transition-colors text-left"
-                  >
-                    <div className="w-9 h-9 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[#fed33e] text-[18px]">emoji_events</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{ser.name}</h3>
-                      <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-                        {t('stats.records.starts')}: {sorted.length} · {t('stats.records.seriesBest')} {seriesBest}
-                      </p>
-                    </div>
-                    <span className="material-symbols-outlined text-gray-300 text-[18px] shrink-0">
-                      {isOpen ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </button>
+                  <div className="w-full flex items-center gap-2.5 p-3">
+                    <button
+                      onClick={() => setOpenSeries(isOpen ? null : ser.key)}
+                      className="flex items-center gap-2.5 flex-1 min-w-0 text-left active:opacity-70 transition-opacity"
+                    >
+                      <div className="w-9 h-9 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
+                        <span className="material-symbols-outlined text-[#fed33e] text-[18px]">emoji_events</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{ser.name}</h3>
+                        <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
+                          {t('stats.records.starts')}: {sorted.length} · {t('stats.records.seriesBest')} {seriesBest}
+                        </p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { setRenamingKey(ser.key); setRenameValue(ser.name); }}
+                      className="p-1.5 rounded-lg text-gray-300 active:bg-gray-100 active:scale-90 transition-all shrink-0"
+                      aria-label={t('stats.records.rename.title')}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                    <button
+                      onClick={() => setOpenSeries(isOpen ? null : ser.key)}
+                      className="text-gray-300 shrink-0 active:scale-90 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">
+                        {isOpen ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
+                  </div>
 
                   {isOpen && (
                     <div className="px-3 pb-3 space-y-1">
@@ -310,6 +365,50 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
           </div>
         )}
       </div>
+
+      {/* POPRAWKA NAZWY SERII */}
+      {renamingKey && (() => {
+        const affected = seriesSessions(renamingKey);
+        const merges = titleMergesInto(renameValue, renamingKey);
+        return (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[130] flex items-start justify-center pt-24 px-4">
+            <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-base font-black text-[#0a3a2a]">{t('stats.records.rename.title')}</h2>
+                <button onClick={() => setRenamingKey(null)} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
+                  <span className="material-symbols-outlined text-lg">close</span>
+                </button>
+              </div>
+
+              <input
+                type="text"
+                autoFocus
+                value={renameValue}
+                onChange={e => setRenameValue(e.target.value)}
+                className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-sm font-bold text-[#0a3a2a] outline-none focus:ring-2 focus:ring-emerald-400"
+              />
+
+              <p className="text-[9px] font-bold text-gray-400 leading-snug mt-2 px-1">
+                {t('stats.records.rename.hint')} {t('stats.records.rename.affected')} {affected.length}
+              </p>
+
+              {merges && (
+                <p className="text-[9px] font-black text-amber-600 leading-snug mt-1.5 px-1">
+                  {t('stats.records.rename.mergeWarning', { name: merges })}
+                </p>
+              )}
+
+              <button
+                onClick={applyRename}
+                disabled={!renameValue.trim() || isRenaming}
+                className={`w-full mt-3 py-3.5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all ${renameValue.trim() && !isRenaming ? 'bg-[#0a3a2a] text-white' : 'bg-gray-200 text-gray-400'}`}
+              >
+                {isRenaming ? t('calendar.formSaving') : t('calendar.formSave')}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* DOPISANIE STARTU Z PRZESZŁOŚCI */}
       <button

@@ -986,6 +986,12 @@ export const views = {
       noTournaments: "Brak zapisanych startów w zawodach",
       freeLimitTitle: "Widzisz ostatni rok",
       freeLimitDesc: "W PRO porównasz starty z 5 lat wstecz",
+      rename: {
+        title: "Popraw nazwę zawodów",
+        hint: "Zmiana obejmie wszystkie starty w tej serii, także na innych dystansach.",
+        affected: "Startów do poprawienia:",
+        mergeWarning: "Ta nazwa należy już do serii „{{name}}\" — obie zostaną połączone w jedną."
+      },
       form: {
         openBtn: "Dopisz start z przeszłości",
         badge: "Start historyczny",

@@ -970,6 +970,12 @@ export const views = {
       noTournaments: "No tournament starts recorded",
       freeLimitTitle: "You see the last year",
       freeLimitDesc: "PRO compares starts up to 5 years back",
+      rename: {
+        title: "Fix the tournament name",
+        hint: "The change applies to every start in this series, including other distances.",
+        affected: "Starts to update:",
+        mergeWarning: "This name already belongs to the series \"{{name}}\" — the two will be merged into one."
+      },
       form: {
         openBtn: "Add a past start",
         badge: "Historical start",

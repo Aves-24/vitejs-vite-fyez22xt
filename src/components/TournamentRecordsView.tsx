@@ -403,7 +403,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
                 disabled={!renameValue.trim() || isRenaming}
                 className={`w-full mt-3 py-3.5 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all ${renameValue.trim() && !isRenaming ? 'bg-[#0a3a2a] text-white' : 'bg-gray-200 text-gray-400'}`}
               >
-                {isRenaming ? t('calendar.formSaving') : t('calendar.formSave')}
+                {isRenaming ? t('stats.records.saving') : t('stats.records.save')}
               </button>
             </div>
           </div>

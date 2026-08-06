@@ -214,7 +214,7 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
             disabled={!canSave}
             className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all ${canSave ? 'bg-[#0a3a2a] text-white' : 'bg-gray-200 text-gray-400'}`}
           >
-            {isSaving ? t('calendar.formSaving') : t('calendar.formSave')}
+            {isSaving ? t('stats.records.saving') : t('stats.records.save')}
           </button>
         </div>
       </div>

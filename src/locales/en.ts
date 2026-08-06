@@ -970,6 +970,8 @@ export const views = {
       noTournaments: "No tournament starts recorded",
       freeLimitTitle: "You see the last year",
       freeLimitDesc: "PRO compares starts up to 5 years back",
+      save: "Save",
+      saving: "Saving...",
       rename: {
         title: "Fix the tournament name",
         hint: "The change applies to every start in this series, including other distances.",

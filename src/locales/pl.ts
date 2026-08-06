@@ -986,6 +986,8 @@ export const views = {
       noTournaments: "Brak zapisanych startów w zawodach",
       freeLimitTitle: "Widzisz ostatni rok",
       freeLimitDesc: "W PRO porównasz starty z 5 lat wstecz",
+      save: "Zapisz",
+      saving: "Zapisywanie...",
       rename: {
         title: "Popraw nazwę zawodów",
         hint: "Zmiana obejmie wszystkie starty w tej serii, także na innych dystansach.",

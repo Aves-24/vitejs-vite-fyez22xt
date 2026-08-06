@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
 import { createPortal } from 'react-dom'; 
 
 // IMPORTUJEMY NOWY KOMPONENT:
 import TournamentScoreInput from '../components/TournamentScoreInput';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
+import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import { guestExpiryFields } from '../utils/guestMode';
 import TopicPicker from '../components/TopicPicker';
 
@@ -98,6 +99,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   // Wyniki dobrane do archiwalnych zawodów (id wydarzenia → dystans i punkty)
   type ArchiveResult = { score: number; distance: string };
   const [archResults, setArchResults] = useState<Record<string, ArchiveResult>>({});
+
+  // Podpowiedzi nazw turniejów. Kolejna edycja tej samej imprezy musi mieć
+  // nazwę co do znaku taką jak poprzednia, żeby trafiła do tej samej serii —
+  // wybór z listy załatwia to pewniej niż liczenie na to, że wpiszemy tak samo.
+  type TitleSuggestion = { title: string; date: string; distance?: string };
+  const [titleSuggestions, setTitleSuggestions] = useState<TitleSuggestion[]>([]);
+  const suggestionsLoadedRef = useRef(false);
 
   const [newIsTodo, setNewIsTodo] = useState(false);
   const [todoEvents, setTodoEvents] = useState<Event[]>([]);
@@ -191,6 +199,37 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       if (unsubscribeTodo) unsubscribeTodo();
     };
   }, [userId]);
+
+  // Lista dotychczasowych imprez pod podpowiedzi — dociągana raz, dopiero gdy
+  // otworzysz formularz zawodów. Sięga 5 lat wstecz, bo `events` trzyma tylko
+  // ostatnie 60/730 dni i nie zawierałoby zeszłorocznej edycji.
+  useEffect(() => {
+    if (!userId || !showForm || newCategory !== 'Turniej' || suggestionsLoadedRef.current) return;
+    suggestionsLoadedRef.current = true;
+    let cancelled = false;
+
+    const cutoffObj = new Date();
+    cutoffObj.setFullYear(cutoffObj.getFullYear() - 5);
+    const cutoff = cutoffObj.toISOString().split('T')[0];
+
+    getDocs(query(
+      collection(db, 'users', userId, 'tournaments'),
+      where('date', '>=', cutoff),
+      orderBy('date', 'desc'),
+      limit(300)
+    ))
+      .then(snap => {
+        if (cancelled) return;
+        const tournaments = snap.docs
+          .map(d => d.data() as Event)
+          .filter(e => (e.category === 'Turniej' || !e.category) && !!e.title)
+          .map(e => ({ title: e.title, date: e.date, distance: e.distance }));
+        setTitleSuggestions(collectSeries(tournaments));
+      })
+      .catch(() => { suggestionsLoadedRef.current = false; });
+
+    return () => { cancelled = true; };
+  }, [userId, showForm, newCategory]);
 
   const getSightMarkForDistance = (dist: string) => {
     const mark = userSightMarks.find(m => m.distance === dist || m.name === dist || m.m === dist);
@@ -451,13 +490,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       setter({ open: true, allItems, shown: 5, loading: false });
       if (cutoffType === 'turniej') loadArchiveResults(allItems);
     } catch { setter(p => ({ ...p, loading: false, open: false })); }
-  };
-
-  // Sesje zapisywane są z datą w formacie pl-PL ("5.08.2026"), a wydarzenia w ISO.
-  const sessionDateToISO = (d: string) => {
-    if (!d) return '';
-    const p = d.split('.');
-    return p.length === 3 ? `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}` : d;
   };
 
   // Sesje zapisane od 08.2026 niosą `eventId` i wiążą się z wpisem wprost.
@@ -1017,7 +1049,40 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              
              <div className="space-y-3">
                <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : newCategory === 'Trener' ? t('calendar.formTrainerName') : t('calendar.formOtherName')} className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-sm font-bold text-[#0a3a2a] placeholder:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
-               
+
+               {newCategory === 'Turniej' && titleSuggestions.length > 0 && (() => {
+                 const typed = seriesKeyFromTitle(newTitle);
+                 // Po trafieniu w istniejącą serię podpowiedzi znikają — zrobiły swoje.
+                 const matches = typed
+                   ? titleSuggestions.filter(s => {
+                       const key = seriesKeyFromTitle(s.title);
+                       return key !== typed && key.includes(typed);
+                     })
+                   : titleSuggestions;
+                 if (matches.length === 0) return null;
+                 return (
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.formPastTournaments')}</label>
+                     <div className="flex flex-wrap gap-1.5">
+                       {matches.slice(0, 6).map(s => (
+                         <button
+                           key={s.title + s.date}
+                           onClick={() => {
+                             setNewTitle(s.title);
+                             if (s.distance) setNewDistance(s.distance);
+                           }}
+                           className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-gray-50 border-transparent text-gray-500 active:scale-95 transition-all"
+                         >
+                           <span className="material-symbols-outlined text-[13px] text-gray-300">history</span>
+                           {s.title}
+                           {s.distance && <span className="text-gray-300">· {s.distance}</span>}
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+                 );
+               })()}
+
                {newCategory === 'Turniej' && (
                  <div className="space-y-1.5">
                    <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.formDistLabel')}</label>

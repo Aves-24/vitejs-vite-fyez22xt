@@ -6,6 +6,7 @@ import SessionTrend from '../components/SessionTrend';
 import CoachAIPanel from '../components/CoachAIPanel';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ProStatsView from '../components/ProStatsView';
+import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
 import TechSessionCard from '../components/TechSessionCard';
 import BiomechCard from '../components/BiomechCard';
@@ -473,7 +474,7 @@ interface StatsViewProps {
 export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, viewingStudentId, isEmbedded = false }: StatsViewProps) {
   const { t, i18n } = useTranslation();
   
-  const [activeTab, setActiveTab] = useState<'DAILY' | 'PRO'>('DAILY');
+  const [activeTab, setActiveTab] = useState<'DAILY' | 'RECORDS' | 'PRO'>('DAILY');
 
   const [sessions, setSessions] = useState<Session[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(initialDate || new Date().toISOString().split('T')[0]);
@@ -723,14 +724,28 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         >
           {t('stats.tabDaily')}
         </button>
-        <button 
-          onClick={() => setActiveTab('PRO')} 
+        <button
+          onClick={() => setActiveTab('RECORDS')}
+          className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'RECORDS' ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+        >
+          {t('stats.tabRecords')}
+        </button>
+        <button
+          onClick={() => setActiveTab('PRO')}
           className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 ${activeTab === 'PRO' ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md' : 'text-gray-400'}`}
         >
           <span className={`material-symbols-outlined text-[14px] ${activeTab === 'PRO' ? 'text-[#fed33e]' : 'text-yellow-500'}`}>diamond</span>
           {t('stats.tabPro')}
         </button>
       </div>
+
+      {activeTab === 'RECORDS' && (
+        <TournamentRecordsView
+          userId={targetUserId}
+          isPremium={isPremium}
+          onNavigate={onNavigate}
+        />
+      )}
 
       {activeTab === 'PRO' && (
         <ProStatsView

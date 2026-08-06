@@ -193,7 +193,7 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
           </div>
 
           <div className="flex gap-2">
-            {numField(t('stats.records.form.scoreLabel'), score, setScore, '648')}
+            {numField(t('stats.records.form.scoreLabel'), score, setScore)}
             {numField(t('stats.records.form.arrowsLabel'), arrows, setArrows, '72')}
           </div>
 

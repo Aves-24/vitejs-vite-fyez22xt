@@ -212,14 +212,19 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
     return <div className="p-10 text-center animate-pulse text-gray-400 mt-10">{t('stats.loading')}</div>;
   }
 
-  const RecordTile = ({ label, value, sub, icon, dark }: { label: string; value: string; sub?: string; icon: string; dark?: boolean }) => (
+  const RecordTile = ({ label, value, name, sub, icon, dark }: { label: string; value: string; name?: string; sub?: string; icon: string; dark?: boolean }) => (
     <div className={`rounded-[20px] p-3 border shadow-sm flex flex-col justify-between ${dark ? 'bg-[#0a3a2a] border-[#0a3a2a]' : 'bg-white border-gray-100'}`}>
       <div className="flex items-center gap-1 mb-1.5">
         <span className={`material-symbols-outlined text-[14px] ${dark ? 'text-[#fed33e]' : 'text-gray-300'}`}>{icon}</span>
         <span className={`text-[8px] font-black uppercase tracking-widest leading-none ${dark ? 'text-emerald-100/60' : 'text-gray-400'}`}>{label}</span>
       </div>
       <span className={`text-2xl font-black leading-none ${dark ? 'text-white' : 'text-[#0a3a2a]'}`}>{value}</span>
-      {sub && <span className={`text-[8px] font-bold mt-1 leading-none ${dark ? 'text-emerald-100/50' : 'text-gray-400'}`}>{sub}</span>}
+      {name && (
+        <span className={`text-[9px] font-black mt-1 leading-tight truncate ${dark ? 'text-[#fed33e]' : 'text-[#0a3a2a]'}`} title={name}>
+          {name}
+        </span>
+      )}
+      {sub && <span className={`text-[8px] font-bold mt-0.5 leading-none ${dark ? 'text-emerald-100/50' : 'text-gray-400'}`}>{sub}</span>}
     </div>
   );
 
@@ -259,6 +264,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
               icon="emoji_events"
               label={t('stats.records.bestTournament')}
               value={records.tournament ? String(records.tournament.s.score) : '—'}
+              name={records.tournament?.s.tournamentName || undefined}
               sub={records.tournament ? `${records.tournament.s.distance} · ${records.tournament.s.date}` : undefined}
             />
             <RecordTile

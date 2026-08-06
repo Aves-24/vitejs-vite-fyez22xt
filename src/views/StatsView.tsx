@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -477,6 +477,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [activeTab, setActiveTab] = useState<'DAILY' | 'RECORDS' | 'PRO'>('DAILY');
 
   const [sessions, setSessions] = useState<Session[]>([]);
+  // Sesje dociągnięte punktowo dla konkretnej daty (skok z archiwum zawodów).
+  // Trzymane osobno, bo `sessions` nadpisuje w całości nasłuch onSnapshot.
+  const [dayFetchedSessions, setDayFetchedSessions] = useState<Session[]>([]);
   const [selectedDate, setSelectedDate] = useState<string>(initialDate || new Date().toISOString().split('T')[0]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>('');
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
@@ -563,6 +566,40 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     return () => unsub();
   }, [targetUserId]);
 
+  // Lista sesji jest stronicowana (15 najnowszych, dalej ręcznym przyciskiem),
+  // więc skok na starą datę — np. z archiwum zawodów — trafiałby w pusty dzień.
+  // Dociągamy ten jeden dzień po zakresie timestamp, obok stronicowania.
+  useEffect(() => {
+    if (!targetUserId || !initialDate) return;
+    let cancelled = false;
+
+    const dayStart = new Date(`${initialDate}T00:00:00`);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    getDocs(query(
+      collection(db, `users/${targetUserId}/sessions`),
+      where('timestamp', '>=', Timestamp.fromDate(dayStart)),
+      where('timestamp', '<', Timestamp.fromDate(dayEnd)),
+      orderBy('timestamp', 'desc')
+    ))
+      .then(snap => {
+        if (cancelled) return;
+        setDayFetchedSessions(snap.docs.map(d => ({ id: d.id, ...d.data() } as Session)));
+      })
+      .catch(() => { /* dzień pozostanie pusty — nie blokuje reszty widoku */ });
+
+    return () => { cancelled = true; };
+  }, [targetUserId, initialDate]);
+
+  // Widok czyta z połączonej listy; duplikaty odpadają po id.
+  const allSessions = useMemo(() => {
+    if (dayFetchedSessions.length === 0) return sessions;
+    const known = new Set(sessions.map(s => s.id));
+    const extra = dayFetchedSessions.filter(s => !known.has(s.id));
+    return extra.length > 0 ? [...sessions, ...extra] : sessions;
+  }, [sessions, dayFetchedSessions]);
+
   const loadMore = async () => {
     if (!targetUserId || !lastVisible || isLoadingMore || !hasMore) return;
     setIsLoadingMore(true);
@@ -597,13 +634,13 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   // czytają z mapy zamiast filtrować całą tablicę dla każdego dnia.
   const sessionsByISODate = useMemo(() => {
     const map = new Map<string, Session[]>();
-    sessions.forEach(s => {
+    allSessions.forEach(s => {
       const iso = toISO(s.date);
       const arr = map.get(iso);
       if (arr) arr.push(s); else map.set(iso, [s]);
     });
     return map;
-  }, [sessions]);
+  }, [allSessions]);
 
   const daySessions = useMemo(() => sessionsByISODate.get(selectedDate) || [], [sessionsByISODate, selectedDate]);
 
@@ -649,22 +686,22 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
   useEffect(() => {
     const pending = pendingSessionIdRef.current;
-    if (!pending || sessions.length === 0) return;
-    const session = sessions.find(s => s.id === pending);
+    if (!pending || allSessions.length === 0) return;
+    const session = allSessions.find(s => s.id === pending);
     if (!session) return;
     const dateISO = toISO(session.date);
     if (dateISO) setSelectedDate(dateISO);
     setSelectedSessionId(pending);
     pendingSessionIdRef.current = '';
-  }, [sessions]);
+  }, [allSessions]);
 
   useEffect(() => {
     if (selectedSessionId) {
-      const s = sessions.find(s => s.id === selectedSessionId);
-      setSelectedSession(s || null); 
+      const s = allSessions.find(s => s.id === selectedSessionId);
+      setSelectedSession(s || null);
       setHighlightedEnd(null);
     }
-  }, [selectedSessionId, sessions]);
+  }, [selectedSessionId, allSessions]);
 
   useEffect(() => { if (scrollRef.current && activeTab === 'DAILY') scrollRef.current.scrollLeft = scrollRef.current.scrollWidth; }, [isLoading, activeTab]);
 

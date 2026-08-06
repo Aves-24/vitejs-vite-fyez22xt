@@ -944,10 +944,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   {state.allItems.slice(0, state.shown).map(event => (
                     <div
                       key={event.id}
-                      onClick={() => setViewingEvent(event)}
-                      className="rounded-lg border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all cursor-pointer active:scale-[0.98] flex"
+                      className="rounded-lg border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all flex"
                     >
-                      <div className="flex-1 p-2.5 flex items-center gap-2">
+                      <div
+                        onClick={() => {
+                          // Zawody z wpisanym wynikiem prowadzą wprost do niego —
+                          // okno podsumowania nie ma tu nic do dodania. Do edycji
+                          // i usunięcia wpisu wchodzi się strzałką z prawej.
+                          if (event.hasScore) onNavigate?.('STATS', undefined, event.date);
+                          else setViewingEvent(event);
+                        }}
+                        className="flex-1 p-2.5 flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-transform"
+                      >
                         <div className="px-2 py-1.5 rounded-lg text-center min-w-[48px] border bg-gray-100 border-gray-200 text-[8px]">
                           <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
                           <span className="block text-base font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
@@ -977,9 +985,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           })()}
                         </div>
                       </div>
-                      <div className="w-8 flex items-center justify-center opacity-30 shrink-0">
-                        <span className="material-symbols-outlined text-sm">chevron_right</span>
-                      </div>
+                      <button
+                        onClick={() => setViewingEvent(event)}
+                        aria-label={t('calendar.modalEdit')}
+                        className="w-9 flex items-center justify-center shrink-0 text-gray-400 opacity-50 active:opacity-100 active:bg-gray-100 rounded-r-lg transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">more_vert</span>
+                      </button>
                     </div>
                   ))}
                   {state.shown < state.allItems.length && (
@@ -1315,7 +1327,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           disabled={!isTournamentToday && !viewingEvent.hasScore}
                           onClick={() => {
                               if (viewingEvent.hasScore) {
-                                  onNavigate?.('STATS');
+                                  // Bez daty statystyki otwierały się na dzisiaj, a nie
+                                  // na dniu, w którym zawody się odbyły.
+                                  onNavigate?.('STATS', undefined, viewingEvent.date);
                                   closeViewingModal();
                               } else if (isTournamentToday) {
                                   setShowScoreInput(true);

@@ -37,6 +37,13 @@
     <link rel="preconnect" href="https://securetoken.googleapis.com" />
     <link rel="preconnect" href="https://firestore.googleapis.com" />
     <link rel="preconnect" href="https://www.google.com" />
+    <!-- reCAPTCHA ładuje loader z www.google.com, ale właściwe ~330 KB idzie
+         z gstatic; App Check wymienia token na content-firebaseappcheck.
+         Bez tych dwóch wpisów handshake zaczynał się dopiero po parsowaniu JS
+         — token App Check przychodził w ~3,9 s, a Firestore nie wyśle nic
+         wcześniej. -->
+    <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://content-firebaseappcheck.googleapis.com" />
 
     <!-- Zielone tło od pierwszej klatki: zanim dojedzie CSS i zamontuje się
          React, ekran ma kolor splasha PWA (#0a3a2a) zamiast białego błysku.

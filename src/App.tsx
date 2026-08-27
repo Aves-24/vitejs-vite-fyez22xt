@@ -126,10 +126,16 @@ export default function App() {
   // ----------------------------------------------------
 
   useEffect(() => {
-    // Minimalny czas splasha = tyle, żeby animacja logo (0.6s) zdążyła dojechać.
+    // Minimalny czas splasha = tyle, żeby animacja logo zdążyła dojechać.
+    // [PERF] Było 650 ms + 500 ms fade = ~1150 ms sztucznej podłogi. Po
+    // odchudzeniu startu appka jest gotowa w ~450 ms, więc splash trwał
+    // dłużej niż całe ładowanie. Animacja skrócona 0.6s -> 0.45s (patrz
+    // .animate-*-train niżej), fade 500 -> 300 ms. Razem ~770 ms.
+    // Chcesz starą, wolniejszą animację? Wróć do 650 tutaj, 0.45s/0.15s
+    // w keyframes i duration-500 przy fade.
     const timer = setTimeout(() => {
       setShowSplash(false);
-    }, 650);
+    }, 470);
     return () => clearTimeout(timer);
   }, []);
 
@@ -483,7 +489,7 @@ export default function App() {
     <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-hidden max-w-md mx-auto shadow-2xl">
       
       {(!isDataReady || !fadeOutSplash) && (
-        <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-500 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+        <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-300 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
            <div className="flex items-baseline relative h-20">
               <div className="animate-grot-train flex items-baseline">
                 <span className="text-5xl font-black text-white tracking-tighter leading-none">GROT-</span>
@@ -500,8 +506,8 @@ export default function App() {
                 70% { transform: translateX(10px); }
                 100% { transform: translateX(0); opacity: 1; }
               }
-              .animate-x-train { animation: trainMove 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
-              .animate-grot-train { animation: trainMove 0.45s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; animation-delay: 0.15s; }
+              .animate-x-train { animation: trainMove 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
+              .animate-grot-train { animation: trainMove 0.35s cubic-bezier(0.2, 0.9, 0.3, 1) forwards; animation-delay: 0.10s; }
               @keyframes pulse-slow { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
               .animate-pulse-slow { animation: pulse-slow 2.5s infinite ease-in-out; }
            `}</style>
@@ -542,7 +548,7 @@ export default function App() {
         </button>
       )}
       
-      <main className={`w-full min-h-screen pb-24 transition-all duration-500 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
+      <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
       <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>
         {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}

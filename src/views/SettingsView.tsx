@@ -5,6 +5,7 @@ import { doc, getDoc, setDoc, collection, addDoc, getDocs, updateDoc, arrayRemov
 import { signOut } from 'firebase/auth'; 
 import { getRecommendation, BowType } from '../config/archeryRules';
 import { useTranslation } from 'react-i18next'; 
+import { switchLanguage } from '../i18n';
 import ProfileWizard from '../components/ProfileWizard'; 
 import { QRCodeCanvas } from 'qrcode.react';
 
@@ -453,7 +454,7 @@ export default function SettingsView({
         {activeTab === 'JEZYK' && (
           <div className="space-y-2 animate-fade-in-up">
             {[{ id: 'pl', name: 'Polski' }, { id: 'en', name: 'English' }, { id: 'de', name: 'Deutsch' }].map(lang => (
-              <button key={lang.id} onClick={() => i18n.changeLanguage(lang.id)} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${i18n.language === lang.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
+              <button key={lang.id} onClick={() => switchLanguage(lang.id)} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${i18n.language === lang.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
                 <span className="font-black text-[#333] text-sm">{lang.name}</span>
                 {i18n.language === lang.id && <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>}
               </button>

@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './tailwind.css';
 import App from './App';
-import './i18n'; // <--- DODANE: Aktywacja systemu tłumaczeń i autodetekcji języka
+import { initI18n } from './i18n';
 import { initTheme } from './utils/theme';
 
 // [C20] Dark mode — aplikuje zapisany motyw + nasłuch zmian systemowych.
@@ -47,8 +47,21 @@ if (import.meta.env.DEV) {
 // React 18: createRoot zamiast ReactDOM.render (concurrent features).
 // StrictMode w dev montuje komponenty 2x — efekty z subskrypcjami (onSnapshot)
 // muszą mieć poprawne cleanupy (mają — patrz App.tsx).
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+// [PERF] Czekamy na paczkę tłumaczeń wykrytego języka, zanim zamontujemy
+// React. Bez tego pierwszy render pokazałby surowe klucze i18n na ułamek
+// sekundy. Ekran nie jest w tym czasie pusty — index.html maluje zielone
+// tło splasha od pierwszej klatki.
+function mount() {
+  createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>
+  );
+}
+
+initI18n().then(mount, (err) => {
+  // Paczka nie doszła (offline przy pierwszej wizycie) — montujemy mimo to.
+  // Lepiej pokazać aplikację z kluczami niż zostawić zielony ekran na zawsze.
+  console.error('i18n: nie udalo sie zaladowac tlumaczen', err);
+  mount();
+});

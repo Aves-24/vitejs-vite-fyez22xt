@@ -12,6 +12,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { switchLanguage } from '../i18n';
 import { PRIVACY_POLICY_VERSION, privacyPolicyUrl } from '../utils/legalLinks';
 
 // [RODO] Zapis zgody na politykę prywatności w profilu — rozliczalność (art. 7 ust. 1).
@@ -149,7 +150,7 @@ export default function AuthView() {
           <button
             key={lng}
             type="button"
-            onClick={() => i18n.changeLanguage(lng)}
+            onClick={() => switchLanguage(lng)}
             className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
               (i18n.resolvedLanguage || i18n.language) === lng
                 ? 'bg-[#0a3a2a] text-white shadow-md'

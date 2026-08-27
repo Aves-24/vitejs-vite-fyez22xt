@@ -37,16 +37,27 @@ export default defineConfig(({ command }) => ({
         // Code splitting: osobne chunki dla ciężkich bibliotek.
         // Przeglądarka cachuje je niezależnie od kodu aplikacji — deploye
         // appki nie invaliduja cache'u Firebase/React.
-        manualChunks: {
-          'firebase-vendor': [
-            'firebase/app',
-            'firebase/auth',
-            'firebase/firestore',
-            'firebase/app-check',
-          ],
-          'react-vendor': ['react', 'react-dom'],
-          'i18n-vendor': ['i18next', 'react-i18next', 'i18next-browser-languagedetector'],
-          'pdf-vendor': ['jspdf', 'jspdf-autotable'],
+        //
+        // [PERF] Forma FUNKCYJNA, nie obiektowa. Przy formie obiektowej Rollup
+        // wrzucił runtime-helper Vite (__vitePreload, obsługa dynamicznych
+        // import()) do chunka 'pdf-vendor'. Efekt: entry statycznie importował
+        // pdf-vendor, więc CAŁY jsPDF (399 KB / 134 KB gz) leciał w
+        // <link rel=modulepreload> na starcie aplikacji — mimo że eksport PDF
+        // siedzi za lazy-loadowanym StatsView. Helper ma teraz własny mikro-chunk.
+        manualChunks(id) {
+          if (id.includes('vite/preload-helper')) return 'vite-preload';
+
+          const pkg = id.split(/node_modules[\\/]/).pop();
+          if (!id.includes('node_modules') || !pkg) return;
+          // Nazwa paczki: '@firebase/app/dist/x.js' -> '@firebase/app'
+          const parts = pkg.split(/[\\/]/);
+          const name = parts[0].startsWith('@') ? parts[0] + '/' + parts[1] : parts[0];
+
+          if (name === 'firebase' || name.startsWith('@firebase/')) return 'firebase-vendor';
+          if (name === 'i18next' || name === 'react-i18next'
+              || name === 'i18next-browser-languagedetector') return 'i18n-vendor';
+          if (name === 'react' || name === 'react-dom' || name === 'scheduler') return 'react-vendor';
+          if (name === 'jspdf' || name === 'jspdf-autotable') return 'pdf-vendor';
         },
       },
     },

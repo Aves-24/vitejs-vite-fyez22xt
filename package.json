@@ -3,12 +3,13 @@
   "version": "0.0.0",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && node scripts/generate-sw.mjs",
+    "build": "node scripts/icon-font.mjs --check && vite build && node scripts/generate-sw.mjs",
     "preview": "vite preview",
     "lint": "eslint src --ext .ts,.tsx",
     "test:rules": "firebase emulators:exec --only firestore --project grotx-rules-test \"node --test tests/rules/firestore.rules.test.mjs\"",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
-    "prepare": "husky"
+    "prepare": "husky",
+    "icons:update": "node scripts/icon-font.mjs --update"
   },
   "dependencies": {
     "firebase": "^12.11.0",

@@ -4,8 +4,13 @@
 
 /* [RODO/DE] Material Symbols self-hosted — ładowanie z fonts.googleapis.com
    przekazuje IP użytkownika do Google bez zgody (wyrok LG München I, 3 O 17493/20).
-   Plik: public/fonts/material-symbols-outlined.woff2 (font wariantowy,
-   osie opsz/wght/FILL/GRAD). Bonus: ikony działają offline. */
+   Plik: public/fonts/material-symbols-outlined.woff2. Bonus: ikony działają offline.
+
+   [PERF] To SUBSET — tylko ikony faktycznie używane w src (81 KB zamiast 3,95 MB
+   pełnego fontu wariantowego). Oś wght 100..700 zachowana, bo ikony dostają
+   klasy font-bold/font-black; FILL i GRAD przypięte na 0 (kod ich nie ustawia).
+   Regeneracja: npm run icons:update. Build sprawdza kompletność (scripts/icon-font.mjs)
+   i pada, jeśli ktoś użyje ikony spoza subsetu. */
 @font-face {
   font-family: 'Material Symbols Outlined';
   font-style: normal;

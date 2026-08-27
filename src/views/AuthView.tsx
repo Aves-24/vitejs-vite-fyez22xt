@@ -167,7 +167,13 @@ export default function AuthView() {
         <div className="text-center w-full pt-5">
           <div className="flex items-baseline justify-center mb-1.5">
             <span className="text-4xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-            <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.1em] animate-pulse"></div>
+            {/* Kropka wyśrodkowana w pionie względem litery X, nie na linii
+                bazowej. Przy text-4xl (36px) wysokość wersalika to 25px, więc
+                środek X leży 12,5px nad baseline; kropka ma 10px, jej dolna
+                krawędź musi trafić na 12,5 - 5 = 7,5px. Wartość w px, a nie
+                em — obie wielkości (36px tekst, 10px kropka) są stałe, więc
+                offset nie może zależeć od dziedziczonego font-size. */}
+            <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[7.5px] animate-pulse"></div>
           </div>
           <p className="text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] opacity-80">
             {isForgotPassword ? t('auth.resetTitle') : t('auth.subtitle')}

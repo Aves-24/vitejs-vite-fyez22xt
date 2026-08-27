@@ -496,7 +496,10 @@ export default function App() {
               </div>
               <div className="animate-x-train flex items-baseline">
                 <span className="text-5xl font-black text-white tracking-tighter leading-none">X</span>
-                <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[0.48em] shadow-sm"></div>
+                {/* Kropka na środku X, nie na linii bazowej: przy text-5xl (48px)
+                    wersalik ma 34px, więc środek X leży 17px nad baseline;
+                    kropka 12px -> dolna krawędź na 17 - 6 = 11px. */}
+                <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[11px] shadow-sm"></div>
               </div>
            </div>
            <style>{`

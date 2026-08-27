@@ -915,7 +915,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         <div>
           <div className="flex items-baseline">
             <h1 className="text-4xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</h1>
-            <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[0.35em]"></div>
+            {/* Kropka na środku X: text-4xl (36px) -> wersalik 25px, środek
+                12,5px nad baseline; kropka 10px -> dolna krawędź na 7,5px. */}
+            <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[7.5px]"></div>
           </div>
           <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('home.commander')}</p>
         </div>

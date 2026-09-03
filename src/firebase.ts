@@ -15,14 +15,33 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// App Check aktywny tylko w produkcji — w DEV reCAPTCHA v3 i tak nie działa
-// poprawnie na localhost, a debug token wymaga ręcznej rejestracji w Console.
-if (!import.meta.env.DEV) {
-  initializeAppCheck(app, {
-    provider: new ReCaptchaV3Provider('6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp'),
-    isTokenAutoRefreshEnabled: true,
-  });
+// --- APP CHECK ---
+// UWAGA: wymuszanie App Check jest włączone dla Authentication od 2026-07-15.
+// Bez ważnego tokenu App Check localhost NIE ZALOGUJE SIĘ żadną metodą (Google,
+// gość, e-mail) — SDK zwraca auth/firebase-app-check-token-is-invalid. Build
+// produkcyjny puszczony lokalnie (vite preview) dostaje 403, bo reCAPTCHA v3 nie
+// akceptuje originów localhost. Zmiana edytora ani przeglądarki nic tu nie da.
+//
+// Dlatego w DEV idzie debug token zamiast reCAPTCHA. Jednorazowa konfiguracja:
+//   1. `npm run dev`, otwórz konsolę przeglądarki — Firebase wypisze
+//      "App Check debug token: <uuid>"
+//   2. wklej ten uuid w Firebase Console → App Check → Apps → Manage debug tokens
+//   3. zapisz go w `.env.local` jako VITE_APPCHECK_DEBUG_TOKEN=<uuid>, żeby przetrwał
+//      wyczyszczenie danych przeglądarki i działał w innej przeglądarce
+// Bez kroku 3 SDK generuje nowy token na każdym czystym profilu przeglądarki
+// i trzeba go rejestrować od nowa.
+//
+// Produkcji to nie dotyczy: tam `import.meta.env.DEV` jest false, więc blok debug
+// tokenu znika przy tree-shakingu i zostaje sama reCAPTCHA v3.
+if (import.meta.env.DEV) {
+  // `true` = każ SDK wygenerować token i wypisać go w konsoli.
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
 }
+
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider('6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp'),
+  isTokenAutoRefreshEnabled: true,
+});
 
 // --- NOWA TARCZA OCHRONNA PRZED "DUCHAMI" (Zastępuje przekreślone enableIndexedDbPersistence) ---
 // Ten sposób jest oficjalnym standardem Firebase V10.

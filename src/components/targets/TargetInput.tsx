@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StandardTarget } from './StandardTarget';
-import { SpotTarget, calculateSpotScore } from './SpotTarget'; 
+import { SpotTarget, calculateSpotScore } from './SpotTarget';
+import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -35,9 +36,14 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   const [showOffsetSlider, setShowOffsetSlider] = useState(false);
 
-  const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot';
-  const isVertical = targetType === 'Vertical 3-Spot';
-  const is6Ring = targetType === 'WA 80cm (6-Ring)';
+  // [KATALOG TARCZ] Wszystko o tarczy pochodzi z config/targetFaces — wcześniej
+  // były to porównania stringów, przez które 6-Ring nigdy się nie uruchamiał.
+  const face = resolveTargetFace(targetType);
+  const is3Spot = isSpotFace(targetType);
+  const isVertical = isVerticalSpotFace(targetType);
+  // Tarcze bez zewnętrznych pierścieni (6-Ring) rysują się mniejsze niż pełne
+  // 300 jednostek, więc dostają ciaśniejszy viewBox.
+  const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
 
   useEffect(() => {
@@ -77,12 +83,13 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     } 
     let val = "M"; const sId = "";
     const d = Math.hypot(x - 150, y - 150);
-    const ring = (targetType === '40cm') ? 12.5 : 15;
+    const ring = face.scoringRingStep;
     const maxRadius = ring * 10;
     if (d <= maxRadius) {
       const s = 10 - Math.floor(d / ring);
       val = d <= ring / 2 ? "X" : s >= 1 ? s.toString() : "M";
-      if (is6Ring && s < 5) val = "M";
+      // Tarcza 6-Ring punktuje tylko 10..5 — niżej jest pudło.
+      if (s < face.minScoringRing) val = "M";
     }
     return { val, sId: sId || "" };
   };
@@ -149,7 +156,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 {is3Spot ? (
                   <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={() => {}} />
                 ) : (
-                  <StandardTarget is6Ring={is6Ring} />
+                  <StandardTarget targetType={targetType} />
                 )}
                 {currentCoords.map((d: any, i: number) => (
                   <g key={`lupa-${i}`}>
@@ -247,7 +254,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? 'pb-24' : ''}`}>
         <svg 
           ref={svgRef} 
-          viewBox={is3Spot ? "-20 -40 340 480" : is6Ring ? (isFullscreen ? "-20 -50 340 410" : "-20 -30 340 360") : (isFullscreen ? "-20 -50 340 390" : "-20 0 340 300")}
+          viewBox={is3Spot ? "-20 -40 340 480" : isCompactFace ? (isFullscreen ? "-20 -50 340 410" : "-20 -30 340 360") : (isFullscreen ? "-20 -50 340 390" : "-20 0 340 300")}
           onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} 
           className="w-full touch-none transition-transform duration-300 pointer-events-auto" 
           style={{ 
@@ -257,7 +264,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             height: isFullscreen ? 'auto' : '230px'
           }}
         >
-          {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={setSpotFocus} /> : <StandardTarget is6Ring={is6Ring} />}
+          {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={setSpotFocus} /> : <StandardTarget targetType={targetType} />}
           {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill="white" stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill="black">{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>

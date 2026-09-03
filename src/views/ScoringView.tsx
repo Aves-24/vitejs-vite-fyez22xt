@@ -14,7 +14,9 @@ import Timer from '../components/Timer';
 import Weather from '../components/Weather';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
+import { getSetupStamp } from '../utils/setupStamp';
 import { useTranslation } from 'react-i18next';
+import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -31,15 +33,7 @@ const sortArrows = (arrows: string[]) => {
   return [...arrows].sort((a, b) => (weights[b] || 0) - (weights[a] || 0));
 };
 
-const getFriendlyTargetName = (type: string) => {
-  if (type === 'Full') return '122cm';
-  if (type === 'WA 80cm') return '80cm';
-  if (type === '40cm') return '40cm'; 
-  if (type === '3-Spot') return '3-Spot';
-  if (type === 'Vertical 3-Spot') return 'Vertical 3-Spot'; 
-  if (type === 'WA 80cm (6-Ring)') return '80cm (6-Ring)';
-  return type; 
-};
+const getFriendlyTargetName = (type: string) => friendlyTargetName(type, type);
 
 const getCountryData = (code: string) => {
   const c = code?.toUpperCase() || '';
@@ -52,8 +46,8 @@ const getCountryData = (code: string) => {
 };
 
 function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetType: string, activeEnd: number | null }) {
-  const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
-  const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot';
+  const isFullFace = isFullFaceType(targetType);
+  const is3Spot = isSpotFace(targetType);
 
   const renderSpot = (cx: number, cy: number) => (
     <g key={`${cx}-${cy}`}>
@@ -91,7 +85,7 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
         <g>
           <circle cx="150" cy="150" r="150" fill="white" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="135" fill="white" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="120" fill="#333" stroke="#fff" strokeWidth="1" /><circle cx="150" cy="150" r="105" fill="#333" stroke="#fff" strokeWidth="1" /><circle cx="150" cy="150" r="90" fill="#2F80ED" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="75" fill="#2F80ED" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="60" fill="#EB5757" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="45" fill="#EB5757" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="30" fill="#F2C94C" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="15" fill="#F2C94C" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="7.5" fill="#F2C94C" stroke="#333" strokeWidth="1" />
         </g>
-      ) : is3Spot && targetType === '3-Spot' ? (
+      ) : is3Spot && isDoubleSpotFace(targetType) ? (
         <g>
           <rect x="5" y="0" width="140" height="400" fill="#e8eaed" rx="8" stroke="#d1d5db" strokeWidth="2" />
           <rect x="155" y="0" width="140" height="400" fill="#e8eaed" rx="8" stroke="#d1d5db" strokeWidth="2" />
@@ -334,7 +328,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
 
       const isVisualInput = x !== null && y !== null;
 
-      if (isVisualInput && (targetType === '3-Spot' || targetType === 'Vertical 3-Spot')) {
+      if (isVisualInput && isSpotFace(targetType)) {
         if (!spotId) {
           finalVal = 'M';
         } else {
@@ -464,7 +458,12 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       const sessionArrows = globalStats.count;
       const practiceCount = practiceArrowsProp || 0;
 
+      // [ZESTAWY] Z czego padł ten wynik — bez tego rekordy różnych klas
+      // sprzętu zmieszają się bezpowrotnie. Patrz utils/setupStamp.ts
+      const setupStamp = await getSetupStamp(userId);
+
       await addDoc(collection(db, `users/${userId}/sessions`), {
+        ...setupStamp,
         score: globalStats.score,
         scoreArrows: sessionArrows, // = sessionArrows, M liczone do średniej
         sessionArrows,              // fizyczne strzały treningowe

@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
+import { getSetupStamp } from '../utils/setupStamp';
 
 interface TournamentScoreInputProps {
   userId: string;
@@ -181,8 +182,12 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         });
       }
 
+      // [ZESTAWY] Start rozegrany dzisiaj — bieżąca klasa sprzętu jest właściwa.
+      const setupStamp = await getSetupStamp(userId);
+
       // ZAPIS SESJI
       await addDoc(collection(db, 'users', userId, 'sessions'), {
+        ...setupStamp,
         date: todayStr,
         timestamp: serverTimestamp(),
         distance,

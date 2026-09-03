@@ -51,7 +51,7 @@ export const TRAINING_TOPICS = [
     id: 'taktyka',
     num: '5',
     subtopics: [
-      { id: 'visier',           term: 'Vierreinstellung' },
+      { id: 'visier',           term: 'Visiereinstellung' },
       { id: 'wind',             term: 'Windschießen' },
       { id: 'zeit',             term: 'Zeitmanagement' },
       { id: 'psycho',           term: 'Ergebnispsychologie' },

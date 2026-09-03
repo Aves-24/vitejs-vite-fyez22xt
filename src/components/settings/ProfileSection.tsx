@@ -104,11 +104,11 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
             </div>
             <div className="flex-1 flex flex-col gap-1">
               <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={props.bMonth} onChange={e => props.setBMonth(e.target.value.slice(0,2))} />
-              <span className="text-[8px] text-center font-bold text-gray-300 uppercase">Msc</span>
+              <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
             </div>
             <div className="flex-[1.5] flex flex-col gap-1">
               <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={props.bYear} onChange={e => props.setBYear(e.target.value.slice(0,4))} />
-              <span className="text-[8px] text-center font-bold text-gray-300 uppercase">Rok</span>
+              <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
             </div>
           </div>
         </div>
@@ -116,7 +116,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
         {/* PRZYWRÓCONE POLA: WZROST I RĘKA */}
         <div className="space-y-1 mt-4 pt-2 border-t border-gray-50">
            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.height')}</label>
-           <input type="number" value={props.height} onChange={(e) => props.setHeight(Number(e.target.value) || '')} placeholder="np. 180" className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-sm font-bold text-center outline-none focus:border-emerald-500" />
+           <input type="number" value={props.height} onChange={(e) => props.setHeight(Number(e.target.value) || '')} placeholder={t('profile.placeholderHeight')} className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 text-sm font-bold text-center outline-none focus:border-emerald-500" />
         </div>
 
         <div className="flex gap-2 mt-2">

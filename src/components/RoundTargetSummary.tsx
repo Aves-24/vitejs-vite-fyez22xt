@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
 
 export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick }: any) {
   const { t } = useTranslation();
-  const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
-  const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot' || targetType === '3-Spot (Vertical)';
+  const isFullFace = isFullFaceType(targetType);
+  const is3Spot = isSpotFace(targetType);
 
   const totalArrows = ends.reduce((acc: number, end: any) => acc + (end.dots?.length || 0), 0);
   const isLargeSession = totalArrows > 18;

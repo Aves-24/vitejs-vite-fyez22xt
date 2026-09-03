@@ -19,6 +19,8 @@ import PrivacySection from '../components/settings/PrivacySection';
 import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
 import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { guestExpiryFields } from '../utils/guestMode';
+import { invalidateSetupStamp } from '../utils/setupStamp';
+import { selectableTargetIds } from '../config/targetFaces';
 
 type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
@@ -260,6 +262,9 @@ export default function SettingsView({
       }
       await setDoc(doc(db, 'users', userId), payload, { merge: true });
       await savePrivateProfile(userId, { birthDate, gender });
+      // [ZESTAWY] bowType mógł się właśnie zmienić — kolejna sesja ma dostać
+      // nową klasę, a nie tę z cache.
+      invalidateSetupStamp(userId);
       // [RODO art. 8] Data urodzenia mogła się zmienić — bramka zgody opiekuna
       // (ParentalConsentGate) przelicza się na to zdarzenie.
       window.dispatchEvent(new Event('profile_saved'));
@@ -419,7 +424,7 @@ export default function SettingsView({
                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.target')}</span>
                      <select value={d.targetType || '122cm'} onChange={(e) => onUpdateTargetType(i, e.target.value)} className="bg-gray-50 text-[10px] font-black text-[#0a3a2a] py-1.5 px-2 rounded-md outline-none border-none">
-                       <option value="122cm">122cm</option><option value="80cm">80cm</option><option value="60cm">60cm</option><option value="40cm">40cm</option><option value="3-Spot">3-Spot</option><option value="80cm (6-Ring)">80cm (6-Ring)</option>
+                       {selectableTargetIds().map(id => <option key={id} value={id}>{id}</option>)}
                      </select>
                    </div>
                 )}

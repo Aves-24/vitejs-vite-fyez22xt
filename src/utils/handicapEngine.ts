@@ -1,3 +1,5 @@
+import { getTargetDiameterCm } from '../config/targetFaces';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GROT-X — Kalkulator Handicapu Łuczniczego
 // Normalizacja kątowa do referencji olimpijskiej: 70m / 122cm (WA)
@@ -24,16 +26,6 @@ export const HANDICAP_BANDS: HandicapBand[] = [
 
 export function getHandicapBand(handicap: number): HandicapBand {
   return HANDICAP_BANDS.find(b => handicap <= b.max) ?? HANDICAP_BANDS[HANDICAP_BANDS.length - 1];
-}
-
-function getTargetDiameterCm(targetType: string): number {
-  switch (targetType) {
-    case 'Full':    return 122;
-    case 'WA 80cm': return 80;
-    case '40cm':    return 40;
-    case '3-Spot':  return 40;
-    default:        return 80;
-  }
 }
 
 /**

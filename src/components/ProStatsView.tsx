@@ -10,6 +10,7 @@ import BiomechCard from './BiomechCard';
 import HeatmapTarget from './HeatmapTarget';
 import { calculateSpreadSessions } from '../utils/spread';
 import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
+import { isFullFace as isFullFaceType } from '../config/targetFaces';
 
 interface Session {
   id: string;
@@ -759,7 +760,7 @@ function calcSightMm(dxSvg: number, dySvg: number, targetType: string, distance:
 
 function useSightTips(dots: any[], targetType: string, distance: string) {
   const { t } = useTranslation();
-  const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
+  const isFullFace = isFullFaceType(targetType);
   if (!isFullFace || dots.length < 5) return null;
 
   const mx = dots.reduce((s, d) => s + d.x, 0) / dots.length;

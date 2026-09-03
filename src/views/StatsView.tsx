@@ -13,6 +13,7 @@ import BiomechCard from '../components/BiomechCard';
 import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
+import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
@@ -100,8 +101,8 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
 }
 
 function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetType: string, activeEnd: number | null }) {
-  const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
-  const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot' || targetType === '3-Spot (Vertical)';
+  const isFullFace = isFullFaceType(targetType);
+  const is3Spot = isSpotFace(targetType);
 
   const renderSpot = (cx: number, cy: number) => (
     <g key={`${cx}-${cy}`}>

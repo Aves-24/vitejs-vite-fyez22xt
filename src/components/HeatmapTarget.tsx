@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace } from '../config/targetFaces';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HEATMAPA ROZRZUTU — efekt kamery termowizyjnej + kontur dyspersji.
@@ -210,8 +211,8 @@ function MonochromeSpot({ cx, cy }: { cx: number; cy: number }) {
 }
 
 export default function HeatmapTarget({ dots, targetType }: { dots: any[], targetType: string }) {
-  const isFullFace = ['Full', 'WA 80cm', '122cm', '80cm', '60cm', '40cm'].includes(targetType);
-  const is3Spot = targetType === '3-Spot' || targetType === 'Vertical 3-Spot' || targetType === '3-Spot (Vertical)';
+  const isFullFace = isFullFaceType(targetType);
+  const is3Spot = isSpotFace(targetType);
   const vbW = 300, vbH = isFullFace ? 300 : 400;
   const heatURL = useHeatmapDataURL(dots, vbW, vbH);
 
@@ -235,7 +236,7 @@ export default function HeatmapTarget({ dots, targetType }: { dots: any[], targe
 
     if (!isFullFace) {
       // Spot targets: group dots by nearest spot centre, build one contour per spot
-      const spotCenters: [number, number][] = targetType === '3-Spot'
+      const spotCenters: [number, number][] = isDoubleSpotFace(targetType)
         ? [[75,66],[75,200],[75,333],[225,66],[225,200],[225,333]]
         : [[150,66],[150,200],[150,333]]; // Vertical 3-Spot / other single-column spot
 
@@ -266,7 +267,7 @@ export default function HeatmapTarget({ dots, targetType }: { dots: any[], targe
       {/* MONOCHROME TARGET WITH NUMBERS */}
       {isFullFace ? (
         <MonochromeFullFace />
-      ) : is3Spot && targetType === '3-Spot' ? (
+      ) : is3Spot && isDoubleSpotFace(targetType) ? (
         <g>
           <rect x="5"   y="0" width="140" height="400" fill="#f0f0f0" rx="8" stroke="#bbb" strokeWidth="1" />
           <rect x="155" y="0" width="140" height="400" fill="#f0f0f0" rx="8" stroke="#bbb" strokeWidth="1" />

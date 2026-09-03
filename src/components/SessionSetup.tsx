@@ -3,6 +3,8 @@ import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, up
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
+import { getSetupStamp } from '../utils/setupStamp';
+import { selectableTargetIds } from '../config/targetFaces';
 
 interface SessionSetupProps {
   userId: string;
@@ -86,7 +88,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     }
   };
 
-  const targetOptions = ['3-Spot', '40cm', '60cm', '80cm (6-Ring)', '80cm', '122cm', 'Field'];
+  // [KATALOG TARCZ] Lista pochodzi z config/targetFaces — nie da się już
+  // wybrać tarczy, której aplikacja nie potrafi narysować ani policzyć.
+  const targetOptions = selectableTargetIds();
 
   useEffect(() => {
     if (hasActiveSession) {
@@ -161,7 +165,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setIsSavingTech(true);
     const count = techArrows ? parseInt(techArrows) : 0;
     try {
+      // [ZESTAWY] Trening techniczny też stemplujemy — te strzały liczą się
+      // do zużycia cięciwy i strzał danego zestawu.
+      const setupStamp = await getSetupStamp(userId);
+
       await addDoc(collection(db, `users/${userId}/sessions`), {
+        ...setupStamp,
         userId,
         distance: 'TECH',
         targetType: 'TECHNICAL',

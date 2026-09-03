@@ -1,3 +1,5 @@
+import { isSpotFace } from '../config/targetFaces';
+
 // Analiza rozrzutu grupy: kierunek grupowania (środek) + dominujący błąd (kształt).
 // Współdzielone przez StatsView (pojedyncza sesja) i ProStatsView (ostatnie 3 treningi).
 
@@ -7,8 +9,7 @@ export interface SpreadResult {
   errorKey: string; // stats.pro.zones.symm|horiz|vert
 }
 
-const is3Spot = (targetType: string) =>
-  targetType === '3-Spot' || targetType === 'Vertical 3-Spot' || targetType === '3-Spot (Vertical)';
+const is3Spot = (targetType: string) => isSpotFace(targetType);
 
 // Środek tarczy dla danego dot — pełna tarcza = (150,150); 3-spot = najbliższy spot.
 function centerFor(targetType: string, x: number, y: number): { cX: number; cY: number } {

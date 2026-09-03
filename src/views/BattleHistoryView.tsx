@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
+import { friendlyTargetName } from '../config/targetFaces';
 
 interface BattleHistoryViewProps {
   userId: string;
@@ -16,15 +17,8 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
   const [battleParticipants, setBattleParticipants] = useState<any[]>([]);
 
-  const getFriendlyTargetName = (type: string) => {
-    if (type === 'Full') return '122cm';
-    if (type === 'WA 80cm') return '80cm';
-    if (type === '40cm') return '40cm'; 
-    if (type === '3-Spot') return '3-Spot';
-    if (type === 'Vertical 3-Spot') return 'Vertical 3-Spot';
-    if (type === 'WA 80cm (6-Ring)') return '80cm (6-Ring)';
-    return type || t('battleHistory.unknown'); 
-  };
+  const getFriendlyTargetName = (type: string) =>
+    friendlyTargetName(type, t('battleHistory.unknown'));
 
   useEffect(() => {
     if (!userId) return;

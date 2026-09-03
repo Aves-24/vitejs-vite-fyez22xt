@@ -6,6 +6,7 @@ import { doc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, 
 import { Html5Qrcode } from 'html5-qrcode';
 import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
+import { friendlyTargetName } from '../config/targetFaces';
 
 interface BattleLobbyViewProps {
   userId: string;
@@ -439,13 +440,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
     }
   };
 
-  const getFriendlyTargetName = (type: string) => {
-    if (type === 'Full') return '122cm';
-    if (type === 'WA 80cm') return '80cm';
-    if (type === '40cm') return '40cm'; 
-    if (type === '3-Spot') return '3-Spot';
-    return type;
-  };
+  const getFriendlyTargetName = (type: string) => friendlyTargetName(type, type);
 
   const maxLocalParticipants = isPremium ? 4 : 2;
   const isLocalFull = battleMode === 'LOCAL' && participants.length >= maxLocalParticipants;

@@ -1,27 +1,29 @@
 import React from 'react';
+import { resolveTargetFace } from '../../config/targetFaces';
 
 interface StandardTargetProps {
-  is6Ring?: boolean;
+  /** Typ tarczy z sesji — geometria pochodzi z katalogu (config/targetFaces). */
+  targetType?: string;
 }
 
-export const StandardTarget: React.FC<StandardTargetProps> = ({ is6Ring }) => {
+export const StandardTarget: React.FC<StandardTargetProps> = ({ targetType }) => {
+  const rings = resolveTargetFace(targetType).rings;
+  const lastIndex = rings.length - 1;
+
   return (
     <g>
-      {!is6Ring && (
-        <>
-          <circle cx="150" cy="150" r="150" fill="white" stroke="#333" strokeWidth="0.5" />
-          <circle cx="150" cy="150" r="135" fill="white" stroke="#333" strokeWidth="0.5" />
-          <circle cx="150" cy="150" r="120" fill="#333" stroke="#fff" strokeWidth="0.5" />
-          <circle cx="150" cy="150" r="105" fill="#333" stroke="#fff" strokeWidth="0.5" />
-        </>
-      )}
-      <circle cx="150" cy="150" r="90" fill="#2F80ED" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="75" fill="#2F80ED" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="60" fill="#EB5757" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="45" fill="#EB5757" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="30" fill="#F2C94C" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="15" fill="#F2C94C" stroke="#333" strokeWidth="0.5" />
-      <circle cx="150" cy="150" r="7.5" fill="#F2C94C" stroke="#333" strokeWidth="1" />
+      {rings.map((ring, i) => (
+        <circle
+          key={ring.r}
+          cx="150"
+          cy="150"
+          r={ring.r}
+          fill={ring.fill}
+          stroke={ring.stroke}
+          // X (najmniejszy pierścień) grubszą kreską — tak było przed katalogiem.
+          strokeWidth={i === lastIndex ? 1 : 0.5}
+        />
+      ))}
     </g>
   );
 };

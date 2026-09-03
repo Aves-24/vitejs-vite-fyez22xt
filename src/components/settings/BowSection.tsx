@@ -71,8 +71,8 @@ const BowSection: React.FC<BowSectionProps> = (props) => {
       <div className="pt-2 border-t border-gray-50 space-y-3">
         {renderField(t('settings.bow.riser'), props.riser, props.setRiser, t('settings.bow.riserPh'))}
         {renderField(t('settings.bow.limbs'), props.limbs, props.setLimbs, t('settings.bow.limbsPh'))}
-        {renderField("Stabilizatory", props.stabilizers, props.setStabilizers, "np. Win&Win HMC+")}
-        {renderField("Celownik", props.sight, props.setSight, "np. Shibuya Ultima CPX")}
+        {renderField(t("settings.bow.stabilizers"), props.stabilizers, props.setStabilizers, t("settings.bow.stabilizersPh"))}
+        {renderField(t("settings.bow.sight"), props.sight, props.setSight, t("settings.bow.sightPh"))}
       </div>
     </div>
   );

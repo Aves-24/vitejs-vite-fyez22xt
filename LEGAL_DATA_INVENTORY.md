@@ -16,7 +16,7 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 1 | E-mail | TYLKO Firebase Auth (od C21 nie jest przechowywany w Firestore; legacy pole usuwane migracją) | konto, logowanie | art. 6(1)(b) | właściciel, admin (konsola Auth) |
 | 2 | Hasło (hash) | Firebase Auth | logowanie | art. 6(1)(b) | nikt (hash) |
 | 3 | Imię/nazwisko/pseudonim | `users/{uid}` | profil, funkcje społ. | art. 6(1)(b) | właściciel, admin, trenerzy, uczestnicy battles/leaderboard (nazwa wyświetlana wg flag; WORLD zawsze z inicjałem nazwiska) |
-| 4 | Data urodzenia | `users/{uid}/private/profile` (reguły: tylko właściciel+admin) | kategorie wiekowe WA (dystanse/tarcze) | art. 6(1)(b) | właściciel, admin; trener widzi TYLKO wyliczoną kategorię (`ageCategory`, np. „Jugend w") |
+| 4 | Data urodzenia | `users/{uid}/private/profile` (reguły: tylko właściciel+admin) | kategorie wiekowe WA (dystanse/tarcze) | art. 6(1)(b) | właściciel, admin; trener widzi TYLKO wyliczone kategorie (`ageCategory` DSB, np. „Jugend w" + `ageCategoryPL` PZŁucz, np. „kadet w" — wyświetlana zależnie od języka widza) |
 | 5 | Płeć | `users/{uid}/private/profile` | kategorie WA | art. 6(1)(b) | właściciel, admin (pośrednio: kategoria wiekowa zawiera wariant m/w) |
 | 6 | Klub (nazwa, miasto) | `users/{uid}` | ogłoszenia klubowe, profil | art. 6(1)(b) | wg flag `showClub`/`showRegion` |
 | 7 | Sprzęt (łuk, celownik, strzały) | `users/{uid}` | personalizacja | art. 6(1)(b) | właściciel, admin, trenerzy |

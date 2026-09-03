@@ -5,6 +5,7 @@ import { collection, addDoc, Timestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { seriesKeyFromTitle } from '../utils/tournamentSeries';
+import { DEFAULT_SETUP_ID } from '../utils/setupStamp';
 
 interface HistoricalStartFormProps {
   userId: string;
@@ -77,6 +78,11 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
       const startDate = new Date(y, m - 1, d, 12, 0, 0);
 
       await addDoc(collection(db, 'users', userId, 'sessions'), {
+        // [ZESTAWY] Start sprzed lat — świadomie BEZ `bowClass`. Bieżąca klasa
+        // sprzętu nie musi być tą, z której padł ten wynik, a złe oznaczenie
+        // jest gorsze od braku oznaczenia. Użytkownik przypisze go ręcznie,
+        // gdy zestawy powstaną.
+        setupId: DEFAULT_SETUP_ID,
         // timestamp = data historyczna, nie moment zapisu. Dzięki temu wszystkie
         // istniejące zapytania sortowane po tym polu układają wpis we właściwym
         // miejscu historii i stary start nie staje się "ostatnią sesją".

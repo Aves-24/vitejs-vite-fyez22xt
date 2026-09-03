@@ -622,6 +622,22 @@ Po deployu: smoke test logowania (e-mail + Google), zaproszenia trener/battle
 użytkownika — wcześniej fallback "Zawodnik"/"Trener"), eksport i usunięcie
 konta testowego, otwarcie /legal/datenschutz.html.
 
+### 🔑 BLOKER PUBLIKACJI — skasować debug token App Check
+
+- [ ] **Usunąć debug token App Check przed publikacją.**
+      Firebase Console → App Check → Apps → GROT-X → Manage debug tokens.
+      Token `30e22889-798a-4c3a-8fe5-1f79d4e7e3c0` (nazwa `localhost-dev`,
+      dodany 2026-09-03) **omija App Check z dowolnego miejsca na świecie**.
+      Nie daje dostępu do danych — reguły Firestore i logowanie zostają ścianą —
+      ale rozbraja warstwę antybotową, czyli dokładnie to, co chroni przed
+      masowym zakładaniem kont gościa skryptem. Token jest wypisywany w konsoli
+      każdego dev builda, więc traktować go jak spalony.
+      Decyzja usera (2026-09-03): zostaje do końca prac nad Ustawieniami,
+      kasujemy przy ogłoszeniu gotowości aplikacji.
+      Sam kod (`src/firebase.ts`) zostaje bez zmian — przy następnym
+      `npm run dev` SDK wygeneruje nowy uuid do zarejestrowania.
+      Skasować też wtedy `.env.local` (i tak nie jest w repo).
+
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 
 - [~] **C11. Service worker** ✅ SW live (2026-06-11) — WŁASNY generator
@@ -674,8 +690,127 @@ konta testowego, otwarcie /legal/datenschutz.html.
       b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
          wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
 
+## STAN NA 2026-09-03 — czytaj to najpierw
+
+### ✅ Zacommitowane na gałęzi `feat/target-faces-setup-stamp`
+
+Robota z 2026-09-01 (terminologia, stempel zestawu, katalog tarcz) plus dzisiejsza
+poprawka App Check. Wszystko sprawdzone w działającej aplikacji, nie tylko testami.
+
+Nowe pliki: `src/config/targetFaces.ts`, `src/utils/setupStamp.ts`
+
+### Co jest zrobione i sprawdzone testami
+
+1. **Terminologia w 3 językach** — usunięty zahardkodowany polski z zakładek
+   BOGEN/PROFIL, wywalone nazwy firm z placeholderów, ujednolicony słownik
+   celownika w całej aplikacji (PL: Celownik/Wysięg/Wysokość/Bok,
+   DE: Visier/Visierauszug/Höhe/Seite). Naprawione: DE „Auszugslänge" w miejscu
+   wysięgu celownika, DE „Windage" (angielskie słowo w niemieckim UI),
+   PL „Wizjer" → „Celownik", literówka „Vierreinstellung" → „Visiereinstellung".
+2. **Stempel zestawu na sesji** (`src/utils/setupStamp.ts`) — sesje niosą
+   `setupId` + `bowClass`, podpięte w 4 miejscach zapisu. Wpisy historyczne
+   świadomie BEZ `bowClass` (nie zgadujemy klasy sprzed lat).
+3. **Katalog tarcz** (`src/config/targetFaces.ts`) — 4 błędy naprawione,
+   szczegóły w sekcji niżej. Zweryfikowane: 31 asercji na katalogu, porównanie
+   starej i nowej punktacji na siatce 90 601 punktów (5 tarcz bit-w-bit
+   identycznych, zmiana tylko na 6-Ring i to celowo), porównanie geometrii
+   rysowania z kodem sprzed katalogu.
+
+`tsc` czysty, eslint 0 błędów, build przechodzi.
+
+### ✅ Sprawdzone na żywo 2026-09-03
+
+**A1. Logowanie lokalne odblokowane.** `src/firebase.ts` inicjalizuje App Check
+zawsze, a pod `import.meta.env.DEV` podstawia debug token z
+`VITE_APPCHECK_DEBUG_TOKEN` (plik `.env.local`, w `.gitignore`). Token
+zarejestrowany w Firebase Console. Produkcja nietknięta — blok DEV znika przy
+tree-shakingu, zostaje sama reCAPTCHA v3. Potwierdzone: logowanie anonimowe
+przechodzi, odczyt `users/{uid}` działa, 403 zniknęło.
+⚠️ Token do skasowania przed publikacją — patrz „BLOKER PUBLIKACJI" wyżej.
+
+**A2. Tarcza 6-Ring i stempel zestawu.** 6-Ring wypróbowany przez usera na
+gościu na localhost — działa. Stempel potwierdzony na prawdziwej zapisanej
+sesji: `setupId: "default"`, `bowClass: "Klasyczny (Recurve)"` (odczytany
+z `bowType` profilu, nie zgadnięty), tarcza `80cm (6-Ring)`, dystans 30m.
+
+**Efekt uboczny do sprzątnięcia:** samo wejście na dev zakłada dokument gościa
+w PRODUKCYJNYM Firestore. Nic ich nie kasuje, bo TTL trybu gościa czeka na Blaze.
+Wyczyścić razem z resztą danych gościa przy publikacji.
+
+### 🔜 Nadal czeka na usera
+
+- [ ] **A3. Zdjęcie czarnych tarcz ze strzelnicy** — WA Field czy IFAA Field/Hunter?
+      Bez tego nie wpisujemy punktacji (T1 niżej).
+- [ ] **A4. Punktacja tarczy do dmuchawki** — różni się między federacjami,
+      user musi podać, na czym strzelają (T2 niżej).
+
+### 📋 Ustalona architektura — przebudowa Ustawień (następny duży krok)
+
+- Górny pasek: **PROFIL · SPRZĘT · USTAWIENIA CELOWNIKA · JĘZYK**
+- SPRZĘT ma podzakładki: **ŁUCZNIK · ŁUK · CIĘCIWA · STRZAŁY · CELOWNIK · STABILIZACJA**
+- `bowType` przenosi się z użytkownika do **zestawu**; pole zmienia znaczenie
+  na „dyscyplina", dochodzi **dmuchawka (Blasrohr)** — bez łuku, cięciwy
+  i stabilizacji, za to z rurą i strzałkami
+- **Limit: 1 zestaw FREE, 4 zestawy PRO**
+- Sesje stemplowane zestawem (✅ zrobione) — migracja MUSI grupować stare sesje
+  po `bowClass`, NIE po `setupId`
+- Pola w 3 poziomach: **Podstawa** (widoczne) / **Strojenie** (widoczne) /
+  **Szczegóły** (zwinięte pod „Pokaż wszystko")
+- Ikona **(i)** przy ważnych polach: 2 zdania wg wzoru „co to jest" + „co się
+  stanie, jak zmienisz". Wzorzec UI już istnieje w `BiomechCard.tsx:32`.
+  ~35–40 pól × 3 języki, wdrażane warstwami (ikona renderuje się tylko gdy
+  klucz istnieje). Niemiecki do przejrzenia przez kogoś, kto strzela po niemiecku.
+- **Notatka max 100 znaków** w każdej podzakładce ORAZ przy każdym dystansie
+  w nastawach celownika. Uwaga RODO: trener czyta całe `users/{uid}`, więc
+  zobaczy te notatki — jeśli mają być prywatne, idą do `users/{uid}/private/`
+
 ---
 
-*Ostatnia aktualizacja:* 2026-06-11
+## KATALOG TARCZ — dalsze kroki (od 2026-09-01)
+
+Katalog `src/config/targetFaces.ts` jest wdrożony i jest jedynym źródłem prawdy
+o tarczach (układ, średnica fizyczna, krok pierścienia, punktowany zakres,
+geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACES`.
+
+- [ ] **T1. Tarcze terenowe (Field).** Opcja `'Field'` została USUNIĘTA z wyboru
+      w SessionSetup — renderowała się jako pionowy 3-spot i punktowała jak
+      pełna tarcza. Wraca dopiero z prawdziwą definicją. Do rozstrzygnięcia,
+      która to rodzina: WA Field (czarna, żółty środek, 6 stref 6..1,
+      rozmiary 20/40/60/80 cm) czy IFAA Field/Hunter (czarno-biała, 5-4-3 + X).
+      **Czeka na zdjęcie tarczy ze strzelnicy.**
+- [ ] **T2. Dmuchawka (Blasrohr).** Własna tarcza, dystans zwykle 10 m.
+      Punktacja różni się między federacjami (IFA/fukiya vs praktyka niemiecka)
+      — **nie wpisywać z pamięci**, potrzebne potwierdzenie od użytkownika.
+- [ ] **T3. 3D — NIE jest tarczą.** Strefy killa na figurze zwierzęcia,
+      punktacja zależna od trafionej części korpusu, runda to przejście przez
+      ~20 różnych figur. Wymaga osobnego trybu wprowadzania (wybór strefy albo
+      dotknięcie sylwetki), nie mieści się w katalogu pierścieni. Osobna funkcja.
+- [ ] **T4. Krok punktacji 40cm — sprawdzić, czy to nie błąd.**
+      `scoringRingStep: 12.5` przy pierścieniach RYSOWANYCH co 15. Efekt:
+      trafienie w zewnętrzny pierścień punktowane jako pudło, a X liczony
+      przy r=6.25 zamiast 7.5. Zachowane 1:1 ze stanem sprzed katalogu, żeby
+      nie zmienić nikomu wyników z historii — ale wygląda na pomyłkę.
+      Zmiana wymaga decyzji, bo dotknie już zapisanych sesji.
+- [ ] **T5. Ujednolicić rysowanie tarcz.** Ten sam SVG pełnej tarczy jest
+      skopiowany w 5 miejscach (ScoringView, StatsView, RoundTargetSummary,
+      HeatmapTarget, StandardTarget). Tylko `StandardTarget` czyta geometrię
+      z katalogu; reszta ma promienie wpisane na sztywno. Dopóki tak jest,
+      nowa tarcza to nadal 5 miejsc do dotknięcia.
+- [ ] **T6. Martwe pliki do usunięcia.** `src/components/TargetZoom.tsx`
+      (nieimportowany; dodatkowo CAŁY plik używa twardych spacji U+00A0
+      zamiast zwykłych — 1048 sztuk), `src/components/FullFaceTarget.tsx`
+      (nieimportowany, zawiera martwe porównanie `'WA 80cm (6-Ring)'`),
+      `src/views/ProfileView.tsx` (nieimportowany; zawiera jedyne pole
+      „długość naciągu" w aplikacji — przenieść, nie kasować bezmyślnie).
+
+**Naprawione przy okazji katalogu:** 6-Ring faktycznie renderuje się i punktuje
+jako 6-ring; 6-Ring nie wyświetla się już jako pionowy 3-spot; handicap liczy
+122cm jako 122 i 60cm jako 60 (wcześniej oba wpadały w `default: 80`).
+Handicap jest zapisywany w `users/{uid}.last10Handicaps`, więc historyczne
+wartości poprawią się same w ciągu 10 kolejnych sesji.
+
+---
+
+*Ostatnia aktualizacja:* 2026-09-01
 *Status Fazy B (hardening):* ✅ COMPLETE
 *Status Fazy C (store readiness):* 🔄 IN PROGRESS

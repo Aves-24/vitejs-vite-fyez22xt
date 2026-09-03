@@ -10,6 +10,7 @@ import { calculateRank, TARGET_RANKS } from '../utils/rankEngine';
 import { getHandicapBand, HANDICAP_BANDS } from '../utils/handicapEngine';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
+import { friendlyTargetName } from '../config/targetFaces';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -211,13 +212,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return `${m} min`;
   };
 
-  const getFriendlyTargetName = (type: string) => {
-    if (type === 'Full') return '122cm';
-    if (type === 'WA 80cm') return '80cm';
-    if (type === '40cm') return '40cm'; 
-    if (type === '3-Spot') return '3-Spot';
-    return type || '';
-  };
+  const getFriendlyTargetName = (type: string) => friendlyTargetName(type);
 
   const initiateDeleteBattle = (e: React.MouseEvent, battleId: string) => {
     e.stopPropagation(); 

@@ -817,26 +817,30 @@ export const views = {
       ext: "Extension",
       ud: "Elevation",
       lr: "Windage",
-      target: "Target:"
+      target: "Face:"
     },
     arrows: {
       model: "Arrow Model",
-      modelPh: "e.g. Easton X10 Protour",
+      modelPh: "",
       spine: "Spine",
       spinePh: "e.g. 450",
       length: "Shaft length (inches)",
       lengthPh: 'e.g. 29.25"',
-      point: "Point (grain)",
+      point: "Point weight (grains)",
       pointPh: "e.g. 120 gr",
       vanes: "Vanes / Fletching",
-      vanesPh: "e.g. Spin Wing 40mm"
+      vanesPh: ""
     },
     bow: {
       drawWeight: "Draw weight (lbs)",
       riser: "Riser",
-      riserPh: "e.g. Hoyt Prodigy XT",
+      riserPh: "",
       limbs: "Limbs",
-      limbsPh: "e.g. MK Korea 42 lbs"
+      limbsPh: "",
+      stabilizers: "Stabilizers",
+      stabilizersPh: "",
+      sight: "Sight",
+      sightPh: ""
     },
     pro: {
       title: "GROT-X PRO",

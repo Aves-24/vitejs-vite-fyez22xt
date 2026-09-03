@@ -785,12 +785,22 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       punktacja zależna od trafionej części korpusu, runda to przejście przez
       ~20 różnych figur. Wymaga osobnego trybu wprowadzania (wybór strefy albo
       dotknięcie sylwetki), nie mieści się w katalogu pierścieni. Osobna funkcja.
-- [ ] **T4. Krok punktacji 40cm — sprawdzić, czy to nie błąd.**
-      `scoringRingStep: 12.5` przy pierścieniach RYSOWANYCH co 15. Efekt:
-      trafienie w zewnętrzny pierścień punktowane jako pudło, a X liczony
-      przy r=6.25 zamiast 7.5. Zachowane 1:1 ze stanem sprzed katalogu, żeby
-      nie zmienić nikomu wyników z historii — ale wygląda na pomyłkę.
-      Zmiana wymaga decyzji, bo dotknie już zapisanych sesji.
+- [x] **T4. Krok punktacji 40cm — POTWIERDZONY BŁĄD, naprawiony 2026-09-03.**
+      `scoringRingStep: 12.5` przy pierścieniach rysowanych co 15. Skutki:
+      skrajny pierścień punktował się jako pudło (`maxRadius` 125 zamiast 150),
+      X liczył się przy r=6.25 zamiast 7.5, a wszystkie granice były przesunięte
+      względem rysunku — na 641 próbkach promienia stary kod rozjeżdżał się
+      z geometrią 460 razy, pierwszy raz już przy d=6.5.
+      Potwierdzone przez usera na żywo. Naprawione zdjęciem nadpisania — 40cm
+      używa teraz domyślnego kroku 15, jak reszta pełnych tarcz.
+      **Historia NIE jest dotknięta:** sesje trzymają wyniki jako gotowe stringi
+      (`arrows` w ScoringView), a jedyne miejsce liczące punkty z kliknięcia to
+      TargetInput.tsx. Nic nie przelicza wyniku ze współrzędnych ponownie,
+      więc poprawka działa wyłącznie na nowe strzały.
+      Zostaje znane, NIEZMIENIONE zachowanie wspólne dla wszystkich tarcz:
+      trafienie dokładnie na linię pierścienia (d = 15, 30 … 150) liczy się do
+      niższego pierścienia, bo `floor`. Reguła zawodnicza mówi odwrotnie, ale
+      przy współrzędnych zmiennoprzecinkowych z dotyku to przypadek pomijalny.
 - [ ] **T5. Ujednolicić rysowanie tarcz.** Ten sam SVG pełnej tarczy jest
       skopiowany w 5 miejscach (ScoringView, StatsView, RoundTargetSummary,
       HeatmapTarget, StandardTarget). Tylko `StandardTarget` czyta geometrię

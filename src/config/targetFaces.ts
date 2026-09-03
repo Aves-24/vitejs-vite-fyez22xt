@@ -39,9 +39,11 @@ export interface TargetFace {
   diameterCm: number;
   /**
    * Szerokość pierścienia przy przeliczaniu kliknięcia na punkty (layout
-   * 'single'). UWAGA: dla 40cm wynosi 12.5, choć tarcza jest RYSOWANA co 15.
-   * Zachowane 1:1 z zachowaniem sprzed katalogu, żeby nie zmienić nikomu
-   * wyników z historii — ale to prawdopodobnie błąd, patrz TODO.md.
+   * 'single'). MUSI zgadzać się z geometrią `rings` — pierścienie są rysowane
+   * w viewBoxie 300x300 co 15, więc 15 jest jedyną poprawną wartością dla
+   * pełnej tarczy. 40cm miało tu 12.5 (błąd sprzed katalogu, naprawiony
+   * 2026-09-03): skrajny pierścień punktował się jako pudło, X liczył się przy
+   * r=6.25 zamiast 7.5, a wszystkie granice były przesunięte względem rysunku.
    */
   scoringRingStep: number;
   /** Najniższy punktowany pierścień; poniżej = pudło. 6-Ring punktuje 10..5. */
@@ -103,8 +105,7 @@ export const TARGET_FACES: readonly TargetFace[] = [
     pickOrder: 4,
   }),
   face('60cm', 60, { pickOrder: 3 }),
-  // scoringRingStep 12.5 — patrz komentarz przy polu w interfejsie.
-  face('40cm', 40, { scoringRingStep: 12.5, pickOrder: 2 }),
+  face('40cm', 40, { pickOrder: 2 }),
   face('3-Spot', 40, { layout: 'spot3-double', pickOrder: 1 }),
   // Obsługiwana (stare sesje, Battle), ale nie na liście wyboru — tak było
   // przed katalogiem i nie zmieniamy tego przy okazji refaktoru.

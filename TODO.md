@@ -739,8 +739,9 @@ Wyczyścić razem z resztą danych gościa przy publikacji.
 
 ### 🔜 Nadal czeka na usera
 
-- [ ] **A3. Zdjęcie czarnych tarcz ze strzelnicy** — WA Field czy IFAA Field/Hunter?
-      Bez tego nie wpisujemy punktacji (T1 niżej).
+- [x] **A3. Czarne tarcze — wyjaśnione, temat odłożony.** To tarcze IFAA
+      do łucznictwa terenowego (parkur), nie WA Field. User strzela wyłącznie
+      tarczowo, więc nie budujemy tego teraz — szczegóły w T1 niżej.
 - [ ] **A4. Punktacja tarczy do dmuchawki** — różni się między federacjami,
       user musi podać, na czym strzelają (T2 niżej).
 
@@ -772,12 +773,50 @@ Katalog `src/config/targetFaces.ts` jest wdrożony i jest jedynym źródłem pra
 o tarczach (układ, średnica fizyczna, krok pierścienia, punktowany zakres,
 geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACES`.
 
-- [ ] **T1. Tarcze terenowe (Field).** Opcja `'Field'` została USUNIĘTA z wyboru
-      w SessionSetup — renderowała się jako pionowy 3-spot i punktowała jak
-      pełna tarcza. Wraca dopiero z prawdziwą definicją. Do rozstrzygnięcia,
-      która to rodzina: WA Field (czarna, żółty środek, 6 stref 6..1,
-      rozmiary 20/40/60/80 cm) czy IFAA Field/Hunter (czarno-biała, 5-4-3 + X).
-      **Czeka na zdjęcie tarczy ze strzelnicy.**
+- [ ] **T1. Tarcze terenowe — ODŁOŻONE 2026-09-03 (decyzja usera).**
+      Rodzina rozstrzygnięta: **IFAA**, nie WA Field. User strzela wyłącznie
+      tarczowo na płaskiej strzelnicy, więc na razie tego NIE budujemy. Wrócić,
+      gdy user wybierze się na parkur albo ktoś w klubie o to poprosi.
+      Opcja `'Field'` pozostaje usunięta z wyboru w SessionSetup.
+
+      **Ustalone z regulaminu IFAA 2021-2022 (żeby nie szukać drugi raz):**
+      - Jedna rodzina, dwa warianty: **Feldauflage** (czarny środek, biała
+        obręcz, czarny pierścień zewnętrzny) i **Jagdauflage/Hunter** (cała
+        czarna, biały środek). Oba w tych samych 4 rozmiarach: 20/35/50/65 cm.
+      - **Punktacja 5 / 4 / 3** — środek / obręcz wewnętrzna / pierścień
+        zewnętrzny. Identyczna dla Field i Hunter. Trzy strefy, nie pięć.
+      - Geometria (proporcje stałe): obręcz wewnętrzna = **0,6 × średnicy**,
+        środek = **0,2 × średnicy**. Dosłownie z tabeli: 20cm→12/4,
+        35cm→21/7, 50cm→30/10, 65cm→39/13.
+      - **Cienkie linie na tarczy = `Zwischenlinien`**, dzielą każdą strefę
+        na pół. Używane WYŁĄCZNIE w Experten-Feldrunde, punktacja 5-4-3-2-1.
+        W zwykłej Field/Hunter się je ignoruje.
+      - **Biały X w środku NIGDY nie jest wartością punktową** — służy tylko
+        do rozstrzygania remisów. Uwaga: w naszym kodzie X jest normalnym
+        wynikiem obok 10, więc dla IFAA trzeba to zrobić inaczej.
+      - Zasada linii inna niż nasza: na tarczach Hunter i Eksperckich linia
+        podziału liczy się do NIŻSZEJ strefy; strzała musi naruszyć wyższą
+        strefę, żeby dostać wyższą wartość.
+      - Łuki: wszystkie klasy IFAA, recurve włącznie (BB, FS, BH, TR).
+        Tarcza nie selekcjonuje sprzętu.
+      - Zawody: **WFAC** (MŚ terenowe, 2×14 = 28 stanowisk) i zawody krajowe.
+        NIE używa ich WBHC (tam Tierbild + 3D) ani WIAC (własna tarcza halowa,
+        środek 8 cm, X-ring 4 cm).
+
+      **Czego sam katalog tarcz NIE załatwi** — dlatego to nie jest „dorzucić
+      tarczę", tylko osobny tryb sesji: dystanse w **jardach**, nie metrach;
+      runda ma **14 albo 28 stanowisk** zamiast jednego dystansu; część
+      stanowisk to **walk-up** (4 kołki, 4 odległości do tej samej tarczy);
+      4 strzały na tarczę.
+
+      Model `TargetFace` też wymaga rozszerzenia: dziś zakłada równomierne
+      pierścienie co 15 i punktację 10→1. IFAA ma 3 strefy o proporcjach
+      0,6 i 0,2 oraz punktację 5-4-3 — trzeba dołożyć jawny opis stref.
+
+      Źródła: regulamin IFAA 2021-2022 w tłumaczeniu ÖBSV
+      (3d-bogenparcours.com/assets/pdfs/2021-2022-ifaa-regeln-deutsch.pdf)
+      oraz IFAA Archer's Handbook 5th ed.
+      (dutchopenifaa.nl/files/archers_handbook_2017.pdf)
 - [ ] **T2. Dmuchawka (Blasrohr).** Własna tarcza, dystans zwykle 10 m.
       Punktacja różni się między federacjami (IFA/fukiya vs praktyka niemiecka)
       — **nie wpisywać z pamięci**, potrzebne potwierdzenie od użytkownika.

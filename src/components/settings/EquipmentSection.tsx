@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BowType } from '../../config/archeryRules';
+import FieldInfo from './FieldInfo';
 import {
   EquipmentSetup,
   SetupSubtab,
@@ -93,14 +94,23 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     if (activeSetupId === id) onActiveSetupChange(next[0].id);
   };
 
+  /** Etykieta pola z opcjonalną ikoną (i) — ikona sama zniknie, gdy nie ma opisu. */
+  const fieldLabel = (label: string, infoField?: string) => (
+    <div className="flex items-center gap-1.5 mb-1 ml-1">
+      <label className="text-[10px] font-black text-gray-400 uppercase">{label}</label>
+      {infoField && <FieldInfo field={infoField} />}
+    </div>
+  );
+
   const field = (
     label: string,
     value: string,
     onChange: (v: string) => void,
     placeholder = '',
+    infoField?: string,
   ) => (
     <div key={label}>
-      <label className="text-[10px] font-black text-gray-400 uppercase block mb-1 ml-1">{label}</label>
+      {fieldLabel(label, infoField)}
       <input
         type="text"
         value={value}
@@ -117,9 +127,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         return (
           <div className="space-y-3">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase block mb-1 ml-1">
-                {t('profile.drawLength')}
-              </label>
+              {fieldLabel(t('profile.drawLength'), 'archer.drawLength')}
               <input
                 type="number"
                 step="0.5"
@@ -140,9 +148,12 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         return (
           <div className="space-y-4">
             <div>
-              <label className="text-[10px] font-bold text-[#0a3a2a] uppercase block mb-2 ml-1">
-                {t('settings.bow.drawWeight')}: {active.bow?.lbs ?? '—'} lbs
-              </label>
+              <div className="flex items-center gap-1.5 mb-2 ml-1">
+                <label className="text-[10px] font-bold text-[#0a3a2a] uppercase">
+                  {t('settings.bow.drawWeight')}: {active.bow?.lbs ?? '—'} lbs
+                </label>
+                <FieldInfo field="bow.lbs" />
+              </div>
               <div className="flex flex-wrap gap-1">
                 {[20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 55, 60].map(val => (
                   <button
@@ -156,8 +167,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               </div>
             </div>
             <div className="space-y-3 pt-2 border-t border-gray-50">
-              {field(t('settings.bow.riser'), active.bow?.riser ?? '', v => patchSection('bow', { riser: v }), t('settings.bow.riserPh'))}
-              {field(t('settings.bow.limbs'), active.bow?.limbs ?? '', v => patchSection('bow', { limbs: v }), t('settings.bow.limbsPh'))}
+              {field(t('settings.bow.riser'), active.bow?.riser ?? '', v => patchSection('bow', { riser: v }), t('settings.bow.riserPh'), 'bow.riser')}
+              {field(t('settings.bow.limbs'), active.bow?.limbs ?? '', v => patchSection('bow', { limbs: v }), t('settings.bow.limbsPh'), 'bow.limbs')}
             </div>
           </div>
         );
@@ -165,32 +176,32 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       case 'string':
         return (
           <div className="space-y-3">
-            {field(t('settings.equipment.string.model'), active.string?.model ?? '', v => patchSection('string', { model: v }), t('settings.equipment.string.modelPh'))}
-            {field(t('settings.equipment.string.strands'), active.string?.strands ?? '', v => patchSection('string', { strands: v }), t('settings.equipment.string.strandsPh'))}
-            {field(t('settings.equipment.string.nockingPoint'), active.string?.nockingPoint ?? '', v => patchSection('string', { nockingPoint: v }), t('settings.equipment.string.nockingPointPh'))}
+            {field(t('settings.equipment.string.model'), active.string?.model ?? '', v => patchSection('string', { model: v }), t('settings.equipment.string.modelPh'), 'string.model')}
+            {field(t('settings.equipment.string.strands'), active.string?.strands ?? '', v => patchSection('string', { strands: v }), t('settings.equipment.string.strandsPh'), 'string.strands')}
+            {field(t('settings.equipment.string.nockingPoint'), active.string?.nockingPoint ?? '', v => patchSection('string', { nockingPoint: v }), t('settings.equipment.string.nockingPointPh'), 'string.nockingPoint')}
           </div>
         );
 
       case 'arrows':
         return (
           <div className="space-y-3">
-            {field(t('settings.arrows.model'), active.arrows?.model ?? '', v => patchSection('arrows', { model: v }), t('settings.arrows.modelPh'))}
-            {field(t('settings.arrows.spine'), active.arrows?.spine ?? '', v => patchSection('arrows', { spine: v }), t('settings.arrows.spinePh'))}
-            {field(t('settings.arrows.length'), active.arrows?.length ?? '', v => patchSection('arrows', { length: v }), t('settings.arrows.lengthPh'))}
+            {field(t('settings.arrows.model'), active.arrows?.model ?? '', v => patchSection('arrows', { model: v }), t('settings.arrows.modelPh'), 'arrows.model')}
+            {field(t('settings.arrows.spine'), active.arrows?.spine ?? '', v => patchSection('arrows', { spine: v }), t('settings.arrows.spinePh'), 'arrows.spine')}
+            {field(t('settings.arrows.length'), active.arrows?.length ?? '', v => patchSection('arrows', { length: v }), t('settings.arrows.lengthPh'), 'arrows.length')}
           </div>
         );
 
       case 'sight':
         return (
           <div className="space-y-3">
-            {field(t('settings.bow.sight'), active.sight?.model ?? '', v => patchSection('sight', { model: v }), t('settings.bow.sightPh'))}
+            {field(t('settings.bow.sight'), active.sight?.model ?? '', v => patchSection('sight', { model: v }), t('settings.bow.sightPh'), 'sight.model')}
           </div>
         );
 
       case 'stabilization':
         return (
           <div className="space-y-3">
-            {field(t('settings.bow.stabilizers'), active.stabilization?.description ?? '', v => patchSection('stabilization', { description: v }), t('settings.bow.stabilizersPh'))}
+            {field(t('settings.bow.stabilizers'), active.stabilization?.description ?? '', v => patchSection('stabilization', { description: v }), t('settings.bow.stabilizersPh'), 'stabilization.description')}
           </div>
         );
     }
@@ -263,9 +274,12 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-gray-400 uppercase block mb-2 ml-1">
-            {t('settings.equipment.discipline')}
-          </label>
+          <div className="flex items-center gap-1.5 mb-2 ml-1">
+            <label className="text-[10px] font-black text-gray-400 uppercase">
+              {t('settings.equipment.discipline')}
+            </label>
+            <FieldInfo field="discipline" />
+          </div>
           <div className="grid grid-cols-2 gap-1.5">
             {DISCIPLINES.map(d => (
               <button

@@ -720,6 +720,63 @@ export const views = {
         sight: "VISIER",
         stabilization: "STABILISATION"
       },
+      info: {
+        aria: "Info zum Feld",
+        ifYouChange: "Was passiert, wenn du es änderst",
+        close: "Verstanden",
+        discipline: {
+          what: "Die Ausrüstungsklasse, mit der du schießt — sie bestimmt das Regelwerk, die empfohlenen Distanzen und womit deine Ergebnisse verglichen werden.",
+          change: "Jede neue Sitzung bekommt die neue Klasse. Alte Ergebnisse bleiben bei der alten, Rekorde und Durchschnitte vermischen sich also nicht — der Fortschrittsverlauf teilt sich aber in zwei Reihen."
+        },
+        "archer.drawLength": {
+          what: "Deine Auszugslänge in Zoll, gemessen von der Nockkerbe bis zum tiefsten Punkt des Griffs, plus 1¾ Zoll.",
+          change: "Der Wert selbst rechnet keine Ergebnisse um — er dient der Wahl von Pfeillänge und Zuggewicht. Ändere ihn, wenn sich Stand oder Technik wirklich geändert haben."
+        },
+        "bow.lbs": {
+          what: "Zuggewicht der Wurfarme in Pfund bei DEINER Auszugslänge — nicht der auf den Wurfarmen aufgedruckte Wert.",
+          change: "Mehr Zuggewicht bedeutet eine flachere Flugbahn und andere Visiereinstellungen. Prüfe nach einem Wurfarmwechsel die Einstellungen auf allen Distanzen."
+        },
+        "bow.riser": {
+          what: "Modell des Mittelteils — das Zentralstück, an dem Wurfarme, Visier und Stabilisation befestigt werden.",
+          change: "Ein neues Mittelteil verschiebt den Nullpunkt des Visiers. Einstellungen vom vorherigen Bogen sind dann nicht mehr verlässlich."
+        },
+        "bow.limbs": {
+          what: "Modell der Wurfarme — sie speichern die Auszugsenergie und bestimmen Zuggewicht und Schusscharakter.",
+          change: "Neue Wurfarme ändern Pfeilgeschwindigkeit und Zuggewicht, die Visiereinstellungen müssen also neu eingeschossen werden."
+        },
+        "string.model": {
+          what: "Material und Modell der Sehne. Verschiedene Materialien längen sich unterschiedlich und dämpfen Schwingungen unterschiedlich.",
+          change: "Eine neue Sehne verändert fast immer Standhöhe und Nockpunkt — prüfe beides vor der ersten Passe."
+        },
+        "string.strands": {
+          what: "Anzahl der Stränge in der Sehne. Sie bestimmt die Dicke und damit den Sitz der Nocke.",
+          change: "Weniger Stränge ergeben eine schnellere, aber weniger haltbare Sehne. Prüfe, ob die Nocke noch mit dem richtigen Widerstand hält."
+        },
+        "string.nockingPoint": {
+          what: "Lage des Nockpunkts gegenüber dem rechten Winkel zum Mittelteil, meist in Millimetern darüber angegeben.",
+          change: "Schon wenige Millimeter verändern die senkrechte Streuung. Verstelle in einzelnen Schritten und schieße eine Kontrollpasse."
+        },
+        "arrows.model": {
+          what: "Modell und Typ des Schafts. Material und Durchmesser beeinflussen Windempfindlichkeit, Geschwindigkeit und Robustheit.",
+          change: "Ein anderer Pfeil bedeutet andere Masse und Steifigkeit — Visiereinstellungen und Gruppierung ändern sich ab der ersten Passe."
+        },
+        "arrows.spine": {
+          what: "Steifigkeit des Schafts — je niedriger die Zahl, desto steifer der Pfeil. Er muss zu Zuggewicht und Pfeillänge passen.",
+          change: "Ein falscher Spine verlässt den Bogen nicht gerade. Das zeigt sich als seitlicher Versatz, den keine Visierkorrektur behebt."
+        },
+        "arrows.length": {
+          what: "Länge des Schafts, üblicherweise von der Nockkerbe bis zum Schaftende gemessen, ohne Spitze.",
+          change: "Ein kürzerer Pfeil verhält sich steifer. Kürzen verändert den gewählten Spine und lässt sich nicht rückgängig machen."
+        },
+        "sight.model": {
+          what: "Modell des Visiers. Du notierst es, um nach einem Wechsel zu wissen, zu welcher Ausrüstung die gespeicherten Einstellungen gehören.",
+          change: "Die Einstellungen im Reiter VISIER wurden für ein bestimmtes Visier und einen bestimmten Visierauszug eingeschossen. Nach einem Wechsel sind sie ein Ausgangspunkt, kein Ergebnis."
+        },
+        "stabilization.description": {
+          what: "Aufbau der Stabilisation: Längen, Gewichte, Seitenstangen. Bestimmt die Balance des Bogens und sein Verhalten nach dem Schuss.",
+          change: "Eine veränderte Balance verändert Halt und Zielrhythmus. Notiere den Aufbau, der funktioniert, bevor du zu experimentieren beginnst."
+        }
+      },
       string: {
         model: "Sehnenmodell",
         modelPh: "z. B. BCY 8125G",

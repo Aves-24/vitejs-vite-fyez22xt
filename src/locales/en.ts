@@ -720,6 +720,63 @@ export const views = {
         sight: "SIGHT",
         stabilization: "STABILISERS"
       },
+      info: {
+        aria: "About this field",
+        ifYouChange: "What happens if you change it",
+        close: "Got it",
+        discipline: {
+          what: "The equipment class you shoot — it drives the rulebook, the recommended distances and what your scores are compared against.",
+          change: "Every new session gets the new class. Old scores stay with the old one, so records and averages will not mix — but your progress chart splits into two series."
+        },
+        "archer.drawLength": {
+          what: "Your draw length in inches, measured from the arrow nock groove to the deepest point of the grip, plus 1¾ inches.",
+          change: "The value itself does not recalculate scores — it drives arrow length and bow weight choices. Change it when your stance or form has actually changed."
+        },
+        "bow.lbs": {
+          what: "Limb draw weight in pounds at YOUR draw length — not the number printed on the limbs.",
+          change: "More weight means a flatter trajectory and different sight marks. After a limb change, review the marks at every distance."
+        },
+        "bow.riser": {
+          what: "The riser model — the centre section the limbs, sight and stabilisers bolt onto.",
+          change: "A new riser shifts the sight's zero. Marks from the previous bow stop being trustworthy."
+        },
+        "bow.limbs": {
+          what: "The limb model — limbs store the draw energy and set both the weight and the character of the shot.",
+          change: "New limbs change arrow speed and weight, so sight marks have to be shot in again from scratch."
+        },
+        "string.model": {
+          what: "String material and model. Different materials creep differently and damp vibration differently.",
+          change: "A new string almost always changes brace height and nocking point — check both before your first end."
+        },
+        "string.strands": {
+          what: "Number of strands in the string. It sets the string's thickness and therefore how the nock fits.",
+          change: "Fewer strands means a faster but less durable string. Check the nock still grips the string with the right resistance."
+        },
+        "string.nockingPoint": {
+          what: "Where the arrow sits relative to square with the riser, usually given in millimetres above.",
+          change: "Even a few millimetres change vertical grouping. Move it one step at a time and shoot a check end."
+        },
+        "arrows.model": {
+          what: "Shaft model and type. Material and diameter drive wind drift, speed and how well the shaft survives hits.",
+          change: "A different arrow means different mass and stiffness, so sight marks and grouping shift from the very first end."
+        },
+        "arrows.spine": {
+          what: "Shaft stiffness — the lower the number, the stiffer the arrow. It must match your bow weight and arrow length.",
+          change: "The wrong spine leaves the bow crooked. It shows up as lateral drift that no sight adjustment can fix."
+        },
+        "arrows.length": {
+          what: "Shaft length, usually measured from the nock groove to the end of the shaft, point excluded.",
+          change: "A shorter arrow behaves stiffer. Cutting changes the spine you selected and cannot be undone."
+        },
+        "sight.model": {
+          what: "Sight model. You record it so that after a swap you know which equipment the saved marks belong to.",
+          change: "Marks in the SIGHT tab were shot in for one specific sight and extension. After a swap treat them as a starting point, not a result."
+        },
+        "stabilization.description": {
+          what: "Stabiliser setup: lengths, weights, side rods. It sets the bow's balance and how it behaves after the shot.",
+          change: "Changing the balance changes your hold and aiming rhythm. Write down the setup that works before you start experimenting."
+        }
+      },
       string: {
         model: "String model",
         modelPh: "e.g. BCY 8125G",

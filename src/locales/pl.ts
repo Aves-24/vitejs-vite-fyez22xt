@@ -736,6 +736,63 @@ export const views = {
         sight: "CELOWNIK",
         stabilization: "STABILIZACJA"
       },
+      info: {
+        aria: "Informacja o polu",
+        ifYouChange: "Co się stanie, jak zmienisz",
+        close: "Rozumiem",
+        discipline: {
+          what: "Klasa sprzętu, na której strzelasz — decyduje o regulaminie, rekomendowanych dystansach i o tym, z czym porównywane są Twoje wyniki.",
+          change: "Każda nowa sesja dostanie nową klasę. Stare wyniki zostają przy starej, więc rekordy i średnie się nie pomieszają — ale wykres progresu rozdzieli się na dwie serie."
+        },
+        "archer.drawLength": {
+          what: "Twoja długość naciągu w calach, mierzona od nacięcia strzały do najgłębszego punktu chwytu plus 1¾ cala.",
+          change: "Sama wartość nie przelicza wyników — służy do doboru długości strzał i siły łuku. Zmieniaj, gdy faktycznie zmieniła się Twoja postawa albo technika."
+        },
+        "bow.lbs": {
+          what: "Siła naciągu ramion w funtach przy TWOJEJ długości naciągu — nie ta nadrukowana na ramionach.",
+          change: "Wyższa siła to płaszczejszy tor lotu i inne nastawy celownika. Po zmianie ramion przejrzyj nastawy na wszystkich dystansach."
+        },
+        "bow.riser": {
+          what: "Model majdanu, czyli środkowej części łuku, do której mocujesz ramiona, celownik i stabilizację.",
+          change: "Zmiana majdanu przesuwa punkt zerowy celownika. Nastawy z poprzedniego łuku przestają być wiarygodne."
+        },
+        "bow.limbs": {
+          what: "Model ramion — to one gromadzą energię naciągu i decydują o sile oraz charakterze wystrzału.",
+          change: "Nowe ramiona zmieniają siłę i prędkość strzały, więc nastawy celownika trzeba wystrzelać od nowa."
+        },
+        "string.model": {
+          what: "Materiał i model cięciwy. Różne materiały inaczej się rozciągają i inaczej tłumią drgania.",
+          change: "Nowa cięciwa niemal zawsze zmienia wysokość struny i punkt nakładania — sprawdź oba przed pierwszą serią."
+        },
+        "string.strands": {
+          what: "Liczba włókien w cięciwie. Decyduje o jej grubości, a przez to o dopasowaniu nocka do struny.",
+          change: "Mniej włókien to szybsza, ale mniej trwała cięciwa. Sprawdź, czy nock nadal trzyma się struny z właściwym oporem."
+        },
+        "string.nockingPoint": {
+          what: "Położenie punktu nakładania strzały względem prostopadłej do majdanu, zwykle podawane w milimetrach powyżej.",
+          change: "Nawet kilka milimetrów zmienia pionowy rozrzut. Przestawiaj po jednym kroku i strzelaj serię kontrolną."
+        },
+        "arrows.model": {
+          what: "Model i typ rurki. Materiał i średnica wpływają na wiatroodporność, prędkość i odporność na trafienia.",
+          change: "Inna strzała to inna masa i sztywność, więc nastawy celownika i grupowanie zmienią się od pierwszej serii."
+        },
+        "arrows.spine": {
+          what: "Sztywność rurki — im niższa liczba, tym sztywniejsza strzała. Musi pasować do siły łuku i długości strzały.",
+          change: "Źle dobrany spine to strzała, która nie wychodzi prosto z łuku. Objawia się bocznym znosem, którego nie da się wyregulować celownikiem."
+        },
+        "arrows.length": {
+          what: "Długość rurki, mierzona zwykle od nacięcia nocka do końca rurki, bez grotu.",
+          change: "Krótsza strzała zachowuje się jak sztywniejsza. Skracanie zmienia dobrany spine i jest nieodwracalne."
+        },
+        "sight.model": {
+          what: "Model celownika. Notujesz go, żeby po przesiadce wiedzieć, do którego sprzętu należą zapisane nastawy.",
+          change: "Nastawy z zakładki CELOWNIK są wystrzelane dla konkretnego celownika i wysięgu. Po wymianie potraktuj je jako punkt wyjścia, nie gotowiec."
+        },
+        "stabilization.description": {
+          what: "Konfiguracja stabilizacji: długości, ciężarki, boczniki. Decyduje o wyważeniu łuku i o tym, jak zachowuje się po wystrzale.",
+          change: "Zmiana wyważenia zmienia trzymanie i tempo celowania. Zapisz układ, który działa, zanim zaczniesz eksperymentować."
+        }
+      },
       string: {
         model: "Model cięciwy",
         modelPh: "np. BCY 8125G",

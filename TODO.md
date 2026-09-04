@@ -731,14 +731,17 @@ konta testowego, otwarcie /legal/datenschutz.html.
             listę standardową — startu na własnym dystansie nie da się dopisać.
       - [ ] `getRecommendation` nadal zwraca gołe `'18m'`/`'70m'`; działa, bo
             standardowe wpisy zachowują dokładnie te napisy w polu `m`.
-      - [ ] 🔴 **`validDistances` NIE JEST SPRAWDZONE — ani testem, ani na żywo.**
-            Reguł nie wdrożono (`npx firebase deploy --only firestore:rules`),
-            więc produkcja nadal NIE MA żadnego sufitu na dystanse, a limit
-            2/15 pilnuje wyłącznie UI. Testu na emulatorze też nie ma — emulator
-            nie startuje na tej maszynie, weryfikuje CI. Do zrobienia razem:
-            test w `tests/rules/firestore.rules.test.mjs` (13 wpisów na FREE
-            odrzucone, 12 przechodzi, 25 na PRO przechodzi, zmniejszanie
-            nadmiaru po wygaśnięciu PRO przechodzi) i deploy.
+      - [x] **`validDistances` wdrożone na produkcję 2026-09-04 (deploy usera)
+            i sprawdzone na żywo z klienta** na koncie FREE: 13 wpisów →
+            `permission-denied`, 12 → przechodzi, dokument nietknięty (12 → 12).
+      - [ ] **Ścieżka PRO (25) niesprawdzona z klienta** — `isPremium` jest polem
+            chronionym, więc nie da się samemu awansować konta. Tak samo było
+            z limitem zestawów: tam sprawdził to user na własnym koncie PRO.
+      - [ ] **Brak testu na emulatorze** dla `validDistances`. Do dopisania
+            w `tests/rules/firestore.rules.test.mjs`: 13 na FREE odrzucone,
+            12 przechodzi, 25 na PRO przechodzi, zmniejszanie nadmiaru po
+            wygaśnięciu PRO przechodzi (`prevCount`). Emulator nie startuje
+            na tej maszynie — weryfikuje CI.
       - [ ] liczniki „wystrzelonych strzał" (HomeView, `pfeilzaehler`) nadal sumują
             rurę z łukiem — osobny temat, niezmieniony.
 

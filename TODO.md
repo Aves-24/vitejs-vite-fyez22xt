@@ -810,7 +810,7 @@ od usera. Poniżej architektura ustalona wcześniej, z zaznaczeniem, co już jes
 |---|---|---|
 | 1 | model `EquipmentSetup`, migracja płaskich pól, stempel z zestawu | ✅ `6547e8d` |
 | 2 | zakładka SPRZĘT z 6 podzakładkami, przełącznik zestawów | ✅ `d15b5d7` |
-| 3 | limit 1 FREE / 4 PRO w regułach Firestore | ⚠️ `01ea622` — **reguły NIE wdrożone**, testy nieuruchomione |
+| 3 | limit 1 FREE / 4 PRO w regułach Firestore | ✅ `01ea622` — **wdrożone na produkcję 2026-09-04**, sprawdzone na żywo |
 | 4 | dmuchawka jako dyscyplina | ⛔ czeka na punktację od usera (T2) |
 | 5 | ikony (i) z podpowiedziami przy 13 polach × 3 języki | ✅ `3b280fe` |
 
@@ -822,9 +822,20 @@ udawaniem porządku. Wchodzą razem z pełnym kompletem ~35–40 pól.
 bez `value` i `onChange` — nic z niej nigdy nie trafiało do bazy. CIĘCIWY
 nie było w aplikacji w ogóle.
 
-**Do zrobienia zanim limit zacznie działać:**
-- [ ] wdrożyć reguły: `npx firebase deploy --only firestore:rules`
-- [ ] uruchomić `npm run test:rules` (8 nowych testów zestawów) — wymaga Javy
+**Stan weryfikacji limitu:**
+- [x] reguły wdrożone na produkcję 2026-09-04
+- [x] sprawdzone na żywo na koncie FREE: 2 zestawy → `permission-denied`,
+      `activeSetupId` jako liczba → odrzucone, a zwykły zapis profilu,
+      zapis 1 zestawu i edycja zestawu w miejscu → przechodzą (brak regresji)
+- [ ] **ścieżki PRO niesprawdzone na żywo** (4 tak / 5 nie / tolerancja po
+      wygaśnięciu PRO) — nie da się ich przetestować z klienta, bo `isPremium`
+      jest polem chronionym i nie można się samemu awansować. To zresztą dowód,
+      że ochrona działa. Pokrywają je testy w CI.
+- [ ] `npm run test:rules` NIE uruchomione lokalnie — emulator nie startuje na
+      tej maszynie: `Selector.open()` pada z „Unable to establish loopback
+      connection" (potwierdzone minimalnym programem w Javie; zapora Windows
+      czysta, więc podejrzenie pada na oprogramowanie ochronne). JDK 21 jest
+      zainstalowany i sprawny. Weryfikuje CI.
 - [ ] przejrzeć niemieckie opisy pól z kimś, kto strzela po niemiecku
 
 **Świadome ograniczenie reguł:** Firestore nie ma pętli, więc długości nazwy

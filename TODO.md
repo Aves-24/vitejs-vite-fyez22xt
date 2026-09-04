@@ -675,6 +675,35 @@ konta testowego, otwarcie /legal/datenschutz.html.
       przestaje dzialac — kto zeskanowal QR z Ustawien, trafi w pustke.
       Nazwy repo na GitHubie zmieniac NIE trzeba, jest niezalezna.
 
+- [ ] **C25. Własne, niestandardowe dystanse w nastawach celownika**
+      (prośba usera 2026-09-04). Dziś zakładka CELOWNIK pokazuje zamkniętą
+      listę dystansów; user chce móc dopisać własny (np. 15 m, 45 m, jardy
+      albo cokolwiek, na czym realnie strzela na swojej strzelnicy).
+
+      **Lista jest zaszyta w 6 miejscach i w DWÓCH różnych wariantach** —
+      to jest właściwy koszt tego zadania, nie samo pole do wpisania:
+
+      | plik | wariant |
+      |---|---|
+      | `App.tsx:197` | z 35m |
+      | `components/SmartSeasonUpdater.tsx:8` (`MASTER_DISTANCES`) | z 35m |
+      | `views/SettingsView.tsx` (w `saveAllSettings`) | z 35m |
+      | `components/HistoricalStartForm.tsx:19` | BEZ 35m |
+      | `components/ProfileWizard.tsx:79` | BEZ 35m |
+      | `components/TournamentScoreInput.tsx` | zakłada 18m → 3-Spot |
+
+      Czyli już dziś te listy są NIEZGODNE między sobą. Pierwszy krok to jedno
+      źródło prawdy (jak `config/targetFaces.ts` dla tarcz), dopiero potem
+      dokładanie własnych wpisów.
+
+      **Do przemyślenia przed kodowaniem:**
+      - jednostka: metry czy też jardy (IFAA/tereny liczą w jardach — patrz T1)
+      - sortowanie i deduplikacja, żeby user nie zrobił sobie dwóch „30m"
+      - co z rekomendacjami `getRecommendation` i automatycznym doborem
+        tarczy — dziś opierają się na tym, że dystans jest ze znanej listy
+      - stare sesje trzymają dystans jako string, więc format musi zostać
+        zgodny, inaczej rozjedzie się historia i statystyki
+
 - [ ] **C12. Wrapper natywny** — decyzja: Capacitor (iOS+Android z jednego kodu,
       zalecane) vs TWA (tylko Android). App Store NIE przyjmuje czystych PWA.
 - [x] **C13. Data Safety / Privacy Nutrition Labels** ✅ — `LEGAL_DATA_INVENTORY.md`

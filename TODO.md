@@ -696,6 +696,16 @@ konta testowego, otwarcie /legal/datenschutz.html.
       bo trener ogląda statystyki UCZNIA — rozwiązywanie id po własnej liście
       pokazałoby mu cudze nazwy.
 
+      **Limit własnych dystansów = funkcja płatna (decyzja usera 2026-09-04):
+      2 na FREE, 15 na PRO**, ponad dziesięć standardowych, które ma każdy.
+      Ten sam kształt co limit zestawów sprzętowych (1/4). W regułach Firestore
+      limit jest zapisany jako sufit CAŁEJ listy — 12 / 25 — bo język reguł nie
+      ma pętli ani filtrowania, więc nie policzy, ile wpisów jest „własnych";
+      wychodzi na to samo, bo klient zawsze odtwarza komplet dziesięciu
+      standardowych. `prevCount` jak przy zestawach: po wygaśnięciu PRO nadmiar
+      wolno TRZYMAĆ i zmniejszać, byle nie przybywało — inaczej konto z 15
+      wpisami zamurowałoby się na każdym zapisie profilu.
+
       Nowy plik: **`src/config/distances.ts`** (jedyne źródło prawdy).
       Sześć zaszytych list zastąpione, w tym niezgodność „z 35m / bez 35m".
 
@@ -721,9 +731,14 @@ konta testowego, otwarcie /legal/datenschutz.html.
             listę standardową — startu na własnym dystansie nie da się dopisać.
       - [ ] `getRecommendation` nadal zwraca gołe `'18m'`/`'70m'`; działa, bo
             standardowe wpisy zachowują dokładnie te napisy w polu `m`.
-      - [ ] `npm run test:rules` — dołożony `validDistances` (sufit 30 wpisów,
-            lustro `MAX_DISTANCES`) NIE ma jeszcze testu; emulator nie startuje
-            lokalnie, weryfikuje CI.
+      - [ ] 🔴 **`validDistances` NIE JEST SPRAWDZONE — ani testem, ani na żywo.**
+            Reguł nie wdrożono (`npx firebase deploy --only firestore:rules`),
+            więc produkcja nadal NIE MA żadnego sufitu na dystanse, a limit
+            2/15 pilnuje wyłącznie UI. Testu na emulatorze też nie ma — emulator
+            nie startuje na tej maszynie, weryfikuje CI. Do zrobienia razem:
+            test w `tests/rules/firestore.rules.test.mjs` (13 wpisów na FREE
+            odrzucone, 12 przechodzi, 25 na PRO przechodzi, zmniejszanie
+            nadmiaru po wygaśnięciu PRO przechodzi) i deploy.
       - [ ] liczniki „wystrzelonych strzał" (HomeView, `pfeilzaehler`) nadal sumują
             rurę z łukiem — osobny temat, niezmieniony.
 

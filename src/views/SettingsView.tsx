@@ -24,7 +24,8 @@ import { invalidateSetupStamp } from '../utils/setupStamp';
 import {
   UserDistance, buildDistanceEntry, rebuildMasterList, newDistanceId, normalizeLabel,
   formatDistance, isCustomDistance, isDuplicateDistance, compareDistances,
-  DISTANCE_LABEL_MAX, MAX_DISTANCES, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
+  countCustomDistances, customDistanceLimitFor,
+  DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
 } from '../config/distances';
 import { selectableTargetIds } from '../config/targetFaces';
 import EquipmentSection from '../components/settings/EquipmentSection';
@@ -74,8 +75,10 @@ export default function SettingsView({
       setDistanceError(t('settings.sight.errRange', { min: MIN_CUSTOM_METERS, max: MAX_CUSTOM_METERS }));
       return;
     }
-    if (list.length >= MAX_DISTANCES) {
-      setDistanceError(t('settings.sight.errLimit', { max: MAX_DISTANCES }));
+    // Limit dotyczy TYLKO wpisów własnych — dziesięć standardowych zostaje
+    // każdemu, niezależnie od planu.
+    if (countCustomDistances(list) >= customLimit) {
+      setDistanceError(t('settings.sight.errLimit', { max: customLimit }));
       return;
     }
     const m = formatDistance(meters);
@@ -131,6 +134,13 @@ export default function SettingsView({
   const [startYear, setStartYear] = useState<number>(new Date().getFullYear() - 3); 
   const [competitionLevel, setCompetitionLevel] = useState<string>('Tylko treningi (Rekreacja)');
   const [isPremium, setIsPremium] = useState<boolean>(false);
+
+  // [C25] Limit WŁASNYCH dystansów — 2 FREE / 15 PRO (decyzja usera 2026-09-04).
+  // Dziesięć standardowych ma każdy, niezależnie od planu. Ten sam kształt co
+  // limit zestawów: `isPremium` jest polem chronionym w regułach Firestore,
+  // więc klient nie podniesie go sobie, żeby dodać więcej wpisów.
+  const customLimit = customDistanceLimitFor(isPremium);
+  const customUsed = countCustomDistances(distances as UserDistance[]);
   const [wizardStep, setWizardStep] = useState<number>(0); 
   const [showFullName, setShowFullName] = useState<boolean>(true);
   const [showClub, setShowClub] = useState<boolean>(true);
@@ -580,13 +590,27 @@ export default function SettingsView({
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => setShowAddDistance(true)}
-                className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>
-                {t('settings.sight.addTitle')}
-              </button>
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                    {t('settings.sight.ownDistances')} {customUsed}/{customLimit}
+                  </span>
+                  {customUsed >= customLimit && !isPremium && (
+                    <span className="text-[9px] font-black text-[#F2C94C] uppercase flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">diamond</span>
+                      {t('settings.sight.proForMore')}
+                    </span>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowAddDistance(true)}
+                  disabled={customUsed >= customLimit}
+                  className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-40 disabled:active:scale-100"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  {t('settings.sight.addTitle')}
+                </button>
+              </div>
             )}
           </div>
         )}

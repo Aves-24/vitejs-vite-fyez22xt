@@ -939,7 +939,9 @@ export const views = {
       deleteKeepsHistory: "Zapisane treningi zostają w statystykach.",
       errDuplicate: "Taki dystans już masz na liście.",
       errRange: "Podaj od {{min}} do {{max}} metrów.",
-      errLimit: "Osiągnięto limit {{max}} dystansów."
+      errLimit: "Osiągnięto limit {{max}} własnych dystansów.",
+      ownDistances: "Własne dystanse",
+      proForMore: "PRO = 15 własnych"
     },
     arrows: {
       model: "Model strzały",

@@ -41,8 +41,31 @@ export const MASTER_DISTANCES = ['18m', '20m', '25m', '30m', '35m', '40m', '50m'
 /** Maksymalna długość etykiety. 10 znaków — ustalone z userem 2026-09-04. */
 export const DISTANCE_LABEL_MAX = 10;
 
-/** Sufit liczby dystansów. Lustrzany w firestore.rules — zmieniać OBA miejsca. */
-export const MAX_DISTANCES = 30;
+/**
+ * Ile WŁASNYCH dystansów wolno dodać PONAD listę standardową (decyzja usera
+ * 2026-09-04). Ten sam kształt co limit zestawów sprzętowych: FREE dostaje
+ * tyle, żeby dopisać sobie realny dystans ze swojej strzelnicy, PRO tyle,
+ * żeby rozbić dyscypliny i łuki na osobne kubełki statystyk.
+ */
+export const CUSTOM_DISTANCE_LIMIT_FREE = 2;
+export const CUSTOM_DISTANCE_LIMIT_PRO = 15;
+
+export function customDistanceLimitFor(isPremium: boolean): number {
+  return isPremium ? CUSTOM_DISTANCE_LIMIT_PRO : CUSTOM_DISTANCE_LIMIT_FREE;
+}
+
+/**
+ * Sufit CAŁEJ listy — 12 (FREE) albo 25 (PRO).
+ *
+ * To jego, a nie liczby wpisów własnych, pilnują reguły Firestore: język
+ * regul nie ma petli ani filtrowania, wiec nie da sie tam policzyc, ile
+ * pozycji jest „wlasnych". Wychodzi na to samo, bo regeneracja zawsze
+ * odtwarza komplet dziesieciu standardowych (`rebuildMasterList`), wiec
+ * dlugosc listy = 10 + wlasne. Lustro w firestore.rules — zmieniac OBA miejsca.
+ */
+export function maxDistancesFor(isPremium: boolean): number {
+  return MASTER_DISTANCES.length + customDistanceLimitFor(isPremium);
+}
 
 /** Zakres metrów, jaki wolno wpisać ręcznie. 3 m to dmuchawka z bliska, 200 m to zapas. */
 export const MIN_CUSTOM_METERS = 3;
@@ -184,6 +207,10 @@ const MASTER_IDS = new Set(MASTER_DISTANCES.map(builtinDistanceId));
 
 /** Wpis dodany przez usera, nie pochodzący z listy standardowej. */
 export const isCustomDistance = (d: UserDistance): boolean => !MASTER_IDS.has(d.id);
+
+/** Ile wpisów własnych user już zużył (limit dotyczy TYLKO tych). */
+export const countCustomDistances = (list: UserDistance[]): number =>
+  (list || []).filter(isCustomDistance).length;
 
 /**
  * Przebudowa listy standardowej Z ZACHOWANIEM własnych wpisów.

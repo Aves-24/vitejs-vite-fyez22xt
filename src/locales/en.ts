@@ -923,7 +923,9 @@ export const views = {
       deleteKeepsHistory: "Saved sessions stay in your statistics.",
       errDuplicate: "You already have this distance.",
       errRange: "Enter {{min}} to {{max}} metres.",
-      errLimit: "Limit of {{max}} distances reached."
+      errLimit: "Limit of {{max}} custom distances reached.",
+      ownDistances: "Custom distances",
+      proForMore: "PRO = 15 custom"
     },
     arrows: {
       model: "Arrow Model",

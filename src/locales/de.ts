@@ -923,7 +923,9 @@ export const views = {
       deleteKeepsHistory: "Gespeicherte Trainings bleiben in der Statistik.",
       errDuplicate: "Diese Distanz hast du bereits.",
       errRange: "Bitte {{min}} bis {{max}} Meter angeben.",
-      errLimit: "Limit von {{max}} Distanzen erreicht."
+      errLimit: "Limit von {{max}} eigenen Distanzen erreicht.",
+      ownDistances: "Eigene Distanzen",
+      proForMore: "PRO = 15 eigene"
     },
     arrows: {
       model: "Pfeilmodell",

@@ -772,7 +772,47 @@ Wyczyścić razem z resztą danych gościa przy publikacji.
 - [ ] **A4. Punktacja tarczy do dmuchawki** — różni się między federacjami,
       user musi podać, na czym strzelają (T2 niżej).
 
-### 📋 Ustalona architektura — przebudowa Ustawień (następny duży krok)
+### 📋 Przebudowa Ustawień — STAN 2026-09-04
+
+Etapy 1, 2, 3 i 5 zrobione i wypchnięte na `main`. Etap 4 zablokowany na danych
+od usera. Poniżej architektura ustalona wcześniej, z zaznaczeniem, co już jest.
+
+| etap | co | stan |
+|---|---|---|
+| 1 | model `EquipmentSetup`, migracja płaskich pól, stempel z zestawu | ✅ `6547e8d` |
+| 2 | zakładka SPRZĘT z 6 podzakładkami, przełącznik zestawów | ✅ `d15b5d7` |
+| 3 | limit 1 FREE / 4 PRO w regułach Firestore | ⚠️ `01ea622` — **reguły NIE wdrożone**, testy nieuruchomione |
+| 4 | dmuchawka jako dyscyplina | ⛔ czeka na punktację od usera (T2) |
+| 5 | ikony (i) z podpowiedziami przy 13 polach × 3 języki | ✅ `3b280fe` |
+
+**Co jeszcze zostało z etapu 5:** trzy poziomy pól (Podstawa / Strojenie /
+Szczegóły) NIE są zrobione — przy 1–3 polach na podzakładkę zwijanie byłoby
+udawaniem porządku. Wchodzą razem z pełnym kompletem ~35–40 pól.
+
+**Dwie rzeczy naprawione przy okazji:** dawna zakładka STRZAŁY miała inputy
+bez `value` i `onChange` — nic z niej nigdy nie trafiało do bazy. CIĘCIWY
+nie było w aplikacji w ogóle.
+
+**Do zrobienia zanim limit zacznie działać:**
+- [ ] wdrożyć reguły: `npx firebase deploy --only firestore:rules`
+- [ ] uruchomić `npm run test:rules` (8 nowych testów zestawów) — wymaga Javy
+- [ ] przejrzeć niemieckie opisy pól z kimś, kto strzela po niemiecku
+
+**Świadome ograniczenie reguł:** Firestore nie ma pętli, więc długości nazwy
+(40) i notatki (100) w KAŻDYM zestawie z osobna sprawdzić się nie da —
+pilnuje ich tylko UI przez `maxLength`.
+
+**Stare płaskie pola zostają** (`bowType`, `lbs`, `riser`, `limbs`,
+`stabilizers`, `sight`) — czyta je jeszcze rekomendacja dystansów i kreator
+profilu. `bowType` jest trzymane zgodnie z dyscypliną aktywnego zestawu.
+Sprzątnąć dopiero, gdy zestawy odleżą swoje.
+
+**`BowSection.tsx` przestał być importowany** — dołącza do martwych plików
+z T6 (user zdecydował 2026-09-04, żeby ich na razie nie kasować).
+
+---
+
+Architektura ustalona wcześniej (dla porządku, w większości już wdrożona):
 
 - Górny pasek: **PROFIL · SPRZĘT · USTAWIENIA CELOWNIKA · JĘZYK**
 - SPRZĘT ma podzakładki: **ŁUCZNIK · ŁUK · CIĘCIWA · STRZAŁY · CELOWNIK · STABILIZACJA**

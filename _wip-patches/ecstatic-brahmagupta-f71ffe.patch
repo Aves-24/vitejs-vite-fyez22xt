@@ -1,0 +1,93 @@
+diff --git a/src/components/ProfileWizard.tsx b/src/components/ProfileWizard.tsx
+index 3a086be..c648901 100644
+--- a/src/components/ProfileWizard.tsx
++++ b/src/components/ProfileWizard.tsx
+@@ -54,7 +54,7 @@ interface ProfileWizardProps {
+ }
+ 
+ export default function ProfileWizard(props: ProfileWizardProps) {
+-  const { t } = useTranslation();
++  const { t, i18n } = useTranslation();
+   
+   const [showWelcome, setShowWelcome] = useState(false);
+   const prevWizardStepRef = React.useRef(0);
+@@ -251,10 +251,36 @@ export default function ProfileWizard(props: ProfileWizardProps) {
+             </ul>
+           </div>
+ 
+-          <p className="text-[11px] font-bold text-emerald-200/60 text-center mb-8 px-2">
++          <p className="text-[11px] font-bold text-emerald-200/60 text-center mb-6 px-2">
+             {t('settings.wizard.laterNote')}
+           </p>
+ 
++          <div className="w-full mb-6">
++            <p className="text-[10px] font-bold text-emerald-200/50 text-center mb-3 uppercase tracking-widest">
++              {t('settings.wizard.langTitle')}
++            </p>
++            <div className="flex gap-3 justify-center">
++              {([
++                { id: 'pl', label: 'Polski', flag: '🇵🇱' },
++                { id: 'en', label: 'English', flag: '🇬🇧' },
++                { id: 'de', label: 'Deutsch', flag: '🇩🇪' },
++              ] as const).map(lang => (
++                <button
++                  key={lang.id}
++                  onClick={() => i18n.changeLanguage(lang.id)}
++                  className={`flex flex-col items-center gap-1 py-2.5 px-4 rounded-xl font-black text-[12px] transition-all active:scale-95 ${
++                    i18n.language === lang.id || i18n.language.startsWith(lang.id + '-')
++                      ? 'bg-[#fed33e] text-[#5d4a00] shadow-[0_4px_12px_rgba(254,211,62,0.3)]'
++                      : 'bg-emerald-900/40 text-emerald-100/80 border border-emerald-700/40'
++                  }`}
++                >
++                  <span className="text-2xl">{lang.flag}</span>
++                  <span>{lang.label}</span>
++                </button>
++              ))}
++            </div>
++          </div>
++
+           <button
+             onClick={() => setShowWelcome(false)}
+             className="w-full max-w-xs py-4 bg-[#fed33e] text-[#5d4a00] rounded-2xl font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(254,211,62,0.3)] active:scale-95 transition-all"
+diff --git a/src/locales/de.ts b/src/locales/de.ts
+index dbb9984..d4bcf8d 100644
+--- a/src/locales/de.ts
++++ b/src/locales/de.ts
+@@ -670,7 +670,8 @@ export const views = {
+       completionNote: "Das sorgfältige Ausfüllen des Assistenten ist der Schlüssel zur vollen Funktionalität von GROT-X — überspringe keinen Schritt!",
+       welcomeTitle1: "Willkommen,",
+       welcomeTitle2: "bei",
+-      welcomeBtn: "VERSTANDEN, LOS GEHT'S"
++      welcomeBtn: "VERSTANDEN, LOS GEHT'S",
++      langTitle: "Sprache wählen"
+     },
+     sight: {
+       distTarget: "Distanz / Auflage",
+diff --git a/src/locales/en.ts b/src/locales/en.ts
+index 7050b94..c0bbf7f 100644
+--- a/src/locales/en.ts
++++ b/src/locales/en.ts
+@@ -670,7 +670,8 @@ export const views = {
+       completionNote: "Carefully completing the assistant is the key to full GROT-X functionality — don't skip any step!",
+       welcomeTitle1: "Welcome,",
+       welcomeTitle2: "to",
+-      welcomeBtn: "GOT IT, LET'S START"
++      welcomeBtn: "GOT IT, LET'S START",
++      langTitle: "Choose your language"
+     },
+     sight: {
+       distTarget: "Distance / Face",
+diff --git a/src/locales/pl.ts b/src/locales/pl.ts
+index 4ce1039..40e7fae 100644
+--- a/src/locales/pl.ts
++++ b/src/locales/pl.ts
+@@ -670,7 +670,8 @@ export const views = {
+       completionNote: "Skrupulatne wypełnienie asystenta to klucz do pełnej funkcjonalności GROT-X — nie pomijaj żadnego kroku!",
+       welcomeTitle1: "Witaj,",
+       welcomeTitle2: "w",
+-      welcomeBtn: "ROZUMIEM, ZACZYNAMY"
++      welcomeBtn: "ROZUMIEM, ZACZYNAMY",
++      langTitle: "Wybierz język interfejsu"
+     },
+     sight: {
+       distTarget: "Dystans / Tarcza",

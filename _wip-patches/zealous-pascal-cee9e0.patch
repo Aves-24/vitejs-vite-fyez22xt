@@ -1,0 +1,111 @@
+diff --git a/src/locales/de.ts b/src/locales/de.ts
+index 1ea9afb..eee0e1c 100644
+--- a/src/locales/de.ts
++++ b/src/locales/de.ts
+@@ -770,6 +770,8 @@ export const views = {
+       worldLoss: "❌ Niederlage",
+       worldTabWin: "🌍 SIEG",
+       worldTabLoss: "🌍 NIEDERLAGE",
++      localBattle: "Lokales Spiel",
++      clubBattle: "Vereins-Arena",
+     },
+     saveNote: "Speichern",
+     cards: {
+diff --git a/src/locales/en.ts b/src/locales/en.ts
+index 83fb490..21661c7 100644
+--- a/src/locales/en.ts
++++ b/src/locales/en.ts
+@@ -770,6 +770,8 @@ export const views = {
+       worldLoss: "❌ Loss",
+       worldTabWin: "🌍 WIN",
+       worldTabLoss: "🌍 LOSS",
++      localBattle: "Local Game",
++      clubBattle: "Club Arena",
+     },
+     saveNote: "Save",
+     cards: {
+diff --git a/src/locales/pl.ts b/src/locales/pl.ts
+index 46fe2d0..b338afb 100644
+--- a/src/locales/pl.ts
++++ b/src/locales/pl.ts
+@@ -770,6 +770,8 @@ export const views = {
+       worldLoss: "❌ Przegrana",
+       worldTabWin: "🌍 WYGRANA",
+       worldTabLoss: "🌍 PRZEGRANA",
++      localBattle: "Gra Lokalna",
++      clubBattle: "Arena Klub",
+     },
+     saveNote: "Zapisz",
+     cards: {
+diff --git a/src/views/ScoringView.tsx b/src/views/ScoringView.tsx
+index 49b81c2..4853222 100644
+--- a/src/views/ScoringView.tsx
++++ b/src/views/ScoringView.tsx
+@@ -500,6 +500,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
+         weather: currentWeather,
+         ends: submittedEnds,
+         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
++        ...(activeBattle && !isWorldBattle && { type: activeBattle.mode === 'CLUB' ? 'CLUB_BATTLE' : 'LOCAL_BATTLE' }),
+       });
+ 
+       // Denormalizacja + aktualizacja XP i rangi
+@@ -544,9 +545,17 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
+ 
+       if (activeBattle) {
+          try {
+-           await updateDoc(doc(db, 'battles', activeBattle.id), {
+-               finishedParticipants: arrayUnion(userId)
+-           });
++           const allParticipants: string[] = activeBattle.participants || [];
++           const currentFinished: string[] = activeBattle.finishedParticipants || [];
++           const newFinished = [...new Set([...currentFinished, userId])];
++           const allDone = allParticipants.length > 0 && allParticipants.every((p: string) => newFinished.includes(p));
++           const isHost = userId === activeBattle.hostId;
++
++           const battleUpdate: Record<string, any> = { finishedParticipants: arrayUnion(userId) };
++           if (allDone || isHost) {
++             battleUpdate.status = 'ENDED';
++           }
++           await updateDoc(doc(db, 'battles', activeBattle.id), battleUpdate);
+          } catch (error) {
+            console.warn("Zignorowano błąd uprawnień przy aktualizacji statusu Areny.");
+          }
+diff --git a/src/views/StatsView.tsx b/src/views/StatsView.tsx
+index 0cc4c27..0178f7e 100644
+--- a/src/views/StatsView.tsx
++++ b/src/views/StatsView.tsx
+@@ -387,7 +387,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
+ 
+ interface Session {
+   id: string; score: number; arrows: number; distance: string; date: string; timestamp: any;
+-  type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
++  type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE' | 'LOCAL_BATTLE' | 'CLUB_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
+   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
+   isNotePublic?: boolean; totalArrows?: number;
+ }
+@@ -668,7 +668,7 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
+                  return (
+                    <button key={sess.id} onClick={() => setSelectedSessionId(sess.id)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border shadow-sm flex items-center gap-1 ${btnBg}`}>
+                      {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
+-                     {sess.type === 'Turniej' ? t('stats.sessionInfo.tournament') : sess.type === 'Arena' ? t('stats.sessionInfo.arena') : sess.type === 'TECHNICAL' ? 'TECH' : sess.type === 'WORLD_BATTLE' ? (sess.worldResult === 'WIN' ? t('stats.sessionInfo.worldTabWin') : t('stats.sessionInfo.worldTabLoss')) : t('stats.sessionInfo.solo')} {idx > 0 && `(#${idx+1})`}
++                     {sess.type === 'Turniej' ? t('stats.sessionInfo.tournament') : sess.type === 'Arena' ? t('stats.sessionInfo.arena') : sess.type === 'TECHNICAL' ? 'TECH' : sess.type === 'WORLD_BATTLE' ? (sess.worldResult === 'WIN' ? t('stats.sessionInfo.worldTabWin') : t('stats.sessionInfo.worldTabLoss')) : sess.type === 'LOCAL_BATTLE' ? t('stats.sessionInfo.localBattle') : sess.type === 'CLUB_BATTLE' ? t('stats.sessionInfo.clubBattle') : t('stats.sessionInfo.solo')} {idx > 0 && `(#${idx+1})`}
+                    </button>
+                  );
+               })}
+@@ -690,13 +690,13 @@ export default function StatsView({ userId, onNavigate, initialDate, viewingStud
+                   <div className="flex justify-between items-start mb-4">
+                     <div>
+                       <div className="flex items-center gap-1.5 mb-0.5">
+-                         <div className={`w-2 h-2 rounded-full ${selectedSession.type === 'Turniej' ? 'bg-[#0a3a2a]' : selectedSession.type === 'Arena' ? 'bg-blue-500' : selectedSession.type === 'WORLD_BATTLE' ? 'bg-emerald-500' : 'bg-[#fed33e]'}`}></div>
++                         <div className={`w-2 h-2 rounded-full ${selectedSession.type === 'Turniej' ? 'bg-[#0a3a2a]' : selectedSession.type === 'Arena' ? 'bg-blue-500' : selectedSession.type === 'WORLD_BATTLE' ? 'bg-emerald-500' : selectedSession.type === 'LOCAL_BATTLE' || selectedSession.type === 'CLUB_BATTLE' ? 'bg-indigo-500' : 'bg-[#fed33e]'}`}></div>
+                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+-                           {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : t('stats.sessionInfo.typeSolo')}
++                           {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : selectedSession.type === 'LOCAL_BATTLE' ? t('stats.sessionInfo.localBattle') : selectedSession.type === 'CLUB_BATTLE' ? t('stats.sessionInfo.clubBattle') : t('stats.sessionInfo.typeSolo')}
+                          </span>
+                       </div>
+                       <h2 className="text-xl font-black text-[#0a3a2a] leading-tight truncate max-w-[200px]">
+-                        {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
++                        {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : selectedSession.type === 'LOCAL_BATTLE' ? t('stats.sessionInfo.localBattle') : selectedSession.type === 'CLUB_BATTLE' ? t('stats.sessionInfo.clubBattle') : t('stats.sessionInfo.solo')}
+                       </h2>
+                       <p className="text-[10px] text-gray-300 font-bold uppercase">{selectedSession.date} • {selectedSession.distance}</p>
+                     </div>

@@ -1,0 +1,39 @@
+diff --git a/src/locales/de.ts b/src/locales/de.ts
+index dbb9984..7df4a5e 100644
+--- a/src/locales/de.ts
++++ b/src/locales/de.ts
+@@ -75,7 +75,7 @@ export const components = {
+     hideKeyboard: "Tastatur minimieren",
+     fixScores: "Ergebnisse korrigieren",
+     showKeyboard: "Tastatur anzeigen (Eingabe...)",
+-    aiPlaceholder: "Notiz für KI (Wind, Stress, neue Sehne)...",
++    aiPlaceholder: "Notizen",
+     saving: "Speichern...",
+     saveBtn: "Wettkampfergebnis speichern"
+   },
+diff --git a/src/locales/en.ts b/src/locales/en.ts
+index 7050b94..4af23e5 100644
+--- a/src/locales/en.ts
++++ b/src/locales/en.ts
+@@ -75,7 +75,7 @@ export const components = {
+     hideKeyboard: "Minimize keyboard",
+     fixScores: "Fix scores",
+     showKeyboard: "Show keyboard (Typing...)",
+-    aiPlaceholder: "Note for AI (wind, stress, new bowstring)...",
++    aiPlaceholder: "Notes",
+     saving: "Saving...",
+     saveBtn: "Save Tournament Result"
+   },
+diff --git a/src/locales/pl.ts b/src/locales/pl.ts
+index 4ce1039..47f003a 100644
+--- a/src/locales/pl.ts
++++ b/src/locales/pl.ts
+@@ -75,7 +75,7 @@ export const components = {
+     hideKeyboard: "Zminimalizuj klawiaturę",
+     fixScores: "Popraw wyniki",
+     showKeyboard: "Pokaż klawiaturę (Wpisywanie...)",
+-    aiPlaceholder: "Notatka dla AI (wiało, stres, nowa cięciwa)...",
++    aiPlaceholder: "Notatki",
+     saving: "Zapisywanie...",
+     saveBtn: "Zapisz Wynik Zawodów"
+   },

@@ -1,0 +1,108 @@
+diff --git a/src/views/CoachDashboardView.tsx b/src/views/CoachDashboardView.tsx
+index 09666e1..677a3f3 100644
+--- a/src/views/CoachDashboardView.tsx
++++ b/src/views/CoachDashboardView.tsx
+@@ -196,36 +196,83 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
+   }, [userId]);
+ 
+   useEffect(() => {
++    if (!isScanning) return;
++
+     let html5QrCode: Html5Qrcode | null = null;
++    let cancelled = false;
++
++    const onDecoded = async (decodedText: string) => {
++      if (html5QrCode && html5QrCode.isScanning) {
++        try { await html5QrCode.stop(); } catch {}
++        try { html5QrCode.clear(); } catch {}
++      }
++      setIsScanning(false);
++      await handleAddStudent(decodedText);
++    };
+ 
+-    const startScanner = async () => {
++    // iOS Safari wymaga HTTPS i często wywala OverconstrainedError przy
++    // { facingMode: "environment" } — używamy enumeracji kamer i wybieramy
++    // tylną po etykiecie, a w razie braku — pierwszą dostępną.
++    const pickBackCameraId = async (): Promise<string | null> => {
++      try {
++        const cameras = await Html5Qrcode.getCameras();
++        if (!cameras || cameras.length === 0) return null;
++        const back = cameras.find(c => /back|rear|environment|tył/i.test(c.label));
++        return (back ?? cameras[cameras.length - 1]).id;
++      } catch {
++        return null;
++      }
++    };
++
++    const start = async () => {
+       setCameraError(false);
+-      html5QrCode = new Html5Qrcode("reader");
++
++      // Sprawdzenie środowiska — iOS Safari wymaga HTTPS i obsługi getUserMedia.
++      const isSecure = typeof window !== 'undefined' && (window.isSecureContext || location.hostname === 'localhost');
++      const hasGUM = typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
++      if (!isSecure || !hasGUM) {
++        console.error('Camera unavailable:', { isSecure, hasGUM });
++        setCameraError(true);
++        return;
++      }
++
++      // Czekamy na #reader w DOM (renderowany warunkowo przy isScanning).
++      for (let i = 0; i < 20 && !document.getElementById('reader') && !cancelled; i++) {
++        await new Promise(r => requestAnimationFrame(() => r(null)));
++      }
++      if (cancelled || !document.getElementById('reader')) return;
++
++      html5QrCode = new Html5Qrcode('reader');
++      const config = { fps: 10, qrbox: { width: 250, height: 250 } };
++
++      // 1) Najpierw facingMode (działa na Androidzie i nowszych iOS).
+       try {
+-        await html5QrCode.start(
+-          { facingMode: "environment" }, 
+-          { fps: 10, qrbox: { width: 250, height: 250 } },
+-          async (decodedText) => {
+-            if (html5QrCode && html5QrCode.isScanning) {
+-              await html5QrCode.stop();
+-              html5QrCode.clear();
+-            }
+-            setIsScanning(false);
+-            await handleAddStudent(decodedText);
+-          },
+-          undefined 
+-        );
++        await html5QrCode.start({ facingMode: 'environment' }, config, onDecoded, undefined);
++        return;
+       } catch (err) {
+-        console.error("Camera access error:", err);
+-        setCameraError(true);
++        console.warn('facingMode start failed, falling back to camera id:', err);
++      }
++
++      if (cancelled) return;
++
++      // 2) Fallback: enumeracja kamer (skuteczne na iOS Safari).
++      const camId = await pickBackCameraId();
++      if (!camId || cancelled) {
++        if (!cancelled) setCameraError(true);
++        return;
++      }
++      try {
++        await html5QrCode.start(camId, config, onDecoded, undefined);
++      } catch (err) {
++        console.error('Camera start failed:', err);
++        if (!cancelled) setCameraError(true);
+       }
+     };
+ 
+-    if (isScanning) {
+-      setTimeout(startScanner, 100);
+-    }
++    start();
+ 
+     return () => {
++      cancelled = true;
+       if (html5QrCode && html5QrCode.isScanning) {
+         html5QrCode.stop().then(() => {
+           if (html5QrCode) html5QrCode.clear();

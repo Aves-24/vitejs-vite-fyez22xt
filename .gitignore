@@ -14,3 +14,10 @@ vite.config.ts.timestamp-*
 firebase-debug.log
 firestore-debug.log
 ui-debug.log
+
+# Worktree'y agenta (nigdy nie naleza do repo)
+.claude/worktrees/
+
+# Zduplikowany klon projektu i jednorazowe skrypty latajace
+vitejs-vite-fyez22xt/
+.edit*.mjs

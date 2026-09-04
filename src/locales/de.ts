@@ -100,6 +100,7 @@ export const components = {
     bow_compound: "Compound",
     bow_barebow: "Blankbogen",
     bow_trad: "Traditionell",
+    discipline_blowgun: "Blasrohr",
     season_indoor: "Hallensaison (Indoor)",
     season_outdoor: "Freiluftsaison (Outdoor)"
   },

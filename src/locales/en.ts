@@ -100,6 +100,7 @@ export const components = {
     bow_compound: "Compound",
     bow_barebow: "Barebow",
     bow_trad: "Traditional",
+    discipline_blowgun: "Blowgun",
     season_indoor: "Indoor",
     season_outdoor: "Outdoor"
   },

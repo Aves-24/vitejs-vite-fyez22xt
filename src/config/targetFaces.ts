@@ -17,6 +17,10 @@
  */
 
 /** Jak tarcza jest rozłożona na ekranie. */
+// [DMUCHAWKA] Nowe rodziny tarcz mieszkają w `./targets/*` i są tu tylko
+// rejestrowane — patrz komentarz przy `BLOWGUN_FACE` w `TARGET_FACES`.
+import { BLOWGUN_FACE } from './targets/blowgun';
+
 export type TargetLayout =
   | 'single'       // jedna tarcza koncentryczna, viewBox 300x300
   | 'spot3-double' // dwie kolumny po 3 spoty, viewBox 300x400
@@ -114,6 +118,9 @@ export const TARGET_FACES: readonly TargetFace[] = [
     aliases: ['3-Spot (Vertical)'],
   }),
   face('TECHNICAL', 0, { layout: 'none', scorable: false }),
+  // [DMUCHAWKA] Definicja mieszka w osobnym pliku — tutaj tylko rejestracja.
+  // Nowa tarcza nie dotyka geometrii tarcz już przestrzelanych.
+  BLOWGUN_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */

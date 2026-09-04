@@ -100,6 +100,7 @@ export const components = {
     bow_compound: "Bloczkowy (Compound)",
     bow_barebow: "Gołouk (Barebow)",
     bow_trad: "Tradycyjny (Traditional)",
+    discipline_blowgun: "Dmuchawka",
     season_indoor: "Sezon Halowy (Indoor)",
     season_outdoor: "Sezon Otwarty (Outdoor)"
   },

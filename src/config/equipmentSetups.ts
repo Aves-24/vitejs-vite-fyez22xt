@@ -27,7 +27,34 @@ export const DEFAULT_SETUP_ID = 'default';
  * idzie do `users/{uid}/private/` (ścieżka istnieje, trzyma już datę urodzenia).
  */
 
-/** Ile zestawów wolno trzymać. Dmuchawka dojdzie jako dyscyplina w etapie 4. */
+/**
+ * [DMUCHAWKA] Dmuchawka jest DYSCYPLINĄ, nie klasą łuku.
+ *
+ * Celowo NIE rozszerzamy `BowType` w `archeryRules.ts` — tamten typ karmi
+ * rekomendacje dystansów, regulaminy i kreator profilu, a dla dmuchawki
+ * nic z tego nie ma sensu. Zamiast tego zestaw ma szerszy typ `Discipline`,
+ * a stare, płaskie `bowType` na użytkowniku dostaje wartość tylko wtedy,
+ * gdy dyscyplina naprawdę jest klasą łuku.
+ */
+export const BLOWGUN_DISCIPLINE = 'Dmuchawka (Blasrohr)' as const;
+export type Discipline = BowType | typeof BLOWGUN_DISCIPLINE;
+
+export function isBlowgun(d?: string | null): boolean {
+  return d === BLOWGUN_DISCIPLINE;
+}
+
+/** Zawęża dyscyplinę do klasy łuku — `null`, gdy to dmuchawka. */
+export function asBowType(d?: string | null): BowType | null {
+  return !d || isBlowgun(d) ? null : (d as BowType);
+}
+
+/**
+ * Podzakładki, które NIE dotyczą dmuchawki. Rura i strzałki to nie łuk:
+ * nie ma majdanu, ramion, cięciwy ani stabilizacji.
+ */
+export const SUBTABS_HIDDEN_FOR_BLOWGUN = ['bow', 'string', 'stabilization'] as const;
+
+/** Ile zestawów wolno trzymać. */
 export const SETUP_LIMIT_FREE = 1;
 export const SETUP_LIMIT_PRO = 4;
 
@@ -36,9 +63,8 @@ export function setupLimitFor(isPremium: boolean): number {
 }
 
 /**
- * Podzakładki SPRZĘTU. Kolejność jest kolejnością w UI (etap 2).
- * `stabilization` i `bow` nie dotyczą dmuchawki — patrz `SUBTABS_FOR_BLOWGUN`
- * w etapie 4, dziś każda dyscyplina ma komplet.
+ * Podzakładki SPRZĘTU. Kolejność jest kolejnością w UI.
+ * Dla dmuchawki część z nich znika — patrz `SUBTABS_HIDDEN_FOR_BLOWGUN`.
  */
 export const SETUP_SUBTABS = ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization'] as const;
 export type SetupSubtab = typeof SETUP_SUBTABS[number];
@@ -89,7 +115,7 @@ export interface EquipmentSetup {
    * i przyjmie też dmuchawkę — dlatego typ jest tu osobno, a nie `BowType`
    * wprost w sygnaturach.
    */
-  discipline: BowType;
+  discipline: Discipline;
   archer?: SetupArcher;
   bow?: SetupBow;
   string?: SetupString;
@@ -125,7 +151,7 @@ export type UserDocLike =
   | null
   | undefined;
 
-const DEFAULT_DISCIPLINE: BowType = 'Klasyczny (Recurve)';
+const DEFAULT_DISCIPLINE: Discipline = 'Klasyczny (Recurve)';
 
 /**
  * Usuwa klucze o wartości `undefined` — Firestore ich NIE przyjmuje i wywala
@@ -177,7 +203,7 @@ export function buildSetupFromLegacy(
   // Fallback tylko dla wywołań bez dostępu do i18n — UI zawsze podaje własną.
   name = 'Setup 1',
 ): EquipmentSetup {
-  const discipline = (legacy.bowType as BowType) || DEFAULT_DISCIPLINE;
+  const discipline = (legacy.bowType as Discipline) || DEFAULT_DISCIPLINE;
   const now = new Date().toISOString();
 
   // Cięciwy nie było w aplikacji w ogóle, a zakładka STRZAŁY miała inputy bez

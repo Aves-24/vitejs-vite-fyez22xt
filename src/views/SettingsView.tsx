@@ -23,7 +23,7 @@ import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIds } from '../config/targetFaces';
 import EquipmentSection from '../components/settings/EquipmentSection';
-import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
+import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
 
 // [ZESTAWY] 'PFEILE' i 'BOGEN' zastąpione jedną zakładką 'SPRZET' z podzakładkami.
 // 'VISIER' zostaje osobno — to nastawy celownika per dystans, nie sprzęt.
@@ -274,8 +274,12 @@ export default function SettingsView({
       // płaskie `bowType` zapisujemy dalej — czyta je jeszcze rekomendacja
       // dystansów i kreator profilu. Rozjazd tych dwóch pól byłby gorszy niż
       // duplikat, więc trzymamy je zgodne aż do sprzątnięcia starego modelu.
+      // [DMUCHAWKA] `asBowType` zwraca null dla dmuchawki, więc stare `bowType`
+      // zostaje wtedy bez zmian. Wpisanie tam „Dmuchawka (Blasrohr)" wywróciłoby
+      // `getRecommendation` i kreator profilu, które znają tylko klasy łuków.
+      // Sesje i tak dostają prawdziwą dyscyplinę — stempel czyta ją z zestawu.
       const activeSetup = setups.find(s => s.id === activeSetupId) ?? setups[0];
-      const effectiveBowType = (activeSetup?.discipline as BowType) ?? bowType;
+      const effectiveBowType = asBowType(activeSetup?.discipline) ?? bowType;
 
       const payload: any = {
         firstName, lastName, nickname, club, clubName: club, clubCity, placeId, countryCode: cCode,

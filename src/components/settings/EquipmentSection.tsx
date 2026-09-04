@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { BowType } from '../../config/archeryRules';
 import FieldInfo from './FieldInfo';
 import {
   EquipmentSetup,
+  Discipline,
   SetupSubtab,
   SETUP_SUBTABS,
   SETUP_NOTE_MAX,
+  SUBTABS_HIDDEN_FOR_BLOWGUN,
+  BLOWGUN_DISCIPLINE,
+  isBlowgun,
   setupLimitFor,
   DEFAULT_SETUP_ID,
 } from '../../config/equipmentSetups';
@@ -36,11 +39,13 @@ interface EquipmentSectionProps {
   onActiveSetupChange: (id: string) => void;
 }
 
-const DISCIPLINES: { id: BowType; labelKey: string }[] = [
+const DISCIPLINES: { id: Discipline; labelKey: string }[] = [
   { id: 'Klasyczny (Recurve)', labelKey: 'rules.bow_recurve' },
   { id: 'Bloczkowy (Compound)', labelKey: 'rules.bow_compound' },
   { id: 'Goły (Barebow)', labelKey: 'rules.bow_barebow' },
   { id: 'Tradycyjny', labelKey: 'rules.bow_trad' },
+  // [DMUCHAWKA] Nie klasa łuku, tylko osobna dyscyplina — stąd inny typ.
+  { id: BLOWGUN_DISCIPLINE, labelKey: 'rules.discipline_blowgun' },
 ];
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({
@@ -55,6 +60,15 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   const active = setups.find(s => s.id === activeSetupId) ?? setups[0];
 
   if (!active) return null;
+
+  // [DMUCHAWKA] Rura i strzałki to nie łuk — ŁUK, CIĘCIWA i STABILIZACJA
+  // znikają. `effectiveSubtab` chroni przed pustym ekranem, gdy user siedział
+  // na ukrywanej podzakładce i dopiero teraz przełączył dyscyplinę.
+  const hiddenSubtabs: readonly string[] =
+    isBlowgun(active.discipline) ? SUBTABS_HIDDEN_FOR_BLOWGUN : [];
+  const visibleSubtabs = SETUP_SUBTABS.filter(id => !hiddenSubtabs.includes(id));
+  const effectiveSubtab: SetupSubtab =
+    visibleSubtabs.includes(subtab) ? subtab : 'archer';
 
   /** Nadpisuje aktywny zestaw, zostawiając resztę listy nietkniętą. */
   const patchActive = (patch: Partial<EquipmentSetup>) => {
@@ -127,7 +141,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   );
 
   const renderSubtab = () => {
-    switch (subtab) {
+    switch (effectiveSubtab) {
       case 'archer':
         return (
           <div className="space-y-3">
@@ -301,11 +315,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
       {/* Podzakładki */}
       <div className="flex gap-1 overflow-x-auto hide-scrollbar">
-        {SETUP_SUBTABS.map(id => (
+        {visibleSubtabs.map(id => (
           <button
             key={id}
             onClick={() => setSubtab(id)}
-            className={`px-2.5 py-2 rounded-xl text-[9px] font-black tracking-widest whitespace-nowrap transition-all ${subtab === id ? 'bg-white border border-gray-100 text-[#0a3a2a] shadow-sm' : 'text-gray-400 bg-transparent'}`}
+            className={`px-2.5 py-2 rounded-xl text-[9px] font-black tracking-widest whitespace-nowrap transition-all ${effectiveSubtab === id ? 'bg-white border border-gray-100 text-[#0a3a2a] shadow-sm' : 'text-gray-400 bg-transparent'}`}
           >
             {t(`settings.equipment.subtab.${id}`)}
           </button>

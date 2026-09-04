@@ -715,8 +715,13 @@ export const views = {
       discipline: "Disziplin",
       note: "Notiz",
       notePh: "Kurze Notiz zu diesem Reiter",
+      blowgun: {
+        model: "Blasrohr-Modell",
+        modelPh: "z. B. Fukiya 120 cm"
+      },
       subtab: {
         archer: "SCHÜTZE",
+        blowgun: "BLASROHR",
         bow: "BOGEN",
         string: "SEHNE",
         arrows: "PFEILE",

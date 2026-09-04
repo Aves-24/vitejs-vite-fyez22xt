@@ -49,10 +49,17 @@ export function asBowType(d?: string | null): BowType | null {
 }
 
 /**
- * Podzakładki, które NIE dotyczą dmuchawki. Rura i strzałki to nie łuk:
- * nie ma majdanu, ramion, cięciwy ani stabilizacji.
+ * Które podzakładki widać dla danej dyscypliny.
+ *
+ * Dmuchawka ma DWIE i tylko dwie (ustalone z userem 2026-09-04): rura
+ * i strzałki. Nie ma łuku, cięciwy, stabilizacji ani celownika — a długość
+ * naciągu z zakładki ŁUCZNIK też jej nie dotyczy, bo nic się nie naciąga.
  */
-export const SUBTABS_HIDDEN_FOR_BLOWGUN = ['bow', 'string', 'stabilization'] as const;
+export function visibleSubtabsFor(discipline?: string | null): SetupSubtab[] {
+  return isBlowgun(discipline)
+    ? ['blowgun', 'arrows']
+    : ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization'];
+}
 
 /** Ile zestawów wolno trzymać. */
 export const SETUP_LIMIT_FREE = 1;
@@ -66,12 +73,19 @@ export function setupLimitFor(isPremium: boolean): number {
  * Podzakładki SPRZĘTU. Kolejność jest kolejnością w UI.
  * Dla dmuchawki część z nich znika — patrz `SUBTABS_HIDDEN_FOR_BLOWGUN`.
  */
-export const SETUP_SUBTABS = ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization'] as const;
+export const SETUP_SUBTABS = [
+  'archer', 'blowgun', 'bow', 'string', 'arrows', 'sight', 'stabilization',
+] as const;
 export type SetupSubtab = typeof SETUP_SUBTABS[number];
 
 export interface SetupArcher {
   /** Długość naciągu w calach. Jedyne pole przeniesione z martwego ProfileView. */
   drawLength?: number;
+}
+
+/** [DMUCHAWKA] Sama rura. Odpowiednik „łuku" dla tej dyscypliny. */
+export interface SetupBlowgun {
+  model?: string;
 }
 
 export interface SetupBow {
@@ -117,18 +131,45 @@ export interface EquipmentSetup {
    */
   discipline: Discipline;
   archer?: SetupArcher;
+  blowgun?: SetupBlowgun;
   bow?: SetupBow;
   string?: SetupString;
   arrows?: SetupArrows;
   sight?: SetupSight;
   stabilization?: SetupStabilization;
-  /** Notatka użytkownika, limit 100 znaków (egzekwowany w UI i w regułach). */
+  /**
+   * Notatka OSOBNA dla każdej podzakładki, limit 100 znaków.
+   * Tak było ustalone w TODO i tego chce user — jedna wspólna notatka na
+   * zestaw była moim uproszczeniem i wracała pod każdą zakładką ta sama.
+   */
+  notes?: Partial<Record<SetupSubtab, string>>;
+  /**
+   * Stara, wspólna notatka. Zostaje wyłącznie do odczytu — `noteFor()`
+   * podstawia ją pod pierwszą podzakładkę, żeby nic nie zniknęło z ekranu.
+   * Nowe zapisy idą już do `notes`.
+   */
   note?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export const SETUP_NOTE_MAX = 100;
+
+/**
+ * Notatka dla konkretnej podzakładki, ze spadkiem na starą wspólną `note`.
+ * Fallback działa tylko na PIERWSZEJ widocznej podzakładce — inaczej ta sama
+ * stara treść pokazałaby się w kilku miejscach naraz i user zobaczyłby
+ * duplikaty tam, gdzie ich nie wpisywał.
+ */
+export function noteFor(
+  setup: EquipmentSetup,
+  subtab: SetupSubtab,
+  isFirstVisible: boolean,
+): string {
+  const own = setup.notes?.[subtab];
+  if (own !== undefined) return own;
+  return isFirstVisible ? (setup.note ?? '') : '';
+}
 
 /** Kształt starego, płaskiego zapisu sprzętu na `users/{uid}`. */
 export interface LegacyEquipmentFields {

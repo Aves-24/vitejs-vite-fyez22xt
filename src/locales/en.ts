@@ -715,8 +715,13 @@ export const views = {
       discipline: "Discipline",
       note: "Note",
       notePh: "Short note for this tab",
+      blowgun: {
+        model: "Blowgun model",
+        modelPh: "e.g. Fukiya 120 cm"
+      },
       subtab: {
         archer: "ARCHER",
+        blowgun: "BLOWGUN",
         bow: "BOW",
         string: "STRING",
         arrows: "ARROWS",

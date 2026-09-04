@@ -6,11 +6,10 @@ import {
   EquipmentSetup,
   Discipline,
   SetupSubtab,
-  SETUP_SUBTABS,
   SETUP_NOTE_MAX,
-  SUBTABS_HIDDEN_FOR_BLOWGUN,
+  visibleSubtabsFor,
+  noteFor,
   BLOWGUN_DISCIPLINE,
-  isBlowgun,
   setupLimitFor,
   DEFAULT_SETUP_ID,
 } from '../../config/equipmentSetups';
@@ -64,11 +63,9 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   // [DMUCHAWKA] Rura i strzałki to nie łuk — ŁUK, CIĘCIWA i STABILIZACJA
   // znikają. `effectiveSubtab` chroni przed pustym ekranem, gdy user siedział
   // na ukrywanej podzakładce i dopiero teraz przełączył dyscyplinę.
-  const hiddenSubtabs: readonly string[] =
-    isBlowgun(active.discipline) ? SUBTABS_HIDDEN_FOR_BLOWGUN : [];
-  const visibleSubtabs = SETUP_SUBTABS.filter(id => !hiddenSubtabs.includes(id));
+  const visibleSubtabs = visibleSubtabsFor(active.discipline);
   const effectiveSubtab: SetupSubtab =
-    visibleSubtabs.includes(subtab) ? subtab : 'archer';
+    visibleSubtabs.includes(subtab) ? subtab : visibleSubtabs[0];
 
   /** Nadpisuje aktywny zestaw, zostawiając resztę listy nietkniętą. */
   const patchActive = (patch: Partial<EquipmentSetup>) => {
@@ -80,7 +77,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   /** Nadpisuje jedną podsekcję (bow/string/arrows/…) aktywnego zestawu. */
-  const patchSection = <K extends 'archer' | 'bow' | 'string' | 'arrows' | 'sight' | 'stabilization'>(
+  const patchSection = <K extends 'archer' | 'blowgun' | 'bow' | 'string' | 'arrows' | 'sight' | 'stabilization'>(
     key: K,
     patch: Partial<NonNullable<EquipmentSetup[K]>>,
   ) => {
@@ -163,6 +160,13 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           </div>
         );
 
+      case 'blowgun':
+        return (
+          <div className="space-y-3">
+            {field(t('settings.equipment.blowgun.model'), active.blowgun?.model ?? '', v => patchSection('blowgun', { model: v }), t('settings.equipment.blowgun.modelPh'), 'blowgun.model')}
+          </div>
+        );
+
       case 'bow':
         return (
           <div className="space-y-4">
@@ -226,7 +230,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     }
   };
 
-  const noteLen = (active.note ?? '').length;
+  // Notatka jest OSOBNA dla każdej podzakładki. Stara, wspólna `note`
+  // podstawia się tylko pod pierwszą widoczną — żeby nie pokazać tej samej
+  // treści w kilku miejscach naraz.
+  const currentNote = noteFor(active, effectiveSubtab, effectiveSubtab === visibleSubtabs[0]);
+  const noteLen = currentNote.length;
 
   return (
     <div className="space-y-3 animate-fade-in-up">
@@ -342,8 +350,10 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           <input
             type="text"
             maxLength={SETUP_NOTE_MAX}
-            value={active.note ?? ''}
-            onChange={e => patchActive({ note: e.target.value })}
+            value={currentNote}
+            onChange={e => patchActive({
+              notes: { ...(active.notes ?? {}), [effectiveSubtab]: e.target.value },
+            })}
             placeholder={t('settings.equipment.notePh')}
             className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold text-[#333] outline-none focus:border-emerald-500 transition-all"
           />

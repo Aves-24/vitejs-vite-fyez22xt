@@ -803,15 +803,18 @@ Wyczyścić razem z resztą danych gościa przy publikacji.
 
 ### 📋 Przebudowa Ustawień — STAN 2026-09-04
 
-Etapy 1, 2, 3 i 5 zrobione i wypchnięte na `main`. Etap 4 zablokowany na danych
-od usera. Poniżej architektura ustalona wcześniej, z zaznaczeniem, co już jest.
+**Wszystkie 5 etapów zrobionych i wypchniętych na `main`.** Poniżej architektura
+ustalona wcześniej, z zaznaczeniem, co już jest.
+
+Doszło poza planem: **potwierdzenie przed skasowaniem zestawu** (`3612487`) —
+kosz kasował jednym kliknięciem, bez pytania. Zgłoszone przez usera.
 
 | etap | co | stan |
 |---|---|---|
 | 1 | model `EquipmentSetup`, migracja płaskich pól, stempel z zestawu | ✅ `6547e8d` |
 | 2 | zakładka SPRZĘT z 6 podzakładkami, przełącznik zestawów | ✅ `d15b5d7` |
 | 3 | limit 1 FREE / 4 PRO w regułach Firestore | ✅ `01ea622` — **wdrożone na produkcję 2026-09-04**, sprawdzone na żywo |
-| 4 | dmuchawka jako dyscyplina | ⛔ czeka na punktację od usera (T2) |
+| 4 | dmuchawka jako dyscyplina + własna tarcza | ✅ `776ee64` — dane od usera, sprawdzone na żywo |
 | 5 | ikony (i) z podpowiedziami przy 13 polach × 3 języki | ✅ `3b280fe` |
 
 **Co jeszcze zostało z etapu 5:** trzy poziomy pól (Podstawa / Strojenie /
@@ -827,10 +830,9 @@ nie było w aplikacji w ogóle.
 - [x] sprawdzone na żywo na koncie FREE: 2 zestawy → `permission-denied`,
       `activeSetupId` jako liczba → odrzucone, a zwykły zapis profilu,
       zapis 1 zestawu i edycja zestawu w miejscu → przechodzą (brak regresji)
-- [ ] **ścieżki PRO niesprawdzone na żywo** (4 tak / 5 nie / tolerancja po
-      wygaśnięciu PRO) — nie da się ich przetestować z klienta, bo `isPremium`
-      jest polem chronionym i nie można się samemu awansować. To zresztą dowód,
-      że ochrona działa. Pokrywają je testy w CI.
+- [x] **ścieżki PRO sprawdzone przez usera na żywo 2026-09-04 — działają.**
+      (4 zestawy tak / 5 nie). Ja sam nie mogłem tego przetestować z klienta,
+      bo `isPremium` jest polem chronionym i nie da się samemu awansować konta.
 - [ ] `npm run test:rules` NIE uruchomione lokalnie — emulator nie startuje na
       tej maszynie: `Selector.open()` pada z „Unable to establish loopback
       connection" (potwierdzone minimalnym programem w Javie; zapora Windows
@@ -924,9 +926,19 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       (3d-bogenparcours.com/assets/pdfs/2021-2022-ifaa-regeln-deutsch.pdf)
       oraz IFAA Archer's Handbook 5th ed.
       (dutchopenifaa.nl/files/archers_handbook_2017.pdf)
-- [ ] **T2. Dmuchawka (Blasrohr).** Własna tarcza, dystans zwykle 10 m.
-      Punktacja różni się między federacjami (IFA/fukiya vs praktyka niemiecka)
-      — **nie wpisywać z pamięci**, potrzebne potwierdzenie od użytkownika.
+- [x] **T2. Dmuchawka (Blasrohr) — ZROBIONE 2026-09-04** (`776ee64`).
+      Dane potwierdzone przez usera, nie wpisane z pamięci:
+      „Gezielt wird auf Scheiben mit einer Wertung von 6 bis 10 Ringen",
+      wygląda identycznie jak nasz spot, w środku **JEST X i liczy się jako
+      10**, układ to **trzy spoty**, średnica **20 cm**, dystans zwykle 10 m.
+
+      Tarcza w osobnym pliku `config/targets/blowgun.ts`, zarejestrowana
+      w `targetFaces.ts`. Punktacji NIE trzeba było ruszać —
+      `calculateSpotScore` już liczy 6–10 z X, a X w całej aplikacji jest wart
+      10 punktów i osobno zliczany jako X.
+
+      ⬜ **Zostaje:** tarcza jest widoczna w wyborze ZAWSZE, bo `SessionSetup`
+      nie zna dyscypliny zestawu. Powinna pokazywać się tylko dla dmuchawki.
 - [ ] **T3. 3D — NIE jest tarczą.** Strefy killa na figurze zwierzęcia,
       punktacja zależna od trafionej części korpusu, runda to przejście przez
       ~20 różnych figur. Wymaga osobnego trybu wprowadzania (wybór strefy albo

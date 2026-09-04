@@ -675,10 +675,50 @@ konta testowego, otwarcie /legal/datenschutz.html.
       przestaje dzialac — kto zeskanowal QR z Ustawien, trafi w pustke.
       Nazwy repo na GitHubie zmieniac NIE trzeba, jest niezalezna.
 
-- [ ] **C25. Własne, niestandardowe dystanse w nastawach celownika**
-      (prośba usera 2026-09-04). Dziś zakładka CELOWNIK pokazuje zamkniętą
-      listę dystansów; user chce móc dopisać własny (np. 15 m, 45 m, jardy
-      albo cokolwiek, na czym realnie strzela na swojej strzelnicy).
+- [ ] **C25. Własne, niestandardowe dystanse** (prośba usera 2026-09-04).
+      Dziś zakładka CELOWNIK pokazuje zamkniętą listę dystansów; user chce móc
+      dopisać własny (np. 15 m, 45 m, jardy albo cokolwiek, na czym realnie
+      strzela na swojej strzelnicy).
+
+      ### ⭐ NAJWAŻNIEJSZE ODKRYCIE — czytaj przed planowaniem czegokolwiek
+
+      **Statystyki są JUŻ segmentowane per dystans, a lista dystansów buduje
+      się Z SESJI, nie ze stałej:**
+
+      ```js
+      // ProStatsView
+      sessions.filter(s => s.distance === selectedDistance)
+      Array.from(new Set(sessions.map(s => s.distance)))
+      // TournamentRecordsView — to samo
+      ```
+
+      Czyli sesja na 5 m **sama tworzy własny kubełek** obok 18 m i 70 m.
+      Rozdzielenie dyscyplin dostajemy ZA DARMO z mechanizmu, który już działa
+      — bez filtrów, bez wyjątków, bez architektury „statystyki per zestaw".
+
+      **Konsekwencja:** C25 to nie jest „miłe sprzątanie na przyszłość", tylko
+      **najtańszy sposób naprawienia tego, co psuje dmuchawka**. Pomysł usera,
+      lepszy od mojego łatania wyjątkami widok po widoku.
+
+      ### 🔴 Do WYJĘCIA przy okazji
+
+      Filtr `isBlowgunSession` w `ProStatsView` (`filteredSessions`) po
+      wprowadzeniu dystansów staje się SZKODLIWY: dziś wycina sesje z rury
+      całkowicie, więc po wybraniu „5m" user zobaczy pustkę zamiast swoich
+      wyników. Separacja ma iść przez dystans, nie przez ukrywanie.
+
+      ### Co i tak zostaje pod strażą (NIE jest per dystans)
+
+      - `last10Handicaps` / `currentHandicap` oraz `last10Avgs` idące w rangę
+        — już zabezpieczone w ScoringView (`b961f7e`), zostawić tak jak jest
+      - liczniki „wystrzelonych strzał" sumowane przez WSZYSTKIE dystanse
+        (HomeView, `pfeilzaehler` inkrementowany w `SessionSetup`) — te nadal
+        zsumują rurę z łukiem, do przemyślenia osobno
+
+      **Sprostowanie do wcześniejszej notatki:** twierdzenie, że dmuchawka jest
+      „odizolowana od statystyk", było ZA SZEROKIE. Odizolowane są tylko
+      `ProStatsView` i ścieżka zapisu. `HomeView`, `StatsView`, `recentSessions`
+      i `TournamentRecordsView` jej NIE filtrują.
 
       **Lista jest zaszyta w 6 miejscach i w DWÓCH różnych wariantach** —
       to jest właściwy koszt tego zadania, nie samo pole do wpisania:
@@ -711,6 +751,16 @@ konta testowego, otwarcie /legal/datenschutz.html.
         tarczy — dziś opierają się na tym, że dystans jest ze znanej listy
       - stare sesje trzymają dystans jako string, więc format musi zostać
         zgodny, inaczej rozjedzie się historia i statystyki
+
+      **Sprawdzone 2026-09-04 — jedna obawa mniej:** w CAŁEJ aplikacji jest
+      **jedno jedyne** miejsce parsujące dystans na liczbę:
+      `ScoringView.tsx:499` → `parseInt(distance) || 18`, karmiące handicap.
+      `parseInt("5m")` daje 5, więc format `"<liczba>m"` działa bez zmian,
+      a stare sesje nic nie przeliczają — trzymają gotowy string. Dopisanie
+      pozycji do listy jest więc bezpieczne dla historii.
+      Uwaga na drobiazg obok: `StatsView.tsx:729` sprawdza
+      `distance?.includes('18')`, żeby zgadnąć typ tarczy — kruche, poprawić
+      przy okazji.
 
 - [ ] **C12. Wrapper natywny** — decyzja: Capacitor (iOS+Android z jednego kodu,
       zalecane) vs TWA (tylko Android). App Store NIE przyjmuje czystych PWA.

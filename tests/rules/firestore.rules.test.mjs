@@ -405,3 +405,90 @@ test('C22: właściciel zapisuje własną zgodę opiekuna', async () => {
       guardianEmail: 'attacker@example.com', birthDateAtConsent: '2014-03-01' },
   }, { merge: true }));
 });
+
+// ---------------------------------------------------------------------------
+// [ZESTAWY] Limit zestawów sprzętowych: 1 FREE / 4 PRO.
+// UI już go pilnuje, ale UI nie jest granicą bezpieczeństwa — bez reguły
+// każdy wpisze sobie dowolną liczbę zestawów z konsoli i ominie płatną różnicę
+// między FREE a PRO.
+// ---------------------------------------------------------------------------
+
+const mkSetups = (n) =>
+  Array.from({ length: n }, (_, i) => ({
+    id: i === 0 ? 'default' : `setup-${i}`,
+    name: `Zestaw ${i + 1}`,
+    discipline: 'Klasyczny (Recurve)',
+  }));
+
+/** Podnosi konto do PRO z pominięciem reguł (isPremium to pole chronione). */
+const makePremium = async (uid) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `users/${uid}`), { isPremium: true }, { merge: true });
+  });
+};
+
+test('ZESTAWY: FREE zapisuje 1 zestaw', async () => {
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(1), activeSetupId: 'default',
+  }));
+});
+
+test('ZESTAWY: FREE NIE zapisze 2 zestawów', async () => {
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(2), activeSetupId: 'default',
+  }));
+});
+
+test('ZESTAWY: PRO zapisuje 4 zestawy', async () => {
+  await makePremium('alice');
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(4), activeSetupId: 'default',
+  }));
+});
+
+test('ZESTAWY: PRO NIE zapisze 5 zestawów', async () => {
+  await makePremium('alice');
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(5), activeSetupId: 'default',
+  }));
+});
+
+test('ZESTAWY: FREE nie obejdzie limitu, podnosząc sobie isPremium w tym samym zapisie', async () => {
+  // Gdyby limit czytał `request.resource`, ten zapis by przeszedł.
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    isPremium: true, setups: mkSetups(4),
+  }));
+});
+
+test('ZESTAWY: setups musi być listą, activeSetupId stringiem', async () => {
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    setups: { nie: 'lista' },
+  }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(1), activeSetupId: 42,
+  }));
+});
+
+test('ZESTAWY: zapis bez pola setups działa jak dotąd', async () => {
+  // Regresja: walidacja nie może blokować zwykłej edycji profilu.
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { displayName: 'Alicja' }));
+});
+
+test('ZESTAWY: wygasniecie PRO nie zamurowuje konta z 4 zestawami', async () => {
+  // Konto bylo PRO i ma 4 zestawy, potem spada na FREE (limit 1).
+  // `setups` jedzie w kazdym merge'u z Ustawien, wiec bez furtki na TRZYMANIE
+  // nadmiaru uzytkownik nie zapisalby nawet wlasnego nazwiska.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice'),
+      { setups: mkSetups(4), isPremium: false }, { merge: true });
+  });
+
+  // Trzymanie nadmiaru — wolno.
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(4), displayName: 'Alicja',
+  }));
+  // Zmniejszanie — wolno.
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(2) }));
+  // Przybywanie ponad limit — nadal zakazane.
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(5) }));
+});

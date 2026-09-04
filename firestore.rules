@@ -54,6 +54,36 @@ service cloud.firestore {
       return data.trialEndsAt is number
         && data.trialEndsAt <= request.time.toMillis() + 31 * 24 * 60 * 60 * 1000;
     }
+    // [ZESTAWY] Limit zestawow sprzetowych: 1 FREE / 4 PRO.
+    //
+    // Bez tego limit zyje wylacznie w UI, a UI nie jest granica bezpieczenstwa
+    // — kazdy moze wpisac sobie 40 zestawow z konsoli przegladarki i ominac
+    // roznice miedzy FREE a PRO, czyli platna funkcje.
+    //
+    // Limit podaje wolajacy, bo `isPremium` czyta sie inaczej przy create
+    // (dokument jeszcze nie istnieje) niz przy update. `isPremium` jest polem
+    // chronionym (protectedUserFields), wiec klient go nie podniesie, zeby
+    // sobie limit rozszerzyc.
+    //
+    // OGRANICZENIE: reguly Firestore nie maja petli, wiec NIE da sie tu
+    // sprawdzic dlugosci nazwy ani notatki w KAZDYM zestawie z osobna.
+    // Te limity (nazwa 40, notatka 100) egzekwuje tylko UI przez `maxLength`.
+    // `prevCount` to liczba zestawow w dokumencie PRZED zapisem (0 przy create).
+    // Bez niej wygasniecie PRO zamurowaloby konto: uzytkownik z 4 zestawami
+    // spada na limit 1 i KAZDY kolejny zapis profilu — nawet zmiana nazwiska —
+    // leci odmowa, bo `setups` jedzie w kazdym merge'u. Dlatego nadmiarowe
+    // zestawy wolno TRZYMAC i zmniejszac, byle ich nie przybywalo.
+    function validSetups(data, limit, prevCount) {
+      return !data.keys().hasAny(['setups'])
+        || (data.setups is list
+            && (data.setups.size() <= limit
+                || data.setups.size() <= prevCount));
+    }
+    function validActiveSetupId(data) {
+      return !data.keys().hasAny(['activeSetupId'])
+        || data.activeSetupId is string;
+    }
+
     // Fields NEVER writable by the client on /users/{uid}
     function protectedUserFields() {
       return [
@@ -122,7 +152,11 @@ service cloud.firestore {
         && !request.resource.data.keys().hasAny(protectedUserFields())
         && !request.resource.data.keys().hasAny(sensitiveUserFields())
         && (!request.resource.data.keys().hasAny(['trialEndsAt'])
-            || validTrialEndsAt(request.resource.data));
+            || validTrialEndsAt(request.resource.data))
+        // [ZESTAWY] Przy zakladaniu konta limit to zawsze 1: `isPremium` jest
+        // polem chronionym, wiec nowy dokument nie moze przyjsc jako PRO.
+        && validSetups(request.resource.data, 1, 0)
+        && validActiveSetupId(request.resource.data);
 
       // Path A — admin full
       allow update: if isAdmin();
@@ -142,7 +176,14 @@ service cloud.firestore {
             || !request.resource.data.keys().hasAny(sensitiveUserFields()))
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trialEndsAt'])
             || (!resource.data.keys().hasAny(['trialEndsAt'])
-                && validTrialEndsAt(request.resource.data)));
+                && validTrialEndsAt(request.resource.data)))
+        // [ZESTAWY] Limit czytany z ISTNIEJACEGO dokumentu — `isPremium` jest
+        // polem chronionym, wiec klient nie moze podniesc go w tym samym
+        // zapisie, zeby przemycic wiecej zestawow.
+        && validSetups(request.resource.data,
+                       resource.data.get('isPremium', false) ? 4 : 1,
+                       listLen(resource.data, 'setups'))
+        && validActiveSetupId(request.resource.data);
 
       // Path C — student accepting invite: own doc, diff = ['coaches'],
       //          +1 entry, last entry has matching coachInvite.

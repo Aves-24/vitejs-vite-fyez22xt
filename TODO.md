@@ -884,7 +884,53 @@ konta testowego, otwarcie /legal/datenschutz.html.
       b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
          wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
 
-## STAN NA 2026-09-03 — czytaj to najpierw
+## STAN NA 2026-09-04 — czytaj to najpierw
+
+Cała sesja poszła na **C25 (własne dystanse)** i wynikające z niej domknięcia
+dmuchawki. Wszystko jest **na `main` i wypchnięte**, gałąź robocza skasowana.
+
+### Co weszło (7 commitów nad `2638a88`)
+
+| commit | co |
+|---|---|
+| `2e3d149` | C25 — własne dystanse, tożsamość na `id`, jedno źródło prawdy `config/distances.ts` |
+| `a7d0ff5` | limit własnych dystansów jako funkcja płatna: 2 FREE / 15 PRO |
+| `be68e4c` | reguły wdrożone przez usera i sprawdzone na produkcji |
+| `bcf4b3f` | test reguł na emulatorze (9 asercji) |
+| `0fc73be` | lista tarcz zawężona dyscypliną zestawu (domknięcie T2) |
+| `a65d001` | model stref punktowych + tarcza dmuchawkowa 3-5-7 (nieaktywna) |
+
+**Decyzja architektoniczna, na której stoi całość (pomysł usera):** tożsamością
+dystansu jest `id`, nie nazwa. Metry niezmienne (karmią handicap), nazwa dowolna
+i zmienna — więc zmiana nazwy nie rusza statystyk i nie wymaga migracji.
+Id standardowych wpisów wyliczane z metrów (`d_18m`), żeby sesje sprzed C25
+same trafiały do właściwego kubełka. Szczegóły przy C25 wyżej.
+
+**Sprawdzone na żywo, nie tylko testami:** dodanie dystansu z etykietą, zapis
+sesji ze stemplem, własny kubełek w ANALIZIE DYSTANSU i REKORDACH, licznik
+limitu 2/2 z zajawką PRO, odmowa 13. wpisu z produkcyjnych reguł, filtr tarcz
+w obie strony (dmuchawka ↔ recurve).
+
+### 🔜 Następnym razem, w kolejności
+
+1. **Sprawdzić CI na `bcf4b3f`** — testy reguł nie były uruchomione lokalnie,
+   bo emulator nie wstaje na tej maszynie (potwierdzone: to NIE brak Javy,
+   tylko `SocketException: Invalid argument: connect` na pipie loopbacku).
+2. **Sprawdzić ścieżkę PRO na własnym koncie** — 15 własnych dystansów tak,
+   16. nie. Z klienta się nie da, bo `isPremium` jest polem chronionym.
+3. **Podać wymiary tarczy 3-5-7** (T7) — bez nich zostaje nieaktywna.
+4. Reszta otwartych rzeczy z C25: dystanse per dyscyplina, jardy, własne
+   dystanse w formularzach zawodów.
+
+### 🧹 Do sprzątnięcia przed publikacją
+
+Na koncie gościa w PRODUKCYJNYM Firestore leżą dane testowe z dziś: dystanse
+`10m Blasrohr` i `7m Blasrohr` oraz jedna sesja z dmuchawki. Idą do kasacji
+razem z resztą danych gościa (patrz TTL trybu gościa, wymaga Blaze).
+
+---
+
+## STAN NA 2026-09-03
 
 ### ✅ Zacommitowane na gałęzi `feat/target-faces-setup-stamp`
 
@@ -1203,6 +1249,6 @@ wartości poprawią się same w ciągu 10 kolejnych sesji.
 
 ---
 
-*Ostatnia aktualizacja:* 2026-09-01
+*Ostatnia aktualizacja:* 2026-09-04
 *Status Fazy B (hardening):* ✅ COMPLETE
 *Status Fazy C (store readiness):* 🔄 IN PROGRESS

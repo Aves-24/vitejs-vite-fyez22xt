@@ -867,11 +867,42 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       trafienie dokładnie na linię pierścienia (d = 15, 30 … 150) liczy się do
       niższego pierścienia, bo `floor`. Reguła zawodnicza mówi odwrotnie, ale
       przy współrzędnych zmiennoprzecinkowych z dotyku to przypadek pomijalny.
-- [ ] **T5. Ujednolicić rysowanie tarcz.** Ten sam SVG pełnej tarczy jest
-      skopiowany w 5 miejscach (ScoringView, StatsView, RoundTargetSummary,
-      HeatmapTarget, StandardTarget). Tylko `StandardTarget` czyta geometrię
-      z katalogu; reszta ma promienie wpisane na sztywno. Dopóki tak jest,
-      nowa tarcza to nadal 5 miejsc do dotknięcia.
+- [ ] **T5. Ujednolicić rysowanie tarcz. ODŁOŻONE 2026-09-04.** Sprawdzone
+      dokładnie: miejsc rysujących jest **6, nie 5** — wcześniejsza notatka
+      pomijała `components/targets/SpotTarget.tsx`, czyli ten, który rysuje
+      spota na ekranie liczenia punktów.
+
+      | plik | geometria |
+      |---|---|
+      | `targets/StandardTarget.tsx` | ✅ z katalogu (`resolveTargetFace().rings`) |
+      | `targets/SpotTarget.tsx` | ❌ na sztywno |
+      | `RoundTargetSummary.tsx` | ❌ na sztywno |
+      | `HeatmapTarget.tsx` | ❌ własne `FF_RINGS` / `SPOT_RINGS` |
+      | `ScoringView.tsx` (`LargeTargetSVG`) | ❌ na sztywno |
+      | `StatsView.tsx` (`LargeTargetSVG`) | ❌ na sztywno |
+
+      Piątka importuje z katalogu wyłącznie predykaty (`isFullFace`,
+      `isSpotFace`, `friendlyTargetName`) — nigdy geometrię.
+
+      **Katalog nie zna geometrii spotów.** Wpisy `3-Spot` i `Vertical 3-Spot`
+      powstają przez `face(…, 40, { layout: 'spot3-double' })`, więc dziedziczą
+      domyślne `FULL_RINGS` (150…7,5), a spoty rysuje się na 62,5…6,25. Te
+      odziedziczone pierścienie są martwe. Bez uzupełnienia tego T5 się nie da.
+
+      Doszłoby też pole `label` w `TargetRing` — `HeatmapTarget`
+      i `RoundTargetSummary` rysują etykiety „1"…„10", „X", a interfejs ma
+      dziś tylko `r`/`fill`/`stroke`.
+
+      **Drobiazg, NIE błąd:** `LargeTargetSVG` w ScoringView i StatsView ma
+      dla spotów inne literały kolorów (pierścień 7 niebieski, 9 czerwony) niż
+      `SpotTarget` i `RoundTargetSummary`. User sprawdził na żywo przy włączonym
+      3-Spocie — w małym widoku i po powiększeniu kolory są prawidłowe, więc to
+      nie jest widoczna usterka. Zrównać przy okazji T5, nie osobno.
+
+      **Dlaczego odłożone:** T5 miał być podparty ukrytym rozjazdem, ale
+      rozjazdu nie widać w działającej aplikacji. Zostaje refaktor bez
+      wyzwalacza w kodzie, który działa. Wracać, gdy realnie dojdzie nowa
+      tarcza — wtedy te 6 miejsc zaczyna boleć.
 - [ ] **T6. Martwe pliki do usunięcia.** `src/components/TargetZoom.tsx`
       (nieimportowany; dodatkowo CAŁY plik używa twardych spacji U+00A0
       zamiast zwykłych — 1048 sztuk), `src/components/FullFaceTarget.tsx`

@@ -16,7 +16,10 @@ import { db } from '../firebase';
  * `setupId`, bo użytkownik mógł zmienić klasę sprzętu zanim zestawy
  * powstały i jeden `setupId` kryje wtedy dwie różne klasy.
  */
-export const DEFAULT_SETUP_ID = 'default';
+// Źródłem prawdy jest `config/equipmentSetups` (czysty config, bez firebase).
+// Re-eksport, żeby nie zmieniać importów w kodzie, który już tego używa.
+export { DEFAULT_SETUP_ID } from '../config/equipmentSetups';
+import { DEFAULT_SETUP_ID, resolveActiveSetup } from '../config/equipmentSetups';
 
 export interface SetupStamp {
   setupId: string;
@@ -39,12 +42,22 @@ export async function getSetupStamp(userId: string): Promise<SetupStamp> {
 
   try {
     const snap = await getDoc(doc(db, 'users', userId));
-    const bowClass = snap.exists() ? (snap.data().bowType as string | undefined) : undefined;
+    const data = snap.exists() ? snap.data() : null;
+
+    // Zestawy są źródłem prawdy, gdy już istnieją. Gdy nie — spadamy na stare
+    // płaskie `bowType`. Bez tego fallbacku każdy niezmigrowany użytkownik
+    // zapisywałby sesje bez klasy sprzętu, czyli dokładnie tę stratę,
+    // przed którą stempel ma chronić.
+    const active = resolveActiveSetup(data);
+    const bowClass = (active?.discipline as string | undefined)
+      ?? (data?.bowType as string | undefined);
+    const setupId = active?.id ?? DEFAULT_SETUP_ID;
+
     // Brak klasy zapisujemy jako BRAK POLA, nie pusty string — pusty string
     // wyglądałby przy migracji na dane i trafiłby do złej grupy.
     const stamp: SetupStamp = bowClass
-      ? { setupId: DEFAULT_SETUP_ID, bowClass }
-      : { setupId: DEFAULT_SETUP_ID };
+      ? { setupId, bowClass }
+      : { setupId };
     cache.set(userId, stamp);
     return stamp;
   } catch {

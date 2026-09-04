@@ -3,6 +3,7 @@ import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from './config/archeryRules';
+import { MASTER_DISTANCES, buildDistanceEntry, ensureDistanceIds, UserDistance } from './config/distances';
 import { useTranslation } from 'react-i18next';
 
 // EAGER: widoki potrzebne przy pierwszym renderze (HOME / AUTH) oraz
@@ -62,6 +63,11 @@ export default function App() {
   const [sessionDistance, setSessionDistance] = useState<string>('70m');
   const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
   const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(0);
+  // [C25] Tożsamość dystansu jedzie OBOK napisu z metrami. Napis zostaje
+  // niezmieniony ("18m"), bo karmi handicap i historię; `id` decyduje o tym,
+  // do którego kubełka statystyk trafi sesja, a etykieta o tym, co user widzi.
+  const [sessionDistanceId, setSessionDistanceId] = useState<string | undefined>(undefined);
+  const [sessionDistanceLabel, setSessionDistanceLabel] = useState<string | undefined>(undefined);
   
   const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
@@ -69,7 +75,7 @@ export default function App() {
   
   const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
   
-  const [userDistances, setUserDistances] = useState<any[]>([]);
+  const [userDistances, setUserDistances] = useState<UserDistance[]>([]);
   const [isCoach, setIsCoach] = useState<boolean>(false);
   const [hasCoach, setHasCoach] = useState<boolean>(false);
   const [userLevel, setUserLevel] = useState<number>(1);
@@ -189,30 +195,33 @@ export default function App() {
         // Zapis tylko przy realnej zmianie treści (cache w syncPublicProfile).
         syncPublicProfile(user.uid, data).catch(() => {});
         if (data.userDistances && data.userDistances.length > 0) {
-          setUserDistances(data.userDistances);
+          // [C25] Konta sprzed C25 mają dystanse BEZ `id`. Nadajemy je raz
+          // i od razu utrwalamy — inaczej każde wejście do aplikacji zgadywałoby
+          // je od nowa, a sesja zapisana w międzyczasie dostałaby stempel,
+          // którego nie ma na liście.
+          const { list, changed } = ensureDistanceIds(data.userDistances);
+          setUserDistances(list);
+          if (changed) {
+            setDoc(doc(db, 'users', user.uid), { userDistances: list }, { merge: true })
+              .catch(e => console.warn('[C25] Nie udało się utrwalić id dystansów:', e));
+          }
         } else {
           // Brak dystansów — generujemy na podstawie danych profilu (wiek, płeć, łuk).
           // [RODO C21] birthDate/gender żyją w users/{uid}/private/profile;
           // data.birthDate to fallback dla kont sprzed migracji.
-          const allDists = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
           const applyRecommended = (birthDate: string, gender: 'M' | 'K') => {
             const birthYear = new Date(birthDate).getFullYear();
             const bow = data.bowType as BowType;
             const recH = getRecommendation(bow, birthYear, 'Hala (Indoor)', gender);
             const recT = getRecommendation(bow, birthYear, 'Tory (Outdoor)', gender);
-            setUserDistances(allDists.map(m => ({
-              m,
+            setUserDistances(MASTER_DISTANCES.map(m => buildDistanceEntry(m, {
               active: m === recH.distance || m === recT.distance,
               targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : '122cm',
-              sightExtension: '', sightHeight: '', sightSide: '', sightMark: ''
             })));
           };
           const applyMinimal = () => {
             // Brak danych profilu (nowy użytkownik przed wizardem) — minimalne defaults
-            setUserDistances(allDists.map(m => ({
-              m, active: m === '18m' || m === '70m',
-              targetType: '122cm', sightExtension: '', sightHeight: '', sightSide: '', sightMark: ''
-            })));
+            setUserDistances(MASTER_DISTANCES.map(m => buildDistanceEntry(m, { active: m === '18m' || m === '70m' })));
           };
           if (data.birthDate && data.bowType) {
             applyRecommended(data.birthDate, data.gender || 'M');
@@ -351,7 +360,7 @@ export default function App() {
     }
   };
 
-  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0) => {
+  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0, distanceId?: string, distanceLabel?: string) => {
     if (!user) return;
     try {
       if (forceClear) {
@@ -366,6 +375,8 @@ export default function App() {
       
       setSessionDistance(distance);
       setSessionTargetType(targetType);
+      setSessionDistanceId(distanceId);
+      setSessionDistanceLabel(distanceLabel);
       setSessionPracticeArrows(practiceArrows);
       setActiveBattleId(battleId);
       // [C14] SCORING omija handleNavigate — wpis do historii ręcznie
@@ -403,9 +414,11 @@ export default function App() {
     }
   };
 
-  const handleGoToBattle = (distance: string, targetType: string) => {
+  const handleGoToBattle = (distance: string, targetType: string, distanceId?: string, distanceLabel?: string) => {
     setSessionDistance(distance);
     setSessionTargetType(targetType);
+    setSessionDistanceId(distanceId);
+    setSessionDistanceLabel(distanceLabel);
     handleNavigate('BATTLE_LOBBY');
   };
 
@@ -558,7 +571,7 @@ export default function App() {
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         
-        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} targetType={sessionTargetType} battleId={activeBattleId} practiceArrows={sessionPracticeArrows} onNavigate={handleNavigate} />}
+        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} distanceId={sessionDistanceId} distanceLabel={sessionDistanceLabel} targetType={sessionTargetType} battleId={activeBattleId} practiceArrows={sessionPracticeArrows} onNavigate={handleNavigate} />}
         {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} userEmail={user?.email || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate as any} />}
         
         {currentView === 'BATTLE_LOBBY' && (
@@ -566,7 +579,7 @@ export default function App() {
             userId={user?.uid || ''}
             distance={sessionDistance}
             targetType={sessionTargetType}
-            onStartBattle={(battleId) => handleStartSession(sessionDistance, sessionTargetType, true, battleId)}
+            onStartBattle={(battleId) => handleStartSession(sessionDistance, sessionTargetType, true, battleId, 0, sessionDistanceId, sessionDistanceLabel)}
             onBack={() => handleNavigate('HOME')}
           />
         )}

@@ -927,7 +927,19 @@ export const views = {
       ext: "Wysięg",
       ud: "Wysokość",
       lr: "Bok (L/P)",
-      target: "Tarcza:"
+      target: "Tarcza:",
+      addTitle: "Dodaj własny dystans",
+      meters: "Metry",
+      labelPh: "Opis (opcjonalnie)",
+      labelHint: "np. dmuchawka, barebow — do 10 znaków",
+      add: "Dodaj",
+      cancel: "Anuluj",
+      renameTitle: "Opis dystansu",
+      deleteAsk: "Usunąć ten dystans z listy?",
+      deleteKeepsHistory: "Zapisane treningi zostają w statystykach.",
+      errDuplicate: "Taki dystans już masz na liście.",
+      errRange: "Podaj od {{min}} do {{max}} metrów.",
+      errLimit: "Osiągnięto limit {{max}} dystansów."
     },
     arrows: {
       model: "Model strzały",

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { isBlowgunSession } from '../config/targets/blowgun';
+import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/distances';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -59,6 +59,8 @@ function proStatsCacheSet(uid: string, sessions: Session[], full: boolean): void
 export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession }: ProStatsViewProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
+  // [C25] Trzyma KLUCZ kubelka (`distanceId`), nie napis z metrami.
+  // Do pokazania sluzy `selectedBucket.label`.
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
@@ -141,21 +143,34 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   };
 
   // LOGIKA SORTOWANIA DYSTANSÓW (TECH na sam koniec)
+  // [C25] Kubelkiem jest `distanceId`, nie napis — dwa wpisy moga miec te same
+  // metry ("18m recurve" i "18m barebow") i musza sie rozdzielic. Nazwe bierzemy
+  // ze STEMPLA najnowszej sesji w kubelku, nie z listy uzytkownika: trener
+  // oglada statystyki ucznia i rozwiazanie id po wlasnej liscie pokazaloby mu
+  // cudze nazwy. Sesje sprzed C25 spadaja na id wyliczone z metrow.
   const distances = useMemo(() => {
-    const allUnique = Array.from(new Set(sessions.map(s => s.distance)));
-    const regularDistances = allUnique.filter(d => d !== 'TECH').sort((a, b) => parseInt(b) - parseInt(a));
-    const hasTech = allUnique.includes('TECH');
-    
-    return hasTech ? [...regularDistances, 'TECH'] : regularDistances;
+    const buckets = new Map<string, { key: string; label: string; m: string; meters: number; isTech: boolean }>();
+    // sessions[0] = najnowsza, wiec pierwszy wpis wygrywa i nazwa jest aktualna.
+    sessions.forEach(sess => {
+      const key = distanceKey(sess);
+      if (buckets.has(key)) return;
+      const m = sess.distance || '';
+      buckets.set(key, { key, label: sessionDistanceLabel(sess), m, meters: distanceMeters(m), isTech: m === 'TECH' });
+    });
+    const all = Array.from(buckets.values());
+    const regular = all.filter(b => !b.isTech).sort((a, b) => b.meters - a.meters);
+    const tech = all.filter(b => b.isTech);
+    return [...regular, ...tech];
   }, [sessions]);
 
   useEffect(() => {
     if (distances.length > 0 && !selectedDistance) {
-      setSelectedDistance(distances[0]);
+      setSelectedDistance(distances[0].key);
     }
   }, [distances, selectedDistance]);
 
-  const sessionsByDistance = useMemo(() => sessions.filter(s => s.distance === selectedDistance), [sessions, selectedDistance]);
+  const selectedBucket = distances.find(b => b.key === selectedDistance);
+  const sessionsByDistance = useMemo(() => sessions.filter(s => distanceKey(s) === selectedDistance), [sessions, selectedDistance]);
 
   const availableTypes = useMemo(() => {
     const types = Array.from(new Set(sessionsByDistance.map(s => s.type || 'Trening')));
@@ -165,14 +180,14 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   useEffect(() => { setSelectedTypes(new Set()); }, [selectedDistance]);
 
   const filteredSessions = useMemo(() => {
-    // [DMUCHAWKA] To są statystyki ŁUCZNICZE — sesje z rury odpadają tu raz,
-    // u źródła, więc nie wchodzą ani do licznika wystrzelonych strzał, ani do
-    // średnich, stref trafień czy wykresów. Inna dyscyplina, inna skala
-    // (6-10 zamiast 1-10) i inne dystanse; zmieszane dawałyby liczby, które
-    // nic nie znaczą. Własny widok dmuchawki to osobny temat.
-    const archeryOnly = sessionsByDistance.filter(s => !isBlowgunSession(s));
-    if (selectedTypes.size === 0) return archeryOnly;
-    return archeryOnly.filter(s => selectedTypes.has(s.type || 'Trening'));
+    // [C25] Filtr `isBlowgunSession` zostal STAD USUNIETY. Po wprowadzeniu
+    // wlasnych dystansow byl szkodliwy: wycinal sesje z rury calkowicie, wiec
+    // po wybraniu kubelka "10m dmuchawka" user widzialby pustke zamiast swoich
+    // wynikow. Separacja dyscyplin idzie teraz przez DYSTANS — rura strzela na
+    // 5/7/10 m i ma wlasne kubelki, wiec nic sie nie miesza ze skala lucznicza.
+    // Handicap i srednia idaca w range zostaja zabezpieczone w ScoringView (b961f7e).
+    if (selectedTypes.size === 0) return sessionsByDistance;
+    return sessionsByDistance.filter(s => selectedTypes.has(s.type || 'Trening'));
   }, [sessionsByDistance, selectedTypes]);
 
   const stats = useMemo(() => {
@@ -298,7 +313,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     let targetType = 'Full';
     if (recent.length > 0) {
       const last = recent[recent.length - 1];
-      targetType = selectedDistance.includes('18')
+      targetType = selectedBucket?.meters === 18
         ? '3-Spot'
         : (last.targetType && last.targetType !== 'Full' ? last.targetType : 'Full');
     }
@@ -311,7 +326,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     });
 
     return { sessions, targetType };
-  }, [filteredSessions, selectedDistance]);
+  }, [filteredSessions, selectedBucket]);
 
   // Biomechanika z 3 ostatnich treningów wybranego dystansu — stabilniejszy
   // obraz niż pojedyncza sesja. Każdą sesję centrujemy wg jej typu tarczy.
@@ -482,15 +497,16 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
               </div>
             </div>
             <div className="bg-[#fed33e] text-[#0a3a2a] px-4 py-2 rounded-2xl shadow-sm shrink-0">
-              <span className="text-sm font-black uppercase tracking-tighter leading-none">{selectedDistance}</span>
+              <span className="text-sm font-black uppercase tracking-tighter leading-none">{selectedBucket?.label || selectedDistance}</span>
             </div>
           </div>
 
           <div>
             <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2 ml-1">{t('stats.pro.distLabel', 'Dystans')}</span>
             <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-              {distances.map(dist => {
-                const isTech = dist === 'TECH';
+              {distances.map(bucket => {
+                const dist = bucket.key;
+                const isTech = bucket.isTech;
                 return (
                   <button key={dist} onClick={() => setSelectedDistance(dist)}
                     className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 flex items-center gap-1 ${
@@ -499,7 +515,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                       : 'bg-gray-50 text-gray-400 border-gray-100'
                     }`}>
                     {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
-                    {dist}
+                    {bucket.label}
                   </button>
                 )
               })}
@@ -561,7 +577,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       )}
 
       {stats ? (
-        selectedDistance === 'TECH' ? (
+        selectedBucket?.isTech ? (
           // WIDOK TRENINGU TECHNICZNEGO — tylko PRO
           isPremium ? <TechProHistory sessions={filteredSessions} /> : <ProLockCard />
         ) : (
@@ -607,7 +623,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
               <HeatmapSection
                 sessions={heatmapData.sessions}
                 targetType={heatmapData.targetType}
-                distance={selectedDistance}
+                distance={selectedBucket?.m || ''}
                 onOpenSession={onOpenSession}
               />
             )}
@@ -687,7 +703,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                 ten sam styl co słupki w przeglądzie globalnym */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')} · {selectedDistance}</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')} · {selectedBucket?.label || ''}</span>
                 <span className="material-symbols-outlined text-gray-300 text-sm">bar_chart</span>
               </div>
 
@@ -724,7 +740,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
             {/* KRZYWA WYNIKÓW dla wybranego dystansu — ta sama co w przeglądzie */}
             {distCurve.length > 0 && (
-              <ErgebniskurvePanel sessions={distCurve} scopeLabel={selectedDistance} />
+              <ErgebniskurvePanel sessions={distCurve} scopeLabel={selectedBucket?.label || ''} />
             )}
 
             <div className="text-center">

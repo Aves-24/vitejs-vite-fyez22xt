@@ -4,6 +4,7 @@ import { collection, query, where, orderBy, getDocs, Timestamp, writeBatch, doc 
 import { useTranslation } from 'react-i18next';
 import { seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import HistoricalStartForm from './HistoricalStartForm';
+import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/distances';
 
 interface RecordSession {
   id: string;
@@ -11,6 +12,10 @@ interface RecordSession {
   arrows?: number;
   scoreArrows?: number;
   distance?: string;
+  /** [C25] Kubelek statystyk; brak = sesja sprzed C25 (patrz distanceKey). */
+  distanceId?: string;
+  /** [C25] Nazwa dystansu z chwili strzalu. */
+  distanceLabel?: string;
   date?: string;
   type?: string;
   tournamentName?: string;
@@ -139,14 +144,22 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
     [sessions]
   );
 
-  const distances = useMemo(
-    () => Array.from(new Set(scored.map(s => s.distance as string)))
-      .sort((a, b) => (parseInt(a) || 0) - (parseInt(b) || 0)),
-    [scored]
-  );
+  // [C25] Kubelki po `distanceId`, nie po napisie — dwa wpisy o tych samych
+  // metrach ("18m recurve" / "18m barebow") to dwa rozne zestawy rekordow.
+  // Nazwa ze stempla najnowszej sesji w kubelku (dziala tez w widoku trenera).
+  const distances = useMemo(() => {
+    const buckets = new Map<string, { key: string; label: string; meters: number }>();
+    scored.forEach(sess => {
+      const key = distanceKey(sess);
+      if (!buckets.has(key)) {
+        buckets.set(key, { key, label: sessionDistanceLabel(sess), meters: distanceMeters(sess.distance) });
+      }
+    });
+    return Array.from(buckets.values()).sort((a, b) => a.meters - b.meters);
+  }, [scored]);
 
   const inDistance = useMemo(
-    () => selectedDistance ? scored.filter(s => s.distance === selectedDistance) : scored,
+    () => selectedDistance ? scored.filter(s => distanceKey(s) === selectedDistance) : scored,
     [scored, selectedDistance]
   );
 
@@ -242,11 +255,11 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
           </button>
           {distances.map(d => (
             <button
-              key={d}
-              onClick={() => setSelectedDistance(d)}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${selectedDistance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+              key={d.key}
+              onClick={() => setSelectedDistance(d.key)}
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${selectedDistance === d.key ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
             >
-              {d}
+              {d.label}
             </button>
           ))}
         </div>
@@ -265,25 +278,25 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
               label={t('stats.records.bestTournament')}
               value={records.tournament ? String(records.tournament.s.score) : '—'}
               name={records.tournament?.s.tournamentName || undefined}
-              sub={records.tournament ? `${records.tournament.s.distance} · ${records.tournament.s.date}` : undefined}
+              sub={records.tournament ? `${sessionDistanceLabel(records.tournament.s)} · ${records.tournament.s.date}` : undefined}
             />
             <RecordTile
               icon="fitness_center"
               label={t('stats.records.bestTraining')}
               value={records.training ? String(records.training.s.score) : '—'}
-              sub={records.training ? `${records.training.s.distance} · ${records.training.s.date}` : undefined}
+              sub={records.training ? `${sessionDistanceLabel(records.training.s)} · ${records.training.s.date}` : undefined}
             />
             <RecordTile
               icon="speed"
               label={t('stats.records.bestAvg')}
               value={records.avg ? fmtAvg(records.avg.v) : '—'}
-              sub={records.avg ? `${t('stats.records.perArrow')} · ${records.avg.s.distance}` : undefined}
+              sub={records.avg ? `${t('stats.records.perArrow')} · ${sessionDistanceLabel(records.avg.s)}` : undefined}
             />
             <RecordTile
               icon="my_location"
               label={t('stats.records.mostX')}
               value={records.x ? String(records.x.v) : '—'}
-              sub={records.x ? `${records.x.s.distance} · ${records.x.s.date}` : undefined}
+              sub={records.x ? `${sessionDistanceLabel(records.x.s)} · ${records.x.s.date}` : undefined}
             />
           </div>
         )}
@@ -343,13 +356,13 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
                       {sorted.map((ed, idx) => {
                         // Porównujemy tylko z poprzednim startem na TYM SAMYM dystansie —
                         // różnica między 70m a 50m nie mówi nic o formie.
-                        const prev = sorted.slice(idx + 1).find(p => p.distance === ed.distance);
+                        const prev = sorted.slice(idx + 1).find(p => distanceKey(p) === distanceKey(ed));
                         const delta = prev ? (ed.score || 0) - (prev.score || 0) : null;
                         const isBest = (ed.score || 0) === seriesBest;
                         return (
                           <div key={ed.id} className="flex items-center gap-2 bg-gray-50 rounded-xl px-2.5 py-2">
                             <span className="text-[9px] font-black text-gray-400 w-[62px] shrink-0">{ed.date}</span>
-                            <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shrink-0">{ed.distance}</span>
+                            <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shrink-0">{sessionDistanceLabel(ed)}</span>
                             <span className="flex-1 text-right text-sm font-black text-[#0a3a2a] leading-none">
                               {ed.score}
                               <span className="text-[8px] font-bold text-gray-400 ml-1">{fmtAvg(avgPerArrow(ed))}</span>

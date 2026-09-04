@@ -21,6 +21,11 @@ import { getThemePreference, setThemePreference, ThemePreference } from '../util
 import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
+import {
+  UserDistance, buildDistanceEntry, rebuildMasterList, newDistanceId, normalizeLabel,
+  formatDistance, isCustomDistance, isDuplicateDistance, compareDistances,
+  DISTANCE_LABEL_MAX, MAX_DISTANCES, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
+} from '../config/distances';
 import { selectableTargetIds } from '../config/targetFaces';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
@@ -52,6 +57,60 @@ export default function SettingsView({
   // [C20] Motyw (jasny/ciemny/system) — źródło prawdy w localStorage (utils/theme)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference());
   const [isSaving, setIsSaving] = useState(false);
+
+  // [C25] Własne dystanse: metry są NIEZMIENNE po dodaniu (karmią handicap),
+  // etykieta jest dowolna i można ją zmieniać bez końca — tożsamość trzyma `id`,
+  // więc zmiana nazwy nie rusza historii. Patrz config/distances.ts.
+  const [showAddDistance, setShowAddDistance] = useState(false);
+  const [newMeters, setNewMeters] = useState('');
+  const [newLabel, setNewLabel] = useState('');
+  const [distanceError, setDistanceError] = useState<string | null>(null);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const addCustomDistance = () => {
+    const list = distances as UserDistance[];
+    const meters = parseInt(newMeters, 10);
+    if (!Number.isFinite(meters) || meters < MIN_CUSTOM_METERS || meters > MAX_CUSTOM_METERS) {
+      setDistanceError(t('settings.sight.errRange', { min: MIN_CUSTOM_METERS, max: MAX_CUSTOM_METERS }));
+      return;
+    }
+    if (list.length >= MAX_DISTANCES) {
+      setDistanceError(t('settings.sight.errLimit', { max: MAX_DISTANCES }));
+      return;
+    }
+    const m = formatDistance(meters);
+    const label = normalizeLabel(newLabel);
+    if (isDuplicateDistance(list, m, label)) {
+      setDistanceError(t('settings.sight.errDuplicate'));
+      return;
+    }
+    // Zawsze id z zegara, także gdy metry pokrywają się ze standardowymi —
+    // drugi wpis „18m" ma dostać WŁASNY kubełek, a nie przejąć historię pierwszego.
+    const entry: UserDistance = {
+      ...buildDistanceEntry(m, { active: true }),
+      id: newDistanceId(),
+      ...(label ? { label } : {}),
+    };
+    onUpdateAllDistances([...list, entry].sort(compareDistances));
+    setShowAddDistance(false);
+    setNewMeters('');
+    setNewLabel('');
+    setDistanceError(null);
+  };
+
+  const updateDistanceLabel = (id: string, raw: string) => {
+    onUpdateAllDistances((distances as UserDistance[]).map(d => {
+      if (d.id !== id) return d;
+      const label = normalizeLabel(raw);
+      const { label: _drop, ...rest } = d;
+      return label ? { ...rest, label } : rest;
+    }));
+  };
+
+  const removeDistance = (id: string) => {
+    onUpdateAllDistances((distances as UserDistance[]).filter(d => d.id !== id));
+    setPendingDeleteId(null);
+  };
   const [placeId, setPlaceId] = useState<string>('');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
 
@@ -241,10 +300,12 @@ export default function SettingsView({
         const birthYear = new Date(birthDate).getFullYear() || 1990;
         const recH = getRecommendation(bowType, birthYear, 'Hala (Indoor)', gender);
         const recT = getRecommendation(bowType, birthYear, 'Tory (Outdoor)', gender);
-        finalDistances = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'].map(m => {
-          const existing = distances.find((d: any) => d.m === m);
-          return { m, active: (m === recH.distance || m === recT.distance || m === '30m' || existing?.active), targetType: existing?.targetType || '122cm', sightExtension: existing?.sightExtension || '', sightHeight: existing?.sightHeight || '', sightSide: existing?.sightSide || '', sightMark: existing?.sightMark || '' };
-        });
+        // [C25] Wpisy własne usera przechodzą przez regenerację nietknięte.
+        finalDistances = rebuildMasterList(distances as UserDistance[], (m, prev) =>
+          buildDistanceEntry(m, {
+            ...prev,
+            active: (m === recH.distance || m === recT.distance || m === '30m' || prev?.active),
+          }));
         onUpdateAllDistances(finalDistances); 
       }
 
@@ -365,19 +426,14 @@ export default function SettingsView({
           const birthYear = new Date(birth).getFullYear() || 1990;
           const recH = getRecommendation(bow, birthYear, 'Hala (Indoor)', gen);
           const recT = getRecommendation(bow, birthYear, 'Tory (Outdoor)', gen);
-          return ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'].map(m => {
-            // Zachowaj istniejące dane wizjera jeśli ten dystans już był skonfigurowany
-            const existing = distances.find((d: any) => d.m === m);
-            return {
-              m,
+          // [C25] Kreator też nie kasuje własnych dystansów — zachowaj istniejące
+          // dane wizjera, jeśli ten dystans już był skonfigurowany.
+          return rebuildMasterList(distances as UserDistance[], (m, prev) =>
+            buildDistanceEntry(m, {
+              ...prev,
               active: m === recH.distance || m === recT.distance,
-              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : (existing?.targetType || '122cm'),
-              sightExtension: existing?.sightExtension || '',
-              sightHeight: existing?.sightHeight || '',
-              sightSide: existing?.sightSide || '',
-              sightMark: existing?.sightMark || ''
-            };
-          });
+              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : (prev?.targetType || '122cm'),
+            }));
         }} onSaveSettings={saveAllSettings} onNavigate={onNavigate} onLogout={() => setShowLogoutConfirm(true)}
       />
 
@@ -445,11 +501,14 @@ export default function SettingsView({
             </div>
             
             {distances && Array.isArray(distances) && distances.map((d, i) => (
-              <div key={d.m || i} className={`p-2.5 rounded-xl border transition-all ${d.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-50'}`}>
+              <div key={d.id || d.m || i} className={`p-2.5 rounded-xl border transition-all ${d.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-50'}`}>
                 <div className="grid grid-cols-12 items-center">
-                  <div className="col-span-4 flex items-center gap-2">
-                    <input type="checkbox" checked={d.active} onChange={() => onToggleDistance(i)} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0" />
-                    <span className="font-black text-[#333] text-sm">{d.m}</span>
+                  <div className="col-span-4 flex items-center gap-2 min-w-0">
+                    <input type="checkbox" checked={d.active} onChange={() => onToggleDistance(i)} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0 shrink-0" />
+                    <div className="min-w-0">
+                      <span className="font-black text-[#333] text-sm block leading-none">{d.m}</span>
+                      {d.label && <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block truncate mt-0.5">{d.label}</span>}
+                    </div>
                   </div>
                   <div className="col-span-8 flex gap-1 justify-end">
                     <input type="text" maxLength={8} className="flex-1 min-w-0 h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none border border-gray-100" placeholder={t('settings.sight.ext')} value={d.sightExtension || ''} onChange={(e) => { const n = [...distances]; n[i].sightExtension = e.target.value; onUpdateAllDistances(n); }} />
@@ -458,15 +517,77 @@ export default function SettingsView({
                   </div>
                 </div>
                 {d.active && (
+                   <>
                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.target')}</span>
                      <select value={d.targetType || '122cm'} onChange={(e) => onUpdateTargetType(i, e.target.value)} className="bg-gray-50 text-[10px] font-black text-[#0a3a2a] py-1.5 px-2 rounded-md outline-none border-none">
                        {selectableTargetIds().map(id => <option key={id} value={id}>{id}</option>)}
                      </select>
                    </div>
+                   {/* [C25] Opis wolno zmieniać kiedykolwiek — tożsamością jest `id`,
+                       więc zmiana nazwy nie rusza zapisanych treningów. */}
+                   <div className="mt-2 flex items-center gap-2">
+                     <input
+                       type="text"
+                       maxLength={DISTANCE_LABEL_MAX}
+                       value={d.label || ''}
+                       onChange={(e) => updateDistanceLabel(d.id, e.target.value)}
+                       placeholder={t('settings.sight.labelPh')}
+                       className="flex-1 min-w-0 h-8 bg-gray-50 rounded-md text-[10px] px-2 font-bold outline-none border border-gray-100"
+                     />
+                     {isCustomDistance(d) && (
+                       <button
+                         onClick={() => setPendingDeleteId(d.id)}
+                         className="shrink-0 w-8 h-8 rounded-md bg-red-50 text-red-500 flex items-center justify-center active:scale-95"
+                         aria-label={t('settings.sight.deleteAsk')}
+                       >
+                         <span className="material-symbols-outlined text-[16px]">delete</span>
+                       </button>
+                     )}
+                   </div>
+                   </>
                 )}
               </div>
             ))}
+
+            {/* [C25] Własny dystans — pierwszym prawdziwym przypadkiem jest
+                dmuchawka (5/7/10 m), której lista standardowa nie zna. */}
+            {showAddDistance ? (
+              <div className="p-3 rounded-xl border border-[#0a3a2a]/20 bg-white shadow-sm space-y-2">
+                <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('settings.sight.addTitle')}</span>
+                <div className="flex gap-2">
+                  <input
+                    type="number" inputMode="numeric"
+                    min={MIN_CUSTOM_METERS} max={MAX_CUSTOM_METERS}
+                    value={newMeters}
+                    onChange={(e) => { setNewMeters(e.target.value); setDistanceError(null); }}
+                    placeholder={t('settings.sight.meters')}
+                    className="w-24 h-9 bg-gray-50 rounded-md text-[11px] px-2 font-black text-center outline-none border border-gray-100"
+                  />
+                  <input
+                    type="text" maxLength={DISTANCE_LABEL_MAX}
+                    value={newLabel}
+                    onChange={(e) => { setNewLabel(e.target.value); setDistanceError(null); }}
+                    placeholder={t('settings.sight.labelPh')}
+                    className="flex-1 min-w-0 h-9 bg-gray-50 rounded-md text-[11px] px-2 font-bold outline-none border border-gray-100"
+                  />
+                </div>
+                <p className="text-[9px] text-gray-400 font-bold">{t('settings.sight.labelHint')}</p>
+                {distanceError && <p className="text-[10px] text-red-500 font-black">{distanceError}</p>}
+                <div className="flex gap-2 pt-1">
+                  <button onClick={addCustomDistance} className="flex-1 py-2.5 bg-[#0a3a2a] text-white rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95">{t('settings.sight.add')}</button>
+                  <button onClick={() => { setShowAddDistance(false); setDistanceError(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95">{t('settings.sight.cancel')}</button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowAddDistance(true)}
+                className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                {t('settings.sight.addTitle')}
+              </button>
+            )}
           </div>
         )}
 
@@ -588,6 +709,21 @@ export default function SettingsView({
             <div className="flex gap-2">
               <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px]">{t('setup.warningCancel')}</button>
               <button onClick={() => signOut(auth)} className="flex-1 py-4 bg-red-50 text-white rounded-xl font-black uppercase text-[11px] shadow-md">{t('settings.wizard.logout')}</button>
+            </div>
+          </div>
+        </div>, document.body
+      )}
+
+      {/* [C25] Kasowanie dystansu pyta — tak jak kasowanie zestawu (3612487).
+          Sesje NIE znikają: niosą własny stempel, więc statystyki zostają. */}
+      {pendingDeleteId && createPortal(
+        <div className="fixed inset-0 z-[400000] bg-black/80 flex items-center justify-center p-6">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center">
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('settings.sight.deleteAsk')}</h2>
+            <p className="text-sm font-bold text-gray-500 mb-6">{t('settings.sight.deleteKeepsHistory')}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setPendingDeleteId(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px]">{t('setup.warningCancel')}</button>
+              <button onClick={() => removeDistance(pendingDeleteId)} className="flex-1 py-4 bg-red-500 text-white rounded-xl font-black uppercase text-[11px] shadow-md">{t('common.confirm')}</button>
             </div>
           </div>
         </div>, document.body

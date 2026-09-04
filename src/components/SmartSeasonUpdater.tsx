@@ -4,8 +4,9 @@ import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from '../config/archeryRules';
 import { loadPrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { useTranslation } from 'react-i18next'; // <--- DODANE
+import { buildDistanceEntry, ensureDistanceIds, rebuildMasterList } from '../config/distances';
 
-const MASTER_DISTANCES = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
+
 
 type ModalType = 'NONE' | 'NEW_YEAR' | 'BIRTHDAY';
 
@@ -74,15 +75,20 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             const recHala = getRecommendation(currentBow, birthYearNum, 'Hala (Indoor)', currentGender);
             const recTory = getRecommendation(currentBow, birthYearNum, 'Tory (Outdoor)', currentGender);
 
-            const updatedDistances = MASTER_DISTANCES.map(m => {
+            // [C25] Regeneracja NIE nadpisuje juz calej listy. Wpisy wlasne
+            // usera przechodza nietkniete (rebuildMasterList), a nastawy
+            // celownika przezywaja zmiane roku — wczesniej ten kod gubil
+            // sightExtension/Height/Side, bo budowal wpisy od zera.
+            const prevDistances = ensureDistanceIds(data.userDistances || []).list;
+            const updatedDistances = rebuildMasterList(prevDistances, (m, prev) => {
               const isRecommended = (m === recHala.distance) || (m === recTory.distance) || (m === '30m');
-              let target = '122cm'; 
-              if (m === '18m') target = recHala.targetType; 
-              else if (m === recTory.distance) target = recTory.targetType; 
+              let target = '122cm';
+              if (m === '18m') target = recHala.targetType;
+              else if (m === recTory.distance) target = recTory.targetType;
               else if (m === '30m') target = (currentBow === 'Bloczkowy (Compound)') ? '80cm (6-Ring)' : '80cm';
-              else if (parseInt(m) <= 50 && currentBow === 'Bloczkowy (Compound)') target = '80cm (6-Ring)'; 
+              else if (parseInt(m) <= 50 && currentBow === 'Bloczkowy (Compound)') target = '80cm (6-Ring)';
 
-              return { m, active: isRecommended, targetType: target };
+              return buildDistanceEntry(m, { ...prev, active: isRecommended, targetType: target });
             });
 
             const oldDistancesStr = JSON.stringify(data.userDistances || []);

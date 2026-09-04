@@ -79,6 +79,20 @@ service cloud.firestore {
             && (data.setups.size() <= limit
                 || data.setups.size() <= prevCount));
     }
+    // [C25] Sufit liczby dystansow. Dokument uzytkownika nie ma puchnac od
+    // wpisow wklepanych z konsoli przegladarki. To NIE jest funkcja platna,
+    // wiec limit jest jeden dla wszystkich (lustro MAX_DISTANCES
+    // w src/config/distances.ts — zmieniac OBA miejsca).
+    // `prevCount` dziala tak jak przy zestawach: nadmiar wolno TRZYMAC
+    // i zmniejszac, byle nie przybywalo. Bez tego konto, ktore jakims cudem
+    // ma wiecej wpisow, zamurowaloby sie na kazdym zapisie profilu — bo
+    // `userDistances` jedzie w kazdym merge'u.
+    function validDistances(data, prevCount) {
+      return !data.keys().hasAny(['userDistances'])
+        || (data.userDistances is list
+            && (data.userDistances.size() <= 30
+                || data.userDistances.size() <= prevCount));
+    }
     function validActiveSetupId(data) {
       return !data.keys().hasAny(['activeSetupId'])
         || data.activeSetupId is string;
@@ -156,6 +170,7 @@ service cloud.firestore {
         // [ZESTAWY] Przy zakladaniu konta limit to zawsze 1: `isPremium` jest
         // polem chronionym, wiec nowy dokument nie moze przyjsc jako PRO.
         && validSetups(request.resource.data, 1, 0)
+        && validDistances(request.resource.data, 0)
         && validActiveSetupId(request.resource.data);
 
       // Path A — admin full
@@ -183,6 +198,7 @@ service cloud.firestore {
         && validSetups(request.resource.data,
                        resource.data.get('isPremium', false) ? 4 : 1,
                        listLen(resource.data, 'setups'))
+        && validDistances(request.resource.data, listLen(resource.data, 'userDistances'))
         && validActiveSetupId(request.resource.data);
 
       // Path C — student accepting invite: own doc, diff = ['coaches'],

@@ -40,6 +40,11 @@ export const calculateTotalXP = (sessions: any[], techShots: any[] = []) => {
 
   // 3. Bonusy za rekordy życiowe (PB)
   // Za każdy unikalny dystans, na którym użytkownik ma sesję, dajemy bonus za progres
+  // [C25] Tu ŚWIADOMIE liczymy po METRACH, a nie po `distanceId` jak
+  // statystyki. Bonus nagradza wszechstronność, czyli realnie różne odległości.
+  // Klucz po id dałby 500 XP za dwa wpisy „18m recurve" i „18m barebow" —
+  // ten sam dystans, dwa razy płatny. Kto dopisze sobie 20 własnych wpisów,
+  // nie ma z tego nic.
   const uniqueDistances = new Set(sessions.map(s => s.distance));
   totalXP += (uniqueDistances.size * 250); // Bonus za wszechstronność dystansową
 

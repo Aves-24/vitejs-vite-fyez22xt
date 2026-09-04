@@ -5,15 +5,16 @@ import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIds } from '../config/targetFaces';
+import { UserDistance, displayDistance } from '../config/distances';
 
 interface SessionSetupProps {
   userId: string;
-  activeDistances: any[];
-  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number) => void;
-  onUpdateDistances?: (newDistances: any[]) => void; 
-  onNavigate?: (view: string, tab?: string) => void; 
-  onGoToBattle?: (distance: string, targetType: string) => void;
-  hasActiveSession?: boolean; 
+  activeDistances: UserDistance[];
+  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number, distanceId?: string, distanceLabel?: string) => void;
+  onUpdateDistances?: (newDistances: UserDistance[]) => void;
+  onNavigate?: (view: string, tab?: string) => void;
+  onGoToBattle?: (distance: string, targetType: string, distanceId?: string, distanceLabel?: string) => void;
+  hasActiveSession?: boolean;
 }
 
 const ADMIN_IDS = ['Lglbqv96HlO2LoN98yxrIeaQS172', 'b55wNdZf17gH5wxziuzG9bkaQKo2'];
@@ -21,7 +22,12 @@ const ADMIN_IDS = ['Lglbqv96HlO2LoN98yxrIeaQS172', 'b55wNdZf17gH5wxziuzG9bkaQKo2
 
 export default function SessionSetup({ userId, activeDistances, onStartSession, onUpdateDistances, onNavigate, onGoToBattle, hasActiveSession }: SessionSetupProps) {
   const { t } = useTranslation();
+  // [C25] Wyborem rządzi `id`, nie napis — dwa wpisy mogą mieć te same metry
+  // ("18m recurve" i "18m barebow"), więc napis przestał być tożsamością.
+  // `selectedDistance` zostaje jako METRY, bo tak leci do sesji i do handicapu.
+  const [selectedId, setSelectedId] = useState<string>('');
   const [selectedDistance, setSelectedDistance] = useState<string>('');
+  const selectedEntry = activeDistances.find(d => d.id === selectedId);
   const [selectedTarget, setSelectedTarget] = useState<string>('122cm');
   
   const [sightExtension, setSightExtension] = useState<string>('');
@@ -119,41 +125,47 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   }, [userId]);
 
   useEffect(() => {
-    if (activeDistances.length > 0 && !selectedDistance) {
+    if (activeDistances.length > 0 && !selectedId) {
       const saved = localStorage.getItem(`grotX_lastSetup_${userId}`);
       if (saved) {
         try {
-          const { distance, targetType } = JSON.parse(saved);
-          const stillActive = activeDistances.find((d: any) => d.m === distance);
+          const { distanceId, distance, targetType } = JSON.parse(saved);
+          // Cache sprzed C25 nie zna id — wtedy dopasowujemy po metrach.
+          const stillActive = activeDistances.find(d => d.id === distanceId)
+            || (!distanceId ? activeDistances.find(d => d.m === distance) : undefined);
           if (stillActive) {
-            updateSelection(distance);
+            updateSelection(stillActive.id);
             setSelectedTarget(targetType);
             return;
           }
         } catch (_) { /* ignore malformed cache */ }
       }
-      updateSelection(activeDistances[0].m);
+      updateSelection(activeDistances[0].id);
     }
-  }, [activeDistances, selectedDistance]);
+  }, [activeDistances, selectedId]);
 
-  const updateSelection = (dist: string) => {
-    setSelectedDistance(dist);
-    const profileDist = activeDistances.find(d => d.m === dist);
-    if (profileDist) {
-      setSelectedTarget(profileDist.targetType || '122cm');
-      setSightExtension(profileDist.sightExtension || '');
-      setSightHeight(profileDist.sightHeight || '');
-      setSightSide(profileDist.sightSide || '');
-    }
+  const updateSelection = (id: string) => {
+    const profileDist = activeDistances.find(d => d.id === id);
+    if (!profileDist) return;
+    setSelectedId(id);
+    setSelectedDistance(profileDist.m);
+    setSelectedTarget(profileDist.targetType || '122cm');
+    setSightExtension(profileDist.sightExtension || '');
+    setSightHeight(profileDist.sightHeight || '');
+    setSightSide(profileDist.sightSide || '');
   };
 
   const saveLastSetup = () => {
-    localStorage.setItem(`grotX_lastSetup_${userId}`, JSON.stringify({ distance: selectedDistance, targetType: selectedTarget }));
+    localStorage.setItem(`grotX_lastSetup_${userId}`, JSON.stringify({ distanceId: selectedId, distance: selectedDistance, targetType: selectedTarget }));
   };
+
+  /** Stempel dystansu przekazywany dalej: id zawsze, etykieta tylko gdy jest. */
+  const startArgs = (): [string, string | undefined] =>
+    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined];
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
-    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined); }
+    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }
   };
 
   const openSightEditor = () => {
@@ -204,7 +216,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       const profileSnap = await getDoc(doc(db, 'users', userId));
       if (profileSnap.exists()) {
         const userDistances = profileSnap.data().userDistances || [];
-        const idx = userDistances.findIndex((d: any) => d.m === selectedDistance);
+        const idx = userDistances.findIndex((d: any) => d.id === selectedId);
         if (idx !== -1) {
           userDistances[idx].sightExtension = editExt;
           userDistances[idx].sightHeight = editHeight;
@@ -231,15 +243,18 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           <div className="flex flex-wrap gap-1.5 justify-center">
             {activeDistances.map((d) => (
               <button
-                key={d.m}
-                onClick={() => updateSelection(d.m)}
-                className={`flex-1 min-w-[30%] py-2 rounded-xl font-black text-sm transition-all active:scale-95 border-2 ${
-                  selectedDistance === d.m
+                key={d.id}
+                onClick={() => updateSelection(d.id)}
+                className={`flex-1 min-w-[30%] py-2 rounded-xl font-black transition-all active:scale-95 border-2 ${
+                  selectedId === d.id
                     ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white shadow-md'
                     : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
                 }`}
               >
-                {d.m}
+                {/* [C25] Etykieta idzie DRUGĄ linijką — "18m barebow" w jednym
+                    wierszu nie mieści się w kafelku szerokim na 30%. */}
+                <span className="block text-sm leading-none">{d.m}</span>
+                {d.label && <span className="block text-[9px] font-bold uppercase tracking-wide opacity-70 mt-0.5 truncate px-1">{d.label}</span>}
               </button>
             ))}
           </div>
@@ -250,7 +265,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
              <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{t('setup.sightTitle')}</span>
              <div className="flex items-center gap-2">
                {isPremium && <button onClick={openSightEditor} className="w-5 h-5 flex items-center justify-center bg-white/5 border border-white/10 rounded-md text-emerald-400 active:scale-90 transition-all"><span className="material-symbols-outlined text-[12px]">edit</span></button>}
-               <span className="text-[11px] font-black text-white bg-white/10 px-2 py-0.5 rounded-md">{selectedDistance}</span>
+               <span className="text-[11px] font-black text-white bg-white/10 px-2 py-0.5 rounded-md">{selectedEntry ? displayDistance(selectedEntry) : selectedDistance}</span>
              </div>
           </div>
           {isPremium ? (
@@ -356,7 +371,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           <button
             onClick={() => {
               if (onGoToBattle) {
-                onGoToBattle(selectedDistance, selectedTarget);
+                onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
               } else {
                 onNavigate?.('BATTLE_LOBBY');
               }
@@ -371,7 +386,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         
         {hasUnsaved && (
           <button 
-            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined)}
+            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
             className="w-full py-4 mt-2 rounded-[20px] font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-sm">history</span>
@@ -530,7 +545,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       {showSightEditor && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-end justify-center">
           <div className="bg-white w-full max-w-md rounded-t-[32px] p-6 pb-12 animate-fade-in-up">
-            <h2 className="text-xl font-black text-[#0a3a2a] mb-6">{t('setup.editorTitle')} ({selectedDistance})</h2>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-6">{t('setup.editorTitle')} ({selectedEntry ? displayDistance(selectedEntry) : selectedDistance})</h2>
             <div className="space-y-4 mb-8 text-center">
               <input type="text" value={editExt} onChange={e => setEditExt(e.target.value)} placeholder={t('setup.editorExt')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
               <input type="text" value={editHeight} onChange={e => setEditHeight(e.target.value)} placeholder={t('setup.editorHeight')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
@@ -545,7 +560,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
-            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
+            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
         </div>

@@ -675,7 +675,62 @@ konta testowego, otwarcie /legal/datenschutz.html.
       przestaje dzialac — kto zeskanowal QR z Ustawien, trafi w pustke.
       Nazwy repo na GitHubie zmieniac NIE trzeba, jest niezalezna.
 
-- [ ] **C25. Własne, niestandardowe dystanse** (prośba usera 2026-09-04).
+- [x] **C25. Własne, niestandardowe dystanse — ZROBIONE 2026-09-04**, gałąź
+      `feat/custom-distances`, sprawdzone na żywo (localhost, konto gościa).
+
+      ### Jak to ostatecznie zrobiliśmy (decyzja usera 2026-09-04)
+
+      Etykieta NIE jest kluczem. Tożsamością dystansu jest **`id`**, nadawane raz
+      i nigdy niezmieniane; **metry są niezmienne**, bo karmią handicap; **nazwa
+      jest dowolna i zmienna**. Dzięki temu zmiana nazwy nie robi NIC ze statystykami
+      — nie ma migracji, nie ma rozcinania historii. To wzorzec `setupId` + `bowClass`
+      z `utils/setupStamp.ts`, przeniesiony na dystanse.
+
+      **Id standardowych dystansów jest wyliczane z metrów (`d_18m`), nie z zegara.**
+      To celowe: sesje sprzed C25 niosą sam napis `"18m"` i mapują się na ten sam
+      klucz bez żadnego odczytu z bazy. Drugi wpis 18 m dostaje id z zegara, czyli
+      własny kubełek — historia zostaje przy pierwotnym.
+
+      **Sesja niesie 3 pola:** `distance` (metry, format bez zmian), `distanceId`
+      (kubełek) i `distanceLabel` (nazwa z chwili strzału). Trzecie jest konieczne,
+      bo trener ogląda statystyki UCZNIA — rozwiązywanie id po własnej liście
+      pokazałoby mu cudze nazwy.
+
+      Nowy plik: **`src/config/distances.ts`** (jedyne źródło prawdy).
+      Sześć zaszytych list zastąpione, w tym niezgodność „z 35m / bez 35m".
+
+      **Sprawdzone na żywo end-to-end:** dodany dystans `10m` + etykieta `Blasrohr`
+      → zapis do Firestore (`id: "d_mtmw4q3hxgg"`, standardowe dostały `d_18m`…)
+      → kafelek w CELOWNIKU i nagłówek liczenia punktów → zapisana sesja niesie
+      `distance: "10m"`, `distanceId`, `distanceLabel: "10m Blasrohr"`,
+      `bowClass: "Dmuchawka (Blasrohr)"` → widoczna w ANALIZIE DYSTANSU i REKORDACH
+      pod własnym kubełkiem, a `last10Avgs`/`last10Handicaps` zostały PUSTE
+      (zabezpieczenie z `b961f7e` trzyma).
+
+      **Naprawione przy okazji, poza planem:** `SmartSeasonUpdater` przy zmianie
+      roku budował wpisy od zera i **kasował nastawy celownika** (`sightExtension`,
+      `sightHeight`, `sightSide`). Teraz regeneracja zachowuje istniejące pola
+      i nie tyka wpisów własnych (`rebuildMasterList`).
+
+      ### Co ZOSTAŁO z C25
+
+      - [ ] dystanse **per dyscyplina** — łucznik nadal widzi 5 m, dmuchawkarz 90 m.
+            Etykiety to łagodzą („10m Blasrohr"), ale nie zastępują.
+      - [ ] jednostki: **jardy** (IFAA/tereny — patrz T1). Dziś tylko metry.
+      - [ ] `HistoricalStartForm` i `TournamentScoreInput` proponują wyłącznie
+            listę standardową — startu na własnym dystansie nie da się dopisać.
+      - [ ] `getRecommendation` nadal zwraca gołe `'18m'`/`'70m'`; działa, bo
+            standardowe wpisy zachowują dokładnie te napisy w polu `m`.
+      - [ ] `npm run test:rules` — dołożony `validDistances` (sufit 30 wpisów,
+            lustro `MAX_DISTANCES`) NIE ma jeszcze testu; emulator nie startuje
+            lokalnie, weryfikuje CI.
+      - [ ] liczniki „wystrzelonych strzał" (HomeView, `pfeilzaehler`) nadal sumują
+            rurę z łukiem — osobny temat, niezmieniony.
+
+      ---
+
+      *Poniżej oryginalna analiza z 2026-09-04, zostawiona dla kontekstu decyzji.*
+
       Dziś zakładka CELOWNIK pokazuje zamkniętą listę dystansów; user chce móc
       dopisać własny (np. 15 m, 45 m, jardy albo cokolwiek, na czym realnie
       strzela na swojej strzelnicy).
@@ -998,13 +1053,13 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       ⬜ **Zostaje 1:** tarcza jest widoczna w wyborze ZAWSZE, bo `SessionSetup`
       nie zna dyscypliny zestawu. Powinna pokazywać się tylko dla dmuchawki.
 
-      🔴 **Zostaje 2 — BLOKER UŻYTECZNOŚCI (user, 2026-09-04):** z dmuchawki
-      strzela się na **5, 7 i 10 m**, a żaden z tych dystansów NIE ISTNIEJE
-      w aplikacji — lista zaczyna się od 18 m. Czyli tarcza jest wdrożona,
-      ale **nie da się zapisać treningu z dmuchawki**, bo nie ma na czym.
-      Etap 4 jest realnie zrobiony w połowie.
-      Naprawa wchodzi razem z **C25** (jedno źródło prawdy o dystansach) —
-      dmuchawka jest pierwszym prawdziwym przypadkiem, który tego wymaga.
+      ✅ **Zostaje 2 — ODBLOKOWANE 2026-09-04 przez C25.** Dystansów 5/7/10 m
+      nie było w aplikacji, więc treningu z rury nie dało się zapisać. Po C25
+      user dopisuje własny dystans z etykietą (np. `10m` + `Blasrohr`).
+      Sprawdzone na żywo: sesja z dmuchawki na 10 m zapisana, widoczna
+      w statystykach we własnym kubełku, bez wpływu na handicap łuczniczy.
+      Przy okazji zniknął filtr `isBlowgunSession` z `ProStatsView` — po
+      wprowadzeniu dystansów wycinałby userowi jego własne wyniki.
 - [ ] **T3. 3D — NIE jest tarczą.** Strefy killa na figurze zwierzęcia,
       punktacja zależna od trafionej części korpusu, runda to przejście przez
       ~20 różnych figur. Wymaga osobnego trybu wprowadzania (wybór strefy albo

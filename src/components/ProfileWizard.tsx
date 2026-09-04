@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MASTER_DISTANCES } from '../config/distances';
 import ClubPicker from './ClubPicker';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase'; 
@@ -76,7 +77,8 @@ export default function ProfileWizard(props: ProfileWizardProps) {
   const competitionLevels = t('settings.lists.compLevels', { returnObjects: true }) as string[];
   
   // [ZMIANA] Dystanse turniejowe zgodne z nowym designem
-  const tournamentDistances = ['18m', '20m', '25m', '30m', '40m', '50m', '60m', '70m', '90m'];
+  // [C25] Z katalogu — patrz config/distances.ts.
+  const tournamentDistances = MASTER_DISTANCES;
 
   // [POPRAWKA PĘTLI] bDay/bMonth/bYear są teraz w propsach (źródło: SettingsView)
   // Lokalny stan i oba useEffect synchronizujące zostały usunięte — walczyły

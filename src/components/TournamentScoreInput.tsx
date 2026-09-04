@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc 
 import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { getSetupStamp } from '../utils/setupStamp';
+import { distanceMeters } from '../config/distances';
 
 interface TournamentScoreInputProps {
   userId: string;
@@ -207,7 +208,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         ends: inputMode === 'DETAILED' ? archivedEnds : [],
         note: aiNote.trim(),
         inputMode: inputMode,
-        targetType: distance === '18m' ? '3-Spot' : 'Full',
+        // [C25] Po metrach, nie po napisie — dystans moze niesc etykiete.
+        targetType: distanceMeters(distance) === 18 ? '3-Spot' : 'Full',
         ...guestExpiryFields() // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       });
 

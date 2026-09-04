@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { seriesKeyFromTitle } from '../utils/tournamentSeries';
 import { DEFAULT_SETUP_ID } from '../utils/setupStamp';
+import { MASTER_DISTANCES, distanceMeters } from '../config/distances';
 
 interface HistoricalStartFormProps {
   userId: string;
@@ -16,7 +17,9 @@ interface HistoricalStartFormProps {
   onSaved: () => void;
 }
 
-const DISTANCES = ['18m', '20m', '25m', '30m', '40m', '50m', '60m', '70m', '90m'];
+// [C25] Lista z katalogu — bez 35m nie było jej tu wcześniej przez przeoczenie,
+// nie przez decyzję. Patrz config/distances.ts.
+const DISTANCES = MASTER_DISTANCES;
 
 export default function HistoricalStartForm({ userId, isPremium, knownSeries, onClose, onSaved }: HistoricalStartFormProps) {
   const { t } = useTranslation();
@@ -101,7 +104,8 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
         nineCount: parseInt(nineCount) || 0,
         ends: [],
         inputMode: 'SUMMARY',
-        targetType: distance === '18m' ? '3-Spot' : 'Full',
+        // [C25] Po metrach, nie po napisie — dystans moze niesc etykiete.
+        targetType: distanceMeters(distance) === 18 ? '3-Spot' : 'Full',
         // Wpis dopisany ręcznie po fakcie. NIE aktualizujemy totalArrows,
         // monthlyArrows ani dailyStats — te liczniki opisują bieżącą aktywność.
         isHistorical: true,

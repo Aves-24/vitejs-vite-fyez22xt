@@ -148,7 +148,7 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function ScoringView({ userId, distance = "70m", targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
@@ -210,7 +210,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
     if (savedSession) {
       try {
         const data = JSON.parse(savedSession);
-        if (data.distance === distance && data.targetType === targetType) {
+        if ((data.distanceId || null) === (distanceId || null) && data.distance === distance && data.targetType === targetType) {
           if (data.submittedEnds) setSubmittedEnds(data.submittedEnds);
           if (data.inputArrows) setInputArrows(data.inputArrows);
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
@@ -220,12 +220,13 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
       }
     }
-  }, [distance, targetType]);
+  }, [distance, distanceId, targetType]);
 
   useEffect(() => {
     if (inputArrows.length > 0 || submittedEnds.length > 0) {
       localStorage.setItem('grotX_activeSession', JSON.stringify({
         distance,
+        distanceId,
         targetType,
         inputArrows,
         inputCoordinates,
@@ -237,7 +238,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       localStorage.removeItem('grotX_activeSession');
       window.dispatchEvent(new Event('session_state_changed'));
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, targetType, activeRoundTab]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, targetType, activeRoundTab]);
 
   useEffect(() => {
     if (showStats) setIsStatsExpanded(true);
@@ -471,6 +472,11 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
         practiceArrows: practiceCount,
         arrows: sessionArrows + practiceCount, // łączna suma do wyświetlania
         distance: distance,
+        // [C25] Kubelek statystyk + nazwa z chwili strzalu. Patrz config/distances.ts.
+        // `distanceLabel` przychodzi juz gotowe do pokazania ("18m barebow"),
+        // wiec NIE sklejamy go tu drugi raz z metrami.
+        ...(distanceId ? { distanceId } : {}),
+        ...(distanceLabel ? { distanceLabel } : {}),
         targetType: targetType,
         date: new Date().toLocaleDateString('pl-PL'),
         timestamp: sessionTimestamp,
@@ -656,7 +662,7 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
           <div className="flex-1 flex flex-col items-start justify-center px-2 h-full">
             <div className="font-black text-[#0a3a2a] text-[15px] leading-none flex items-center">
               <span className="material-symbols-outlined text-[14px] text-emerald-600 mr-1">target</span>
-              {distance}
+              {distanceLabel || distance}
             </div>
             <div className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{getFriendlyTargetName(targetType)}

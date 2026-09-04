@@ -911,7 +911,19 @@ export const views = {
       ext: "Extension",
       ud: "Elevation",
       lr: "Windage",
-      target: "Face:"
+      target: "Face:",
+      addTitle: "Add custom distance",
+      meters: "Metres",
+      labelPh: "Label (optional)",
+      labelHint: "e.g. blowgun, barebow — up to 10 characters",
+      add: "Add",
+      cancel: "Cancel",
+      renameTitle: "Distance label",
+      deleteAsk: "Remove this distance from the list?",
+      deleteKeepsHistory: "Saved sessions stay in your statistics.",
+      errDuplicate: "You already have this distance.",
+      errRange: "Enter {{min}} to {{max}} metres.",
+      errLimit: "Limit of {{max}} distances reached."
     },
     arrows: {
       model: "Arrow Model",

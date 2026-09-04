@@ -911,7 +911,19 @@ export const views = {
       ext: "Visierauszug",
       ud: "Höhe",
       lr: "Seite (L/R)",
-      target: "Auflage:"
+      target: "Auflage:",
+      addTitle: "Eigene Distanz hinzufügen",
+      meters: "Meter",
+      labelPh: "Bezeichnung (optional)",
+      labelHint: "z. B. Blasrohr, Blank — max. 10 Zeichen",
+      add: "Hinzufügen",
+      cancel: "Abbrechen",
+      renameTitle: "Bezeichnung der Distanz",
+      deleteAsk: "Diese Distanz aus der Liste entfernen?",
+      deleteKeepsHistory: "Gespeicherte Trainings bleiben in der Statistik.",
+      errDuplicate: "Diese Distanz hast du bereits.",
+      errRange: "Bitte {{min}} bis {{max}} Meter angeben.",
+      errLimit: "Limit von {{max}} Distanzen erreicht."
     },
     arrows: {
       model: "Pfeilmodell",

@@ -737,11 +737,18 @@ konta testowego, otwarcie /legal/datenschutz.html.
       - [ ] **Ścieżka PRO (25) niesprawdzona z klienta** — `isPremium` jest polem
             chronionym, więc nie da się samemu awansować konta. Tak samo było
             z limitem zestawów: tam sprawdził to user na własnym koncie PRO.
-      - [ ] **Brak testu na emulatorze** dla `validDistances`. Do dopisania
-            w `tests/rules/firestore.rules.test.mjs`: 13 na FREE odrzucone,
-            12 przechodzi, 25 na PRO przechodzi, zmniejszanie nadmiaru po
-            wygaśnięciu PRO przechodzi (`prevCount`). Emulator nie startuje
-            na tej maszynie — weryfikuje CI.
+      - [~] **Test na emulatorze DOPISANY** (`bcf4b3f`) — 9 asercji w
+            `tests/rules/firestore.rules.test.mjs`, na wzór testów limitu
+            zestawów: 12/13 na FREE, 25/26 na PRO, próba podniesienia sobie
+            `isPremium` w tym samym zapisie, `userDistances` musi być listą,
+            regresja zapisu bez tego pola, create nowego konta, oraz furtka
+            `prevCount` po wygaśnięciu PRO.
+            ⚠️ **NIEURUCHOMIONY lokalnie** — potwierdzone 2026-09-04, że problem
+            NIE jest brakiem Javy: JDK 21 (`C:\Program Files\Microsoft\
+            jdk-21.0.12.101-hotspot`) startuje poprawnie, ale emulator pada na
+            `java.net.SocketException: Invalid argument: connect` przy otwieraniu
+            pipe'a loopbacku (`sun.nio.ch.PipeImpl$Initializer$LoopbackConnector`).
+            Zostaje CI — **sprawdzić, czy run na `bcf4b3f` jest zielony.**
       - [ ] liczniki „wystrzelonych strzał" (HomeView, `pfeilzaehler`) nadal sumują
             rurę z łukiem — osobny temat, niezmieniony.
 

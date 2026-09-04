@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { isBlowgunSession } from '../config/targets/blowgun';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -164,8 +165,14 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   useEffect(() => { setSelectedTypes(new Set()); }, [selectedDistance]);
 
   const filteredSessions = useMemo(() => {
-    if (selectedTypes.size === 0) return sessionsByDistance;
-    return sessionsByDistance.filter(s => selectedTypes.has(s.type || 'Trening'));
+    // [DMUCHAWKA] To są statystyki ŁUCZNICZE — sesje z rury odpadają tu raz,
+    // u źródła, więc nie wchodzą ani do licznika wystrzelonych strzał, ani do
+    // średnich, stref trafień czy wykresów. Inna dyscyplina, inna skala
+    // (6-10 zamiast 1-10) i inne dystanse; zmieszane dawałyby liczby, które
+    // nic nie znaczą. Własny widok dmuchawki to osobny temat.
+    const archeryOnly = sessionsByDistance.filter(s => !isBlowgunSession(s));
+    if (selectedTypes.size === 0) return archeryOnly;
+    return archeryOnly.filter(s => selectedTypes.has(s.type || 'Trening'));
   }, [sessionsByDistance, selectedTypes]);
 
   const stats = useMemo(() => {

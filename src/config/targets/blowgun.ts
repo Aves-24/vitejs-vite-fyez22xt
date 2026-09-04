@@ -1,4 +1,5 @@
 import type { TargetFace, TargetRing } from '../targetFaces';
+import { BLOWGUN_DISCIPLINE } from '../equipmentSetups';
 
 /**
  * [DMUCHAWKA] Tarcza do dmuchawki (Blasrohr) — osobny plik, świadomie.
@@ -64,3 +65,29 @@ export const BLOWGUN_FACE: TargetFace = {
   // Dziś SessionSetup nie zna dyscypliny, więc tarcza jest widoczna zawsze.
   pickOrder: 7,
 };
+
+/**
+ * Czy ta sesja padła z dmuchawki.
+ *
+ * DLACZEGO to istnieje: dmuchawka NIE MOŻE karmić statystyk łuczniczych.
+ * Handicap liczy się ze wzoru `średnica / dystans` odniesionego do 122 cm
+ * na 70 m — dla tarczy 20 cm na 5 m wychodzi 4,0 przy wzorcu 1,743, czyli
+ * ponad dwa razy „łatwiej". Trzy treningi z rury zafałszowałyby handicap
+ * łuczniczy na miesiąc, bo liczy się go z ostatnich 10 sesji. Ta sama
+ * pułapka dotyczy średniej (dmuchawka punktuje 6-10, więc średnia ~8,5
+ * zawyża rangę) oraz licznika wystrzelonych strzał.
+ *
+ * `bowClass` jest źródłem prawdy — niesie dyscyplinę wybranego zestawu.
+ * Tarcza jest fallbackiem dla sesji bez stempla (wpisy historyczne) oraz
+ * dla sytuacji, gdy ktoś wybierze tarczę dmuchawki przy zestawie łuczniczym;
+ * dziś to możliwe, bo wybór tarczy nie jest jeszcze filtrowany dyscypliną.
+ */
+export function isBlowgunSession(session?: {
+  bowClass?: string | null;
+  targetType?: string | null;
+} | null): boolean {
+  if (!session) return false;
+  if (session.bowClass === BLOWGUN_DISCIPLINE) return true;
+  return session.targetType === BLOWGUN_FACE_ID
+    || BLOWGUN_FACE.aliases.includes(session.targetType ?? '');
+}

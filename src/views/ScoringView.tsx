@@ -17,6 +17,7 @@ import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
+import { isBlowgunSession } from '../config/targets/blowgun';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -489,17 +490,29 @@ export default function ScoringView({ userId, distance = "70m", targetType = "Fu
       const sessionXp  = calculateSessionXp(globalStats.count, globalStats.score);
       const newTotalXp = (ud.xp || 0) + sessionXp + worldXp;
 
+      // [DMUCHAWKA] Sesja z rury NIE karmi statystyk łuczniczych — ani średniej
+      // idącej w rangę, ani handicapu. To inna skala: dmuchawka punktuje 6-10
+      // (średnia ~8,5 zawyżyłaby rangę), a handicap liczy się z `średnica /
+      // dystans` odniesionego do 122 cm na 70 m — dla 20 cm na 5 m wychodzi
+      // 4,0 przy wzorcu 1,743. Handicap bierze ostatnie 10 sesji, więc trzy
+      // treningi z rury psułyby wynik łuczniczy na miesiąc.
+      // XP zostaje NIETKNIĘTE: nagradza to, że w ogóle trenowałeś, a nie
+      // celność w konkretnej skali.
+      const isBlowgun = isBlowgunSession({ bowClass: setupStamp.bowClass, targetType });
+
       const sessionAvg = globalStats.count > 0 ? globalStats.score / globalStats.count : 0;
       const prevLast10: number[] = ud.last10Avgs || [];
-      const newLast10 = [sessionAvg, ...prevLast10].slice(0, 10);
+      const newLast10 = isBlowgun ? prevLast10 : [sessionAvg, ...prevLast10].slice(0, 10);
 
       const rankResult = calculateRank(newTotalXp, newLast10);
 
       // HANDICAP ŁUCZNICZY
       const distanceNum = parseInt(distance) || 18;
-      const sessionHandicap = calculateSessionHandicap(sessionAvg, distanceNum, targetType);
       const prevLast10Handicaps: number[] = ud.last10Handicaps || [];
-      const newLast10Handicaps = [sessionHandicap, ...prevLast10Handicaps].slice(0, 10);
+      const newLast10Handicaps = isBlowgun
+        ? prevLast10Handicaps
+        : [calculateSessionHandicap(sessionAvg, distanceNum, targetType),
+           ...prevLast10Handicaps].slice(0, 10);
       const currentHandicap = calculateCurrentHandicap(newLast10Handicaps);
 
       await updateDoc(userRef, {

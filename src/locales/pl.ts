@@ -725,6 +725,8 @@ export const views = {
       defaultSetupName: "Mój zestaw",
       newSetupName: "Zestaw {{n}}",
       removeSetup: "Usuń zestaw",
+      confirmDelete: "Na pewno usunąć ten zestaw?",
+      confirmDeleteDesc: "Cały wpisany sprzęt tego zestawu przepadnie. Sesje, które go używały, zachowają klasę sprzętu i zostaną w statystykach.",
       discipline: "Dyscyplina",
       note: "Notatka",
       notePh: "Krótka notatka do tej zakładki",

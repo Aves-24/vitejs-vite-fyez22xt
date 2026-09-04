@@ -709,6 +709,8 @@ export const views = {
       defaultSetupName: "Mein Set",
       newSetupName: "Set {{n}}",
       removeSetup: "Set löschen",
+      confirmDelete: "Dieses Set wirklich löschen?",
+      confirmDeleteDesc: "Die gesamte für dieses Set eingetragene Ausrüstung geht verloren. Sitzungen, die es genutzt haben, behalten ihre Ausrüstungsklasse und bleiben in der Statistik.",
       discipline: "Disziplin",
       note: "Notiz",
       notePh: "Kurze Notiz zu diesem Reiter",

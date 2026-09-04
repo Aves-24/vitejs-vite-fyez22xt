@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { BowType } from '../../config/archeryRules';
 import FieldInfo from './FieldInfo';
@@ -47,6 +48,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [subtab, setSubtab] = useState<SetupSubtab>('archer');
+  // Kasowanie zestawu to utrata wpisanego sprzętu — nigdy bez potwierdzenia.
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const limit = setupLimitFor(isPremium);
   const active = setups.find(s => s.id === activeSetupId) ?? setups[0];
@@ -93,6 +96,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     onSetupsChange(next);
     if (activeSetupId === id) onActiveSetupChange(next[0].id);
   };
+
+  const setupToDelete = setups.find(s => s.id === confirmDeleteId) ?? null;
 
   /** Etykieta pola z opcjonalną ikoną (i) — ikona sama zniknie, gdy nie ma opisu. */
   const fieldLabel = (label: string, infoField?: string) => (
@@ -263,7 +268,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             />
             {active.id !== DEFAULT_SETUP_ID && setups.length > 1 && (
               <button
-                onClick={() => removeSetup(active.id)}
+                onClick={() => setConfirmDeleteId(active.id)}
                 aria-label={t('settings.equipment.removeSetup')}
                 className="px-3 rounded-xl bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
               >
@@ -330,6 +335,41 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           />
         </div>
       </div>
+
+      {/* Potwierdzenie kasowania — zestaw niesie wpisany sprzęt, a kasowanie
+          jest nieodwracalne. Nazwa zestawu jest w treści, żeby nie dało się
+          skasować innego niż ten, o którym się myśli. */}
+      {setupToDelete && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl">
+            <div className="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-orange-500 text-2xl">warning</span>
+            </div>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-2">
+              {t('settings.equipment.confirmDelete')}
+            </h2>
+            <p className="text-sm font-black text-[#0a3a2a] mb-1">„{setupToDelete.name}"</p>
+            <p className="text-sm font-bold text-gray-500 mb-6">
+              {t('settings.equipment.confirmDeleteDesc')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px]"
+              >
+                {t('setup.warningCancel')}
+              </button>
+              <button
+                onClick={() => { removeSetup(setupToDelete.id); setConfirmDeleteId(null); }}
+                className="flex-1 py-3.5 bg-red-500 text-white rounded-xl font-black uppercase text-[11px]"
+              >
+                {t('common.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 };

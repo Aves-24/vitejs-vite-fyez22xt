@@ -709,6 +709,8 @@ export const views = {
       defaultSetupName: "My setup",
       newSetupName: "Setup {{n}}",
       removeSetup: "Delete setup",
+      confirmDelete: "Delete this setup?",
+      confirmDeleteDesc: "All equipment entered for this setup will be lost. Sessions that used it keep their equipment class and stay in your statistics.",
       discipline: "Discipline",
       note: "Note",
       notePh: "Short note for this tab",

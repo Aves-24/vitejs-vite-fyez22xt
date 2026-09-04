@@ -716,6 +716,35 @@ export const views = {
     tabArrows: "STRZAŁY",
     tabBow: "ŁUK",
     tabLanguage: "JĘZYK",
+    tabEquipment: "SPRZĘT",
+    equipment: {
+      setups: "Zestawy",
+      addSetup: "Dodaj",
+      proForMore: "PRO = 4 zestawy",
+      setupName: "Nazwa zestawu",
+      defaultSetupName: "Mój zestaw",
+      newSetupName: "Zestaw {{n}}",
+      removeSetup: "Usuń zestaw",
+      discipline: "Dyscyplina",
+      note: "Notatka",
+      notePh: "Krótka notatka do tej zakładki",
+      subtab: {
+        archer: "ŁUCZNIK",
+        bow: "ŁUK",
+        string: "CIĘCIWA",
+        arrows: "STRZAŁY",
+        sight: "CELOWNIK",
+        stabilization: "STABILIZACJA"
+      },
+      string: {
+        model: "Model cięciwy",
+        modelPh: "np. BCY 8125G",
+        strands: "Liczba włókien",
+        strandsPh: "np. 18",
+        nockingPoint: "Punkt nakładania",
+        nockingPointPh: 'np. +6 mm'
+      }
+    },
     themeTitle: "Wygląd",
     themeLight: "Jasny",
     themeDark: "Ciemny",

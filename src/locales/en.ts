@@ -700,6 +700,35 @@ export const views = {
     tabArrows: "ARROWS",
     tabBow: "BOW",
     tabLanguage: "LANGUAGE",
+    tabEquipment: "EQUIPMENT",
+    equipment: {
+      setups: "Setups",
+      addSetup: "Add",
+      proForMore: "PRO = 4 setups",
+      setupName: "Setup name",
+      defaultSetupName: "My setup",
+      newSetupName: "Setup {{n}}",
+      removeSetup: "Delete setup",
+      discipline: "Discipline",
+      note: "Note",
+      notePh: "Short note for this tab",
+      subtab: {
+        archer: "ARCHER",
+        bow: "BOW",
+        string: "STRING",
+        arrows: "ARROWS",
+        sight: "SIGHT",
+        stabilization: "STABILISERS"
+      },
+      string: {
+        model: "String model",
+        modelPh: "e.g. BCY 8125G",
+        strands: "Strand count",
+        strandsPh: "e.g. 18",
+        nockingPoint: "Nocking point",
+        nockingPointPh: 'e.g. +6 mm'
+      }
+    },
     themeTitle: "Appearance",
     themeLight: "Light",
     themeDark: "Dark",

@@ -127,6 +127,32 @@ export type UserDocLike =
 
 const DEFAULT_DISCIPLINE: BowType = 'Klasyczny (Recurve)';
 
+/**
+ * Usuwa klucze o wartości `undefined` — Firestore ich NIE przyjmuje i wywala
+ * cały `setDoc` błędem `invalid-argument`. Puste podsekcje (np. zestaw bez
+ * cięciwy) i wyczyszczone pola liczbowe produkują dokładnie takie klucze,
+ * więc bez tego zapis zestawu pada.
+ */
+export function stripUndefined<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(v => stripUndefined(v)) as unknown as T;
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[k] = stripUndefined(v);
+    }
+    return out as T;
+  }
+  return value;
+}
+
+/** Zestawy gotowe do zapisu w Firestore. Wołać ZAWSZE przed `setDoc`. */
+export function sanitizeSetups(setups: EquipmentSetup[]): EquipmentSetup[] {
+  return stripUndefined(setups);
+}
+
 /** Puste stringi nie trafiają do bazy — inaczej „brak danych" wygląda jak dane. */
 function clean<T extends object>(obj: T): T | undefined {
   const out: Record<string, unknown> = {};
@@ -148,27 +174,26 @@ function clean<T extends object>(obj: T): T | undefined {
  */
 export function buildSetupFromLegacy(
   legacy: LegacyEquipmentFields,
-  name = 'Mój zestaw',
+  // Fallback tylko dla wywołań bez dostępu do i18n — UI zawsze podaje własną.
+  name = 'Setup 1',
 ): EquipmentSetup {
   const discipline = (legacy.bowType as BowType) || DEFAULT_DISCIPLINE;
   const now = new Date().toISOString();
 
-  return {
+  // Cięciwy nie było w aplikacji w ogóle, a zakładka STRZAŁY miała inputy bez
+  // `value`/`onChange` — obu sekcji nie ma czego wypełniać. Klucze o wartości
+  // `undefined` są tu usuwane, bo Firestore odrzuca cały zapis, gdy je zobaczy.
+  return stripUndefined({
     id: DEFAULT_SETUP_ID,
     name,
     discipline,
     archer: clean({ drawLength: legacy.drawLength }),
     bow: clean({ riser: legacy.riser, limbs: legacy.limbs, lbs: legacy.lbs }),
-    // Cięciwy nie było w aplikacji w ogóle — nie ma czego przenosić.
-    string: undefined,
-    // Zakładka STRZAŁY istniała w UI, ale jej inputy nie miały `value`
-    // ani `onChange` (SettingsView) — nic nigdy nie trafiło do bazy.
-    arrows: undefined,
     sight: clean({ model: legacy.sight }),
     stabilization: clean({ description: legacy.stabilizers }),
     createdAt: now,
     updatedAt: now,
-  };
+  });
 }
 
 /**
@@ -186,10 +211,15 @@ export function needsSetupMigration(userData: UserDocLike): boolean {
  */
 export function buildMigrationPayload(
   userData: UserDocLike,
+  /**
+   * Nazwa zestawu #1. Wołający podaje ją przetłumaczoną — inaczej Niemiec
+   * dostaje w interfejsie polskie „Mój zestaw" (złapane na żywo 2026-09-04).
+   */
+  name?: string,
 ): { setups: EquipmentSetup[]; activeSetupId: string } | null {
   if (!needsSetupMigration(userData)) return null;
   return {
-    setups: [buildSetupFromLegacy(userData ?? {})],
+    setups: [buildSetupFromLegacy(userData ?? {}, name)],
     activeSetupId: DEFAULT_SETUP_ID,
   };
 }

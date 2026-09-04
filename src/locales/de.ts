@@ -700,6 +700,35 @@ export const views = {
     tabArrows: "PFEILE",
     tabBow: "BOGEN",
     tabLanguage: "SPRACHE",
+    tabEquipment: "AUSRÜSTUNG",
+    equipment: {
+      setups: "Sets",
+      addSetup: "Hinzufügen",
+      proForMore: "PRO = 4 Sets",
+      setupName: "Set-Name",
+      defaultSetupName: "Mein Set",
+      newSetupName: "Set {{n}}",
+      removeSetup: "Set löschen",
+      discipline: "Disziplin",
+      note: "Notiz",
+      notePh: "Kurze Notiz zu diesem Reiter",
+      subtab: {
+        archer: "SCHÜTZE",
+        bow: "BOGEN",
+        string: "SEHNE",
+        arrows: "PFEILE",
+        sight: "VISIER",
+        stabilization: "STABILISATION"
+      },
+      string: {
+        model: "Sehnenmodell",
+        modelPh: "z. B. BCY 8125G",
+        strands: "Strangzahl",
+        strandsPh: "z. B. 18",
+        nockingPoint: "Nockpunkt",
+        nockingPointPh: 'z. B. +6 mm'
+      }
+    },
     themeTitle: "Darstellung",
     themeLight: "Hell",
     themeDark: "Dunkel",

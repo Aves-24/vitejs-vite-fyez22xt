@@ -14,15 +14,20 @@ import ProfileSection from '../components/settings/ProfileSection';
 import ProSection from '../components/settings/ProSection';
 import CoachSection from '../components/settings/CoachSection';
 import TournamentSection from '../components/settings/TournamentSection';
-import BowSection from '../components/settings/BowSection';
+// [ZESTAWY] BowSection nie jest już importowany — zastąpił go EquipmentSection.
+// Plik zostaje na dysku (jak TargetZoom/FullFaceTarget/ProfileView) — patrz T6.
 import PrivacySection from '../components/settings/PrivacySection';
 import { getThemePreference, setThemePreference, ThemePreference } from '../utils/theme';
 import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIds } from '../config/targetFaces';
+import EquipmentSection from '../components/settings/EquipmentSection';
+import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
 
-type SettingsTab = 'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
+// [ZESTAWY] 'PFEILE' i 'BOGEN' zastąpione jedną zakładką 'SPRZET' z podzakładkami.
+// 'VISIER' zostaje osobno — to nastawy celownika per dystans, nie sprzęt.
+type SettingsTab = 'PROFIL' | 'VISIER' | 'SPRZET' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY' | 'SHARE' | 'ADMIN';
 
 interface SettingsViewProps {
   userId: string;
@@ -79,6 +84,11 @@ export default function SettingsView({
   const [limbs, setLimbs] = useState('');
   const [stabilizers, setStabilizers] = useState('');
   const [sight, setSight] = useState('');
+
+  // [ZESTAWY] Sprzęt należy teraz do zestawu. Stare płaskie pola wyżej zostają
+  // nietknięte — nic ich jeszcze nie kasuje, więc powrót jest bezkosztowy.
+  const [setups, setSetups] = useState<EquipmentSetup[]>([]);
+  const [activeSetupId, setActiveSetupId] = useState<string>(DEFAULT_SETUP_ID);
 
   // Dane Trenera
   const [isCoach, setIsCoach] = useState<boolean>(false);
@@ -179,6 +189,19 @@ export default function SettingsView({
           if (data.stabilizers) setStabilizers(data.stabilizers);
           if (data.sight) setSight(data.sight);
 
+          // [ZESTAWY] Migracja płaskich pól → zestaw #1. Idempotentna: gdy
+          // `setups` już jest, `buildMigrationPayload` zwraca null. Zapisu tu
+          // NIE robimy — nowe zestawy lecą do bazy razem z pierwszym „Zapisz",
+          // żeby samo wejście w Ustawienia nie pisało po dokumencie.
+          const migrated = buildMigrationPayload(data, t('settings.equipment.defaultSetupName'));
+          if (migrated) {
+            setSetups(migrated.setups);
+            setActiveSetupId(migrated.activeSetupId);
+          } else {
+            setSetups(data.setups as EquipmentSetup[]);
+            setActiveSetupId(data.activeSetupId || DEFAULT_SETUP_ID);
+          }
+
           setIsPremium(data.isPremium || false);
           setShowFullName(data.showFullName !== undefined ? data.showFullName : true);
           setShowClub(data.showClub !== undefined ? data.showClub : true);
@@ -247,10 +270,21 @@ export default function SettingsView({
       // [RODO C21] gender/birthDate NIE trafiają do users/{uid} (czytelnego dla
       // relacji trener↔uczeń) — idą do users/{uid}/private/profile. Trener
       // dostaje wyliczoną kategorię wiekową (ageCategory) zamiast daty urodzenia.
+      // [ZESTAWY] Dyscyplina aktywnego zestawu jest źródłem prawdy. Stare,
+      // płaskie `bowType` zapisujemy dalej — czyta je jeszcze rekomendacja
+      // dystansów i kreator profilu. Rozjazd tych dwóch pól byłby gorszy niż
+      // duplikat, więc trzymamy je zgodne aż do sprzątnięcia starego modelu.
+      const activeSetup = setups.find(s => s.id === activeSetupId) ?? setups[0];
+      const effectiveBowType = (activeSetup?.discipline as BowType) ?? bowType;
+
       const payload: any = {
         firstName, lastName, nickname, club, clubName: club, clubCity, placeId, countryCode: cCode,
         country, height, handedness,
-        bowType, lbs, riser, limbs, stabilizers, sight,
+        bowType: effectiveBowType, lbs, riser, limbs, stabilizers, sight,
+        // `sanitizeSetups` jest OBOWIĄZKOWE — wyczyszczone pole liczbowe albo
+        // pusta podsekcja dają klucz `undefined`, a taki payload wywraca
+        // cały setDoc błędem `invalid-argument` (nie tylko zestawy).
+        setups: sanitizeSetups(setups), activeSetupId,
         startYear, competitionLevel, userDistances: finalDistances,
         showFullName, showClub, showRegion,
         // [GOŚĆ] Odświeża expiresAt na dokumencie gościa (no-op dla kont pełnych)
@@ -350,9 +384,8 @@ export default function SettingsView({
       <div className="flex px-2 gap-1 overflow-x-auto hide-scrollbar shrink-0 mb-2">
         {[
           { id: 'PROFIL', label: t('settings.tabProfile') },
+          { id: 'SPRZET', label: t('settings.tabEquipment') },
           { id: 'VISIER', label: t('settings.tabSight') },
-          { id: 'PFEILE', label: t('settings.tabArrows') },
-          { id: 'BOGEN', label: t('settings.tabBow') },
           { id: 'JEZYK', label: t('settings.tabLanguage') }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as SettingsTab)} className={`px-2.5 py-2.5 rounded-xl text-[9px] font-black tracking-widest transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-white border border-gray-100 text-[#0a3a2a] shadow-sm z-10' : 'text-gray-400 bg-transparent'}`}>
@@ -433,26 +466,17 @@ export default function SettingsView({
           </div>
         )}
 
-        {activeTab === 'PFEILE' && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 space-y-3 animate-fade-in-up shadow-sm">
-            {['model', 'spine', 'length'].map(f => (
-              <div key={f}>
-                <label className="text-[10px] font-black text-gray-400 uppercase block mb-1 ml-1">{t(`settings.arrows.${f}`)}</label>
-                <input type="text" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold text-[#333] outline-none" placeholder={t(`settings.arrows.${f}Ph`)} />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tutaj podpinamy nasz nowy komponent BowSection */}
-        {activeTab === 'BOGEN' && (
-          <BowSection 
-            bowType={bowType} setBowType={setBowType} 
-            lbs={lbs} setLbs={setLbs}
-            riser={riser} setRiser={setRiser}
-            limbs={limbs} setLimbs={setLimbs}
-            stabilizers={stabilizers} setStabilizers={setStabilizers}
-            sight={sight} setSight={setSight}
+        {/* [ZESTAWY] SPRZĘT zastępuje dawne STRZAŁY i ŁUK.
+            Dawna zakładka STRZAŁY miała inputy BEZ `value` i `onChange` —
+            nic z niej nigdy nie trafiało do bazy. Teraz strzały realnie się
+            zapisują, jako podzakładka zestawu. */}
+        {activeTab === 'SPRZET' && (
+          <EquipmentSection
+            setups={setups}
+            activeSetupId={activeSetupId}
+            isPremium={isPremium}
+            onSetupsChange={setSetups}
+            onActiveSetupChange={setActiveSetupId}
           />
         )}
 
@@ -514,7 +538,7 @@ export default function SettingsView({
         )}
       </div>
 
-      {['PROFIL', 'VISIER', 'PFEILE', 'BOGEN', 'JEZYK'].includes(activeTab) && (
+      {['PROFIL', 'VISIER', 'SPRZET', 'JEZYK'].includes(activeTab) && (
         <div className="px-4 py-3 bg-white/50 backdrop-blur-sm border-t border-gray-100 shrink-0">
           <button onClick={() => saveAllSettings()} disabled={isSaving} className="w-full py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all flex justify-center items-center gap-1.5 bg-[#0a3a2a] text-white shadow-lg active:scale-95">
             {isSaving ? <span className="material-symbols-outlined animate-spin text-sm">sync</span> : <span className="material-symbols-outlined text-sm">verified_user</span>} {t('settings.saveAll')}

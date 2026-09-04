@@ -1075,8 +1075,23 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       `calculateSpotScore` już liczy 6–10 z X, a X w całej aplikacji jest wart
       10 punktów i osobno zliczany jako X.
 
-      ⬜ **Zostaje 1:** tarcza jest widoczna w wyborze ZAWSZE, bo `SessionSetup`
-      nie zna dyscypliny zestawu. Powinna pokazywać się tylko dla dmuchawki.
+      ✅ **Zostaje 1 — ZAMKNIĘTE 2026-09-04.** Lista tarcz jest zawężana
+      dyscypliną aktywnego zestawu (`selectableTargetIdsFor` w `targetFaces.ts`),
+      w SessionSetup i w Ustawieniach. Sprawdzone na żywo w obie strony:
+      zestaw dmuchawki → jedyna tarcza „Blowgun 20cm"; zestaw recurve →
+      sześć tarcz łuczniczych, dmuchawki nie widać. Tarcza zapisana wcześniej
+      przy dystansie, a niepasująca do dyscypliny, jest podmieniana na pierwszą
+      dozwoloną, żeby trening nie ruszył z tarczą spoza listy.
+
+      **Przy okazji naprawiony cichy błąd w drugą stronę.** `isBlowgunSession`
+      traktowało tarczę jako drugi warunek OR, więc łucznik, który wybrał
+      „Blowgun 20cm", tracił sesję z handicapu i z rangi — bez żadnego
+      komunikatu. Było to świadome zabezpieczenie na czas, gdy lista tarcz nie
+      była filtrowana; teraz jest, więc `bowClass` ROZSTRZYGA, gdy jest obecny,
+      a tarcza została fallbackiem wyłącznie dla wpisów historycznych (te
+      świadomie nie mają `bowClass`). Dotyczyło to też trybu Battle, gdzie
+      `targetType` przychodzi z dokumentu bitwy, czyli od DRUGIEGO gracza —
+      cudzy wybór tarczy nie może decydować o mojej randze.
 
       ✅ **Zostaje 2 — ODBLOKOWANE 2026-09-04 przez C25.** Dystansów 5/7/10 m
       nie było w aplikacji, więc treningu z rury nie dało się zapisać. Po C25

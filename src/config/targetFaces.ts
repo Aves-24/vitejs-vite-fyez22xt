@@ -20,6 +20,9 @@
 // [DMUCHAWKA] Nowe rodziny tarcz mieszkają w `./targets/*` i są tu tylko
 // rejestrowane — patrz komentarz przy `BLOWGUN_FACE` w `TARGET_FACES`.
 import { BLOWGUN_FACE } from './targets/blowgun';
+// `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
+// ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
+import { isBlowgun } from './equipmentSetups';
 
 export type TargetLayout =
   | 'single'       // jedna tarcza koncentryczna, viewBox 300x300
@@ -184,4 +187,24 @@ export function selectableTargetIds(): string[] {
     .filter(f => f.scorable && f.pickOrder !== undefined)
     .sort((a, b) => (a.pickOrder as number) - (b.pickOrder as number))
     .map(f => f.id);
+}
+
+/**
+ * [DMUCHAWKA] Tarcze pasujące do dyscypliny aktywnego zestawu.
+ *
+ * Do 2026-09-04 lista była wspólna, co psuło się w OBIE strony:
+ *  - łucznik mógł wybrać „Blowgun 20cm" i jego sesja po cichu wypadała
+ *    z handicapu oraz z rangi (fallback po tarczy w `isBlowgunSession`),
+ *  - dmuchawkarz widział siedem tarcz łuczniczych, z których żadnej
+ *    nie używa.
+ *
+ * Gdy dyscyplina jest nieznana (sesja bez zestawu, konto sprzed zestawów),
+ * pokazujemy wszystko — lepiej dać za dużo niż zablokować komuś wybór.
+ */
+export function selectableTargetIdsFor(discipline?: string | null): string[] {
+  const ids = selectableTargetIds();
+  if (!discipline) return ids;
+  return isBlowgun(discipline)
+    ? ids.filter(id => id === BLOWGUN_FACE.id)
+    : ids.filter(id => id !== BLOWGUN_FACE.id);
 }

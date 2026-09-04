@@ -27,7 +27,7 @@ import {
   countCustomDistances, customDistanceLimitFor,
   DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
 } from '../config/distances';
-import { selectableTargetIds } from '../config/targetFaces';
+import { selectableTargetIdsFor } from '../config/targetFaces';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
 
@@ -141,6 +141,7 @@ export default function SettingsView({
   // więc klient nie podniesie go sobie, żeby dodać więcej wpisów.
   const customLimit = customDistanceLimitFor(isPremium);
   const customUsed = countCustomDistances(distances as UserDistance[]);
+
   const [wizardStep, setWizardStep] = useState<number>(0); 
   const [showFullName, setShowFullName] = useState<boolean>(true);
   const [showClub, setShowClub] = useState<boolean>(true);
@@ -158,6 +159,12 @@ export default function SettingsView({
   // nietknięte — nic ich jeszcze nie kasuje, więc powrót jest bezkosztowy.
   const [setups, setSetups] = useState<EquipmentSetup[]>([]);
   const [activeSetupId, setActiveSetupId] = useState<string>(DEFAULT_SETUP_ID);
+
+  // [DMUCHAWKA] Tarcze do wyboru przy dystansie — zawężone dyscypliną
+  // aktywnego zestawu, tak samo jak przy starcie treningu.
+  const targetOptions = selectableTargetIdsFor(
+    (setups.find(s => s.id === activeSetupId) ?? setups[0])?.discipline ?? bowType
+  );
 
   // Dane Trenera
   const [isCoach, setIsCoach] = useState<boolean>(false);
@@ -531,7 +538,11 @@ export default function SettingsView({
                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.target')}</span>
                      <select value={d.targetType || '122cm'} onChange={(e) => onUpdateTargetType(i, e.target.value)} className="bg-gray-50 text-[10px] font-black text-[#0a3a2a] py-1.5 px-2 rounded-md outline-none border-none">
-                       {selectableTargetIds().map(id => <option key={id} value={id}>{id}</option>)}
+                       {/* [DMUCHAWKA] Lista zawężona dyscypliną aktywnego zestawu.
+                           Zapisana wcześniej tarcza spoza listy zostaje dopisana,
+                           żeby select nie pokazał pustki i nie podmienił jej po cichu. */}
+                       {Array.from(new Set([...targetOptions, d.targetType || '122cm']))
+                         .map(id => <option key={id} value={id}>{id}</option>)}
                      </select>
                    </div>
                    {/* [C25] Opis wolno zmieniać kiedykolwiek — tożsamością jest `id`,

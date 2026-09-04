@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp } from '../utils/setupStamp';
-import { selectableTargetIds } from '../config/targetFaces';
+import { selectableTargetIdsFor } from '../config/targetFaces';
+import { resolveActiveSetup } from '../config/equipmentSetups';
 import { UserDistance, displayDistance } from '../config/distances';
 
 interface SessionSetupProps {
@@ -37,6 +38,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  // [DMUCHAWKA] Dyscyplina aktywnego zestawu — decyduje, które tarcze w ogóle
+  // pokazujemy. Bez tego łucznik mógł wybrać tarczę dmuchawki i jego sesja
+  // po cichu wypadała z handicapu i rangi.
+  const [discipline, setDiscipline] = useState<string | null>(null);
   
   const [showSightEditor, setShowSightEditor] = useState(false);
   const [editExt, setEditExt] = useState('');
@@ -96,7 +101,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   // [KATALOG TARCZ] Lista pochodzi z config/targetFaces — nie da się już
   // wybrać tarczy, której aplikacja nie potrafi narysować ani policzyć.
-  const targetOptions = selectableTargetIds();
+  const targetOptions = useMemo(() => selectableTargetIdsFor(discipline), [discipline]);
 
   useEffect(() => {
     if (hasActiveSession) {
@@ -118,6 +123,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           }
           if (ADMIN_IDS.includes(userId)) userIsPro = true;
           setIsPremium(userIsPro);
+          // Zestawy są źródłem prawdy; stare, płaskie `bowType` to fallback
+          // dla kont sprzed zestawów — dokładnie jak w `getSetupStamp`.
+          setDiscipline(resolveActiveSetup(data)?.discipline ?? data.bowType ?? null);
         }
       } catch (e) { console.error(e); }
     };
@@ -154,6 +162,16 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setSightHeight(profileDist.sightHeight || '');
     setSightSide(profileDist.sightSide || '');
   };
+
+  // [DMUCHAWKA] Tarcza zapisana przy dystansie może nie pasować do dyscypliny
+  // aktywnego zestawu — np. dystans pamięta „122cm", a user przesiadł się na
+  // rurę. Wtedy podmieniamy na pierwszą dozwoloną, żeby sesja nie ruszyła
+  // z tarczą, której nie ma nawet na liście wyboru.
+  useEffect(() => {
+    if (targetOptions.length > 0 && selectedTarget && !targetOptions.includes(selectedTarget)) {
+      setSelectedTarget(targetOptions[0]);
+    }
+  }, [targetOptions, selectedTarget]);
 
   const saveLastSetup = () => {
     localStorage.setItem(`grotX_lastSetup_${userId}`, JSON.stringify({ distanceId: selectedId, distance: selectedDistance, targetType: selectedTarget }));

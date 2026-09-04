@@ -61,8 +61,8 @@ export const BLOWGUN_FACE: TargetFace = {
   aliases: ['Blasrohr 20cm', 'Dmuchawka 20cm'],
   scorable: true,
   // Na końcu listy wyboru — to inna dyscyplina, nie kolejna tarcza łucznicza.
-  // TODO: pokazywać ją WYŁĄCZNIE gdy dyscyplina zestawu = dmuchawka.
-  // Dziś SessionSetup nie zna dyscypliny, więc tarcza jest widoczna zawsze.
+  // Od 2026-09-04 pokazywana WYŁĄCZNIE przy dyscyplinie „dmuchawka"
+  // (`selectableTargetIdsFor` w targetFaces.ts).
   pickOrder: 7,
 };
 
@@ -77,17 +77,25 @@ export const BLOWGUN_FACE: TargetFace = {
  * pułapka dotyczy średniej (dmuchawka punktuje 6-10, więc średnia ~8,5
  * zawyża rangę) oraz licznika wystrzelonych strzał.
  *
- * `bowClass` jest źródłem prawdy — niesie dyscyplinę wybranego zestawu.
- * Tarcza jest fallbackiem dla sesji bez stempla (wpisy historyczne) oraz
- * dla sytuacji, gdy ktoś wybierze tarczę dmuchawki przy zestawie łuczniczym;
- * dziś to możliwe, bo wybór tarczy nie jest jeszcze filtrowany dyscypliną.
+ * `bowClass` ROZSTRZYGA, gdy jest obecny — niesie dyscyplinę wybranego zestawu.
+ * Tarcza jest fallbackiem WYŁĄCZNIE dla sesji bez stempla, czyli wpisów
+ * historycznych (świadomie zapisywanych bez `bowClass`, patrz `setupStamp.ts`).
+ *
+ * ZMIANA 2026-09-04: wcześniej tarcza działała jako drugi warunek OR, więc
+ * łucznik, który wybrał „Blowgun 20cm", tracił sesję z handicapu i rangi —
+ * po cichu, bez żadnego komunikatu. Był to świadomy bezpiecznik na czas, gdy
+ * lista tarcz nie była filtrowana dyscypliną. Teraz jest
+ * (`selectableTargetIdsFor`), więc bezpiecznik przestał być potrzebny i zaczął
+ * szkodzić. Dotyczyło to też trybu Battle, gdzie `targetType` przychodzi
+ * z dokumentu bitwy, czyli od DRUGIEGO gracza — cudzy wybór tarczy nie może
+ * decydować o tym, czy mój trening liczy się do mojej rangi.
  */
 export function isBlowgunSession(session?: {
   bowClass?: string | null;
   targetType?: string | null;
 } | null): boolean {
   if (!session) return false;
-  if (session.bowClass === BLOWGUN_DISCIPLINE) return true;
+  if (session.bowClass) return session.bowClass === BLOWGUN_DISCIPLINE;
   return session.targetType === BLOWGUN_FACE_ID
     || BLOWGUN_FACE.aliases.includes(session.targetType ?? '');
 }

@@ -648,6 +648,33 @@ konta testowego, otwarcie /legal/datenschutz.html.
       Przy C16 (upgrade stacku) NIE wracać do pluginu — generator działa.
       ⬜ POZOSTAJE: `icon-512.png` = rozmyty upscale z 192px — PODMIENIĆ
       na oryginalną grafikę 512×512 przed publikacją w sklepach!
+- [ ] **C24. Zmiana domeny Vercel na `grotx.vercel.app`** (ustalone 2026-09-04,
+      odlozone na pozniej). Dzis produkcja stoi na `vitejs-vite-fyez22xt.vercel.app`
+      — automatycznej nazwie ze szablonu Vite. Firebase juz nazywa sie `grotx-fb8f8`,
+      wiec Vercel jest jedynym miejscem z ta nazwa.
+
+      **W kodzie 3 linijki** — domena jest zaszyta wylacznie w `SettingsView.tsx`
+      (link udostepniania + QR, ok. linie 497/506/511). CSP w `vercel.json` jej
+      NIE zawiera, uzywa `'self'` — tam zero zmian.
+
+      **KOLEJNOSC JEST KRYTYCZNA** — najpierw dodac nowa domene w panelach,
+      dopiero potem zmieniac nazwe w Vercelu. Odwrotnie = okno, w ktorym
+      produkcja nie dziala:
+      1. Firebase Console -> Authentication -> Settings -> Authorized domains:
+         dodac `grotx.vercel.app`. Pominiete = logowanie Google pada
+         z `auth/unauthorized-domain` (popup uzywany w AuthView, GuestBanner,
+         PrivacySection).
+      2. reCAPTCHA admin, klucz `6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp`:
+         dodac domene do dozwolonych. Pominiete = App Check nie wyda tokenu,
+         Firestore rzuca 403, APKA MARTWA. Ten sam mechanizm blokowal
+         logowanie na localhoscie (patrz A1).
+      3. Vercel -> Settings -> General -> Project Name.
+
+      **Do sprawdzenia zanim ruszymy:** czy `grotx.vercel.app` jest w ogole
+      wolne (globalna przestrzen nazw calego Vercela). Stara domena po zmianie
+      przestaje dzialac — kto zeskanowal QR z Ustawien, trafi w pustke.
+      Nazwy repo na GitHubie zmieniac NIE trzeba, jest niezalezna.
+
 - [ ] **C12. Wrapper natywny** — decyzja: Capacitor (iOS+Android z jednego kodu,
       zalecane) vs TWA (tylko Android). App Store NIE przyjmuje czystych PWA.
 - [x] **C13. Data Safety / Privacy Nutrition Labels** ✅ — `LEGAL_DATA_INVENTORY.md`

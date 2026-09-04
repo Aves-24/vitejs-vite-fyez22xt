@@ -60,6 +60,7 @@ export const BLOWGUN_FACE: TargetFace = {
   rings: BLOWGUN_RINGS,
   aliases: ['Blasrohr 20cm', 'Dmuchawka 20cm'],
   scorable: true,
+  discipline: 'blowgun',
   // Na końcu listy wyboru — to inna dyscyplina, nie kolejna tarcza łucznicza.
   // Od 2026-09-04 pokazywana WYŁĄCZNIE przy dyscyplinie „dmuchawka"
   // (`selectableTargetIdsFor` w targetFaces.ts).

@@ -83,6 +83,15 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     } 
     let val = "M"; const sId = "";
     const d = Math.hypot(x - 150, y - 150);
+
+    // [STREFY] Tarcze o nierównej punktacji (dmuchawkowa 3-5-7, w przyszłości
+    // IFAA 5-4-3) nie dają się wyliczyć wzorem `10 - floor(d / krok)` — mają
+    // jawną listę stref. Pierwsza strefa, w którą trafiamy, wygrywa.
+    if (face.zones) {
+      const zone = face.zones.find(z => d <= z.r);
+      return { val: zone ? String(zone.value) : "M", sId: "" };
+    }
+
     const ring = face.scoringRingStep;
     const maxRadius = ring * 10;
     if (d <= maxRadius) {

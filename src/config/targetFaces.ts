@@ -20,6 +20,7 @@
 // [DMUCHAWKA] Nowe rodziny tarcz mieszkają w `./targets/*` i są tu tylko
 // rejestrowane — patrz komentarz przy `BLOWGUN_FACE` w `TARGET_FACES`.
 import { BLOWGUN_FACE } from './targets/blowgun';
+import { BLOWGUN357_FACE } from './targets/blowgun357';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
 import { isBlowgun } from './equipmentSetups';
@@ -57,6 +58,24 @@ export interface TargetFace {
   minScoringRing: number;
   /** Kształt do narysowania (layout 'single'). */
   rings: readonly TargetRing[];
+  /**
+   * Jawny opis stref punktowych — od środka na zewnątrz, `r` to promień
+   * ZEWNĘTRZNY strefy w viewBoxie 300x300.
+   *
+   * Potrzebne dla tarcz, których punktacji NIE da się wyliczyć wzorem
+   * `10 - floor(d / krok)`: dmuchawkowa 3-5-7 ma trzy strefy o nierównych
+   * wartościach, a tarcze IFAA Field (T1) mają 5-4-3. Gdy pole jest obecne,
+   * `TargetInput` liczy z niego i ignoruje `scoringRingStep`/`minScoringRing`.
+   */
+  zones?: readonly { r: number; value: number }[];
+  /**
+   * Dyscyplina, do której należy tarcza. Brak = łucznictwo.
+   *
+   * Zastąpiło porównanie po `id` — filtr listy tarcz znał wcześniej DOKŁADNIE
+   * JEDNĄ tarczę dmuchawki, więc druga pokazałaby się łucznikowi zamiast
+   * dmuchawkarzowi. Teraz dodanie kolejnej to wpis z tym tagiem i nic więcej.
+   */
+  discipline?: 'blowgun';
   /** Stare stringi z Firestore, które muszą dalej działać. */
   aliases: readonly string[];
   /** Czy w ogóle się na nią strzela (trening techniczny — nie). */
@@ -124,6 +143,9 @@ export const TARGET_FACES: readonly TargetFace[] = [
   // [DMUCHAWKA] Definicja mieszka w osobnym pliku — tutaj tylko rejestracja.
   // Nowa tarcza nie dotyka geometrii tarcz już przestrzelanych.
   BLOWGUN_FACE,
+  // [DMUCHAWKA] Druga rodzina tarcz do rury (3-5-7). Nie ma jeszcze pickOrder,
+  // wiec jest obslugiwana, ale nieproponowana — czeka na potwierdzenie wymiarow.
+  BLOWGUN357_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */
@@ -202,9 +224,11 @@ export function selectableTargetIds(): string[] {
  * pokazujemy wszystko — lepiej dać za dużo niż zablokować komuś wybór.
  */
 export function selectableTargetIdsFor(discipline?: string | null): string[] {
-  const ids = selectableTargetIds();
-  if (!discipline) return ids;
-  return isBlowgun(discipline)
-    ? ids.filter(id => id === BLOWGUN_FACE.id)
-    : ids.filter(id => id !== BLOWGUN_FACE.id);
+  if (!discipline) return selectableTargetIds();
+  const wantBlowgun = isBlowgun(discipline);
+  return TARGET_FACES
+    .filter(f => f.scorable && f.pickOrder !== undefined)
+    .filter(f => (f.discipline === 'blowgun') === wantBlowgun)
+    .sort((a, b) => (a.pickOrder as number) - (b.pickOrder as number))
+    .map(f => f.id);
 }

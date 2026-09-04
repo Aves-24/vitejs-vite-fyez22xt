@@ -1162,6 +1162,38 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       (nieimportowany, zawiera martwe porównanie `'WA 80cm (6-Ring)'`),
       `src/views/ProfileView.tsx` (nieimportowany; zawiera jedyne pole
       „długość naciągu" w aplikacji — przenieść, nie kasować bezmyślnie).
+- [~] **T7. Druga tarcza dmuchawkowa 3-5-7 — WPISANA, ale NIEAKTYWNA
+      (2026-09-04).** User znalazł tarczę o trzech strefach: żółty środek 7,
+      czerwona obręcz 5, niebieski pierścień 3. Plik:
+      `src/config/targets/blowgun357.ts`.
+
+      **Model tarczy trzeba było rozszerzyć.** To pierwsza tarcza, której
+      punktacji NIE da się wyliczyć wzorem `10 - floor(d / krok)`. Doszło pole
+      `zones` w `TargetFace` (jawna lista stref od środka na zewnątrz) i gałąź
+      w `TargetInput.calculateScore`. **To samo rozszerzenie odblokowuje T1** —
+      tarcze IFAA Field mają dokładnie taki kształt problemu, punktację 5-4-3
+      i trzy strefy o proporcjach 0,6 / 0,2.
+
+      Przy okazji filtr dyscypliny przestał porównywać po `id` jednej tarczy,
+      a zaczął czytać tag `discipline: 'blowgun'` z katalogu — bez tego druga
+      tarcza dmuchawki pokazałaby się łucznikowi zamiast dmuchawkarzowi.
+
+      **POTWIERDZONE przez usera:** średnica 20 cm, strefy 7 / 5 / 3.
+
+      🔴 **NIEPOTWIERDZONE — dlatego tarcza NIE MA `pickOrder` i nie pojawia
+      się w wyborze:**
+      - proporcje stref. Pomiar ze zdjęcia dał ≈ 0,58 i 0,22 średnicy, więc
+        wpisane jest 0,6 i 0,2 (czyli r = 90 i r = 30 w viewBoxie 300) — to
+        akurat proporcje IFAA, ale to nadal MÓJ POMIAR Z OBRAZKA, nie dane
+      - czy w środku jest X do rozstrzygania remisów
+      - czy to jedna tarcza na kartce, czy trzy spoty jak przy 6-10
+      - czy user na takiej strzela i czy ma ZASTĄPIĆ tarczę 6-10, czy stanąć
+        obok niej (katalog uniesie obie)
+      - źródło (regulamin? sklep? klub?)
+
+      **Włączenie = dopisanie `pickOrder` w tym jednym pliku.** Gdyby proporcje
+      okazały się inne, zmieniają się `zones` i `rings` w tym samym pliku i NIC
+      poza nim.
 
 **Naprawione przy okazji katalogu:** 6-Ring faktycznie renderuje się i punktuje
 jako 6-ring; 6-Ring nie wyświetla się już jako pionowy 3-spot; handicap liczy

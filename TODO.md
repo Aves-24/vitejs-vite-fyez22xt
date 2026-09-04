@@ -696,7 +696,15 @@ konta testowego, otwarcie /legal/datenschutz.html.
       źródło prawdy (jak `config/targetFaces.ts` dla tarcz), dopiero potem
       dokładanie własnych wpisów.
 
+      **Pierwszy prawdziwy przypadek to DMUCHAWKA (user, 2026-09-04):**
+      strzela się na **5, 7 i 10 m** — żadnego z nich nie ma dziś w aplikacji,
+      bo lista zaczyna się od 18 m. Dopóki tego nie ma, tarcza dmuchawki jest
+      bezużyteczna: nie da się zapisać sesji na właściwym dystansie.
+      To przesuwa C25 z „miłego dodatku" na blokera dokończenia T2.
+
       **Do przemyślenia przed kodowaniem:**
+      - dystanse muszą być per DYSCYPLINA, nie jedna wspólna lista — łucznik
+        nie chce widzieć 5 m, a dmuchawkarz 90 m
       - jednostka: metry czy też jardy (IFAA/tereny liczą w jardach — patrz T1)
       - sortowanie i deduplikacja, żeby user nie zrobił sobie dwóch „30m"
       - co z rekomendacjami `getRecommendation` i automatycznym doborem
@@ -937,8 +945,16 @@ geometria, aliasy starych stringów). Dodanie tarczy = jeden wpis w `TARGET_FACE
       `calculateSpotScore` już liczy 6–10 z X, a X w całej aplikacji jest wart
       10 punktów i osobno zliczany jako X.
 
-      ⬜ **Zostaje:** tarcza jest widoczna w wyborze ZAWSZE, bo `SessionSetup`
+      ⬜ **Zostaje 1:** tarcza jest widoczna w wyborze ZAWSZE, bo `SessionSetup`
       nie zna dyscypliny zestawu. Powinna pokazywać się tylko dla dmuchawki.
+
+      🔴 **Zostaje 2 — BLOKER UŻYTECZNOŚCI (user, 2026-09-04):** z dmuchawki
+      strzela się na **5, 7 i 10 m**, a żaden z tych dystansów NIE ISTNIEJE
+      w aplikacji — lista zaczyna się od 18 m. Czyli tarcza jest wdrożona,
+      ale **nie da się zapisać treningu z dmuchawki**, bo nie ma na czym.
+      Etap 4 jest realnie zrobiony w połowie.
+      Naprawa wchodzi razem z **C25** (jedno źródło prawdy o dystansach) —
+      dmuchawka jest pierwszym prawdziwym przypadkiem, który tego wymaga.
 - [ ] **T3. 3D — NIE jest tarczą.** Strefy killa na figurze zwierzęcia,
       punktacja zależna od trafionej części korpusu, runda to przejście przez
       ~20 różnych figur. Wymaga osobnego trybu wprowadzania (wybór strefy albo

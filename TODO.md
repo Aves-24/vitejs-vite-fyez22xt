@@ -892,6 +892,14 @@ konta testowego, otwarcie /legal/datenschutz.html.
 Zamknięte punkty 1 i 2 z listy „następnym razem" (CI zielone, ścieżka PRO
 działa) plus **dystanse per dyscyplina** — pierwsza pozycja z ogona po C25.
 
+**Gdzie to leży:** gałąź `chore/distances-per-discipline` (`492560b`),
+**NIE na `main`** — świadomie, żeby produkcja na Vercelu nie ruszyła przed
+deployem reguł. Prefiks `chore/` dlatego, że tylko `main` i `chore/**`
+odpalają CI z pusha (`.github/workflows/ci.yml`), a bez `gh auth` nie ma
+jak otworzyć PR-a z linii poleceń. CI na tej gałęzi: run `34221920705`,
+`lint-build` i `rules-tests` — oba zielone, czyli nowe sufity 15/28
+i asercja na backfill 12 → 15 przeszły na emulatorze.
+
 ### 🔴 KOLEJNOŚĆ WDROŻENIA JEST KRYTYCZNA
 
 **Najpierw reguły, dopiero potem aplikacja.** Lista standardowa urosła

@@ -412,6 +412,7 @@ export const views = {
     arenaInvite: "You've been invited to a battle at",
     acceptBtn: "Accept & Compete",
     selectDistance: "Select Distance",
+    noDistances: "No distances — enable them in Settings",
     sightTitle: "Sight Settings",
     sightPro: "Sight PRO",
     sightExt: "Extension",

@@ -724,8 +724,11 @@ konta testowego, otwarcie /legal/datenschutz.html.
 
       ### Co ZOSTAŁO z C25
 
-      - [ ] dystanse **per dyscyplina** — łucznik nadal widzi 5 m, dmuchawkarz 90 m.
-            Etykiety to łagodzą („10m Blasrohr"), ale nie zastępują.
+      - [x] **dystanse per dyscyplina — ZROBIONE 2026-09-08.** Dmuchawka ma
+            własną listę standardową (5/7/10 m, `BLOWGUN_MASTER_DISTANCES`),
+            a wpisy niosą tag `discipline`. Filtr `distancesFor` zawęża listę
+            dyscypliną aktywnego zestawu — bliźniak `selectableTargetIdsFor`.
+            Szczegóły i kolejność wdrożenia: STAN NA 2026-09-08.
       - [ ] jednostki: **jardy** (IFAA/tereny — patrz T1). Dziś tylko metry.
       - [ ] `HistoricalStartForm` i `TournamentScoreInput` proponują wyłącznie
             listę standardową — startu na własnym dystansie nie da się dopisać.
@@ -884,7 +887,71 @@ konta testowego, otwarcie /legal/datenschutz.html.
       b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
          wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
 
-## STAN NA 2026-09-04 — czytaj to najpierw
+## STAN NA 2026-09-08 — czytaj to najpierw
+
+Zamknięte punkty 1 i 2 z listy „następnym razem" (CI zielone, ścieżka PRO
+działa) plus **dystanse per dyscyplina** — pierwsza pozycja z ogona po C25.
+
+### 🔴 KOLEJNOŚĆ WDROŻENIA JEST KRYTYCZNA
+
+**Najpierw reguły, dopiero potem aplikacja.** Lista standardowa urosła
+z 10 do 13 wpisów, więc sufit w `firestore.rules` idzie z 12/25 na 15/28.
+Aplikacja wypuszczona przed regułami dostanie `permission-denied` przy
+backfillu (`ensureMasterDistances` w `App.tsx`) i dystanse dmuchawkowe
+nie utrwalą się w bazie — będą znikać po każdym odświeżeniu.
+
+```
+npx firebase deploy --only firestore:rules
+```
+
+### Jak to działa
+
+| element | co robi |
+|---|---|
+| `BLOWGUN_MASTER_DISTANCES` | 5/7/10 m z pudełka; 10 m aktywne, tarcza `Blowgun 20cm` |
+| `UserDistance.discipline` | tag wpisu, brak = łucznictwo (jak w `TargetFace.discipline`) |
+| `distancesFor` / `matchesDiscipline` | filtr widoku; nieznana dyscyplina = pokazujemy wszystko |
+| `buildCustomDistanceEntry` | własny dystans dziedziczy dyscyplinę aktywnego zestawu |
+| `ensureMasterDistances` | jednorazowy backfill 10 → 13 dla kont sprzed zmiany |
+| kontrola duplikatów | liczona w obrębie dyscypliny — inaczej łucznik nie dodałby gołego „10m" |
+
+Zawężone: start treningu (`SessionSetup`), zakładka CELOWNIK (`SettingsView`)
+i nastawy ucznia u trenera (`StudentProfileView`).
+
+**Dlaczego dmuchawka NIE przechodzi przez `make` w `rebuildMasterList`:**
+tamte callbacki są łucznicze — `SmartSeasonUpdater` ma regułę „poniżej 50 m
+i compound → 80cm (6-Ring)", która dałaby 5 m z rury tarczę łuczniczą.
+
+**Tag jest TYLKO filtrem widoku.** Dyscyplinę sesji nadal rozstrzyga
+`bowClass` ze stempla zestawu. Gdyby decydował o niej dystans, zmiana tagu
+przepisywałaby historię wstecz.
+
+### 🔜 Następnym razem
+
+1. **Sprawdzić na żywo** — całość jest za logowaniem, więc niesprawdzone
+   klikaniem. Do obejrzenia: zestaw dmuchawki pokazuje 5/7/10 m i nic więcej,
+   zestaw recurve pokazuje 18–90 m bez rury, przełączenie zestawu przestawia
+   wybór na pierwszy dozwolony dystans, a ptaszki i tarcze w CELOWNIKU trafiają
+   po filtrowaniu we właściwe wiersze (adresowane indeksem — patrz niżej).
+2. **Rozważyć lane testów jednostkowych dla `src/config/`.** Logikę katalogu
+   dystansów sprawdziłem 12 asercjami w `node --test` na bundlu z esbuilda,
+   ale harness poszedł do kosza — esbuild jest tylko przechodnią zależnością
+   Vite, więc stały test wymaga wpisania go w `devDependencies`. Reguły mają
+   swój lane, `src/config/` nie ma żadnego.
+3. Reszta ogona po C25: jardy, własne dystanse w formularzach zawodów
+   (`HistoricalStartForm`, `TournamentScoreInput`).
+4. Wymiary tarczy 3-5-7 (T7) — nadal czekają na dane.
+
+### ⚠️ Pułapka, na którą uważać przy kolejnych zmianach w CELOWNIKU
+
+`onToggleDistance` i `onUpdateTargetType` adresują wpis **indeksem w pełnej
+liście**, a lista jest teraz renderowana po przefiltrowanej. Dlatego
+`visibleDistances` niesie oryginalny indeks (`{ d, i }`). Kto wróci do
+`distances.map((d, i) => ...)`, przestawi ptaszki przy losowych dystansach.
+
+---
+
+## STAN NA 2026-09-04
 
 Cała sesja poszła na **C25 (własne dystanse)** i wynikające z niej domknięcia
 dmuchawki. Wszystko jest **na `main` i wypchnięte**, gałąź robocza skasowana.
@@ -913,11 +980,17 @@ w obie strony (dmuchawka ↔ recurve).
 
 ### 🔜 Następnym razem, w kolejności
 
-1. **Sprawdzić CI na `bcf4b3f`** — testy reguł nie były uruchomione lokalnie,
-   bo emulator nie wstaje na tej maszynie (potwierdzone: to NIE brak Javy,
-   tylko `SocketException: Invalid argument: connect` na pipie loopbacku).
-2. **Sprawdzić ścieżkę PRO na własnym koncie** — 15 własnych dystansów tak,
-   16. nie. Z klienta się nie da, bo `isPremium` jest polem chronionym.
+1. ~~**Sprawdzić CI na `bcf4b3f`**~~ ✅ **ZIELONE — sprawdzone 2026-09-08.**
+   Run `33872904597`: joby `rules-tests` (`npm run test:rules`) i `lint-build`
+   oba `success`, czyli 8 asercji C25 z `tests/rules/firestore.rules.test.mjs`
+   naprawdę wykonało się na emulatorze w Actions. Wszystkie 7 commitów sesji
+   C25 ma zielone CI. Emulator nadal NIE wstaje lokalnie na tej maszynie
+   (`SocketException: Invalid argument: connect` na pipie loopbacku — to NIE
+   brak Javy), więc CI zostaje jedynym miejscem weryfikacji reguł.
+   Repo jest publiczne, więc status czyta się bez `gh auth`:
+   `curl -s "https://api.github.com/repos/Aves-24/vitejs-vite-fyez22xt/actions/runs?per_page=10"`
+2. ~~**Sprawdzić ścieżkę PRO na własnym koncie**~~ ✅ **DZIAŁA — potwierdzone
+   przez usera 2026-09-08.** 15 własnych dystansów przechodzi, 16. nie.
 3. **Podać wymiary tarczy 3-5-7** (T7) — bez nich zostaje nieaktywna.
 4. Reszta otwartych rzeczy z C25: dystanse per dyscyplina, jardy, własne
    dystanse w formularzach zawodów.
@@ -1249,6 +1322,6 @@ wartości poprawią się same w ciągu 10 kolejnych sesji.
 
 ---
 
-*Ostatnia aktualizacja:* 2026-09-04
+*Ostatnia aktualizacja:* 2026-09-08
 *Status Fazy B (hardening):* ✅ COMPLETE
 *Status Fazy C (store readiness):* 🔄 IN PROGRESS

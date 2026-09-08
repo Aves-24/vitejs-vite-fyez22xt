@@ -427,6 +427,7 @@ export const views = {
     arenaInvite: "Zostałeś zaproszony do bitwy na dystansie",
     acceptBtn: "Akceptuj i Walcz",
     selectDistance: "Wybierz Dystans",
+    noDistances: "Brak dystansów — włącz je w Ustawieniach",
     sightTitle: "Ustawienie Celownika",
     sightPro: "Celownik PRO",
     sightExt: "Wysięg",

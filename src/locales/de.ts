@@ -412,6 +412,7 @@ export const views = {
     arenaInvite: "Du wurdest zu einem Wettkampf eingeladen auf",
     acceptBtn: "Annehmen & Kämpfen",
     selectDistance: "Distanz wählen",
+    noDistances: "Keine Distanzen — in den Einstellungen aktivieren",
     sightTitle: "Visiereinstellung",
     sightPro: "Visier PRO",
     sightExt: "Visierauszug",

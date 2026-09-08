@@ -22,7 +22,8 @@ import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryP
 import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import {
-  UserDistance, buildDistanceEntry, rebuildMasterList, newDistanceId, normalizeLabel,
+  UserDistance, buildDistanceEntry, buildCustomDistanceEntry, rebuildMasterList, normalizeLabel,
+  matchesDiscipline, distancesFor,
   formatDistance, isCustomDistance, isDuplicateDistance, compareDistances,
   countCustomDistances, customDistanceLimitFor,
   DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
@@ -83,17 +84,16 @@ export default function SettingsView({
     }
     const m = formatDistance(meters);
     const label = normalizeLabel(newLabel);
-    if (isDuplicateDistance(list, m, label)) {
+    // [DYSCYPLINY] Duplikat liczy się TYLKO w obrębie tej samej dyscypliny.
+    // Bez tego łucznik nie dodałby gołego „10m", bo kolidowałby z dystansem
+    // dmuchawkowym, którego nawet nie widzi.
+    if (isDuplicateDistance(distancesFor(list, activeDiscipline), m, label)) {
       setDistanceError(t('settings.sight.errDuplicate'));
       return;
     }
-    // Zawsze id z zegara, także gdy metry pokrywają się ze standardowymi —
-    // drugi wpis „18m" ma dostać WŁASNY kubełek, a nie przejąć historię pierwszego.
-    const entry: UserDistance = {
-      ...buildDistanceEntry(m, { active: true }),
-      id: newDistanceId(),
-      ...(label ? { label } : {}),
-    };
+    // Id z zegara i tag dyscypliny aktywnego zestawu — patrz
+    // `buildCustomDistanceEntry` w config/distances.ts.
+    const entry = buildCustomDistanceEntry(m, label, activeDiscipline);
     onUpdateAllDistances([...list, entry].sort(compareDistances));
     setShowAddDistance(false);
     setNewMeters('');
@@ -160,11 +160,21 @@ export default function SettingsView({
   const [setups, setSetups] = useState<EquipmentSetup[]>([]);
   const [activeSetupId, setActiveSetupId] = useState<string>(DEFAULT_SETUP_ID);
 
+  // Dyscyplina aktywnego zestawu. Stare, płaskie `bowType` to fallback dla
+  // kont sprzed zestawów — dokładnie jak w `getSetupStamp` i w SessionSetup.
+  const activeDiscipline = (setups.find(s => s.id === activeSetupId) ?? setups[0])?.discipline ?? bowType;
+
   // [DMUCHAWKA] Tarcze do wyboru przy dystansie — zawężone dyscypliną
   // aktywnego zestawu, tak samo jak przy starcie treningu.
-  const targetOptions = selectableTargetIdsFor(
-    (setups.find(s => s.id === activeSetupId) ?? setups[0])?.discipline ?? bowType
-  );
+  const targetOptions = selectableTargetIdsFor(activeDiscipline);
+
+  // [DYSCYPLINY] To samo zawężenie dla samych dystansów. Niesiemy ORYGINALNY
+  // indeks, bo `onToggleDistance`/`onUpdateTargetType` adresują wpis pozycją
+  // w pełnej liście — renderowanie po przefiltrowanej tablicy bez tego
+  // przestawiałoby ptaszki i tarcze przy losowych dystansach.
+  const visibleDistances = (Array.isArray(distances) ? distances : [])
+    .map((d, i) => ({ d: d as UserDistance, i }))
+    .filter(({ d }) => matchesDiscipline(d, activeDiscipline));
 
   // Dane Trenera
   const [isCoach, setIsCoach] = useState<boolean>(false);
@@ -517,7 +527,7 @@ export default function SettingsView({
               </div>
             </div>
             
-            {distances && Array.isArray(distances) && distances.map((d, i) => (
+            {visibleDistances.map(({ d, i }) => (
               <div key={d.id || d.m || i} className={`p-2.5 rounded-xl border transition-all ${d.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-50'}`}>
                 <div className="grid grid-cols-12 items-center">
                   <div className="col-span-4 flex items-center gap-2 min-w-0">

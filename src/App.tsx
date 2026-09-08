@@ -3,7 +3,7 @@ import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from './config/archeryRules';
-import { MASTER_DISTANCES, buildDistanceEntry, ensureDistanceIds, UserDistance } from './config/distances';
+import { buildDistanceEntry, ensureDistanceIds, ensureMasterDistances, rebuildMasterList, UserDistance } from './config/distances';
 import { useTranslation } from 'react-i18next';
 
 // EAGER: widoki potrzebne przy pierwszym renderze (HOME / AUTH) oraz
@@ -199,11 +199,16 @@ export default function App() {
           // i od razu utrwalamy — inaczej każde wejście do aplikacji zgadywałoby
           // je od nowa, a sesja zapisana w międzyczasie dostałaby stempel,
           // którego nie ma na liście.
-          const { list, changed } = ensureDistanceIds(data.userDistances);
+          const withIds = ensureDistanceIds(data.userDistances);
+          // [DYSCYPLINY] Ta sama, jednorazowa robota co przy id: konto sprzed
+          // 2026-09-08 nie ma dystansów dmuchawkowych, a bez nich przełączenie
+          // zestawu na rurę pokazuje pustą listę.
+          const withMasters = ensureMasterDistances(withIds.list);
+          const list = withMasters.list;
           setUserDistances(list);
-          if (changed) {
+          if (withIds.changed || withMasters.changed) {
             setDoc(doc(db, 'users', user.uid), { userDistances: list }, { merge: true })
-              .catch(e => console.warn('[C25] Nie udało się utrwalić id dystansów:', e));
+              .catch(e => console.warn('[C25] Nie udało się utrwalić listy dystansów:', e));
           }
         } else {
           // Brak dystansów — generujemy na podstawie danych profilu (wiek, płeć, łuk).
@@ -214,14 +219,18 @@ export default function App() {
             const bow = data.bowType as BowType;
             const recH = getRecommendation(bow, birthYear, 'Hala (Indoor)', gender);
             const recT = getRecommendation(bow, birthYear, 'Tory (Outdoor)', gender);
-            setUserDistances(MASTER_DISTANCES.map(m => buildDistanceEntry(m, {
+            // [DYSCYPLINY] Przez `rebuildMasterList`, a nie `MASTER_DISTANCES.map`,
+            // żeby nowe konto dostało też dystanse dmuchawkowe. Wcześniej ta
+            // ścieżka budowała wyłącznie dziesiątkę łuczniczą, więc user, który
+            // od razu zakładał zestaw z rurą, trafiał na pustą listę.
+            setUserDistances(rebuildMasterList([], m => buildDistanceEntry(m, {
               active: m === recH.distance || m === recT.distance,
               targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : '122cm',
             })));
           };
           const applyMinimal = () => {
             // Brak danych profilu (nowy użytkownik przed wizardem) — minimalne defaults
-            setUserDistances(MASTER_DISTANCES.map(m => buildDistanceEntry(m, { active: m === '18m' || m === '70m' })));
+            setUserDistances(rebuildMasterList([], m => buildDistanceEntry(m, { active: m === '18m' || m === '70m' })));
           };
           if (data.birthDate && data.bowType) {
             applyRecommended(data.birthDate, data.gender || 'M');

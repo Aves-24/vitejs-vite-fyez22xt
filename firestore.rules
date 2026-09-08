@@ -180,8 +180,10 @@ service cloud.firestore {
         // [ZESTAWY] Przy zakladaniu konta limit to zawsze 1: `isPremium` jest
         // polem chronionym, wiec nowy dokument nie moze przyjsc jako PRO.
         && validSetups(request.resource.data, 1, 0)
-        // Nowe konto nie moze przyjsc jako PRO (pole chronione), wiec 10 + 2.
-        && validDistances(request.resource.data, 12, 0)
+        // Nowe konto nie moze przyjsc jako PRO (pole chronione), wiec 13 + 2.
+        // 13 = 10 dystansow luczniczych + 3 dmuchawkowe (2026-09-08); lustro
+        // MASTER_DISTANCE_COUNT w src/config/distances.ts.
+        && validDistances(request.resource.data, 15, 0)
         && validActiveSetupId(request.resource.data);
 
       // Path A — admin full
@@ -209,8 +211,9 @@ service cloud.firestore {
         && validSetups(request.resource.data,
                        resource.data.get('isPremium', false) ? 4 : 1,
                        listLen(resource.data, 'setups'))
+        // 13 standardowych (10 luczniczych + 3 dmuchawkowe) + 2 FREE / 15 PRO.
         && validDistances(request.resource.data,
-                          resource.data.get('isPremium', false) ? 25 : 12,
+                          resource.data.get('isPremium', false) ? 28 : 15,
                           listLen(resource.data, 'userDistances'))
         && validActiveSetupId(request.resource.data);
 

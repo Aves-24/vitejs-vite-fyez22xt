@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
@@ -13,6 +13,8 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 import TopicPicker from '../components/TopicPicker';
+import { distancesFor } from '../config/distances';
+import { resolveActiveSetup } from '../config/equipmentSetups';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
@@ -332,6 +334,16 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const { t, i18n } = useTranslation();
   
   const [student, setStudent] = useState<any | null>(null);
+
+  // [DYSCYPLINY] Aktywne dystanse ucznia, zawężone dyscypliną jego aktywnego
+  // zestawu — to samo, co uczeń widzi u siebie w Ustawieniach i przy starcie
+  // treningu. Płaskie `bowType` to fallback dla kont sprzed zestawów.
+  const studentSightMarks = useMemo(() => {
+    const list = Array.isArray(student?.userDistances) ? student.userDistances : [];
+    const discipline = resolveActiveSetup(student ?? {})?.discipline ?? student?.bowType ?? null;
+    return distancesFor(list, discipline).filter((d: any) => d.active);
+  }, [student]);
+
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]); 
   
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
@@ -1208,8 +1220,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   <span className="material-symbols-outlined text-[14px]">my_location</span> {t('studentProfile.hardwareSightMarks')}
                 </h3>
                 <div className="space-y-2">
-                  {student.userDistances && student.userDistances.filter((d: any) => d.active).length > 0 ? (
-                    student.userDistances.filter((d: any) => d.active).map((d: any, i: number) => (
+                  {/* [DYSCYPLINY] Nastawy celownika tylko dla dyscypliny, którą
+                      uczeń ma aktywną. Bez tego trener łucznika widziałby trzy
+                      puste wiersze dmuchawkowe — lista standardowa ma je
+                      od 2026-09-08 u każdego, także u tych, co rury nie tkną. */}
+                  {studentSightMarks.length > 0 ? (
+                    studentSightMarks.map((d: any, i: number) => (
                       <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
                         <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-50">
                           <div className="flex items-center gap-2">

@@ -6,7 +6,7 @@ import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { resolveActiveSetup } from '../config/equipmentSetups';
-import { UserDistance, displayDistance } from '../config/distances';
+import { UserDistance, displayDistance, distancesFor } from '../config/distances';
 
 interface SessionSetupProps {
   userId: string;
@@ -103,6 +103,15 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // wybrać tarczy, której aplikacja nie potrafi narysować ani policzyć.
   const targetOptions = useMemo(() => selectableTargetIdsFor(discipline), [discipline]);
 
+  // [DYSCYPLINY] To samo, co wyżej z tarczami, tylko dla dystansów: łucznik
+  // nie przewija 5 i 7 m z rury, a dmuchawkarz dziesięciu dystansów od 18
+  // do 90 m. Dopóki dyscyplina się ładuje (`null`), lista jest pełna —
+  // filtr ma zawężać wybór, a nie migać pustką przy każdym wejściu.
+  const distanceOptions = useMemo(
+    () => distancesFor(activeDistances, discipline),
+    [activeDistances, discipline],
+  );
+
   useEffect(() => {
     if (hasActiveSession) {
       setHasUnsaved(true);
@@ -133,14 +142,14 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   }, [userId]);
 
   useEffect(() => {
-    if (activeDistances.length > 0 && !selectedId) {
+    if (distanceOptions.length > 0 && !selectedId) {
       const saved = localStorage.getItem(`grotX_lastSetup_${userId}`);
       if (saved) {
         try {
           const { distanceId, distance, targetType } = JSON.parse(saved);
           // Cache sprzed C25 nie zna id — wtedy dopasowujemy po metrach.
-          const stillActive = activeDistances.find(d => d.id === distanceId)
-            || (!distanceId ? activeDistances.find(d => d.m === distance) : undefined);
+          const stillActive = distanceOptions.find(d => d.id === distanceId)
+            || (!distanceId ? distanceOptions.find(d => d.m === distance) : undefined);
           if (stillActive) {
             updateSelection(stillActive.id);
             setSelectedTarget(targetType);
@@ -148,9 +157,19 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           }
         } catch (_) { /* ignore malformed cache */ }
       }
-      updateSelection(activeDistances[0].id);
+      updateSelection(distanceOptions[0].id);
     }
-  }, [activeDistances, selectedId]);
+  }, [distanceOptions, selectedId]);
+
+  // [DYSCYPLINY] Dyscyplina dojeżdża z profilu PO pierwszym renderze, więc
+  // wybór mógł już paść na dystans, który po zawężeniu listy znika (albo user
+  // przełączył zestaw w Ustawieniach i wrócił). Wtedy przestawiamy na pierwszy
+  // dozwolony — dokładnie tak, jak niżej z tarczą spoza listy.
+  useEffect(() => {
+    if (distanceOptions.length > 0 && selectedId && !distanceOptions.some(d => d.id === selectedId)) {
+      updateSelection(distanceOptions[0].id);
+    }
+  }, [distanceOptions, selectedId]);
 
   const updateSelection = (id: string) => {
     const profileDist = activeDistances.find(d => d.id === id);
@@ -258,8 +277,19 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       <div className="space-y-2">
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-center">{t('setup.selectDistance')}</span>
+          {/* [DYSCYPLINY] Pustka jest możliwa tylko wtedy, gdy user odznaczył
+              WSZYSTKIE dystanse swojej dyscypliny — lista standardowa ma je
+              obie. Zamiast pustego pola mówimy, gdzie je z powrotem włączyć. */}
+          {distanceOptions.length === 0 && (
+            <button
+              onClick={() => onNavigate?.('SETTINGS', 'VISIER')}
+              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-[10px] font-black text-gray-400 uppercase tracking-widest active:scale-95"
+            >
+              {t('setup.noDistances')}
+            </button>
+          )}
           <div className="flex flex-wrap gap-1.5 justify-center">
-            {activeDistances.map((d) => (
+            {distanceOptions.map((d) => (
               <button
                 key={d.id}
                 onClick={() => updateSelection(d.id)}

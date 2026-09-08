@@ -503,43 +503,47 @@ test('ZESTAWY: wygasniecie PRO nie zamurowuje konta z 4 zestawami', async () => 
 // bezpieczeństwa — własne dystanse są funkcją płatną.
 // ---------------------------------------------------------------------------
 
-// Lustro MASTER_DISTANCES z src/config/distances.ts — tu tylko po to,
-// żeby wpisy testowe miały realne id (`d_18m`), a nie wymyślone.
-const MASTER = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
+// Lustro MASTER_DISTANCES + BLOWGUN_MASTER_DISTANCES z src/config/distances.ts
+// — tu tylko po to, żeby wpisy testowe miały realne id (`d_18m`), a nie
+// wymyślone. Kolejność jak po `compareDistances`: rosnąco po metrach.
+const MASTER_BLOWGUN = ['5m', '7m', '10m'];
+const MASTER_ARCHERY = ['18m', '20m', '25m', '30m', '35m', '40m', '50m', '60m', '70m', '90m'];
+const MASTER = [...MASTER_BLOWGUN, ...MASTER_ARCHERY];
 
 /** n wpisów w kształcie, w jakim zapisuje je aplikacja. */
 const mkDistances = (n) =>
   Array.from({ length: n }, (_, i) => ({
-    id: i < 10 ? `d_${MASTER[i]}` : `d_custom${i}`,
-    m: i < 10 ? MASTER[i] : `${100 + i}m`,
+    id: i < MASTER.length ? `d_${MASTER[i]}` : `d_custom${i}`,
+    m: i < MASTER.length ? MASTER[i] : `${100 + i}m`,
     active: i === 0,
     targetType: '122cm',
+    ...(i < MASTER_BLOWGUN.length ? { discipline: 'blowgun' } : {}),
     sightExtension: '', sightHeight: '', sightSide: '', sightMark: '',
   }));
 
-test('C25: FREE zapisuje 12 dystansów (10 standardowych + 2 własne)', async () => {
+test('C25: FREE zapisuje 15 dystansów (13 standardowych + 2 własne)', async () => {
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(12),
+    userDistances: mkDistances(15),
   }));
 });
 
-test('C25: FREE NIE zapisze 13 dystansów', async () => {
+test('C25: FREE NIE zapisze 16 dystansów', async () => {
   await assertFails(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(13),
+    userDistances: mkDistances(16),
   }));
 });
 
-test('C25: PRO zapisuje 25 dystansów (10 standardowych + 15 własnych)', async () => {
+test('C25: PRO zapisuje 28 dystansów (13 standardowych + 15 własnych)', async () => {
   await makePremium('alice');
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(25),
+    userDistances: mkDistances(28),
   }));
 });
 
-test('C25: PRO NIE zapisze 26 dystansów', async () => {
+test('C25: PRO NIE zapisze 29 dystansów', async () => {
   await makePremium('alice');
   await assertFails(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(26),
+    userDistances: mkDistances(29),
   }));
 });
 
@@ -547,7 +551,7 @@ test('C25: FREE nie obejdzie limitu, podnosząc sobie isPremium w tym samym zapi
   // Limit czyta `resource` (stan PRZED zapisem), nie `request.resource` —
   // gdyby czytał to drugie, ten zapis by przeszedł.
   await assertFails(updateDoc(doc(alice(), 'users/alice'), {
-    isPremium: true, userDistances: mkDistances(25),
+    isPremium: true, userDistances: mkDistances(28),
   }));
 });
 
@@ -562,37 +566,51 @@ test('C25: zapis bez pola userDistances działa jak dotąd', async () => {
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { displayName: 'Alicja' }));
 });
 
-test('C25: nowe konto zakłada się z 12 dystansami, ale nie z 13', async () => {
-  // Przy create limit to zawsze 12: `isPremium` jest polem chronionym,
+test('C25: nowe konto zakłada się z 15 dystansami, ale nie z 16', async () => {
+  // Przy create limit to zawsze 15: `isPremium` jest polem chronionym,
   // więc nowy dokument nie może przyjść jako PRO.
   const newbie = () => env.authenticatedContext('newbie').firestore();
   await assertFails(setDoc(doc(newbie(), 'users/newbie'), {
-    displayName: 'Nowy', userDistances: mkDistances(13),
+    displayName: 'Nowy', userDistances: mkDistances(16),
   }));
   await assertSucceeds(setDoc(doc(newbie(), 'users/newbie'), {
-    displayName: 'Nowy', userDistances: mkDistances(12),
+    displayName: 'Nowy', userDistances: mkDistances(15),
   }));
 });
 
-test('C25: wygasniecie PRO nie zamurowuje konta z 25 dystansami', async () => {
-  // Konto bylo PRO i ma 25 dystansow, potem spada na FREE (limit 12).
+test('C25: wygasniecie PRO nie zamurowuje konta z 28 dystansami', async () => {
+  // Konto bylo PRO i ma 28 dystansow, potem spada na FREE (limit 15).
   // `userDistances` jedzie w kazdym merge'u z Ustawien, wiec bez furtki na
   // TRZYMANIE nadmiaru uzytkownik nie zapisalby nawet wlasnego nazwiska.
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), 'users/alice'),
-      { userDistances: mkDistances(25), isPremium: false }, { merge: true });
+      { userDistances: mkDistances(28), isPremium: false }, { merge: true });
   });
 
   // Trzymanie nadmiaru — wolno.
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(25), displayName: 'Alicja',
+    userDistances: mkDistances(28), displayName: 'Alicja',
   }));
   // Zmniejszanie — wolno.
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(14),
+    userDistances: mkDistances(17),
   }));
   // Przybywanie ponad stan sprzed zapisu — nadal zakazane.
   await assertFails(updateDoc(doc(alice(), 'users/alice'), {
-    userDistances: mkDistances(26),
+    userDistances: mkDistances(29),
+  }));
+});
+
+test('[DYSCYPLINY] backfill 10 → 13 przechodzi na koncie FREE z pelnym limitem', async () => {
+  // Konto sprzed 2026-09-08: 10 luczniczych + 2 wlasne = 12. Wejscie do
+  // aplikacji dopisuje 3 dystanse dmuchawkowe (`ensureMasterDistances`),
+  // czyli 15 — dokladnie sufit. To jest ta jedna liczba, ktora musi sie
+  // zgadzac, zeby migracja nie odbila sie od regul.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice'),
+      { userDistances: mkDistances(12), isPremium: false }, { merge: true });
+  });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    userDistances: mkDistances(15),
   }));
 });

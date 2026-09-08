@@ -936,21 +936,50 @@ i compound → 80cm (6-Ring)", która dałaby 5 m z rury tarczę łuczniczą.
 `bowClass` ze stempla zestawu. Gdyby decydował o niej dystans, zmiana tagu
 przepisywałaby historię wstecz.
 
-### 🔜 Następnym razem
+### ✅ DO SPRAWDZENIA NA ŻYWO — zacznij od tego
 
-1. **Sprawdzić na żywo** — całość jest za logowaniem, więc niesprawdzone
-   klikaniem. Do obejrzenia: zestaw dmuchawki pokazuje 5/7/10 m i nic więcej,
-   zestaw recurve pokazuje 18–90 m bez rury, przełączenie zestawu przestawia
-   wybór na pierwszy dozwolony dystans, a ptaszki i tarcze w CELOWNIKU trafiają
-   po filtrowaniu we właściwe wiersze (adresowane indeksem — patrz niżej).
-2. **Rozważyć lane testów jednostkowych dla `src/config/`.** Logikę katalogu
-   dystansów sprawdziłem 12 asercjami w `node --test` na bundlu z esbuilda,
+Kod jest na produkcji, ale **nikt go nie kliknął ani razu** (wszystko jest za
+logowaniem). Pięć rzeczy, w tej kolejności — 5 minut roboty:
+
+- [ ] **Zestaw dmuchawki → start treningu.** Ma być 5/7/10 m, aktywne 10 m,
+      tarcza `Blowgun 20cm`. Żadnego 18–90 m.
+- [ ] **Zestaw recurve → start treningu.** Ma być 18–90 m. Żadnego 5 i 7 m.
+- [ ] **Przełącz zestaw i wróć do startu treningu.** Wybór ma przeskoczyć na
+      pierwszy dozwolony dystans, a nie zostać na tym, który właśnie zniknął.
+- [ ] 🔴 **CELOWNIK w Ustawieniach — najbardziej podatne miejsce.** Odznacz
+      ptaszek w ŚRODKU listy i sprawdź, czy zgasł ten wiersz, w który
+      kliknąłeś. To samo ze zmianą tarczy. Powód poniżej, w sekcji „Pułapka".
+- [ ] **Dodaj własny dystans przy zestawie dmuchawki.** Ma się pojawić tylko
+      na liście dmuchawkowej, nie u łucznika.
+
+Gdyby coś nie grało: cała logika siedzi w `src/config/distances.ts`
+(`distancesFor`, `buildBlowgunEntry`, `ensureMasterDistances`), filtry
+w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
+
+### 🔜 Potem, w kolejności
+
+1. **Wymiary tarczy 3-5-7 (T7)** — czeka na Twoje dane, nie na kod.
+   Włączenie = dopisanie `pickOrder` w `src/config/targets/blowgun357.ts`.
+   Niepotwierdzone: proporcje stref (wpisane 0,6 / 0,2 z pomiaru ze zdjęcia),
+   czy jest X w środku, jedna tarcza czy trzy spoty, czy ma zastąpić 6-10.
+2. **Reszta ogona po C25:** jardy, własne dystanse w formularzach zawodów
+   (`HistoricalStartForm`, `TournamentScoreInput`).
+3. **Rozważyć lane testów jednostkowych dla `src/config/`.** Logikę katalogu
+   dystansów sprawdziłem 13 asercjami w `node --test` na bundlu z esbuilda,
    ale harness poszedł do kosza — esbuild jest tylko przechodnią zależnością
    Vite, więc stały test wymaga wpisania go w `devDependencies`. Reguły mają
    swój lane, `src/config/` nie ma żadnego.
-3. Reszta ogona po C25: jardy, własne dystanse w formularzach zawodów
-   (`HistoricalStartForm`, `TournamentScoreInput`).
-4. Wymiary tarczy 3-5-7 (T7) — nadal czekają na dane.
+4. **C24** — zmiana domeny na `grotx.vercel.app` (kolejność krytyczna:
+   Firebase Auth → reCAPTCHA → Vercel; odwrotnie = martwa apka).
+
+### 🔑 Nadal otwarte blokery publikacji
+
+- [ ] debug token App Check `30e22889-...` (omija App Check z całego świata)
+- [ ] `icon-512.png` — rozmyty upscale, podmienić na oryginał 512×512
+- [ ] klauzula o małoletnich w polityce prywatności (3 języki)
+- [ ] stopka „nie zastępuje porady prawnej" do usunięcia z `public/legal/*.html`
+- [ ] TTL trybu gościa — 6 polityk, wymaga Blaze
+- [ ] dane testowe gościa w produkcyjnym Firestore (dystanse `10m/7m Blasrohr`)
 
 ### ⚠️ Pułapka, na którą uważać przy kolejnych zmianach w CELOWNIKU
 

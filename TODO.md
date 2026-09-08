@@ -892,25 +892,27 @@ konta testowego, otwarcie /legal/datenschutz.html.
 Zamknięte punkty 1 i 2 z listy „następnym razem" (CI zielone, ścieżka PRO
 działa) plus **dystanse per dyscyplina** — pierwsza pozycja z ogona po C25.
 
-**Gdzie to leży:** gałąź `chore/distances-per-discipline` (`492560b`),
-**NIE na `main`** — świadomie, żeby produkcja na Vercelu nie ruszyła przed
-deployem reguł. Prefiks `chore/` dlatego, że tylko `main` i `chore/**`
-odpalają CI z pusha (`.github/workflows/ci.yml`), a bez `gh auth` nie ma
-jak otworzyć PR-a z linii poleceń. CI na tej gałęzi: run `34221920705`,
-`lint-build` i `rules-tests` — oba zielone, czyli nowe sufity 15/28
-i asercja na backfill 12 → 15 przeszły na emulatorze.
+**Gdzie to leży:** `main`, commity `492560b` + `2f3ca88`. Robota szła przez
+gałąź `chore/distances-per-discipline` (skasowana po merge'u) — prefiks
+`chore/` dlatego, że tylko `main` i `chore/**` odpalają CI z pusha
+(`.github/workflows/ci.yml`), a bez `gh auth` nie ma jak otworzyć PR-a
+z linii poleceń. CI zielone na obu: run `34221920705` (gałąź)
+i `34223694578` (`main`) — `lint-build` i `rules-tests`, czyli nowe sufity
+15/28 i asercja na backfill 12 → 15 przeszły na emulatorze.
 
-### 🔴 KOLEJNOŚĆ WDROŻENIA JEST KRYTYCZNA
+### ✅ WDROŻONE W DOBREJ KOLEJNOŚCI
 
-**Najpierw reguły, dopiero potem aplikacja.** Lista standardowa urosła
-z 10 do 13 wpisów, więc sufit w `firestore.rules` idzie z 12/25 na 15/28.
-Aplikacja wypuszczona przed regułami dostanie `permission-denied` przy
-backfillu (`ensureMasterDistances` w `App.tsx`) i dystanse dmuchawkowe
-nie utrwalą się w bazie — będą znikać po każdym odświeżeniu.
+Lista standardowa urosła z 10 do 13 wpisów, więc sufit w `firestore.rules`
+poszedł z 12/25 na **15/28**. Kolejność była krytyczna i została zachowana:
 
-```
-npx firebase deploy --only firestore:rules
-```
+1. [x] **reguły wdrożone przez usera 2026-09-08** (`npx firebase deploy
+       --only firestore:rules`, projekt `grotx-fb8f8`). Token CLI był
+       wygasły — poszło dopiero po `npx firebase login --reauth`.
+2. [x] **aplikacja na `main`** (`2f3ca88`), CI zielone, Vercel wystawia.
+
+Gdyby kiedyś ktoś odwrócił tę kolejność: aplikacja przed regułami dostaje
+`permission-denied` przy backfillu (`ensureMasterDistances` w `App.tsx`),
+a dystanse dmuchawkowe znikają po każdym odświeżeniu.
 
 ### Jak to działa
 

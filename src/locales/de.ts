@@ -1377,6 +1377,7 @@ export const views = {
     upcomingOpenCalendar: "Kalender öffnen",
     newEventBtn: "Neuer Termin",
     studentTournamentsTitle: "Wettkämpfe Schüler",
+    selectMode: "Auswählen",
     newTrainingsTitle: "Neue Trainings",
     formTitle: "Form",
     formNowPrev: "jetzt {{now}} · zuletzt {{prev}}",

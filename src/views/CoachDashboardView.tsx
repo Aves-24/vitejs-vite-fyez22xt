@@ -192,6 +192,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // Komunikacja Grupowa
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
+  // Tryb wyboru (życzenie usera 2026-09-10): kółko zaznaczania nie siedzi
+  // stale w wierszu — pojawia się dopiero po „Wybierz" nad listą.
+  const [isSelecting, setIsSelecting] = useState(false);
+  const exitSelecting = () => { setIsSelecting(false); setSelectedStudents([]); };
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
   const [msgTitle, setMsgTitle] = useState('');
   const [msgContent, setMsgContent] = useState('');
@@ -225,7 +229,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // Wiadomości per uczeń
   const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
-  const [lastStudentMessages, setLastStudentMessages] = useState<Record<string, string>>({});
   const [openMessageStudentId, setOpenMessageStudentId] = useState<string | null>(null);
 
   // [C27] Trzy najbliższe własne terminy trenerskie (bez kopii od innego
@@ -342,23 +345,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           }));
           setLastLogEntries(entries);
 
-          // Fetch wiadomości per uczeń
+          // Nieprzeczytane wiadomości per uczeń (czerwona kropka na dymku).
+          // Podgląd treści w wierszu usunięty 2026-09-10 — ucinał wiersz.
           const unread = new Set<string>();
-          const previews: Record<string, string> = {};
           await Promise.all((studentsData as any[]).map(async (s: any) => {
             try {
               const snap = await getDoc(doc(db, `users/${userId}/studentMessages/${s.id}`));
               if (snap.exists()) {
                 const d = snap.data();
-                const thread: any[] = d.thread || [];
                 if ((d.lastStudentAt || 0) > (d.lastCoachReadAt || 0)) unread.add(s.id);
-                const lastFromStudent = [...thread].reverse().find((m: any) => m.from === 'student');
-                if (lastFromStudent) previews[s.id] = lastFromStudent.text;
               }
             } catch { /* ignore */ }
           }));
           setUnreadStudentIds(unread);
-          setLastStudentMessages(previews);
 
         } else {
           setStudents([]);
@@ -691,6 +690,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       showToast(t('coachDashboard.toastMsgSent'));
       setIsMessageModalOpen(false);
       setSelectedStudents([]);
+      setIsSelecting(false);
       setMsgTitle('');
       setMsgContent('');
     } catch (e) {
@@ -833,19 +833,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const trend = formCompare[student.id]?.dir;
 
     return (
-      <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
-        <button
-          onClick={(e) => toggleStudentSelection(e, student.id)}
-          className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center transition-all ${
-            isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border border-gray-200 shadow-sm'
-          }`}
-        >
-          <span className="material-symbols-outlined text-[14px] font-black">check</span>
-        </button>
-
+      <div key={student.id} className={`relative animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
+        {/* W trybie wyboru klik zaznacza zamiast otwierać statystyki */}
         <div
-          onClick={() => handleCheckStudent(student.id)}
-          className={`flex-1 bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
+          onClick={(e) => isSelecting ? toggleStudentSelection(e, student.id) : handleCheckStudent(student.id)}
+          className={`bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
             isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
           }`}
         >
@@ -855,6 +847,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           )}
 
           <div className="flex items-center gap-3 pl-1.5 flex-1 overflow-hidden">
+            {isSelecting ? (
+              // Pole zaznaczenia w miejscu inicjałów — wiersz nie traci szerokości.
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${
+                isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border-2 border-gray-200'
+              }`}>
+                <span className="material-symbols-outlined text-[20px] font-black">check</span>
+              </div>
+            ) : (
             <div className="w-10 h-10 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 relative">
               {initials ? (
                 <span className="font-black text-[13px]">{initials}</span>
@@ -866,6 +866,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
               )}
             </div>
+            )}
 
             <div className="flex flex-col justify-center truncate pr-2">
               <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
@@ -902,17 +903,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   </p>
                 );
               })()}
-              {lastStudentMessages[student.id] && (
-                <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
-                  <span className="material-symbols-outlined text-[10px]">chat</span>
-                  {lastStudentMessages[student.id]}
-                </p>
-              )}
             </div>
           </div>
 
           {/* Bez ikony statystyk (usunięta 2026-09-10) — cały wiersz i tak
-              prowadzi do statystyk ucznia, a ikona zabierała miejsce tekstowi. */}
+              prowadzi do statystyk ucznia, a ikona zabierała miejsce tekstowi.
+              W trybie wyboru przyciski znikają — klik ma tylko zaznaczać. */}
+          {!isSelecting && (
           <div className="flex items-center gap-1 shrink-0">
             {/* Przycisk wiadomości */}
             <button
@@ -936,9 +933,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <span className="material-symbols-outlined text-[20px]">more_vert</span>
             </button>
           </div>
+          )}
         </div>
 
-        {expandedStudentMenu === student.id && (
+        {!isSelecting && expandedStudentMenu === student.id && (
           <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
             {coachGroups.length > 0 && (
                <button
@@ -975,14 +973,30 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
           {title} ({list.length})
         </h2>
-        {list.length > 0 && (
+        {list.length > 0 && (isSelecting ? (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => toggleSelectAll(list)}
+              className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${allSelected(list) ? 'text-red-400' : 'text-indigo-600'}`}
+            >
+              {allSelected(list) ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
+            </button>
+            <button
+              onClick={exitSelecting}
+              className="text-[9px] font-black uppercase text-white bg-[#0a3a2a] px-2.5 py-1 rounded-lg active:scale-95 transition-all"
+            >
+              {t('coachDashboard.done')}
+            </button>
+          </div>
+        ) : (
           <button
-            onClick={() => toggleSelectAll(list)}
-            className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${allSelected(list) ? 'text-red-400' : 'text-indigo-600'}`}
+            onClick={() => setIsSelecting(true)}
+            className="text-[9px] font-black uppercase text-indigo-600 flex items-center gap-1 active:scale-95 transition-all"
           >
-            {allSelected(list) ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
+            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+            {t('coachDashboard.selectMode')}
           </button>
-        )}
+        ))}
       </div>
 
       {isLoading ? (
@@ -1268,7 +1282,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       {/* Toggle widoku: Grupy / Uczniowie */}
       <div className="flex gap-2 mb-5">
         <button
-          onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); }}
+          onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); exitSelecting(); }}
           aria-expanded={viewMode === 'groups'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'groups' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
@@ -1278,7 +1292,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {t('coachDashboard.viewGroups')}
         </button>
         <button
-          onClick={() => { setViewMode(m => (m === 'students' ? null : 'students')); setInactiveOnly(false); }}
+          onClick={() => { setViewMode(m => (m === 'students' ? null : 'students')); setInactiveOnly(false); exitSelecting(); }}
           aria-expanded={viewMode === 'students'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'students' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'

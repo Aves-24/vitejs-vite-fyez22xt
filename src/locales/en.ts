@@ -1377,6 +1377,7 @@ export const views = {
     upcomingOpenCalendar: "Open calendar",
     newEventBtn: "New session",
     studentTournamentsTitle: "Student competitions",
+    selectMode: "Select",
     newTrainingsTitle: "New sessions",
     formTitle: "Form",
     formNowPrev: "now {{now}} · last {{prev}}",

@@ -19,8 +19,19 @@ const INACTIVE_SHOWN = 5;
  * średnia 3 ostatnich sesji kontra wcześniejszych. Handicap, nie średnia
  * punktów — średnie z 18 m i 70 m są nieporównywalne, handicap już
  * uwzględnia dystans i tarczę. 99 = sesja bez wyniku, pomijana.
+ *
+ * Progi (decyzja usera 2026-09-10): 1 pkt handicapu ≈ 0,1 pkt/strzałę na
+ * 70 m (≈ 0,13 na 18 m), więc różnica < 3 to zwykły rozrzut między
+ * treningami — „ten sam poziom", bez strzałki. 3–5 = lekko, ≥ 6 = wyraźnie
+ * (ponad ~0,6 pkt/strzałę). Trenerowi pokazujemy słowa, nie handicap —
+ * liczba, która maleje, gdy jest lepiej, czyta się na odwrót.
+ * Minimum 5 sesji: 3 ostatnie kontra co najmniej 2 wcześniejsze.
  */
-interface FormTrend { dir: 'up' | 'down'; from: number; to: number }
+const FORM_SLIGHT = 3;
+const FORM_CLEAR = 6;
+const FORM_MIN_SESSIONS = 5;
+
+interface FormTrend { dir: 'up' | 'down'; strength: 'slight' | 'clear'; delta: number }
 
 // Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony i brałby
 // „up" z warunku za nazwę ikony.
@@ -29,13 +40,16 @@ const TREND_ICON = { up: 'trending_up', down: 'trending_down' } as const;
 function formTrend(handicaps: unknown): FormTrend | null {
   if (!Array.isArray(handicaps)) return null;
   const valid = handicaps.filter((h): h is number => typeof h === 'number' && h >= 0 && h < 99);
-  if (valid.length < 4) return null;
+  if (valid.length < FORM_MIN_SESSIONS) return null;
   const mean = (a: number[]) => a.reduce((s, h) => s + h, 0) / a.length;
-  const from = mean(valid.slice(3));
-  const to = mean(valid.slice(0, 3));
-  const diff = from - to;
-  if (Math.abs(diff) < 2) return null;
-  return { dir: diff > 0 ? 'up' : 'down', from: Math.round(from), to: Math.round(to) };
+  const diff = mean(valid.slice(3)) - mean(valid.slice(0, 3));
+  const delta = Math.abs(diff);
+  if (delta < FORM_SLIGHT) return null;
+  return {
+    dir: diff > 0 ? 'up' : 'down',
+    strength: delta >= FORM_CLEAR ? 'clear' : 'slight',
+    delta,
+  };
 }
 
 interface StudentTournament { title: string; date: string; names: string[] }
@@ -550,7 +564,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     .filter((x): x is { s: any; trend: FormTrend } => x.trend !== null)
     .sort((a, b) =>
       (a.trend.dir === b.trend.dir ? 0 : a.trend.dir === 'up' ? -1 : 1)
-      || Math.abs(b.trend.from - b.trend.to) - Math.abs(a.trend.from - a.trend.to));
+      || b.trend.delta - a.trend.delta);
   const formUpCount = formStudents.filter(x => x.trend.dir === 'up').length;
   const formDownCount = formStudents.length - formUpCount;
 
@@ -1120,7 +1134,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </CollapsibleSection>
       )}
 
-      {/* Forma — wyraźna zmiana handicapu (formTrend), rosnący na górze */}
+      {/* Forma — zmiana ponad zwykły rozrzut (formTrend), rosnący na górze */}
       {!isLoading && formStudents.length > 0 && (
         <CollapsibleSection
           label={t('coachDashboard.formTitle')}
@@ -1142,17 +1156,22 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           }
         >
           <div className="space-y-1.5">
-            {formStudents.map(({ s, trend }) => renderMiniStudentRow(
-              s,
-              <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
-                <span className="material-symbols-outlined text-[12px] align-[-2px] mr-0.5">{TREND_ICON[trend.dir]}</span>
-                {t('coachDashboard.formHandicap', { from: trend.from, to: trend.to })}
-                <span className="text-gray-400"> · {getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>
-              </span>,
-              trend.dir === 'up'
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                : 'bg-orange-50 text-orange-600 border-amber-100',
-            ))}
+            {formStudents.map(({ s, trend }) => {
+              const details = lastSessionDetails(s);
+              // „↑ Wyraźnie w górę · wczoraj · 70m · 312 pkt / 36 strz." —
+              // opis słowny + prawdziwe punkty z ostatniego treningu.
+              return renderMiniStudentRow(
+                s,
+                <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
+                  <span className="material-symbols-outlined text-[12px] align-[-2px] mr-0.5">{TREND_ICON[trend.dir]}</span>
+                  {t(`coachDashboard.form_${trend.dir}_${trend.strength}`)}
+                  <span className="text-gray-400"> · {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}</span>
+                </span>,
+                trend.dir === 'up'
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                  : 'bg-orange-50 text-orange-600 border-amber-100',
+              );
+            })}
           </div>
         </CollapsibleSection>
       )}

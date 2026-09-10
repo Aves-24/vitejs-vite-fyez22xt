@@ -987,6 +987,18 @@ Z ogona po C25 zostały: **jardy**.
       podopiecznych (zapytanie per uczeń, pamięć 30 min). Odrzucone przez
       usera: sesje do skomentowania, cele/flagi z dziennika, klipy, frekwencja,
       ranking grupy.
+      **Dalej tego samego dnia (wszystko na `main`, user: „idealnie"):**
+      zwijane sekcje u góry — terminy (+ tematy treningu), starty uczniów
+      (do 3), nowe treningi, forma, bez treningu 14+ dni. Forma = ostatni
+      trening kontra poprzedni na tym samym dystansie/tarczy/klasie łuku
+      („70m · teraz 312 · poprzednio 290", od 5% zmiany, `loadFormCompare`,
+      10 sesji na aktywnego ucznia) — trend handicapu odrzucony jako
+      nieczytelny. Zakładki Grupy/Uczniowie rozwijane dopiero po kliknięciu;
+      grupa rozwija się w miejscu (uczniowie, zwijany dziennik, edycja).
+      Wiersz ucznia odchudzony: bez ikony statystyk, podglądu wiadomości,
+      kółka zaznaczania i menu „⋮". Zaznaczanie przez tryb „Wybierz"; pasek
+      nad listą: wiadomość, grupy, usunięcie — dla wielu naraz. Karta
+      sprzętu ucznia czyta zestawy (`StudentEquipmentCard`).
 - [ ] **C28. Delay Mirror — wpisywanie strzał na tarczę.**
       `src/views/DelayMirrorView.tsx` (+ `DelayMirrorGrid`, `DelayMirrorReplay`)
       nie ma dziś żadnego wpisu wyniku. Do ustalenia z userem: czy to pełna
@@ -995,6 +1007,24 @@ Z ogona po C25 zostały: **jardy**.
       przy nagraniu; czy strzały klikane na tarczy (współrzędne → heatmapa,
       rozrzut), czy klawiatura wartości. Reużyć rysowania i punktacji
       z `config/targetFaces.ts`, nie pisać drugiego.
+- [ ] **C29. 🔴 NA JUTRO (2026-09-11) — BŁĄD: dmuchawka po 3 strzałach
+      daje same M.** Zgłosił user 2026-09-10. Tarcza `Blowgun 20cm`
+      (`src/config/targets/blowgun.ts`) ma układ `spot3-single` (jedna
+      kolumna, 3 spoty), a 18 m (`3-Spot`, `targetFaces.ts:135`) ma
+      `spot3-double` (dwie kolumny po 3). Po trzech strzałach w serii każda
+      kolejna wpada jako M — prawdopodobnie punktacja pozwala na jedną
+      strzałę na spot, więc przy 3 spotach 4.+ strzała nie ma gdzie trafić.
+      **Decyzja usera:** dmuchawka ma dostać TAKĄ SAMĄ podwójną tarczę spot
+      jak 18 m, czyli `spot3-double`. Uwaga: to zmienia ustalenie z
+      2026-09-04 („trzy spoty na kartce", komentarz w `blowgun.ts:51` wprost
+      mówi „NIE spot3-double") — zaktualizować komentarz i notatkę w pamięci.
+      Najpierw ZNALEŹĆ przyczynę M-ek (ScoringView / `SpotTarget` /
+      `calculateSpotScore`, jak liczony jest indeks spotu przy
+      `isSpotSingle`/`isSpotDouble` w `targetFaces.ts:185-195`), dopiero
+      potem przełączyć układ. Sprawdzić na localhost przed pushem, np. na
+      koncie gościa z zestawem dmuchawki.
+      Po drodze: czy sesje dmuchawki zapisane z tym błędem (same M po 3.
+      strzale) trzeba jakoś oznaczyć albo poprawić — do ustalenia z userem.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

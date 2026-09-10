@@ -186,8 +186,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isLoading, setIsLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [expandedStudentMenu, setExpandedStudentMenu] = useState<string | null>(null);
-  const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
+  // Uczniowie do usunięcia / do przypisania grup — zaznaczeni w trybie wyboru.
+  const [studentsToDelete, setStudentsToDelete] = useState<string[] | null>(null);
   const [manualStudentId, setManualStudentId] = useState('');
 
   // Komunikacja Grupowa
@@ -214,7 +214,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
-  const [managingGroupsForStudent, setManagingGroupsForStudent] = useState<string | null>(null);
+  const [managingGroupsFor, setManagingGroupsFor] = useState<string[] | null>(null);
 
   const [newNoteText, setNewNoteText] = useState('');
   const [noteReplacementPrompt, setNoteReplacementPrompt] = useState<{ pendingNote: string, oldestNote: any } | null>(null);
@@ -531,44 +531,47 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
-  // [POPRAWKA] Mechanizm dwustopniowy. Zabezpieczony przed TypeScript errors (string | null).
-  const confirmRemoveStudent = async (studentId: string | null) => {
-    if (!studentId) return;
+  // Usuwa zaznaczonych uczniów (tryb wyboru, 2026-09-10 — wcześniej jeden
+  // z menu „⋮"). PO JEDNYM: reguła Path G pozwala trenerowi skrócić własne
+  // `students` dokładnie o 1 na zapis, więc arrayRemove wielu naraz padnie.
+  const confirmRemoveStudents = async (ids: string[] | null) => {
+    if (!ids || ids.length === 0) return;
+    const removed: string[] = [];
 
     try {
-      // 1. Kasowanie ze składu głównego
-      await updateDoc(doc(db, 'users', userId), {
-        students: arrayRemove(studentId)
-      });
-      await updateDoc(doc(db, 'users', studentId), {
-        coaches: arrayRemove(userId)
-      });
-      
-      // 2. Automatyczne sprzątanie z Grup!
-      const newMap = { ...studentGroupMap };
-      let mapChanged = false;
-      Object.keys(newMap).forEach(groupId => {
-        if (newMap[groupId].includes(studentId)) {
-          newMap[groupId] = newMap[groupId].filter(id => id !== studentId);
-          mapChanged = true;
-        }
-      });
-      
-      if (mapChanged) {
-        await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
-        setStudentGroupMap(newMap);
+      for (const studentId of ids) {
+        // 1. Kasowanie ze składu głównego, potem siebie z `coaches` ucznia (Path H)
+        await updateDoc(doc(db, 'users', userId), { students: arrayRemove(studentId) });
+        await updateDoc(doc(db, 'users', studentId), { coaches: arrayRemove(userId) });
+        removed.push(studentId);
       }
-
-      // Aktualizacja widoków
-      setStudents(prev => prev.filter(s => s.id !== studentId));
-      setSelectedStudents(prev => prev.filter(id => id !== studentId));
-
-      showToast(t('coachDashboard.toastRemoved'));
     } catch (error) {
       console.error("Błąd usuwania ucznia:", error);
-    } finally {
-      setStudentToDelete(null); 
     }
+
+    if (removed.length > 0) {
+      // 2. Sprzątanie z grup. Mapa jest uczeń → grupy, więc wystarczy zdjąć
+      // klucz ucznia (stary kod szukał ucznia w listach grup i nic nie zdejmował).
+      const newMap = { ...studentGroupMap };
+      let mapChanged = false;
+      for (const id of removed) {
+        if (newMap[id]) { delete newMap[id]; mapChanged = true; }
+      }
+      if (mapChanged) {
+        try {
+          await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
+          setStudentGroupMap(newMap);
+        } catch (error) {
+          console.error("Błąd sprzątania grup:", error);
+        }
+      }
+
+      setStudents(prev => prev.filter(s => !removed.includes(s.id)));
+      setSelectedStudents(prev => prev.filter(id => !removed.includes(id)));
+      showToast(t('coachDashboard.toastRemoved'));
+    }
+    if (removed.length === ids.length) setIsSelecting(false);
+    setStudentsToDelete(null);
   };
 
   const handleCheckStudent = async (studentId: string) => {
@@ -637,6 +640,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const visibleStudents = inactiveOnly ? students.filter(isInactive) : students;
   const studentsOfGroup = (groupId: string) =>
     students.filter(s => (studentGroupMap[s.id] || []).includes(groupId));
+
+  // „Anna Kowalska, Jan Nowak +2" — kogo dotyczy akcja na zaznaczonych.
+  const namesOf = (ids: string[]) => {
+    const names = ids
+      .map(id => students.find(s => s.id === id))
+      .filter(Boolean)
+      .map(s => `${s.firstName || ''} ${s.lastName || ''}`.trim() || t('coachDashboard.defaultStudentName'));
+    return names.length > 3 ? `${names.slice(0, 3).join(', ')} +${names.length - 3}` : names.join(', ');
+  };
 
   // „70m · 312 pkt / 36 strz." — z pól, które zapis sesji zostawia na
   // dokumencie ucznia (ScoringView), więc bez dodatkowego odczytu.
@@ -761,14 +773,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
-  const toggleGroupForStudent = async (groupId: string) => {
-    if (!managingGroupsForStudent) return;
-    const currentGroups = studentGroupMap[managingGroupsForStudent] || [];
-    const updatedGroups = currentGroups.includes(groupId)
-      ? currentGroups.filter(id => id !== groupId)
-      : [...currentGroups, groupId];
-      
-    const newMap = { ...studentGroupMap, [managingGroupsForStudent]: updatedGroups };
+  // Przypisanie grupy wszystkim zaznaczonym naraz: jeśli wszyscy już w niej
+  // są — zdejmuje ich, w przeciwnym razie dopisuje brakujących.
+  const toggleGroupForSelected = async (groupId: string) => {
+    if (!managingGroupsFor || managingGroupsFor.length === 0) return;
+    const allIn = managingGroupsFor.every(id => (studentGroupMap[id] || []).includes(groupId));
+    const newMap = { ...studentGroupMap };
+    for (const id of managingGroupsFor) {
+      const current = newMap[id] || [];
+      newMap[id] = allIn
+        ? current.filter(g => g !== groupId)
+        : Array.from(new Set([...current, groupId]));
+    }
     setStudentGroupMap(newMap);
 
     try {
@@ -833,7 +849,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const trend = formCompare[student.id]?.dir;
 
     return (
-      <div key={student.id} className={`relative animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
+      <div key={student.id} className="relative animate-fade-in">
         {/* W trybie wyboru klik zaznacza zamiast otwierać statystyki */}
         <div
           onClick={(e) => isSelecting ? toggleStudentSelection(e, student.id) : handleCheckStudent(student.id)}
@@ -906,63 +922,22 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </div>
           </div>
 
-          {/* Bez ikony statystyk (usunięta 2026-09-10) — cały wiersz i tak
-              prowadzi do statystyk ucznia, a ikona zabierała miejsce tekstowi.
-              W trybie wyboru przyciski znikają — klik ma tylko zaznaczać. */}
+          {/* Z prawej tylko dymek wiadomości. Ikona statystyk (cały wiersz
+              prowadzi do statystyk) i menu „⋮" usunięte 2026-09-10 — grupy
+              i usuwanie są na pasku trybu wyboru, dla wielu uczniów naraz.
+              W trybie wyboru dymek znika — klik ma tylko zaznaczać. */}
           {!isSelecting && (
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Przycisk wiadomości */}
             <button
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
-              className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
+              className="relative w-9 h-9 mr-1 shrink-0 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
             >
               <span className="material-symbols-outlined text-[18px]">chat</span>
               {unreadStudentIds.has(student.id) && (
                 <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
               )}
             </button>
-
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
-              }}
-              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
-            >
-              <span className="material-symbols-outlined text-[20px]">more_vert</span>
-            </button>
-          </div>
           )}
         </div>
-
-        {!isSelecting && expandedStudentMenu === student.id && (
-          <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
-            {coachGroups.length > 0 && (
-               <button
-                 onClick={(e) => {
-                   e.preventDefault(); e.stopPropagation();
-                   setManagingGroupsForStudent(student.id);
-                   setExpandedStudentMenu(null);
-                 }}
-                 className="w-full text-left px-3 py-2.5 rounded-t-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-all border-b border-gray-50"
-               >
-                 <span className="material-symbols-outlined text-[16px]">folder_shared</span> {t('coachDashboard.manageGroups')}
-               </button>
-            )}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setStudentToDelete(student.id);
-                setExpandedStudentMenu(null);
-              }}
-              className={`w-full text-left px-3 py-2.5 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 flex items-center gap-2 transition-all ${coachGroups.length > 0 ? 'rounded-b-xl' : 'rounded-xl'}`}
-            >
-              <span className="material-symbols-outlined text-[16px]">person_remove</span> {t('coachDashboard.removeStudent')}
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -1003,10 +978,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           listą trener go nie widział. Widoczny przez cały tryb wyboru,
           przycisk aktywny od pierwszego zaznaczonego. */}
       {isSelecting && list.length > 0 && (
-        <div className="mb-2 bg-[#0a3a2a] pl-3 pr-1.5 py-1.5 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
-          <span className="flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-wide">
-            <span className="material-symbols-outlined text-[16px] text-[#fed33e]">mark_email_unread</span>
-            {t('coachDashboard.selected')}: {selectedStudents.length}
+        <div className="mb-2 bg-[#0a3a2a] pl-3 pr-1.5 py-1.5 rounded-xl flex items-center gap-1.5 animate-fade-in">
+          {/* Liczba zaznaczonych — ikona zamiast słowa, żeby akcje się zmieściły */}
+          <span
+            className="flex items-center gap-1 text-[12px] font-black text-white flex-1 min-w-0"
+            aria-label={`${t('coachDashboard.selected')}: ${selectedStudents.length}`}
+          >
+            <span className="material-symbols-outlined text-[16px] text-[#fed33e]">check_circle</span>
+            {selectedStudents.length}
           </span>
           <button
             onClick={() => setIsMessageModalOpen(true)}
@@ -1014,6 +993,27 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             className="bg-[#fed33e] text-[#0a3a2a] px-3 py-1.5 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-all shrink-0 disabled:opacity-40"
           >
             {t('coachDashboard.sendMessageBtn')}
+          </button>
+          {/* Dawne menu „⋮" z wiersza — teraz dla wszystkich zaznaczonych */}
+          {coachGroups.length > 0 && (
+            <button
+              onClick={() => setManagingGroupsFor([...selectedStudents])}
+              disabled={selectedStudents.length === 0}
+              aria-label={t('coachDashboard.manageGroups')}
+              title={t('coachDashboard.manageGroups')}
+              className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-white flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[18px]">folder_shared</span>
+            </button>
+          )}
+          <button
+            onClick={() => setStudentsToDelete([...selectedStudents])}
+            disabled={selectedStudents.length === 0}
+            aria-label={t('coachDashboard.removeStudent')}
+            title={t('coachDashboard.removeStudent')}
+            className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-red-300 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_remove</span>
           </button>
         </div>
       )}
@@ -1570,32 +1570,41 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
          document.body
       )}
 
-      {managingGroupsForStudent && typeof document !== 'undefined' && createPortal(
-         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setManagingGroupsForStudent(null)}>
+      {managingGroupsFor && typeof document !== 'undefined' && createPortal(
+         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setManagingGroupsFor(null)}>
            <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
              <h2 className="text-lg font-black text-[#0a3a2a] mb-1">{t('coachDashboard.manageGroupsTitle')}</h2>
-             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6">{t('coachDashboard.manageGroupsDesc')}</p>
-             
+             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{t('coachDashboard.manageGroupsDesc')}</p>
+             <p className="text-[10px] font-black text-[#0a3a2a] mb-5 truncate">{namesOf(managingGroupsFor)}</p>
+
              <div className="space-y-2 mb-6">
                {coachGroups.map(g => {
-                 const isAssigned = (studentGroupMap[managingGroupsForStudent] || []).includes(g.id);
+                 // Kilku uczniów: w grupie wszyscy (✓), część (–) albo nikt.
+                 const inCount = managingGroupsFor.filter(id => (studentGroupMap[id] || []).includes(g.id)).length;
+                 const isAssigned = inCount === managingGroupsFor.length;
+                 const isPartial = inCount > 0 && !isAssigned;
                  return (
-                   <button 
+                   <button
                      key={g.id}
-                     onClick={() => toggleGroupForStudent(g.id)}
+                     onClick={() => toggleGroupForSelected(g.id)}
                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all active:scale-[0.98] ${
-                       isAssigned ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200'
+                       isAssigned || isPartial ? 'bg-indigo-50 border-indigo-200' : 'bg-white border-gray-200'
                      }`}
                    >
-                     <span className={`text-[12px] font-black ${isAssigned ? 'text-indigo-800' : 'text-gray-600'}`}>{g.name}</span>
-                     <div className={`w-6 h-6 rounded flex items-center justify-center ${isAssigned ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-transparent'}`}>
-                        <span className="material-symbols-outlined text-[14px] font-black">check</span>
+                     <span className={`text-[12px] font-black ${isAssigned || isPartial ? 'text-indigo-800' : 'text-gray-600'}`}>{g.name}</span>
+                     <div className={`w-6 h-6 rounded flex items-center justify-center ${
+                       isAssigned ? 'bg-indigo-600 text-white' : isPartial ? 'bg-indigo-200 text-indigo-700' : 'bg-gray-100 text-transparent'
+                     }`}>
+                        {/* „–" jako tekst: ikony `remove` nie ma w subsecie fontu */}
+                        {isPartial
+                          ? <span className="text-[14px] font-black leading-none">–</span>
+                          : <span className="material-symbols-outlined text-[14px] font-black">check</span>}
                      </div>
                    </button>
                  )
                })}
              </div>
-             <button onClick={() => setManagingGroupsForStudent(null)} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-lg">{t('coachDashboard.done')}</button>
+             <button onClick={() => setManagingGroupsFor(null)} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-lg">{t('coachDashboard.done')}</button>
            </div>
          </div>,
          document.body
@@ -1675,15 +1684,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         document.body
       )}
 
-      {studentToDelete && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setStudentToDelete(null)}>
+      {studentsToDelete && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setStudentsToDelete(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center" onClick={e => e.stopPropagation()}>
             
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
               <span className="material-symbols-outlined text-3xl">person_remove</span>
             </div>
             
-            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('coachDashboard.deleteTitle')}</h2>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-1">{t('coachDashboard.deleteTitle')}</h2>
+            {/* Kogo dokładnie — przy kilku zaznaczonych łatwo o pomyłkę */}
+            <p className="text-[11px] font-black text-red-500 mb-2 px-2 break-words">{namesOf(studentsToDelete)}</p>
 
             <p className="text-[11px] font-bold text-gray-500 mb-6 leading-relaxed px-2">
               {t('coachDashboard.deleteDescPre')} <span className="text-red-500 font-black text-sm">0</span>{t('coachDashboard.deleteDescPost')}
@@ -1691,19 +1702,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             
             <div className="flex gap-3 justify-center mb-6">
               <button 
-                onClick={() => setStudentToDelete(null)} 
+                onClick={() => setStudentsToDelete(null)} 
                 className="w-14 h-14 bg-gray-100 text-gray-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-gray-200"
               >
                 8
               </button>
               <button 
-                onClick={() => confirmRemoveStudent(studentToDelete)} 
+                onClick={() => confirmRemoveStudents(studentsToDelete)}
                 className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-red-200 shadow-md shadow-red-500/20"
               >
                 0
               </button>
               <button 
-                onClick={() => setStudentToDelete(null)} 
+                onClick={() => setStudentsToDelete(null)} 
                 className="w-14 h-14 bg-gray-100 text-gray-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-gray-200"
               >
                 4
@@ -1711,7 +1722,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </div>
             
             <button 
-              onClick={() => setStudentToDelete(null)} 
+              onClick={() => setStudentsToDelete(null)} 
               className="w-full py-4 bg-gray-50 text-gray-400 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all hover:bg-gray-100 border border-gray-100"
             >
               {t('coachDashboard.cancelOp')}

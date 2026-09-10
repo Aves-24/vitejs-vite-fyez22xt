@@ -20,15 +20,22 @@ const INACTIVE_SHOWN = 5;
  * punktów — średnie z 18 m i 70 m są nieporównywalne, handicap już
  * uwzględnia dystans i tarczę. 99 = sesja bez wyniku, pomijana.
  */
-function formTrend(handicaps: unknown): 'up' | 'down' | null {
+interface FormTrend { dir: 'up' | 'down'; from: number; to: number }
+
+// Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony i brałby
+// „up" z warunku za nazwę ikony.
+const TREND_ICON = { up: 'trending_up', down: 'trending_down' } as const;
+
+function formTrend(handicaps: unknown): FormTrend | null {
   if (!Array.isArray(handicaps)) return null;
   const valid = handicaps.filter((h): h is number => typeof h === 'number' && h >= 0 && h < 99);
   if (valid.length < 4) return null;
   const mean = (a: number[]) => a.reduce((s, h) => s + h, 0) / a.length;
-  const diff = mean(valid.slice(3)) - mean(valid.slice(0, 3));
-  if (diff >= 2) return 'up';
-  if (diff <= -2) return 'down';
-  return null;
+  const from = mean(valid.slice(3));
+  const to = mean(valid.slice(0, 3));
+  const diff = from - to;
+  if (Math.abs(diff) < 2) return null;
+  return { dir: diff > 0 ? 'up' : 'down', from: Math.round(from), to: Math.round(to) };
 }
 
 interface StudentTournament { title: string; date: string; names: string[] }
@@ -162,6 +169,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   const [isInactiveOpen, setIsInactiveOpen] = useState(false);
+  const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -528,6 +537,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     .sort((a, b) => (a.exactLastActivity || 0) - (b.exactLastActivity || 0));
   const inactiveCount = inactiveStudents.length;
 
+  // Trenowali, odkąd trener ostatnio otworzył ich profil (ta sama reguła, co
+  // zielona kropka w wierszu) — najświeżsi na górze.
+  const newTrainingStudents = students
+    .filter(s => (s.exactLastActivity || 0) > (studentLastChecked[s.id] || 0))
+    .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
+
+  // Wyraźna zmiana formy: najpierw rosnący, potem spadający, każdy od
+  // największej zmiany.
+  const formStudents = students
+    .map(s => ({ s, trend: formTrend(s.last10Handicaps) }))
+    .filter((x): x is { s: any; trend: FormTrend } => x.trend !== null)
+    .sort((a, b) =>
+      (a.trend.dir === b.trend.dir ? 0 : a.trend.dir === 'up' ? -1 : 1)
+      || Math.abs(b.trend.from - b.trend.to) - Math.abs(a.trend.from - a.trend.to));
+  const formUpCount = formStudents.filter(x => x.trend.dir === 'up').length;
+  const formDownCount = formStudents.length - formUpCount;
+
   // Zakładka UCZNIOWIE: zawsze wszyscy (grupy żyją w zakładce GRUPY),
   // ewentualnie zawężeni do nieaktywnych z sekcji u góry.
   const visibleStudents = inactiveOnly ? students.filter(isInactive) : students;
@@ -725,7 +751,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const hasNewActivity = lastActivity > lastChecked;
     const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
     const isSelected = selectedStudents.includes(student.id);
-    const trend = formTrend(student.last10Handicaps);
+    const trend = formTrend(student.last10Handicaps)?.dir;
 
     return (
       <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
@@ -902,6 +928,33 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     </div>
   );
 
+  // Mały wiersz ucznia w sekcjach u góry (nowe treningi, forma, bez
+  // treningu): inicjały, nazwisko, jedna linia opisu; klik = profil.
+  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string) => {
+    const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
+    return (
+      <button
+        key={s.id}
+        type="button"
+        onClick={() => handleCheckStudent(s.id)}
+        className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
+      >
+        <div className={`w-9 h-9 border rounded-full flex items-center justify-center shrink-0 ${avatarClass}`}>
+          {initials
+            ? <span className="font-black text-[12px]">{initials}</span>
+            : <span className="material-symbols-outlined text-[18px]">person</span>}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">
+            {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
+          </p>
+          <p className="text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate">{sub}</p>
+        </div>
+        <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+      </button>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+1rem)] relative">
 
@@ -977,6 +1030,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-0.5 truncate">
                       {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {ev.time || t('calendar.wholeDay')}{recipients ? ` · ${recipients}` : ''}
                     </p>
+                    {/* Tematy treningu z formularza terminu (TopicPicker) */}
+                    {Array.isArray(ev.topics) && ev.topics.length > 0 && (
+                      <p className="text-[9px] font-bold text-emerald-700 mt-0.5 truncate">
+                        {ev.topics.map((id: string) => t(`sessionSetup.topic_${id}`)).join(' · ')}
+                      </p>
+                    )}
                   </div>
                   <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
                 </button>
@@ -1037,6 +1096,67 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </CollapsibleSection>
       )}
 
+      {/* Nowe treningi — poranna skrzynka trenera. Po otwarciu profilu uczeń
+          z niej schodzi (handleCheckStudent zapisuje studentLastChecked). */}
+      {!isLoading && newTrainingStudents.length > 0 && (
+        <CollapsibleSection
+          label={t('coachDashboard.newTrainingsTitle')}
+          open={isNewTrainingsOpen}
+          onToggle={() => setIsNewTrainingsOpen(o => !o)}
+          summary={<span className="text-emerald-600">{t('coachDashboard.studentsCount', { count: newTrainingStudents.length })}</span>}
+        >
+          <div className="space-y-1.5">
+            {newTrainingStudents.map(s => {
+              const details = lastSessionDetails(s);
+              return renderMiniStudentRow(
+                s,
+                <span className="text-emerald-600">
+                  {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
+                </span>,
+                'bg-emerald-50 text-emerald-700 border-emerald-100',
+              );
+            })}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Forma — wyraźna zmiana handicapu (formTrend), rosnący na górze */}
+      {!isLoading && formStudents.length > 0 && (
+        <CollapsibleSection
+          label={t('coachDashboard.formTitle')}
+          open={isFormOpen}
+          onToggle={() => setIsFormOpen(o => !o)}
+          summary={
+            <span className="inline-flex items-center gap-2">
+              {formUpCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-emerald-600">
+                  <span className="material-symbols-outlined text-[14px]">trending_up</span>{formUpCount}
+                </span>
+              )}
+              {formDownCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-orange-500">
+                  <span className="material-symbols-outlined text-[14px]">trending_down</span>{formDownCount}
+                </span>
+              )}
+            </span>
+          }
+        >
+          <div className="space-y-1.5">
+            {formStudents.map(({ s, trend }) => renderMiniStudentRow(
+              s,
+              <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
+                <span className="material-symbols-outlined text-[12px] align-[-2px] mr-0.5">{TREND_ICON[trend.dir]}</span>
+                {t('coachDashboard.formHandicap', { from: trend.from, to: trend.to })}
+                <span className="text-gray-400"> · {getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>
+              </span>,
+              trend.dir === 'up'
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                : 'bg-orange-50 text-orange-600 border-amber-100',
+            ))}
+          </div>
+        </CollapsibleSection>
+      )}
+
       {/* Kto wypada z rytmu — ta sama zwijana sekcja, co wyżej. Rozwinięta:
           najdłużej nieaktywni na górze (do INACTIVE_SHOWN), klik = profil;
           na dole przejście do pełnej listy z filtrem. */}
@@ -1048,32 +1168,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           summary={<span className="text-amber-700">{t('coachDashboard.studentsCount', { count: inactiveCount })}</span>}
         >
           <div className="space-y-1.5">
-            {inactiveStudents.slice(0, INACTIVE_SHOWN).map(s => {
-              const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
-              return (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => handleCheckStudent(s.id)}
-                  className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
-                >
-                  <div className="w-9 h-9 bg-amber-50 text-amber-800 border border-amber-100 rounded-full flex items-center justify-center shrink-0">
-                    {initials
-                      ? <span className="font-black text-[12px]">{initials}</span>
-                      : <span className="material-symbols-outlined text-[18px]">person</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">
-                      {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
-                    </p>
-                    <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest mt-0.5 truncate">
-                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}
-                    </p>
-                  </div>
-                  <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
-                </button>
-              );
-            })}
+            {inactiveStudents.slice(0, INACTIVE_SHOWN).map(s => renderMiniStudentRow(
+              s,
+              <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
+              'bg-amber-50 text-amber-800 border-amber-100',
+            ))}
             <button
               type="button"
               onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}

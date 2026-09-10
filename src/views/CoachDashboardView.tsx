@@ -11,6 +11,8 @@ import CollapsibleSection from '../components/CollapsibleSection';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
+/** Ilu z nich widać w rozwiniętej sekcji; resztę pokazuje lista z filtrem. */
+const INACTIVE_SHOWN = 5;
 
 /**
  * Trend formy z `last10Handicaps` (najnowszy pierwszy, niższy = lepszy):
@@ -155,6 +157,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isStudentTournamentsOpen, setIsStudentTournamentsOpen] = useState(false);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
+  const [isInactiveOpen, setIsInactiveOpen] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -515,7 +518,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Uczeń, który nigdy nie trenował (0), też „wypada z rytmu".
   const inactiveCutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
   const isInactive = (s: any) => (s.exactLastActivity || 0) < inactiveCutoff;
-  const inactiveCount = students.filter(isInactive).length;
+  // Najdłużej bez treningu na górze (nigdy nie trenował = 0, więc pierwszy).
+  const inactiveStudents = students
+    .filter(isInactive)
+    .sort((a, b) => (a.exactLastActivity || 0) - (b.exactLastActivity || 0));
+  const inactiveCount = inactiveStudents.length;
 
   const groupStudents = activeGroup === 'ALL'
     ? students
@@ -837,19 +844,54 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </CollapsibleSection>
       )}
 
-      {/* Kto wypada z rytmu — klik zawęża listę uczniów */}
+      {/* Kto wypada z rytmu — ta sama zwijana sekcja, co wyżej. Rozwinięta:
+          najdłużej nieaktywni na górze (do INACTIVE_SHOWN), klik = profil;
+          na dole przejście do pełnej listy z filtrem. */}
       {!isLoading && inactiveCount > 0 && (
-        <button
-          type="button"
-          onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); }}
-          className="w-full flex items-center gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all text-left"
+        <CollapsibleSection
+          label={t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS })}
+          open={isInactiveOpen}
+          onToggle={() => setIsInactiveOpen(o => !o)}
+          summary={<span className="text-amber-700">{t('coachDashboard.studentsCount', { count: inactiveCount })}</span>}
         >
-          <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0">person_off</span>
-          <span className="flex-1 min-w-0 text-[10px] font-black text-amber-800 uppercase tracking-wide truncate">
-            {t('coachDashboard.inactiveStrip', { count: inactiveCount, days: INACTIVE_DAYS })}
-          </span>
-          <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0">chevron_right</span>
-        </button>
+          <div className="space-y-1.5">
+            {inactiveStudents.slice(0, INACTIVE_SHOWN).map(s => {
+              const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => handleCheckStudent(s.id)}
+                  className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
+                >
+                  <div className="w-9 h-9 bg-amber-50 text-amber-800 border border-amber-100 rounded-full flex items-center justify-center shrink-0">
+                    {initials
+                      ? <span className="font-black text-[12px]">{initials}</span>
+                      : <span className="material-symbols-outlined text-[18px]">person</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">
+                      {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
+                    </p>
+                    <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest mt-0.5 truncate">
+                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}
+              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-600 active:scale-95 transition-all"
+            >
+              {inactiveCount > INACTIVE_SHOWN
+                ? t('coachDashboard.inactiveShowAll', { count: inactiveCount })
+                : t('coachDashboard.inactiveShowOnList')}
+            </button>
+          </div>
+        </CollapsibleSection>
       )}
       </div>
 

@@ -954,6 +954,20 @@ statystyk (u trenera: ucznia). Kolor jest BIEŻĄCY, nie z dnia strzału:
 przepięcie dystansu przemalowuje jego historię, bo to ten sam kubełek.
 Wspólny dystans nie ma kropki. Niesprawdzone klikaniem (za logowaniem).
 
+**Własne dystanse w formularzach zawodów — zrobione tego samego dnia**
+(punkt z ogona po C25). Termin w kalendarzu i historyczny start w REKORDACH
+wybierają z listy usera (`DistancePicker`, `distancesForAnySetup` = suma
+dystansów wszystkich zestawów, bez filtra ptaszków). Termin niesie
+`distanceId` + `distanceLabel` obok metrów; wynik wpisany z terminu
+(`TournamentScoreInput`) dostaje stempel dystansu jak trening. Nastawy w
+podglądzie terminu po id (`findDistanceEntry`), nie po metrach. Stare
+terminy bez id → po metrach, jak `distanceKey`. Niesprawdzone klikaniem.
+
+Kalendarz dostał też zwijane sekcje formularza (dotychczasowe zawody,
+dystans, podopieczni) i alfabetycznych podopiecznych (`bdf56a2`).
+
+Z ogona po C25 zostały: **jardy**.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

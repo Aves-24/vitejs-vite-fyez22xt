@@ -59,10 +59,13 @@ interface CalendarViewProps {
   userId: string; 
   focusedEventId?: string | null;
   clearFocusedEvent?: () => void;
+  /** Wejście z pulpitu trenera („+"): od razu nowy termin w kategorii Trener. */
+  openNewTrainerEvent?: boolean;
+  clearOpenNewTrainerEvent?: () => void;
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
-export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, onNavigate }: CalendarViewProps) {
+export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate }: CalendarViewProps) {
   const { t, i18n: i18nCore } = useTranslation(); 
   const [events, setEvents] = useState<Event[]>([]);
   const [showForm, setShowForm] = useState(false);
@@ -335,6 +338,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     resetForm();
     setShowForm(true);
   };
+
+  // Czeka na `isCoach` — ustawiany razem z dystansami usera, więc resetForm
+  // bierze już właściwy domyślny dystans, a zakładka Trener jest widoczna.
+  useEffect(() => {
+    if (!openNewTrainerEvent || !isCoach) return;
+    resetForm();
+    setNewCategory('Trener');
+    setShowForm(true);
+    clearOpenNewTrainerEvent?.();
+  }, [openNewTrainerEvent, isCoach]);
 
   const handleDayClick = (dateStr: string, dayEvents: Event[]) => {
     if (dayEvents.length === 0) {

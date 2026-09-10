@@ -980,6 +980,13 @@ Z ogona po C25 zostały: **jardy**.
       w kalendarzu), własne terminy `Trener` bez `isMirrored`, klik →
       kalendarz (`focusedEventId`). Odczyt przez `utils/upcomingEvents.ts` —
       wspólna pamięć z HomeView (klucz `grotX_tournaments_{uid}`, 10 min).
+      **Dokładka 2026-09-10** (wybór usera z listy pomysłów): pasek „N uczniów
+      bez treningu od 14+ dni" (klik = filtr listy), w wierszu ucznia dystans
+      i wynik ostatniej sesji + strzałka trendu z `last10Handicaps`, „+" obok
+      terminów (kalendarz z formularzem Trener), jeden najbliższy turniej
+      podopiecznych (zapytanie per uczeń, pamięć 30 min). Odrzucone przez
+      usera: sesje do skomentowania, cele/flagi z dziennika, klipy, frekwencja,
+      ranking grupy.
 - [ ] **C28. Delay Mirror — wpisywanie strzał na tarczę.**
       `src/views/DelayMirrorView.tsx` (+ `DelayMirrorGrid`, `DelayMirrorReplay`)
       nie ma dziś żadnego wpisu wyniku. Do ustalenia z userem: czy to pełna

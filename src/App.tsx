@@ -70,6 +70,8 @@ export default function App() {
   const [sessionDistanceLabel, setSessionDistanceLabel] = useState<string | undefined>(undefined);
   
   const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
+  // Pulpit trenera → kalendarz z otwartym formularzem kategorii Trener.
+  const [openNewTrainerEvent, setOpenNewTrainerEvent] = useState(false);
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
   
@@ -361,6 +363,7 @@ export default function App() {
       }
     } else if (view === 'CALENDAR') {
       setFocusedEventId(extraData || null);
+      setOpenNewTrainerEvent(tab === 'NEW_TRAINER_EVENT');
     } else if (view === 'MY_COACH' || view === 'COACH') {
       setPendingMessageSenderId(extraData || null);
       if (view === 'MY_COACH') {
@@ -595,7 +598,7 @@ export default function App() {
         
         {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
         {currentView === 'WORLD_LEADERBOARD' && <WorldLeaderboardView userLevel={userLevel} onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
         
         {currentView === 'STATS' && (
           <StatsView

@@ -9,6 +9,86 @@ import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import CollapsibleSection from '../components/CollapsibleSection';
 
+/** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
+const INACTIVE_DAYS = 14;
+
+/**
+ * Trend formy z `last10Handicaps` (najnowszy pierwszy, niższy = lepszy):
+ * średnia 3 ostatnich sesji kontra wcześniejszych. Handicap, nie średnia
+ * punktów — średnie z 18 m i 70 m są nieporównywalne, handicap już
+ * uwzględnia dystans i tarczę. 99 = sesja bez wyniku, pomijana.
+ */
+function formTrend(handicaps: unknown): 'up' | 'down' | null {
+  if (!Array.isArray(handicaps)) return null;
+  const valid = handicaps.filter((h): h is number => typeof h === 'number' && h >= 0 && h < 99);
+  if (valid.length < 4) return null;
+  const mean = (a: number[]) => a.reduce((s, h) => s + h, 0) / a.length;
+  const diff = mean(valid.slice(3)) - mean(valid.slice(0, 3));
+  if (diff >= 2) return 'up';
+  if (diff <= -2) return 'down';
+  return null;
+}
+
+interface StudentTournament { title: string; date: string; names: string[] }
+
+const STUDENT_TOURNAMENT_TTL = 30 * 60 * 1000;
+
+/**
+ * Jeden najbliższy turniej podopiecznych (życzenie usera 2026-09-10: tylko
+ * jeden). Uczniowie jadący na to samo (ta sama data i nazwa) są zebrani
+ * razem. Zapytanie na ucznia — dlatego wynik leży 30 min w pamięci,
+ * unieważniany zmianą listy uczniów.
+ * `limit(15)`, nie filtr kategorii w zapytaniu: stare terminy nie mają
+ * `category` (liczą się jako turniej), a przed turniejem mogą stać kopie
+ * terminów od trenera.
+ */
+async function loadNextStudentTournament(coachId: string, students: any[]): Promise<StudentTournament | null> {
+  const key = `grotX_studentTournament_${coachId}`;
+  const ids = students.map(s => s.id).sort().join(',');
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached.ids === ids && Date.now() <= cached.expiresAt) return cached.data;
+    }
+  } catch { /* uszkodzony wpis — czytamy z bazy */ }
+
+  const today = new Date().toISOString().split('T')[0];
+  const found = await Promise.all(students.map(async s => {
+    try {
+      const snap = await getDocs(query(
+        collection(db, `users/${s.id}/tournaments`),
+        where('date', '>=', today),
+        orderBy('date', 'asc'),
+        limit(15)
+      ));
+      const ev = snap.docs.map(d => d.data()).find(e => e.category === 'Turniej' || !e.category);
+      return ev ? { student: s, title: String(ev.title || ''), date: String(ev.date) } : null;
+    } catch { return null; }
+  }));
+
+  const hits = found.filter((f): f is NonNullable<typeof f> => f !== null);
+  let data: StudentTournament | null = null;
+  if (hits.length > 0) {
+    const firstDate = hits.reduce((min, h) => (h.date < min ? h.date : min), hits[0].date);
+    const groups = new Map<string, typeof hits>();
+    for (const h of hits.filter(h => h.date === firstDate)) {
+      const k = h.title.trim().toLowerCase();
+      groups.set(k, [...(groups.get(k) || []), h]);
+    }
+    const biggest = [...groups.values()].sort((a, b) => b.length - a.length)[0];
+    data = {
+      title: biggest[0].title,
+      date: firstDate,
+      names: biggest.map(h => `${h.student.firstName || ''} ${h.student.lastName ? h.student.lastName[0] + '.' : ''}`.trim()),
+    };
+  }
+  try {
+    localStorage.setItem(key, JSON.stringify({ ids, data, expiresAt: Date.now() + STUDENT_TOURNAMENT_TTL }));
+  } catch { /* ignore */ }
+  return data;
+}
+
 interface CoachDashboardViewProps {
   userId: string;
   onNavigate: (view: string, tab?: string, extraData?: string, studentId?: string) => void;
@@ -70,6 +150,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // trenera — `isMirrored`). null = jeszcze się wczytują.
   const [upcomingCoachEvents, setUpcomingCoachEvents] = useState<any[] | null>(null);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
+  const [nextStudentTournament, setNextStudentTournament] = useState<StudentTournament | null>(null);
+  // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
+  const [inactiveOnly, setInactiveOnly] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -145,6 +228,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
           setStudents(studentsData as any);
 
+          // Bez await — turniej podopiecznych nie blokuje listy uczniów.
+          loadNextStudentTournament(userId, studentsData)
+            .then(setNextStudentTournament)
+            .catch(() => setNextStudentTournament(null));
+
           // Fetch ostatniego wpisu CoachLog dla każdego ucznia
           const entries: Record<string, { text: string; type: string } | null> = {};
           await Promise.all((studentsData as any[]).map(async (s: any) => {
@@ -184,6 +272,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
         } else {
           setStudents([]);
+          setNextStudentTournament(null);
         }
       }
     } catch (error) {
@@ -421,9 +510,28 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
-  const visibleStudents = activeGroup === 'ALL' 
-    ? students 
+  // Uczeń, który nigdy nie trenował (0), też „wypada z rytmu".
+  const inactiveCutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
+  const isInactive = (s: any) => (s.exactLastActivity || 0) < inactiveCutoff;
+  const inactiveCount = students.filter(isInactive).length;
+
+  const groupStudents = activeGroup === 'ALL'
+    ? students
     : students.filter(s => (studentGroupMap[s.id] || []).includes(activeGroup));
+  const visibleStudents = inactiveOnly ? groupStudents.filter(isInactive) : groupStudents;
+
+  // „70m · 312 pkt / 36 strz." — z pól, które zapis sesji zostawia na
+  // dokumencie ucznia (ScoringView), więc bez dodatkowego odczytu.
+  const lastSessionDetails = (s: any) => {
+    const parts: string[] = [];
+    if (s.lastSessionDistance) parts.push(String(s.lastSessionDistance));
+    if (s.lastSessionArrows > 0) {
+      parts.push(s.lastSessionScore > 0
+        ? t('coachDashboard.lastSessionScore', { score: s.lastSessionScore, arrows: s.lastSessionArrows })
+        : t('coachDashboard.lastSessionArrows', { count: s.lastSessionArrows }));
+    }
+    return parts.join(' · ');
+  };
 
   const areAllVisibleSelected = visibleStudents.length > 0 && visibleStudents.every(s => selectedStudents.includes(s.id));
   
@@ -632,8 +740,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>
       </div>
 
-      {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy */}
-      <div className="mb-4">
+      <div className="space-y-2 mb-4">
+      {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy.
+          „+" obok: nowy termin w kalendarzu z kategorią Trener. */}
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
         <CollapsibleSection
           label={t('coachDashboard.upcomingTitle')}
           open={isUpcomingOpen}
@@ -678,12 +789,57 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </button>
           </div>
         </CollapsibleSection>
+        </div>
+        <button
+          type="button"
+          onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+          aria-label={t('coachDashboard.newEventBtn')}
+          title={t('coachDashboard.newEventBtn')}
+          className="w-10 h-10 shrink-0 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all"
+        >
+          <span className="material-symbols-outlined text-[20px]">add</span>
+        </button>
+      </div>
+
+      {/* Jeden najbliższy turniej podopiecznych */}
+      {nextStudentTournament && (
+        <div className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2 shadow-sm border border-gray-100">
+          <div className="w-8 h-8 bg-[#fed33e]/20 rounded-lg flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[#8B6508] text-[18px]">emoji_events</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none">{t('coachDashboard.nextStudentTournament')}</p>
+            <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate mt-0.5">{nextStudentTournament.title}</p>
+            <p className="text-[9px] font-bold text-[#8B6508] uppercase tracking-widest truncate mt-0.5">
+              {new Date(`${nextStudentTournament.date}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })}
+              {' · '}
+              {nextStudentTournament.names.slice(0, 2).join(', ')}
+              {nextStudentTournament.names.length > 2 && ` +${nextStudentTournament.names.length - 2}`}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Kto wypada z rytmu — klik zawęża listę uczniów */}
+      {!isLoading && inactiveCount > 0 && (
+        <button
+          type="button"
+          onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); }}
+          className="w-full flex items-center gap-2.5 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all text-left"
+        >
+          <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0">person_off</span>
+          <span className="flex-1 min-w-0 text-[10px] font-black text-amber-800 uppercase tracking-wide truncate">
+            {t('coachDashboard.inactiveStrip', { count: inactiveCount, days: INACTIVE_DAYS })}
+          </span>
+          <span className="material-symbols-outlined text-amber-700 text-[18px] shrink-0">chevron_right</span>
+        </button>
+      )}
       </div>
 
       {/* Toggle widoku: Grupy / Uczniowie */}
       <div className="flex gap-2 mb-5">
         <button
-          onClick={() => setViewMode('groups')}
+          onClick={() => { setViewMode('groups'); setInactiveOnly(false); }}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'groups' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
           }`}
@@ -756,7 +912,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               liczba uczniów po prawej — ~56 px zamiast ~92 px na grupę. */}
           {/* Karta: wszyscy uczniowie */}
           <div
-            onClick={() => { setActiveGroup('ALL'); setViewMode('students'); }}
+            onClick={() => { setActiveGroup('ALL'); setViewMode('students'); setInactiveOnly(false); }}
             className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
           >
             <div className="w-9 h-9 bg-[#fed33e]/20 rounded-lg flex items-center justify-center shrink-0">
@@ -775,7 +931,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             return (
               <div
                 key={group.id}
-                onClick={() => { setActiveGroup(group.id); setViewMode('students'); }}
+                onClick={() => { setActiveGroup(group.id); setViewMode('students'); setInactiveOnly(false); }}
                 className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
               >
                 <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
@@ -940,6 +1096,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           )}
 
           <div>
+            {inactiveOnly && (
+              <button
+                type="button"
+                onClick={() => setInactiveOnly(false)}
+                className="mb-3 inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-800 rounded-full pl-3 pr-2 py-1 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                {t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS })}
+                <span className="material-symbols-outlined text-[14px]">close</span>
+              </button>
+            )}
             <div className="flex items-center justify-between mb-4 ml-2 pr-1">
               <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                  {activeGroup === 'ALL' ? t('coachDashboard.allStudents') : t('coachDashboard.groupList')} ({visibleStudents.length})
@@ -971,6 +1137,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   const hasNewActivity = lastActivity > lastChecked;
                   const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
                   const isSelected = selectedStudents.includes(student.id);
+                  const trend = formTrend(student.last10Handicaps);
 
                   return (
                     <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
@@ -1012,7 +1179,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                               {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
                             </h3>
                             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+                              {trend && (
+                                <span
+                                  className={`material-symbols-outlined text-[12px] align-[-2px] mr-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-orange-500'}`}
+                                  title={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
+                                  aria-label={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
+                                >
+                                  {trend === 'up' ? 'trending_up' : 'trending_down'}
+                                </span>
+                              )}
                               {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
+                              {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
                             </p>
                             {lastLogEntries[student.id] && (() => {
                               const entry = lastLogEntries[student.id]!;

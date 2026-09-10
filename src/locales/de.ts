@@ -1380,6 +1380,7 @@ export const views = {
     selectMode: "Auswählen",
     sendMessageBtn: "Nachricht senden",
     newEntryBtn: "Neuer Eintrag",
+    previousEntries: "Frühere Einträge",
     pickGroupHint: "Gruppe wählen",
     newTrainingsTitle: "Neue Trainings",
     formTitle: "Form",

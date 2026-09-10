@@ -223,6 +223,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isGroupSelecting, setIsGroupSelecting] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [noteModalGroupId, setNoteModalGroupId] = useState<string | null>(null);
+  // Rozwinięte stare wpisy pod polem nowego wpisu (zwinięte = 30 znaków).
+  const [expandedNoteIds, setExpandedNoteIds] = useState<string[]>([]);
   const exitGroupSelecting = () => { setIsGroupSelecting(false); setSelectedGroupId(null); };
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<{ groupId: string; noteId: string } | null>(null);
 
@@ -1421,7 +1423,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <span className={`truncate ${sel ? '' : 'text-white/50'}`}>{sel ? sel.name : t('coachDashboard.pickGroupHint')}</span>
                 </span>
                 <button
-                  onClick={() => { if (sel) { setNewNoteText(''); setNoteModalGroupId(sel.id); } }}
+                  onClick={() => { if (sel) { setNewNoteText(''); setExpandedNoteIds([]); setNoteModalGroupId(sel.id); } }}
                   disabled={!sel}
                   className="bg-[#fed33e] text-[#0a3a2a] px-3 py-1.5 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-all shrink-0 disabled:opacity-40"
                 >
@@ -1667,7 +1669,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           Przed oknem zastępowania, żeby tamto (limit 5 wpisów) było na wierzchu. */}
       {noteModalGroupId && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => { setNoteModalGroupId(null); setNewNoteText(''); }}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] max-h-[90vh] overflow-y-auto shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-1">
               <span className="material-symbols-outlined text-indigo-600 text-[20px]">menu_book</span>
               <h2 className="text-lg font-black text-[#0a3a2a] leading-none">{t('coachDashboard.newEntryBtn')}</h2>
@@ -1707,6 +1709,46 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {t('coachDashboard.journalAddBtn')}
               </button>
             </div>
+
+            {/* Wcześniejsze wpisy (życzenie usera 2026-09-10): zwinięte do 30
+                znaków, klik rozwija całość — żeby pisząc nowy, widzieć stare. */}
+            {(() => {
+              const notes = [...(groupNotes[noteModalGroupId] || [])].sort((a, b) => b.timestamp - a.timestamp);
+              if (notes.length === 0) return null;
+              return (
+                <div className="mt-4 pt-3 border-t border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('coachDashboard.previousEntries')}</p>
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {notes.map(note => {
+                      const chars = Array.from(note.text.replace(/\s+/g, ' ').trim()); // Array.from — emoji to jeden znak
+                      const isLong = chars.length > 30;
+                      const isOpen = expandedNoteIds.includes(note.id);
+                      return (
+                        <button
+                          key={note.id}
+                          type="button"
+                          onClick={() => isLong && setExpandedNoteIds(prev => isOpen ? prev.filter(id => id !== note.id) : [...prev, note.id])}
+                          aria-expanded={isLong ? isOpen : undefined}
+                          className={`w-full text-left bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 transition-all ${isLong ? 'active:scale-[0.99]' : 'cursor-default'}`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <p className="flex-1 min-w-0 text-[11px] font-medium text-[#333] leading-snug break-words whitespace-pre-wrap">
+                              {isOpen || !isLong ? note.text : `${chars.slice(0, 30).join('').trimEnd()}…`}
+                            </p>
+                            {isLong && (
+                              <span className="material-symbols-outlined text-[16px] text-gray-400 shrink-0">{isOpen ? 'expand_less' : 'expand_more'}</span>
+                            )}
+                          </div>
+                          <p className="text-[8px] font-bold text-gray-400 uppercase mt-1">
+                            {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>,
         document.body
@@ -1855,18 +1897,49 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         document.body
       )}
 
+      {/* Usunięcie grupy — to samo zabezpieczenie „wybierz 0", co przy
+          usuwaniu ucznia (życzenie usera 2026-09-10: jedno kliknięcie było za
+          łatwe, a grupa zabiera ze sobą dziennik i przypisania). */}
       {confirmDeleteGroup && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setConfirmDeleteGroup(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center" onClick={e => e.stopPropagation()}>
             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
               <span className="material-symbols-outlined text-3xl">delete_forever</span>
             </div>
-            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('coachDashboard.deleteGroupTitle')}</h2>
-            <p className="text-[11px] font-bold text-gray-500 mb-6 leading-relaxed px-2">{t('coachDashboard.deleteGroupDesc')}</p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDeleteGroup(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-              <button onClick={() => handleDeleteGroup(confirmDeleteGroup)} className="flex-1 py-3.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md">{t('coachDashboard.deleteGroupBtn')}</button>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-1">{t('coachDashboard.deleteGroupTitle')}</h2>
+            <p className="text-[12px] font-black text-red-500 mb-2 px-2 break-words">{coachGroups.find(g => g.id === confirmDeleteGroup)?.name}</p>
+            <p className="text-[11px] font-bold text-gray-500 mb-3 leading-relaxed px-2">{t('coachDashboard.deleteGroupDesc')}</p>
+            <p className="text-[11px] font-bold text-gray-500 mb-5 leading-relaxed px-2">
+              {t('coachDashboard.deleteDescPre')} <span className="text-red-500 font-black text-sm">0</span>{t('coachDashboard.deleteDescPost')}
+            </p>
+
+            <div className="flex gap-3 justify-center mb-6">
+              <button
+                onClick={() => setConfirmDeleteGroup(null)}
+                className="w-14 h-14 bg-gray-100 text-gray-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-gray-200"
+              >
+                8
+              </button>
+              <button
+                onClick={() => handleDeleteGroup(confirmDeleteGroup)}
+                className="w-14 h-14 bg-red-50 text-red-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-red-200 shadow-md shadow-red-500/20"
+              >
+                0
+              </button>
+              <button
+                onClick={() => setConfirmDeleteGroup(null)}
+                className="w-14 h-14 bg-gray-100 text-gray-500 rounded-2xl font-black text-xl active:scale-90 transition-all border border-gray-200"
+              >
+                4
+              </button>
             </div>
+
+            <button
+              onClick={() => setConfirmDeleteGroup(null)}
+              className="w-full py-4 bg-gray-50 text-gray-400 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all hover:bg-gray-100 border border-gray-100"
+            >
+              {t('coachDashboard.cancelOp')}
+            </button>
           </div>
         </div>,
         document.body

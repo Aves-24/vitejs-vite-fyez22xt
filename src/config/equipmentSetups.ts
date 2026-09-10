@@ -39,6 +39,16 @@ export const DEFAULT_SETUP_ID = 'default';
 export const BLOWGUN_DISCIPLINE = 'Dmuchawka (Blasrohr)' as const;
 export type Discipline = BowType | typeof BLOWGUN_DISCIPLINE;
 
+/** Dyscypliny w kolejności wyboru, z kluczem tłumaczenia (Ustawienia, karta ucznia). */
+export const DISCIPLINES: { id: Discipline; labelKey: string }[] = [
+  { id: 'Klasyczny (Recurve)', labelKey: 'rules.bow_recurve' },
+  { id: 'Bloczkowy (Compound)', labelKey: 'rules.bow_compound' },
+  { id: 'Goły (Barebow)', labelKey: 'rules.bow_barebow' },
+  { id: 'Tradycyjny', labelKey: 'rules.bow_trad' },
+  // [DMUCHAWKA] Nie klasa łuku, tylko osobna dyscyplina — stąd inny typ.
+  { id: BLOWGUN_DISCIPLINE, labelKey: 'rules.discipline_blowgun' },
+];
+
 export function isBlowgun(d?: string | null): boolean {
   return d === BLOWGUN_DISCIPLINE;
 }

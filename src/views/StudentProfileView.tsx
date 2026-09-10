@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
@@ -13,7 +13,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 import TopicPicker from '../components/TopicPicker';
-import { distancesForSetup } from '../config/distances';
+import StudentEquipmentCard from '../components/StudentEquipmentCard';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
@@ -333,15 +333,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const { t, i18n } = useTranslation();
   
   const [student, setStudent] = useState<any | null>(null);
-
-  // [KOLORY] Aktywne dystanse ucznia dla jego aktywnego zestawu — to samo, co
-  // uczeń widzi przy starcie treningu (dystanse w kolorze zestawu + wspólne).
-  // Płaskie `bowType` to fallback dla kont sprzed zestawów.
-  const studentSightMarks = useMemo(() => {
-    const list = Array.isArray(student?.userDistances) ? student.userDistances : [];
-    return distancesForSetup(list, student?.setups, student?.activeSetupId, student?.bowType ?? null)
-      .filter((d: any) => d.active);
-  }, [student]);
 
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]); 
   
@@ -1181,80 +1172,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               </div>
             </div>
             
-            <div className="overflow-y-auto flex-1 space-y-6 pr-2 pb-4 hide-scrollbar">
-              <div>
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">sports_martial_arts</span> {t('studentProfile.hardwareBow')}
-                </h3>
-                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-3">
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareBowType')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.bowType || '-'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareDraw')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.lbs ? `${student.lbs} lbs` : '-'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareRiser')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.riser || '-'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareLimbs')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.limbs || '-'}</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareStabilizers')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.stabilizers || '-'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-bold text-gray-500 uppercase">{t('studentProfile.hardwareSight')}</span>
-                    <span className="text-[11px] font-black text-[#0a3a2a]">{student.sight || '-'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[14px]">my_location</span> {t('studentProfile.hardwareSightMarks')}
-                </h3>
-                <div className="space-y-2">
-                  {/* [DYSCYPLINY] Nastawy celownika tylko dla dyscypliny, którą
-                      uczeń ma aktywną. Bez tego trener łucznika widziałby trzy
-                      puste wiersze dmuchawkowe — lista standardowa ma je
-                      od 2026-09-08 u każdego, także u tych, co rury nie tkną. */}
-                  {studentSightMarks.length > 0 ? (
-                    studentSightMarks.map((d: any, i: number) => (
-                      <div key={i} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-                        <div className="flex justify-between items-center mb-2 pb-2 border-b border-gray-50">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-[#0a3a2a] text-[#fed33e] text-[10px] font-black px-2 py-0.5 rounded-md">{d.m}</span>
-                            <span className="text-[9px] font-bold text-gray-400 uppercase">{d.targetType || '122cm'}</span>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2 text-center">
-                          <div>
-                            <span className="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">{t('studentProfile.hardwareSightExt')}</span>
-                            <span className="block text-[11px] font-black text-[#333] bg-gray-50 rounded p-1">{d.sightExtension || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">{t('studentProfile.hardwareSightUD')}</span>
-                            <span className="block text-[11px] font-black text-[#333] bg-gray-50 rounded p-1">{d.sightHeight || d.sightMark || '-'}</span>
-                          </div>
-                          <div>
-                            <span className="block text-[8px] font-bold text-gray-400 uppercase mb-0.5">{t('studentProfile.hardwareSightLR')}</span>
-                            <span className="block text-[11px] font-black text-[#333] bg-gray-50 rounded p-1">{d.sightSide || '-'}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-6 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                      <span className="text-[10px] font-bold text-gray-400 uppercase">{t('studentProfile.hardwareNoSight')}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
+            <div className="overflow-y-auto flex-1 pr-1 pb-2 hide-scrollbar">
+              <StudentEquipmentCard student={student} />
             </div>
           </div>
         </div>,

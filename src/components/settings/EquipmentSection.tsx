@@ -4,12 +4,10 @@ import { useTranslation } from 'react-i18next';
 import FieldInfo from './FieldInfo';
 import {
   EquipmentSetup,
-  Discipline,
   SetupSubtab,
   SETUP_NOTE_MAX,
   visibleSubtabsFor,
   noteFor,
-  BLOWGUN_DISCIPLINE,
   setupLimitFor,
   DEFAULT_SETUP_ID,
   SETUP_COLORS,
@@ -17,6 +15,7 @@ import {
   resolveSetupColors,
   firstFreeSetupColor,
   setupColorHex,
+  DISCIPLINES,
 } from '../../config/equipmentSetups';
 
 /**
@@ -42,15 +41,6 @@ interface EquipmentSectionProps {
   onSetupsChange: (next: EquipmentSetup[]) => void;
   onActiveSetupChange: (id: string) => void;
 }
-
-const DISCIPLINES: { id: Discipline; labelKey: string }[] = [
-  { id: 'Klasyczny (Recurve)', labelKey: 'rules.bow_recurve' },
-  { id: 'Bloczkowy (Compound)', labelKey: 'rules.bow_compound' },
-  { id: 'Goły (Barebow)', labelKey: 'rules.bow_barebow' },
-  { id: 'Tradycyjny', labelKey: 'rules.bow_trad' },
-  // [DMUCHAWKA] Nie klasa łuku, tylko osobna dyscyplina — stąd inny typ.
-  { id: BLOWGUN_DISCIPLINE, labelKey: 'rules.discipline_blowgun' },
-];
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   setups, activeSetupId, isPremium, onSetupsChange, onActiveSetupChange,

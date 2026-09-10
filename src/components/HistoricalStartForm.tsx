@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { collection, addDoc, Timestamp } from 'firebase/firestore';
@@ -6,27 +6,45 @@ import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { seriesKeyFromTitle } from '../utils/tournamentSeries';
 import { DEFAULT_SETUP_ID } from '../utils/setupStamp';
-import { MASTER_DISTANCES, distanceMeters } from '../config/distances';
+import { distanceMeters, distanceStamp, distancesForAnySetup, findDistanceEntry } from '../config/distances';
+import { useDistanceCatalog } from '../hooks/useDistanceColors';
+import DistancePicker from './DistancePicker';
 
 interface HistoricalStartFormProps {
   userId: string;
   isPremium: boolean;
   /** Nazwy dotychczasowych imprez — żeby dopisany start trafił do istniejącej serii. */
-  knownSeries: { name: string; distance?: string }[];
+  knownSeries: { name: string; distance?: string; distanceId?: string }[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-// [C25] Lista z katalogu — bez 35m nie było jej tu wcześniej przez przeoczenie,
-// nie przez decyzję. Patrz config/distances.ts.
-const DISTANCES = MASTER_DISTANCES;
-
 export default function HistoricalStartForm({ userId, isPremium, knownSeries, onClose, onSaved }: HistoricalStartFormProps) {
   const { t } = useTranslation();
+
+  // [ZAWODY] Lista dystansów usera zamiast `MASTER_DISTANCES` — wcześniej nie
+  // dało się dopisać startu na własnym dystansie ani z dmuchawki.
+  const catalog = useDistanceCatalog(userId);
+  const options = useMemo(
+    () => distancesForAnySetup(catalog.distances, catalog.setups, catalog.bowType),
+    [catalog],
+  );
 
   const [title, setTitle] = useState('');
   const [date, setDate] = useState('');
   const [distance, setDistance] = useState('70m');
+  // Pusty = wpis rozstrzygany po metrach (`findDistanceEntry`).
+  const [distanceId, setDistanceId] = useState('');
+  const selectedEntry = findDistanceEntry(catalog.distances, { distanceId, distance });
+
+  // Domyślne 70 m nie istnieje u każdego (sama dmuchawka) — wtedy pierwszy
+  // dozwolony, zamiast zapisu startu na dystansie spoza listy.
+  useEffect(() => {
+    if (options.length > 0 && !options.some(o => o.id === selectedEntry?.id)) {
+      setDistance(options[0].m);
+      setDistanceId(options[0].id);
+    }
+  }, [options, selectedEntry?.id]);
   const [score, setScore] = useState('');
   const [arrows, setArrows] = useState('72');
   const [xCount, setXCount] = useState('');
@@ -94,6 +112,8 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
         type: 'Turniej',
         tournamentName: title.trim(),
         distance,
+        // [ZAWODY] Kubełek statystyk — ten sam stempel co przy treningu.
+        ...distanceStamp(selectedEntry),
         score: scoreNum,
         scoreArrows: arrowsNum,
         sessionArrows: arrowsNum,
@@ -165,7 +185,10 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
               {suggestions.map(s => (
                 <button
                   key={s.name}
-                  onClick={() => { setTitle(s.name); if (s.distance) setDistance(s.distance); }}
+                  onClick={() => {
+                    setTitle(s.name);
+                    if (s.distance) { setDistance(s.distance); setDistanceId(s.distanceId || ''); }
+                  }}
                   className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-gray-50 border-transparent text-gray-500 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[13px] text-gray-300">history</span>
@@ -189,17 +212,12 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
 
           <div className="space-y-1.5">
             <label className="text-[9px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.formDistLabel')}</label>
-            <div className="grid grid-cols-5 gap-1">
-              {DISTANCES.map(d => (
-                <button
-                  key={d}
-                  onClick={() => setDistance(d)}
-                  className={`py-2 rounded-xl text-[10px] font-black border transition-all ${distance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
-                >
-                  {d}
-                </button>
-              ))}
-            </div>
+            <DistancePicker
+              options={options}
+              colors={catalog.colors}
+              selectedId={selectedEntry?.id}
+              onPick={d => { setDistance(d.m); setDistanceId(d.id); }}
+            />
           </div>
 
           <div className="flex gap-2">

@@ -1,18 +1,28 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { distanceColorMap } from '../config/distances';
+import { UserDistance, distanceColorMap } from '../config/distances';
+import { EquipmentSetup } from '../config/equipmentSetups';
+
+export interface DistanceCatalog {
+  distances: UserDistance[];
+  setups: EquipmentSetup[];
+  /** Płaskie `bowType` — dyscyplina kont sprzed zestawów. */
+  bowType: string | null;
+  /** `distanceId` → hex koloru zestawu (patrz `distanceColorMap`). */
+  colors: Map<string, string>;
+}
+
+const EMPTY: DistanceCatalog = { distances: [], setups: [], bowType: null, colors: new Map() };
 
 /**
- * [KOLORY] Kolory zestawów dla kubełków statystyk właściciela `userId`.
- *
- * `userId` to osoba, której statystyki oglądamy — u trenera uczeń, więc kolory
- * są jego, nie trenera. Jeden odczyt `users/{uid}` na wejście w widok; błąd
- * (brak dostępu, offline) daje pustą mapę, czyli statystyki bez kropek, a nie
- * wywrócony ekran.
+ * Lista dystansów i zestawy właściciela `userId` — u trenera ucznia, więc
+ * nazwy i kolory są jego, nie trenera. Jeden odczyt `users/{uid}` na wejście
+ * w widok; błąd (brak dostępu, offline) daje pusty katalog, a nie wywrócony
+ * ekran.
  */
-export function useDistanceColors(userId: string): Map<string, string> {
-  const [colors, setColors] = useState<Map<string, string>>(() => new Map());
+export function useDistanceCatalog(userId: string): DistanceCatalog {
+  const [catalog, setCatalog] = useState<DistanceCatalog>(EMPTY);
 
   useEffect(() => {
     if (!userId) return;
@@ -21,11 +31,23 @@ export function useDistanceColors(userId: string): Map<string, string> {
       .then(snap => {
         if (!alive) return;
         const data = snap.data();
-        setColors(distanceColorMap(data?.userDistances, data?.setups));
+        const distances: UserDistance[] = Array.isArray(data?.userDistances) ? data.userDistances : [];
+        const setups: EquipmentSetup[] = Array.isArray(data?.setups) ? data.setups : [];
+        setCatalog({
+          distances,
+          setups,
+          bowType: data?.bowType ?? null,
+          colors: distanceColorMap(distances, setups),
+        });
       })
-      .catch(() => { if (alive) setColors(new Map()); });
+      .catch(() => { if (alive) setCatalog(EMPTY); });
     return () => { alive = false; };
   }, [userId]);
 
-  return colors;
+  return catalog;
+}
+
+/** [KOLORY] Same kolory zestawów dla kubełków statystyk. */
+export function useDistanceColors(userId: string): Map<string, string> {
+  return useDistanceCatalog(userId).colors;
 }

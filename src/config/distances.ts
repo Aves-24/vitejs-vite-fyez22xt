@@ -441,6 +441,44 @@ export function distancesForSetup(
 }
 
 /**
+ * [ZAWODY] Dystanse do wyboru przy zawodach (kalendarz, historyczny start).
+ *
+ * Suma tego, co widzi KAŻDY zestaw usera — zawody nie mają przełącznika
+ * zestawów, a user z recurve i rurą ma móc wpisać turniej z obu. Łucznik bez
+ * zestawu z rurą dalej nie zobaczy 5 i 7 m, bo żaden jego zestaw ich nie widzi.
+ * Świadomie bez filtra `active`: zawody bywają na dystansie, którego się
+ * akurat nie trenuje.
+ */
+export function distancesForAnySetup(
+  list: UserDistance[] | null | undefined,
+  setups: SetupLike[] | null | undefined,
+  fallbackDiscipline?: string | null,
+): UserDistance[] {
+  const all = setups || [];
+  if (all.length === 0) return distancesForSetup(list || [], [], null, fallbackDiscipline);
+  const ids = new Set<string>();
+  for (const s of all) distancesForSetup(list || [], all, s.id).forEach(d => ids.add(d.id));
+  return (list || []).filter(d => ids.has(d.id));
+}
+
+/**
+ * [ZAWODY] Wpis z listy dla zapisanego wyboru (termin w kalendarzu, sesja).
+ *
+ * Po `distanceId`, a gdy go brak — zapisy sprzed 2026-09-10 niosą sam napis
+ * `70m` — po id wyliczonym z metrów, czyli dokładnie jak `distanceKey`.
+ * Ostatnia deska: pierwszy wpis o tych metrach.
+ */
+export function findDistanceEntry(
+  list: UserDistance[] | null | undefined,
+  ref: { distanceId?: string | null; distance?: string | null },
+): UserDistance | undefined {
+  const all = list || [];
+  return (ref.distanceId ? all.find(d => d.id === ref.distanceId) : undefined)
+    ?? all.find(d => d.id === builtinDistanceId(String(ref.distance ?? '')))
+    ?? all.find(d => d.m === ref.distance);
+}
+
+/**
  * [KOLORY] Kolor zestawu dla każdego kubełka statystyk: `distanceId` → hex.
  *
  * Po to, żeby dwa gołe „18m" (czerwone recurve, niebieskie barebow) dało się

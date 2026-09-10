@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
@@ -10,6 +10,12 @@ import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent }
 import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import { guestExpiryFields } from '../utils/guestMode';
 import TopicPicker from '../components/TopicPicker';
+import DistancePicker from '../components/DistancePicker';
+import {
+  UserDistance, displayDistance, sessionDistanceLabel, findDistanceEntry,
+  distancesForAnySetup, distanceColorMap,
+} from '../config/distances';
+import { EquipmentSetup } from '../config/equipmentSetups';
 
 interface Event {
   id: string;
@@ -20,7 +26,12 @@ interface Event {
   note: string;
   type: string;
   category: 'Turniej' | 'Inne' | 'Trener';
+  /** Metry (`70m`) — karmią nastawy, tarczę i handicap; zostają zawsze. */
   distance?: string;
+  /** [ZAWODY] Wpis z listy usera. Brak = termin sprzed 2026-09-10 (patrz `findDistanceEntry`). */
+  distanceId?: string | null;
+  /** [ZAWODY] Nazwa z etykietą („18m barebow") z chwili zapisu; brak = same metry. */
+  distanceLabel?: string | null;
   hasScore?: boolean;
   coachStudents?: 'all' | string[];
   topics?: string[];
@@ -121,11 +132,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [newAddress, setNewAddress] = useState('');
   const [newNote, setNewNote] = useState('');
   const [newDistance, setNewDistance] = useState('70m');
+  // [ZAWODY] Id wybranego wpisu. Pusty = rozstrzyga `findDistanceEntry` po metrach.
+  const [newDistanceId, setNewDistanceId] = useState('');
   const [newTopics, setNewTopics] = useState<string[]>([]);
   const calendarPickerRef = useRef<HTMLInputElement>(null);
   
   const [isPremium, setIsPremium] = useState(false);
-  const [userSightMarks, setUserSightMarks] = useState<any[]>([]); 
+  const [userSightMarks, setUserSightMarks] = useState<UserDistance[]>([]);
+  const [userSetups, setUserSetups] = useState<EquipmentSetup[]>([]);
+  const [userBowType, setUserBowType] = useState<string | null>(null);
 
   const [showAllTournaments, setShowAllTournaments] = useState(false);
   const [showAllOthers, setShowAllOthers] = useState(false);
@@ -147,7 +162,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   // Podpowiedzi nazw turniejów. Kolejna edycja tej samej imprezy musi mieć
   // nazwę co do znaku taką jak poprzednia, żeby trafiła do tej samej serii —
   // wybór z listy załatwia to pewniej niż liczenie na to, że wpiszemy tak samo.
-  type TitleSuggestion = { title: string; date: string; distance?: string };
+  type TitleSuggestion = { title: string; date: string; distance?: string; distanceId?: string | null; distanceLabel?: string | null };
   const [titleSuggestions, setTitleSuggestions] = useState<TitleSuggestion[]>([]);
   const suggestionsLoadedRef = useRef(false);
 
@@ -166,8 +181,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
-  const availableDistances = ['18m', '20m', '25m', '30m', '40m', '50m', '60m', '70m', '90m'];
-  
+  // [ZAWODY] Lista usera zamiast zaszytej (bez 35 m i własnych dystansów).
+  // Suma dystansów wszystkich jego zestawów — patrz `distancesForAnySetup`.
+  const tournamentDistances = useMemo(
+    () => distancesForAnySetup(userSightMarks, userSetups, userBowType),
+    [userSightMarks, userSetups, userBowType],
+  );
+  const distanceColors = useMemo(() => distanceColorMap(userSightMarks, userSetups), [userSightMarks, userSetups]);
+  const selectedDistanceEntry = findDistanceEntry(userSightMarks, { distanceId: newDistanceId, distance: newDistance });
+  /** Wybór domyślny: 70 m, a gdy go nie ma (np. sama dmuchawka) — pierwszy dozwolony. */
+  const defaultTournamentDistance = (): UserDistance | undefined =>
+    findDistanceEntry(tournamentDistances, { distance: '70m' }) ?? tournamentDistances[0];
+
   const todayObj = new Date();
   const todayStr = todayObj.toISOString().split('T')[0];
 
@@ -185,6 +210,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           const data = profileSnap.data();
           userIsPremium = data.isPremium || false;
           setUserSightMarks(data.userDistances || []);
+          setUserSetups(Array.isArray(data.setups) ? data.setups : []);
+          setUserBowType(data.bowType ?? null);
           setIsPremium(userIsPremium);
           const coachFlag = data.isCoach || false;
           setIsCoach(coachFlag);
@@ -282,7 +309,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         const tournaments = snap.docs
           .map(d => d.data() as Event)
           .filter(e => (e.category === 'Turniej' || !e.category) && !!e.title)
-          .map(e => ({ title: e.title, date: e.date, distance: e.distance }));
+          .map(e => ({ title: e.title, date: e.date, distance: e.distance, distanceId: e.distanceId, distanceLabel: e.distanceLabel }));
         setTitleSuggestions(collectSeries(tournaments));
       })
       .catch(() => { suggestionsLoadedRef.current = false; });
@@ -290,8 +317,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return () => { cancelled = true; };
   }, [userId, showForm, newCategory]);
 
-  const getSightMarkForDistance = (dist: string) => {
-    const mark = userSightMarks.find(m => m.distance === dist || m.name === dist || m.m === dist);
+  // [ZAWODY] Po id wpisu, nie po metrach — przy dwóch „18m" (recurve i barebow)
+  // szukanie po napisie brało pierwszy z brzegu i pokazywało cudze nastawy.
+  const getSightMarkForDistance = (ev: { distanceId?: string | null; distance?: string }) => {
+    const mark = findDistanceEntry(userSightMarks, ev);
     return mark ? {
         ext: mark.sightExtension || '-',
         height: mark.sightHeight || '-',
@@ -326,8 +355,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     }
     setNewTime(''); 
     setNewAddress(''); 
-    setNewNote(''); 
-    setNewDistance('70m');
+    setNewNote('');
+    const def = defaultTournamentDistance();
+    setNewDistance(def?.m ?? '70m');
+    setNewDistanceId(def?.id ?? '');
     setNewCategory('Turniej');
     setNewCoachStudents([]);
     setNewTopics([]);
@@ -371,6 +402,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewAddress(viewingEvent.address);
     setNewNote(viewingEvent.note);
     if (viewingEvent.distance) setNewDistance(viewingEvent.distance);
+    setNewDistanceId(viewingEvent.distanceId || '');
     setNewCoachStudents(viewingEvent.coachStudents || []);
     setNewTopics(viewingEvent.topics || []);
     collapseFormSections();
@@ -437,9 +469,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       time: newTime,
       address: newAddress,
       note: newNote,
-      distance: newCategory === 'Turniej' ? newDistance : null,
+      distance: newCategory === 'Turniej' ? (selectedDistanceEntry?.m ?? newDistance) : null,
+      // [ZAWODY] Id i nazwa wpisu — wynik wpisany z terminu trafia dzięki nim
+      // do kubełka „18m barebow", a nie do gołego 18 m. `null`, nie brak pola:
+      // przy edycji ma nadpisać to, co termin miał wcześniej.
+      distanceId: newCategory === 'Turniej' ? (selectedDistanceEntry?.id ?? null) : null,
+      distanceLabel: newCategory === 'Turniej' && selectedDistanceEntry?.label ? displayDistance(selectedDistanceEntry) : null,
       type: newCategory === 'Turniej'
-        ? `${t('calendar.upcomingTournaments')} ${newDistance}`
+        ? `${t('calendar.upcomingTournaments')} ${selectedDistanceEntry ? displayDistance(selectedDistanceEntry) : newDistance}`
         : newCategory === 'Trener'
         ? 'Trener'
         : t('calendar.trainingsAndOthers'),
@@ -564,7 +601,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         collection(db, 'users', userId, 'sessions'),
         where('type', '==', 'Turniej')
       ));
-      type ScoredSession = { eventId?: string; date?: string; score?: number; distance?: string; tournamentName?: string };
+      type ScoredSession = { eventId?: string; date?: string; score?: number; distance?: string; distanceLabel?: string; tournamentName?: string };
       const byEventId = new Map<string, ScoredSession>();
       const byDate = new Map<string, ScoredSession[]>();
       snap.docs.forEach(d => {
@@ -581,7 +618,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         const match = byEventId.get(e.id)
           || sameDay.find(s => !s.eventId && s.tournamentName === e.title)
           || sameDay.find(s => !s.eventId);
-        if (match) found[e.id] = { score: match.score || 0, distance: match.distance || e.distance || '' };
+        // Nazwa z etykietą („18m barebow"), gdy sesja albo termin ją niosą.
+        if (match) found[e.id] = { score: match.score || 0, distance: match.distance ? sessionDistanceLabel(match) : sessionDistanceLabel(e) };
       });
       setArchResults(p => ({ ...p, ...found }));
     } catch { /* wynik jest dodatkiem — jego brak nie blokuje archiwum */ }
@@ -795,7 +833,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         <div className="flex-1 pr-2">
                           <h3 className="font-black text-sm leading-tight mb-0.5">{event.title}</h3>
                           <div className="flex flex-col gap-0.5 text-[8px] font-bold uppercase tracking-widest opacity-70">
-                            {event.distance && <span className="bg-[#fed33e] text-[#5d4a00] px-1.5 py-0.5 rounded w-fit text-[7px]">{event.distance}</span>}
+                            {event.distance && <span className="bg-[#fed33e] text-[#5d4a00] px-1.5 py-0.5 rounded w-fit text-[7px]">{sessionDistanceLabel(event)}</span>}
                             <div className="flex items-center gap-1">
                               <span className="material-symbols-outlined text-[10px]">schedule</span> {event.time || t('calendar.wholeDay')}
                             </div>
@@ -1028,7 +1066,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                           </p>
                           {(event.category === 'Turniej' || !event.category) && (() => {
                             const res = archResults[event.id];
-                            const dist = res?.distance || event.distance;
+                            const dist = res?.distance || (event.distance ? sessionDistanceLabel(event) : '');
                             return (
                               <div className="flex items-center gap-1 mt-1">
                                 {dist && (
@@ -1146,14 +1184,17 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                            key={s.title + s.date}
                            onClick={() => {
                              setNewTitle(s.title);
-                             if (s.distance) setNewDistance(s.distance);
+                             if (s.distance) {
+                               setNewDistance(s.distance);
+                               setNewDistanceId(s.distanceId || '');
+                             }
                              setOpenPastTournaments(false);
                            }}
                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-gray-50 border-transparent text-gray-500 active:scale-95 transition-all"
                          >
                            <span className="material-symbols-outlined text-[13px] text-gray-300">history</span>
                            {s.title}
-                           {s.distance && <span className="text-gray-300">· {s.distance}</span>}
+                           {s.distance && <span className="text-gray-300">· {sessionDistanceLabel(s)}</span>}
                          </button>
                        ))}
                      </div>
@@ -1164,15 +1205,23 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                {newCategory === 'Turniej' && (
                  <FormSection
                    label={t('calendar.formDistLabel')}
-                   summary={newDistance}
+                   summary={
+                     <span className="flex items-center gap-1">
+                       {selectedDistanceEntry && distanceColors.has(selectedDistanceEntry.id) && (
+                         <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(selectedDistanceEntry.id) }} />
+                       )}
+                       {selectedDistanceEntry ? displayDistance(selectedDistanceEntry) : newDistance}
+                     </span>
+                   }
                    open={openDistance}
                    onToggle={() => setOpenDistance(o => !o)}
                  >
-                   <div className="grid grid-cols-5 gap-1">
-                     {availableDistances.map(d => (
-                       <button key={d} onClick={() => { setNewDistance(d); setOpenDistance(false); }} className={`py-2 rounded-xl text-[10px] font-black border transition-all ${newDistance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>{d}</button>
-                     ))}
-                   </div>
+                   <DistancePicker
+                     options={tournamentDistances}
+                     colors={distanceColors}
+                     selectedId={selectedDistanceEntry?.id}
+                     onPick={d => { setNewDistance(d.m); setNewDistanceId(d.id); setOpenDistance(false); }}
+                   />
                  </FormSection>
                )}
 
@@ -1371,7 +1420,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              <div className="flex justify-between items-start mb-4">
                 <div>
                   <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-sky-100 text-sky-700' : 'bg-indigo-100 text-indigo-700') : 'bg-emerald-100 text-emerald-700'}`}>
-                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${viewingEvent.distance}` : ''}
+                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${sessionDistanceLabel(viewingEvent)}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
@@ -1379,7 +1428,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              </div>
 
              {viewingEvent.category === 'Turniej' && viewingEvent.distance && (() => {
-                const sight = getSightMarkForDistance(viewingEvent.distance);
+                const sight = getSightMarkForDistance(viewingEvent);
                 const isTournamentToday = viewingEvent.date <= todayStr;
                 const formattedDate = new Date(viewingEvent.date).toLocaleDateString(currentLocale, { day: '2-digit', month: '2-digit' });
                 
@@ -1388,7 +1437,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <div className="flex-[7] bg-emerald-50 border border-emerald-100 rounded-[20px] p-2.5 shadow-sm flex flex-col justify-center">
                           <div className="flex items-center gap-1.5 mb-2">
                               <span className="material-symbols-outlined text-[16px] text-emerald-600">visibility</span>
-                              <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest leading-none mt-0.5">{t('calendar.modalSight')} {viewingEvent.distance}</p>
+                              <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest leading-none mt-0.5">{t('calendar.modalSight')} {sessionDistanceLabel(viewingEvent)}</p>
                           </div>
                           <div className="grid grid-cols-3 gap-1">
                               <div className="bg-white rounded-xl py-1.5 px-1 text-center shadow-sm flex flex-col justify-center">
@@ -1585,6 +1634,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           eventId={viewingEvent.id}
           tournamentName={viewingEvent.title}
           distance={viewingEvent.distance || '70m'}
+          // [ZAWODY] Termin sprzed 2026-09-10 nie ma id — wynik spada wtedy
+          // do kubełka wyliczonego z metrów, tak jak stare sesje.
+          distanceId={viewingEvent.distanceId || undefined}
+          distanceLabel={viewingEvent.distanceLabel || undefined}
           onClose={() => setShowScoreInput(false)}
           onNavigate={onNavigate}
         />

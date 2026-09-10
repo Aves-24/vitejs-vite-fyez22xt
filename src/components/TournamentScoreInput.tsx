@@ -12,11 +12,15 @@ interface TournamentScoreInputProps {
   eventId: string;
   tournamentName: string;
   distance: string;
+  /** [ZAWODY] Wpis z listy usera — kubełek statystyk. Brak = kubełek z metrów. */
+  distanceId?: string;
+  /** [ZAWODY] Nazwa z etykietą („18m barebow"); brak = same metry. */
+  distanceLabel?: string;
   onClose: () => void;
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
-export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, onClose, onNavigate }: TournamentScoreInputProps) {
+export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, distanceId, distanceLabel, onClose, onNavigate }: TournamentScoreInputProps) {
   const { t } = useTranslation();
   const [inputMode, setInputMode] = useState<'DETAILED' | 'SUMMARY'>('DETAILED');
 
@@ -192,6 +196,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         date: todayStr,
         timestamp: serverTimestamp(),
         distance,
+        // [ZAWODY] Stempel dystansu jak przy treningu (`distanceStamp`) —
+        // bez niego wynik z „18m barebow" lądował w kubełku gołego 18 m.
+        ...(distanceId ? { distanceId } : {}),
+        ...(distanceId && distanceLabel ? { distanceLabel } : {}),
         type: 'Turniej',
         tournamentName,
         // Twarde powiązanie z wpisem w terminarzu — archiwum czyta po nim wynik
@@ -243,7 +251,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     <div className="fixed inset-0 mx-auto w-full max-w-md bg-[#fcfdfe] z-[100000] flex flex-col pt-[calc(env(safe-area-inset-top)+1rem)] pb-8 animate-fade-in-up shadow-2xl overflow-hidden">
       
       <div className="relative mb-3 flex flex-col items-center shrink-0 px-14 text-center">
-        <span className="inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase bg-[#fed33e] text-[#5d4a00] mb-1 shadow-sm">{t('tournamentInput.cardTitle')} - {distance}</span>
+        <span className="inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase bg-[#fed33e] text-[#5d4a00] mb-1 shadow-sm">{t('tournamentInput.cardTitle')} - {distanceLabel || distance}</span>
         <h2 className="text-lg font-black text-[#0a3a2a] leading-tight line-clamp-1">{tournamentName}</h2>
         <button onClick={onClose} className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 border border-gray-200 active:scale-90"><span className="material-symbols-outlined text-lg">close</span></button>
       </div>

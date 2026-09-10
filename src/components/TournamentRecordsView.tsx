@@ -209,12 +209,14 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
   // Podpowiedzi w formularzu biorą wszystkie imprezy, niezależnie od
   // aktywnego filtra dystansu.
   const knownSeries = useMemo(() => {
-    const byKey = new Map<string, { name: string; distance?: string }>();
+    const byKey = new Map<string, { name: string; distance?: string; distanceId?: string }>();
     scored
       .filter(s => s.type === 'Turniej' && !!s.tournamentName)
       .forEach(s => {
         const key = seriesKeyFromTitle(s.tournamentName as string);
-        if (key && !byKey.has(key)) byKey.set(key, { name: s.tournamentName as string, distance: s.distance });
+        // [ZAWODY] Z id wpisu — podpowiedź „Meisterschaft · 18m barebow"
+        // ustawia potem w formularzu właśnie ten wpis, a nie gołe 18 m.
+        if (key && !byKey.has(key)) byKey.set(key, { name: s.tournamentName as string, distance: s.distance, distanceId: s.distanceId });
       });
     return Array.from(byKey.values());
   }, [scored]);

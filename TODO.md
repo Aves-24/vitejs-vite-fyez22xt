@@ -887,7 +887,47 @@ konta testowego, otwarcie /legal/datenschutz.html.
       b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
          wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
 
-## STAN NA 2026-09-08 — czytaj to najpierw
+## STAN NA 2026-09-10 — czytaj to najpierw
+
+**Kolory zestawów zastąpiły filtr dystansów samą dyscypliną.** Sprawdzone na
+żywo przez usera na localhost („działa idealnie").
+
+User zgłosił, że filtr z 2026-09-08 w CELOWNIKU „nie działa". Faktycznie
+był za słaby: szedł po DYSCYPLINIE, więc dwa zestawy recurve widziały tę samą
+listę i nie dało się mieć 18 m pod każdy łuk z osobnymi nastawami. Nowy
+model to pomysł usera:
+
+| element | co robi |
+|---|---|
+| `EquipmentSetup.color` | jeden z 8 kolorów (`SETUP_COLORS`), jeden kolor = jeden zestaw |
+| `resolveSetupColors` | zestawy bez koloru dostają pierwszy WOLNY (nie po indeksie), bez migracji |
+| `UserDistance.setupId` | przypięcie dystansu do zestawu; brak = wspólny dla swojej dyscypliny |
+| `distancesForSetup` | kolor → tylko przy tym zestawie; bez koloru → stary filtr dyscypliną |
+| `disciplineOfDistance` | lista tarcz per WIERSZ w CELOWNIKU (ekran nie ma już jednej dyscypliny) |
+| `isDuplicateDistance` | klucz: metry + etykieta + zestaw + dyscyplina |
+
+Ekrany:
+- **SPRZĘT** — wybór koloru zestawu, kropka przy nazwie zestawu.
+- **CELOWNIK** — pokazuje WSZYSTKIE dystanse, pasek w kolorze zestawu, w
+  rozwiniętym wierszu „Zestaw:" (Wspólny / zestawy); to samo przy dodawaniu.
+  Przy jednym zestawie wybór się nie pokazuje.
+- **Start treningu** — kropki zestawów nad dystansami; klik zapisuje
+  `activeSetupId` (+ `bowType`) od razu, bo z niego stempel sesji bierze zestaw.
+- **Trener** (`StudentProfileView`) — nastawy ucznia dla jego aktywnego zestawu.
+
+Reguł Firestore NIE trzeba ruszać — pilnują tylko długości list.
+`setupId` przeżywa regenerację listy (`buildDistanceEntry`, `buildBlowgunEntry`).
+Osierocony `setupId` (skasowany zestaw) = dystans wspólny, nic nie znika.
+
+**Otwarte:** dwa gołe „18m" w różnych kolorach wyglądają w statystykach
+identycznie — kolor nie trafia do ANALIZY DYSTANSU ani REKORDÓW. Na razie
+rada: drugi wpis z etykietą. Ewentualnie kropka koloru w statystykach.
+
+Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
+
+---
+
+## STAN NA 2026-09-08
 
 Zamknięte punkty 1 i 2 z listy „następnym razem" (CI zielone, ścieżka PRO
 działa) plus **dystanse per dyscyplina** — pierwsza pozycja z ogona po C25.
@@ -936,10 +976,9 @@ i compound → 80cm (6-Ring)", która dałaby 5 m z rury tarczę łuczniczą.
 `bowClass` ze stempla zestawu. Gdyby decydował o niej dystans, zmiana tagu
 przepisywałaby historię wstecz.
 
-### ✅ DO SPRAWDZENIA NA ŻYWO — zacznij od tego
+### ~~DO SPRAWDZENIA NA ŻYWO~~ — NIEAKTUALNE, patrz STAN NA 2026-09-10
 
-Kod jest na produkcji, ale **nikt go nie kliknął ani razu** (wszystko jest za
-logowaniem). Pięć rzeczy, w tej kolejności — 5 minut roboty:
+Filtr samą dyscypliną zastąpiły kolory zestawów. Lista zostaje dla historii:
 
 - [ ] **Zestaw dmuchawki → start treningu.** Ma być 5/7/10 m, aktywne 10 m,
       tarcza `Blowgun 20cm`. Żadnego 18–90 m.

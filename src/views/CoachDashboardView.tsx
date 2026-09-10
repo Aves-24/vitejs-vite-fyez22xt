@@ -999,6 +999,25 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         ))}
       </div>
 
+      {/* Pasek wysyłki NAD listą (życzenie usera 2026-09-10) — pod długą
+          listą trener go nie widział. Widoczny przez cały tryb wyboru,
+          przycisk aktywny od pierwszego zaznaczonego. */}
+      {isSelecting && list.length > 0 && (
+        <div className="mb-2 bg-[#0a3a2a] pl-3 pr-1.5 py-1.5 rounded-xl flex items-center justify-between gap-2 animate-fade-in">
+          <span className="flex items-center gap-1.5 text-[10px] font-black text-white uppercase tracking-wide">
+            <span className="material-symbols-outlined text-[16px] text-[#fed33e]">mark_email_unread</span>
+            {t('coachDashboard.selected')}: {selectedStudents.length}
+          </span>
+          <button
+            onClick={() => setIsMessageModalOpen(true)}
+            disabled={selectedStudents.length === 0}
+            className="bg-[#fed33e] text-[#0a3a2a] px-3 py-1.5 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-all shrink-0 disabled:opacity-40"
+          >
+            {t('coachDashboard.sendMessageBtn')}
+          </button>
+        </div>
+      )}
+
       {isLoading ? (
         <div className="flex flex-col gap-2">
           {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>)}
@@ -1522,27 +1541,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {renderStudentList(visibleStudents, t('coachDashboard.allStudents'))}
         </div>
       )}
-
-      {/* Wersja wbudowana pod listę (niezasłaniająca) */}
-{selectedStudents.length > 0 && (
-  <div className="mt-4 bg-[#0a3a2a] p-4 rounded-3xl shadow-md flex items-center justify-between border border-[#124b38] animate-fade-in-up">
-    <div className="text-white flex items-center gap-3">
-       <div className="w-10 h-10 bg-[#124b38] rounded-full flex items-center justify-center shrink-0">
-         <span className="material-symbols-outlined text-[#fed33e]">mark_email_unread</span>
-       </div>
-       <div>
-         <p className="text-[10px] font-bold text-gray-400 uppercase leading-none">{t('coachDashboard.selected')}</p>
-         <p className="font-black text-xl leading-none mt-1">{selectedStudents.length}</p>
-       </div>
-    </div>
-    <button 
-      onClick={() => setIsMessageModalOpen(true)}
-      className="bg-[#fed33e] text-[#0a3a2a] px-5 py-3 rounded-xl font-black text-[11px] uppercase shadow-sm active:scale-95 transition-all shrink-0"
-    >
-      {t('coachDashboard.writeBtn')}
-    </button>
-  </div>
-)}
 
       {toastMessage && (
         <div className="fixed top-14 left-0 right-0 mx-auto w-max z-[300000] bg-[#0a3a2a] text-white px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl border border-emerald-900 flex items-center gap-2 whitespace-nowrap animate-fade-in-up">

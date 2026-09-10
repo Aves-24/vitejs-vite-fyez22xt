@@ -1378,6 +1378,7 @@ export const views = {
     newEventBtn: "New session",
     studentTournamentsTitle: "Student competitions",
     selectMode: "Select",
+    sendMessageBtn: "Send message",
     newTrainingsTitle: "New sessions",
     formTitle: "Form",
     formNowPrev: "now {{now}} · last {{prev}}",

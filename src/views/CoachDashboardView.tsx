@@ -15,41 +15,95 @@ const INACTIVE_DAYS = 14;
 const INACTIVE_SHOWN = 5;
 
 /**
- * Trend formy z `last10Handicaps` (najnowszy pierwszy, niższy = lepszy):
- * średnia 3 ostatnich sesji kontra wcześniejszych. Handicap, nie średnia
- * punktów — średnie z 18 m i 70 m są nieporównywalne, handicap już
- * uwzględnia dystans i tarczę. 99 = sesja bez wyniku, pomijana.
+ * Forma = ostatni trening kontra POPRZEDNI na tym samym dystansie, tarczy
+ * i klasie łuku (decyzja usera 2026-09-10). Wcześniej był tu trend
+ * handicapu — trener nie umiał go przeczytać („Handicap 34 → 30", maleje,
+ * gdy jest lepiej). Teraz widzi prawdziwe punkty: „70m · teraz 312 ·
+ * poprzednio 298". Ten sam dystans, bo 312 na 18 m i 298 na 70 m nic nie
+ * mówią.
  *
- * Progi (decyzja usera 2026-09-10): 1 pkt handicapu ≈ 0,1 pkt/strzałę na
- * 70 m (≈ 0,13 na 18 m), więc różnica < 3 to zwykły rozrzut między
- * treningami — „ten sam poziom", bez strzałki. 3–5 = lekko, ≥ 6 = wyraźnie
- * (ponad ~0,6 pkt/strzałę). Trenerowi pokazujemy słowa, nie handicap —
- * liczba, która maleje, gdy jest lepiej, czyta się na odwrót.
- * Minimum 5 sesji: 3 ostatnie kontra co najmniej 2 wcześniejsze.
+ * Zmiana liczona na średniej na strzałę (sesje mają różną liczbę strzał),
+ * pokazywana od 5% — mniejsza to zwykły rozrzut między treningami
+ * (5% ≈ 15 pkt na 36 strzał, ≈ 30 na 72).
  */
-const FORM_SLIGHT = 3;
-const FORM_CLEAR = 6;
-const FORM_MIN_SESSIONS = 5;
+const FORM_MIN_CHANGE = 0.05;
+const FORM_SESSIONS_READ = 10;
+const FORM_TTL = 30 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-interface FormTrend { dir: 'up' | 'down'; strength: 'slight' | 'clear'; delta: number }
+interface FormCompare {
+  dir: 'up' | 'down';
+  /** „70m" albo „18m barebow" — nazwa dystansu z chwili strzału. */
+  distance: string;
+  now: number; nowArrows: number;
+  prev: number; prevArrows: number;
+  /** Zmiana średniej na strzałę, np. 0.07 = +7%. */
+  pct: number;
+}
 
 // Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony i brałby
 // „up" z warunku za nazwę ikony.
 const TREND_ICON = { up: 'trending_up', down: 'trending_down' } as const;
 
-function formTrend(handicaps: unknown): FormTrend | null {
-  if (!Array.isArray(handicaps)) return null;
-  const valid = handicaps.filter((h): h is number => typeof h === 'number' && h >= 0 && h < 99);
-  if (valid.length < FORM_MIN_SESSIONS) return null;
-  const mean = (a: number[]) => a.reduce((s, h) => s + h, 0) / a.length;
-  const diff = mean(valid.slice(3)) - mean(valid.slice(0, 3));
-  const delta = Math.abs(diff);
-  if (delta < FORM_SLIGHT) return null;
-  return {
-    dir: diff > 0 ? 'up' : 'down',
-    strength: delta >= FORM_CLEAR ? 'clear' : 'slight',
-    delta,
-  };
+const scoredArrows = (x: any): number => Number(x.scoreArrows ?? x.sessionArrows ?? x.arrows) || 0;
+
+/** Ta sama konkurencja: dystans (id wpisu, a bez niego metry), tarcza, klasa łuku. */
+const sameKind = (a: any, b: any) =>
+  (a.distanceId && b.distanceId ? a.distanceId === b.distanceId : a.distance === b.distance)
+  && (a.targetType || '') === (b.targetType || '')
+  && (!a.bowClass || !b.bowClass || a.bowClass === b.bowClass);
+
+/**
+ * Porównanie formy dla uczniów aktywnych w ostatnich INACTIVE_DAYS (reszta
+ * i tak siedzi w „bez treningu"). Zapytanie na ucznia (10 ostatnich sesji),
+ * więc wynik leży w pamięci — unieważniany, gdy którykolwiek uczeń zapisze
+ * nowy trening (podpis z `exactLastActivity`).
+ */
+async function loadFormCompare(coachId: string, students: any[]): Promise<Record<string, FormCompare>> {
+  const active = students.filter(s => s.exactLastActivity && Date.now() - s.exactLastActivity < INACTIVE_DAYS * DAY_MS);
+  const key = `grotX_formCompare_${coachId}`;
+  const sig = active.map(s => `${s.id}:${s.exactLastActivity}`).sort().join(',');
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached.sig === sig && Date.now() <= cached.expiresAt) return cached.data;
+    }
+  } catch { /* uszkodzony wpis — czytamy z bazy */ }
+
+  const entries = await Promise.all(active.map(async s => {
+    try {
+      const snap = await getDocs(query(
+        collection(db, `users/${s.id}/sessions`),
+        orderBy('timestamp', 'desc'),
+        limit(FORM_SESSIONS_READ)
+      ));
+      // Tylko sesje z wynikiem — trening „na ilość" nie mówi nic o formie.
+      const sessions = snap.docs.map(d => d.data()).filter(x => x.score > 0 && scoredArrows(x) > 0);
+      const [last, ...rest] = sessions;
+      const prev = last && rest.find(x => sameKind(last, x));
+      if (!last || !prev) return null;
+      const avgNow = last.score / scoredArrows(last);
+      const avgPrev = prev.score / scoredArrows(prev);
+      const pct = (avgNow - avgPrev) / avgPrev;
+      if (Math.abs(pct) < FORM_MIN_CHANGE) return null;
+      const cmp: FormCompare = {
+        dir: pct > 0 ? 'up' : 'down',
+        distance: String(last.distanceLabel || last.distance || ''),
+        now: last.score, nowArrows: scoredArrows(last),
+        prev: prev.score, prevArrows: scoredArrows(prev),
+        pct,
+      };
+      return [s.id, cmp] as const;
+    } catch { return null; }
+  }));
+
+  const data: Record<string, FormCompare> = {};
+  for (const e of entries) if (e) data[e[0]] = e[1];
+  try {
+    localStorage.setItem(key, JSON.stringify({ sig, data, expiresAt: Date.now() + FORM_TTL }));
+  } catch { /* ignore */ }
+  return data;
 }
 
 interface StudentTournament { title: string; date: string; names: string[] }
@@ -185,6 +239,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isInactiveOpen, setIsInactiveOpen] = useState(false);
   const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [formCompare, setFormCompare] = useState<Record<string, FormCompare>>({});
 
   useEffect(() => {
     if (!userId) return;
@@ -264,6 +319,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           loadStudentTournaments(userId, studentsData)
             .then(setStudentTournaments)
             .catch(() => setStudentTournaments([]));
+          loadFormCompare(userId, studentsData)
+            .then(setFormCompare)
+            .catch(() => setFormCompare({}));
 
           // Fetch ostatniego wpisu CoachLog dla każdego ucznia
           const entries: Record<string, { text: string; type: string } | null> = {};
@@ -305,6 +363,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         } else {
           setStudents([]);
           setStudentTournaments([]);
+          setFormCompare({});
         }
       }
     } catch (error) {
@@ -557,15 +616,21 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     .filter(s => (s.exactLastActivity || 0) > (studentLastChecked[s.id] || 0))
     .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
 
-  // Wyraźna zmiana formy: najpierw rosnący, potem spadający, każdy od
+  // Zmiana formy (loadFormCompare): najpierw lepsi, potem słabsi, każdy od
   // największej zmiany.
   const formStudents = students
-    .map(s => ({ s, trend: formTrend(s.last10Handicaps) }))
-    .filter((x): x is { s: any; trend: FormTrend } => x.trend !== null)
+    .filter(s => formCompare[s.id])
+    .map(s => ({ s, trend: formCompare[s.id] }))
     .sort((a, b) =>
       (a.trend.dir === b.trend.dir ? 0 : a.trend.dir === 'up' ? -1 : 1)
-      || b.trend.delta - a.trend.delta);
+      || Math.abs(b.trend.pct) - Math.abs(a.trend.pct));
   const formUpCount = formStudents.filter(x => x.trend.dir === 'up').length;
+
+  // „teraz 312 · poprzednio 298"; przy różnej liczbie strzał z liczbą strzał,
+  // żeby 312 z 36 nie wyglądało na gorsze od 598 z 72.
+  const formScores = (c: FormCompare) => c.nowArrows === c.prevArrows
+    ? t('coachDashboard.formNowPrev', { now: c.now, prev: c.prev })
+    : t('coachDashboard.formNowPrev', { now: `${c.now}/${c.nowArrows}`, prev: `${c.prev}/${c.prevArrows}` });
   const formDownCount = formStudents.length - formUpCount;
 
   // Zakładka UCZNIOWIE: zawsze wszyscy (grupy żyją w zakładce GRUPY),
@@ -765,7 +830,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const hasNewActivity = lastActivity > lastChecked;
     const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
     const isSelected = selectedStudents.includes(student.id);
-    const trend = formTrend(student.last10Handicaps)?.dir;
+    const trend = formCompare[student.id]?.dir;
 
     return (
       <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
@@ -1134,7 +1199,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </CollapsibleSection>
       )}
 
-      {/* Forma — zmiana ponad zwykły rozrzut (formTrend), rosnący na górze */}
+      {/* Forma — ostatni trening kontra poprzedni na tym samym dystansie
+          (loadFormCompare), lepsi na górze */}
       {!isLoading && formStudents.length > 0 && (
         <CollapsibleSection
           label={t('coachDashboard.formTitle')}
@@ -1157,15 +1223,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         >
           <div className="space-y-1.5">
             {formStudents.map(({ s, trend }) => {
-              const details = lastSessionDetails(s);
-              // „↑ Wyraźnie w górę · wczoraj · 70m · 312 pkt / 36 strz." —
-              // opis słowny + prawdziwe punkty z ostatniego treningu.
+              // „↑ 70m · teraz 312 · poprzednio 298" — prawdziwe punkty,
+              // ten sam dystans.
               return renderMiniStudentRow(
                 s,
                 <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
                   <span className="material-symbols-outlined text-[12px] align-[-2px] mr-0.5">{TREND_ICON[trend.dir]}</span>
-                  {t(`coachDashboard.form_${trend.dir}_${trend.strength}`)}
-                  <span className="text-gray-400"> · {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}</span>
+                  {trend.distance && `${trend.distance} · `}{formScores(trend)}
                 </span>,
                 trend.dir === 'up'
                   ? 'bg-emerald-50 text-emerald-700 border-emerald-100'

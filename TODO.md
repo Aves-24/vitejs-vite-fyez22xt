@@ -640,6 +640,33 @@ konta testowego, otwarcie /legal/datenschutz.html.
 
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 
+- [ ] **C26. „GROT-X Trainer werden" — przemyśleć przed startem na dużą skalę**
+      (zgłoszone przez usera 2026-09-10, do ustalenia, NIE do kodowania teraz).
+      Ustawienia → TRENER, karta dla nie-trenera: pole „ilu uczniów planujesz"
+      i przycisk „Anfrage an Admin senden".
+
+      **Jak działa dziś** (`src/components/settings/CoachSection.tsx`):
+      prośba ląduje w `coachRequests` (userId, imię, **e-mail**, liczba uczniów,
+      `pending`), id prośby dopisuje się do tablicy `newCoachRequests` na
+      dokumencie admina (reguła Path J, UID admina zaszyty w regułach i w
+      `ADMIN_UID`), plus dzwonek. Admin RĘCZNIE ustawia `isCoach` i `coachLimit`.
+
+      **Co się nie skaluje / do decyzji:**
+      1. Każdy trener czeka na jedną osobę — przy setkach prośb to wąskie gardło.
+         Opcje: samoobsługa (np. X uczniów FREE, więcej w płatnym planie
+         trenerskim / licencji klubowej) albo zostaje akceptacja, ale z panelem.
+      2. Model płatności: czy moduł trenera jest płatny i jak (plan trenera,
+         licencja klubu, limit uczniów per plan) — wiąże się ze Stripe.
+      3. Weryfikacja: trener widzi dane uczniów, w tym **małoletnich** (C22).
+         Dziś chroni to tylko akceptacja zaproszenia przez ucznia. Czy wymagać
+         czegoś więcej (klub, licencja trenerska)?
+      4. RODO: `coachRequests` trzyma e-mail (od C21 e-mail celowo NIE leży
+         w `users/{uid}`), prośby nigdy się nie kasują — retencja do ustalenia;
+         polityka prywatności musi to opisać.
+      5. Technicznie: `newCoachRequests` rośnie bez końca na jednym dokumencie
+         (limit 1 MB), a UID admina zaszyty w kodzie i regułach — jeden admin
+         na sztywno.
+
 - [~] **C11. Service worker** ✅ SW live (2026-06-11) — WŁASNY generator
       `scripts/generate-sw.mjs` (post-build), NIE vite-plugin-pwa (0.12.x =
       ostatnia zgodna z Vite 2, nie buduje się na Node 24). Precache 36 plików

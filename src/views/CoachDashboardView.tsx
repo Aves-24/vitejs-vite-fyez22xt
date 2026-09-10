@@ -127,8 +127,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
+  // Rozwinięta grupa w zakładce GRUPY; 'ALL' = żadna.
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
-  const [viewMode, setViewMode] = useState<'groups' | 'students'>('groups');
+  const [isJournalOpen, setIsJournalOpen] = useState(false);
+  // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
+  // wybierze zakładki; ponowny klik zwija.
+  const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [managingGroupsForStudent, setManagingGroupsForStudent] = useState<string | null>(null);
@@ -524,10 +528,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     .sort((a, b) => (a.exactLastActivity || 0) - (b.exactLastActivity || 0));
   const inactiveCount = inactiveStudents.length;
 
-  const groupStudents = activeGroup === 'ALL'
-    ? students
-    : students.filter(s => (studentGroupMap[s.id] || []).includes(activeGroup));
-  const visibleStudents = inactiveOnly ? groupStudents.filter(isInactive) : groupStudents;
+  // Zakładka UCZNIOWIE: zawsze wszyscy (grupy żyją w zakładce GRUPY),
+  // ewentualnie zawężeni do nieaktywnych z sekcji u góry.
+  const visibleStudents = inactiveOnly ? students.filter(isInactive) : students;
+  const studentsOfGroup = (groupId: string) =>
+    students.filter(s => (studentGroupMap[s.id] || []).includes(groupId));
 
   // „70m · 312 pkt / 36 strz." — z pól, które zapis sesji zostawia na
   // dokumencie ucznia (ScoringView), więc bez dodatkowego odczytu.
@@ -542,15 +547,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     return parts.join(' · ');
   };
 
-  const areAllVisibleSelected = visibleStudents.length > 0 && visibleStudents.every(s => selectedStudents.includes(s.id));
-  
-  const handleToggleSelectAll = () => {
-    if (areAllVisibleSelected) {
-      const visibleIds = visibleStudents.map(s => s.id);
-      setSelectedStudents(prev => prev.filter(id => !visibleIds.includes(id)));
+  // „Zaznacz widocznych" działa na liście, pod którą stoi — wszyscy uczniowie
+  // albo członkowie rozwiniętej grupy (wiadomość do całej grupy).
+  const allSelected = (list: any[]) => list.length > 0 && list.every(s => selectedStudents.includes(s.id));
+
+  const toggleSelectAll = (list: any[]) => {
+    const ids = list.map(s => s.id);
+    if (allSelected(list)) {
+      setSelectedStudents(prev => prev.filter(id => !ids.includes(id)));
     } else {
-      const visibleIds = visibleStudents.map(s => s.id);
-      setSelectedStudents(prev => Array.from(new Set([...prev, ...visibleIds])));
+      setSelectedStudents(prev => Array.from(new Set([...prev, ...ids])));
     }
   };
 
@@ -599,7 +605,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setCoachGroups(updatedGroups);
       setIsCreatingGroup(false);
       setNewGroupName('');
+      // Nowa grupa od razu rozwinięta — trener zwykle chce dopisać uczniów.
       setActiveGroup(newGroup.id);
+      setIsJournalOpen(false);
+      setViewMode('groups');
       showToast(t('coachDashboard.toastGroupCreated'));
     } catch (error) {
       showToast(t('coachDashboard.toastGroupError'));
@@ -708,6 +717,190 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       : Array.isArray(ev.coachStudents) && ev.coachStudents.length > 0
         ? t('coachDashboard.studentsCount', { count: ev.coachStudents.length })
         : null;
+
+  // Wiersz ucznia — ten sam w zakładce UCZNIOWIE i w rozwiniętej grupie.
+  const renderStudentRow = (student: any) => {
+    const lastActivity = student.exactLastActivity || 0;
+    const lastChecked = studentLastChecked[student.id] || 0;
+    const hasNewActivity = lastActivity > lastChecked;
+    const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
+    const isSelected = selectedStudents.includes(student.id);
+    const trend = formTrend(student.last10Handicaps);
+
+    return (
+      <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
+        <button
+          onClick={(e) => toggleStudentSelection(e, student.id)}
+          className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center transition-all ${
+            isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border border-gray-200 shadow-sm'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[14px] font-black">check</span>
+        </button>
+
+        <div
+          onClick={() => handleCheckStudent(student.id)}
+          className={`flex-1 bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
+            isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
+          }`}
+        >
+
+          {hasNewActivity && !isSelected && (
+            <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
+          )}
+
+          <div className="flex items-center gap-3 pl-1.5 flex-1 overflow-hidden">
+            <div className="w-10 h-10 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 relative">
+              {initials ? (
+                <span className="font-black text-[13px]">{initials}</span>
+              ) : (
+                <span className="material-symbols-outlined text-[20px]">person</span>
+              )}
+
+              {hasNewActivity && (
+                 <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
+              )}
+            </div>
+
+            <div className="flex flex-col justify-center truncate pr-2">
+              <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
+                {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
+              </h3>
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+                {trend && (
+                  <span
+                    className={`material-symbols-outlined text-[12px] align-[-2px] mr-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-orange-500'}`}
+                    title={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
+                    aria-label={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
+                  >
+                    {trend === 'up' ? 'trending_up' : 'trending_down'}
+                  </span>
+                )}
+                {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
+                {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
+              </p>
+              {lastLogEntries[student.id] && (() => {
+                const entry = lastLogEntries[student.id]!;
+                const typeColors: Record<string, string> = {
+                  observation: '#059669',
+                  tip: '#b45309',
+                  goal: '#2563eb',
+                  flag: '#dc2626',
+                };
+                const color = typeColors[entry.type] || '#059669';
+                return (
+                  <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
+                    {entry.text}
+                  </p>
+                );
+              })()}
+              {lastStudentMessages[student.id] && (
+                <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
+                  <span className="material-symbols-outlined text-[10px]">chat</span>
+                  {lastStudentMessages[student.id]}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Przycisk wiadomości */}
+            <button
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
+              className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
+            >
+              <span className="material-symbols-outlined text-[18px]">chat</span>
+              {unreadStudentIds.has(student.id) && (
+                <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+              )}
+            </button>
+
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                hasNewActivity
+                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
+                : 'bg-indigo-50 text-indigo-600'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">analytics</span>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
+              }}
+              className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
+            >
+              <span className="material-symbols-outlined text-[20px]">more_vert</span>
+            </button>
+          </div>
+        </div>
+
+        {expandedStudentMenu === student.id && (
+          <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
+            {coachGroups.length > 0 && (
+               <button
+                 onClick={(e) => {
+                   e.preventDefault(); e.stopPropagation();
+                   setManagingGroupsForStudent(student.id);
+                   setExpandedStudentMenu(null);
+                 }}
+                 className="w-full text-left px-3 py-2.5 rounded-t-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-all border-b border-gray-50"
+               >
+                 <span className="material-symbols-outlined text-[16px]">folder_shared</span> {t('coachDashboard.manageGroups')}
+               </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setStudentToDelete(student.id);
+                setExpandedStudentMenu(null);
+              }}
+              className={`w-full text-left px-3 py-2.5 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 flex items-center gap-2 transition-all ${coachGroups.length > 0 ? 'rounded-b-xl' : 'rounded-xl'}`}
+            >
+              <span className="material-symbols-outlined text-[16px]">person_remove</span> {t('coachDashboard.removeStudent')}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderStudentList = (list: any[], title: string) => (
+    <div>
+      <div className="flex items-center justify-between mb-3 ml-2 pr-1">
+        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+          {title} ({list.length})
+        </h2>
+        {list.length > 0 && (
+          <button
+            onClick={() => toggleSelectAll(list)}
+            className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${allSelected(list) ? 'text-red-400' : 'text-indigo-600'}`}
+          >
+            {allSelected(list) ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
+          </button>
+        )}
+      </div>
+
+      {isLoading ? (
+        <div className="flex flex-col gap-2">
+          {[1, 2, 3].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>)}
+        </div>
+      ) : list.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
+          <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">sentiment_dissatisfied</span>
+          <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.noStudents')}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {list.map(renderStudentRow)}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+1rem)] relative">
@@ -898,7 +1091,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       {/* Toggle widoku: Grupy / Uczniowie */}
       <div className="flex gap-2 mb-5">
         <button
-          onClick={() => { setViewMode('groups'); setInactiveOnly(false); }}
+          onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); }}
+          aria-expanded={viewMode === 'groups'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'groups' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
           }`}
@@ -907,7 +1101,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {t('coachDashboard.viewGroups')}
         </button>
         <button
-          onClick={() => setViewMode('students')}
+          onClick={() => { setViewMode(m => (m === 'students' ? null : 'students')); setInactiveOnly(false); }}
+          aria-expanded={viewMode === 'students'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'students' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
           }`}
@@ -965,45 +1160,130 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>
       )}
 
-      {viewMode === 'groups' ? (
+      {viewMode === 'groups' && (
         <div className="space-y-2">
-          {/* [C27] Niskie wiersze zamiast kafli: nazwa + najnowsza notatka,
-              liczba uczniów po prawej — ~56 px zamiast ~92 px na grupę. */}
-          {/* Karta: wszyscy uczniowie */}
-          <div
-            onClick={() => { setActiveGroup('ALL'); setViewMode('students'); setInactiveOnly(false); }}
-            className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
-          >
-            <div className="w-9 h-9 bg-[#fed33e]/20 rounded-lg flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#8B6508] text-[18px]">group</span>
-            </div>
-            <h3 className="flex-1 min-w-0 font-black text-[#0a3a2a] text-[13px] truncate">{t('coachDashboard.allStudentsCard')}</h3>
-            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: students.length })}</span>
-            <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
-          </div>
-
-          {/* Karty grup */}
+          {/* [C27] Same grupy (życzenie usera 2026-09-10). Klik rozwija grupę
+              w miejscu: jej uczniowie, dziennik, zmiana nazwy i usunięcie —
+              wcześniej robił to pasek grup nad listą uczniów. */}
           {coachGroups.map(group => {
-            const studentCount = Object.entries(studentGroupMap).filter(([, groups]) => groups.includes(group.id)).length;
+            const members = studentsOfGroup(group.id);
             const notes = groupNotes[group.id] || [];
             const latestNote = [...notes].sort((a, b) => b.timestamp - a.timestamp)[0];
+            const isOpen = activeGroup === group.id;
             return (
               <div
                 key={group.id}
-                onClick={() => { setActiveGroup(group.id); setViewMode('students'); setInactiveOnly(false); }}
-                className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+                className={`bg-white rounded-2xl shadow-sm border transition-all ${isOpen ? 'border-indigo-200' : 'border-gray-100'}`}
               >
-                <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">folder_shared</span>
+                <div
+                  role="button"
+                  aria-expanded={isOpen}
+                  onClick={() => { setActiveGroup(isOpen ? 'ALL' : group.id); setIsJournalOpen(false); setNewNoteText(''); }}
+                  className="px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
+                >
+                  <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-indigo-600 text-[18px]">folder_shared</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
+                    {!isOpen && latestNote && (
+                      <p className="text-[9px] font-medium text-indigo-500 truncate mt-0.5">{latestNote.text}</p>
+                    )}
+                  </div>
+                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: members.length })}</span>
+                  <span className="material-symbols-outlined text-gray-400 text-[20px] shrink-0">{isOpen ? 'expand_less' : 'expand_more'}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
-                  {latestNote && (
-                    <p className="text-[9px] font-medium text-indigo-500 truncate mt-0.5">{latestNote.text}</p>
-                  )}
-                </div>
-                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: studentCount })}</span>
-                <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+
+                {isOpen && (
+                  <div className="px-3 pb-3 pt-2.5 border-t border-gray-100 space-y-3">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { setEditingGroup(group); setEditGroupName(group.name); }}
+                        className="flex-1 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-95 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">edit</span>
+                        {t('coachDashboard.editGroupBtn')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteGroup(group.id)}
+                        className="flex-1 py-2 bg-red-50 text-red-500 border border-red-100 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-95 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[14px]">delete</span>
+                        {t('coachDashboard.deleteGroupBtn')}
+                      </button>
+                    </div>
+
+                    {renderStudentList(members, t('coachDashboard.groupList'))}
+
+                    {/* Dziennik grupy — zwinięty, jak sekcje u góry pulpitu */}
+                    <CollapsibleSection
+                      label={t('coachDashboard.journalTitle')}
+                      open={isJournalOpen}
+                      onToggle={() => setIsJournalOpen(o => !o)}
+                      summary={t('coachDashboard.journalCount', { count: notes.length })}
+                    >
+                      <div className="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100">
+                        <div className="flex items-center gap-1 mb-2">
+                          <span className="material-symbols-outlined text-[11px] text-indigo-400">lock</span>
+                          <span className="text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalPrivate')}</span>
+                        </div>
+
+                        <div className="relative mb-2">
+                          <textarea
+                            value={newNoteText}
+                            onChange={e => setNewNoteText(e.target.value)}
+                            placeholder={t('coachDashboard.journalPlaceholder')}
+                            maxLength={200}
+                            className="w-full bg-white border border-indigo-100 rounded-2xl p-3 text-[11px] font-medium h-20 resize-none outline-none focus:border-indigo-400 text-[#333]"
+                          />
+                          <span className={`absolute bottom-2 right-3 text-[8px] font-bold ${newNoteText.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>
+                            {newNoteText.length}/200
+                          </span>
+                        </div>
+
+                        <div className="flex justify-end mb-3">
+                          <button
+                            onClick={handleAddNoteClick}
+                            disabled={!newNoteText.trim()}
+                            className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-sm"
+                          >
+                            {t('coachDashboard.journalAddBtn')}
+                          </button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {[...notes].sort((a, b) => b.timestamp - a.timestamp).map((note, index) => {
+                            const isNewest = index === 0;
+                            return (
+                              <div key={note.id} className={`p-3 rounded-xl shadow-sm border relative pr-8 ${
+                                isNewest ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-100'
+                              }`}>
+                                {isNewest && (
+                                  <div className="flex items-center gap-1 mb-1.5">
+                                    <span className="material-symbols-outlined text-[10px] text-indigo-200">new_releases</span>
+                                    <span className="text-[8px] font-black text-indigo-200 uppercase tracking-widest">{t('coachDashboard.newestEntry')}</span>
+                                  </div>
+                                )}
+                                <p className={`text-[11px] font-medium leading-relaxed break-words whitespace-pre-wrap ${isNewest ? 'text-white' : 'text-[#333]'}`}>{note.text}</p>
+                                <p className={`text-[8px] font-bold uppercase mt-2 ${isNewest ? 'text-indigo-300' : 'text-gray-400'}`}>
+                                  {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </p>
+                                <button
+                                  onClick={() => setConfirmDeleteNote({ groupId: group.id, noteId: note.id })}
+                                  className={`absolute top-2 right-2 transition-colors ${isNewest ? 'text-indigo-300 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">close</span>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </CollapsibleSection>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1026,323 +1306,30 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {coachGroups.length > 0 && coachGroups.length < 5 && (
             <button
               onClick={() => setIsCreatingGroup(true)}
-              className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-indigo-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+              className="w-full py-2.5 bg-indigo-50 text-indigo-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-indigo-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
             >
               <span className="material-symbols-outlined text-sm">add</span>
               {t('coachDashboard.newGroupTitle')}
             </button>
           )}
         </div>
-      ) : (
-        <>
-          {/* Zakładki grup (widok uczniów) */}
-          <div className="flex flex-wrap gap-2 mb-6">
+      )}
+
+      {/* Zakładka UCZNIOWIE — sama lista, bez paska grup */}
+      {viewMode === 'students' && (
+        <div>
+          {inactiveOnly && (
             <button
-              onClick={() => setActiveGroup('ALL')}
-              className={`shrink-0 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
-                activeGroup === 'ALL' ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'
-              }`}
+              type="button"
+              onClick={() => setInactiveOnly(false)}
+              className="mb-3 inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-800 rounded-full pl-3 pr-2 py-1 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
             >
-              {t('coachDashboard.allGroups')}
+              {t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS })}
+              <span className="material-symbols-outlined text-[14px]">close</span>
             </button>
-            {coachGroups.map(g => (
-              <div key={g.id} className="shrink-0 flex items-center">
-                <button
-                  onClick={() => setActiveGroup(g.id)}
-                  className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${
-                    activeGroup === g.id
-                      ? 'bg-indigo-600 text-white border-indigo-600 rounded-l-xl rounded-r-none'
-                      : 'bg-white text-gray-500 border-gray-100 rounded-xl'
-                  }`}
-                >
-                  {g.name}
-                </button>
-                {activeGroup === g.id && (
-                  <>
-                    <button
-                      onClick={() => { setEditingGroup(g); setEditGroupName(g.name); }}
-                      className="h-8 px-2 bg-indigo-500 text-white border-l border-indigo-700 flex items-center justify-center active:opacity-80 transition-opacity"
-                    >
-                      <span className="material-symbols-outlined text-[13px]">edit</span>
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteGroup(g.id)}
-                      className="h-8 px-2 bg-red-500 text-white rounded-r-xl border-l border-red-700 flex items-center justify-center active:opacity-80 transition-opacity"
-                    >
-                      <span className="material-symbols-outlined text-[13px]">delete</span>
-                    </button>
-                  </>
-                )}
-              </div>
-            ))}
-            {coachGroups.length < 5 && (
-              <button
-                onClick={() => setIsCreatingGroup(true)}
-                className="shrink-0 w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shadow-sm active:scale-90 transition-all"
-              >
-                <span className="material-symbols-outlined text-sm font-bold">add</span>
-              </button>
-            )}
-          </div>
-
-          {activeGroup !== 'ALL' && (
-            <div className="bg-indigo-50/50 rounded-3xl p-4 border border-indigo-100 mb-6 animate-fade-in">
-               <div className="flex items-center gap-2 mb-1">
-                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">menu_book</span>
-                  <h3 className="text-[11px] font-black text-indigo-800 uppercase tracking-widest">{t('coachDashboard.journalTitle')}</h3>
-                  <span className="ml-auto text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalCount', { count: (groupNotes[activeGroup] || []).length })}</span>
-               </div>
-
-               <div className="flex items-center gap-1 mb-3">
-                 <span className="material-symbols-outlined text-[11px] text-indigo-400">lock</span>
-                 <span className="text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalPrivate')}</span>
-               </div>
-
-               <div className="relative mb-3">
-                 <textarea
-                   value={newNoteText}
-                   onChange={e => setNewNoteText(e.target.value)}
-                   placeholder={t('coachDashboard.journalPlaceholder')}
-                   maxLength={200}
-                   className="w-full bg-white border border-indigo-100 rounded-2xl p-3 text-[11px] font-medium h-20 resize-none outline-none focus:border-indigo-400 text-[#333]"
-                 />
-                 <span className={`absolute bottom-2 right-3 text-[8px] font-bold ${newNoteText.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>
-                   {newNoteText.length}/200
-                 </span>
-               </div>
-
-               <div className="flex justify-end mb-4">
-                 <button
-                   onClick={handleAddNoteClick}
-                   disabled={!newNoteText.trim()}
-                   className="bg-indigo-600 text-white px-5 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-sm"
-                 >
-                   {t('coachDashboard.journalAddBtn')}
-                 </button>
-               </div>
-
-               <div className="space-y-2">
-                 {(() => {
-                    const notes = [...(groupNotes[activeGroup] || [])].sort((a, b) => b.timestamp - a.timestamp);
-                    return notes.map((note, index) => {
-                      const isNewest = index === 0 && notes.length > 0;
-                      return (
-                        <div key={note.id} className={`p-3 rounded-xl shadow-sm border relative pr-8 ${
-                          isNewest ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-100'
-                        }`}>
-                          {isNewest && (
-                            <div className="flex items-center gap-1 mb-1.5">
-                              <span className="material-symbols-outlined text-[10px] text-indigo-200">new_releases</span>
-                              <span className="text-[8px] font-black text-indigo-200 uppercase tracking-widest">{t('coachDashboard.newestEntry')}</span>
-                            </div>
-                          )}
-                          <p className={`text-[11px] font-medium leading-relaxed break-words whitespace-pre-wrap ${isNewest ? 'text-white' : 'text-[#333]'}`}>{note.text}</p>
-                          <p className={`text-[8px] font-bold uppercase mt-2 ${isNewest ? 'text-indigo-300' : 'text-gray-400'}`}>
-                            {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                          </p>
-                          <button
-                            onClick={() => setConfirmDeleteNote({ groupId: activeGroup, noteId: note.id })}
-                            className={`absolute top-2 right-2 transition-colors ${isNewest ? 'text-indigo-300 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">close</span>
-                          </button>
-                        </div>
-                      );
-                    });
-                 })()}
-               </div>
-            </div>
           )}
-
-          <div>
-            {inactiveOnly && (
-              <button
-                type="button"
-                onClick={() => setInactiveOnly(false)}
-                className="mb-3 inline-flex items-center gap-1 bg-amber-50 border border-amber-100 text-amber-800 rounded-full pl-3 pr-2 py-1 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
-              >
-                {t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS })}
-                <span className="material-symbols-outlined text-[14px]">close</span>
-              </button>
-            )}
-            <div className="flex items-center justify-between mb-4 ml-2 pr-1">
-              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                 {activeGroup === 'ALL' ? t('coachDashboard.allStudents') : t('coachDashboard.groupList')} ({visibleStudents.length})
-              </h2>
-              {visibleStudents.length > 0 && (
-                 <button
-                   onClick={handleToggleSelectAll}
-                   className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${areAllVisibleSelected ? 'text-red-400' : 'text-indigo-600'}`}
-                 >
-                   {areAllVisibleSelected ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
-                 </button>
-              )}
-            </div>
-
-            {isLoading ? (
-              <div className="flex flex-col gap-2">
-                {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-14 bg-gray-100 rounded-2xl animate-pulse"></div>)}
-              </div>
-            ) : visibleStudents.length === 0 ? (
-              <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">sentiment_dissatisfied</span>
-                <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.noStudents')}</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {visibleStudents.map(student => {
-                  const lastActivity = student.exactLastActivity || 0;
-                  const lastChecked = studentLastChecked[student.id] || 0;
-                  const hasNewActivity = lastActivity > lastChecked;
-                  const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
-                  const isSelected = selectedStudents.includes(student.id);
-                  const trend = formTrend(student.last10Handicaps);
-
-                  return (
-                    <div key={student.id} className={`relative flex items-center gap-2 animate-fade-in ${expandedStudentMenu === student.id ? 'z-50' : 'z-10'}`}>
-                      <button
-                        onClick={(e) => toggleStudentSelection(e, student.id)}
-                        className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center transition-all ${
-                          isSelected ? 'bg-[#0a3a2a] text-[#fed33e] border border-[#0a3a2a]' : 'bg-white text-transparent border border-gray-200 shadow-sm'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[14px] font-black">check</span>
-                      </button>
-
-                      <div
-                        onClick={() => handleCheckStudent(student.id)}
-                        className={`flex-1 bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
-                          isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
-                        }`}
-                      >
-
-                        {hasNewActivity && !isSelected && (
-                          <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                        )}
-
-                        <div className="flex items-center gap-3 pl-1.5 flex-1 overflow-hidden">
-                          <div className="w-10 h-10 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 relative">
-                            {initials ? (
-                              <span className="font-black text-[13px]">{initials}</span>
-                            ) : (
-                              <span className="material-symbols-outlined text-[20px]">person</span>
-                            )}
-
-                            {hasNewActivity && (
-                               <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
-                            )}
-                          </div>
-
-                          <div className="flex flex-col justify-center truncate pr-2">
-                            <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
-                              {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
-                            </h3>
-                            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
-                              {trend && (
-                                <span
-                                  className={`material-symbols-outlined text-[12px] align-[-2px] mr-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-orange-500'}`}
-                                  title={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
-                                  aria-label={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
-                                >
-                                  {trend === 'up' ? 'trending_up' : 'trending_down'}
-                                </span>
-                              )}
-                              {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
-                              {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
-                            </p>
-                            {lastLogEntries[student.id] && (() => {
-                              const entry = lastLogEntries[student.id]!;
-                              const typeColors: Record<string, string> = {
-                                observation: '#059669',
-                                tip: '#b45309',
-                                goal: '#2563eb',
-                                flag: '#dc2626',
-                              };
-                              const color = typeColors[entry.type] || '#059669';
-                              return (
-                                <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
-                                  <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
-                                  {entry.text}
-                                </p>
-                              );
-                            })()}
-                            {lastStudentMessages[student.id] && (
-                              <p className={`text-[9px] font-bold mt-0.5 truncate flex items-center gap-1 ${unreadStudentIds.has(student.id) ? 'text-red-500' : 'text-gray-400'}`}>
-                                <span className="material-symbols-outlined text-[10px]">chat</span>
-                                {lastStudentMessages[student.id]}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          {/* Przycisk wiadomości */}
-                          <button
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpenMessageStudentId(student.id); }}
-                            className="relative w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gray-50 text-gray-400 hover:bg-gray-100 active:scale-90"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">chat</span>
-                            {unreadStudentIds.has(student.id) && (
-                              <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
-                            )}
-                          </button>
-
-                          <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                              hasNewActivity
-                              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                              : 'bg-indigo-50 text-indigo-600'
-                            }`}
-                          >
-                            <span className="material-symbols-outlined text-[18px]">analytics</span>
-                          </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setExpandedStudentMenu(expandedStudentMenu === student.id ? null : student.id);
-                            }}
-                            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:bg-gray-50 active:scale-90 transition-all"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">more_vert</span>
-                          </button>
-                        </div>
-                      </div>
-
-                      {expandedStudentMenu === student.id && (
-                        <div className="absolute right-0 top-[52px] bg-white border border-gray-100 shadow-2xl rounded-2xl p-2 z-[200] min-w-[170px] animate-fade-in-up">
-                          {coachGroups.length > 0 && (
-                             <button
-                               onClick={(e) => {
-                                 e.preventDefault(); e.stopPropagation();
-                                 setManagingGroupsForStudent(student.id);
-                                 setExpandedStudentMenu(null);
-                               }}
-                               className="w-full text-left px-3 py-2.5 rounded-t-xl text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 flex items-center gap-2 transition-all border-b border-gray-50"
-                             >
-                               <span className="material-symbols-outlined text-[16px]">folder_shared</span> {t('coachDashboard.manageGroups')}
-                             </button>
-                          )}
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setStudentToDelete(student.id);
-                              setExpandedStudentMenu(null);
-                            }}
-                            className={`w-full text-left px-3 py-2.5 text-[10px] font-black uppercase text-red-500 hover:bg-red-50 flex items-center gap-2 transition-all ${coachGroups.length > 0 ? 'rounded-b-xl' : 'rounded-xl'}`}
-                          >
-                            <span className="material-symbols-outlined text-[16px]">person_remove</span> {t('coachDashboard.removeStudent')}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </>
+          {renderStudentList(visibleStudents, t('coachDashboard.allStudents'))}
+        </div>
       )}
 
       {/* Wersja wbudowana pod listę (niezasłaniająca) */}

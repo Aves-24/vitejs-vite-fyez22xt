@@ -584,6 +584,8 @@ export const views = {
     trainerPlanHint: "Zaznaczeni uczniowie zobaczą ten termin w zakładce Plan.",
     trainerPlanHintNone: "Nikt nie zobaczy tego terminu — tylko Ty.",
     trainerAllStudents: "Wszyscy",
+    trainerNobody: "Nikt",
+    trainerSelectedCount: "wybrano: {{n}}",
     formTrainerName: "Nazwa zajęć",
     collapseTrainer: "Zwiń listę trenerską",
     noEvents: "Brak nadchodzących planów",

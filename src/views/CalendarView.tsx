@@ -35,6 +35,50 @@ interface CoachStudent {
   lastName: string;
 }
 
+/**
+ * Zwijana sekcja formularza wydarzenia (życzenie usera 2026-09-10): lista
+ * podpowiedzi, dystanse i podopieczni rozpychały okno tak, że pola daty
+ * i zapisu uciekały pod krawędź. Zwinięta sekcja pokazuje w nagłówku to, co
+ * jest wybrane — więc nie trzeba jej otwierać, żeby sprawdzić wartość.
+ *
+ * Na poziomie modułu, nie w środku widoku: komponent zdefiniowany w renderze
+ * dostawałby nową tożsamość przy każdym renderze i React montowałby jego
+ * zawartość od nowa.
+ */
+function FormSection({ label, summary, open, onToggle, children }: {
+  label: string;
+  summary?: React.ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all"
+      >
+        <span className="text-[10px] font-black text-gray-400 uppercase shrink-0">{label}</span>
+        <span className="flex items-center gap-1 min-w-0 text-[10px] font-black text-[#0a3a2a]">
+          <span className="truncate">{summary}</span>
+          <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
+        </span>
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
+/**
+ * Alfabetycznie po nazwisku, potem imieniu — w języku interfejsu (ą, ö, ß).
+ * Podopieczny bez nazwiska sortuje się po imieniu, a nie ląduje na początku.
+ */
+const byStudentName = (lang: string) => (a: CoachStudent, b: CoachStudent) =>
+  (a.lastName || a.firstName).localeCompare(b.lastName || b.firstName, lang, { sensitivity: 'base' })
+  || a.firstName.localeCompare(b.firstName, lang, { sensitivity: 'base' });
+
 interface CalendarViewProps {
   userId: string; 
   focusedEventId?: string | null;
@@ -110,6 +154,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [newIsTodo, setNewIsTodo] = useState(false);
   const [todoEvents, setTodoEvents] = useState<Event[]>([]);
 
+  // Zwijane sekcje formularza — domyślnie zamknięte (patrz `FormSection`).
+  const [openPastTournaments, setOpenPastTournaments] = useState(false);
+  const [openDistance, setOpenDistance] = useState(false);
+  const [openStudents, setOpenStudents] = useState(false);
+  const collapseFormSections = () => {
+    setOpenPastTournaments(false);
+    setOpenDistance(false);
+    setOpenStudents(false);
+  };
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const availableDistances = ['18m', '20m', '25m', '30m', '40m', '50m', '60m', '70m', '90m'];
@@ -149,9 +203,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   loaded.push({ id: d.id, firstName: sd.firstName || '', lastName: sd.lastName || '' });
                 }
               });
-              setCoachStudentsList(loaded);
+              // Alfabetycznie — raz przy wczytaniu, więc ta sama kolejność jest
+              // w formularzu, na kafelkach wydarzeń i w podglądzie.
+              setCoachStudentsList(loaded.sort(byStudentName(i18nCore.language)));
             }
-            setCoachGroups(data.coachGroups || []);
+            setCoachGroups(
+              [...(data.coachGroups || [])].sort((a: { name: string }, b: { name: string }) =>
+                (a.name || '').localeCompare(b.name || '', i18nCore.language, { sensitivity: 'base' })),
+            );
             setStudentGroupMap(data.studentGroupMap || {});
           }
         }
@@ -273,6 +332,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewCoachStudents([]);
     setNewTopics([]);
     setNewIsTodo(false);
+    collapseFormSections();
   };
 
   const handleOpenNewForm = () => {
@@ -313,6 +373,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     if (viewingEvent.distance) setNewDistance(viewingEvent.distance);
     setNewCoachStudents(viewingEvent.coachStudents || []);
     setNewTopics(viewingEvent.topics || []);
+    collapseFormSections();
 
     setViewingEvent(null);
     setShowForm(true);
@@ -1073,8 +1134,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    : titleSuggestions;
                  if (matches.length === 0) return null;
                  return (
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.formPastTournaments')}</label>
+                   <FormSection
+                     label={t('calendar.formPastTournaments')}
+                     summary={Math.min(matches.length, 6)}
+                     open={openPastTournaments}
+                     onToggle={() => setOpenPastTournaments(o => !o)}
+                   >
                      <div className="flex flex-wrap gap-1.5">
                        {matches.slice(0, 6).map(s => (
                          <button
@@ -1082,6 +1147,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                            onClick={() => {
                              setNewTitle(s.title);
                              if (s.distance) setNewDistance(s.distance);
+                             setOpenPastTournaments(false);
                            }}
                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border bg-gray-50 border-transparent text-gray-500 active:scale-95 transition-all"
                          >
@@ -1091,24 +1157,39 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                          </button>
                        ))}
                      </div>
-                   </div>
+                   </FormSection>
                  );
                })()}
 
                {newCategory === 'Turniej' && (
-                 <div className="space-y-1.5">
-                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.formDistLabel')}</label>
+                 <FormSection
+                   label={t('calendar.formDistLabel')}
+                   summary={newDistance}
+                   open={openDistance}
+                   onToggle={() => setOpenDistance(o => !o)}
+                 >
                    <div className="grid grid-cols-5 gap-1">
                      {availableDistances.map(d => (
-                       <button key={d} onClick={() => setNewDistance(d)} className={`py-2 rounded-xl text-[10px] font-black border transition-all ${newDistance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>{d}</button>
+                       <button key={d} onClick={() => { setNewDistance(d); setOpenDistance(false); }} className={`py-2 rounded-xl text-[10px] font-black border transition-all ${newDistance === d ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}>{d}</button>
                      ))}
                    </div>
-                 </div>
+                 </FormSection>
                )}
 
                {newCategory === 'Trener' && coachStudentsList.length > 0 && (
                  <div className="space-y-1.5">
-                   <label className="text-[10px] font-black text-gray-400 uppercase ml-1 block">{t('calendar.trainerStudents')}</label>
+                   <FormSection
+                     label={t('calendar.trainerStudents')}
+                     summary={
+                       newCoachStudents === 'all'
+                         ? t('calendar.trainerAllStudents')
+                         : newCoachStudents.length === 0
+                           ? t('calendar.trainerNobody')
+                           : t('calendar.trainerSelectedCount', { n: newCoachStudents.length })
+                     }
+                     open={openStudents}
+                     onToggle={() => setOpenStudents(o => !o)}
+                   >
                    <div className="flex flex-wrap gap-1.5">
                      <button
                        onClick={() => setNewCoachStudents(newCoachStudents === 'all' ? [] : 'all')}
@@ -1157,11 +1238,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                            }}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${isSelected ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
                          >
-                           {s.firstName} {s.lastName}
+                           {/* Nazwisko pierwsze — lista jest po nim posortowana. */}
+                           {`${s.lastName} ${s.firstName}`.trim()}
                          </button>
                        );
                      })}
                    </div>
+                   </FormSection>
                    {(() => {
                      const hasSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.length > 0);
                      return (

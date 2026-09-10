@@ -568,6 +568,8 @@ export const views = {
     trainerPlanHint: "Selected students will see this event in their Plan tab.",
     trainerPlanHintNone: "Nobody will see this event — only you.",
     trainerAllStudents: "All",
+    trainerNobody: "Nobody",
+    trainerSelectedCount: "{{n}} selected",
     formTrainerName: "Session name",
     collapseTrainer: "Collapse coach list",
     noEvents: "No upcoming events",

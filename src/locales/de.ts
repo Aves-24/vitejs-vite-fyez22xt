@@ -568,6 +568,8 @@ export const views = {
     trainerPlanHint: "Ausgewählte Schüler sehen diesen Termin im Reiter Plan.",
     trainerPlanHintNone: "Niemand sieht diesen Termin — nur du.",
     trainerAllStudents: "Alle",
+    trainerNobody: "Niemand",
+    trainerSelectedCount: "{{n}} ausgewählt",
     formTrainerName: "Name der Einheit",
     collapseTrainer: "Trainerliste einklappen",
     noEvents: "Keine kommenden Termine",

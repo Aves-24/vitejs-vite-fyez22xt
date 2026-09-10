@@ -33,17 +33,21 @@ interface StudentTournament { title: string; date: string; names: string[] }
 
 const STUDENT_TOURNAMENT_TTL = 30 * 60 * 1000;
 
+/** Ile startów podopiecznych mieści rozwinięta sekcja — tyle, co terminy. */
+const STUDENT_TOURNAMENTS_SHOWN = 3;
+
 /**
- * Jeden najbliższy turniej podopiecznych (życzenie usera 2026-09-10: tylko
- * jeden). Uczniowie jadący na to samo (ta sama data i nazwa) są zebrani
- * razem. Zapytanie na ucznia — dlatego wynik leży 30 min w pamięci,
- * unieważniany zmianą listy uczniów.
+ * Najbliższe starty podopiecznych, rosnąco po dacie. Zwinięta sekcja pokazuje
+ * pierwszy, rozwinięta — do `STUDENT_TOURNAMENTS_SHOWN` (życzenie usera
+ * 2026-09-10: jak „Najbliższe terminy"). Uczniowie jadący na to samo (ta sama
+ * data i nazwa) są zebrani w jeden wpis. Zapytanie na ucznia — dlatego wynik
+ * leży 30 min w pamięci, unieważniany zmianą listy uczniów.
  * `limit(15)`, nie filtr kategorii w zapytaniu: stare terminy nie mają
  * `category` (liczą się jako turniej), a przed turniejem mogą stać kopie
  * terminów od trenera.
  */
-async function loadNextStudentTournament(coachId: string, students: any[]): Promise<StudentTournament | null> {
-  const key = `grotX_studentTournament_${coachId}`;
+async function loadStudentTournaments(coachId: string, students: any[]): Promise<StudentTournament[]> {
+  const key = `grotX_studentTournaments_${coachId}`;
   const ids = students.map(s => s.id).sort().join(',');
   try {
     const raw = localStorage.getItem(key);
@@ -62,27 +66,24 @@ async function loadNextStudentTournament(coachId: string, students: any[]): Prom
         orderBy('date', 'asc'),
         limit(15)
       ));
-      const ev = snap.docs.map(d => d.data()).find(e => e.category === 'Turniej' || !e.category);
-      return ev ? { student: s, title: String(ev.title || ''), date: String(ev.date) } : null;
-    } catch { return null; }
+      return snap.docs
+        .map(d => d.data())
+        .filter(e => e.category === 'Turniej' || !e.category)
+        .map(e => ({ student: s, title: String(e.title || ''), date: String(e.date) }));
+    } catch { return []; }
   }));
 
-  const hits = found.filter((f): f is NonNullable<typeof f> => f !== null);
-  let data: StudentTournament | null = null;
-  if (hits.length > 0) {
-    const firstDate = hits.reduce((min, h) => (h.date < min ? h.date : min), hits[0].date);
-    const groups = new Map<string, typeof hits>();
-    for (const h of hits.filter(h => h.date === firstDate)) {
-      const k = h.title.trim().toLowerCase();
-      groups.set(k, [...(groups.get(k) || []), h]);
-    }
-    const biggest = [...groups.values()].sort((a, b) => b.length - a.length)[0];
-    data = {
-      title: biggest[0].title,
-      date: firstDate,
-      names: biggest.map(h => `${h.student.firstName || ''} ${h.student.lastName ? h.student.lastName[0] + '.' : ''}`.trim()),
-    };
+  const groups = new Map<string, StudentTournament>();
+  for (const h of found.flat()) {
+    const k = `${h.date}|${h.title.trim().toLowerCase()}`;
+    const name = `${h.student.firstName || ''} ${h.student.lastName ? h.student.lastName[0] + '.' : ''}`.trim();
+    const g = groups.get(k);
+    if (g) { if (!g.names.includes(name)) g.names.push(name); }
+    else groups.set(k, { title: h.title, date: h.date, names: [name] });
   }
+  const data = [...groups.values()]
+    .sort((a, b) => a.date.localeCompare(b.date) || b.names.length - a.names.length)
+    .slice(0, STUDENT_TOURNAMENTS_SHOWN);
   try {
     localStorage.setItem(key, JSON.stringify({ ids, data, expiresAt: Date.now() + STUDENT_TOURNAMENT_TTL }));
   } catch { /* ignore */ }
@@ -150,7 +151,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // trenera — `isMirrored`). null = jeszcze się wczytują.
   const [upcomingCoachEvents, setUpcomingCoachEvents] = useState<any[] | null>(null);
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
-  const [nextStudentTournament, setNextStudentTournament] = useState<StudentTournament | null>(null);
+  const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
+  const [isStudentTournamentsOpen, setIsStudentTournamentsOpen] = useState(false);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
 
@@ -229,9 +231,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           setStudents(studentsData as any);
 
           // Bez await — turniej podopiecznych nie blokuje listy uczniów.
-          loadNextStudentTournament(userId, studentsData)
-            .then(setNextStudentTournament)
-            .catch(() => setNextStudentTournament(null));
+          loadStudentTournaments(userId, studentsData)
+            .then(setStudentTournaments)
+            .catch(() => setStudentTournaments([]));
 
           // Fetch ostatniego wpisu CoachLog dla każdego ucznia
           const entries: Record<string, { text: string; type: string } | null> = {};
@@ -272,7 +274,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
         } else {
           setStudents([]);
-          setNextStudentTournament(null);
+          setStudentTournaments([]);
         }
       }
     } catch (error) {
@@ -801,23 +803,38 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </button>
       </div>
 
-      {/* Jeden najbliższy turniej podopiecznych */}
-      {nextStudentTournament && (
-        <div className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2 shadow-sm border border-gray-100">
-          <div className="w-8 h-8 bg-[#fed33e]/20 rounded-lg flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#8B6508] text-[18px]">emoji_events</span>
+      {/* Starty podopiecznych — ta sama zwijana sekcja, co terminy: zwinięta
+          pokazuje najbliższy, rozwinięta do 3. Bez startów — sekcji nie ma. */}
+      {studentTournaments.length > 0 && (
+        <CollapsibleSection
+          label={t('coachDashboard.studentTournamentsTitle')}
+          open={isStudentTournamentsOpen}
+          onToggle={() => setIsStudentTournamentsOpen(o => !o)}
+          summary={`${eventDate(studentTournaments[0]).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${studentTournaments[0].title}`}
+        >
+          <div className="space-y-1.5">
+            {studentTournaments.map(tour => {
+              const d = eventDate(tour);
+              return (
+                <div
+                  key={`${tour.date}|${tour.title}`}
+                  className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
+                >
+                  <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[40px] px-1.5 py-1 shrink-0">
+                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                    <span className="block text-[15px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">{tour.title}</p>
+                    <p className="text-[9px] font-bold text-[#8B6508] uppercase tracking-widest mt-0.5 truncate">
+                      {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {tour.names.join(', ')}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest leading-none">{t('coachDashboard.nextStudentTournament')}</p>
-            <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate mt-0.5">{nextStudentTournament.title}</p>
-            <p className="text-[9px] font-bold text-[#8B6508] uppercase tracking-widest truncate mt-0.5">
-              {new Date(`${nextStudentTournament.date}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })}
-              {' · '}
-              {nextStudentTournament.names.slice(0, 2).join(', ')}
-              {nextStudentTournament.names.length > 2 && ` +${nextStudentTournament.names.length - 2}`}
-            </p>
-          </div>
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Kto wypada z rytmu — klik zawęża listę uczniów */}

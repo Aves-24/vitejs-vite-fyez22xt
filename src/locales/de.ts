@@ -1376,7 +1376,7 @@ export const views = {
     upcomingNone: "Keine Termine",
     upcomingOpenCalendar: "Kalender öffnen",
     newEventBtn: "Neuer Termin",
-    nextStudentTournament: "Nächster Wettkampf deiner Schüler",
+    studentTournamentsTitle: "Wettkämpfe Schüler",
     inactiveStrip: "{{count}} Schüler seit {{days}}+ Tagen ohne Training",
     inactiveStrip_one: "{{count}} Schüler seit {{days}}+ Tagen ohne Training",
     inactiveFilterChip: "Ohne Training {{days}}+ Tage",

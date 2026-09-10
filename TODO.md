@@ -968,6 +968,26 @@ dystans, podopieczni) i alfabetycznych podopiecznych (`bdf56a2`).
 
 Z ogona po C25 zostały: **jardy**.
 
+### 🔜 Zgłoszone przez usera 2026-09-10 — do zrobienia
+
+- [ ] **C27. Widok trenera bardziej kompaktowy + 3 najbliższe terminy.**
+      `src/views/CoachDashboardView.tsx` (~1300 linii) — do przejrzenia, co
+      zajmuje miejsce i co da się zwinąć (ten sam wzorzec, co zwijane sekcje
+      w kalendarzu, `FormSection` w `CalendarView.tsx`). Do tego szybki
+      podgląd trzech najbliższych terminów TRENERSKICH (kategoria `Trener`,
+      bez `isMirrored`, z `users/{uid}/tournaments`). Dashboard dziś w ogóle
+      nie czyta terminów — to nowy odczyt; kliknięcie terminu powinno
+      prowadzić do kalendarza (`focusedEventId`). Do ustalenia z userem:
+      co konkretnie „za dużo miejsca".
+- [ ] **C28. Delay Mirror — wpisywanie strzał na tarczę.**
+      `src/views/DelayMirrorView.tsx` (+ `DelayMirrorGrid`, `DelayMirrorReplay`)
+      nie ma dziś żadnego wpisu wyniku. Do ustalenia z userem: czy to pełna
+      sesja zapisywana do statystyk (wtedy stempel zestawu i dystansu jak
+      w `ScoringView`, wybór dystansu/tarczy przed startem), czy tylko notatka
+      przy nagraniu; czy strzały klikane na tarczy (współrzędne → heatmapa,
+      rozrzut), czy klawiatura wartości. Reużyć rysowania i punktacji
+      z `config/targetFaces.ts`, nie pisać drugiego.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

@@ -1381,6 +1381,7 @@ export const views = {
     sendMessageBtn: "Nachricht senden",
     newEntryBtn: "Neuer Eintrag",
     previousEntries: "Frühere Einträge",
+    journalLimitHint: "Max. 5 Einträge – ein sechster ersetzt den ältesten (wir fragen vorher nach).",
     pickGroupHint: "Gruppe wählen",
     newTrainingsTitle: "Neue Trainings",
     formTitle: "Form",

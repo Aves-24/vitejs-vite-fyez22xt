@@ -1409,6 +1409,7 @@ export const views = {
     sendMessageBtn: "Wyślij wiadomość",
     newEntryBtn: "Nowy wpis",
     previousEntries: "Wcześniejsze wpisy",
+    journalLimitHint: "Maks. 5 wpisów – szósty zastąpi najstarszy (zapytamy przed zapisem).",
     pickGroupHint: "Wybierz grupę",
     newTrainingsTitle: "Nowe treningi",
     formTitle: "Forma",

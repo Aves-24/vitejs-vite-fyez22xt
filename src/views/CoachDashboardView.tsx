@@ -1681,7 +1681,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <span className="material-symbols-outlined text-[11px] text-gray-400">lock</span>
               <span className="text-[9px] font-bold text-gray-400">{t('coachDashboard.journalPrivate')}</span>
             </div>
-            <div className="relative mb-4">
+            <div className="relative mb-1">
               <textarea
                 autoFocus
                 value={newNoteText}
@@ -1694,6 +1694,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {newNoteText.length}/200
               </span>
             </div>
+            {/* Limit dziennika — to samo, co robi handleAddNoteClick (pyta
+                o zastąpienie najstarszego przy pełnych 5 wpisach) */}
+            <p className="text-[9px] font-bold text-gray-400 leading-snug mb-4 px-1">{t('coachDashboard.journalLimitHint')}</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { setNoteModalGroupId(null); setNewNoteText(''); }}

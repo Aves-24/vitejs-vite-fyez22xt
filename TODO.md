@@ -1025,6 +1025,28 @@ Z ogona po C25 zostały: **jardy**.
       koncie gościa z zestawem dmuchawki.
       Po drodze: czy sesje dmuchawki zapisane z tym błędem (same M po 3.
       strzale) trzeba jakoś oznaczyć albo poprawić — do ustalenia z userem.
+- [ ] **C30. 🟠 PRZED PUBLIKACJĄ — pasek „Dostępna nowa wersja · Odśwież".**
+      Pytanie usera 2026-09-10: czy ludzie dostaną aktualizację, skoro nie
+      będą ciągnąć ekranu w dół jak on?
+      **Dziś (sprawdzone w kodzie):** SW z `scripts/generate-sw.mjs` serwuje
+      `index.html` stale-while-revalidate, BEZ `skipWaiting()` (świadomie —
+      komentarz w pliku). Nowa wersja pobiera się w tle przy starcie
+      i wchodzi przy NASTĘPNYM uruchomieniu. Nagłówki Vercela są dobre
+      (`sw.js` i `index.html` = `no-cache`). Problem: na telefonie powrót
+      z tła to nie uruchomienie — kto trzyma appkę w tle, siedzi na starej
+      wersji, aż system ją ubije albo sam ją zamknie (zwykle dzień–dwa).
+      `lazyWithRetry` ratuje tylko przed białym ekranem, gdy stary chunk
+      zniknął z serwera.
+      **Do zrobienia:** w `main.tsx` przy `visibilitychange` → `visible`
+      wołać `registration.update()` (+ może co X godzin). Gdy pojawi się
+      nowy SW w stanie `installed`/`waiting` — pokazać mały pasek na dole
+      „Dostępna nowa wersja · Odśwież" (3 języki). Klik = przeładowanie
+      (ewentualnie `postMessage` do SW, żeby zrobił `skipWaiting`, i reload
+      po `controllerchange`). **Bez automatycznego przeładowania** — wskoczyłoby
+      w trakcie wpisywania strzał w ScoringView. Paska nie pokazywać
+      w trakcie aktywnej sesji punktowania (`grotX_activeSession`).
+      Ważne przy zmianach reguł Firestore, z którymi stara wersja przestaje
+      działać — wtedy pasek to jedyny sposób, żeby ludzie szybko przeszli.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

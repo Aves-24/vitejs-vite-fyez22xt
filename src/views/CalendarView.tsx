@@ -11,6 +11,7 @@ import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/to
 import { guestExpiryFields } from '../utils/guestMode';
 import TopicPicker from '../components/TopicPicker';
 import DistancePicker from '../components/DistancePicker';
+import CollapsibleSection from '../components/CollapsibleSection';
 import {
   UserDistance, displayDistance, sessionDistanceLabel, findDistanceEntry,
   distancesForAnySetup, distanceColorMap,
@@ -44,42 +45,6 @@ interface CoachStudent {
   id: string;
   firstName: string;
   lastName: string;
-}
-
-/**
- * Zwijana sekcja formularza wydarzenia (życzenie usera 2026-09-10): lista
- * podpowiedzi, dystanse i podopieczni rozpychały okno tak, że pola daty
- * i zapisu uciekały pod krawędź. Zwinięta sekcja pokazuje w nagłówku to, co
- * jest wybrane — więc nie trzeba jej otwierać, żeby sprawdzić wartość.
- *
- * Na poziomie modułu, nie w środku widoku: komponent zdefiniowany w renderze
- * dostawałby nową tożsamość przy każdym renderze i React montowałby jego
- * zawartość od nowa.
- */
-function FormSection({ label, summary, open, onToggle, children }: {
-  label: string;
-  summary?: React.ReactNode;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={open}
-        className="w-full flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all"
-      >
-        <span className="text-[10px] font-black text-gray-400 uppercase shrink-0">{label}</span>
-        <span className="flex items-center gap-1 min-w-0 text-[10px] font-black text-[#0a3a2a]">
-          <span className="truncate">{summary}</span>
-          <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
-        </span>
-      </button>
-      {open && children}
-    </div>
-  );
 }
 
 /**
@@ -169,11 +134,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [newIsTodo, setNewIsTodo] = useState(false);
   const [todoEvents, setTodoEvents] = useState<Event[]>([]);
 
-  // Zwijane sekcje formularza — domyślnie zamknięte (patrz `FormSection`).
+  // Zwijane sekcje formularza — domyślnie zamknięte (patrz `CollapsibleSection`).
   const [openPastTournaments, setOpenPastTournaments] = useState(false);
   const [openDistance, setOpenDistance] = useState(false);
   const [openStudents, setOpenStudents] = useState(false);
-  const collapseFormSections = () => {
+  const collapseCollapsibleSections = () => {
     setOpenPastTournaments(false);
     setOpenDistance(false);
     setOpenStudents(false);
@@ -363,7 +328,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewCoachStudents([]);
     setNewTopics([]);
     setNewIsTodo(false);
-    collapseFormSections();
+    collapseCollapsibleSections();
   };
 
   const handleOpenNewForm = () => {
@@ -405,7 +370,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewDistanceId(viewingEvent.distanceId || '');
     setNewCoachStudents(viewingEvent.coachStudents || []);
     setNewTopics(viewingEvent.topics || []);
-    collapseFormSections();
+    collapseCollapsibleSections();
 
     setViewingEvent(null);
     setShowForm(true);
@@ -1172,7 +1137,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    : titleSuggestions;
                  if (matches.length === 0) return null;
                  return (
-                   <FormSection
+                   <CollapsibleSection
                      label={t('calendar.formPastTournaments')}
                      summary={Math.min(matches.length, 6)}
                      open={openPastTournaments}
@@ -1198,12 +1163,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                          </button>
                        ))}
                      </div>
-                   </FormSection>
+                   </CollapsibleSection>
                  );
                })()}
 
                {newCategory === 'Turniej' && (
-                 <FormSection
+                 <CollapsibleSection
                    label={t('calendar.formDistLabel')}
                    summary={
                      <span className="flex items-center gap-1">
@@ -1222,12 +1187,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                      selectedId={selectedDistanceEntry?.id}
                      onPick={d => { setNewDistance(d.m); setNewDistanceId(d.id); setOpenDistance(false); }}
                    />
-                 </FormSection>
+                 </CollapsibleSection>
                )}
 
                {newCategory === 'Trener' && coachStudentsList.length > 0 && (
                  <div className="space-y-1.5">
-                   <FormSection
+                   <CollapsibleSection
                      label={t('calendar.trainerStudents')}
                      summary={
                        newCoachStudents === 'all'
@@ -1293,7 +1258,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                        );
                      })}
                    </div>
-                   </FormSection>
+                   </CollapsibleSection>
                    {(() => {
                      const hasSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.length > 0);
                      return (

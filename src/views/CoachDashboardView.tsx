@@ -6,6 +6,8 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import { getPublicProfile } from '../utils/publicProfile';
+import { loadUpcomingEvents } from '../utils/upcomingEvents';
+import CollapsibleSection from '../components/CollapsibleSection';
 
 interface CoachDashboardViewProps {
   userId: string;
@@ -15,7 +17,7 @@ interface CoachDashboardViewProps {
 }
 
 export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending }: CoachDashboardViewProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
@@ -63,6 +65,26 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
   const [lastStudentMessages, setLastStudentMessages] = useState<Record<string, string>>({});
   const [openMessageStudentId, setOpenMessageStudentId] = useState<string | null>(null);
+
+  // [C27] Trzy najbliższe własne terminy trenerskie (bez kopii od innego
+  // trenera — `isMirrored`). null = jeszcze się wczytują.
+  const [upcomingCoachEvents, setUpcomingCoachEvents] = useState<any[] | null>(null);
+  const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    loadUpcomingEvents(userId)
+      .then(all => {
+        if (cancelled) return;
+        setUpcomingCoachEvents(all.filter((e: any) => e.category === 'Trener' && !e.isMirrored).slice(0, 3));
+      })
+      .catch(err => {
+        console.error('Błąd pobierania terminów trenera:', err);
+        if (!cancelled) setUpcomingCoachEvents([]);
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
 
   useEffect(() => {
     if (!pendingOpenStudentId || students.length === 0) return;
@@ -560,10 +582,20 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const isLimitReached = coachLimit > 0 && students.length >= coachLimit;
 
+  // `date` to „RRRR-MM-DD" bez strefy — parsowane lokalnie, żeby na zachód
+  // od Greenwich termin nie cofał się o dzień.
+  const eventDate = (ev: any) => new Date(`${ev.date}T00:00:00`);
+  const eventRecipients = (ev: any) =>
+    ev.coachStudents === 'all'
+      ? t('coachDashboard.allStudentsCard')
+      : Array.isArray(ev.coachStudents) && ev.coachStudents.length > 0
+        ? t('coachDashboard.studentsCount', { count: ev.coachStudents.length })
+        : null;
+
   return (
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+1rem)] relative">
-      
-      <div className="flex items-center justify-between mb-6">
+
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           <button onClick={() => onNavigate('HOME')} className="w-10 h-10 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-90 transition-all">
             <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
@@ -598,6 +630,54 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </span>
           </button>
         </div>
+      </div>
+
+      {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy */}
+      <div className="mb-4">
+        <CollapsibleSection
+          label={t('coachDashboard.upcomingTitle')}
+          open={isUpcomingOpen}
+          onToggle={() => setIsUpcomingOpen(o => !o)}
+          summary={
+            upcomingCoachEvents === null ? '…'
+              : upcomingCoachEvents.length === 0 ? <span className="text-gray-400">{t('coachDashboard.upcomingNone')}</span>
+              : `${eventDate(upcomingCoachEvents[0]).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${upcomingCoachEvents[0].title}`
+          }
+        >
+          <div className="space-y-1.5">
+            {(upcomingCoachEvents || []).map(ev => {
+              const d = eventDate(ev);
+              const recipients = eventRecipients(ev);
+              return (
+                <button
+                  key={ev.id}
+                  type="button"
+                  onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
+                  className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
+                >
+                  <div className="bg-indigo-50 rounded-lg text-center min-w-[40px] px-1.5 py-1 shrink-0">
+                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-indigo-600">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                    <span className="block text-[15px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">{ev.title}</p>
+                    <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-widest mt-0.5 truncate">
+                      {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {ev.time || t('calendar.wholeDay')}{recipients ? ` · ${recipients}` : ''}
+                    </p>
+                  </div>
+                  <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => onNavigate('CALENDAR')}
+              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-indigo-600 active:scale-95 transition-all"
+            >
+              {t('coachDashboard.upcomingOpenCalendar')}
+            </button>
+          </div>
+        </CollapsibleSection>
       </div>
 
       {/* Toggle widoku: Grupy / Uczniowie */}
@@ -671,20 +751,20 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       )}
 
       {viewMode === 'groups' ? (
-        <div className="space-y-3">
+        <div className="space-y-2">
+          {/* [C27] Niskie wiersze zamiast kafli: nazwa + najnowsza notatka,
+              liczba uczniów po prawej — ~56 px zamiast ~92 px na grupę. */}
           {/* Karta: wszyscy uczniowie */}
           <div
             onClick={() => { setActiveGroup('ALL'); setViewMode('students'); }}
-            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+            className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
           >
-            <div className="w-12 h-12 bg-[#fed33e]/20 rounded-xl flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[#8B6508] text-[22px]">group</span>
+            <div className="w-9 h-9 bg-[#fed33e]/20 rounded-lg flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#8B6508] text-[18px]">group</span>
             </div>
-            <div className="flex-1">
-              <h3 className="font-black text-[#0a3a2a] text-[14px]">{t('coachDashboard.allStudentsCard')}</h3>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('coachDashboard.studentsCount', { count: students.length })}</p>
-            </div>
-            <span className="material-symbols-outlined text-gray-300">chevron_right</span>
+            <h3 className="flex-1 min-w-0 font-black text-[#0a3a2a] text-[13px] truncate">{t('coachDashboard.allStudentsCard')}</h3>
+            <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: students.length })}</span>
+            <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
           </div>
 
           {/* Karty grup */}
@@ -696,19 +776,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <div
                 key={group.id}
                 onClick={() => { setActiveGroup(group.id); setViewMode('students'); }}
-                className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
+                className="bg-white rounded-2xl px-3 py-2.5 shadow-sm border border-gray-100 flex items-center gap-3 cursor-pointer active:scale-[0.98] transition-all"
               >
-                <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-indigo-600 text-[22px]">folder_shared</span>
+                <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-indigo-600 text-[18px]">folder_shared</span>
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <h3 className="font-black text-[#0a3a2a] text-[14px]">{group.name}</h3>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('coachDashboard.studentsCount', { count: studentCount })}</p>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
                   {latestNote && (
-                    <p className="text-[9px] font-medium text-indigo-500 truncate mt-1">{latestNote.text}</p>
+                    <p className="text-[9px] font-medium text-indigo-500 truncate mt-0.5">{latestNote.text}</p>
                   )}
                 </div>
-                <span className="material-symbols-outlined text-gray-300 shrink-0">chevron_right</span>
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: studentCount })}</span>
+                <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
               </div>
             );
           })}

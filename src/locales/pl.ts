@@ -1400,6 +1400,9 @@ export const views = {
     studentsCount_few: "{{count}} uczniowie",
     noGroups: "Brak grup",
     createFirstGroup: "Utwórz grupę",
+    upcomingTitle: "Najbliższe terminy",
+    upcomingNone: "Brak terminów",
+    upcomingOpenCalendar: "Otwórz kalendarz",
   },
   studentProfile: {
     loading: "Ładowanie profilu ucznia...",

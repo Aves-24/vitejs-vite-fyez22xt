@@ -1372,6 +1372,9 @@ export const views = {
     studentsCount: "{{count}} Schüler",
     noGroups: "Keine Gruppen",
     createFirstGroup: "Gruppe erstellen",
+    upcomingTitle: "Nächste Termine",
+    upcomingNone: "Keine Termine",
+    upcomingOpenCalendar: "Kalender öffnen",
   },
   studentProfile: {
     loading: "Schülerprofil wird geladen...",

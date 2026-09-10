@@ -11,6 +11,7 @@ import { getHandicapBand, HANDICAP_BANDS } from '../utils/handicapEngine';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
+import { loadUpcomingEvents } from '../utils/upcomingEvents';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -18,7 +19,6 @@ import { friendlyTargetName } from '../config/targetFaces';
 const CACHE_TTL = {
   PROFILE:       120 * 60 * 1000, // 2h — profil zmienia się rzadko
   STATS:         120 * 60 * 1000, // 2h — i tak czyszczone po nowym treningu
-  TOURNAMENTS:    10 * 60 * 1000, // 10 min
   LAST_SESSION:   60 * 60 * 1000, // 1h — i tak czyszczone po nowym treningu
   ANNOUNCEMENTS:  30 * 60 * 1000, // 30 min
   TODOS:        24 * 60 * 60 * 1000, // 24h — inwalidowane ręcznie z CalendarView
@@ -314,36 +314,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchTournaments = async () => {
-      const cacheKey = `grotX_tournaments_${userId}`;
-      const cached = cacheGet<any[]>(cacheKey);
-
-      if (cached) {
-        if (cancelled) return;
-        setNextTournament(cached.find((e: any) => e.category === 'Turniej' || !e.category) || null);
-        setNextOtherEvent(cached.find((e: any) => e.category === 'Inne') || null);
-        setNextTrainerSent(cached.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
-        setNextTrainerReceived(cached.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);
-        setIsLoading(false);
-        return;
-      }
-
-      const today = new Date().toISOString().split('T')[0];
-      const q = query(
-        collection(db, `users/${userId}/tournaments`),
-        where('date', '>=', today),
-        orderBy('date', 'asc')
-      );
-      const snap = await getDocs(q);
+      const all = await loadUpcomingEvents(userId);
       if (cancelled) return;
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       setNextTournament(all.find((e: any) => e.category === 'Turniej' || !e.category) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
       setNextTrainerSent(all.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
       setNextTrainerReceived(all.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);
       setIsLoading(false);
-
-      cacheSet(cacheKey, all, CACHE_TTL.TOURNAMENTS);
     };
 
     fetchTournaments();

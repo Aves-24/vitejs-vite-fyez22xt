@@ -23,14 +23,17 @@ import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import {
   UserDistance, buildDistanceEntry, buildCustomDistanceEntry, rebuildMasterList, normalizeLabel,
-  matchesDiscipline, distancesFor,
+  ownerSetupOf, disciplineOfDistance,
   formatDistance, isCustomDistance, isDuplicateDistance, compareDistances,
   countCustomDistances, customDistanceLimitFor,
   DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
 } from '../config/distances';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import EquipmentSection from '../components/settings/EquipmentSection';
-import { EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID } from '../config/equipmentSetups';
+import {
+  EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID,
+  isBlowgun, resolveSetupColors, setupColorHex,
+} from '../config/equipmentSetups';
 
 // [ZESTAWY] 'PFEILE' i 'BOGEN' zastąpione jedną zakładką 'SPRZET' z podzakładkami.
 // 'VISIER' zostaje osobno — to nastawy celownika per dystans, nie sprzęt.
@@ -68,6 +71,9 @@ export default function SettingsView({
   const [newLabel, setNewLabel] = useState('');
   const [distanceError, setDistanceError] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  // [KOLORY] Zestaw nowego dystansu. `null` = jeszcze nie ruszony → aktywny
+  // zestaw; `''` = świadomie wspólny, bez koloru.
+  const [newSetupId, setNewSetupId] = useState<string | null>(null);
 
   const addCustomDistance = () => {
     const list = distances as UserDistance[];
@@ -84,21 +90,46 @@ export default function SettingsView({
     }
     const m = formatDistance(meters);
     const label = normalizeLabel(newLabel);
-    // [DYSCYPLINY] Duplikat liczy się TYLKO w obrębie tej samej dyscypliny.
-    // Bez tego łucznik nie dodałby gołego „10m", bo kolidowałby z dystansem
-    // dmuchawkowym, którego nawet nie widzi.
-    if (isDuplicateDistance(distancesFor(list, activeDiscipline), m, label)) {
+    // [KOLORY] Wybrany zestaw daje wpisowi kolor i dyscyplinę. Wspólny wpis
+    // bierze dyscyplinę aktywnego zestawu — jak przed kolorami.
+    const owner = setups.find(s => s.id === chosenNewSetupId);
+    const discipline = owner?.discipline ?? activeDiscipline;
+    // Duplikat = te same metry, etykieta, zestaw i dyscyplina. Czerwone „18m"
+    // obok niebieskiego „18m" to dwa poprawne wpisy — po to są kolory.
+    if (isDuplicateDistance(list, m, label, owner?.id, isBlowgun(discipline) ? 'blowgun' : undefined)) {
       setDistanceError(t('settings.sight.errDuplicate'));
       return;
     }
-    // Id z zegara i tag dyscypliny aktywnego zestawu — patrz
-    // `buildCustomDistanceEntry` w config/distances.ts.
-    const entry = buildCustomDistanceEntry(m, label, activeDiscipline);
+    const entry = buildCustomDistanceEntry(m, label, discipline, owner?.id);
     onUpdateAllDistances([...list, entry].sort(compareDistances));
     setShowAddDistance(false);
     setNewMeters('');
     setNewLabel('');
+    setNewSetupId(null);
     setDistanceError(null);
+  };
+
+  /**
+   * [KOLORY] Przypięcie istniejącego dystansu do zestawu (albo odpięcie).
+   * Działa też na standardowych — tak user dostaje 18 m pod recurve i drugie
+   * 18 m pod barebow, każde z własnymi nastawami celownika.
+   */
+  const assignDistanceSetup = (id: string, setupId: string | undefined) => {
+    const list = distances as UserDistance[];
+    const target = list.find(d => d.id === id);
+    if (!target) return;
+    const others = list.filter(d => d.id !== id);
+    if (isDuplicateDistance(others, target.m, target.label, setupId, target.discipline)) {
+      showToast(t('settings.sight.errDuplicate'));
+      return;
+    }
+    onUpdateAllDistances(list.map(d => {
+      if (d.id !== id) return d;
+      // Brak zestawu = BRAK POLA, nie `undefined` — Firestore odrzuca
+      // `undefined` i wywala cały zapis ustawień.
+      const { setupId: _drop, ...rest } = d;
+      return setupId ? { ...rest, setupId } : rest;
+    }));
   };
 
   const updateDistanceLabel = (id: string, raw: string) => {
@@ -164,17 +195,44 @@ export default function SettingsView({
   // kont sprzed zestawów — dokładnie jak w `getSetupStamp` i w SessionSetup.
   const activeDiscipline = (setups.find(s => s.id === activeSetupId) ?? setups[0])?.discipline ?? bowType;
 
-  // [DMUCHAWKA] Tarcze do wyboru przy dystansie — zawężone dyscypliną
-  // aktywnego zestawu, tak samo jak przy starcie treningu.
-  const targetOptions = selectableTargetIdsFor(activeDiscipline);
+  // [KOLORY] CELOWNIK pokazuje WSZYSTKIE dystanse, niezależnie od aktywnego
+  // zestawu (decyzja usera 2026-09-10). Filtr po dyscyplinie z 2026-09-08
+  // nie odróżniał dwóch zestawów tej samej dyscypliny, a przełączanie zestawu
+  // tylko po to, żeby wpisać nastawy, było zbędnym krokiem. Zestaw dystansu
+  // widać teraz po kolorze; zawężenie zostało przy starcie treningu.
+  // Indeks `i` to pozycja w pełnej liście — tak adresują wpis
+  // `onToggleDistance`/`onUpdateTargetType`.
+  const allDistances = (Array.isArray(distances) ? distances : [])
+    .map((d, i) => ({ d: d as UserDistance, i }));
+  const setupColors = resolveSetupColors(setups);
+  // Przy jednym zestawie kolor niczego nie rozróżnia — wybór się nie pokazuje.
+  const canAssignSetups = setups.length > 1;
+  const chosenNewSetupId = newSetupId === null
+    ? (canAssignSetups ? (setups.find(s => s.id === activeSetupId) ?? setups[0])?.id : undefined)
+    : (newSetupId || undefined);
 
-  // [DYSCYPLINY] To samo zawężenie dla samych dystansów. Niesiemy ORYGINALNY
-  // indeks, bo `onToggleDistance`/`onUpdateTargetType` adresują wpis pozycją
-  // w pełnej liście — renderowanie po przefiltrowanej tablicy bez tego
-  // przestawiałoby ptaszki i tarcze przy losowych dystansach.
-  const visibleDistances = (Array.isArray(distances) ? distances : [])
-    .map((d, i) => ({ d: d as UserDistance, i }))
-    .filter(({ d }) => matchesDiscipline(d, activeDiscipline));
+  /** Pigułki wyboru zestawu: „Wspólny" + każdy zestaw z kropką swojego koloru. */
+  const setupPicker = (selected: string | undefined, onPick: (id: string | undefined) => void) => (
+    <div className="flex gap-1 overflow-x-auto hide-scrollbar">
+      {[{ id: undefined as string | undefined, name: t('settings.sight.allSetups') }, ...setups].map(s => {
+        const on = (selected || undefined) === s.id;
+        const hex = s.id ? setupColorHex(setupColors.get(s.id)) : undefined;
+        return (
+          <button
+            key={s.id ?? '__shared'}
+            onClick={() => onPick(s.id)}
+            aria-pressed={on}
+            className={`shrink-0 px-2 py-1 rounded-md text-[9px] font-black whitespace-nowrap border flex items-center gap-1 transition-all active:scale-95 ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-gray-50 text-gray-500 border-gray-100'}`}
+          >
+            {hex
+              ? <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />
+              : <span className="w-2 h-2 rounded-full shrink-0 border border-current opacity-60" />}
+            {s.name}
+          </button>
+        );
+      })}
+    </div>
+  );
 
   // Dane Trenera
   const [isCoach, setIsCoach] = useState<boolean>(false);
@@ -527,8 +585,19 @@ export default function SettingsView({
               </div>
             </div>
             
-            {visibleDistances.map(({ d, i }) => (
-              <div key={d.id || d.m || i} className={`p-2.5 rounded-xl border transition-all ${d.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-50'}`}>
+            {allDistances.map(({ d, i }) => {
+              const owner = ownerSetupOf(d, setups);
+              const ownerHex = owner ? setupColorHex(setupColors.get(owner.id)) : undefined;
+              // [DMUCHAWKA] Tarcze zawężone dyscypliną TEGO dystansu (jego
+              // zestawu albo tagu) — ekran nie ma już jednej wspólnej dyscypliny.
+              const targetOptions = selectableTargetIdsFor(disciplineOfDistance(d, setups));
+              return (
+              <div
+                key={d.id || d.m || i}
+                className={`p-2.5 rounded-xl border transition-all ${d.active ? 'bg-white border-gray-100 shadow-sm' : 'bg-gray-50 border-transparent opacity-50'}`}
+                // [KOLORY] Pasek w kolorze zestawu; wspólny dystans go nie ma.
+                style={ownerHex ? { borderLeftColor: ownerHex, borderLeftWidth: 4 } : undefined}
+              >
                 <div className="grid grid-cols-12 items-center">
                   <div className="col-span-4 flex items-center gap-2 min-w-0">
                     <input type="checkbox" checked={d.active} onChange={() => onToggleDistance(i)} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0 shrink-0" />
@@ -576,10 +645,20 @@ export default function SettingsView({
                        </button>
                      )}
                    </div>
+                   {/* [KOLORY] Do którego zestawu należy ten dystans. */}
+                   {canAssignSetups && (
+                     <div className="mt-2 flex items-center gap-2">
+                       <span className="shrink-0 text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.setup')}</span>
+                       <div className="min-w-0 flex-1">
+                         {setupPicker(owner?.id, id => assignDistanceSetup(d.id, id))}
+                       </div>
+                     </div>
+                   )}
                    </>
                 )}
               </div>
-            ))}
+              );
+            })}
 
             {/* [C25] Własny dystans — pierwszym prawdziwym przypadkiem jest
                 dmuchawka (5/7/10 m), której lista standardowa nie zna. */}
@@ -604,10 +683,16 @@ export default function SettingsView({
                   />
                 </div>
                 <p className="text-[9px] text-gray-400 font-bold">{t('settings.sight.labelHint')}</p>
-                {distanceError && <p className="text-[10px] text-red-500 font-black">{distanceError}</p>}
+                {canAssignSetups && (
+                  <div className="space-y-1">
+                    {setupPicker(chosenNewSetupId, id => { setNewSetupId(id ?? ''); setDistanceError(null); })}
+                    <p className="text-[9px] text-gray-400 font-bold">{t('settings.sight.setupHint')}</p>
+                  </div>
+                )}
+                {distanceError &&<p className="text-[10px] text-red-500 font-black">{distanceError}</p>}
                 <div className="flex gap-2 pt-1">
                   <button onClick={addCustomDistance} className="flex-1 py-2.5 bg-[#0a3a2a] text-white rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95">{t('settings.sight.add')}</button>
-                  <button onClick={() => { setShowAddDistance(false); setDistanceError(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95">{t('settings.sight.cancel')}</button>
+                  <button onClick={() => { setShowAddDistance(false); setNewSetupId(null); setDistanceError(null); }} className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-lg font-black text-[10px] uppercase tracking-widest active:scale-95">{t('settings.sight.cancel')}</button>
                 </div>
               </div>
             ) : (

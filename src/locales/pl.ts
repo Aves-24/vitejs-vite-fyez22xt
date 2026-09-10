@@ -428,6 +428,7 @@ export const views = {
     acceptBtn: "Akceptuj i Walcz",
     selectDistance: "Wybierz Dystans",
     noDistances: "Brak dystansów — włącz je w Ustawieniach",
+    setupSwitchFailed: "Nie udało się przełączyć zestawu. Spróbuj ponownie.",
     sightTitle: "Ustawienie Celownika",
     sightPro: "Celownik PRO",
     sightExt: "Wysięg",
@@ -730,6 +731,13 @@ export const views = {
       confirmDelete: "Na pewno usunąć ten zestaw?",
       confirmDeleteDesc: "Cały wpisany sprzęt tego zestawu przepadnie. Sesje, które go używały, zachowają klasę sprzętu i zostaną w statystykach.",
       discipline: "Dyscyplina",
+      color: "Kolor zestawu",
+      colorHint: "Po kolorze rozpoznasz dystanse tego zestawu w CELOWNIKU i przy starcie treningu.",
+      colorTaken: "Ten kolor ma już inny zestaw",
+      colors: {
+        red: "Czerwony", orange: "Pomarańczowy", yellow: "Żółty", green: "Zielony",
+        teal: "Turkusowy", blue: "Niebieski", purple: "Fioletowy", pink: "Różowy"
+      },
       note: "Notatka",
       notePh: "Krótka notatka do tej zakładki",
       blowgun: {
@@ -942,7 +950,10 @@ export const views = {
       errRange: "Podaj od {{min}} do {{max}} metrów.",
       errLimit: "Osiągnięto limit {{max}} własnych dystansów.",
       ownDistances: "Własne dystanse",
-      proForMore: "PRO = 15 własnych"
+      proForMore: "PRO = 15 własnych",
+      setup: "Zestaw:",
+      allSetups: "Wspólny",
+      setupHint: "Kolor = zestaw. Wspólny dystans widać przy każdym zestawie tej dyscypliny."
     },
     arrows: {
       model: "Model strzały",

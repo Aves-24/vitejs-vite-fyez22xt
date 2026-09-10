@@ -413,6 +413,7 @@ export const views = {
     acceptBtn: "Accept & Compete",
     selectDistance: "Select Distance",
     noDistances: "No distances — enable them in Settings",
+    setupSwitchFailed: "Couldn't switch setup. Please try again.",
     sightTitle: "Sight Settings",
     sightPro: "Sight PRO",
     sightExt: "Extension",
@@ -714,6 +715,13 @@ export const views = {
       confirmDelete: "Delete this setup?",
       confirmDeleteDesc: "All equipment entered for this setup will be lost. Sessions that used it keep their equipment class and stay in your statistics.",
       discipline: "Discipline",
+      color: "Setup color",
+      colorHint: "The color marks this setup's distances in SIGHT and at training start.",
+      colorTaken: "Another setup already uses this color",
+      colors: {
+        red: "Red", orange: "Orange", yellow: "Yellow", green: "Green",
+        teal: "Teal", blue: "Blue", purple: "Purple", pink: "Pink"
+      },
       note: "Note",
       notePh: "Short note for this tab",
       blowgun: {
@@ -926,7 +934,10 @@ export const views = {
       errRange: "Enter {{min}} to {{max}} metres.",
       errLimit: "Limit of {{max}} custom distances reached.",
       ownDistances: "Custom distances",
-      proForMore: "PRO = 15 custom"
+      proForMore: "PRO = 15 custom",
+      setup: "Setup:",
+      allSetups: "Shared",
+      setupHint: "Color = setup. A shared distance shows up with every setup of its discipline."
     },
     arrows: {
       model: "Arrow Model",

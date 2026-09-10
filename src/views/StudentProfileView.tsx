@@ -13,8 +13,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 import TopicPicker from '../components/TopicPicker';
-import { distancesFor } from '../config/distances';
-import { resolveActiveSetup } from '../config/equipmentSetups';
+import { distancesForSetup } from '../config/distances';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
@@ -335,13 +334,13 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   
   const [student, setStudent] = useState<any | null>(null);
 
-  // [DYSCYPLINY] Aktywne dystanse ucznia, zawężone dyscypliną jego aktywnego
-  // zestawu — to samo, co uczeń widzi u siebie w Ustawieniach i przy starcie
-  // treningu. Płaskie `bowType` to fallback dla kont sprzed zestawów.
+  // [KOLORY] Aktywne dystanse ucznia dla jego aktywnego zestawu — to samo, co
+  // uczeń widzi przy starcie treningu (dystanse w kolorze zestawu + wspólne).
+  // Płaskie `bowType` to fallback dla kont sprzed zestawów.
   const studentSightMarks = useMemo(() => {
     const list = Array.isArray(student?.userDistances) ? student.userDistances : [];
-    const discipline = resolveActiveSetup(student ?? {})?.discipline ?? student?.bowType ?? null;
-    return distancesFor(list, discipline).filter((d: any) => d.active);
+    return distancesForSetup(list, student?.setups, student?.activeSetupId, student?.bowType ?? null)
+      .filter((d: any) => d.active);
   }, [student]);
 
   const [upcomingTournaments, setUpcomingTournaments] = useState<any[]>([]); 

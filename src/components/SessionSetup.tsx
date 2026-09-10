@@ -3,10 +3,10 @@ import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, up
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
-import { getSetupStamp } from '../utils/setupStamp';
+import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIdsFor } from '../config/targetFaces';
-import { resolveActiveSetup } from '../config/equipmentSetups';
-import { UserDistance, displayDistance, distancesFor } from '../config/distances';
+import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
+import { UserDistance, displayDistance, distancesForSetup } from '../config/distances';
 
 interface SessionSetupProps {
   userId: string;
@@ -38,10 +38,19 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [showWarning, setShowWarning] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  // [KOLORY] Zestawy i aktywny zestaw — kropki nad listą dystansów przełączają
+  // zestaw bez wchodzenia w Ustawienia (pomysł usera 2026-09-10).
+  const [setups, setSetups] = useState<EquipmentSetup[]>([]);
+  const [activeSetupId, setActiveSetupId] = useState<string | null>(null);
+  const [setupSwitchError, setSetupSwitchError] = useState(false);
+  // Płaskie `bowType` — dyscyplina kont sprzed zestawów.
+  const [legacyBowType, setLegacyBowType] = useState<string | null>(null);
+  const activeSetup = setups.find(s => s.id === activeSetupId) ?? setups[0];
+  const setupColors = useMemo(() => resolveSetupColors(setups), [setups]);
   // [DMUCHAWKA] Dyscyplina aktywnego zestawu — decyduje, które tarcze w ogóle
   // pokazujemy. Bez tego łucznik mógł wybrać tarczę dmuchawki i jego sesja
   // po cichu wypadała z handicapu i rangi.
-  const [discipline, setDiscipline] = useState<string | null>(null);
+  const discipline: string | null = activeSetup?.discipline ?? legacyBowType;
   
   const [showSightEditor, setShowSightEditor] = useState(false);
   const [editExt, setEditExt] = useState('');
@@ -103,14 +112,36 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // wybrać tarczy, której aplikacja nie potrafi narysować ani policzyć.
   const targetOptions = useMemo(() => selectableTargetIdsFor(discipline), [discipline]);
 
-  // [DYSCYPLINY] To samo, co wyżej z tarczami, tylko dla dystansów: łucznik
-  // nie przewija 5 i 7 m z rury, a dmuchawkarz dziesięciu dystansów od 18
-  // do 90 m. Dopóki dyscyplina się ładuje (`null`), lista jest pełna —
-  // filtr ma zawężać wybór, a nie migać pustką przy każdym wejściu.
+  // [KOLORY] Dystanse aktywnego zestawu: te w jego kolorze plus wspólne jego
+  // dyscypliny — patrz `distancesForSetup`. Łucznik dalej nie przewija 5 i 7 m
+  // z rury. Dopóki profil się ładuje, lista jest pełna — filtr ma zawężać
+  // wybór, a nie migać pustką przy każdym wejściu.
   const distanceOptions = useMemo(
-    () => distancesFor(activeDistances, discipline),
-    [activeDistances, discipline],
+    () => distancesForSetup(activeDistances, setups, activeSetupId, legacyBowType),
+    [activeDistances, setups, activeSetupId, legacyBowType],
   );
+
+  /**
+   * [KOLORY] Przełączenie zestawu kropką. Zapisujemy `activeSetupId` od razu,
+   * bo z niego stempel (`getSetupStamp`) bierze zestaw i klasę sprzętu sesji —
+   * inaczej trening na dystansie „zielonym" zapisałby się pod „czerwony" zestaw.
+   * Płaskie `bowType` idzie w parze, dokładnie jak przy zapisie Ustawień.
+   */
+  const switchSetup = async (id: string) => {
+    if (id === activeSetup?.id) return;
+    const prevId = activeSetupId;
+    setActiveSetupId(id);
+    setSetupSwitchError(false);
+    const bow = asBowType(setups.find(s => s.id === id)?.discipline);
+    try {
+      await setDoc(doc(db, 'users', userId), { activeSetupId: id, ...(bow ? { bowType: bow } : {}) }, { merge: true });
+      invalidateSetupStamp(userId);
+    } catch (e) {
+      console.error('Setup switch failed:', e);
+      setActiveSetupId(prevId);
+      setSetupSwitchError(true);
+    }
+  };
 
   useEffect(() => {
     if (hasActiveSession) {
@@ -134,7 +165,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           setIsPremium(userIsPro);
           // Zestawy są źródłem prawdy; stare, płaskie `bowType` to fallback
           // dla kont sprzed zestawów — dokładnie jak w `getSetupStamp`.
-          setDiscipline(resolveActiveSetup(data)?.discipline ?? data.bowType ?? null);
+          setSetups(Array.isArray(data.setups) ? data.setups as EquipmentSetup[] : []);
+          setActiveSetupId(data.activeSetupId ?? null);
+          setLegacyBowType(data.bowType ?? null);
         }
       } catch (e) { console.error(e); }
     };
@@ -276,6 +309,29 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
       <div className="space-y-2">
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
+          {/* [KOLORY] Kropki zestawów — klik pokazuje dystanse tego zestawu
+              i od razu robi go aktywnym (sesja dostanie jego stempel). */}
+          {setups.length > 1 && (
+            <div className="flex gap-1.5 justify-center flex-wrap mb-2.5 pb-2.5 border-b border-gray-50">
+              {setups.map(s => {
+                const on = s.id === activeSetup?.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => switchSetup(s.id)}
+                    aria-pressed={on}
+                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-black border flex items-center gap-1.5 transition-all active:scale-95 max-w-[48%] ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-sm' : 'bg-white text-gray-400 border-gray-100'}`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(s.id)) }} />
+                    <span className="truncate">{s.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {setupSwitchError && (
+            <p className="text-[10px] text-red-500 font-black text-center mb-2">{t('setup.setupSwitchFailed')}</p>
+          )}
           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-center">{t('setup.selectDistance')}</span>
           {/* [DYSCYPLINY] Pustka jest możliwa tylko wtedy, gdy user odznaczył
               WSZYSTKIE dystanse swojej dyscypliny — lista standardowa ma je

@@ -413,6 +413,7 @@ export const views = {
     acceptBtn: "Annehmen & Kämpfen",
     selectDistance: "Distanz wählen",
     noDistances: "Keine Distanzen — in den Einstellungen aktivieren",
+    setupSwitchFailed: "Set konnte nicht gewechselt werden. Bitte erneut versuchen.",
     sightTitle: "Visiereinstellung",
     sightPro: "Visier PRO",
     sightExt: "Visierauszug",
@@ -714,6 +715,13 @@ export const views = {
       confirmDelete: "Dieses Set wirklich löschen?",
       confirmDeleteDesc: "Die gesamte für dieses Set eingetragene Ausrüstung geht verloren. Sitzungen, die es genutzt haben, behalten ihre Ausrüstungsklasse und bleiben in der Statistik.",
       discipline: "Disziplin",
+      color: "Set-Farbe",
+      colorHint: "An der Farbe erkennst du die Distanzen dieses Sets im VISIER und beim Trainingsstart.",
+      colorTaken: "Diese Farbe hat schon ein anderes Set",
+      colors: {
+        red: "Rot", orange: "Orange", yellow: "Gelb", green: "Grün",
+        teal: "Türkis", blue: "Blau", purple: "Lila", pink: "Pink"
+      },
       note: "Notiz",
       notePh: "Kurze Notiz zu diesem Reiter",
       blowgun: {
@@ -926,7 +934,10 @@ export const views = {
       errRange: "Bitte {{min}} bis {{max}} Meter angeben.",
       errLimit: "Limit von {{max}} eigenen Distanzen erreicht.",
       ownDistances: "Eigene Distanzen",
-      proForMore: "PRO = 15 eigene"
+      proForMore: "PRO = 15 eigene",
+      setup: "Set:",
+      allSetups: "Gemeinsam",
+      setupHint: "Farbe = Set. Eine gemeinsame Distanz siehst du bei jedem Set dieser Disziplin."
     },
     arrows: {
       model: "Pfeilmodell",

@@ -12,6 +12,11 @@ import {
   BLOWGUN_DISCIPLINE,
   setupLimitFor,
   DEFAULT_SETUP_ID,
+  SETUP_COLORS,
+  SetupColorId,
+  resolveSetupColors,
+  firstFreeSetupColor,
+  setupColorHex,
 } from '../../config/equipmentSetups';
 
 /**
@@ -57,8 +62,17 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
   const limit = setupLimitFor(isPremium);
   const active = setups.find(s => s.id === activeSetupId) ?? setups[0];
+  // [KOLORY] Zestawy sprzed 2026-09-10 nie mają koloru — dostają pierwszy wolny.
+  const colors = resolveSetupColors(setups);
 
   if (!active) return null;
+
+  const activeColor = colors.get(active.id);
+  // Kolory zajęte przez INNE zestawy — jeden kolor = jeden zestaw, inaczej
+  // dwa zestawy wyglądałyby w CELOWNIKU identycznie.
+  const takenByOthers = new Set(
+    setups.filter(s => s.id !== active.id).map(s => colors.get(s.id)),
+  );
 
   // [DMUCHAWKA] Rura i strzałki to nie łuk — ŁUK, CIĘCIWA i STABILIZACJA
   // znikają. `effectiveSubtab` chroni przed pustym ekranem, gdy user siedział
@@ -72,6 +86,23 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     onSetupsChange(
       setups.map(s =>
         s.id === active.id ? { ...s, ...patch, updatedAt: new Date().toISOString() } : s,
+      ),
+    );
+  };
+
+  /**
+   * [KOLORY] Wybór koloru utrwala przy okazji kolory WSZYSTKICH zestawów.
+   * Zestaw bez zapisanego koloru ma kolor tylko dobrany (pierwszy wolny), więc
+   * gdyby aktywny zająć właśnie ten odcień, tamten po cichu przeskoczyłby na
+   * inny — a razem z nim wszystkie jego dystanse w CELOWNIKU.
+   */
+  const pickColor = (color: SetupColorId) => {
+    const now = new Date().toISOString();
+    onSetupsChange(
+      setups.map(s =>
+        s.id === active.id
+          ? { ...s, color, updatedAt: now }
+          : s.color ? s : { ...s, color: colors.get(s.id) },
       ),
     );
   };
@@ -92,6 +123,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       id,
       name: t('settings.equipment.newSetupName', { n: setups.length + 1 }),
       discipline: active.discipline,
+      color: firstFreeSetupColor(setups),
       createdAt: now,
       updatedAt: now,
     };
@@ -266,8 +298,9 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             <button
               key={s.id}
               onClick={() => onActiveSetupChange(s.id)}
-              className={`px-3 py-2 rounded-xl text-[10px] font-black whitespace-nowrap border transition-all ${s.id === active.id ? 'bg-emerald-50 text-emerald-700 border-emerald-400 shadow-sm' : 'bg-white text-gray-400 border-gray-100'}`}
+              className={`px-3 py-2 rounded-xl text-[10px] font-black whitespace-nowrap border transition-all flex items-center gap-1.5 ${s.id === active.id ? 'bg-emerald-50 text-emerald-700 border-emerald-400 shadow-sm' : 'bg-white text-gray-400 border-gray-100'}`}
             >
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(colors.get(s.id)) }} />
               {s.name}
             </button>
           ))}
@@ -298,6 +331,35 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               </button>
             )}
           </div>
+        </div>
+
+        {/* [KOLORY] Kolor zestawu — po nim user rozpoznaje dystanse tego
+            zestawu w CELOWNIKU i przy starcie treningu. */}
+        <div>
+          <label className="text-[10px] font-black text-gray-400 uppercase block mb-2 ml-1">
+            {t('settings.equipment.color')}
+          </label>
+          <div className="flex flex-wrap gap-2 px-1">
+            {SETUP_COLORS.map(c => {
+              const selected = activeColor === c.id;
+              const taken = takenByOthers.has(c.id);
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => pickColor(c.id)}
+                  disabled={taken}
+                  aria-pressed={selected}
+                  aria-label={t(`settings.equipment.colors.${c.id}`)}
+                  title={taken ? t('settings.equipment.colorTaken') : t(`settings.equipment.colors.${c.id}`)}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-20 disabled:active:scale-100 ${selected ? 'ring-2 ring-offset-2 ring-[#0a3a2a] scale-105' : ''}`}
+                  style={{ backgroundColor: c.hex }}
+                >
+                  {selected && <span className="material-symbols-outlined text-white text-[16px]">check</span>}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[9px] text-gray-400 font-bold mt-2 ml-1">{t('settings.equipment.colorHint')}</p>
         </div>
 
         <div>

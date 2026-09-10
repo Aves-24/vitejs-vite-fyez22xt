@@ -116,6 +116,65 @@ export interface SetupStabilization {
   description?: string;
 }
 
+/**
+ * [KOLORY] Paleta zestawów — osiem kolorów do wyboru (decyzja usera 2026-09-10).
+ *
+ * Kolor jest WIZYTÓWKĄ zestawu: po nim user rozpoznaje w VISIER i przy starcie
+ * treningu, do którego zestawu należy dystans. Dystans trzyma `setupId`, nie
+ * kolor — więc zmiana koloru zestawu przemalowuje jego dystanse, a nie
+ * odpina ich od zestawu.
+ *
+ * W bazie leży `id` koloru, nie hex: odcień wolno potem poprawić (np. pod ciemny
+ * motyw) bez migracji danych. Odcienie z jednej jasności, żeby biały ptaszek
+ * i kontur były czytelne na każdym.
+ */
+export const SETUP_COLORS = [
+  { id: 'red', hex: '#E5484D' },
+  { id: 'orange', hex: '#F2994A' },
+  { id: 'yellow', hex: '#E2B93B' },
+  { id: 'green', hex: '#30A46C' },
+  { id: 'teal', hex: '#12A594' },
+  { id: 'blue', hex: '#3E7BFA' },
+  { id: 'purple', hex: '#8E4EC6' },
+  { id: 'pink', hex: '#D6409F' },
+] as const;
+export type SetupColorId = typeof SETUP_COLORS[number]['id'];
+
+export const setupColorHex = (id?: string | null): string | undefined =>
+  SETUP_COLORS.find(c => c.id === id)?.hex;
+
+/**
+ * Kolor każdego zestawu, także tego, który jeszcze go nie ma.
+ *
+ * Zestawy sprzed 2026-09-10 nie mają pola `color`. Zamiast migracji dostają
+ * pierwszy WOLNY kolor w kolejności listy — wolny, a nie „po indeksie", bo
+ * po indeksie drugi zestaw bez koloru mógłby trafić na kolor, który pierwszy
+ * już jawnie wybrał, i dwa zestawy wyglądałyby tak samo.
+ */
+export function resolveSetupColors(setups: EquipmentSetup[]): Map<string, SetupColorId> {
+  const out = new Map<string, SetupColorId>();
+  const taken = new Set<string>();
+  for (const s of setups || []) {
+    if (s.color && setupColorHex(s.color) && !taken.has(s.color)) {
+      out.set(s.id, s.color);
+      taken.add(s.color);
+    }
+  }
+  for (const s of setups || []) {
+    if (out.has(s.id)) continue;
+    const free = SETUP_COLORS.find(c => !taken.has(c.id)) ?? SETUP_COLORS[0];
+    out.set(s.id, free.id);
+    taken.add(free.id);
+  }
+  return out;
+}
+
+/** Pierwszy kolor, którego nie nosi żaden z podanych zestawów. */
+export function firstFreeSetupColor(setups: EquipmentSetup[]): SetupColorId {
+  const taken = new Set(resolveSetupColors(setups).values());
+  return (SETUP_COLORS.find(c => !taken.has(c.id)) ?? SETUP_COLORS[0]).id;
+}
+
 export interface EquipmentSetup {
   /**
    * Pierwszy zestaw MUSI mieć id `'default'`. Sesje są stemplowane od 2026-09-01
@@ -124,6 +183,8 @@ export interface EquipmentSetup {
    */
   id: string;
   name: string;
+  /** [KOLORY] Id z `SETUP_COLORS`. Brak = kolor dobrany przez `resolveSetupColors`. */
+  color?: SetupColorId;
   /**
    * Klasa sprzętu. W etapie 4 pole zmienia znaczenie na „dyscyplina"
    * i przyjmie też dmuchawkę — dlatego typ jest tu osobno, a nie `BowType`

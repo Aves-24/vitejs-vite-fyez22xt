@@ -1,4 +1,4 @@
-import { isBlowgun } from './equipmentSetups';
+import { isBlowgun, BLOWGUN_DISCIPLINE, EquipmentSetup } from './equipmentSetups';
 import { BLOWGUN_FACE_ID } from './targets/blowgun';
 
 /**
@@ -119,6 +119,18 @@ export interface UserDistance {
    * wstecz — dokładnie ta pułapka, przed którą chroni niezmienność `m`.
    */
   discipline?: DistanceDiscipline;
+  /**
+   * [KOLORY] Zestaw, do którego należy dystans (user widzi go jako kolor
+   * zestawu). Brak = dystans wspólny dla wszystkich zestawów swojej dyscypliny.
+   *
+   * Po to user może mieć dwa wpisy 18 m — jeden pod recurve, drugi pod
+   * barebow — każdy z własnymi nastawami celownika. Tak jak `discipline`, pole
+   * jest tylko filtrem widoku: sesja dostaje zestaw ze stempla, nie stąd.
+   *
+   * Id zestawu, którego już nie ma, traktujemy jak brak pola — kasowanie
+   * zestawu nie może schować dystansów, na których user dalej strzela.
+   */
+  setupId?: string;
   /** Metry, format `<liczba>m`. NIEZMIENNE po utworzeniu — patrz nagłówek. */
   m: string;
   /** Opis usera, max `DISTANCE_LABEL_MAX` znaków. Dowolny i zmienny. */
@@ -264,6 +276,9 @@ export function buildDistanceEntry(m: string, existing?: Partial<UserDistance>):
     id: existing?.id || builtinDistanceId(m),
     m,
     ...(existing?.label ? { label: existing.label } : {}),
+    // [KOLORY] Przypisanie do zestawu przeżywa regenerację (zapis profilu,
+    // kreator, zmiana roku) — tak jak etykieta i nastawy.
+    ...(existing?.setupId ? { setupId: existing.setupId } : {}),
     active: !!existing?.active,
     targetType: existing?.targetType || '122cm',
     sightExtension: existing?.sightExtension || '',
@@ -279,14 +294,18 @@ export function buildDistanceEntry(m: string, existing?: Partial<UserDistance>):
  * Id zawsze z zegara, także gdy metry pokrywają się ze standardowymi — drugi
  * wpis „18m" ma dostać własny kubełek, a nie przejąć historię pierwszego.
  *
- * [DYSCYPLINY] Dystans dziedziczy dyscyplinę po AKTYWNYM ZESTAWIE. Bez tego
+ * [DYSCYPLINY] Dystans dziedziczy dyscyplinę po zestawie. Bez tego
  * dmuchawkarz, który dopisuje sobie 12 m z rury, zobaczyłby ten wpis potem
  * na liście łuczniczej — czyli dokładnie ten bałagan, który filtr usuwa.
+ *
+ * [KOLORY] `setupId` podany → wpis należy do tego zestawu (ma jego kolor).
+ * Pominięty → wpis wspólny dla wszystkich zestawów dyscypliny `discipline`.
  */
 export function buildCustomDistanceEntry(
   m: string,
   label?: string,
   discipline?: string | null,
+  setupId?: string,
 ): UserDistance {
   const base = isBlowgun(discipline)
     ? buildBlowgunEntry(m)
@@ -296,6 +315,7 @@ export function buildCustomDistanceEntry(
     id: newDistanceId(),
     active: true,
     ...(label ? { label } : {}),
+    ...(setupId ? { setupId } : {}),
   };
 }
 
@@ -317,6 +337,7 @@ function buildBlowgunEntry(m: string, prev?: UserDistance): UserDistance {
     id: prev?.id || builtinDistanceId(m),
     m,
     ...(prev?.label ? { label: prev.label } : {}),
+    ...(prev?.setupId ? { setupId: prev.setupId } : {}),
     discipline: 'blowgun',
     // 10 m aktywne z pudełka — inaczej user, który dopiero co przełączył
     // zestaw na rurę, wchodzi w start treningu i widzi PUSTĄ listę dystansów.
@@ -383,16 +404,75 @@ export function rebuildMasterList(
 export const matchesDiscipline = (d: UserDistance, discipline?: string | null): boolean =>
   !discipline || (d.discipline === 'blowgun') === isBlowgun(discipline);
 
-export function distancesFor(list: UserDistance[], discipline?: string | null): UserDistance[] {
-  return (list || []).filter(d => matchesDiscipline(d, discipline));
+type SetupLike = Pick<EquipmentSetup, 'id' | 'discipline'>;
+
+/** Zestaw, do którego należy dystans — `undefined`, gdy wspólny albo zestaw skasowano. */
+export const ownerSetupOf = <S extends SetupLike>(d: UserDistance, setups?: S[] | null): S | undefined =>
+  d.setupId ? (setups || []).find(s => s.id === d.setupId) : undefined;
+
+/**
+ * [KOLORY] Dystanse widoczne przy danym zestawie (start treningu, podgląd trenera).
+ *
+ * Zastępuje filtr samą dyscypliną z 2026-09-08. Tamten nie odróżniał dwóch
+ * zestawów tej samej dyscypliny — recurve i barebow widziały identyczną listę,
+ * więc nie dało się mieć 18 m pod każdy łuk z osobnymi nastawami.
+ *
+ * Reguła:
+ *  - dystans z kolorem (`setupId` istniejącego zestawu) → tylko przy tym zestawie,
+ *  - dystans bez koloru → przy każdym zestawie swojej dyscypliny (stary filtr),
+ *    więc łucznik dalej nie przewija 5 i 7 m z rury, a nikt nie traci dystansu
+ *    tylko dlatego, że jeszcze nic nie pokolorował.
+ *
+ * Bez zestawów (konto sprzed ich wprowadzenia) decyduje samo `fallbackDiscipline`.
+ */
+export function distancesForSetup(
+  list: UserDistance[],
+  setups: SetupLike[] | null | undefined,
+  setupId: string | null | undefined,
+  fallbackDiscipline?: string | null,
+): UserDistance[] {
+  const all = setups || [];
+  const setup = all.find(s => s.id === setupId) ?? all[0];
+  const discipline = setup?.discipline ?? fallbackDiscipline;
+  return (list || []).filter(d => {
+    const owner = ownerSetupOf(d, all);
+    return owner ? owner.id === setup?.id : matchesDiscipline(d, discipline);
+  });
+}
+
+/**
+ * Dyscyplina, pod którą dobieramy listę TARCZ przy dystansie w VISIER.
+ *
+ * VISIER pokazuje wszystkie dystanse naraz, więc nie ma już jednej „aktywnej"
+ * dyscypliny dla całego ekranu — każdy wiersz bierze swoją. Dla dystansu bez
+ * koloru wystarczy rozróżnienie rura/łuk, bo lista tarcz łuczniczych nie zależy
+ * od klasy łuku (`selectableTargetIdsFor`) — stąd recurve jako zastępstwo.
+ */
+export function disciplineOfDistance(d: UserDistance, setups?: SetupLike[] | null): string {
+  const owner = ownerSetupOf(d, setups);
+  if (owner) return owner.discipline;
+  return d.discipline === 'blowgun' ? BLOWGUN_DISCIPLINE : 'Klasyczny (Recurve)';
 }
 
 /**
  * Czy taki dystans już istnieje na liście.
- * Duplikatem jest para (metry, etykieta) — dwa gołe „30m" tak, ale
- * „18m recurve" obok „18m barebow" to dwa różne, poprawne wpisy.
+ *
+ * Duplikatem są te same metry, etykieta, zestaw I dyscyplina. Dwa gołe „30m"
+ * bez koloru to duplikat, ale „18m" czerwone obok „18m" niebieskiego to dwa
+ * poprawne wpisy — o to chodziło w kolorach. Dyscyplina zostaje w kluczu, żeby
+ * łucznik mógł dodać gołe „10m", mimo że dmuchawka ma swoje standardowe 10 m.
  */
-export function isDuplicateDistance(list: UserDistance[], m: string, label?: string): boolean {
+export function isDuplicateDistance(
+  list: UserDistance[],
+  m: string,
+  label?: string,
+  setupId?: string,
+  discipline?: DistanceDiscipline,
+): boolean {
   const l = normalizeLabel(label);
-  return list.some(d => d.m === m && normalizeLabel(d.label) === l);
+  return list.some(d =>
+    d.m === m
+    && normalizeLabel(d.label) === l
+    && (d.setupId || undefined) === (setupId || undefined)
+    && (d.discipline || undefined) === (discipline || undefined));
 }

@@ -871,7 +871,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
                 {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
               </h3>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-0.5 truncate">
+              {/* tracking-wide, nie -widest: ta linia niesie dystans i wynik
+                  i przy szerokim rozstrzeleniu ucinała się w połowie */}
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5 truncate">
                 {trend && (
                   <span
                     className={`material-symbols-outlined text-[12px] align-[-2px] mr-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-orange-500'}`}
@@ -909,6 +911,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </div>
           </div>
 
+          {/* Bez ikony statystyk (usunięta 2026-09-10) — cały wiersz i tak
+              prowadzi do statystyk ucznia, a ikona zabierała miejsce tekstowi. */}
           <div className="flex items-center gap-1 shrink-0">
             {/* Przycisk wiadomości */}
             <button
@@ -920,15 +924,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 <div className="absolute top-0.5 right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
               )}
             </button>
-
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                hasNewActivity
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/30'
-                : 'bg-indigo-50 text-indigo-600'
-              }`}
-            >
-              <span className="material-symbols-outlined text-[18px]">analytics</span>
-            </div>
 
             <button
               onClick={(e) => {

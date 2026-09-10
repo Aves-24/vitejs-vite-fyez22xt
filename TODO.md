@@ -919,9 +919,13 @@ Reguł Firestore NIE trzeba ruszać — pilnują tylko długości list.
 `setupId` przeżywa regenerację listy (`buildDistanceEntry`, `buildBlowgunEntry`).
 Osierocony `setupId` (skasowany zestaw) = dystans wspólny, nic nie znika.
 
-**Otwarte:** dwa gołe „18m" w różnych kolorach wyglądają w statystykach
-identycznie — kolor nie trafia do ANALIZY DYSTANSU ani REKORDÓW. Na razie
-rada: drugi wpis z etykietą. Ewentualnie kropka koloru w statystykach.
+**Kropka koloru w statystykach — zrobione tego samego dnia.** ANALIZA
+DYSTANSU (lista + plakietka), REKORDY (przełącznik, 4 kafelki, historia
+startów), szczegóły sesji w DZIENNIKU. Źródło: `distanceColorMap` +
+hook `useDistanceColors(userId)` — jeden odczyt `users/{uid}` właściciela
+statystyk (u trenera: ucznia). Kolor jest BIEŻĄCY, nie z dnia strzału:
+przepięcie dystansu przemalowuje jego historię, bo to ten sam kubełek.
+Wspólny dystans nie ma kropki. Niesprawdzone klikaniem (za logowaniem).
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

@@ -5,6 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import HistoricalStartForm from './HistoricalStartForm';
 import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/distances';
+import { useDistanceColors } from '../hooks/useDistanceColors';
+
+/** [KOLORY] Kropka zestawu przy dystansie; bez koloru (dystans wspólny) nic nie rysuje. */
+const Dot: React.FC<{ hex?: string }> = ({ hex }) =>
+  hex ? <span className="inline-block w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hex }} /> : null;
 
 interface RecordSession {
   id: string;
@@ -158,6 +163,9 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
     return Array.from(buckets.values()).sort((a, b) => a.meters - b.meters);
   }, [scored]);
 
+  // [KOLORY] Dwa gołe „18m" z różnych zestawów rozróżnia tylko kolor.
+  const distanceColors = useDistanceColors(userId);
+
   const inDistance = useMemo(
     () => selectedDistance ? scored.filter(s => distanceKey(s) === selectedDistance) : scored,
     [scored, selectedDistance]
@@ -225,7 +233,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
     return <div className="p-10 text-center animate-pulse text-gray-400 mt-10">{t('stats.loading')}</div>;
   }
 
-  const RecordTile = ({ label, value, name, sub, icon, dark }: { label: string; value: string; name?: string; sub?: string; icon: string; dark?: boolean }) => (
+  const RecordTile = ({ label, value, name, sub, subHex, icon, dark }: { label: string; value: string; name?: string; sub?: string; subHex?: string; icon: string; dark?: boolean }) => (
     <div className={`rounded-[20px] p-3 border shadow-sm flex flex-col justify-between ${dark ? 'bg-[#0a3a2a] border-[#0a3a2a]' : 'bg-white border-gray-100'}`}>
       <div className="flex items-center gap-1 mb-1.5">
         <span className={`material-symbols-outlined text-[14px] ${dark ? 'text-[#fed33e]' : 'text-gray-300'}`}>{icon}</span>
@@ -237,7 +245,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
           {name}
         </span>
       )}
-      {sub && <span className={`text-[8px] font-bold mt-0.5 leading-none ${dark ? 'text-emerald-100/50' : 'text-gray-400'}`}>{sub}</span>}
+      {sub && <span className={`text-[8px] font-bold mt-0.5 leading-none flex items-center gap-1 ${dark ? 'text-emerald-100/50' : 'text-gray-400'}`}><Dot hex={subHex} />{sub}</span>}
     </div>
   );
 
@@ -257,8 +265,9 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
             <button
               key={d.key}
               onClick={() => setSelectedDistance(d.key)}
-              className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${selectedDistance === d.key ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+              className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all flex items-center gap-1 ${selectedDistance === d.key ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
             >
+              <Dot hex={distanceColors.get(d.key)} />
               {d.label}
             </button>
           ))}
@@ -278,25 +287,29 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
               label={t('stats.records.bestTournament')}
               value={records.tournament ? String(records.tournament.s.score) : '—'}
               name={records.tournament?.s.tournamentName || undefined}
-              sub={records.tournament ? `${sessionDistanceLabel(records.tournament.s)} · ${records.tournament.s.date}` : undefined}
+              subHex={records.tournament ? distanceColors.get(distanceKey(records.tournament.s)) : undefined}
+              sub={records.tournament ?`${sessionDistanceLabel(records.tournament.s)} · ${records.tournament.s.date}` : undefined}
             />
             <RecordTile
               icon="fitness_center"
               label={t('stats.records.bestTraining')}
               value={records.training ? String(records.training.s.score) : '—'}
-              sub={records.training ? `${sessionDistanceLabel(records.training.s)} · ${records.training.s.date}` : undefined}
+              subHex={records.training ? distanceColors.get(distanceKey(records.training.s)) : undefined}
+              sub={records.training ?`${sessionDistanceLabel(records.training.s)} · ${records.training.s.date}` : undefined}
             />
             <RecordTile
               icon="speed"
               label={t('stats.records.bestAvg')}
               value={records.avg ? fmtAvg(records.avg.v) : '—'}
-              sub={records.avg ? `${t('stats.records.perArrow')} · ${sessionDistanceLabel(records.avg.s)}` : undefined}
+              subHex={records.avg ? distanceColors.get(distanceKey(records.avg.s)) : undefined}
+              sub={records.avg ?`${t('stats.records.perArrow')} · ${sessionDistanceLabel(records.avg.s)}` : undefined}
             />
             <RecordTile
               icon="my_location"
               label={t('stats.records.mostX')}
               value={records.x ? String(records.x.v) : '—'}
-              sub={records.x ? `${sessionDistanceLabel(records.x.s)} · ${records.x.s.date}` : undefined}
+              subHex={records.x ? distanceColors.get(distanceKey(records.x.s)) : undefined}
+              sub={records.x ?`${sessionDistanceLabel(records.x.s)} · ${records.x.s.date}` : undefined}
             />
           </div>
         )}
@@ -362,7 +375,10 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
                         return (
                           <div key={ed.id} className="flex items-center gap-2 bg-gray-50 rounded-xl px-2.5 py-2">
                             <span className="text-[9px] font-black text-gray-400 w-[62px] shrink-0">{ed.date}</span>
-                            <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shrink-0">{sessionDistanceLabel(ed)}</span>
+                            <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none shrink-0 flex items-center gap-1">
+                              <Dot hex={distanceColors.get(distanceKey(ed))} />
+                              {sessionDistanceLabel(ed)}
+                            </span>
                             <span className="flex-1 text-right text-sm font-black text-[#0a3a2a] leading-none">
                               {ed.score}
                               <span className="text-[8px] font-bold text-gray-400 ml-1">{fmtAvg(avgPerArrow(ed))}</span>

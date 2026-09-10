@@ -1,4 +1,4 @@
-import { isBlowgun, BLOWGUN_DISCIPLINE, EquipmentSetup } from './equipmentSetups';
+import { isBlowgun, BLOWGUN_DISCIPLINE, EquipmentSetup, resolveSetupColors, setupColorHex } from './equipmentSetups';
 import { BLOWGUN_FACE_ID } from './targets/blowgun';
 
 /**
@@ -438,6 +438,32 @@ export function distancesForSetup(
     const owner = ownerSetupOf(d, all);
     return owner ? owner.id === setup?.id : matchesDiscipline(d, discipline);
   });
+}
+
+/**
+ * [KOLORY] Kolor zestawu dla każdego kubełka statystyk: `distanceId` → hex.
+ *
+ * Po to, żeby dwa gołe „18m" (czerwone recurve, niebieskie barebow) dało się
+ * odróżnić w ANALIZIE DYSTANSU i REKORDACH. Klucz to id wpisu — ten sam, co
+ * `distanceKey(sesja)`, więc stare sesje 18 m trafiają do koloru wpisu `d_18m`.
+ *
+ * Kolor pochodzi z BIEŻĄCEGO przypięcia na liście właściciela statystyk (u
+ * trenera — ucznia), nie ze stempla sesji: wspólny 18 m strzelany z dwóch
+ * zestawów nie ma jednego koloru. Dystans wspólny albo skasowany → brak wpisu.
+ */
+export function distanceColorMap(
+  list: UserDistance[] | null | undefined,
+  setups: EquipmentSetup[] | null | undefined,
+): Map<string, string> {
+  const all = setups || [];
+  const colors = resolveSetupColors(all);
+  const out = new Map<string, string>();
+  for (const d of list || []) {
+    const owner = ownerSetupOf(d, all);
+    const hex = owner ? setupColorHex(colors.get(owner.id)) : undefined;
+    if (hex) out.set(d.id, hex);
+  }
+  return out;
 }
 
 /**

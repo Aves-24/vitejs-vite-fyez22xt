@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { distanceMeters, sessionDistanceLabel } from '../config/distances';
+import { distanceMeters, sessionDistanceLabel, distanceKey } from '../config/distances';
+import { useDistanceColors } from '../hooks/useDistanceColors';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -508,6 +509,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const daysToShow = isPremium ? 1095 : 30;
 
   const targetUserId = viewingStudentId || userId;
+  // [KOLORY] Kolory zestawów właściciela statystyk (u trenera — ucznia).
+  const distanceColors = useDistanceColors(targetUserId);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -903,7 +906,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       <h2 className="text-xl font-black text-[#0a3a2a] leading-tight truncate max-w-[200px]">
                         {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
                       </h2>
-                      <p className="text-[10px] text-gray-300 font-bold uppercase">{selectedSession.date} • {sessionDistanceLabel(selectedSession)}</p>
+                      <p className="text-[10px] text-gray-300 font-bold uppercase flex items-center gap-1">
+                        {selectedSession.date} •
+                        {/* [KOLORY] Kropka zestawu — odróżnia czerwone „18m" od niebieskiego. */}
+                        {distanceColors.has(distanceKey(selectedSession)) && (
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(distanceKey(selectedSession)) }} />
+                        )}
+                        {sessionDistanceLabel(selectedSession)}
+                      </p>
                     </div>
                     <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">{displayTargetType || t('stats.sessionInfo.dynamic')}</div>
                   </div>

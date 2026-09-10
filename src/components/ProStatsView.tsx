@@ -12,6 +12,7 @@ import HeatmapTarget from './HeatmapTarget';
 import { calculateSpreadSessions } from '../utils/spread';
 import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
 import { isFullFace as isFullFaceType } from '../config/targetFaces';
+import { useDistanceColors } from '../hooks/useDistanceColors';
 
 interface Session {
   id: string;
@@ -170,6 +171,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   }, [distances, selectedDistance]);
 
   const selectedBucket = distances.find(b => b.key === selectedDistance);
+  // [KOLORY] Kropka zestawu przy kubełku — inaczej dwa gołe „18m" są nie do odróżnienia.
+  const distanceColors = useDistanceColors(userId);
+  const selectedHex = distanceColors.get(selectedDistance);
   const sessionsByDistance = useMemo(() => sessions.filter(s => distanceKey(s) === selectedDistance), [sessions, selectedDistance]);
 
   const availableTypes = useMemo(() => {
@@ -496,7 +500,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                 <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">{t('stats.pro.distAnalysisSub', 'Dane poniżej dotyczą wyboru')}</p>
               </div>
             </div>
-            <div className="bg-[#fed33e] text-[#0a3a2a] px-4 py-2 rounded-2xl shadow-sm shrink-0">
+            <div className="bg-[#fed33e] text-[#0a3a2a] px-4 py-2 rounded-2xl shadow-sm shrink-0 flex items-center gap-1.5">
+              {selectedHex && <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/70" style={{ backgroundColor: selectedHex }} />}
               <span className="text-sm font-black uppercase tracking-tighter leading-none">{selectedBucket?.label || selectedDistance}</span>
             </div>
           </div>
@@ -515,6 +520,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                       : 'bg-gray-50 text-gray-400 border-gray-100'
                     }`}>
                     {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
+                    {distanceColors.has(dist) && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(dist) }} />}
                     {bucket.label}
                   </button>
                 )

@@ -66,7 +66,7 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
   const cls = tone === 'indigo'
     ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
     : tone === 'blue'
-    ? 'bg-white/70 text-blue-700 border-blue-100'
+    ? 'bg-white text-blue-700 border-blue-100'
     : 'bg-emerald-50 text-emerald-700 border-emerald-100';
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
@@ -133,10 +133,15 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
 
   return (
     <div className={`bg-white rounded-2xl border p-3 transition-colors ${voice.isListening ? 'border-red-300' : 'border-gray-100'}`}>
-      {voice.isListening && (
+      {voice.isListening ? (
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
           <span className="text-[10px] font-black text-red-500 uppercase tracking-widest">{t('tagebuch.recording')}</span>
+        </div>
+      ) : !allowShare && (
+        <div className="flex items-center gap-1 mb-1.5 px-1 text-[10px] font-black text-indigo-500">
+          <span className="material-symbols-outlined text-[13px]">lock</span>
+          {t('tagebuch.onlyYou')}
         </div>
       )}
       <textarea
@@ -195,22 +200,20 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
           <span className="material-symbols-outlined text-[16px]">psychology</span>
           {topics.length > 0 ? topics.length : t('tagebuch.topic')}
         </button>
-        {!allowShare && (
-          <span className="flex items-center gap-1 text-[9px] font-bold text-indigo-500 ml-1">
-            <span className="material-symbols-outlined text-[13px]">lock</span>
-            {t('tagebuch.onlyYou')}
-          </span>
-        )}
         <div className="flex-1" />
         {onCancel && (
-          <button onClick={onCancel} className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-2">
-            {t('tagebuch.cancel')}
+          <button
+            onClick={onCancel}
+            className="w-8 h-8 flex items-center justify-center rounded-xl bg-gray-100 text-gray-500 active:scale-95 transition-all"
+            aria-label={t('tagebuch.cancel')}
+          >
+            <span className="material-symbols-outlined text-[18px]">close</span>
           </button>
         )}
         <button
           onClick={handleSave}
           disabled={!text.trim() || isSaving}
-          className="bg-[#0a3a2a] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
+          className="shrink-0 bg-[#0a3a2a] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
         >
           {t('tagebuch.save')}
         </button>
@@ -359,7 +362,7 @@ export function SessionCard({ session, linkedNotes, hasCoach, isNew, onOpen, onA
       )}
 
       {linkedNotes.map(n => (
-        <div key={n.id} className="mt-2 bg-indigo-50/60 rounded-xl p-2.5">
+        <div key={n.id} className="mt-2 bg-indigo-50 rounded-xl p-2.5">
           <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-0.5">
             <span className="material-symbols-outlined text-[13px]">lock</span>
             {t('tagebuch.onlyYou')}

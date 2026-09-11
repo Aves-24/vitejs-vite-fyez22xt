@@ -65,6 +65,16 @@ function toMs(v: any): number {
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+// Stats wybiera dzień po dacie ISO, a sesje zapisują `date` jako pl-PL
+// („11.09.2026"). Ta sama konwersja co `toISO` w StatsView, żeby trafić
+// w ten sam dzień; bez daty — dzień z timestampu.
+function statsDate(s: TbSession): string {
+  const p = s.date.split('.');
+  if (p.length === 3) return `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s.date)) return s.date;
+  return s.ts ? ymd(new Date(s.ts)) : '';
+}
+
 export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToStats, pendingExtraData, onClearPending, pendingInitialTab, onClearPendingTab }: TagebuchViewProps) {
   const { t, i18n } = useTranslation();
 
@@ -549,7 +559,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
-                      onOpen={() => it.session.date && onNavigateToStats?.(it.session.date, it.session.id)}
+                      onOpen={() => {
+                        const day = statsDate(it.session);
+                        if (day) onNavigateToStats?.(day, it.session.id);
+                      }}
                       onAddNote={addSessionNote}
                       onDeleteNote={deleteNote}
                     />

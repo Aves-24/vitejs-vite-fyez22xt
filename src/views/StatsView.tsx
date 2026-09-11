@@ -581,6 +581,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     let cancelled = false;
 
     const dayStart = new Date(`${initialDate}T00:00:00`);
+    // Zła data (np. "11.09.2026" zamiast ISO) → Timestamp.fromDate rzuca
+    // synchronicznie i wywraca cały widok. Wtedy po prostu nie dociągamy dnia.
+    if (isNaN(dayStart.getTime())) return;
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
 

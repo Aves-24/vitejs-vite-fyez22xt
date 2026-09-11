@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { selectableTargetIdsFor } from '../config/targetFaces';
+import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
 import { UserDistance, displayDistance, distancesForSetup } from '../config/distances';
 
@@ -398,6 +399,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           </span>
           <div className="w-full py-2 px-3 rounded-xl shadow-inner mb-2 flex items-center justify-center gap-3 relative overflow-hidden transition-colors bg-[#0a3a2a]">
             <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest z-10">{t('setup.selected')}:</span>
+            <TargetThumbnail targetType={selectedTarget} className="w-8 h-8 shrink-0 z-10" />
             <span className="text-xl font-black text-white uppercase tracking-tight z-10">{selectedTarget}</span>
           </div>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
@@ -405,8 +407,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               <button
                 key={t}
                 onClick={() => setSelectedTarget(t)}
-                className="h-8 flex items-center justify-center rounded-lg border bg-white text-gray-400 border-gray-100 hover:border-gray-200 transition-all active:scale-95"
+                className="py-1.5 flex flex-col items-center justify-center gap-1 rounded-lg border bg-white text-gray-400 border-gray-100 hover:border-gray-200 transition-all active:scale-95"
               >
+                {/* [PODGLĄD TARCZY] Miniatura z katalogu, ta sama co w serii. */}
+                <TargetThumbnail targetType={t} className="w-7 h-7" />
                 <span className="text-[10px] font-black uppercase tracking-tight text-center leading-none px-1 truncate w-full">{t}</span>
               </button>
             ))}

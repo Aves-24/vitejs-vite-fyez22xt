@@ -29,6 +29,7 @@ import {
   DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
 } from '../config/distances';
 import { selectableTargetIdsFor } from '../config/targetFaces';
+import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import {
   EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID,
@@ -616,6 +617,10 @@ export default function SettingsView({
                    <>
                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.target')}</span>
+                     {/* [PODGLĄD TARCZY] Natywny select nie pokaże obrazka w opcjach,
+                         więc miniatura aktualnego wyboru stoi obok niego. */}
+                     <div className="flex items-center gap-1.5">
+                     <TargetThumbnail targetType={d.targetType || '122cm'} className="w-6 h-6 shrink-0" />
                      <select value={d.targetType || '122cm'} onChange={(e) => onUpdateTargetType(i, e.target.value)} className="bg-gray-50 text-[10px] font-black text-[#0a3a2a] py-1.5 px-2 rounded-md outline-none border-none">
                        {/* [DMUCHAWKA] Lista zawężona dyscypliną aktywnego zestawu.
                            Zapisana wcześniej tarcza spoza listy zostaje dopisana,
@@ -623,6 +628,7 @@ export default function SettingsView({
                        {Array.from(new Set([...targetOptions, d.targetType || '122cm']))
                          .map(id => <option key={id} value={id}>{id}</option>)}
                      </select>
+                     </div>
                    </div>
                    {/* [C25] Opis wolno zmieniać kiedykolwiek — tożsamością jest `id`,
                        więc zmiana nazwy nie rusza zapisanych treningów. */}

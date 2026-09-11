@@ -1007,8 +1007,26 @@ Z ogona po C25 zostały: **jardy**.
       przy nagraniu; czy strzały klikane na tarczy (współrzędne → heatmapa,
       rozrzut), czy klawiatura wartości. Reużyć rysowania i punktacji
       z `config/targetFaces.ts`, nie pisać drugiego.
-- [ ] **C29. 🔴 NA JUTRO (2026-09-11) — BŁĄD: dmuchawka po 3 strzałach
-      daje same M.** Zgłosił user 2026-09-10. Tarcza `Blowgun 20cm`
+- [x] **C29. ✅ NAPRAWIONE 2026-09-11 — dmuchawka po 3 strzałach dawała
+      same M.** Przyczyna: `addScoreFromTarget` w `ScoringView.tsx:333-356`
+      pilnuje zasady „jedna strzała na spot" (druga w tym samym spocie → M,
+      liczy się niższa). Układ `spot3-single` ma 3 spoty, więc przy serii
+      6 strzał od 4. każdy spot był zajęty. W `spot3-double` strzały 4-6 idą
+      na prawą kolumnę (`isTarget2`). Fix = jedna linia, `layout` w
+      `blowgun.ts`; rysowanie, heatmapa i rozrzut czytają układ z katalogu.
+      Sprawdzone na localhost, konto gościa, zestaw Blasrohr, 10 m: seria
+      6×10 = 60 bez M, a dwie strzały w jeden spot nadal dają `M, 9`.
+      Zostaje: stare sesje dmuchawki z układem pionowym mają kropki przy
+      x≈150, więc na nowej tarczy wypadną między kolumnami (to tylko dane
+      testowe). Ten sam błąd ma łucznicza `Vertical 3-Spot`, ale nie ma jej
+      na liście wyboru (tylko stare sesje i Battle).
+      **Tego samego dnia, prośba usera:** druga tarcza do rury, `Blowgun 40cm`
+      (`src/config/targets/blowgun40.ts`). To pełna 40 cm jak łucznicza
+      (1-10 + X), ale z tagiem `discipline: 'blowgun'`, więc widać ją tylko
+      przy zestawie Blasrohr, a `isBlowgunSession` rozpoznaje ją też po id.
+      Sprawdzone na localhost: pojawia się obok 20cm i punktuje
+      X/10/9/5/1/M = 35.
+      *Opis zgłoszenia poniżej:* Zgłosił user 2026-09-10. Tarcza `Blowgun 20cm`
       (`src/config/targets/blowgun.ts`) ma układ `spot3-single` (jedna
       kolumna, 3 spoty), a 18 m (`3-Spot`, `targetFaces.ts:135`) ma
       `spot3-double` (dwie kolumny po 3). Po trzech strzałach w serii każda

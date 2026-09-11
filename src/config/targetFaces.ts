@@ -21,6 +21,7 @@
 // rejestrowane — patrz komentarz przy `BLOWGUN_FACE` w `TARGET_FACES`.
 import { BLOWGUN_FACE } from './targets/blowgun';
 import { BLOWGUN357_FACE } from './targets/blowgun357';
+import { BLOWGUN40_FACE } from './targets/blowgun40';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
 import { isBlowgun } from './equipmentSetups';
@@ -146,6 +147,8 @@ export const TARGET_FACES: readonly TargetFace[] = [
   // [DMUCHAWKA] Druga rodzina tarcz do rury (3-5-7). Nie ma jeszcze pickOrder,
   // wiec jest obslugiwana, ale nieproponowana — czeka na potwierdzenie wymiarow.
   BLOWGUN357_FACE,
+  // [DMUCHAWKA] Pełna 40 cm jak łucznicza, ale z tagiem dmuchawki (2026-09-11).
+  BLOWGUN40_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */

@@ -1,5 +1,7 @@
 import type { TargetFace, TargetRing } from '../targetFaces';
 import { BLOWGUN_DISCIPLINE } from '../equipmentSetups';
+// Bez cyklu: blowgun40 importuje z targetFaces wyłącznie typy.
+import { BLOWGUN40_FACE } from './blowgun40';
 
 /**
  * [DMUCHAWKA] Tarcza do dmuchawki (Blasrohr) — osobny plik, świadomie.
@@ -16,7 +18,8 @@ import { BLOWGUN_DISCIPLINE } from '../equipmentSetups';
  *  - „Gezielt wird auf Scheiben mit einer Wertung von 6 bis 10 Ringen"
  *  - wygląda IDENTYCZNIE jak nasz spot
  *  - w środku JEST X i liczy się jako 10 (rozstrzyga remisy)
- *  - układ: trzy spoty na kartce
+ *  - układ: jak spot łuczniczy na 18 m — dwie kartki po trzy spoty obok
+ *    siebie (zmiana 2026-09-11, patrz komentarz przy `layout`)
  *  - średnica 20 cm, dystans zwykle 10 m
  *
  * Punktacja wychodzi więc dokładnie taka sama jak na spocie łuczniczym,
@@ -48,9 +51,12 @@ export const BLOWGUN_FACE_ID = 'Blowgun 20cm';
 
 export const BLOWGUN_FACE: TargetFace = {
   id: BLOWGUN_FACE_ID,
-  // Trzy spoty w jednej kolumnie. NIE `spot3-double` — tamten układ rysuje
-  // dwie kolumny po trzy (sześć kółek), a dmuchawka ma trzy.
-  layout: 'spot3-single',
+  // Dwie kolumny po trzy spoty, identycznie jak '3-Spot' na 18 m (decyzja
+  // usera 2026-09-10/11). Do 2026-09-11 było tu `spot3-single` i każda strzała
+  // od 4. w serii wpadała jako M: ScoringView pilnuje zasady „jedna strzała
+  // na spot", a przy trzech spotach i serii 6 strzał od czwartej każdy spot
+  // był już zajęty. W `spot3-double` strzały 4-6 idą na prawą kolumnę.
+  layout: 'spot3-double',
   diameterCm: 20,
   // Spoty punktuje `calculateSpotScore` (krok 12,5 wpisany tam na sztywno);
   // te dwa pola opisują stan faktyczny, żeby katalog się nie rozjeżdżał
@@ -97,6 +103,6 @@ export function isBlowgunSession(session?: {
 } | null): boolean {
   if (!session) return false;
   if (session.bowClass) return session.bowClass === BLOWGUN_DISCIPLINE;
-  return session.targetType === BLOWGUN_FACE_ID
-    || BLOWGUN_FACE.aliases.includes(session.targetType ?? '');
+  const t = session.targetType ?? '';
+  return [BLOWGUN_FACE, BLOWGUN40_FACE].some(f => f.id === t || f.aliases.includes(t));
 }

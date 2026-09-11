@@ -1065,6 +1065,28 @@ Z ogona po C25 zostały: **jardy**.
       w trakcie aktywnej sesji punktowania (`grotX_activeSession`).
       Ważne przy zmianach reguł Firestore, z którymi stara wersja przestaje
       działać — wtedy pasek to jedyny sposób, żeby ludzie szybko przeszli.
+- [ ] **C31. Przerwany (niepełny) trening psuje statystyki.** Zgłosił user
+      2026-09-11. Ktoś strzela np. 7 serii po 6 strzał i musi skończyć
+      wcześniej. Zapisana sesja ma wtedy ~70% zwykłego wyniku, a statystyki
+      pokazują to jak słaby trening.
+      **Gdzie boli (wstępnie, z kodu):** miejsca liczące SUMĘ punktów sesji,
+      a nie średnią na strzałę: krzywa wyników (`stats/ErgebniskurvePanel.tsx`,
+      `s.score`), „Schnitt Letzte 3" i „Letztes Ergebnis" na Home
+      (`HomeView.tsx` ~585-600, 1185), listy sesji w Stats/profilu ucznia,
+      eksport. Średnia na strzałę (score/arrows), ranga i handicap
+      prawdopodobnie są OK. Sprawdzić każde miejsce z osobna.
+      **Opcje do decyzji usera:**
+      (a) przy zakończeniu przed planowaną liczbą serii pytać „Trening
+      niepełny — liczyć do statystyk wyniku?” i zapisać flagę (np.
+      `isPartial` + liczba serii zagranych/planowanych); sumy i krzywe
+      pomijają takie sesje, a strzały, XP i średnia na strzałę dalej się liczą;
+      (b) wykresy i porównania na średniej na strzałę albo wynik
+      przeliczony na pełną rundę (score / strzały × strzały rundy), z opisem
+      „przeliczone”;
+      (c) oba: flaga + znaczek „7/12 Passen” na liście sesji.
+      Najpierw sprawdzić, czy sesja w ogóle zna planowaną liczbę serii
+      (dystans/runda w `ScoringView`, zapis ~l. 467); jeśli nie, trzeba ją
+      stemplować przy starcie. Stare sesje bez flagi traktować jak pełne.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

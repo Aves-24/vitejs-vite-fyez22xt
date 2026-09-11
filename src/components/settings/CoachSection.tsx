@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { db, auth } from '../../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
@@ -41,6 +42,10 @@ const CoachSection: React.FC<CoachSectionProps> = ({
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'alreadySent' | 'error'>('idle');
   const [modeBusy, setModeBusy] = useState(false);
   const [modeError, setModeError] = useState(false);
+  // Wyłączenie trybu wymaga trafienia w „0" spośród 8 · 0 · 8 — żeby nie
+  // wyłączyć go przypadkowym stuknięciem (decyzja usera).
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [wrongDigit, setWrongDigit] = useState(false);
   // Gość (konto anonimowe) nie może tworzyć zaproszeń (reguła coachInvites: !isAnon).
   const isGuest = !!auth.currentUser?.isAnonymous;
 
@@ -232,10 +237,11 @@ const CoachSection: React.FC<CoachSectionProps> = ({
           <div className="mt-4 pt-4 border-t border-gray-100 text-center">
             {studentsCount === 0 ? (
               <button
-                onClick={() => setCoachMode(false)}
+                onClick={() => { setWrongDigit(false); setShowDisableConfirm(true); }}
                 disabled={modeBusy}
-                className="text-[9px] font-black text-gray-400 uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-3 bg-red-50 text-red-500 border border-red-100 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
+                <span className="material-symbols-outlined text-base">block</span>
                 {t('settings.coach.disableBtn')}
               </button>
             ) : (
@@ -244,6 +250,42 @@ const CoachSection: React.FC<CoachSectionProps> = ({
             {modeError && <p className="text-[10px] text-red-500 font-bold mt-2">{t('settings.coach.modeError')}</p>}
           </div>
         </div>
+      )}
+
+      {showDisableConfirm && createPortal(
+        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6" onClick={() => setShowDisableConfirm(false)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="material-symbols-outlined text-red-500 text-2xl">block</span>
+            </div>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-2">{t('settings.coach.disableConfirmTitle')}</h2>
+            <p className="text-sm font-bold text-gray-500 mb-5">{t('settings.coach.disableConfirmHint')}</p>
+            <div className="flex justify-center gap-3 mb-3">
+              {['8', '0', '8'].map((digit, i) => (
+                <button
+                  key={i}
+                  disabled={modeBusy}
+                  onClick={async () => {
+                    if (digit !== '0') { setWrongDigit(true); return; }
+                    await setCoachMode(false);
+                    setShowDisableConfirm(false);
+                  }}
+                  className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 text-3xl font-black text-[#0a3a2a] active:scale-90 transition-all disabled:opacity-50"
+                >
+                  {digit}
+                </button>
+              ))}
+            </div>
+            <p className={`text-[10px] font-bold text-red-500 mb-3 h-4 ${wrongDigit ? '' : 'invisible'}`}>{t('settings.coach.disableWrongDigit')}</p>
+            <button
+              onClick={() => setShowDisableConfirm(false)}
+              className="w-full py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px] active:scale-95 transition-all"
+            >
+              {t('common.cancel')}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

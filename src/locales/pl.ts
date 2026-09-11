@@ -1012,7 +1012,7 @@ export const views = {
       wip: "W PRZYGOTOWANIU",
       desc: "Skanuj QR kody zawodników i zyskaj pełną kontrolę nad ich wynikami.",
       btn: "Dostępne wkrótce",
-      myTeam: "Moja Kadra",
+      myTeam: "Moi trenerzy",
       commandCenter: "Centrum Dowodzenia",
       slots: "Miejsca:",
       confirmRevoke: "Odłączyć tego trenera?",

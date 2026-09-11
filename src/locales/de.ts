@@ -996,7 +996,7 @@ export const views = {
       wip: "IN ARBEIT",
       desc: "Scanne die QR-Codes deiner Schützen und erhalte die volle Kontrolle über ihre Ringzahlen.",
       btn: "Demnächst verfügbar",
-      myTeam: "Mein Kader",
+      myTeam: "Meine Trainer",
       commandCenter: "Kommandozentrale",
       slots: "Plätze:",
       confirmRevoke: "Diesen Trainer widerrufen?",

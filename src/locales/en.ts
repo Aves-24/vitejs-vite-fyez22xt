@@ -996,7 +996,7 @@ export const views = {
       wip: "WORK IN PROGRESS",
       desc: "Scan your archers' QR codes and gain full control over their scores.",
       btn: "Coming soon",
-      myTeam: "My Coaching Team",
+      myTeam: "My coaches",
       commandCenter: "Command Center",
       slots: "Slots:",
       confirmRevoke: "Revoke this coach?",

@@ -794,7 +794,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
       {activeTab === 'PRO' && (
         <ProStatsView
-          userId={userId}
+          userId={targetUserId}
           isPremium={isPremium}
           onNavigate={onNavigate}
           onOpenSession={(sessionId, date) => {
@@ -994,7 +994,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         <BiomechCard spread={spreadData} handedness={handedness} onNavigate={onNavigate} />
                       )}
 
-                      <CoachAIPanel userId={userId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />
+                      <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />
 
                       {!viewingStudentId && (
                         <div className="mt-6">

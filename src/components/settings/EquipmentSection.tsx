@@ -329,7 +329,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           <label className="text-[10px] font-black text-gray-400 uppercase block mb-2 ml-1">
             {t('settings.equipment.color')}
           </label>
-          <div className="flex flex-wrap gap-2 px-1">
+          {/* Jeden rząd: kółka kurczą się na wąskim ekranie zamiast zawijać. */}
+          <div className="flex justify-between gap-1.5 px-1">
             {SETUP_COLORS.map(c => {
               const selected = activeColor === c.id;
               const taken = takenByOthers.has(c.id);
@@ -341,7 +342,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                   aria-pressed={selected}
                   aria-label={t(`settings.equipment.colors.${c.id}`)}
                   title={taken ? t('settings.equipment.colorTaken') : t(`settings.equipment.colors.${c.id}`)}
-                  className={`w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-20 disabled:active:scale-100 ${selected ? 'ring-2 ring-offset-2 ring-[#0a3a2a] scale-105' : ''}`}
+                  className={`flex-1 min-w-0 max-w-[2rem] aspect-square rounded-full flex items-center justify-center transition-all active:scale-90 disabled:opacity-20 disabled:active:scale-100 ${selected ? 'ring-2 ring-offset-2 ring-[#0a3a2a] scale-105' : ''}`}
                   style={{ backgroundColor: c.hex }}
                 >
                   {selected && <span className="material-symbols-outlined text-white text-[16px]">check</span>}

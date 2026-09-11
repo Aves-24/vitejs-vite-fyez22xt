@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { createNotification } from '../../services/notificationService';
 import { buildCoachRequestNotification } from '../../utils/notificationTypes';
+import { FREE_COACH_SLOTS } from '../../utils/coachAccess';
 
 const ADMIN_UID = 'b55wNdZf17gH5wxziuzG9bkaQKo2';
 
@@ -14,6 +15,8 @@ interface CoachSectionProps {
   myCoachesData: any[];
   onShowQR: () => void;
   onRevokeCoach: (coachId: string) => void;
+  /** [TRENER] Po zapisaniu `isCoach` — rodzic przelicza miejsca. */
+  onCoachModeChange?: (enabled: boolean) => void;
   onNavigate?: (view: string) => void;
   userId: string;
   userName: string;
@@ -27,6 +30,7 @@ const CoachSection: React.FC<CoachSectionProps> = ({
   myCoachesData,
   onShowQR,
   onRevokeCoach,
+  onCoachModeChange,
   onNavigate,
   userId,
   userName,
@@ -35,6 +39,24 @@ const CoachSection: React.FC<CoachSectionProps> = ({
   const { t } = useTranslation();
   const [desiredStudents, setDesiredStudents] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'alreadySent' | 'error'>('idle');
+  const [modeBusy, setModeBusy] = useState(false);
+  const [modeError, setModeError] = useState(false);
+  // Gość (konto anonimowe) nie może tworzyć zaproszeń (reguła coachInvites: !isAnon).
+  const isGuest = !!auth.currentUser?.isAnonymous;
+
+  // [TRENER] Tryb trenera włącza każdy sam — FREE_COACH_SLOTS miejsc gratis.
+  // Serwer pilnuje limitu przy dopisaniu ucznia (firestore.rules, Path E).
+  const setCoachMode = async (enabled: boolean) => {
+    setModeBusy(true);
+    setModeError(false);
+    try {
+      await updateDoc(doc(db, 'users', userId), { isCoach: enabled });
+      onCoachModeChange?.(enabled);
+    } catch {
+      setModeError(true);
+    }
+    setModeBusy(false);
+  };
 
   const handleSendRequest = async () => {
     const count = parseInt(desiredStudents, 10);
@@ -140,8 +162,30 @@ const CoachSection: React.FC<CoachSectionProps> = ({
           <div className="flex flex-col items-center text-center mb-4">
             <span className="material-symbols-outlined text-gray-300 text-4xl mb-2">sports</span>
             <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{t('settings.coach.becomeTitle')}</h4>
-            <p className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('settings.coach.becomeDesc')}</p>
+            <p className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('settings.coach.becomeDesc', { count: FREE_COACH_SLOTS })}</p>
           </div>
+          {isGuest ? (
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('settings.coach.guestBlocked')}</p>
+          ) : (
+            <button
+              onClick={() => setCoachMode(true)}
+              disabled={modeBusy}
+              className="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-base">sports</span>
+              {modeBusy ? t('settings.coach.enabling') : t('settings.coach.enableBtn')}
+            </button>
+          )}
+          {modeError && <p className="text-[10px] text-red-500 font-bold mt-2 text-center">{t('settings.coach.modeError')}</p>}
+        </div>
+      )}
+
+      {/* [TRENER] Więcej miejsc niż darmowe — na razie prośba do admina, który
+          nadaje pakiet (coachLimit) w Admin Center. Później tu wejdą płatności. */}
+      {isCoach && (
+        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+          <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{t('settings.coach.moreSlotsTitle')}</h4>
+          <p className="text-[10px] text-gray-400 font-medium leading-relaxed mb-4">{t('settings.coach.moreSlotsDesc')}</p>
 
           {status === 'sent' ? (
             <div className="text-center bg-emerald-50 border border-emerald-100 rounded-xl p-4">
@@ -182,6 +226,23 @@ const CoachSection: React.FC<CoachSectionProps> = ({
               </button>
             </div>
           )}
+
+          {/* Wyłączenie tylko bez uczniów — inaczej zostaliby w students[]
+              u kogoś, kto nie widzi już panelu trenera. */}
+          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
+            {studentsCount === 0 ? (
+              <button
+                onClick={() => setCoachMode(false)}
+                disabled={modeBusy}
+                className="text-[9px] font-black text-gray-400 uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
+              >
+                {t('settings.coach.disableBtn')}
+              </button>
+            ) : (
+              <p className="text-[9px] font-bold text-gray-400">{t('settings.coach.disableBlocked')}</p>
+            )}
+            {modeError && <p className="text-[10px] text-red-500 font-bold mt-2">{t('settings.coach.modeError')}</p>}
+          </div>
         </div>
       )}
     </div>

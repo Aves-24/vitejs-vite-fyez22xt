@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
+import { effectiveCoachLimit } from '../utils/coachAccess';
 import CollapsibleSection from '../components/CollapsibleSection';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -288,7 +289,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       const coachDoc = await getDoc(doc(db, 'users', userId));
       if (coachDoc.exists()) {
         const data = coachDoc.data();
-        setCoachLimit(data.coachLimit || 0);
+        setCoachLimit(effectiveCoachLimit(data));
         setStudentLastChecked(data.studentLastChecked || {});
         
         setCoachGroups(data.coachGroups || []);
@@ -391,7 +392,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       if (!snap.exists()) return;
       const data = snap.data();
       // Świeży coachLimit z każdego snapshota — admin może go zmienić w locie.
-      setCoachLimit(data.coachLimit || 0);
+      setCoachLimit(effectiveCoachLimit(data));
       const ids = (data.students || []) as string[];
       const key = [...ids].sort().join(',');
       // Pierwszy snapshot (prevStudentsKey === null) albo zmiana listy studentów → pełny refetch

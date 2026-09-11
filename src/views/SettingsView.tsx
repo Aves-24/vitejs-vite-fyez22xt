@@ -22,6 +22,7 @@ import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryP
 import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import { hasActivePro } from '../utils/proAccess';
+import { effectiveCoachLimit } from '../utils/coachAccess';
 import {
   UserDistance, buildDistanceEntry, buildCustomDistanceEntry, rebuildMasterList, normalizeLabel,
   ownerSetupOf, disciplineOfDistance,
@@ -243,7 +244,10 @@ export default function SettingsView({
 
   // Dane Trenera
   const [isCoach, setIsCoach] = useState<boolean>(false);
-  const [coachLimit, setCoachLimit] = useState<number>(0);
+  // Surowe `coachLimit` (pakiet od admina) — miejsca liczy effectiveCoachLimit,
+  // żeby po wyłączeniu i ponownym włączeniu trybu trenera pakiet wracał.
+  const [rawCoachLimit, setRawCoachLimit] = useState<unknown>(0);
+  const coachLimit = effectiveCoachLimit({ isCoach, coachLimit: rawCoachLimit });
   const [studentsCount, setStudentsCount] = useState<number>(0);
   const [myCoachesData, setMyCoachesData] = useState<any[]>([]);
   const [showMyQR, setShowMyQR] = useState(false);
@@ -359,7 +363,7 @@ export default function SettingsView({
           setShowFullName(data.showFullName !== undefined ? data.showFullName : true);
           setShowClub(data.showClub !== undefined ? data.showClub : true);
           setShowRegion(data.showRegion !== undefined ? data.showRegion : true);
-          setIsCoach(data.isCoach || false); setCoachLimit(data.coachLimit || 0); setStudentsCount((data.students || []).length);
+          setIsCoach(data.isCoach || false); setRawCoachLimit(data.coachLimit ?? 0); setStudentsCount((data.students || []).length);
 
           if ((data.coaches || []).length > 0) {
             // [RODO C6] Pojedyncze getDoc zamiast zapytania `in`: reguła
@@ -777,7 +781,7 @@ export default function SettingsView({
         )}
 
         {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} proGiftedAt={proGiftedAt} />}
-        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} userId={userId} userName={`${firstName} ${lastName}`.trim()} userEmail={userEmail} />}
+        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onCoachModeChange={setIsCoach} onNavigate={onNavigate} userId={userId} userName={`${firstName} ${lastName}`.trim()} userEmail={userEmail} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (
           <div className="flex flex-col items-center justify-center py-6">

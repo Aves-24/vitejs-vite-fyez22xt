@@ -119,6 +119,15 @@ service cloud.firestore {
         || (data.get('trialEndsAt', 0) is number
             && data.get('trialEndsAt', 0) > request.time.toMillis());
     }
+    // [TRENER] Miejsca dla uczniów. Każdy może sam włączyć tryb trenera
+    // (`isCoach` nie jest chronione) i dostaje 1 miejsce za darmo. Więcej
+    // tylko przez `coachLimit`, które pisze admin (pakiety; pole chronione).
+    // LUSTRO: src/utils/coachAccess.ts (FREE_COACH_SLOTS).
+    function coachSlots(data) {
+      return data.get('coachLimit', 0) is number && data.get('coachLimit', 0) > 1
+        ? data.get('coachLimit', 0)
+        : 1;
+    }
     function validActiveSetupId(data) {
       return !data.keys().hasAny(['activeSetupId'])
         || data.activeSetupId is string;
@@ -250,13 +259,18 @@ service cloud.firestore {
 
       // Path E — student writes to COACH's doc, adding self to students[]
       //          requires coachInvite(uid, self) exists.
+      //          [TRENER] Wcześniej limit uczniów pilnowało tylko UI — teraz
+      //          dokument musi być trenerem i mieć wolne miejsce (coachSlots).
+      //          Nadmiar sprzed zmiany limitu zostaje; nie przybywa ponad limit.
       allow update: if isSignedIn()
         && !isSelf(uid)
         && onlyAffects(['students'])
         && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') + 1
         && request.resource.data.students[listLen(request.resource.data, 'students') - 1]
              == request.auth.uid
-        && coachInviteExists(uid, request.auth.uid);
+        && coachInviteExists(uid, request.auth.uid)
+        && resource.data.get('isCoach', false) == true
+        && listLen(resource.data, 'students') < coachSlots(resource.data);
 
       // Path F — student self-removes from coach's students[]
       allow update: if isSignedIn()

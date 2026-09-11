@@ -554,6 +554,54 @@ test('PRO: admin dopisuje prezent (trialEndsAt + proGiftedAt)', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// [TRENER] Limit uczniów pilnowany przez serwer (Path E + coachSlots):
+// tryb trenera włącza każdy sam (1 miejsce gratis), więcej miejsc tylko
+// przez coachLimit od admina.
+// ---------------------------------------------------------------------------
+
+/** Trener coach2 z zaproszeniem dla boba; `extra` = pola trenera. */
+const setupCoach2 = async (extra) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/coach2'), { displayName: 'Coach2', coaches: [], ...extra });
+    await setDoc(doc(db, 'coachInvites/coach2_bob'), { coachId: 'coach2', studentId: 'bob' });
+  });
+};
+const bobJoinsCoach2 = (students) =>
+  updateDoc(doc(bob(), 'users/coach2'), { students: [...students, 'bob'] });
+
+test('TRENER: user sam włącza tryb trenera, ale nie nada sobie coachLimit', async () => {
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { isCoach: true }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { coachLimit: 10 }));
+});
+
+test('TRENER: darmowy trener przyjmuje 1. ucznia', async () => {
+  await setupCoach2({ isCoach: true, students: [] });
+  await assertSucceeds(bobJoinsCoach2([]));
+});
+
+test('TRENER: darmowy trener NIE przyjmie 2. ucznia', async () => {
+  await setupCoach2({ isCoach: true, students: ['alice'] });
+  await assertFails(bobJoinsCoach2(['alice']));
+});
+
+test('TRENER: pakiet od admina (coachLimit 10) przyjmuje kolejnych', async () => {
+  await setupCoach2({ isCoach: true, coachLimit: 10, students: ['alice'] });
+  await assertSucceeds(bobJoinsCoach2(['alice']));
+});
+
+test('TRENER: pełny pakiet (10/10) nie przyjmie 11. ucznia', async () => {
+  const ten = Array.from({ length: 10 }, (_, i) => `s${i}`);
+  await setupCoach2({ isCoach: true, coachLimit: 10, students: ten });
+  await assertFails(bobJoinsCoach2(ten));
+});
+
+test('TRENER: do nie-trenera nie da się dopisać, nawet z zaproszeniem', async () => {
+  await setupCoach2({ students: [] });
+  await assertFails(bobJoinsCoach2([]));
+});
+
+// ---------------------------------------------------------------------------
 // [C25] Limit własnych dystansów: 2 FREE / 15 PRO, ponad 10 standardowych.
 // W regułach zapisany jako sufit CAŁEJ listy (12 / 25) — język reguł nie ma
 // pętli ani filtrowania, więc nie policzy, ile wpisów jest „własnych".

@@ -848,7 +848,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
         {/* LISTA CZŁONKÓW KLUBU */}
         {activeTab === 'CLUBS' && selectedClubView && !viewingMemberId && (
-          <div className="space-y-3 animate-fade-in">
+          <div className="space-y-3 animate-fade-overlay">
             {/* Nagłówek z powrotem */}
             <button
               onClick={() => { setSelectedClubView(null); setClubMembers([]); }}
@@ -914,7 +914,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
         {/* PODGLĄD STATYSTYK CZŁONKA */}
         {activeTab === 'CLUBS' && selectedClubView && viewingMemberId && (
-          <div className="animate-fade-in">
+          <div className="animate-fade-overlay">
             {/* Nawigacja wstecz */}
             <button
               onClick={() => setViewingMemberId(null)}
@@ -956,7 +956,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
       {/* [NOWE] Pływający pasek akcji na dole (Floating Action Bar) */}
       {selectedUserIds.length > 0 && activeTab === 'USERS' && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-[#0a3a2a] p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-[#124b38] z-50 animate-fade-in">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-[#0a3a2a] p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-[#124b38] z-50 animate-admin-toast-in">
           <div className="text-white">
              <p className="text-[10px] font-bold text-gray-400 uppercase leading-none">Wybrano</p>
              <p className="font-black text-xl leading-none mt-1">{selectedUserIds.length} <span className="text-[10px] font-normal text-gray-300">uczniów</span></p>
@@ -972,7 +972,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
       {/* Pasek scalania klubów */}
       {selectedClubIds.length === 2 && activeTab === 'CLUBS' && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-orange-600 p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-orange-500 z-50 animate-fade-in">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] bg-orange-600 p-4 rounded-2xl shadow-2xl flex items-center justify-between border border-orange-500 z-50 animate-admin-toast-in">
           <div className="text-white">
             <p className="text-[10px] font-bold text-orange-200 uppercase leading-none">Wybrano 2 kluby</p>
             <p className="font-black text-[13px] leading-tight mt-1 text-white">Scal w jeden klub</p>
@@ -1065,7 +1065,7 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
       )}
 
       {toastMessage && createPortal(
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[500000] bg-[#0a3a2a] text-white px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl animate-fade-in flex items-center gap-2 whitespace-nowrap">
+        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[500000] bg-[#0a3a2a] text-white px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl animate-admin-toast-in flex items-center gap-2 whitespace-nowrap">
           <span className="material-symbols-outlined text-emerald-400 text-sm">check_circle</span>
           {toastMessage}
         </div>, document.body
@@ -1152,11 +1152,14 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-        @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-        .animate-fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-        /* Wariant bez translate — dla overlayów pełnoekranowych (fixed inset-0).
-           animate-fade-in stosuje translate(-50%) przeznaczony do toastów; nałożony
-           na fullscreen overlay przesuwa go o pół szerokości viewportu w lewo. */
+        /* Tylko dla elementów wyśrodkowanych przez left-1/2 (toast, paski akcji).
+           Własna nazwa, a nie fadeIn/animate-fade-in: <style> jest globalny, więc
+           translate(-50%) nadpisywał też fadeIn osadzonego StatsView i przesuwał
+           listę członków klubu o pół szerokości w lewo. */
+        @keyframes adminToastIn { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .animate-admin-toast-in { animation: adminToastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        /* Wariant bez translate — dla wszystkiego, co nie jest wyśrodkowane
+           przez left-1/2 (overlaye, widoki w treści). */
         @keyframes fadeOverlay { from { opacity: 0; } to { opacity: 1; } }
         .animate-fade-overlay { animation: fadeOverlay 0.2s ease-out forwards; }
       `}</style>

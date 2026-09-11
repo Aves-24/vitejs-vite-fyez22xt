@@ -132,7 +132,7 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
   };
 
   return (
-    <div className={`bg-white rounded-2xl border p-3 transition-colors ${voice.isListening ? 'border-red-300' : 'border-gray-100'}`}>
+    <div className={`bg-white rounded-2xl border p-3 transition-colors ${voice.isListening ? 'border-red-300' : 'border-gray-200'}`}>
       {voice.isListening ? (
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -256,13 +256,14 @@ function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (i
   );
 }
 
-export function PrivateNoteCard({ note, onDelete }: { note: TbPrivateNote; onDelete: (id: string) => Promise<void> }) {
+export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
   const { t } = useTranslation();
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-3">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
       <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-1">
         <span className="material-symbols-outlined text-[14px]">lock</span>
-        {t('tagebuch.onlyYou')}
+        <span className="flex-1">{t('tagebuch.onlyYou')}</span>
+        {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
       </div>
       <PrivateNoteBody note={note} onDelete={onDelete} />
     </div>
@@ -270,11 +271,11 @@ export function PrivateNoteCard({ note, onDelete }: { note: TbPrivateNote; onDel
 }
 
 // --- WPIS TRENERA (coachLog) ---
-export function CoachEntryCard({ entry, isNew }: { entry: TbCoachEntry; isNew: boolean }) {
+export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; time: string; isNew: boolean }) {
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
-    <div className="bg-white rounded-2xl border border-amber-200 p-3">
+    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-3">
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="flex items-center gap-1 text-[10px] font-black text-amber-700 min-w-0">
           <span className="material-symbols-outlined text-[14px]">menu_book</span>
@@ -282,7 +283,10 @@ export function CoachEntryCard({ entry, isNew }: { entry: TbCoachEntry; isNew: b
             {t('tagebuch.coachEntry')} · {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
           </span>
         </span>
-        {isNew && <NewBadge />}
+        <span className="flex items-center gap-1.5 shrink-0">
+          {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
+          {isNew && <NewBadge />}
+        </span>
       </div>
       <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{entry.text}</p>
       <p className="text-[10px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
@@ -294,8 +298,9 @@ export function CoachEntryCard({ entry, isNew }: { entry: TbCoachEntry; isNew: b
 // --- KARTA TRENINGU ---
 // Notatka ucznia, notatki prywatne przypięte do sesji i Anmerkung trenera
 // w jednym miejscu — uwaga trenera jest przyklejona do treningu, którego dotyczy.
-export function SessionCard({ session, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
+export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
   session: TbSession;
+  time: string;
   linkedNotes: TbPrivateNote[];
   hasCoach: boolean;
   isNew: boolean;
@@ -320,10 +325,16 @@ export function SessionCard({ session, linkedNotes, hasCoach, isNew, onOpen, onA
 
   const header = (
     <div className="flex items-center gap-2">
-      <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-2 text-left active:opacity-60">
-        <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">{session.isTech ? 'fitness_center' : 'target'}</span>
-        <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
-        <span className="text-[10px] font-bold text-gray-400 shrink-0">{stats}</span>
+      <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-2.5 text-left active:opacity-60">
+        <span className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[18px] text-emerald-600">{session.isTech ? 'fitness_center' : 'target'}</span>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
+          <span className="block text-[10px] font-bold text-gray-500 truncate">
+            {time ? `${time} · ` : ''}{stats}
+          </span>
+        </span>
       </button>
       {!composing && (
         <button
@@ -338,7 +349,7 @@ export function SessionCard({ session, linkedNotes, hasCoach, isNew, onOpen, onA
   );
 
   return (
-    <div className={`bg-white rounded-2xl border border-gray-100 ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
+    <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
       {header}
       <TopicChips topics={session.topics} />
 

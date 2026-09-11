@@ -336,12 +336,13 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return { items: list, hasMore: sessionsFull || notesFull };
   }, [sessions, notes, coachEntries, filter, topic, pageSize]);
 
+  // Nagłówek dnia zawsze pokazuje pełną datę; „Heute"/„Gestern" albo dzień
+  // tygodnia stoi obok, a nie zamiast niej.
   const groups = useMemo(() => {
-    const out: { key: string; label: string; items: TimelineItem[] }[] = [];
+    const out: { key: string; label: string; date: string; isToday: boolean; items: TimelineItem[] }[] = [];
     const now = new Date();
     const todayKey = ymd(now);
     const yesterdayKey = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-    const weekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
     items.forEach(it => {
       const d = new Date(it.ts);
       const key = ymd(d);
@@ -349,18 +350,21 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       if (!g || g.key !== key) {
         const label = key === todayKey ? t('tagebuch.today')
           : key === yesterdayKey ? t('tagebuch.yesterday')
-          : it.ts >= weekAgo ? d.toLocaleDateString(i18n.language, { weekday: 'long' })
-          : d.toLocaleDateString(i18n.language, {
-              day: 'numeric', month: 'long',
-              ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
-            });
-        g = { key, label, items: [] };
+          : d.toLocaleDateString(i18n.language, { weekday: 'long' });
+        const date = d.toLocaleDateString(i18n.language, {
+          day: 'numeric', month: 'long',
+          ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+        });
+        g = { key, label, date, isToday: key === todayKey, items: [] };
         out.push(g);
       }
       g.items.push(it);
     });
     return out;
   }, [items, i18n.language, t]);
+
+  const timeOf = (ts: number) =>
+    ts ? new Date(ts).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' }) : '';
 
   // Najbliższe terminy: dwa pierwsze + każdy nowy plan trenera.
   const nextEvents = useMemo(() => {
@@ -546,7 +550,20 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         ) : (
           groups.map(g => (
             <div key={g.key} className="space-y-2">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-1 pt-1">{g.label}</p>
+              {/* Nagłówek dnia: kafelek z numerem dnia + dzień tygodnia i pełna data */}
+              <div className="pt-3 pb-1 flex items-center gap-2.5">
+                <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center leading-none shrink-0 ${g.isToday ? 'bg-emerald-600' : 'bg-[#0a3a2a]'}`}>
+                  <span className="text-[16px] font-black text-white">{Number(g.key.slice(8))}</span>
+                  <span className="text-[8px] font-black uppercase tracking-wider text-[#fed33e] mt-0.5">
+                    {new Date(`${g.key}T00:00:00`).toLocaleDateString(i18n.language, { month: 'short' }).replace('.', '')}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[14px] font-black text-[#0a3a2a] leading-tight capitalize">{g.label}</p>
+                  <p className="text-[11px] font-bold text-gray-500 leading-tight">{g.date}</p>
+                </div>
+                <div className="flex-1 h-px bg-gray-200 ml-1" />
+              </div>
               {g.items.map(it => (
                 <div
                   key={`${it.kind}_${it.id}`}
@@ -556,6 +573,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   {it.kind === 'session' ? (
                     <SessionCard
                       session={it.session}
+                      time={timeOf(it.ts)}
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
@@ -567,9 +585,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       onDeleteNote={deleteNote}
                     />
                   ) : it.kind === 'private' ? (
-                    <PrivateNoteCard note={it.note} onDelete={deleteNote} />
+                    <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
                   ) : (
-                    <CoachEntryCard entry={it.entry} isNew={isNew('coach_log', it.entry.id)} />
+                    <CoachEntryCard entry={it.entry} time={timeOf(it.ts)} isNew={isNew('coach_log', it.entry.id)} />
                   )}
                 </div>
               ))}

@@ -363,11 +363,15 @@ service cloud.firestore {
         && request.resource.data.get('note', '').size() <= 2000
         && request.resource.data.get('coachNote', '').size() <= 500;
 
-      // Coach writes coachNote + coachEditCount (length limited)
+      // Coach writes coachNote + coachEditCount + coachTopics (length limited).
+      // coachTopics wysyła CoachNoteModule przy każdym zapisie — bez niego na
+      // liście każdy zapis notatki trenera był odrzucany.
       allow update: if isSignedIn()
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['coachNote', 'coachEditCount'])
-        && request.resource.data.coachNote.size() <= 500;
+        && onlyAffects(['coachNote', 'coachEditCount', 'coachTopics'])
+        && request.resource.data.coachNote.size() <= 500
+        && request.resource.data.get('coachTopics', []) is list
+        && request.resource.data.get('coachTopics', []).size() <= 20;
     }
 
     // ─── /users/{uid}/techShots/{shotId} ────────────────────────

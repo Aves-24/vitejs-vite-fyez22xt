@@ -372,11 +372,13 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
     setIsSaving(false);
   };
 
-  if (!session.note && !session.coachNote && viewingStudentId) return null;
+  // Trener nie widzi notatki, którą uczeń oznaczył jako prywatną.
+  const showStudentNote = !viewingStudentId || (!!session.note && session.isNotePublic !== false);
+  if (!showStudentNote && !session.coachNote) return null;
 
   return (
     <div className="flex flex-col gap-2 w-full mt-2 mb-4">
-       {(session.note || !viewingStudentId) && (
+       {showStudentNote && (
          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 relative shadow-sm">
             <div className="flex justify-between items-center mb-2.5">
               <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-1">

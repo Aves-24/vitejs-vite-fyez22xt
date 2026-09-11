@@ -242,6 +242,15 @@ test('T6: trener dopisze coachNote (limit 500 znaków)', async () => {
   }));
 });
 
+test('T6b: trener zapisze coachNote razem z coachTopics (jak CoachNoteModule)', async () => {
+  await assertSucceeds(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
+    coachNote: 'bogenarm locker', coachEditCount: 1, coachTopics: ['bogenarm'],
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
+    coachNote: 'ok', coachEditCount: 2, coachTopics: Array.from({ length: 21 }, (_, i) => `t${i}`),
+  }));
+});
+
 test('T6: trener nie ruszy nut treningowych ucznia (note)', async () => {
   await assertFails(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
     note: 'przejmuje notatke',

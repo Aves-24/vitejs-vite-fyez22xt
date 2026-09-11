@@ -9,6 +9,7 @@ import TournamentScoreInput from '../components/TournamentScoreInput';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
 import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import { guestExpiryFields } from '../utils/guestMode';
+import { hasActivePro } from '../utils/proAccess';
 import TopicPicker from '../components/TopicPicker';
 import DistancePicker from '../components/DistancePicker';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -176,7 +177,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         const profileSnap = await getDoc(doc(db, 'users', userId));
         if (profileSnap.exists() && isMounted) {
           const data = profileSnap.data();
-          userIsPremium = data.isPremium || false;
+          // Trial i prezent PRO też otwierają dłuższą historię (utils/proAccess).
+          userIsPremium = hasActivePro(data);
           setUserSightMarks(data.userDistances || []);
           setUserSetups(Array.isArray(data.setups) ? data.setups : []);
           setUserBowType(data.bowType ?? null);

@@ -103,6 +103,22 @@ service cloud.firestore {
             && (data.userDistances.size() <= limit
                 || data.userDistances.size() <= prevCount));
     }
+    // PRO w tej chwili: stałe, globalna promocja albo trial/prezent od admina
+    // (trialEndsAt w przyszłości). Z tego idą limity zestawów i dystansów —
+    // wcześniej tylko `isPremium`, więc trial i prezent dostawały limity FREE.
+    // LUSTRO: src/utils/proAccess.ts.
+    //
+    // Czytane ZAWSZE z `resource` (stan przed zapisem): trialEndsAt po pierwszym
+    // ustawieniu jest zablokowane dla klienta (Path B), isPremium/isPremiumPromo
+    // są chronione — nikt nie podniesie sobie limitu w tym samym zapisie.
+    // `is number` najpierw: stare „Odbierz PRO" zapisuje trialEndsAt jako napis
+    // ISO z przeszłości, a porównanie napisu z liczbą byłoby błędem reguły.
+    function hasActivePro(data) {
+      return data.get('isPremium', false) == true
+        || data.get('isPremiumPromo', false) == true
+        || (data.get('trialEndsAt', 0) is number
+            && data.get('trialEndsAt', 0) > request.time.toMillis());
+    }
     function validActiveSetupId(data) {
       return !data.keys().hasAny(['activeSetupId'])
         || data.activeSetupId is string;
@@ -205,15 +221,15 @@ service cloud.firestore {
         && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['trialEndsAt'])
             || (!resource.data.keys().hasAny(['trialEndsAt'])
                 && validTrialEndsAt(request.resource.data)))
-        // [ZESTAWY] Limit czytany z ISTNIEJACEGO dokumentu — `isPremium` jest
-        // polem chronionym, wiec klient nie moze podniesc go w tym samym
-        // zapisie, zeby przemycic wiecej zestawow.
+        // [ZESTAWY] Limit czytany z ISTNIEJACEGO dokumentu — pola PRO sa
+        // chronione (trialEndsAt zablokowane po pierwszym zapisie), wiec klient
+        // nie moze ich podniesc w tym samym zapisie, zeby przemycic wiecej zestawow.
         && validSetups(request.resource.data,
-                       resource.data.get('isPremium', false) ? 4 : 1,
+                       hasActivePro(resource.data) ? 4 : 1,
                        listLen(resource.data, 'setups'))
         // 13 standardowych (10 luczniczych + 3 dmuchawkowe) + 2 FREE / 15 PRO.
         && validDistances(request.resource.data,
-                          resource.data.get('isPremium', false) ? 28 : 15,
+                          hasActivePro(resource.data) ? 28 : 15,
                           listLen(resource.data, 'userDistances'))
         && validActiveSetupId(request.resource.data);
 

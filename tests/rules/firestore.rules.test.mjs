@@ -494,6 +494,66 @@ test('ZESTAWY: wygasniecie PRO nie zamurowuje konta z 4 zestawami', async () => 
 });
 
 // ---------------------------------------------------------------------------
+// [PREZENT PRO] Limity liczą PRO „w tej chwili" (hasActivePro): stałe, promo
+// albo trialEndsAt w przyszłości (trial / prezent od admina). Wcześniej tylko
+// isPremium — trial i prezent dostawały limity FREE.
+// ---------------------------------------------------------------------------
+
+/** Ustawia pola profilu z pominięciem reguł (np. trialEndsAt po prezencie). */
+const setProfile = async (uid, data) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `users/${uid}`), data, { merge: true });
+  });
+};
+
+test('PRO: aktywny trial/prezent daje 4 zestawy i 28 dystansów', async () => {
+  await setProfile('alice', { trialEndsAt: Date.now() + 90 * DAY, proGiftedAt: Date.now() });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(4), activeSetupId: 'default', userDistances: mkDistances(28),
+  }));
+});
+
+test('PRO: trial/prezent nie przekracza limitu PRO', async () => {
+  await setProfile('alice', { trialEndsAt: Date.now() + 90 * DAY });
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(5) }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { userDistances: mkDistances(29) }));
+});
+
+test('PRO: wygasły trial wraca do limitu FREE', async () => {
+  await setProfile('alice', { trialEndsAt: Date.now() - 1 * DAY });
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(2) }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { userDistances: mkDistances(16) }));
+});
+
+test('PRO: isPremiumPromo daje limit PRO', async () => {
+  await setProfile('alice', { isPremiumPromo: true });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(4) }));
+});
+
+test('PRO: trialEndsAt jako napis ISO (po „Odbierz PRO") = FREE, bez błędu reguły', async () => {
+  await setProfile('alice', { trialEndsAt: new Date(0).toISOString() });
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(2) }));
+  // Zwykły zapis dalej działa — reguła nie wywraca się na napisie.
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
+    setups: mkSetups(1), displayName: 'Alicja',
+  }));
+});
+
+test('PRO: user nie przedłuży sobie trialEndsAt, żeby dostać limit PRO', async () => {
+  await setProfile('alice', { trialEndsAt: Date.now() - 1 * DAY });
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), {
+    trialEndsAt: Date.now() + 20 * DAY, setups: mkSetups(4),
+  }));
+});
+
+test('PRO: admin dopisuje prezent (trialEndsAt + proGiftedAt)', async () => {
+  const now = Date.now();
+  await assertSucceeds(updateDoc(doc(admin(), 'users/alice'), {
+    trialEndsAt: now + 365 * DAY, proGiftedAt: now, proGiftMonths: 12,
+  }));
+});
+
+// ---------------------------------------------------------------------------
 // [C25] Limit własnych dystansów: 2 FREE / 15 PRO, ponad 10 standardowych.
 // W regułach zapisany jako sufit CAŁEJ listy (12 / 25) — język reguł nie ma
 // pętli ani filtrowania, więc nie policzy, ile wpisów jest „własnych".

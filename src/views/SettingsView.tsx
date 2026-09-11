@@ -21,6 +21,7 @@ import { getThemePreference, setThemePreference, ThemePreference } from '../util
 import { loadPrivateProfile, savePrivateProfile, getAgeCategory, getAgeCategoryPL } from '../utils/privateProfile';
 import { guestExpiryFields } from '../utils/guestMode';
 import { invalidateSetupStamp } from '../utils/setupStamp';
+import { hasActivePro } from '../utils/proAccess';
 import {
   UserDistance, buildDistanceEntry, buildCustomDistanceEntry, rebuildMasterList, normalizeLabel,
   ownerSetupOf, disciplineOfDistance,
@@ -166,13 +167,17 @@ export default function SettingsView({
   const [handedness, setHandedness] = useState<'RH' | 'LH'>('RH'); 
   const [startYear, setStartYear] = useState<number>(new Date().getFullYear() - 3); 
   const [competitionLevel, setCompetitionLevel] = useState<string>('Tylko treningi (Rekreacja)');
+  // `isPremium` = STAŁE PRO (zakładka PRO pokazuje wtedy „aktywne" zamiast
+  // odliczania). `hasPro` = PRO w tej chwili, także trial/prezent — z niego
+  // idą limity, tak samo jak w regułach Firestore (utils/proAccess).
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [hasPro, setHasPro] = useState<boolean>(false);
 
   // [C25] Limit WŁASNYCH dystansów — 2 FREE / 15 PRO (decyzja usera 2026-09-04).
   // Dziesięć standardowych ma każdy, niezależnie od planu. Ten sam kształt co
-  // limit zestawów: `isPremium` jest polem chronionym w regułach Firestore,
-  // więc klient nie podniesie go sobie, żeby dodać więcej wpisów.
-  const customLimit = customDistanceLimitFor(isPremium);
+  // limit zestawów: pola PRO są chronione w regułach Firestore, więc klient
+  // nie podniesie ich sobie, żeby dodać więcej wpisów.
+  const customLimit = customDistanceLimitFor(hasPro);
   const customUsed = countCustomDistances(distances as UserDistance[]);
 
   const [wizardStep, setWizardStep] = useState<number>(0); 
@@ -350,6 +355,7 @@ export default function SettingsView({
           }
 
           setIsPremium(data.isPremium || false);
+          setHasPro(hasActivePro(data));
           setShowFullName(data.showFullName !== undefined ? data.showFullName : true);
           setShowClub(data.showClub !== undefined ? data.showClub : true);
           setShowRegion(data.showRegion !== undefined ? data.showRegion : true);
@@ -709,7 +715,7 @@ export default function SettingsView({
                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
                     {t('settings.sight.ownDistances')} {customUsed}/{customLimit}
                   </span>
-                  {customUsed >= customLimit && !isPremium && (
+                  {customUsed >= customLimit && !hasPro && (
                     <span className="text-[9px] font-black text-[#F2C94C] uppercase flex items-center gap-1">
                       <span className="material-symbols-outlined text-[13px]">diamond</span>
                       {t('settings.sight.proForMore')}
@@ -737,7 +743,7 @@ export default function SettingsView({
           <EquipmentSection
             setups={setups}
             activeSetupId={activeSetupId}
-            isPremium={isPremium}
+            isPremium={hasPro}
             onSetupsChange={setSetups}
             onActiveSetupChange={setActiveSetupId}
           />

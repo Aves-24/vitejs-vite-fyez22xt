@@ -950,7 +950,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-5 pt-3">
-            <CoachLogPanel studentId={studentId} currentUserId={coachId} mode="coach" />
+            <CoachLogPanel studentId={studentId} currentUserId={coachId} />
           </div>
         )}
 

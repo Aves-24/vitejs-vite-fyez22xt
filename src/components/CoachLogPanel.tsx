@@ -21,27 +21,10 @@ interface CoachLogEntry {
   createdAt: number;
 }
 
-export interface CoachLogLatestEntry {
-  text: string;
-  type: EntryType;
-  authorName: string;
-}
-
+// Uczeń czyta te wpisy w Tagebuch (TagebuchView) — panel służy już tylko trenerowi.
 interface CoachLogPanelProps {
   studentId: string;
   currentUserId: string;
-  mode: 'coach' | 'student';
-  onCountChange?: (count: number) => void;
-  onLatestEntry?: (entry: CoachLogLatestEntry | null) => void;
-  acknowledgedIds?: Set<string>;
-  onAcknowledge?: (id: string) => void;
-  // True once the acknowledgement state has been loaded from Firestore.
-  // While false we must NOT paint entries as unread (avoids the "everything
-  // unread" flash when localStorage was evicted).
-  acksReady?: boolean;
-  // Reports the IDs of all currently-loaded entries so the parent can prune
-  // stale acknowledgements (entries the coach deleted) and migrate legacy IDs.
-  onEntriesLoaded?: (ids: string[]) => void;
 }
 
 // Konfiguracja typów wpisu — kolor, ikona, etykieta
@@ -54,7 +37,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 400;
 
-export default function CoachLogPanel({ studentId, currentUserId, mode, onCountChange, onLatestEntry, acknowledgedIds, onAcknowledge, acksReady, onEntriesLoaded }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -99,7 +82,6 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
           };
         });
         setEntries(list);
-        onEntriesLoaded?.(list.map(e => e.id));
       } catch (e) {
         console.error('CoachLog: błąd pobierania', e);
       } finally {
@@ -109,20 +91,9 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
     fetchEntries();
   }, [studentId]);
 
-  // --- LICZNIK + PODGLĄD (reaktywne względem potwierdzeń) ---
-  // Liczone na każdej zmianie entries/acknowledgedIds, a nie tylko przy pobraniu —
-  // dzięki temu badge nie pokazuje zawyżonej liczby, zanim dociągną się potwierdzenia.
+  // --- POBIERANIE WŁASNEGO IMIENIA ---
   useEffect(() => {
-    if (isLoading) return;
-    const visibleCount = entries.filter(e => !acknowledgedIds?.has(e.id)).length;
-    onCountChange?.(visibleCount);
-    const first = entries.find(e => !acknowledgedIds?.has(e.id)) || entries[0] || null;
-    onLatestEntry?.(first ? { text: first.text, type: first.type, authorName: first.authorName } : null);
-  }, [entries, acknowledgedIds, isLoading]);
-
-  // --- POBIERANIE WŁASNEGO IMIENIA (tylko mode='coach') ---
-  useEffect(() => {
-    if (mode !== 'coach' || !currentUserId) return;
+    if (!currentUserId) return;
     const cacheKey = `grotX_userName_${currentUserId}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) { setAuthorName(cached); return; }
@@ -138,7 +109,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
       } catch (e) { console.error('CoachLog: błąd pobierania imienia', e); }
     };
     fetchName();
-  }, [mode, currentUserId, t]);
+  }, [currentUserId, t]);
 
   // --- ZAPIS NOWEGO WPISU ---
   const handleSave = async () => {
@@ -212,7 +183,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
             <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">{t('coachLog.subtitle', { defaultValue: 'Sichtbar für alle Trainer' })} · {entries.length}</p>
           </div>
         </div>
-        {mode === 'coach' && !isAdding && (
+        {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
             className="bg-[#0a3a2a] text-[#fed33e] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1 shrink-0"
@@ -221,26 +192,18 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
             {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
           </button>
         )}
-        {mode === 'student' && (
-          <span className="flex items-center gap-1 text-[8px] font-bold text-gray-400 shrink-0">
-            <span className="material-symbols-outlined text-[13px]">lock</span>
-            {t('coachLog.readOnly', { defaultValue: 'Nur lesen' })}
-          </span>
-        )}
       </div>
 
-      {/* WSKAZÓWKA DLA TRENERA / UCZNIA */}
+      {/* WSKAZÓWKA DLA TRENERA */}
       <div className="px-4 py-2 bg-amber-50 border-b border-gray-100 flex items-start gap-1.5">
         <span className="material-symbols-outlined text-[14px] text-[#0a3a2a] mt-px shrink-0">info</span>
         <p className="text-[10px] font-semibold text-[#0a3a2a] leading-snug">
-          {mode === 'coach'
-            ? t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })
-            : t('coachLog.hintStudent', { defaultValue: 'Notizen deines Trainers: woran ihr zuletzt gearbeitet habt und worauf du in den nächsten Trainings den Fokus legen solltest.' })}
+          {t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })}
         </p>
       </div>
 
       {/* FORMULARZ DODAWANIA */}
-      {mode === 'coach' && isAdding && (
+      {isAdding && (
         <div className="p-3 bg-gray-50 border-b border-gray-100 space-y-2 animate-fade-in">
           {/* Wybór typu wpisu */}
           <div className="grid grid-cols-4 gap-1.5">
@@ -321,7 +284,7 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
 
       {/* LISTA WPISÓW */}
       <div className="divide-y divide-gray-50">
-        {(isLoading || acksReady === false) ? (
+        {isLoading ? (
           <div className="p-6 text-center">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('coachLog.loading', { defaultValue: 'Lädt…' })}</span>
           </div>
@@ -329,19 +292,13 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
           <div className="p-6 text-center">
             <span className="material-symbols-outlined text-gray-200 text-3xl mb-1 block">history_edu</span>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t('coachLog.empty', { defaultValue: 'Noch keine Einträge' })}</p>
-            {mode === 'coach' && (
-              <p className="text-[9px] font-medium text-gray-300 mt-1">{t('coachLog.emptyCoachHint', { defaultValue: 'Hinterlasse den ersten Eintrag für das Trainerteam' })}</p>
-            )}
+            <p className="text-[9px] font-medium text-gray-300 mt-1">{t('coachLog.emptyCoachHint', { defaultValue: 'Hinterlasse den ersten Eintrag für das Trainerteam' })}</p>
           </div>
-        ) : (() => {
-          const unread = entries.filter(entry => !acknowledgedIds?.has(entry.id));
-          const read = entries.filter(entry => acknowledgedIds?.has(entry.id)).slice(0, 10);
-          return (
+        ) : (
             <>
-              {unread.map(entry => {
+              {entries.map(entry => {
                 const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
-                const canDelete = mode === 'coach' && entry.authorId === currentUserId;
-                const canAck = mode === 'student' && !!onAcknowledge;
+                const canDelete = entry.authorId === currentUserId;
                 return (
                   <div key={entry.id} className="flex items-stretch">
                     <div className="flex-1 p-3 flex items-start gap-2.5">
@@ -373,58 +330,11 @@ export default function CoachLogPanel({ studentId, currentUserId, mode, onCountC
                         </button>
                       )}
                     </div>
-                    {canAck && (
-                      <button
-                        onClick={() => onAcknowledge!(entry.id)}
-                        className="shrink-0 w-10 flex items-center justify-center text-gray-300 hover:text-emerald-500 active:scale-90 transition-all border-l border-gray-50"
-                        title={t('coachLog.acknowledged')}
-                      >
-                        <span className="material-symbols-outlined text-[20px]">check_circle</span>
-                      </button>
-                    )}
                   </div>
                 );
               })}
-              {read.length > 0 && (
-                <>
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-50">
-                    <span className="material-symbols-outlined text-[13px] text-gray-400">check_circle</span>
-                    <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('coachLog.readHistory', { defaultValue: 'Przeczytane' })} · {read.length}</span>
-                  </div>
-                  {read.map(entry => {
-                    const cfg = TYPE_CONFIG[entry.type] || TYPE_CONFIG.observation;
-                    return (
-                      <div key={entry.id} className="flex items-start p-3 gap-2.5 opacity-65">
-                        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5 bg-gray-100">
-                          <span className="material-symbols-outlined text-[14px] text-gray-400">{cfg.icon}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-baseline justify-between gap-2 mb-0.5">
-                            <span className="text-[8px] font-black uppercase tracking-widest text-gray-400">
-                              {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
-                            </span>
-                            <span className="text-[8px] font-bold text-gray-400 shrink-0">{formatDate(entry.createdAt)}</span>
-                          </div>
-                          <p className="text-[11px] font-bold text-gray-500 leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
-                          <p className="text-[9px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
-                          {entry.topics && entry.topics.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {entry.topics.map(id => (
-                                <span key={id} className="bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full text-[8px] font-black">
-                                  {t(`sessionSetup.topic_${id}`)}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </>
-              )}
             </>
-          );
-        })()}
+        )}
       </div>
 
       {/* MODAL POTWIERDZENIA USUNIĘCIA */}

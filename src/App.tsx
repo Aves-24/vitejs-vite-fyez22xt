@@ -38,7 +38,7 @@ const StatsView           = lazyWithRetry(() => import('./views/StatsView'));
 const AdminDashboardView  = lazyWithRetry(() => import('./views/AdminDashboardView'));
 const CoachDashboardView  = lazyWithRetry(() => import('./views/CoachDashboardView'));
 const StudentProfileView  = lazyWithRetry(() => import('./views/StudentProfileView'));
-const TagebuchView        = lazyWithRetry(() => import('./views/TagebuchView'));
+const MyCoachView         = lazyWithRetry(() => import('./views/MyCoachView'));
 const DelayMirrorView     = lazyWithRetry(() => import('./views/DelayMirrorView'));
 
 // Fallback pokazywany podczas ładowania chunka (zwykle <100ms).
@@ -456,8 +456,8 @@ export default function App() {
               {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
             <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">menu_book</span>
-              {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.tagebuch')}</span>}
+              <span className="material-symbols-outlined text-[26px] font-bold">school</span>
+              {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.myCoach')}</span>}
             </button>
           </div>
           
@@ -633,8 +633,7 @@ export default function App() {
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} />}
-        {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
-        {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}
+        {currentView === 'MY_COACH' && <MyCoachView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigateToSettings={() => handleNavigate('SETTINGS')} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingOpenCoachId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}
       </Suspense>
       </ViewErrorBoundary>
       </main>

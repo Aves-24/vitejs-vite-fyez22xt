@@ -887,7 +887,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
                     <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
                     <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
-                    <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{(currentSession.isNotePublic !== false && currentSession.note) || t('studentProfile.noStudentNote')}</p>
+                    <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{currentSession.note || t('studentProfile.noStudentNote')}</p>
                   </div>
                   <CoachNoteModule session={currentSession} studentId={studentId} coachId={coachId} onSaveSuccess={handleUpdateSessionNote} />
                 </div>
@@ -924,7 +924,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     </div>
                     <div className="px-4 pb-4">
                       <p className="text-[10px] text-gray-300 font-bold uppercase mb-2">{session.date}</p>
-                      {session.note && session.isNotePublic !== false && (
+                      {session.note && (
                         <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 mb-2">
                           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
                             {t('studentProfile.studentNoteLabel')}
@@ -950,7 +950,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-5 pt-3">
-            <CoachLogPanel studentId={studentId} currentUserId={coachId} />
+            <CoachLogPanel studentId={studentId} currentUserId={coachId} mode="coach" />
           </div>
         )}
 

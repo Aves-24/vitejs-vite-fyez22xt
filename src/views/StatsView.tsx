@@ -372,13 +372,11 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
     setIsSaving(false);
   };
 
-  // Trener nie widzi notatki, którą uczeń oznaczył jako prywatną.
-  const showStudentNote = !viewingStudentId || (!!session.note && session.isNotePublic !== false);
-  if (!showStudentNote && !session.coachNote) return null;
+  if (!session.note && !session.coachNote && viewingStudentId) return null;
 
   return (
     <div className="flex flex-col gap-2 w-full mt-2 mb-4">
-       {showStudentNote && (
+       {(session.note || !viewingStudentId) && (
          <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 relative shadow-sm">
             <div className="flex justify-between items-center mb-2.5">
               <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-1">
@@ -581,9 +579,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
     let cancelled = false;
 
     const dayStart = new Date(`${initialDate}T00:00:00`);
-    // Zła data (np. "11.09.2026" zamiast ISO) → Timestamp.fromDate rzuca
-    // synchronicznie i wywraca cały widok. Wtedy po prostu nie dociągamy dnia.
-    if (isNaN(dayStart.getTime())) return;
     const dayEnd = new Date(dayStart);
     dayEnd.setDate(dayEnd.getDate() + 1);
 

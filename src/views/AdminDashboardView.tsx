@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import StatsView from './StatsView';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
+import { planProGift, proEndMs, PRO_GIFT_MAX_MONTHS } from '../utils/proGift';
 
 interface AdminDashboardViewProps {
   onNavigate: (view: any) => void;
@@ -74,6 +75,12 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
   const [deleteUserModal, setDeleteUserModal] = useState<{ user: any } | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  // [PREZENT PRO] +N miesięcy PRO dla jednej osoby albo całego klubu.
+  // Każdy dostaje miesiące DO TEGO, co już ma (utils/proGift).
+  const [giftModal, setGiftModal] = useState<{ title: string; targets: any[] } | null>(null);
+  const [giftMonths, setGiftMonths] = useState(1);
+  const [isGifting, setIsGifting] = useState(false);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -369,6 +376,43 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
     } catch (e) { showToast("Błąd"); }
   };
 
+  const openGiftModal = (title: string, targets: any[]) => {
+    setGiftMonths(1);
+    setGiftModal({ title, targets });
+  };
+
+  const executeProGift = async () => {
+    if (!giftModal) return;
+    setIsGifting(true);
+    try {
+      const now = Date.now();
+      const updates = new Map<string, { trialEndsAt: number; proGiftedAt: number; proGiftMonths: number }>();
+      for (const u of giftModal.targets) {
+        const plan = planProGift(u, giftMonths, now);
+        if (plan.kind === 'EXTEND') {
+          updates.set(u.id, { trialEndsAt: plan.newEnd, proGiftedAt: now, proGiftMonths: giftMonths });
+        }
+      }
+      // writeBatch przyjmuje maks. 500 operacji — klub może być większy.
+      const entries = [...updates.entries()];
+      for (let i = 0; i < entries.length; i += 450) {
+        const batch = writeBatch(db);
+        entries.slice(i, i + 450).forEach(([id, data]) => batch.update(doc(db, 'users', id), data));
+        await batch.commit();
+      }
+      // Lokalnie też, żeby drugi prezent liczył się od nowej daty bez przeładowania.
+      const patch = (list: any[]) => list.map(u => (updates.has(u.id) ? { ...u, ...updates.get(u.id) } : u));
+      setUsers(patch);
+      setClubMembers(patch);
+      showToast(`+${giftMonths} mies. PRO · ${entries.length} os.`);
+      setGiftModal(null);
+    } catch (e) {
+      console.error('Błąd prezentu PRO:', e);
+      showToast('Błąd podczas dodawania PRO');
+    }
+    setIsGifting(false);
+  };
+
   const toggleUserCoachStatus = (userId: string, currentStatus: boolean) => {
     setConfirmAction({
       label: currentStatus ? "Odebrać status trenera?" : "Nadać uprawnienia trenera? Otrzyma 10 miejsc na start.",
@@ -598,9 +642,12 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                       </div>
                    </div>
 
-                   <div className="flex items-center gap-1.5 ml-8 mt-0.5">
+                   <div className="flex flex-wrap items-center gap-1.5 ml-8 mt-0.5">
                      <span className="material-symbols-outlined text-gray-300 text-[12px]">event</span>
                      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dołączył: {formatCreatedAt(u.createdAt)}</span>
+                     {!u.isPremium && (proEndMs(u.trialEndsAt) ?? 0) > Date.now() && (
+                       <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">· PRO do: {formatCreatedAt(proEndMs(u.trialEndsAt))}{u.proGiftedAt ? ' 🎁' : ''}</span>
+                     )}
                    </div>
 
                    <div className="flex justify-between items-center mt-1">
@@ -619,6 +666,12 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                             </button>
                           );
                         })()}
+
+                        {!u.isPremium && (
+                          <button onClick={() => openGiftModal(`${u.firstName || ''} ${u.lastName || ''}`.trim() || '(bez imienia)', [u])} className="px-2 py-1 rounded text-[7px] font-black uppercase bg-indigo-50 text-indigo-600">
+                            + Miesiące PRO
+                          </button>
+                        )}
                       </div>
                    </div>
 
@@ -867,6 +920,16 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                 <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">{selectedClubView.city}{selectedClubView.country ? `, ${selectedClubView.country}` : ''} · {isLoadingMembers ? '...' : `${clubMembers.length} członków`}</p>
               </div>
             </div>
+
+            {!isLoadingMembers && clubMembers.length > 0 && (
+              <button
+                onClick={() => openGiftModal(`${selectedClubView.name} · ${clubMembers.length} os.`, clubMembers)}
+                className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-sm active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">diamond</span>
+                Podaruj PRO całemu klubowi
+              </button>
+            )}
 
             {isLoadingMembers ? (
               <div className="text-center py-10 text-gray-400 animate-pulse">
@@ -1125,6 +1188,78 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                     className={`flex-1 py-3.5 rounded-xl font-black uppercase text-[11px] transition-all ${matches && !isDeletingUser ? 'bg-red-500 text-white active:scale-95 shadow-md' : 'bg-red-100 text-red-300 cursor-not-allowed'}`}
                   >
                     {isDeletingUser ? 'Usuwanie...' : 'Usuń konto'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })(),
+        document.body
+      )}
+
+      {/* [PREZENT PRO] Wybór miesięcy + podgląd per osoba: obecny stan → nowa data. */}
+      {giftModal && createPortal(
+        (() => {
+          const now = Date.now();
+          const rows = giftModal.targets.map(u => ({ u, plan: planProGift(u, giftMonths, now) }));
+          const extendCount = rows.filter(r => r.plan.kind === 'EXTEND').length;
+          const skippedCount = rows.length - extendCount;
+          return (
+            <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-overlay">
+              <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl max-h-[90vh] flex flex-col">
+                <div className="w-14 h-14 bg-yellow-50 rounded-full flex items-center justify-center mx-auto mb-3 shrink-0">
+                  <span className="material-symbols-outlined text-yellow-500 text-2xl">diamond</span>
+                </div>
+                <h2 className="text-lg font-black text-[#0a3a2a] text-center leading-tight">Podaruj PRO</h2>
+                <p className="text-[11px] font-bold text-gray-400 text-center mb-4 truncate">{giftModal.title}</p>
+
+                <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2 block shrink-0">Ile miesięcy dodać?</label>
+                <div className="grid grid-cols-6 gap-1.5 mb-4 shrink-0">
+                  {Array.from({ length: PRO_GIFT_MAX_MONTHS }, (_, i) => i + 1).map(m => (
+                    <button
+                      key={m}
+                      onClick={() => setGiftMonths(m)}
+                      className={`py-2 rounded-xl text-[12px] font-black transition-all active:scale-90 ${giftMonths === m ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md' : 'bg-gray-50 text-gray-500 border border-gray-100'}`}
+                    >
+                      +{m}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-1.5 mb-3">
+                  {rows.map(({ u, plan }) => (
+                    <div key={u.id} className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2">
+                      <p className="text-[11px] font-black text-[#0a3a2a] truncate">{`${u.firstName || ''} ${u.lastName || ''}`.trim() || '(bez imienia)'}</p>
+                      {plan.kind === 'PERMANENT' ? (
+                        <p className="text-[9px] font-bold text-gray-400 uppercase">Stałe PRO — bez zmian</p>
+                      ) : (
+                        <p className="text-[9px] font-bold text-gray-500 uppercase">
+                          {plan.currentEnd ? `PRO do ${formatCreatedAt(plan.currentEnd)}` : (u.isPremiumPromo ? 'Promo · liczone od dziś' : 'Brak PRO · od dziś')}
+                          <span className="text-emerald-600"> → do {formatCreatedAt(plan.newEnd)}</span>
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-bold text-gray-500 text-center mb-4 shrink-0">
+                  +{giftMonths} mies. dla {extendCount} os.{skippedCount > 0 ? ` · ${skippedCount} ze stałym PRO pominięte` : ''}
+                </p>
+
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => setGiftModal(null)}
+                    disabled={isGifting}
+                    className="flex-1 py-3.5 bg-gray-100 text-gray-600 rounded-xl font-black uppercase text-[11px] active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    onClick={executeProGift}
+                    disabled={isGifting || extendCount === 0}
+                    className="flex-1 py-3.5 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black uppercase text-[11px] active:scale-95 transition-all shadow-md disabled:opacity-40"
+                  >
+                    {isGifting ? 'Zapisywanie...' : 'Podaruj'}
                   </button>
                 </div>
               </div>

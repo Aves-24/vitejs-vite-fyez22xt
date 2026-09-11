@@ -148,6 +148,7 @@ export default function SettingsView({
   };
   const [placeId, setPlaceId] = useState<string>('');
   const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+  const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
 
   // Dane Profilowe
   const [firstName, setFirstName] = useState('');
@@ -315,6 +316,7 @@ export default function SettingsView({
           if (data.clubCity) setClubCity(data.clubCity);
           if (data.placeId) setPlaceId(data.placeId);
           if (data.trialEndsAt !== undefined) setTrialEndsAt(data.trialEndsAt || null);
+          setProGiftedAt(typeof data.proGiftedAt === 'number' ? data.proGiftedAt : null);
           // [RODO C21] birthDate/gender → users/{uid}/private/profile.
           // Legacy fallback (data.gender/birthDate) dla kont sprzed migracji.
           if (data.gender) setGender(data.gender || 'M');
@@ -768,7 +770,7 @@ export default function SettingsView({
           </div>
         )}
 
-        {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} />}
+        {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} proGiftedAt={proGiftedAt} />}
         {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onNavigate={onNavigate} userId={userId} userName={`${firstName} ${lastName}`.trim()} userEmail={userEmail} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (

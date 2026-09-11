@@ -4,16 +4,23 @@ import { useTranslation } from 'react-i18next';
 interface ProSectionProps {
   isPremium: boolean;
   trialEndsAt?: any; // number (ms) or ISO string from Firestore
+  /** [PREZENT PRO] Ustawione, gdy admin dopisał miesiące PRO (utils/proGift). */
+  proGiftedAt?: number | null;
 }
 
-const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt }) => {
-  const { t } = useTranslation();
+const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt, proGiftedAt }) => {
+  const { t, i18n } = useTranslation();
 
   const trialTimestamp = trialEndsAt ? new Date(trialEndsAt).getTime() : null;
   const daysLeft = trialTimestamp ? Math.ceil((trialTimestamp - Date.now()) / (1000 * 3600 * 24)) : null;
   const isTrialActive = !isPremium && daysLeft !== null && daysLeft > 0;
+  // Prezent przesuwa trialEndsAt, więc bez tej flagi udawałby 30-dniowy trial.
+  const isGift = isTrialActive && !!proGiftedAt;
   // Progress bar: 30-day baseline
   const trialProgress = daysLeft !== null ? Math.max(0, Math.min(100, (daysLeft / 30) * 100)) : 0;
+  const giftEndLabel = trialTimestamp
+    ? new Date(trialTimestamp).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
+    : '';
 
   return (
     <div className="bg-gradient-to-br from-gray-900 to-[#0a3a2a] rounded-3xl p-5 space-y-4 shadow-xl border border-gray-700 animate-fade-in-up relative overflow-hidden">
@@ -32,19 +39,23 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt }) => {
           <div className="flex items-center gap-2 mb-2">
             <span className="material-symbols-outlined text-[#F2C94C] text-[18px]">workspace_premium</span>
             <span className="text-[10px] font-black text-[#F2C94C] uppercase tracking-widest">
-              {t('settings.pro.trialActive')}
+              {isGift ? t('settings.pro.giftActive') : t('settings.pro.trialActive')}
             </span>
           </div>
           <div className="flex items-end gap-2 mb-2">
             <span className="text-4xl font-black text-white leading-none">{daysLeft}</span>
             <span className="text-[11px] font-bold text-gray-300 mb-1">{t('settings.pro.trialDaysLeft')}</span>
           </div>
-          <div className="h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#F2C94C] rounded-full transition-all duration-700"
-              style={{ width: `${trialProgress}%` }}
-            />
-          </div>
+          {isGift ? (
+            <p className="text-[11px] font-bold text-gray-300">{t('settings.pro.giftUntil', { date: giftEndLabel })}</p>
+          ) : (
+            <div className="h-1.5 bg-gray-700/60 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[#F2C94C] rounded-full transition-all duration-700"
+                style={{ width: `${trialProgress}%` }}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -90,8 +101,8 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt }) => {
           </div>
         ) : isTrialActive ? (
           <div className="w-full py-4 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-inner flex justify-center items-center gap-1.5 bg-[#F2C94C]/15 text-[#F2C94C] border border-[#F2C94C]/40">
-            <span className="material-symbols-outlined text-sm">hourglass_top</span>
-            {t('settings.pro.trialStatus')}
+            <span className="material-symbols-outlined text-sm">{isGift ? 'verified' : 'hourglass_top'}</span>
+            {isGift ? t('settings.pro.giftStatus') : t('settings.pro.trialStatus')}
           </div>
         ) : (
           <div className="w-full py-4 rounded-xl font-black text-[11px] uppercase tracking-widest shadow-inner flex justify-center items-center gap-1.5 bg-white/5 text-gray-400 border border-gray-700">

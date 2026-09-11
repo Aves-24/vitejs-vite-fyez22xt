@@ -12,6 +12,7 @@ import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
+import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -133,6 +134,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [isPremium, setIsPremium] = useState(false);
   const [rawIsPremium, setRawIsPremium] = useState(false);
   const [trialEndsAt, setTrialEndsAt] = useState<number | null>(null);
+  const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
 
   // THE TARGET SERIES — ranga użytkownika
   const [userLevel, setUserLevel] = useState(1);
@@ -263,6 +265,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           trialEndTimestamp = new Date(d.trialEndsAt).getTime();
           setTrialEndsAt(trialEndTimestamp);
         }
+        setProGiftedAt(typeof d.proGiftedAt === 'number' ? d.proGiftedAt : null);
         const isTrialActive = trialEndTimestamp ? trialEndTimestamp > Date.now() : false;
         const computedIsPremium = boughtPro || promoPro || isTrialActive;
 
@@ -796,7 +799,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       if (trialEndsAt && !rawIsPremium) {
         const daysLeft = Math.ceil((trialEndsAt - Date.now()) / (1000 * 3600 * 24));
-        if (daysLeft >= 28) {
+        // [PREZENT PRO] Prezent przesuwa trialEndsAt — bez tego warunku
+        // „dostałeś 30 dni PRO" wisiałby miesiącami. Id z datą prezentu:
+        // kolejny prezent pokaże się znowu, nawet gdy poprzedni odrzucono.
+        if (proGiftedAt && daysLeft > 0 && Date.now() - proGiftedAt < PRO_GIFT_ANNOUNCE_DAYS * 24 * 3600 * 1000) {
+          myAnnouncements.unshift({
+            id: `sys_pro_gift_${proGiftedAt}`,
+            title: t('home.proGiftTitle'),
+            content: t('home.proGiftContent', { date: new Date(trialEndsAt).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' }) }),
+            target: 'USER',
+            lang: i18n.language,
+            isSystemGenerated: true
+          });
+        } else if (daysLeft >= 28 && !proGiftedAt) {
           myAnnouncements.unshift({
             id: 'sys_trial_welcome',
             title: t('home.trialWelcomeTitle'),
@@ -844,7 +859,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     fetchAnnouncements();
     return () => { cancelled = true; };
-  }, [userId, userClub, i18n.language, trialEndsAt, rawIsPremium]);
+  }, [userId, userClub, i18n.language, trialEndsAt, rawIsPremium, proGiftedAt]);
 
 
   const validClubBattles = activeClubBattles.filter(b => {

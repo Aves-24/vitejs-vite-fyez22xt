@@ -404,7 +404,9 @@ export const views = {
     trialWarningDays: "Tagen",
     trialWarningContent: "Danach kehrt dein Konto zur FREE-Version zurück. Wenn dir GROT-X gefällt, behalte den Zugang zu allen Funktionen mit PRO.",
     trialWelcomeTitle: "Du hast 30 Tage GROT-X Pro kostenlos erhalten! 🎉",
-    trialWelcomeContent: "Entdecke alle PRO-Funktionen ohne Einschränkungen. Genieße deinen kostenlosen Testzeitraum!"
+    trialWelcomeContent: "Entdecke alle PRO-Funktionen ohne Einschränkungen. Genieße deinen kostenlosen Testzeitraum!",
+    proGiftTitle: "Du hast GROT-X PRO geschenkt bekommen! 🎁",
+    proGiftContent: "Dein PRO-Zugang ist jetzt aktiv bis {{date}}. Danke für deine Unterstützung!"
   },
   setup: {
     title: "Vorbereitung",
@@ -983,7 +985,10 @@ export const views = {
       resetAlert: "Erfolgreich zurückgesetzt!",
       trialActive: "Kostenloser PRO-Testzeitraum",
       trialDaysLeft: "Tage verbleibend",
-      trialStatus: "PRO-TEST AKTIV"
+      trialStatus: "PRO-TEST AKTIV",
+      giftActive: "PRO-Geschenk",
+      giftUntil: "Aktiv bis {{date}}",
+      giftStatus: "PRO AKTIV"
     },
     shareProfile: "Profil teilen",
     coach: {

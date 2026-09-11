@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 
 interface AnnouncementsViewProps {
   userId: string;
@@ -50,7 +51,18 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
           const rawIsPremium = ud.isPremium || ud.isPremiumPromo || false;
           if (trialEndsAt && !rawIsPremium) {
             const daysLeft = Math.ceil((trialEndsAt - Date.now()) / (1000 * 3600 * 24));
-            if (daysLeft >= 28) {
+            // [PREZENT PRO] Jak w HomeView — prezent zamiast komunikatu o trialu.
+            const proGiftedAt = typeof ud.proGiftedAt === 'number' ? ud.proGiftedAt : null;
+            if (proGiftedAt && daysLeft > 0 && Date.now() - proGiftedAt < PRO_GIFT_ANNOUNCE_DAYS * 24 * 3600 * 1000) {
+              myAnnouncements.unshift({
+                id: `sys_pro_gift_${proGiftedAt}`,
+                title: t('home.proGiftTitle'),
+                content: t('home.proGiftContent', { date: new Date(trialEndsAt).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' }) }),
+                target: 'USER',
+                lang: i18n.language,
+                isSystemGenerated: true,
+              });
+            } else if (daysLeft >= 28 && !proGiftedAt) {
               myAnnouncements.unshift({
                 id: 'sys_trial_welcome',
                 title: t('home.trialWelcomeTitle'),

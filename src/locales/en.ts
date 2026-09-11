@@ -701,7 +701,7 @@ export const views = {
     copied: "Copied!",
     mainTitle: "Settings & Profile",
     tabProfile: "PROFILE",
-    tabSight: "SIGHT",
+    tabSight: "DISTANCES",
     tabArrows: "ARROWS",
     tabBow: "BOW",
     tabLanguage: "LANGUAGE",
@@ -718,7 +718,7 @@ export const views = {
       confirmDeleteDesc: "All equipment entered for this setup will be lost. Sessions that used it keep their equipment class and stay in your statistics.",
       discipline: "Discipline",
       color: "Setup color",
-      colorHint: "The color marks this setup's distances in SIGHT and at training start.",
+      colorHint: "The color marks this setup's distances under DISTANCES and at training start.",
       colorTaken: "Another setup already uses this color",
       colors: {
         red: "Red", orange: "Orange", yellow: "Yellow", green: "Green",
@@ -789,7 +789,7 @@ export const views = {
         },
         "sight.model": {
           what: "Sight model. You record it so that after a swap you know which equipment the saved marks belong to.",
-          change: "Marks in the SIGHT tab were shot in for one specific sight and extension. After a swap treat them as a starting point, not a result."
+          change: "Sight marks in the DISTANCES tab were shot in for one specific sight and extension. After a swap treat them as a starting point, not a result."
         },
         "stabilization.description": {
           what: "Stabiliser setup: lengths, weights, side rods. It sets the bow's balance and how it behaves after the shot.",

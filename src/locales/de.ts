@@ -701,7 +701,7 @@ export const views = {
     copied: "Kopiert!",
     mainTitle: "Einstellungen & Profil",
     tabProfile: "PROFIL",
-    tabSight: "VISIER",
+    tabSight: "DISTANZEN",
     tabArrows: "PFEILE",
     tabBow: "BOGEN",
     tabLanguage: "SPRACHE",
@@ -718,7 +718,7 @@ export const views = {
       confirmDeleteDesc: "Die gesamte für dieses Set eingetragene Ausrüstung geht verloren. Sitzungen, die es genutzt haben, behalten ihre Ausrüstungsklasse und bleiben in der Statistik.",
       discipline: "Disziplin",
       color: "Set-Farbe",
-      colorHint: "An der Farbe erkennst du die Distanzen dieses Sets im VISIER und beim Trainingsstart.",
+      colorHint: "An der Farbe erkennst du die Distanzen dieses Sets unter DISTANZEN und beim Trainingsstart.",
       colorTaken: "Diese Farbe hat schon ein anderes Set",
       colors: {
         red: "Rot", orange: "Orange", yellow: "Gelb", green: "Grün",
@@ -789,7 +789,7 @@ export const views = {
         },
         "sight.model": {
           what: "Modell des Visiers. Du notierst es, um nach einem Wechsel zu wissen, zu welcher Ausrüstung die gespeicherten Einstellungen gehören.",
-          change: "Die Einstellungen im Reiter VISIER wurden für ein bestimmtes Visier und einen bestimmten Visierauszug eingeschossen. Nach einem Wechsel sind sie ein Ausgangspunkt, kein Ergebnis."
+          change: "Die Visiereinstellungen im Reiter DISTANZEN wurden für ein bestimmtes Visier und einen bestimmten Visierauszug eingeschossen. Nach einem Wechsel sind sie ein Ausgangspunkt, kein Ergebnis."
         },
         "stabilization.description": {
           what: "Aufbau der Stabilisation: Längen, Gewichte, Seitenstangen. Bestimmt die Balance des Bogens und sein Verhalten nach dem Schuss.",

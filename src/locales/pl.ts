@@ -717,7 +717,7 @@ export const views = {
     copied: "Skopiowano!",
     mainTitle: "Ustawienia i Profil",
     tabProfile: "PROFIL",
-    tabSight: "CELOWNIK",
+    tabSight: "DYSTANSE",
     tabArrows: "STRZAŁY",
     tabBow: "ŁUK",
     tabLanguage: "JĘZYK",
@@ -734,7 +734,7 @@ export const views = {
       confirmDeleteDesc: "Cały wpisany sprzęt tego zestawu przepadnie. Sesje, które go używały, zachowają klasę sprzętu i zostaną w statystykach.",
       discipline: "Dyscyplina",
       color: "Kolor zestawu",
-      colorHint: "Po kolorze rozpoznasz dystanse tego zestawu w CELOWNIKU i przy starcie treningu.",
+      colorHint: "Po kolorze rozpoznasz dystanse tego zestawu w DYSTANSACH i przy starcie treningu.",
       colorTaken: "Ten kolor ma już inny zestaw",
       colors: {
         red: "Czerwony", orange: "Pomarańczowy", yellow: "Żółty", green: "Zielony",
@@ -805,7 +805,7 @@ export const views = {
         },
         "sight.model": {
           what: "Model celownika. Notujesz go, żeby po przesiadce wiedzieć, do którego sprzętu należą zapisane nastawy.",
-          change: "Nastawy z zakładki CELOWNIK są wystrzelane dla konkretnego celownika i wysięgu. Po wymianie potraktuj je jako punkt wyjścia, nie gotowiec."
+          change: "Nastawy z zakładki DYSTANSE są wystrzelane dla konkretnego celownika i wysięgu. Po wymianie potraktuj je jako punkt wyjścia, nie gotowiec."
         },
         "stabilization.description": {
           what: "Konfiguracja stabilizacji: długości, ciężarki, boczniki. Decyduje o wyważeniu łuku i o tym, jak zachowuje się po wystrzale.",

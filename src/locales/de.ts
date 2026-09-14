@@ -306,7 +306,12 @@ export const views = {
     focusChip: "Fokus",
     newNote: "Neue Notiz",
     coachChat: "Chat mit Trainer",
-    yourCoaches: "Deine Trainer"
+    yourCoaches: "Deine Trainer",
+    ends: "Passen",
+    showStats: "Statistik",
+    filters: "Filter",
+    closeFilters: "Filter schließen",
+    inviteHide: "Ausblenden"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

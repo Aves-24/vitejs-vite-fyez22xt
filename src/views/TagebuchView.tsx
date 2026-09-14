@@ -125,6 +125,24 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const composerRef = useRef<HTMLDivElement>(null);
+  // Rozwinięte karty treningów. Nowa uwaga trenera rozwija się sama, ale
+  // tylko raz — potem decyduje użytkownik.
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const autoExpandedRef = useRef<Set<string>>(new Set());
+  const toggleExpanded = (id: string) => setExpandedIds(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const inviteHiddenKey = `grotx_tbInviteHidden_${userId}`;
+  const [inviteHidden, setInviteHidden] = useState(() => {
+    try { return localStorage.getItem(inviteHiddenKey) === '1'; } catch { return false; }
+  });
+  const hideInvite = () => {
+    setInviteHidden(true);
+    try { localStorage.setItem(inviteHiddenKey, '1'); } catch { /* prywatny tryb */ }
+  };
 
   const hasCoach = coaches.length > 0;
 
@@ -265,6 +283,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             label: data.tournamentName || data.distanceLabel || data.distance || '',
             score: data.score || 0,
             arrows: data.arrows || data.totalArrows || 0,
+            endSums: Array.isArray(data.ends)
+              ? data.ends.map((e: any) => Number(e?.total_sum)).filter((n: number) => Number.isFinite(n))
+              : [],
             note: data.note || '',
             isNotePublic: data.isNotePublic !== false,
             editCount: data.editCount || 0,
@@ -325,6 +346,17 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       console.error('Tagebuch: błąd usuwania notatki', e);
     }
   }, [userId]);
+
+  useEffect(() => {
+    const fresh = sessions.filter(s => s.coachNote && isNew('coach_note', s.id) && !autoExpandedRef.current.has(s.id));
+    if (!fresh.length) return;
+    fresh.forEach(s => autoExpandedRef.current.add(s.id));
+    setExpandedIds(prev => {
+      const next = new Set(prev);
+      fresh.forEach(s => next.add(s.id));
+      return next;
+    });
+  }, [sessions, isNew]);
 
   // --- FOKUS ---
   // Nowszy wygrywa: własny fokus (albo jego zakończenie) vs ostatni cel trenera.
@@ -470,7 +502,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   }, [items, sessions, cutoff, i18n.language, t]);
 
   // Filtr albo temat = szukanie, więc pokazujemy wszystkie trafienia.
-  const forceOpen = filter !== 'all' || !!topic;
+  const filterActive = filter !== 'all' || !!topic;
+  const forceOpen = filterActive;
+  // Aktywny filtr zostawia rząd filtrów widoczny — widać, czemu lista jest krótsza.
+  const showFilters = filtersOpen || filterActive;
   const isWeekOpen = (key: string, index: number) => forceOpen || (weekOpen[key] ?? index < 2);
 
   // Dzień tygodnia + godzina; nagłówek tygodnia niesie resztę daty.
@@ -511,6 +546,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       setWeekOpen(prev => ({ ...prev, [groups[gi].key]: true }));
       return;
     }
+    // Trening z powiadomienia pokazujemy rozwinięty — po to się wchodzi.
+    if (!expandedIds.has(focusId)) {
+      setExpandedIds(prev => new Set(prev).add(focusId));
+      return;
+    }
     const el = document.getElementById(`tb-${focusId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -518,7 +558,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     setFocusId(null);
     const timer = setTimeout(() => setFlashId(null), 2200);
     return () => clearTimeout(timer);
-  }, [focusId, isLoading, groups, weekOpen, forceOpen]);
+  }, [focusId, isLoading, groups, weekOpen, forceOpen, expandedIds]);
 
   const coachContentCount = useMemo(
     () => sessions.filter(s => s.coachNote).length + coachEntries.length,
@@ -611,6 +651,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
               </div>
             )}
           </div>
+          {/* Filtry schowane pod lupą — używane rzadko, a zajmowały cały rząd. */}
+          <button
+            onClick={() => setFiltersOpen(v => !v)}
+            className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-90 shrink-0 ${showFilters ? 'bg-white/25' : 'bg-white/10 hover:bg-white/20'}`}
+            aria-label={t('tagebuch.filters')}
+            aria-expanded={showFilters}
+          >
+            <span className="material-symbols-outlined text-[20px]">search</span>
+            {filterActive && <span className="absolute top-1 right-1 w-2 h-2 bg-[#fed33e] rounded-full" />}
+          </button>
           <div className="flex items-center shrink-0">
             <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
             <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
@@ -669,7 +719,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </div>
         )}
 
-        {/* FILTRY */}
+        {/* FILTRY — pod lupą w nagłówku */}
+        {showFilters && (
         <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 pb-0.5" style={{ scrollbarWidth: 'none' }}>
           {chip('all', t('tagebuch.filterAll'))}
           {showCoachFilter && chip('coach', t('tagebuch.filterCoach'), coachNewCount)}
@@ -693,12 +744,27 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             </select>
             <span className="material-symbols-outlined text-[14px] absolute right-1.5 pointer-events-none">expand_more</span>
           </div>
+          <button
+            onClick={() => { setFilter('all'); setTopic(''); setFiltersOpen(false); }}
+            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-90 transition-all"
+            aria-label={t('tagebuch.closeFilters')}
+          >
+            <span className="material-symbols-outlined text-[16px]">close</span>
+          </button>
         </div>
+        )}
 
-        {/* ZAPROSZENIE DO TRENERA */}
-        {coachesLoaded && !hasCoach && filter !== 'mine' && (
+        {/* ZAPROSZENIE DO TRENERA — da się ukryć na stałe (Ustawienia → Trener dalej działa) */}
+        {coachesLoaded && !hasCoach && !inviteHidden && filter !== 'mine' && (
           <div className="bg-white rounded-2xl border border-dashed border-emerald-300 p-3 flex items-start gap-3">
             <span className="material-symbols-outlined text-[22px] text-emerald-600 shrink-0">person_add</span>
+            <button
+              onClick={hideInvite}
+              className="order-last shrink-0 -mr-1 -mt-1 w-7 h-7 flex items-center justify-center rounded-full text-gray-300 active:bg-gray-100"
+              aria-label={t('tagebuch.inviteHide')}
+            >
+              <span className="material-symbols-outlined text-[16px]">close</span>
+            </button>
             <div className="flex-1 min-w-0">
               <p className="text-[12px] font-black text-[#0a3a2a]">{t('tagebuch.inviteTitle')}</p>
               <p className="text-[11px] font-medium text-gray-400 leading-snug mt-0.5">{t('tagebuch.inviteDesc')}</p>
@@ -769,7 +835,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
-                      onOpen={() => {
+                      expanded={expandedIds.has(it.session.id)}
+                      onToggle={() => toggleExpanded(it.session.id)}
+                      onOpenStats={() => {
                         const day = statsDate(it.session);
                         if (day) onNavigateToStats?.(day, it.session.id);
                       }}

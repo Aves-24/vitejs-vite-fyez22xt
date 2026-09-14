@@ -322,7 +322,12 @@ export const views = {
     focusChip: "Fokus",
     newNote: "Nowa notatka",
     coachChat: "Czat z trenerem",
-    yourCoaches: "Twoi trenerzy"
+    yourCoaches: "Twoi trenerzy",
+    ends: "Serie",
+    showStats: "Statystyki",
+    filters: "Filtry",
+    closeFilters: "Zamknij filtry",
+    inviteHide: "Ukryj"
   },
   home: {
     archerRanking: "Ranking Łucznika",

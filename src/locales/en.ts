@@ -306,7 +306,12 @@ export const views = {
     focusChip: "Focus",
     newNote: "New note",
     coachChat: "Chat with coach",
-    yourCoaches: "Your coaches"
+    yourCoaches: "Your coaches",
+    ends: "Ends",
+    showStats: "Stats",
+    filters: "Filters",
+    closeFilters: "Close filters",
+    inviteHide: "Hide"
   },
   home: {
     archerRanking: "Archer Ranking",

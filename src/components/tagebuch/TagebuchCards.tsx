@@ -26,6 +26,7 @@ export interface TbSession {
   label: string;
   score: number;
   arrows: number;
+  endSums: number[];     // wyniki serii (ends[].total_sum); [] = brak serii (np. zawody)
   note: string;
   isNotePublic: boolean;
   editCount: number;
@@ -377,15 +378,42 @@ function FocusToggle({ topic, marked, onToggle }: { topic: string; marked: boole
   );
 }
 
-export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
+// Wyniki serii w rozwiniętej karcie; najlepsza seria wyróżniona.
+function EndsGrid({ sums }: { sums: number[] }) {
+  const { t } = useTranslation();
+  const best = Math.max(...sums);
+  return (
+    <div className="mt-2">
+      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{t('tagebuch.ends')}</p>
+      <div className="grid grid-cols-6 gap-1">
+        {sums.map((sum, i) => (
+          <div
+            key={i}
+            className={`rounded-lg py-1 text-center leading-none ${sum === best ? 'bg-emerald-600 text-white' : 'tb-icon text-[#0a3a2a]'}`}
+          >
+            <span className="block text-[8px] font-bold opacity-60">{i + 1}</span>
+            <span className="block text-[12px] font-black mt-0.5">{sum}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Karta treningu: zwinięta = wynik i porównanie, rozwinięta (dotknięcie) =
+// serie, notatki, uwaga trenera i akcje. Do statystyk prowadzi osobny
+// przycisk — wcześniej każde dotknięcie wyrzucało z dziennika.
+export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote }: {
   session: TbSession;
   time: string;
   insight?: SessionInsight;
   focus?: { topic: string; onToggle: () => Promise<void> };
+  expanded: boolean;
+  onToggle: () => void;
   linkedNotes: TbPrivateNote[];
   hasCoach: boolean;
   isNew: boolean;
-  onOpen: () => void;
+  onOpenStats: () => void;
   onAddNote: (session: TbSession, text: string, topics: string[], shared: boolean) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
 }) {
@@ -402,11 +430,12 @@ export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoa
   // Notatkę „dla trenera" da się dopisać tylko raz do pustej sesji w limicie
   // edycji — resztę zawsze można dopisać jako prywatną.
   const canShare = hasCoach && !session.note && session.editCount < SESSION_NOTE_EDITS;
-  const hasContent = !!session.note || !!session.coachNote || linkedNotes.length > 0 || session.topics.length > 0;
+  const visibleTopics = focus ? session.topics.filter(x => x !== focus.topic) : session.topics;
+  const noteCount = (session.note ? 1 : 0) + linkedNotes.length;
 
   const header = (
-    <div className="flex items-center gap-2">
-      <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-2.5 text-left active:opacity-60">
+    <button onClick={onToggle} className="w-full flex items-center gap-2 text-left active:opacity-60" aria-expanded={expanded}>
+      <span className="flex-1 min-w-0 flex items-center gap-2.5">
         <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
           <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
         </span>
@@ -420,27 +449,39 @@ export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoa
           </span>
           {insight && !session.isTech && <InsightLine insight={insight} />}
         </span>
-      </button>
-      {!composing && (
-        <button
-          onClick={() => setComposing(true)}
-          className="shrink-0 flex items-center gap-0.5 text-[10px] font-black text-emerald-700 px-1.5 py-1 rounded-lg active:bg-emerald-50"
-        >
-          <span className="material-symbols-outlined text-[14px]">add</span>
-          {t('tagebuch.noteShort')}
-        </button>
+      </span>
+      {/* Zwinięta: znaczki, że w środku coś jest (trener, notatki). */}
+      {!expanded && (session.coachNote || noteCount > 0) && (
+        <span className="shrink-0 flex items-center gap-1">
+          {session.coachNote && (
+            <span className={`flex items-center justify-center w-6 h-6 rounded-full ${isNew ? 'bg-emerald-600 text-white' : 'bg-amber-50 text-amber-800'}`}>
+              <span className="material-symbols-outlined text-[14px]">sports</span>
+            </span>
+          )}
+          {noteCount > 0 && (
+            <span className="flex items-center gap-0.5 h-6 px-1.5 rounded-full tb-icon text-gray-500 text-[10px] font-black">
+              <span className="material-symbols-outlined text-[14px]">edit_note</span>
+              {noteCount > 1 && noteCount}
+            </span>
+          )}
+        </span>
       )}
-    </div>
+      <span className={`material-symbols-outlined text-[20px] text-gray-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}>expand_more</span>
+    </button>
   );
 
   return (
-    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
+    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${expanded ? 'p-3' : 'px-3 py-2.5'}`}>
       {header}
       {focus && (
         <FocusToggle topic={focus.topic} marked={session.topics.includes(focus.topic)} onToggle={focus.onToggle} />
       )}
+
+      {expanded && <>
       {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
-      <TopicChips topics={focus ? session.topics.filter(x => x !== focus.topic) : session.topics} tone="onTint" />
+      <TopicChips topics={visibleTopics} tone="onTint" />
+
+      {session.endSums.length > 0 && <EndsGrid sums={session.endSums} />}
 
       {session.note && (
         <div className="mt-2">
@@ -487,7 +528,7 @@ export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoa
         </div>
       )}
 
-      {composing && (
+      {composing ? (
         <div className="mt-2">
           <NoteComposer
             allowShare={canShare}
@@ -499,7 +540,26 @@ export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoa
             onCancel={() => setComposing(false)}
           />
         </div>
+      ) : (
+        <div className="flex items-center gap-2 mt-2.5">
+          <button
+            onClick={() => setComposing(true)}
+            className="flex items-center gap-0.5 text-[10px] font-black text-emerald-700 bg-white border border-emerald-200 px-2.5 py-1.5 rounded-full active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            {t('tagebuch.noteShort')}
+          </button>
+          <div className="flex-1" />
+          <button
+            onClick={onOpenStats}
+            className="flex items-center gap-0.5 text-[10px] font-black text-gray-500 px-2 py-1.5 rounded-full active:bg-white/60"
+          >
+            {t('tagebuch.showStats')}
+            <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+          </button>
+        </div>
       )}
+      </>}
     </div>
   );
 }

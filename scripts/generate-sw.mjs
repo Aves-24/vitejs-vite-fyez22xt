@@ -65,8 +65,13 @@ const CACHE = 'grotx-' + VERSION;
 const FONT_CACHE = 'grotx-fonts'; // wspólny między wersjami
 const PRECACHE = ${JSON.stringify(urls, null, 1)};
 
+// cache: 'reload' — precache prosto z serwera, z pominięciem cache HTTP.
+// Zatruty wpis (np. 404 z nagłówkiem immutable) wywracałby addAll, a z nim
+// instalację nowej wersji.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
+  e.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' }))))
+  );
 });
 
 // Uwaga: BEZ skipWaiting()/clients.claim(). Nowy SW czeka, aż zniknie ostatnia
@@ -148,17 +153,23 @@ self.addEventListener('fetch', (e) => {
 
   // Reszta (assety z hashem w nazwie, ikony, legal): cache-first,
   // miss → sieć + dopisanie do cache'u bieżącej wersji.
+  // Błąd na /assets/ → jeszcze raz z pominięciem cache HTTP: 404 mógł tam
+  // utknąć z nagłówkiem immutable (stary vercel.json), a plik już istnieje.
   e.respondWith(
     caches.match(req).then(
       (hit) =>
         hit ||
-        fetch(req).then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        })
+        fetch(req)
+          .then((res) =>
+            res.ok || !url.pathname.startsWith('/assets/') ? res : fetch(req, { cache: 'reload' })
+          )
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((c) => c.put(req, copy));
+            }
+            return res;
+          })
     )
   );
 });

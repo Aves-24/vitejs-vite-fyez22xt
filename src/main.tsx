@@ -19,6 +19,26 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
   });
 }
 
+// Strażnik głównego CSS. 2026-09-11 telefon z Androidem uruchomił JS, ale nie
+// nałożył CSS (zielony ekran splasha, czarny tekst, bez ikon). Najpewniej
+// 404 na arkuszu z nagłówkiem „immutable" siedziało w cache HTTP przeglądarki
+// — vercel.json już tak nie robi, ale zatrute wpisy mogą żyć rok. Moduł
+// wykonuje się dopiero po załadowaniu (albo porażce) arkuszy z <head>, więc
+// brak znacznika z tailwind.css znaczy, że arkusz nie doszedł. Inny URL (?r=)
+// omija i cache HTTP, i cache service workera.
+function ensureMainCss() {
+  const marker = getComputedStyle(document.documentElement).getPropertyValue('--grotx-css');
+  if (marker.trim()) return;
+  const link = document.querySelector<HTMLLinkElement>('link[rel="stylesheet"][href^="/assets/"]');
+  if (!link) return;
+  const retry = document.createElement('link');
+  retry.rel = 'stylesheet';
+  retry.href = `${link.getAttribute('href')}?r=${Date.now()}`;
+  document.head.appendChild(retry);
+  console.warn('CSS: glowny arkusz sie nie nalozyl, ponawiam', retry.href);
+}
+if (import.meta.env.PROD) ensureMainCss();
+
 // ── DEV ONLY: suppress Vite HMR WebSocket noise ─────────────────────────────
 // Co ~30s Vite próbuje wysłać ping przez WebSocket w momencie gdy połączenie
 // jest jeszcze w stanie CLOSING — to nieszkodliwy szum, ale zaśmieca Console.

@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Znacznik „główny CSS się nałożył" — czyta go strażnik w src/main.tsx
+   (ensureMainCss). Nie usuwać. */
+:root { --grotx-css: 1; }
+
 /* [RODO/DE] Material Symbols self-hosted — ładowanie z fonts.googleapis.com
    przekazuje IP użytkownika do Google bez zgody (wyrok LG München I, 3 O 17493/20).
    Plik: public/fonts/material-symbols-outlined.woff2. Bonus: ikony działają offline.

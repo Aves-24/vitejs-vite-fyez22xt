@@ -291,7 +291,20 @@ export const views = {
     avgUnit: "Ø",
     vsLast: "zum letzten",
     record: "Rekord",
-    bestOfLast: "Bestes von {{count}}"
+    bestOfLast: "Bestes von {{count}}",
+    focusLabel: "Dein Fokus",
+    focusFromCoach: "vom Trainer",
+    focusEmpty: "Setz dir einen Fokus: Woran arbeitest du gerade?",
+    focusProgress: "{{hit}} von {{count}} letzten Trainings",
+    focusProgress_one: "{{hit}} von {{count}} letzten Training",
+    focusHint: "Markiere „Fokus“ bei deinen Trainings",
+    focusSince: "seit {{date}}",
+    focusPickTopic: "Wähle ein Thema",
+    focusTextPlaceholder: "In eigenen Worten (optional)",
+    focusEnd: "Fokus beenden",
+    focusSaveError: "Fokus konnte nicht gespeichert werden. Bitte erneut versuchen.",
+    focusChip: "Fokus",
+    newNote: "Neue Notiz"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

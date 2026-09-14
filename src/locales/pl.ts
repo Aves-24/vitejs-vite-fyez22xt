@@ -306,7 +306,21 @@ export const views = {
     avgUnit: "śr.",
     vsLast: "do ostatniego",
     record: "Rekord",
-    bestOfLast: "Najlepszy z {{count}}"
+    bestOfLast: "Najlepszy z {{count}}",
+    focusLabel: "Twój fokus",
+    focusFromCoach: "od trenera",
+    focusEmpty: "Ustaw fokus: nad czym teraz pracujesz?",
+    focusProgress: "{{hit}} z {{count}} ostatnich treningów",
+    focusProgress_one: "{{hit}} z {{count}} ostatniego treningu",
+    focusProgress_many: "{{hit}} z {{count}} ostatnich treningów",
+    focusHint: "Zaznaczaj „Fokus” przy treningach",
+    focusSince: "od {{date}}",
+    focusPickTopic: "Wybierz jeden temat",
+    focusTextPlaceholder: "Własnymi słowami (opcjonalnie)",
+    focusEnd: "Zakończ fokus",
+    focusSaveError: "Nie udało się zapisać fokusu. Spróbuj ponownie.",
+    focusChip: "Fokus",
+    newNote: "Nowa notatka"
   },
   home: {
     archerRanking: "Ranking Łucznika",

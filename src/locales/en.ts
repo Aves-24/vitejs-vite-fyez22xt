@@ -291,7 +291,20 @@ export const views = {
     avgUnit: "avg",
     vsLast: "vs last",
     record: "Record",
-    bestOfLast: "Best of {{count}}"
+    bestOfLast: "Best of {{count}}",
+    focusLabel: "Your focus",
+    focusFromCoach: "from coach",
+    focusEmpty: "Set a focus: what are you working on?",
+    focusProgress: "{{hit}} of last {{count}} trainings",
+    focusProgress_one: "{{hit}} of last {{count}} training",
+    focusHint: "Mark “Focus” on your trainings",
+    focusSince: "since {{date}}",
+    focusPickTopic: "Pick one topic",
+    focusTextPlaceholder: "In your own words (optional)",
+    focusEnd: "End focus",
+    focusSaveError: "Couldn't save your focus. Try again.",
+    focusChip: "Focus",
+    newNote: "New note"
   },
   home: {
     archerRanking: "Archer Ranking",

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +9,7 @@ import { notificationId, type NotificationType } from '../utils/notificationType
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
+import { FocusCard, FocusEditor, FOCUS_TEXT_MAX, type ActiveFocus } from '../components/tagebuch/FocusCard';
 import {
   NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
@@ -25,6 +27,17 @@ const PAGE = 50;
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
 type Filter = 'all' | 'coach' | 'mine';
+
+// users/{uid}.focus — własny fokus albo jego zakończenie (cleared). Zakończenie
+// też ma datę, żeby starszy cel trenera nie wrócił na górę sam z siebie.
+interface OwnFocus {
+  topic?: string;
+  text?: string;
+  setAt: number;
+  cleared?: boolean;
+}
+
+const FOCUS_PROGRESS_LAST = 4; // licznik: tyle ostatnich treningów od ustawienia fokusu
 
 interface CoachInfo {
   id: string;
@@ -105,6 +118,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [focusId, setFocusId] = useState<string | null>(null);
   // Ręcznie rozwinięte/zwinięte tygodnie; domyślnie otwarte są dwa najnowsze.
   const [weekOpen, setWeekOpen] = useState<Record<string, boolean>>({});
+  const [ownFocus, setOwnFocus] = useState<OwnFocus | null>(null);
+  const [focusEditing, setFocusEditing] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const composerRef = useRef<HTMLDivElement>(null);
 
   const hasCoach = coaches.length > 0;
 
@@ -147,6 +164,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       try {
         const userDoc = await getDoc(doc(db, 'users', userId));
         const coachIds: string[] = userDoc.exists() ? (userDoc.data().coaches || []) : [];
+        const focus = userDoc.exists() ? userDoc.data().focus : null;
+        if (focus && typeof focus.setAt === 'number') setOwnFocus(focus);
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
           try {
@@ -303,6 +322,55 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       console.error('Tagebuch: błąd usuwania notatki', e);
     }
   }, [userId]);
+
+  // --- FOKUS ---
+  // Nowszy wygrywa: własny fokus (albo jego zakończenie) vs ostatni cel trenera.
+  const activeFocus = useMemo<ActiveFocus | null>(() => {
+    const goal = coachEntries.filter(e => e.type === 'goal').sort((a, b) => b.ts - a.ts)[0];
+    if (ownFocus && (!goal || ownFocus.setAt >= goal.ts)) {
+      if (ownFocus.cleared || !ownFocus.topic) return null;
+      return { topic: ownFocus.topic, text: ownFocus.text || '', since: ownFocus.setAt, fromCoach: false };
+    }
+    if (!goal) return null;
+    return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName };
+  }, [ownFocus, coachEntries]);
+
+  // Liczą się treningi od początku dnia ustawienia fokusu — ktoś trenuje rano,
+  // a fokus wpisuje wieczorem, i ten poranny trening też chce zaznaczyć.
+  const focusFrom = activeFocus ? new Date(activeFocus.since).setHours(0, 0, 0, 0) : 0;
+
+  // Ostatnie treningi od ustawienia fokusu, od najstarszego (kropki w karcie).
+  const focusProgress = useMemo(() => {
+    if (!activeFocus?.topic) return [];
+    return sessions
+      .filter(s => s.ts >= focusFrom)
+      .slice(0, FOCUS_PROGRESS_LAST)
+      .reverse()
+      .map(s => s.topics.includes(activeFocus.topic));
+  }, [sessions, activeFocus, focusFrom]);
+
+  const writeFocus = useCallback(async (focus: OwnFocus) => {
+    await updateDoc(doc(db, 'users', userId), { focus });
+    setOwnFocus(focus);
+    setFocusEditing(false);
+  }, [userId]);
+
+  const saveFocus = useCallback(
+    (topic: string, text: string) => writeFocus({ topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: Date.now() }),
+    [writeFocus],
+  );
+  const endFocus = useCallback(() => writeFocus({ cleared: true, setAt: Date.now() }), [writeFocus]);
+
+  const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
+    const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
+    await updateDoc(doc(db, `users/${userId}/sessions`, s.id), { topics });
+    setSessions(prev => prev.map(x => x.id === s.id ? { ...x, topics } : x));
+  }, [userId]);
+
+  const openComposer = () => {
+    setComposerOpen(true);
+    requestAnimationFrame(() => composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
 
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
@@ -513,12 +581,34 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
           </div>
         </div>
+        {!isLoading && !focusEditing && (
+          <FocusCard focus={activeFocus} progress={focusProgress} onEdit={() => setFocusEditing(true)} />
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">
 
-        {/* SZYBKA NOTATKA — zawsze prywatna */}
-        <NoteComposer allowShare={false} onSave={(text, topics) => addPrivateNote(text, topics)} />
+        {focusEditing && (
+          <FocusEditor
+            initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
+            canEnd={!!activeFocus}
+            onSave={saveFocus}
+            onEnd={endFocus}
+            onCancel={() => setFocusEditing(false)}
+          />
+        )}
+
+        {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}
+        {composerOpen && (
+          <div ref={composerRef}>
+            <NoteComposer
+              allowShare={false}
+              autoFocus
+              onSave={async (text, topics) => { await addPrivateNote(text, topics); setComposerOpen(false); }}
+              onCancel={() => setComposerOpen(false)}
+            />
+          </div>
+        )}
 
         {/* ALS NÄCHSTES */}
         {nextEvents.length > 0 && (
@@ -638,6 +728,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       session={it.session}
                       time={timeOf(it.ts)}
                       insight={insights.get(it.session.id)}
+                      focus={activeFocus?.topic && it.session.ts >= focusFrom
+                        ? { topic: activeFocus.topic, onToggle: () => toggleSessionFocus(it.session, activeFocus.topic) }
+                        : undefined}
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
@@ -670,6 +763,19 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </button>
         )}
       </div>
+
+      {/* „+" nowa notatka. Portal, bo <main> w App ma transform (scale) —
+          fixed wewnątrz liczyłby się od niego, a nie od ekranu. */}
+      {!composerOpen && !focusEditing && !openMessageCoach && createPortal(
+        <button
+          onClick={openComposer}
+          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] w-12 h-12 rounded-full bg-[#0a3a2a] text-[#fed33e] shadow-lg shadow-black/25 flex items-center justify-center active:scale-90 transition-all"
+          aria-label={t('tagebuch.newNote')}
+        >
+          <span className="material-symbols-outlined text-[26px]">add</span>
+        </button>,
+        document.body,
+      )}
 
       {openMessageCoach && (
         <StudentMessageSheet

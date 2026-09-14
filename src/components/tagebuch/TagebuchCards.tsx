@@ -353,10 +353,35 @@ function InsightBadge({ insight }: { insight?: SessionInsight }) {
   );
 }
 
-export function SessionCard({ session, time, insight, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
+// „Pracowałem nad fokusem" — dopisuje/zdejmuje temat fokusu w session.topics.
+function FocusToggle({ topic, marked, onToggle }: { topic: string; marked: boolean; onToggle: () => Promise<void> }) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  return (
+    <button
+      onClick={async () => {
+        if (busy) return;
+        setBusy(true);
+        try { await onToggle(); } catch (e) { console.error('Tagebuch: błąd zaznaczenia fokusu', e); }
+        setBusy(false);
+      }}
+      className={`mt-2 flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black border transition-all active:scale-95 disabled:opacity-50 ${
+        marked ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-gray-200 text-gray-500'
+      }`}
+      disabled={busy}
+      aria-pressed={marked}
+    >
+      <span className="material-symbols-outlined text-[14px]">{marked ? 'check_circle' : 'radio_button_unchecked'}</span>
+      {t('tagebuch.focusChip')}: {t(`sessionSetup.topic_${topic}`)}
+    </button>
+  );
+}
+
+export function SessionCard({ session, time, insight, focus, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
   session: TbSession;
   time: string;
   insight?: SessionInsight;
+  focus?: { topic: string; onToggle: () => Promise<void> };
   linkedNotes: TbPrivateNote[];
   hasCoach: boolean;
   isNew: boolean;
@@ -411,7 +436,11 @@ export function SessionCard({ session, time, insight, linkedNotes, hasCoach, isN
   return (
     <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
       {header}
-      <TopicChips topics={session.topics} tone="onTint" />
+      {focus && (
+        <FocusToggle topic={focus.topic} marked={session.topics.includes(focus.topic)} onToggle={focus.onToggle} />
+      )}
+      {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
+      <TopicChips topics={focus ? session.topics.filter(x => x !== focus.topic) : session.topics} tone="onTint" />
 
       {session.note && (
         <div className="mt-2">

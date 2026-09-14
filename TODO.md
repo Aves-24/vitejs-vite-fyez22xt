@@ -1088,6 +1088,29 @@ Z ogona po C25 zostały: **jardy**.
       (dystans/runda w `ScoringView`, zapis ~l. 467); jeśli nie, trzeba ją
       stemplować przy starcie. Stare sesje bez flagi traktować jak pełne.
 
+- [ ] **C32. Ujednolicić nagłówki we wszystkich zakładkach.** Prośba usera
+      2026-09-14, przy przebudowie dziennika. Dziś każdy widok ma własny
+      nagłówek, pisany ręcznie (grep `safe-area-inset-top` w `src/views`):
+      - zielony gradient z zaokrąglonym dołem, strzałką wstecz, tytułem
+        i logo GROT-X po prawej: `TagebuchView` (~l. 553),
+        `StudentProfileView` (~l. 641);
+      - jasne tło z tytułem w treści: `HomeView`, `CalendarView`,
+        `SettingsView`, `StatsView`, `SessionSetup`, `CoachDashboardView`,
+        `AnnouncementsView`, `ProfileView`, `AdminDashboardView`;
+      - własne: `WorldLeaderboardView` (~l. 70), `BattleHistoryView`
+        (ciemne tło), `ScoringView`.
+      Różnią się też odstępem od góry (`pt-[env(...)]` vs `+1rem` vs
+      `max(..., 2.5rem)`), obecnością logo i przycisku wstecz.
+      **Do zrobienia:** (1) z userem wybrać jeden wzór (kandydat: zielony
+      nagłówek z dziennika — user zaakceptował go 2026-09-14 z logo
+      i zwartym przyciskiem trenerów pod tytułem); (2) wydzielić wspólny
+      komponent, np. `components/ViewHeader.tsx` (tytuł, wstecz, logo,
+      miejsce na dodatki pod tytułem); (3) przepinać widok po widoku,
+      sprawdzając jasny i ciemny motyw oraz wąski telefon (375 px — przy
+      trenerach tytuł dziennika ściskał się do „Tag…”). Home i Scoring
+      mogą wymagać wyjątku (Home ma własny układ z licznikami, Scoring
+      tryb pełnoekranowy) — zdecydować z userem.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

@@ -304,7 +304,9 @@ export const views = {
     focusEnd: "End focus",
     focusSaveError: "Couldn't save your focus. Try again.",
     focusChip: "Focus",
-    newNote: "New note"
+    newNote: "New note",
+    coachChat: "Chat with coach",
+    yourCoaches: "Your coaches"
   },
   home: {
     archerRanking: "Archer Ranking",

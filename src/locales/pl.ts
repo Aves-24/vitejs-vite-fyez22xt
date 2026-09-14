@@ -320,7 +320,9 @@ export const views = {
     focusEnd: "Zakończ fokus",
     focusSaveError: "Nie udało się zapisać fokusu. Spróbuj ponownie.",
     focusChip: "Fokus",
-    newNote: "Nowa notatka"
+    newNote: "Nowa notatka",
+    coachChat: "Czat z trenerem",
+    yourCoaches: "Twoi trenerzy"
   },
   home: {
     archerRanking: "Ranking Łucznika",

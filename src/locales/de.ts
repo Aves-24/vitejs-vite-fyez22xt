@@ -304,7 +304,9 @@ export const views = {
     focusEnd: "Fokus beenden",
     focusSaveError: "Fokus konnte nicht gespeichert werden. Bitte erneut versuchen.",
     focusChip: "Fokus",
-    newNote: "Neue Notiz"
+    newNote: "Neue Notiz",
+    coachChat: "Chat mit Trainer",
+    yourCoaches: "Deine Trainer"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

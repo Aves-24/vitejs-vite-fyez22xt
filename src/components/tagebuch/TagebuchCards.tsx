@@ -20,6 +20,7 @@ export interface TbSession {
   ts: number;
   date: string;          // format z zapisu sesji (pl-PL), przekazywany dalej do Stats
   isTech: boolean;
+  meters: number;        // 0 = nieznany (kolor paska środkowy)
   label: string;
   score: number;
   arrows: number;
@@ -60,13 +61,29 @@ export function NewBadge() {
   );
 }
 
-function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'blue' }) {
+// Kolory kart — klasy tb-* w src/tailwind.css (jasny i ciemny motyw).
+// Karta ma mniejsze lewe rogi, bo zaokrąglony gruby pasek wygląda jak nawias.
+const CARD_SHAPE = 'tb-card border rounded-l-md rounded-r-2xl shadow-sm';
+
+// Zieleń paska rośnie z dystansem: do 18 m, 20–30, 40–50, 60–70, 90 m.
+function distanceTier(meters: number): string {
+  if (!meters) return 'tb-d2';
+  if (meters <= 18) return 'tb-d1';
+  if (meters <= 30) return 'tb-d2';
+  if (meters <= 50) return 'tb-d3';
+  if (meters <= 70) return 'tb-d4';
+  return 'tb-d5';
+}
+
+function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'blue' | 'onTint' }) {
   const { t } = useTranslation();
   if (!topics.length) return null;
   const cls = tone === 'indigo'
     ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
     : tone === 'blue'
     ? 'bg-white text-blue-700 border-blue-100'
+    : tone === 'onTint'
+    ? 'bg-white text-emerald-700 border-emerald-200'
     : 'bg-emerald-50 text-emerald-700 border-emerald-100';
   return (
     <div className="flex flex-wrap gap-1 mt-1.5">
@@ -259,7 +276,7 @@ function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (i
 export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
   const { t } = useTranslation();
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3">
+    <div className={`${CARD_SHAPE} tb-private bg-white border-gray-200 p-3`}>
       <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-1">
         <span className="material-symbols-outlined text-[14px]">lock</span>
         <span className="flex-1">{t('tagebuch.onlyYou')}</span>
@@ -275,7 +292,7 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
-    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm p-3">
+    <div className={`${CARD_SHAPE} tb-coach bg-white border-amber-200 p-3`}>
       <div className="flex items-center justify-between gap-2 mb-1">
         <span className="flex items-center gap-1 text-[10px] font-black text-amber-700 min-w-0">
           <span className="material-symbols-outlined text-[14px]">menu_book</span>
@@ -326,8 +343,8 @@ export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpe
   const header = (
     <div className="flex items-center gap-2">
       <button onClick={onOpen} className="flex-1 min-w-0 flex items-center gap-2.5 text-left active:opacity-60">
-        <span className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-[18px] text-emerald-600">{session.isTech ? 'fitness_center' : 'target'}</span>
+        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+          <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
         </span>
         <span className="min-w-0">
           <span className="block text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
@@ -349,9 +366,9 @@ export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpe
   );
 
   return (
-    <div className={`bg-white rounded-2xl border border-gray-200 shadow-sm ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
+    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${hasContent || composing ? 'p-3' : 'px-3 py-2.5'}`}>
       {header}
-      <TopicChips topics={session.topics} />
+      <TopicChips topics={session.topics} tone="onTint" />
 
       {session.note && (
         <div className="mt-2">

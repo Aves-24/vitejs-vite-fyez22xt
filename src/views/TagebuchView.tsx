@@ -6,6 +6,7 @@ import StudentMessageSheet from '../components/StudentMessageSheet';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
+import { distanceMeters } from '../config/distances';
 import {
   NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
@@ -227,6 +228,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ts: toMs(data.timestamp) || toMs(data.createdAt),
             date: data.date || '',
             isTech: data.type === 'TECHNICAL',
+            meters: distanceMeters(data.distance),
             label: data.tournamentName || data.distanceLabel || data.distance || '',
             score: data.score || 0,
             arrows: data.arrows || data.totalArrows || 0,

@@ -177,3 +177,33 @@
 .dark .text-\[\#0a3a2a\] { color: #7fd6b2; }
 .dark .bg-\[\#fed33e\].text-\[\#0a3a2a\] { color: #0a3a2a; }
 .dark .bg-\[\#F2C94C\].text-\[\#0a3a2a\] { color: #0a3a2a; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   DZIENNIK (Tagebuch) — kolory kart. Pasek po lewej = typ wpisu; przy
+   treningu na dystansie zieleń paska rośnie z dystansem (tb-d1 = do 18 m …
+   tb-d5 = 90 m), w ciemnym motywie „dalej" = jaśniej, czyli wyraźniej.
+   Na końcu pliku celowo: .dark .border-gray-200 (0,2,0) ustawia kolor
+   wszystkich krawędzi, więc paski w ciemnym motywie muszą przyjść po nim.
+   ═══════════════════════════════════════════════════════════════════════ */
+.tb-card { border-left-width: 5px; border-left-style: solid; }
+.tb-icon { background-color: rgba(255, 255, 255, 0.75); }
+.tb-dist { background-color: #ecfdf5; border-top-color: #d1fae5; border-right-color: #d1fae5; border-bottom-color: #d1fae5; }
+.tb-tech { background-color: #f0f9ff; border-top-color: #e0f2fe; border-right-color: #e0f2fe; border-bottom-color: #e0f2fe; border-left-color: #7dd3fc; }
+.tb-d1 { border-left-color: #6ee7b7; }
+.tb-d2 { border-left-color: #10b981; }
+.tb-d3 { border-left-color: #059669; }
+.tb-d4 { border-left-color: #047857; }
+.tb-d5 { border-left-color: #064e3b; }
+.tb-coach { border-left-color: #f59e0b; }
+.tb-private { border-left-color: #818cf8; }
+
+.dark .tb-icon { background-color: rgba(255, 255, 255, 0.06); }
+.dark .tb-dist { background-color: #1c2b23; border-top-color: #243a2e; border-right-color: #243a2e; border-bottom-color: #243a2e; }
+.dark .tb-tech { background-color: #1b2830; border-top-color: #233543; border-right-color: #233543; border-bottom-color: #233543; border-left-color: #7dd3fc; }
+.dark .tb-d1 { border-left-color: #047857; }
+.dark .tb-d2 { border-left-color: #059669; }
+.dark .tb-d3 { border-left-color: #10b981; }
+.dark .tb-d4 { border-left-color: #34d399; }
+.dark .tb-d5 { border-left-color: #6ee7b7; }
+.dark .tb-coach { border-left-color: #f59e0b; border-top-color: #4a3a14; border-right-color: #4a3a14; border-bottom-color: #4a3a14; }
+.dark .tb-private { border-left-color: #818cf8; }

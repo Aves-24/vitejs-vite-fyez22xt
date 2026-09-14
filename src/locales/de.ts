@@ -281,7 +281,17 @@ export const views = {
     loadMore: "Ältere laden",
     emptyTitle: "Dein Tagebuch ist noch leer",
     emptyDesc: "Trainings und Notizen erscheinen hier automatisch.",
-    emptyFilter: "Keine Einträge für diesen Filter"
+    emptyFilter: "Keine Einträge für diesen Filter",
+    thisWeek: "Diese Woche",
+    lastWeek: "Letzte Woche",
+    showWeek: "Woche anzeigen",
+    weekTrainings: "{{count}} Trainings",
+    weekTrainings_one: "{{count}} Training",
+    avgShort: "Ø {{avg}}",
+    avgUnit: "Ø",
+    vsLast: "zum letzten",
+    record: "Rekord",
+    bestOfLast: "Bestes von {{count}}"
   },
   home: {
     archerRanking: "Bogenschützen-Ranking",

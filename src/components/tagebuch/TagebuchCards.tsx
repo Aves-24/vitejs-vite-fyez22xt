@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
+import type { SessionInsight } from './sessionInsights';
 
 // --- TYPY WPISÓW OSI CZASU ---
 // Read-model złożony z istniejących kolekcji — nic nie jest zapisywane w nowym
@@ -21,6 +22,7 @@ export interface TbSession {
   date: string;          // format z zapisu sesji (pl-PL), przekazywany dalej do Stats
   isTech: boolean;
   meters: number;        // 0 = nieznany (kolor paska środkowy)
+  distKey: string;       // distanceKey — ten sam kubełek co w statystykach
   label: string;
   score: number;
   arrows: number;
@@ -315,9 +317,46 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
 // --- KARTA TRENINGU ---
 // Notatka ucznia, notatki prywatne przypięte do sesji i Anmerkung trenera
 // w jednym miejscu — uwaga trenera jest przyklejona do treningu, którego dotyczy.
-export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
+// Średnia, różnica do poprzedniego treningu na tym dystansie, odznaka rekordu.
+function InsightLine({ insight }: { insight: SessionInsight }) {
+  const { t, i18n } = useTranslation();
+  const num = (v: number, digits: number) =>
+    v.toLocaleString(i18n.language, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  const d = insight.delta;
+  const value = d ? (d.kind === 'pts' ? Math.round(d.value) : Math.round(d.value * 100) / 100) : 0;
+  const text = d && (d.kind === 'pts' ? num(Math.abs(value), 0) : `${num(Math.abs(value), 2)} ${t('tagebuch.avgUnit')}`);
+  return (
+    <span className="block text-[10px] font-bold text-gray-500 truncate">
+      {t('tagebuch.avgShort', { avg: num(insight.avg, 2) })}
+      {d && (
+        value === 0 ? (
+          <span className="text-gray-400"> · = {t('tagebuch.vsLast')}</span>
+        ) : (
+          <span className={value > 0 ? 'text-emerald-700' : 'text-red-600'}>
+            {' · '}{value > 0 ? '▲ +' : '▼ −'}{text} {t('tagebuch.vsLast')}
+          </span>
+        )
+      )}
+    </span>
+  );
+}
+
+function InsightBadge({ insight }: { insight?: SessionInsight }) {
+  const { t } = useTranslation();
+  const b = insight?.badge;
+  if (!b) return null;
+  return (
+    <span className="shrink-0 flex items-center gap-0.5 bg-[#fed33e] text-[#0a3a2a] text-[9px] font-black px-1.5 py-0.5 rounded-md">
+      <span className="material-symbols-outlined text-[11px]">trophy</span>
+      {b.kind === 'record' ? t('tagebuch.record') : t('tagebuch.bestOfLast', { count: b.count })}
+    </span>
+  );
+}
+
+export function SessionCard({ session, time, insight, linkedNotes, hasCoach, isNew, onOpen, onAddNote, onDeleteNote }: {
   session: TbSession;
   time: string;
+  insight?: SessionInsight;
   linkedNotes: TbPrivateNote[];
   hasCoach: boolean;
   isNew: boolean;
@@ -347,10 +386,14 @@ export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpe
           <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
         </span>
         <span className="min-w-0">
-          <span className="block text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
+          <span className="flex items-center gap-1.5 min-w-0">
+            <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
+            <InsightBadge insight={insight} />
+          </span>
           <span className="block text-[10px] font-bold text-gray-500 truncate">
             {time ? `${time} · ` : ''}{stats}
           </span>
+          {insight && !session.isTech && <InsightLine insight={insight} />}
         </span>
       </button>
       {!composing && (

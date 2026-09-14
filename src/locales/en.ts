@@ -281,7 +281,17 @@ export const views = {
     loadMore: "Load older",
     emptyTitle: "Your journal is empty",
     emptyDesc: "Training sessions and notes show up here automatically.",
-    emptyFilter: "No entries for this filter"
+    emptyFilter: "No entries for this filter",
+    thisWeek: "This week",
+    lastWeek: "Last week",
+    showWeek: "Show week",
+    weekTrainings: "{{count}} trainings",
+    weekTrainings_one: "{{count}} training",
+    avgShort: "avg {{avg}}",
+    avgUnit: "avg",
+    vsLast: "vs last",
+    record: "Record",
+    bestOfLast: "Best of {{count}}"
   },
   home: {
     archerRanking: "Archer Ranking",

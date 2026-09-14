@@ -6,7 +6,8 @@ import StudentMessageSheet from '../components/StudentMessageSheet';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
-import { distanceMeters } from '../config/distances';
+import { distanceMeters, distanceKey } from '../config/distances';
+import { computeInsights } from '../components/tagebuch/sessionInsights';
 import {
   NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
@@ -65,6 +66,13 @@ function toMs(v: any): number {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// Poniedziałek tygodnia (jak w PL/DE), północ czasu lokalnego.
+function weekStart(ts: number): Date {
+  const d = new Date(ts);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7));
+}
 
 // Stats wybiera dzień po dacie ISO, a sesje zapisują `date` jako pl-PL
 // („11.09.2026"). Ta sama konwersja co `toISO` w StatsView, żeby trafić
@@ -95,6 +103,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [filter, setFilter] = useState<Filter>('all');
   const [topic, setTopic] = useState<string>('');
   const [focusId, setFocusId] = useState<string | null>(null);
+  // Ręcznie rozwinięte/zwinięte tygodnie; domyślnie otwarte są dwa najnowsze.
+  const [weekOpen, setWeekOpen] = useState<Record<string, boolean>>({});
 
   const hasCoach = coaches.length > 0;
 
@@ -229,6 +239,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             date: data.date || '',
             isTech: data.type === 'TECHNICAL',
             meters: distanceMeters(data.distance),
+            distKey: distanceKey(data),
             label: data.tournamentName || data.distanceLabel || data.distance || '',
             score: data.score || 0,
             arrows: data.arrows || data.totalArrows || 0,
@@ -296,7 +307,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
-  const { items, hasMore } = useMemo(() => {
+  const { items, hasMore, cutoff } = useMemo(() => {
     const sessionsFull = sessions.length >= pageSize;
     const notesFull = notes.length >= pageSize;
     let cutoff = 0;
@@ -335,38 +346,74 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       });
     }
     list.sort((a, b) => b.ts - a.ts);
-    return { items: list, hasMore: sessionsFull || notesFull };
+    return { items: list, hasMore: sessionsFull || notesFull, cutoff };
   }, [sessions, notes, coachEntries, filter, topic, pageSize]);
 
-  // Nagłówek dnia zawsze pokazuje pełną datę; „Heute"/„Gestern" albo dzień
-  // tygodnia stoi obok, a nie zamiast niej.
+  // Rekord można ogłosić tylko, gdy wczytana jest cała historia treningów —
+  // inaczej odznaka mówi uczciwie „najlepszy z ostatnich N".
+  const insights = useMemo(
+    () => computeInsights(sessions, sessions.length < pageSize),
+    [sessions, pageSize],
+  );
+
+  // Tygodnie (od poniedziałku). Podsumowanie liczy wszystkie treningi tygodnia,
+  // niezależnie od filtra — to obraz tygodnia, a nie wynik wyszukiwania.
   const groups = useMemo(() => {
-    const out: { key: string; label: string; date: string; isToday: boolean; items: TimelineItem[] }[] = [];
+    const out: { key: string; label: string; range: string; summary: string; items: TimelineItem[] }[] = [];
     const now = new Date();
-    const todayKey = ymd(now);
-    const yesterdayKey = ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    const thisWeek = weekStart(now.getTime()).getTime();
+    const lastWeek = weekStart(thisWeek - DAY_MS).getTime();
+    const fmt = (d: Date) => d.toLocaleDateString(i18n.language, {
+      day: 'numeric', month: 'short',
+      ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+    });
+    const num = (v: number) => v.toLocaleString(i18n.language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     items.forEach(it => {
-      const d = new Date(it.ts);
-      const key = ymd(d);
+      const start = weekStart(it.ts);
+      const key = ymd(start);
       let g = out[out.length - 1];
       if (!g || g.key !== key) {
-        const label = key === todayKey ? t('tagebuch.today')
-          : key === yesterdayKey ? t('tagebuch.yesterday')
-          : d.toLocaleDateString(i18n.language, { weekday: 'long' });
-        const date = d.toLocaleDateString(i18n.language, {
-          day: 'numeric', month: 'long',
-          ...(d.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
-        });
-        g = { key, label, date, isToday: key === todayKey, items: [] };
+        const startMs = start.getTime();
+        const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+        const inWeek = sessions.filter(s => s.ts >= Math.max(startMs, cutoff) && s.ts < startMs + 7 * DAY_MS);
+        const arrows = inWeek.reduce((n, s) => n + s.arrows, 0);
+        const scored = inWeek.filter(s => !s.isTech && s.score > 0 && s.arrows > 0);
+        const scoredArrows = scored.reduce((n, s) => n + s.arrows, 0);
+        const parts = inWeek.length ? [
+          t('tagebuch.weekTrainings', { count: inWeek.length }),
+          `${arrows} ${t('common.arrows')}`,
+          ...(scoredArrows ? [t('tagebuch.avgShort', { avg: num(scored.reduce((n, s) => n + s.score, 0) / scoredArrows) })] : []),
+        ] : [];
+        g = {
+          key,
+          label: startMs === thisWeek ? t('tagebuch.thisWeek') : startMs === lastWeek ? t('tagebuch.lastWeek') : '',
+          range: `${fmt(start)} – ${fmt(end)}`,
+          summary: parts.join(' · '),
+          items: [],
+        };
         out.push(g);
       }
       g.items.push(it);
     });
     return out;
-  }, [items, i18n.language, t]);
+  }, [items, sessions, cutoff, i18n.language, t]);
 
-  const timeOf = (ts: number) =>
-    ts ? new Date(ts).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' }) : '';
+  // Filtr albo temat = szukanie, więc pokazujemy wszystkie trafienia.
+  const forceOpen = filter !== 'all' || !!topic;
+  const isWeekOpen = (key: string, index: number) => forceOpen || (weekOpen[key] ?? index < 2);
+
+  // Dzień tygodnia + godzina; nagłówek tygodnia niesie resztę daty.
+  const timeOf = (ts: number) => {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const time = d.toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' });
+    const now = new Date();
+    const key = ymd(d);
+    const day = key === ymd(now) ? t('tagebuch.today')
+      : key === ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)) ? t('tagebuch.yesterday')
+      : d.toLocaleDateString(i18n.language, { weekday: 'short' });
+    return `${day} ${time}`;
+  };
 
   // Najbliższe terminy: dwa pierwsze + każdy nowy plan trenera.
   const nextEvents = useMemo(() => {
@@ -387,6 +434,12 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [flashId, setFlashId] = useState<string | null>(null);
   useEffect(() => {
     if (!focusId || isLoading) return;
+    // Wpis w zwiniętym tygodniu: najpierw rozwiń, efekt wróci po renderze.
+    const gi = groups.findIndex(g => g.items.some(it => it.id === focusId));
+    if (gi >= 0 && !isWeekOpen(groups[gi].key, gi)) {
+      setWeekOpen(prev => ({ ...prev, [groups[gi].key]: true }));
+      return;
+    }
     const el = document.getElementById(`tb-${focusId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -394,7 +447,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     setFocusId(null);
     const timer = setTimeout(() => setFlashId(null), 2200);
     return () => clearTimeout(timer);
-  }, [focusId, isLoading, groups]);
+  }, [focusId, isLoading, groups, weekOpen, forceOpen]);
 
   const coachContentCount = useMemo(
     () => sessions.filter(s => s.coachNote).length + coachEntries.length,
@@ -550,23 +603,31 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <p className="text-[11px] font-bold text-gray-400">{t('tagebuch.emptyFilter')}</p>
           </div>
         ) : (
-          groups.map(g => (
+          groups.map((g, gi) => {
+            const open = isWeekOpen(g.key, gi);
+            const toggle = () => setWeekOpen(prev => ({ ...prev, [g.key]: !open }));
+            return (
             <div key={g.key} className="space-y-2">
-              {/* Nagłówek dnia: kafelek z numerem dnia + dzień tygodnia i pełna data */}
-              <div className="pt-3 pb-1 flex items-center gap-2.5">
-                <div className={`w-10 h-10 rounded-xl flex flex-col items-center justify-center leading-none shrink-0 ${g.isToday ? 'bg-emerald-600' : 'bg-[#0a3a2a]'}`}>
-                  <span className="text-[16px] font-black text-white">{Number(g.key.slice(8))}</span>
-                  <span className="text-[8px] font-black uppercase tracking-wider text-[#fed33e] mt-0.5">
-                    {new Date(`${g.key}T00:00:00`).toLocaleDateString(i18n.language, { month: 'short' }).replace('.', '')}
-                  </span>
+              {/* Nagłówek tygodnia: nazwa albo zakres dat + podsumowanie; klik zwija */}
+              <button onClick={toggle} className="w-full pt-3 pb-1 flex items-center gap-2 text-left active:opacity-60" aria-expanded={open}>
+                <div className="flex-1 min-w-0">
+                  <p className="flex items-baseline gap-2 min-w-0">
+                    <span className="text-[15px] font-black text-[#0a3a2a] leading-tight shrink-0">{g.label || g.range}</span>
+                    {g.label && <span className="text-[11px] font-bold text-gray-400 truncate">{g.range}</span>}
+                  </p>
+                  {g.summary && <p className="text-[11px] font-bold text-gray-500 leading-tight mt-0.5 truncate">{g.summary}</p>}
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[14px] font-black text-[#0a3a2a] leading-tight capitalize">{g.label}</p>
-                  <p className="text-[11px] font-bold text-gray-500 leading-tight">{g.date}</p>
-                </div>
-                <div className="flex-1 h-px bg-gray-200 ml-1" />
-              </div>
-              {g.items.map(it => (
+                <span className={`material-symbols-outlined text-[20px] text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}>expand_more</span>
+              </button>
+              {!open && (
+                <button
+                  onClick={toggle}
+                  className="w-full py-2.5 text-[10px] font-black text-gray-500 uppercase tracking-widest bg-white border border-dashed border-gray-200 rounded-2xl active:scale-[0.99] transition-all"
+                >
+                  {t('tagebuch.showWeek')}
+                </button>
+              )}
+              {open && g.items.map(it => (
                 <div
                   key={`${it.kind}_${it.id}`}
                   id={`tb-${it.id}`}
@@ -576,6 +637,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     <SessionCard
                       session={it.session}
                       time={timeOf(it.ts)}
+                      insight={insights.get(it.session.id)}
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
@@ -594,7 +656,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 </div>
               ))}
             </div>
-          ))
+            );
+          })
         )}
 
         {!isLoading && hasMore && (

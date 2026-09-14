@@ -295,7 +295,18 @@ export const views = {
     loadMore: "Wczytaj starsze",
     emptyTitle: "Twój dziennik jest jeszcze pusty",
     emptyDesc: "Treningi i notatki pojawią się tu automatycznie.",
-    emptyFilter: "Brak wpisów dla tego filtra"
+    emptyFilter: "Brak wpisów dla tego filtra",
+    thisWeek: "Ten tydzień",
+    lastWeek: "Poprzedni tydzień",
+    showWeek: "Pokaż tydzień",
+    weekTrainings: "{{count}} treningi",
+    weekTrainings_one: "{{count}} trening",
+    weekTrainings_many: "{{count}} treningów",
+    avgShort: "śr. {{avg}}",
+    avgUnit: "śr.",
+    vsLast: "do ostatniego",
+    record: "Rekord",
+    bestOfLast: "Najlepszy z {{count}}"
   },
   home: {
     archerRanking: "Ranking Łucznika",

@@ -75,13 +75,13 @@ function distanceTier(meters: number): string {
   return 'tb-d5';
 }
 
-function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'blue' | 'onTint' }) {
+function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'amber' | 'onTint' }) {
   const { t } = useTranslation();
   if (!topics.length) return null;
   const cls = tone === 'indigo'
     ? 'bg-indigo-50 text-indigo-600 border-indigo-100'
-    : tone === 'blue'
-    ? 'bg-white text-blue-700 border-blue-100'
+    : tone === 'amber'
+    ? 'bg-white text-amber-800 border-amber-100'
     : tone === 'onTint'
     ? 'bg-white text-emerald-700 border-emerald-200'
     : 'bg-emerald-50 text-emerald-700 border-emerald-100';
@@ -399,17 +399,19 @@ export function SessionCard({ session, time, linkedNotes, hasCoach, isNew, onOpe
         </div>
       ))}
 
+      {/* Trener = brąz: wpis trenera ma złocisty pasek, uwaga do treningu
+          ciemniejszy brąz — ta sama rodzina kolorów, dwa odcienie. */}
       {session.coachNote && (
-        <div className="mt-2 bg-blue-50 rounded-xl p-2.5">
+        <div className="mt-2 bg-amber-50 border-l-4 border-amber-700 rounded-l-sm rounded-r-xl p-2.5">
           <div className="flex items-center justify-between gap-2 mb-0.5">
-            <span className="flex items-center gap-1 text-[10px] font-black text-blue-700">
+            <span className="flex items-center gap-1 text-[10px] font-black text-amber-800">
               <span className="material-symbols-outlined text-[14px]">sports</span>
               {t('tagebuch.coachNote')}
             </span>
             {isNew && <NewBadge />}
           </div>
-          <p className="text-[12px] font-bold text-blue-900 leading-relaxed whitespace-pre-wrap break-words">„{session.coachNote}"</p>
-          <TopicChips topics={session.coachTopics} tone="blue" />
+          <p className="text-[12px] font-bold text-amber-900 leading-relaxed whitespace-pre-wrap break-words">„{session.coachNote}"</p>
+          <TopicChips topics={session.coachTopics} tone="amber" />
         </div>
       )}
 

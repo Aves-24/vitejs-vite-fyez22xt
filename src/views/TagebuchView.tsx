@@ -555,40 +555,41 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           <button onClick={onBack} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h1 className="flex-1 min-w-0 text-lg font-black text-white leading-tight truncate">{t('tagebuch.title')}</h1>
-          {/* Trenerzy: jeden zwarty przycisk zamiast rzędu imion (przy kilku
-              trenerach lista się rozlewała). 1 trener = od razu czat. */}
-          {hasCoach && (
-            <div className="relative shrink-0">
-              <button
-                onClick={() => coaches.length === 1 ? setOpenMessageCoach(coaches[0]) : setCoachMenuOpen(v => !v)}
-                className="relative flex items-center gap-1.5 bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full pl-1 pr-2 py-1"
-                aria-label={t('tagebuch.coachChat')}
-                aria-expanded={coaches.length > 1 ? coachMenuOpen : undefined}
-              >
-                {/* bg i text-[#0a3a2a] na TYM SAMYM elemencie — wtedy ciemny
-                    motyw zostawia ciemny tekst na żółtym (reguła w tailwind.css). */}
-                <div className="flex -space-x-1">
-                  {coaches.slice(0, 3).map(c => (
-                    <span key={c.id} className="w-6 h-6 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black rounded-full ring-2 ring-[#0a3a2a] flex items-center justify-center">
-                      {coachInitials(c)}
-                    </span>
-                  ))}
-                  {coaches.length > 3 && (
-                    <div className="w-6 h-6 bg-white/25 rounded-full ring-2 ring-[#0a3a2a] flex items-center justify-center">
-                      <span className="text-[8px] font-black text-white">+{coaches.length - 3}</span>
-                    </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-black text-white leading-tight truncate">{t('tagebuch.title')}</h1>
+            {/* Trenerzy: jeden zwarty przycisk pod tytułem zamiast rzędu imion
+                (przy kilku trenerach lista się rozlewała). 1 trener = od razu czat. */}
+            {hasCoach && (
+              <div className="relative mt-1 w-fit">
+                <button
+                  onClick={() => coaches.length === 1 ? setOpenMessageCoach(coaches[0]) : setCoachMenuOpen(v => !v)}
+                  className="relative flex items-center gap-1 bg-white/10 hover:bg-white/20 active:scale-95 transition-all rounded-full pl-0.5 pr-1.5 py-0.5"
+                  aria-label={t('tagebuch.coachChat')}
+                  aria-expanded={coaches.length > 1 ? coachMenuOpen : undefined}
+                >
+                  {/* bg i text-[#0a3a2a] na TYM SAMYM elemencie — wtedy ciemny
+                      motyw zostawia ciemny tekst na żółtym (reguła w tailwind.css). */}
+                  <div className="flex -space-x-1">
+                    {coaches.slice(0, 3).map(c => (
+                      <span key={c.id} className="w-6 h-6 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black rounded-full ring-2 ring-[#0b4230] flex items-center justify-center">
+                        {coachInitials(c)}
+                      </span>
+                    ))}
+                    {coaches.length > 3 && (
+                      <span className="w-6 h-6 bg-white/25 text-white text-[8px] font-black rounded-full ring-2 ring-[#0b4230] flex items-center justify-center">
+                        +{coaches.length - 3}
+                      </span>
+                    )}
+                  </div>
+                  <span className="material-symbols-outlined text-[14px] text-white/70">chat</span>
+                  {unreadCoachIds.size > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-[#0a3a2a] rounded-full" />
                   )}
-                </div>
-                <span className="material-symbols-outlined text-[16px] text-white/70">chat</span>
-                {unreadCoachIds.size > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-red-500 border-2 border-[#0a3a2a] rounded-full" />
-                )}
-              </button>
-              {coachMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-30" onClick={() => setCoachMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-2 z-40 min-w-[210px] max-w-[260px] bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5">
+                </button>
+                {coachMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setCoachMenuOpen(false)} />
+                    <div className="absolute left-0 top-full mt-2 z-40 min-w-[210px] max-w-[260px] bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5">
                     <p className="px-3 pt-1 pb-1.5 text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('tagebuch.yourCoaches')}</p>
                     {coaches.map(c => (
                       <button
@@ -604,19 +605,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                         <span className="material-symbols-outlined text-[16px] text-gray-400 shrink-0">chat</span>
                       </button>
                     ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          {/* Z trenerami ich przycisk zajmuje miejsce logo — inaczej tytuł
-              ściskał się do „Tag…" na wąskim telefonie. */}
-          {!hasCoach && (
-            <div className="flex items-center shrink-0">
-              <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
-              <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
-            </div>
-          )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center shrink-0">
+            <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
+            <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
+          </div>
         </div>
         {!isLoading && !focusEditing && (
           <FocusCard focus={activeFocus} progress={focusProgress} onEdit={() => setFocusEditing(true)} />

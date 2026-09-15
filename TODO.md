@@ -1111,6 +1111,18 @@ Z ogona po C25 zostały: **jardy**.
       mogą wymagać wyjątku (Home ma własny układ z licznikami, Scoring
       tryb pełnoekranowy) — zdecydować z userem.
 
+- [ ] **C33. Popup urodzinowy pokazuje „jakieś bzdury”.** Zgłosił user
+      2026-09-15: gdy ktoś ma urodziny, w okienku z życzeniami pojawia się
+      niepoprawna treść. Nie badane. Kod: `src/components/SmartSeasonUpdater.tsx`
+      (wykrycie urodzin ~l. 64, popup ~l. 185–205; teksty
+      `notifications.birthdayTitle/Msg/Info/Close` w `src/locales/*.ts`,
+      imię przez `{ name: userName }`). Na start: zapytać usera o zrzut
+      ekranu / co dokładnie widział i w jakim języku; sprawdzić, skąd
+      bierze się `userName` i data urodzin (format `bDayStr`), oraz czy
+      teksty nie są już nieaktualne (np. wzmianka o „Trenerze AI”, który
+      jest ukryty). Dane urodzin są wrażliwe (C21) — nie logować ich
+      w konsoli (dziś ~l. 65 wypisuje datę urodzin).
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

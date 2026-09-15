@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
-import { FOCUS_GOAL, FOCUS_TEXT_MAX, type ActiveFocus } from '../../utils/focus';
+import { FOCUS_GOAL_DEFAULT, FOCUS_GOAL_OPTIONS, FOCUS_TEXT_MAX, type ActiveFocus } from '../../utils/focus';
 
 // --- FOKUS ---
 // Karta „Twój fokus" na górze dziennika, pasek na Home i edytor. Logika
@@ -11,13 +11,13 @@ export function focusTitle(focus: ActiveFocus, t: (k: string) => string): string
   return focus.text || (focus.topic ? t(`sessionSetup.topic_${focus.topic}`) : '');
 }
 
-/** Kropki postępu: FOCUS_GOAL sztuk, po osiągnięciu celu wszystkie złote. */
-export function FocusDots({ count, small = false }: { count: number; small?: boolean }) {
-  const done = count >= FOCUS_GOAL;
+/** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
+export function FocusDots({ count, goal, small = false }: { count: number; goal: number; small?: boolean }) {
+  const done = count >= goal;
   const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
   return (
     <span className="flex items-center gap-1">
-      {Array.from({ length: FOCUS_GOAL }, (_, i) => (
+      {Array.from({ length: goal }, (_, i) => (
         <span
           key={i}
           className={`${size} rounded-full ${done ? 'bg-[#fed33e]' : i < count ? 'bg-emerald-400' : 'bg-white/25'}`}
@@ -27,20 +27,21 @@ export function FocusDots({ count, small = false }: { count: number; small?: boo
   );
 }
 
-function FocusProgressText({ count }: { count: number }) {
+export function FocusProgressText({ count, goal }: { count: number; goal: number }) {
   const { t } = useTranslation();
   return (
     <span className="text-[10px] font-bold text-white/75">
-      {count >= FOCUS_GOAL
+      {count >= goal
         ? t('tagebuch.focusDone', { count })
-        : t('tagebuch.focusCount', { hit: count, goal: FOCUS_GOAL })}
+        : t('tagebuch.focusCount', { hit: count, goal })}
     </span>
   );
 }
 
-export function FocusCard({ focus, dots, count, onEdit }: {
+export function FocusCard({ focus, dots, goal, count, onEdit }: {
   focus: ActiveFocus | null;
   dots: boolean;        // użytkownik włączył kropki
+  goal: number;         // ile treningów do „utrwalone"
   count: number;        // treningi z zaznaczonym fokusem od jego ustawienia
   onEdit: () => void;
 }) {
@@ -59,7 +60,7 @@ export function FocusCard({ focus, dots, count, onEdit }: {
   }
 
   const showDots = dots && !!focus.topic;
-  const done = showDots && count >= FOCUS_GOAL;
+  const done = showDots && count >= goal;
   return (
     <button
       onClick={onEdit}
@@ -81,8 +82,8 @@ export function FocusCard({ focus, dots, count, onEdit }: {
       <div className="flex items-center gap-2 mt-2 flex-wrap">
         {showDots ? (
           <>
-            <FocusDots count={count} />
-            <FocusProgressText count={count} />
+            <FocusDots count={count} goal={goal} />
+            <FocusProgressText count={count} goal={goal} />
           </>
         ) : (
           <span className="text-[10px] font-bold text-white/60">
@@ -101,9 +102,10 @@ export function FocusCard({ focus, dots, count, onEdit }: {
 }
 
 /** Wąski pasek na Home — przypomina fokus przed treningiem, klik = dziennik. */
-export function FocusStrip({ focus, dots, count, onOpen }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen }: {
   focus: ActiveFocus;
   dots: boolean;
+  goal: number;
   count: number;
   onOpen: () => void;
 }) {
@@ -123,8 +125,8 @@ export function FocusStrip({ focus, dots, count, onOpen }: {
         <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(focus, t)}</p>
         {showDots && (
           <div className="flex items-center gap-2 mt-1">
-            <FocusDots count={count} small />
-            <FocusProgressText count={count} />
+            <FocusDots count={count} goal={goal} small />
+            <FocusProgressText count={count} goal={goal} />
           </div>
         )}
       </div>
@@ -133,11 +135,12 @@ export function FocusStrip({ focus, dots, count, onOpen }: {
   );
 }
 
-export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCancel }: {
+export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave, onEnd, onCancel }: {
   initial: { topic: string; text: string };
   initialDots: boolean;
+  initialGoal: number;
   canEnd: boolean;
-  onSave: (topic: string, text: string, dots: boolean) => Promise<void>;
+  onSave: (topic: string, text: string, dots: boolean, goal: number) => Promise<void>;
   onEnd: () => Promise<void>;
   onCancel: () => void;
 }) {
@@ -145,6 +148,7 @@ export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCan
   const [topic, setTopic] = useState(initial.topic);
   const [text, setText] = useState(initial.text);
   const [dots, setDots] = useState(initialDots);
+  const [goal, setGoal] = useState(initialGoal || FOCUS_GOAL_DEFAULT);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -167,6 +171,18 @@ export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCan
       <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#fed33e]">
         <span className="material-symbols-outlined text-[13px]">track_changes</span>
         {t('tagebuch.focusLabel')}
+        <span className="flex-1" />
+        {/* W nagłówku, nie w rzędzie z Zapisz — trzy przyciski się tam nie mieszczą. */}
+        {canEnd && (
+          <button
+            onClick={() => run(onEnd)}
+            disabled={isSaving}
+            className="flex items-center gap-1 whitespace-nowrap px-2.5 py-1 bg-red-500/25 text-red-100 border border-red-300/50 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[12px]">close</span>
+            {t('tagebuch.focusEnd')}
+          </button>
+        )}
       </div>
 
       <div>
@@ -187,39 +203,41 @@ export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCan
       />
 
       {/* Kropki to opcja dla chętnych — kto trenuje dla zabawy, nie musi
-          niczego zaznaczać. Ustawienie na konto, nie na jeden fokus. */}
-      <button
-        type="button"
-        role="switch"
-        aria-checked={dots}
-        onClick={() => setDots(v => !v)}
-        className="w-full flex items-center gap-3 bg-black/15 rounded-xl px-3 py-2 text-left"
-      >
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-black text-white flex items-center gap-2">
-            {t('tagebuch.focusDotsLabel')}
-            <FocusDots count={dots ? 2 : 0} small />
-          </p>
-          <p className="text-[10px] font-bold text-white/55 leading-snug mt-0.5">{t('tagebuch.focusDotsHint', { goal: FOCUS_GOAL })}</p>
+          niczego zaznaczać. „Wył." albo ile treningów poświęcić na fokus.
+          Ustawienie na konto, nie na jeden fokus (działa też z celem trenera). */}
+      <div className="bg-black/15 rounded-xl px-3 py-2.5">
+        <p className="text-[11px] font-black text-white">{t('tagebuch.focusDotsLabel')}</p>
+        <div className="grid grid-cols-5 gap-1 mt-2" role="radiogroup" aria-label={t('tagebuch.focusDotsLabel')}>
+          {[0, ...FOCUS_GOAL_OPTIONS].map(n => {
+            const active = n === 0 ? !dots : dots && goal === n;
+            return (
+              <button
+                key={n}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                onClick={() => { setDots(n > 0); if (n > 0) setGoal(n); }}
+                className={`py-1.5 rounded-lg text-[11px] font-black transition-all active:scale-95 ${
+                  active ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-white/10 text-white/80'
+                }`}
+              >
+                {n === 0 ? t('tagebuch.focusDotsOff') : n}
+              </button>
+            );
+          })}
         </div>
-        <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${dots ? 'bg-emerald-400' : 'bg-white/25'}`}>
-          {/* bg-[#fff], nie bg-white — ciemny motyw remapuje bg-white na ciemne tło. */}
-          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#fff] transition-all ${dots ? 'left-[18px]' : 'left-0.5'}`} />
-        </span>
-      </button>
+        {dots && (
+          <div className="flex items-center gap-2 mt-2">
+            <FocusDots count={0} goal={goal} small />
+            <span className="text-[10px] font-bold text-white/75">{t('tagebuch.focusDotsGoal', { goal })}</span>
+          </div>
+        )}
+        <p className="text-[10px] font-bold text-white/55 leading-snug mt-1.5">{t('tagebuch.focusDotsHint')}</p>
+      </div>
 
       {error && <p className="text-[10px] font-bold text-red-300">{t('tagebuch.focusSaveError')}</p>}
 
       <div className="flex items-center gap-2">
-        {canEnd && (
-          <button
-            onClick={() => run(onEnd)}
-            disabled={isSaving}
-            className="text-[10px] font-black text-red-300 px-2 py-2 rounded-xl active:bg-white/10 disabled:opacity-40"
-          >
-            {t('tagebuch.focusEnd')}
-          </button>
-        )}
         <div className="flex-1" />
         <button
           onClick={onCancel}
@@ -229,7 +247,7 @@ export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCan
         </button>
         {/* bg i text-[#0a3a2a] na tym samym elemencie — ciemny motyw zostawia ciemny tekst na żółtym. */}
         <button
-          onClick={() => run(() => onSave(topic, text.trim(), dots))}
+          onClick={() => run(() => onSave(topic, text.trim(), dots, goal))}
           disabled={!topic || isSaving}
           className="bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
         >

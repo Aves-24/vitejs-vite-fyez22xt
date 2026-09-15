@@ -11,7 +11,7 @@ import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard, FocusEditor } from '../components/tagebuch/FocusCard';
 import {
-  FOCUS_TEXT_MAX, countFocusSessions, focusFrom as focusStartOf, readOwnFocus, resolveActiveFocus,
+  FOCUS_TEXT_MAX, countFocusSessions, focusFrom as focusStartOf, readFocusGoal, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type OwnFocus,
 } from '../utils/focus';
 import {
@@ -116,6 +116,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [weekOpen, setWeekOpen] = useState<Record<string, boolean>>({});
   const [ownFocus, setOwnFocus] = useState<OwnFocus | null>(null);
   const [focusDots, setFocusDots] = useState(false);
+  const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -182,6 +183,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         const userData = userDoc.exists() ? userDoc.data() : {};
         setOwnFocus(readOwnFocus(userData));
         setFocusDots(userData.focusDots === true);
+        setFocusGoal(readFocusGoal(userData));
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
           try {
@@ -379,20 +381,22 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Ten sam temat = ta sama data startu, więc poprawka słów nie zeruje kropek.
   // Nic się nie zmieniło w fokusie (np. tylko przełącznik kropek) — fokus nie
   // jest przepisywany, żeby cel od trenera nie stał się „własnym".
-  const saveFocus = useCallback(async (topic: string, text: string, dots: boolean) => {
+  const saveFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
     const clean = text.slice(0, FOCUS_TEXT_MAX);
-    const update: { focus?: OwnFocus; focusDots?: boolean } = {};
+    const update: { focus?: OwnFocus; focusDots?: boolean; focusGoal?: number } = {};
     if (!activeFocus || topic !== activeFocus.topic || clean !== activeFocus.text) {
       update.focus = { topic, text: clean, setAt: activeFocus && topic === activeFocus.topic ? activeFocus.since : Date.now() };
     }
     if (dots !== focusDots) update.focusDots = dots;
-    if (update.focus || update.focusDots !== undefined) {
+    if (dots && goal !== focusGoal) update.focusGoal = goal;
+    if (Object.keys(update).length) {
       await updateDoc(doc(db, 'users', userId), update);
     }
     if (update.focus) setOwnFocus(update.focus);
     setFocusDots(dots);
+    if (dots) setFocusGoal(goal);
     setFocusEditing(false);
-  }, [userId, activeFocus, focusDots]);
+  }, [userId, activeFocus, focusDots, focusGoal]);
 
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
@@ -668,13 +672,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           <FocusEditor
             initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
             initialDots={focusDots}
+            initialGoal={focusGoal}
             canEnd={!!activeFocus}
             onSave={saveFocus}
             onEnd={endFocus}
             onCancel={() => setFocusEditing(false)}
           />
         ) : (
-          <FocusCard focus={activeFocus} dots={focusDots} count={focusCount} onEdit={() => setFocusEditing(true)} />
+          <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
         ))}
       </div>
 

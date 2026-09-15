@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { useActiveFocus } from '../utils/focus';
+import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -68,8 +69,11 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [counterSaved, setCounterSaved] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const focusState = useActiveFocus(userId);
-  const focusTopic = focusState?.dots ? focusState.focus?.topic || '' : '';
+  // [FOKUS] Aktualny fokus widać w oknie treningu technicznego, a jego temat
+  // jest zaznaczony z góry — dla każdego, kto ma fokus; można go odznaczyć.
+  const focusState = useActiveFocus(userId, true);
+  const activeFocus = focusState?.focus ?? null;
+  const focusTopic = activeFocus?.topic || '';
 
   const toggleTopic = (id: string) => {
     setSelectedTopics(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
@@ -463,7 +467,6 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="flex gap-2">
           <button
             onClick={() => {
-              // [FOKUS] Kto zbiera kropki, ma temat fokusu zaznaczony z góry.
               if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
               setShowTechModal(true);
             }}
@@ -548,6 +551,26 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 </div>
               </div>
             </div>
+
+            {/* TWÓJ FOKUS — przypomnienie; temat już zaznaczony niżej */}
+            {activeFocus && (
+              <div className="bg-[#0a3a2a] rounded-2xl px-3 py-2 mb-3 flex items-center gap-2.5">
+                <span className="material-symbols-outlined text-[20px] text-[#fed33e] shrink-0">track_changes</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
+                    {t('tagebuch.focusLabel')}
+                    {activeFocus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
+                  </p>
+                  <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(activeFocus, t)}</p>
+                  {focusState?.dots && focusTopic && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <FocusDots count={focusState.count} goal={focusState.goal} small />
+                      <FocusProgressText count={focusState.count} goal={focusState.goal} />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* TEMATY */}
             <div className="mb-3">

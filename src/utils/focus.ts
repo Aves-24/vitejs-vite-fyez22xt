@@ -6,12 +6,18 @@ import { db } from '../firebase';
 // „Nad czym teraz pracuję". Własny fokus siedzi w users/{uid}.focus; trener
 // ustawia fokus wpisem typu „Ziel" w coachLog. Obowiązuje nowszy z nich.
 // Kropki (postęp) są opcjonalne — users/{uid}.focusDots. Kto je włączy,
-// zaznacza fokus przy treningach (temat w session.topics); po FOCUS_GOAL
-// takich treningach fokus jest „utrwalony". Trening bez fokusu niczego nie
-// zeruje — liczy się suma, nie seria.
+// zbiera kropkę za każdy trening z tematem fokusu (session.topics); po
+// users/{uid}.focusGoal takich treningach (2–5, sam wybiera) fokus jest
+// „utrwalony". Trening bez fokusu niczego nie zeruje — suma, nie seria.
 
 export const FOCUS_TEXT_MAX = 120;
-export const FOCUS_GOAL = 5;
+export const FOCUS_GOAL_OPTIONS = [2, 3, 4, 5] as const;
+export const FOCUS_GOAL_DEFAULT = 5;
+
+export function readFocusGoal(userData: any): number {
+  const g = userData?.focusGoal;
+  return (FOCUS_GOAL_OPTIONS as readonly number[]).includes(g) ? g : FOCUS_GOAL_DEFAULT;
+}
 
 // users/{uid}.focus — własny fokus albo jego zakończenie (cleared). Zakończenie
 // też ma datę, żeby starszy cel trenera nie wrócił na górę sam z siebie.
@@ -86,6 +92,7 @@ async function loadLatestCoachGoal(userId: string): Promise<CoachGoal | undefine
 export interface FocusState {
   focus: ActiveFocus | null;
   dots: boolean;
+  goal: number;
   count: number;         // liczone tylko przy włączonych kropkach
 }
 
@@ -120,7 +127,7 @@ export function useActiveFocus(userId: string | null | undefined, withCount = fa
             focus,
           );
         }
-        if (!cancelled) setState({ focus, dots, count });
+        if (!cancelled) setState({ focus, dots, goal: readFocusGoal(data), count });
       } catch (e) {
         console.error('Fokus: błąd wczytywania', e);
       }

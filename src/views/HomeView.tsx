@@ -1287,6 +1287,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             <FocusStrip
               focus={focusState.focus}
               dots={focusState.dots}
+              goal={focusState.goal}
               count={focusState.count}
               onOpen={() => onNavigate?.('MY_COACH')}
             />

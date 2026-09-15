@@ -673,6 +673,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
             initialDots={focusDots}
             initialGoal={focusGoal}
+            progress={focusDots && activeFocus?.topic ? { count: focusCount, goal: focusGoal } : null}
             canEnd={!!activeFocus}
             onSave={saveFocus}
             onEnd={endFocus}

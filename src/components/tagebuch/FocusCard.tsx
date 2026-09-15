@@ -135,10 +135,11 @@ export function FocusStrip({ focus, dots, goal, count, onOpen }: {
   );
 }
 
-export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave, onEnd, onCancel }: {
+export function FocusEditor({ initial, initialDots, initialGoal, progress, canEnd, onSave, onEnd, onCancel }: {
   initial: { topic: string; text: string };
   initialDots: boolean;
   initialGoal: number;
+  progress: { count: number; goal: number } | null;   // tylko przy włączonych kropkach
   canEnd: boolean;
   onSave: (topic: string, text: string, dots: boolean, goal: number) => Promise<void>;
   onEnd: () => Promise<void>;
@@ -151,6 +152,11 @@ export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave,
   const [goal, setGoal] = useState(initialGoal || FOCUS_GOAL_DEFAULT);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  // Gratulacje dotyczą fokusu, który się kończy — nie tego, co ktoś właśnie
+  // przeklikał w edytorze.
+  const goalReached = !!progress && progress.count >= progress.goal;
+  const endTopicLabel = initial.topic ? t(`sessionSetup.topic_${initial.topic}`) : initial.text;
 
   const run = async (fn: () => Promise<void>) => {
     setIsSaving(true);
@@ -225,12 +231,63 @@ export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave,
 
       {error && <p className="text-[10px] font-bold text-red-300">{t('tagebuch.focusSaveError')}</p>}
 
-      {/* „Fokus beenden" zawsze pełnym napisem (samo „Beenden" było niejasne);
-          Abbrechen/Speichern jako ikony, żeby rząd mieścił się na każdym telefonie. */}
+      {/* Zakończenie fokusu nie jest natychmiastowe — najpierw potwierdzenie.
+          Przy komplecie kropek zamiast pytania są gratulacje. */}
+      {confirmEnd ? (
+        goalReached ? (
+          <div className="bg-[rgba(254,211,62,0.15)] border border-[rgba(254,211,62,0.5)] rounded-xl px-3 py-3 text-center">
+            <span className="material-symbols-outlined text-[34px] text-[#fed33e]">emoji_events</span>
+            <p className="text-[15px] font-black text-white leading-tight">{t('tagebuch.focusCongrats')}</p>
+            <p className="text-[11px] font-bold text-white/80 leading-snug mt-1">
+              {t('tagebuch.focusCongratsText', { goal: progress!.goal, topic: endTopicLabel })}
+            </p>
+            <div className="flex justify-center mt-2">
+              <FocusDots count={progress!.count} goal={progress!.goal} />
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="flex-1 py-2.5 bg-white/10 text-white/80 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                {t('tagebuch.focusBack')}
+              </button>
+              <button
+                onClick={() => run(onEnd)}
+                disabled={isSaving}
+                className="flex-1 py-2.5 bg-[#fed33e] text-[#0a3a2a] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+              >
+                {t('tagebuch.focusComplete')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-red-500/15 border border-red-300/40 rounded-xl px-3 py-3">
+            <p className="text-[12px] font-black text-white leading-snug">{t('tagebuch.focusEndConfirm', { topic: endTopicLabel })}</p>
+            <p className="text-[10px] font-bold text-white/70 leading-snug mt-1">{t('tagebuch.focusEndConfirmHint')}</p>
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={() => setConfirmEnd(false)}
+                className="flex-1 py-2.5 bg-white/10 text-white/80 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+              >
+                {t('tagebuch.focusBack')}
+              </button>
+              <button
+                onClick={() => run(onEnd)}
+                disabled={isSaving}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+              >
+                {t('tagebuch.focusEndYes')}
+              </button>
+            </div>
+          </div>
+        )
+      ) : (
+      /* „Fokus beenden" zawsze pełnym napisem (samo „Beenden" było niejasne);
+         Abbrechen/Speichern jako ikony, żeby rząd mieścił się na każdym telefonie. */
       <div className="flex items-center gap-2">
         {canEnd ? (
           <button
-            onClick={() => run(onEnd)}
+            onClick={() => setConfirmEnd(true)}
             disabled={isSaving}
             className="flex-1 whitespace-nowrap px-3 py-2.5 bg-red-500/25 text-red-100 border border-red-300/50 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
           >
@@ -258,6 +315,7 @@ export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave,
           <span className="material-symbols-outlined text-[24px]">check</span>
         </button>
       </div>
+      )}
     </div>
   );
 }

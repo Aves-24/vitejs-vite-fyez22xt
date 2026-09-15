@@ -1,4 +1,5 @@
-// term = zawsze niemiecki termin techniczny (wyświetlany jako podpis dla PL/EN)
+// term = niemiecki termin techniczny (źródło nazw DE). Już NIE wyświetlany jako
+// podpis pod PL/EN — user uznał niemieckie nazwy pod polskimi za błąd (2026-09-15).
 export const TRAINING_TOPICS = [
   {
     id: 'fundamenty',

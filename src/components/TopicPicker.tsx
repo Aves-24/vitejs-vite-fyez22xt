@@ -25,7 +25,6 @@ const LIGHT = {
   boxOn: 'bg-emerald-500 border-emerald-500',
   boxOff: 'border-gray-300 bg-white',
   name: 'text-[#0a3a2a]',
-  term: 'text-gray-400',
 };
 const DARK: typeof LIGHT = {
   caption: 'text-white/50',
@@ -42,7 +41,6 @@ const DARK: typeof LIGHT = {
   boxOn: 'bg-emerald-400 border-emerald-400',
   boxOff: 'border-white/40 bg-transparent',
   name: 'text-white',
-  term: 'text-white/50',
 };
 
 export default function TopicPicker({ selectedTopics, onChange, onDark = false }: TopicPickerProps) {
@@ -132,14 +130,9 @@ export default function TopicPicker({ selectedTopics, onChange, onDark = false }
                 }`}>
                   {checked && <span className="material-symbols-outlined text-white text-[11px]">check</span>}
                 </span>
-                <div className="min-w-0">
-                  <span className={`text-[11px] font-black block ${c.name}`}>
-                    {t(`sessionSetup.topic_${sub.id}`)}
-                  </span>
-                  {t(`sessionSetup.topic_${sub.id}`) !== sub.term && (
-                    <span className={`text-[8px] font-bold ${c.term}`}>{sub.term}</span>
-                  )}
-                </div>
+                <span className={`text-[11px] font-black min-w-0 ${c.name}`}>
+                  {t(`sessionSetup.topic_${sub.id}`)}
+                </span>
               </button>
             );
           })}

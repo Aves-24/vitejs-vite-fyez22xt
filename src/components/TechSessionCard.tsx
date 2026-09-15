@@ -159,12 +159,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
                       }`}>
                         {checked && <span className="material-symbols-outlined text-white text-[11px]">check</span>}
                       </span>
-                      <div className="min-w-0">
-                        <span className="text-[11px] font-black text-[#0a3a2a] block">{t(`sessionSetup.topic_${sub.id}`)}</span>
-                        {t(`sessionSetup.topic_${sub.id}`) !== sub.term && (
-                          <span className="text-[8px] text-gray-400 font-bold">{sub.term}</span>
-                        )}
-                      </div>
+                      <span className="text-[11px] font-black text-[#0a3a2a] min-w-0">{t(`sessionSetup.topic_${sub.id}`)}</span>
                     </button>
                   );
                 })}

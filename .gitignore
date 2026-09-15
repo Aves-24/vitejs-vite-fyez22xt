@@ -21,3 +21,6 @@ ui-debug.log
 # Zduplikowany klon projektu i jednorazowe skrypty latajace
 vitejs-vite-fyez22xt/
 .edit*.mjs
+
+# Lokalne pozwolenia Claude Code — prywatne dla tego komputera
+.claude/settings.local.json

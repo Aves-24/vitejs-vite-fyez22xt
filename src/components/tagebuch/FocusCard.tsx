@@ -171,18 +171,6 @@ export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave,
       <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#fed33e]">
         <span className="material-symbols-outlined text-[13px]">track_changes</span>
         {t('tagebuch.focusLabel')}
-        <span className="flex-1" />
-        {/* W nagłówku, nie w rzędzie z Zapisz — trzy przyciski się tam nie mieszczą. */}
-        {canEnd && (
-          <button
-            onClick={() => run(onEnd)}
-            disabled={isSaving}
-            className="flex items-center gap-1 whitespace-nowrap px-2.5 py-1 bg-red-500/25 text-red-100 border border-red-300/50 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[12px]">close</span>
-            {t('tagebuch.focusEnd')}
-          </button>
-        )}
       </div>
 
       <div>
@@ -237,21 +225,37 @@ export function FocusEditor({ initial, initialDots, initialGoal, canEnd, onSave,
 
       {error && <p className="text-[10px] font-bold text-red-300">{t('tagebuch.focusSaveError')}</p>}
 
+      {/* „Fokus beenden" zawsze pełnym napisem (samo „Beenden" było niejasne);
+          Abbrechen/Speichern jako ikony, żeby rząd mieścił się na każdym telefonie. */}
       <div className="flex items-center gap-2">
-        <div className="flex-1" />
+        {canEnd ? (
+          <button
+            onClick={() => run(onEnd)}
+            disabled={isSaving}
+            className="flex-1 whitespace-nowrap px-3 py-2.5 bg-red-500/25 text-red-100 border border-red-300/50 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+          >
+            {t('tagebuch.focusEnd')}
+          </button>
+        ) : (
+          <div className="flex-1" />
+        )}
         <button
           onClick={onCancel}
-          className="px-3 py-2 bg-white/10 text-white/80 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          aria-label={t('tagebuch.cancel')}
+          title={t('tagebuch.cancel')}
+          className="w-11 h-10 shrink-0 flex items-center justify-center bg-white/10 text-white/80 rounded-xl active:scale-95 transition-all"
         >
-          {t('tagebuch.cancel')}
+          <span className="material-symbols-outlined text-[22px]">close</span>
         </button>
         {/* bg i text-[#0a3a2a] na tym samym elemencie — ciemny motyw zostawia ciemny tekst na żółtym. */}
         <button
           onClick={() => run(() => onSave(topic, text.trim(), dots, goal))}
           disabled={!topic || isSaving}
-          className="bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
+          aria-label={t('tagebuch.save')}
+          title={t('tagebuch.save')}
+          className="w-14 h-10 shrink-0 flex items-center justify-center bg-[#fed33e] text-[#0a3a2a] rounded-xl disabled:opacity-40 active:scale-95 transition-all"
         >
-          {t('tagebuch.save')}
+          <span className="material-symbols-outlined text-[24px]">check</span>
         </button>
       </div>
     </div>

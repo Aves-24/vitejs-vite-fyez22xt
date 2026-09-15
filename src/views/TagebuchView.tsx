@@ -698,27 +698,44 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </div>
         )}
 
-        {/* ALS NÄCHSTES */}
+        {/* ALS NÄCHSTES — biała karta z ramką jak reszta dziennika; szare tło
+            bez ramki ginęło na jasnym tle strony (user, 2026-09-15). */}
         {nextEvents.length > 0 && (
-          <div className="bg-gray-50 rounded-2xl divide-y divide-gray-100 overflow-hidden">
-            {nextEvents.map(ev => (
-              <button
-                key={ev.id}
-                onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-100 transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px] text-emerald-700 shrink-0">event</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('tagebuch.next')}</p>
-                  <p className="text-[12px] font-bold text-[#0a3a2a] truncate">
-                    {eventDateLabel(ev.date)}{ev.time ? ` ${ev.time}` : ''} · {ev.title}
-                    {ev.isCoach && <span className="text-gray-400 font-medium"> · {t('tagebuch.fromCoach')}</span>}
-                  </p>
-                </div>
-                {ev.isCoach && isNew('coach_plan', ev.id) && <NewBadge />}
-                <span className="material-symbols-outlined text-[18px] text-gray-300 shrink-0">chevron_right</span>
-              </button>
-            ))}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-1.5 px-3 pt-2.5 text-[9px] font-black text-emerald-700 uppercase tracking-widest">
+              <span className="material-symbols-outlined text-[14px]">event</span>
+              {t('tagebuch.next')}
+            </div>
+            <div className="divide-y divide-gray-100">
+              {nextEvents.map(ev => {
+                const d = new Date(`${ev.date}T00:00:00`);
+                const valid = !isNaN(d.getTime());
+                return (
+                  <button
+                    key={ev.id}
+                    onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-50 transition-colors"
+                  >
+                    {/* Kafelek z datą — widać go od razu, nawet przy długiej nazwie. */}
+                    <div className="w-11 h-11 shrink-0 rounded-xl bg-[#0a3a2a] flex flex-col items-center justify-center leading-none">
+                      <span className="text-[16px] font-black text-white">{valid ? d.getDate() : '–'}</span>
+                      <span className="text-[8px] font-black uppercase tracking-wider text-[#fed33e] mt-0.5">
+                        {valid ? d.toLocaleDateString(i18n.language, { month: 'short' }).replace('.', '') : ''}
+                      </span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug truncate">{ev.title}</p>
+                      <p className="text-[10px] font-bold text-gray-500 truncate mt-0.5">
+                        {eventDateLabel(ev.date)}{ev.time ? ` · ${ev.time}` : ''}
+                        {ev.isCoach && ` · ${t('tagebuch.fromCoach')}`}
+                      </p>
+                    </div>
+                    {ev.isCoach && isNew('coach_plan', ev.id) && <NewBadge />}
+                    <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">chevron_right</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

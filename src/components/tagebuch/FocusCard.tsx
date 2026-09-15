@@ -1,30 +1,47 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
+import { FOCUS_GOAL, FOCUS_TEXT_MAX, type ActiveFocus } from '../../utils/focus';
 
 // --- FOKUS ---
-// „Nad czym teraz pracuję" przypięte na górze dziennika. Własny fokus siedzi
-// w users/{uid}.focus; trener ustawia fokus wpisem typu „Ziel" w coachLog.
-// Obowiązuje nowszy z nich. Postęp = na ilu z ostatnich treningów od
-// ustawienia fokusu uczeń zaznaczył „Fokus" (temat w session.topics).
-
-export const FOCUS_TEXT_MAX = 120;
-
-export interface ActiveFocus {
-  topic: string;         // '' = bez tematu (cel trenera bez tematów) — bez licznika
-  text: string;
-  since: number;
-  fromCoach: boolean;
-  authorName?: string;
-}
+// Karta „Twój fokus" na górze dziennika, pasek na Home i edytor. Logika
+// (który fokus obowiązuje, liczenie treningów) siedzi w utils/focus.ts.
 
 export function focusTitle(focus: ActiveFocus, t: (k: string) => string): string {
   return focus.text || (focus.topic ? t(`sessionSetup.topic_${focus.topic}`) : '');
 }
 
-export function FocusCard({ focus, progress, onEdit }: {
+/** Kropki postępu: FOCUS_GOAL sztuk, po osiągnięciu celu wszystkie złote. */
+export function FocusDots({ count, small = false }: { count: number; small?: boolean }) {
+  const done = count >= FOCUS_GOAL;
+  const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
+  return (
+    <span className="flex items-center gap-1">
+      {Array.from({ length: FOCUS_GOAL }, (_, i) => (
+        <span
+          key={i}
+          className={`${size} rounded-full ${done ? 'bg-[#fed33e]' : i < count ? 'bg-emerald-400' : 'bg-white/25'}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function FocusProgressText({ count }: { count: number }) {
+  const { t } = useTranslation();
+  return (
+    <span className="text-[10px] font-bold text-white/75">
+      {count >= FOCUS_GOAL
+        ? t('tagebuch.focusDone', { count })
+        : t('tagebuch.focusCount', { hit: count, goal: FOCUS_GOAL })}
+    </span>
+  );
+}
+
+export function FocusCard({ focus, dots, count, onEdit }: {
   focus: ActiveFocus | null;
-  progress: boolean[];   // od najstarszego: czy trening miał zaznaczony fokus
+  dots: boolean;        // użytkownik włączył kropki
+  count: number;        // treningi z zaznaczonym fokusem od jego ustawienia
   onEdit: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -41,7 +58,8 @@ export function FocusCard({ focus, progress, onEdit }: {
     );
   }
 
-  const hits = progress.filter(Boolean).length;
+  const showDots = dots && !!focus.topic;
+  const done = showDots && count >= FOCUS_GOAL;
   return (
     <button
       onClick={onEdit}
@@ -60,38 +78,73 @@ export function FocusCard({ focus, progress, onEdit }: {
       {focus.text && focus.topic && (
         <p className="text-[10px] font-bold text-white/60 mt-0.5">{t(`sessionSetup.topic_${focus.topic}`)}</p>
       )}
-      <div className="flex items-center gap-1 mt-2">
-        {focus.topic && progress.length > 0 ? (
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        {showDots ? (
           <>
-            {progress.map((hit, i) => (
-              <span key={i} className={`w-4 h-1.5 rounded-full ${hit ? 'bg-emerald-400' : 'bg-white/25'}`} />
-            ))}
-            <span className="text-[10px] font-bold text-white/75 ml-1.5">
-              {t('tagebuch.focusProgress', { hit: hits, count: progress.length })}
-            </span>
+            <FocusDots count={count} />
+            <FocusProgressText count={count} />
           </>
         ) : (
           <span className="text-[10px] font-bold text-white/60">
-            {focus.topic
-              ? t('tagebuch.focusHint')
-              : t('tagebuch.focusSince', { date: new Date(focus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) })}
+            {t('tagebuch.focusSince', { date: new Date(focus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) })}
           </span>
         )}
       </div>
+      {/* Cała karta i tak otwiera edytor — to tylko zachęta, nie osobny przycisk. */}
+      {done && (
+        <span className="inline-block mt-2 bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">
+          {t('tagebuch.focusPickNew')}
+        </span>
+      )}
     </button>
   );
 }
 
-export function FocusEditor({ initial, canEnd, onSave, onEnd, onCancel }: {
+/** Wąski pasek na Home — przypomina fokus przed treningiem, klik = dziennik. */
+export function FocusStrip({ focus, dots, count, onOpen }: {
+  focus: ActiveFocus;
+  dots: boolean;
+  count: number;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  const showDots = dots && !!focus.topic;
+  return (
+    <button
+      onClick={onOpen}
+      className="w-full flex items-center gap-3 bg-[#0a3a2a] rounded-[20px] px-4 py-2.5 text-left active:scale-[0.99] transition-all shadow-sm"
+    >
+      <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
+          {t('tagebuch.focusLabel')}
+          {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
+        </p>
+        <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(focus, t)}</p>
+        {showDots && (
+          <div className="flex items-center gap-2 mt-1">
+            <FocusDots count={count} small />
+            <FocusProgressText count={count} />
+          </div>
+        )}
+      </div>
+      <span className="material-symbols-outlined text-[20px] text-white/60 shrink-0">chevron_right</span>
+    </button>
+  );
+}
+
+export function FocusEditor({ initial, initialDots, canEnd, onSave, onEnd, onCancel }: {
   initial: { topic: string; text: string };
+  initialDots: boolean;
   canEnd: boolean;
-  onSave: (topic: string, text: string) => Promise<void>;
+  onSave: (topic: string, text: string, dots: boolean) => Promise<void>;
   onEnd: () => Promise<void>;
   onCancel: () => void;
 }) {
   const { t } = useTranslation();
   const [topic, setTopic] = useState(initial.topic);
   const [text, setText] = useState(initial.text);
+  const [dots, setDots] = useState(initialDots);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -107,17 +160,20 @@ export function FocusEditor({ initial, canEnd, onSave, onEnd, onCancel }: {
     }
   };
 
+  // Edytor otwiera się W MIEJSCU karty, na zielonym nagłówku — biały blok
+  // niżej wyglądał, jakby karta fokusu zniknęła.
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-3 space-y-3">
-      <div className="flex items-center gap-1.5 text-[11px] font-black text-[#0a3a2a]">
-        <span className="material-symbols-outlined text-[16px] text-emerald-600">track_changes</span>
+    <div className="mt-3 w-full bg-white/10 ring-1 ring-white/20 rounded-2xl px-3 py-2.5 space-y-3">
+      <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#fed33e]">
+        <span className="material-symbols-outlined text-[13px]">track_changes</span>
         {t('tagebuch.focusLabel')}
       </div>
 
       <div>
-        <p className="text-[10px] font-bold text-gray-500 mb-1.5">{t('tagebuch.focusPickTopic')}</p>
+        <p className="text-[10px] font-bold text-white/70 mb-1.5">{t('tagebuch.focusPickTopic')}</p>
         {/* Fokus to JEDEN temat — nowo kliknięty zastępuje poprzedni. */}
         <TopicPicker
+          onDark
           selectedTopics={topic ? [topic] : []}
           onChange={next => setTopic(next.filter(x => x !== topic)[0] ?? '')}
         />
@@ -127,17 +183,39 @@ export function FocusEditor({ initial, canEnd, onSave, onEnd, onCancel }: {
         value={text}
         onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
         placeholder={t('tagebuch.focusTextPlaceholder')}
-        className="w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 bg-gray-50 rounded-xl px-3 py-2 outline-none"
+        className="w-full text-[13px] font-medium text-white placeholder-white/40 bg-white/10 rounded-xl px-3 py-2 outline-none focus:ring-1 focus:ring-white/30"
       />
 
-      {error && <p className="text-[10px] font-bold text-red-500">{t('tagebuch.focusSaveError')}</p>}
+      {/* Kropki to opcja dla chętnych — kto trenuje dla zabawy, nie musi
+          niczego zaznaczać. Ustawienie na konto, nie na jeden fokus. */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={dots}
+        onClick={() => setDots(v => !v)}
+        className="w-full flex items-center gap-3 bg-black/15 rounded-xl px-3 py-2 text-left"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-black text-white flex items-center gap-2">
+            {t('tagebuch.focusDotsLabel')}
+            <FocusDots count={dots ? 2 : 0} small />
+          </p>
+          <p className="text-[10px] font-bold text-white/55 leading-snug mt-0.5">{t('tagebuch.focusDotsHint', { goal: FOCUS_GOAL })}</p>
+        </div>
+        <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${dots ? 'bg-emerald-400' : 'bg-white/25'}`}>
+          {/* bg-[#fff], nie bg-white — ciemny motyw remapuje bg-white na ciemne tło. */}
+          <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#fff] transition-all ${dots ? 'left-[18px]' : 'left-0.5'}`} />
+        </span>
+      </button>
+
+      {error && <p className="text-[10px] font-bold text-red-300">{t('tagebuch.focusSaveError')}</p>}
 
       <div className="flex items-center gap-2">
         {canEnd && (
           <button
             onClick={() => run(onEnd)}
             disabled={isSaving}
-            className="text-[10px] font-black text-red-500 px-2 py-2 rounded-xl active:bg-red-50 disabled:opacity-40"
+            className="text-[10px] font-black text-red-300 px-2 py-2 rounded-xl active:bg-white/10 disabled:opacity-40"
           >
             {t('tagebuch.focusEnd')}
           </button>
@@ -145,14 +223,15 @@ export function FocusEditor({ initial, canEnd, onSave, onEnd, onCancel }: {
         <div className="flex-1" />
         <button
           onClick={onCancel}
-          className="px-3 py-2 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
+          className="px-3 py-2 bg-white/10 text-white/80 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all"
         >
           {t('tagebuch.cancel')}
         </button>
+        {/* bg i text-[#0a3a2a] na tym samym elemencie — ciemny motyw zostawia ciemny tekst na żółtym. */}
         <button
-          onClick={() => run(() => onSave(topic, text.trim()))}
+          onClick={() => run(() => onSave(topic, text.trim(), dots))}
           disabled={!topic || isSaving}
-          className="bg-[#0a3a2a] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
+          className="bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
         >
           {t('tagebuch.save')}
         </button>

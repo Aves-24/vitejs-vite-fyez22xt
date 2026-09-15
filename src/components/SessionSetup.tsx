@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
+import { useActiveFocus } from '../utils/focus';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -67,6 +68,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [counterSaved, setCounterSaved] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const focusState = useActiveFocus(userId);
+  const focusTopic = focusState?.dots ? focusState.focus?.topic || '' : '';
 
   const toggleTopic = (id: string) => {
     setSelectedTopics(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
@@ -459,7 +462,11 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
         <div className="flex gap-2">
           <button
-            onClick={() => setShowTechModal(true)}
+            onClick={() => {
+              // [FOKUS] Kto zbiera kropki, ma temat fokusu zaznaczony z góry.
+              if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
+              setShowTechModal(true);
+            }}
             disabled={!selectedDistance}
             className="flex-1 py-5 bg-emerald-600 text-white rounded-[20px] font-black flex flex-col items-center justify-end relative overflow-hidden active:scale-95 shadow-lg shadow-emerald-100 transition-all disabled:opacity-50 min-h-[90px]"
           >
@@ -560,6 +567,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     return (
                       <button key={id} onClick={() => toggleTopic(id)}
                         className="flex items-center gap-0.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black active:scale-95 transition-all">
+                        {id === focusTopic && <span className="material-symbols-outlined text-[11px] text-[#b8860b] mr-0.5" aria-label={t('tagebuch.focusLabel')}>track_changes</span>}
                         {t(`sessionSetup.topic_${sub.id}`)}
                         <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>
                       </button>

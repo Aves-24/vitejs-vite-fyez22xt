@@ -13,6 +13,8 @@ import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
+import { useActiveFocus } from '../utils/focus';
+import { FocusStrip } from '../components/tagebuch/FocusCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -55,6 +57,8 @@ interface HomeViewProps {
 
 export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
   const { t, i18n } = useTranslation();
+  // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
+  const focusState = useActiveFocus(userId, true);
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
@@ -1277,6 +1281,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </button>
 
         </div>
+
+        {focusState?.focus && (
+          <div className="mt-2">
+            <FocusStrip
+              focus={focusState.focus}
+              dots={focusState.dots}
+              count={focusState.count}
+              onOpen={() => onNavigate?.('MY_COACH')}
+            />
+          </div>
+        )}
 
         {/* AI COACH — tymczasowo ukryte */}
 

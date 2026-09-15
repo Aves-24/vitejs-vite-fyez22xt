@@ -15,6 +15,7 @@ import Weather from '../components/Weather';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
+import { useActiveFocus } from '../utils/focus';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { isBlowgunSession } from '../config/targets/blowgun';
@@ -176,6 +177,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   
   const [sessionNote, setSessionNote] = useState('');
   const [isNotePublic, setIsNotePublic] = useState(true); // NOWY STAN DLA CHECKBOXA TRENERA
+  // [FOKUS] Tylko u tych, którzy włączyli kropki — domyślnie zaznaczony, żeby
+  // nikt nie tracił postępu przez zapomnienie. W Arenie się nie pokazuje.
+  const focusState = useActiveFocus(battleId ? null : userId);
+  const focusTopic = focusState?.dots ? focusState.focus?.topic || '' : '';
+  const [focusOn, setFocusOn] = useState(true);
   const [currentWeather, setCurrentWeather] = useState<any>(null);
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
@@ -482,6 +488,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         timestamp: sessionTimestamp,
         note: sessionNote,
         isNotePublic: isNotePublic,
+        ...(focusTopic && focusOn ? { topics: [focusTopic] } : {}),
         weather: currentWeather,
         ends: submittedEnds,
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
@@ -848,6 +855,27 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 {t('scoringView.shareWithCoach', 'Udostępnij notatkę trenerowi')}
               </span>
             </label>
+
+            {focusTopic && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={focusOn}
+                onClick={() => setFocusOn(v => !v)}
+                className="mt-3 w-full flex items-center gap-3 bg-white border border-emerald-100 rounded-xl px-3 py-2 text-left active:scale-[0.99] transition-all"
+              >
+                <span className="material-symbols-outlined text-[20px] text-[#b8860b] shrink-0">track_changes</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-black text-[#0a3a2a] truncate">
+                    {t('scoringView.focusToggle', { topic: t(`sessionSetup.topic_${focusTopic}`) })}
+                  </p>
+                  <p className="text-[10px] font-bold text-gray-400">{t('scoringView.focusToggleHint')}</p>
+                </div>
+                <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${focusOn ? 'bg-emerald-500' : 'bg-gray-300'}`}>
+                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#fff] transition-all ${focusOn ? 'left-[18px]' : 'left-0.5'}`} />
+                </span>
+              </button>
+            )}
           </div>
         </div>
       )}

@@ -9,7 +9,11 @@ import { notificationId, type NotificationType } from '../utils/notificationType
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
-import { FocusCard, FocusEditor, FOCUS_TEXT_MAX, type ActiveFocus } from '../components/tagebuch/FocusCard';
+import { FocusCard, FocusEditor } from '../components/tagebuch/FocusCard';
+import {
+  FOCUS_TEXT_MAX, countFocusSessions, focusFrom as focusStartOf, readOwnFocus, resolveActiveFocus,
+  type ActiveFocus, type OwnFocus,
+} from '../utils/focus';
 import {
   NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
@@ -27,17 +31,6 @@ const PAGE = 50;
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
 type Filter = 'all' | 'coach' | 'mine';
-
-// users/{uid}.focus — własny fokus albo jego zakończenie (cleared). Zakończenie
-// też ma datę, żeby starszy cel trenera nie wrócił na górę sam z siebie.
-interface OwnFocus {
-  topic?: string;
-  text?: string;
-  setAt: number;
-  cleared?: boolean;
-}
-
-const FOCUS_PROGRESS_LAST = 4; // licznik: tyle ostatnich treningów od ustawienia fokusu
 
 interface CoachInfo {
   id: string;
@@ -122,6 +115,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Ręcznie rozwinięte/zwinięte tygodnie; domyślnie otwarte są dwa najnowsze.
   const [weekOpen, setWeekOpen] = useState<Record<string, boolean>>({});
   const [ownFocus, setOwnFocus] = useState<OwnFocus | null>(null);
+  const [focusDots, setFocusDots] = useState(false);
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -185,8 +179,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       try {
         const userDoc = await getDoc(doc(db, 'users', userId));
         const coachIds: string[] = userDoc.exists() ? (userDoc.data().coaches || []) : [];
-        const focus = userDoc.exists() ? userDoc.data().focus : null;
-        if (focus && typeof focus.setAt === 'number') setOwnFocus(focus);
+        const userData = userDoc.exists() ? userDoc.data() : {};
+        setOwnFocus(readOwnFocus(userData));
+        setFocusDots(userData.focusDots === true);
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
           try {
@@ -362,39 +357,42 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Nowszy wygrywa: własny fokus (albo jego zakończenie) vs ostatni cel trenera.
   const activeFocus = useMemo<ActiveFocus | null>(() => {
     const goal = coachEntries.filter(e => e.type === 'goal').sort((a, b) => b.ts - a.ts)[0];
-    if (ownFocus && (!goal || ownFocus.setAt >= goal.ts)) {
-      if (ownFocus.cleared || !ownFocus.topic) return null;
-      return { topic: ownFocus.topic, text: ownFocus.text || '', since: ownFocus.setAt, fromCoach: false };
-    }
-    if (!goal) return null;
-    return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName };
+    return resolveActiveFocus(ownFocus, goal);
   }, [ownFocus, coachEntries]);
 
-  // Liczą się treningi od początku dnia ustawienia fokusu — ktoś trenuje rano,
-  // a fokus wpisuje wieczorem, i ten poranny trening też chce zaznaczyć.
-  const focusFrom = activeFocus ? new Date(activeFocus.since).setHours(0, 0, 0, 0) : 0;
+  const focusFrom = activeFocus ? focusStartOf(activeFocus) : 0;
 
-  // Ostatnie treningi od ustawienia fokusu, od najstarszego (kropki w karcie).
-  const focusProgress = useMemo(() => {
-    if (!activeFocus?.topic) return [];
-    return sessions
-      .filter(s => s.ts >= focusFrom)
-      .slice(0, FOCUS_PROGRESS_LAST)
-      .reverse()
-      .map(s => s.topics.includes(activeFocus.topic));
-  }, [sessions, activeFocus, focusFrom]);
+  // Liczone z wczytanej strony osi czasu (50 treningów) — przy starszym
+  // fokusie i bardzo częstych treningach może zaniżyć, ale wtedy dawno jest 5.
+  const focusCount = useMemo(
+    () => activeFocus ? countFocusSessions(sessions, activeFocus) : 0,
+    [sessions, activeFocus],
+  );
 
-  const writeFocus = useCallback(async (focus: OwnFocus) => {
+  const endFocus = useCallback(async () => {
+    const focus: OwnFocus = { cleared: true, setAt: Date.now() };
     await updateDoc(doc(db, 'users', userId), { focus });
     setOwnFocus(focus);
     setFocusEditing(false);
   }, [userId]);
 
-  const saveFocus = useCallback(
-    (topic: string, text: string) => writeFocus({ topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: Date.now() }),
-    [writeFocus],
-  );
-  const endFocus = useCallback(() => writeFocus({ cleared: true, setAt: Date.now() }), [writeFocus]);
+  // Ten sam temat = ta sama data startu, więc poprawka słów nie zeruje kropek.
+  // Nic się nie zmieniło w fokusie (np. tylko przełącznik kropek) — fokus nie
+  // jest przepisywany, żeby cel od trenera nie stał się „własnym".
+  const saveFocus = useCallback(async (topic: string, text: string, dots: boolean) => {
+    const clean = text.slice(0, FOCUS_TEXT_MAX);
+    const update: { focus?: OwnFocus; focusDots?: boolean } = {};
+    if (!activeFocus || topic !== activeFocus.topic || clean !== activeFocus.text) {
+      update.focus = { topic, text: clean, setAt: activeFocus && topic === activeFocus.topic ? activeFocus.since : Date.now() };
+    }
+    if (dots !== focusDots) update.focusDots = dots;
+    if (update.focus || update.focusDots !== undefined) {
+      await updateDoc(doc(db, 'users', userId), update);
+    }
+    if (update.focus) setOwnFocus(update.focus);
+    setFocusDots(dots);
+    setFocusEditing(false);
+  }, [userId, activeFocus, focusDots]);
 
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
@@ -666,22 +664,21 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
           </div>
         </div>
-        {!isLoading && !focusEditing && (
-          <FocusCard focus={activeFocus} progress={focusProgress} onEdit={() => setFocusEditing(true)} />
-        )}
-      </div>
-
-      <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">
-
-        {focusEditing && (
+        {!isLoading && (focusEditing ? (
           <FocusEditor
             initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
+            initialDots={focusDots}
             canEnd={!!activeFocus}
             onSave={saveFocus}
             onEnd={endFocus}
             onCancel={() => setFocusEditing(false)}
           />
-        )}
+        ) : (
+          <FocusCard focus={activeFocus} dots={focusDots} count={focusCount} onEdit={() => setFocusEditing(true)} />
+        ))}
+      </div>
+
+      <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">
 
         {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}
         {composerOpen && (
@@ -829,7 +826,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       session={it.session}
                       time={timeOf(it.ts)}
                       insight={insights.get(it.session.id)}
-                      focus={activeFocus?.topic && it.session.ts >= focusFrom
+                      focus={focusDots && activeFocus?.topic && it.session.ts >= focusFrom
                         ? { topic: activeFocus.topic, onToggle: () => toggleSessionFocus(it.session, activeFocus.topic) }
                         : undefined}
                       linkedNotes={it.linked}

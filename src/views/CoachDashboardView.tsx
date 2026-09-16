@@ -294,6 +294,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     return () => { cancelled = true; };
   }, [userId]);
 
+  // [C34] Esc zamyka skaner — i, co ważniejsze, gasi kamerę. Bez tego
+  // zamknięcie klawiaturą zostawiłoby diodę zapaloną.
+  useEffect(() => {
+    if (!isScanning) return;
+    const onKey = async (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      await stopScanner();
+      setIsScanning(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isScanning]);
+
   useEffect(() => {
     if (!pendingOpenStudentId || students.length === 0) return;
     if (students.some(s => s.id === pendingOpenStudentId)) {
@@ -1405,8 +1418,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </button>
       </div>
 
-      {isScanning && (
-        <div className="bg-white rounded-[32px] p-4 shadow-xl border border-gray-100 mb-6 relative overflow-hidden animate-fade-in-up">
+      {/* [C34] Skaner jako popup (zgłoszenie usera 2026-09-16: doczepiał się
+          na dole strony, pod listą uczniów, i łatwo było go przeoczyć).
+          Przez createPortal do body, bo <main> w App.tsx ma `scale-*`, czyli
+          transform — `fixed` w jego środku kotwiczy się do strony, nie do okna.
+          Zawartość karty i kolejność elementów zostają bez zmian, żeby nie
+          ruszać startu kamery: startScanner() czeka mikrotask na #reader
+          i musi zachować kontekst gestu użytkownika (inaczej iOS nie da
+          kamery), a portal trafia do tego samego commita Reacta. */}
+      {isScanning && createPortal(
+        <div
+          className="fixed inset-0 z-[500000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+          onClick={async () => { await stopScanner(); setIsScanning(false); }}
+        >
+        <div
+          className="bg-white rounded-[32px] p-4 shadow-xl border border-gray-100 relative overflow-hidden w-full max-w-sm max-h-[90vh] overflow-y-auto"
+          onClick={(e) => e.stopPropagation()}
+        >
           <div className="flex justify-between items-center mb-4">
             <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.addStudentHeader')}</span>
             <button onClick={async () => { await stopScanner(); setIsScanning(false); }} className="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center active:scale-90">
@@ -1451,6 +1479,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </div>
           )}
         </div>
+        </div>,
+        document.body
       )}
 
       {viewMode === 'groups' && (

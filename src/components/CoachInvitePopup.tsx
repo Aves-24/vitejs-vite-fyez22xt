@@ -126,7 +126,7 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
           </p>
         )}
         <p className="text-center text-[11px] font-bold text-gray-400 mb-6 leading-relaxed">
-          {t('coachInvite.desc', 'Akceptując dajesz mu dostęp do Twoich sesji strzeleckich i statystyk. Możesz cofnąć ten dostęp w każdej chwili w Ustawieniach.')}
+          {t('coachInvite.desc', 'Akceptując, udostępniasz trenerowi swoje imię i nazwisko, klub oraz wszystkie sesje strzeleckie i statystyki. Trener nie zobaczy Twojej daty urodzenia ani adresu e-mail. Dostęp możesz cofnąć w każdej chwili w Ustawieniach.')}
         </p>
         <div className="flex gap-2">
           <button

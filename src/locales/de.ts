@@ -1515,7 +1515,7 @@ export const views = {
   coachInvite: {
     title: "Trainer-Einladung",
     message: "{{name}} möchte dich als Trainer beobachten.",
-    desc: "Mit der Annahme gibst du Zugriff auf deine Trainingseinheiten und Statistiken. Du kannst diesen Zugriff jederzeit in den Einstellungen widerrufen.",
+    desc: "Mit der Annahme gibst du dem Trainer deinen Vor- und Nachnamen, deinen Verein sowie alle Trainingseinheiten und Statistiken frei. Dein Geburtsdatum und deine E-Mail-Adresse sieht der Trainer nicht. Du kannst den Zugriff jederzeit in den Einstellungen widerrufen.",
     accept: "Annehmen",
     reject: "Ablehnen",
     unknownCoach: "Trainer",

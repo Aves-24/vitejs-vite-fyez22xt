@@ -1168,6 +1168,30 @@ Z ogona po C25 zostały: **jardy**.
       kartę w przepływie, ale po kliknięciu przewinąć do niej
       (`scrollIntoView({ behavior: "smooth", block: "center" })`).
 
+- [ ] **C35. Zgoda ucznia ma wprost mówić, że trener zobaczy imię
+      i nazwisko.** Zgłosił user 2026-09-16 („po zeskanowaniu powinno u ucznia
+      wyskoczyć potwierdzenie, czy na pewno udostępnić trenerowi profil").
+      **Stan faktyczny: sam mechanizm zgody JUŻ JEST** i działa poprawnie —
+      zeskanowanie QR nie dodaje ucznia, tylko zakłada zaproszenie
+      w `coachInvites` (`CoachDashboardView.tsx`, `handleAddStudent`),
+      a uczniowi wyskakuje popup `components/CoachInvitePopup.tsx`
+      (Akceptuj / Odrzuć). Relacja powstaje dopiero po akceptacji.
+      **Czego brakuje:** tekst `coachInvite.desc` wymienia tylko „sesje
+      strzeleckie i statystyki". Nie mówi, że po akceptacji trener zobaczy
+      IMIĘ I NAZWISKO — a zobaczy, bo relacja odblokowuje `users/{uid}`
+      (dane wrażliwe zostają poza zasięgiem dzięki C21: birthDate/gender
+      żyją w `users/{uid}/private/profile`).
+      **Do zrobienia:** (1) rozszerzyć `coachInvite.desc` w `src/locales/*.ts`
+      (PL/DE/EN) o wyliczenie, co trener zobaczy: imię i nazwisko, klub,
+      sesje i statystyki — oraz że NIE widzi daty urodzenia ani e-maila;
+      (2) rozważyć pokazanie w popupie, pod jaką nazwą uczeń będzie widoczny
+      dla trenera; (3) zachować zdanie o cofnięciu dostępu w Ustawieniach
+      (już jest). Zmiana jest czysto tekstowa — bez ruszania reguł.
+      **Kontekst prawny:** to jest moment zbierania zgody na udostępnienie
+      danych osobowych innej osobie, więc treść powinna być zgodna z tym, co
+      mówi polityka prywatności (patrz zadania prawne przed publikacją).
+      Przy małoletnich < 16 lat dochodzi C22 (zgoda opiekuna).
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

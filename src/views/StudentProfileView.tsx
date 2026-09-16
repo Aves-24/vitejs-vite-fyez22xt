@@ -383,9 +383,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // (własny fokus vs najnowszy „Ziel" z dziennika trenerskiego, wygrywa
   // nowszy). Reguły przepuszczają trenera do users/{uid}, coachLog i sessions
   // (relacja w coaches[]), więc hook działa bez zmian. `true` = kropki postępu.
-  // Klucz odświeżania: każdy powrót na Przegląd wczytuje fokus od nowa — trener
-  // mógł przed chwilą dodać „Ziel" w zakładce Dziennik.
-  const focusState = useActiveFocus(studentId, true, activeTab === 'overview');
+  // Klucz odświeżania: dziennik trenerski zgłasza dodanie/usunięcie wpisu —
+  // nowy „Cel" może zmienić fokus, a pasek w nagłówku widać na każdej zakładce.
+  const [focusNonce, setFocusNonce] = useState(0);
+  const focusState = useActiveFocus(studentId, true, focusNonce);
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
@@ -761,6 +762,42 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             )}
           </div>
         </button>
+        {/* STATYSTYKI — rząd 3: fokus ucznia (user 2026-09-16: pod
+            Ergebniskurve, w nagłówku, bez klikania). Ten sam wynik co u ucznia
+            na Home: własny fokus vs najnowszy „Cel" z dziennika trenerskiego. */}
+        {focusState?.focus ? (
+          <div className="mt-2">
+            <FocusStrip
+              glass
+              focus={focusState.focus}
+              dots={focusState.dots}
+              goal={focusState.goal}
+              count={focusState.count}
+              label={t('studentProfile.focusLabel')}
+              sourceLabel={focusState.focus.fromCoach
+                ? (focusState.focus.authorName
+                    ? t('studentProfile.focusFromCoachNamed', { name: focusState.focus.authorName })
+                    : t('tagebuch.focusFromCoach'))
+                : t('studentProfile.focusOwn')}
+            />
+          </div>
+        ) : focusState && (
+          <div className="mt-2 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2">
+            <span className="material-symbols-outlined text-[22px] text-white/25 shrink-0">track_changes</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300/60 truncate">{t('studentProfile.focusLabel')}</p>
+              <p className="text-[11px] font-bold text-white/50 leading-snug truncate">{t('studentProfile.focusNone')}</p>
+            </div>
+          </div>
+        )}
+        {/* Diagnostyka: które źródło fokusu się nie wczytało. */}
+        {focusState?.failed && (
+          <p className="text-[10px] font-bold text-red-300 px-1 mt-1">
+            {t('studentProfile.focusLoadError', {
+              parts: focusState.failed.map(p => t(`studentProfile.focusPart_${p}`)).join(', '),
+            })}
+          </p>
+        )}
       </div>
 
       {/* ─── TAB BAR ─────────────────────────────────────────── */}
@@ -798,45 +835,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 1: ÜBERBLICK ══════════════════════════════════ */}
         {activeTab === 'overview' && (
           <div className="px-5 pt-3 space-y-2">
-
-            {/* FOKUS UCZNIA — klik prowadzi do Dziennika, gdzie trener ustawia
-                nowy cel wpisem „Ziel". */}
-            {focusState?.focus ? (
-              <FocusStrip
-                focus={focusState.focus}
-                dots={focusState.dots}
-                goal={focusState.goal}
-                count={focusState.count}
-                onOpen={() => setActiveTab('diary')}
-                label={t('studentProfile.focusLabel')}
-                sourceLabel={focusState.focus.fromCoach
-                  ? (focusState.focus.authorName
-                      ? t('studentProfile.focusFromCoachNamed', { name: focusState.focus.authorName })
-                      : t('tagebuch.focusFromCoach'))
-                  : t('studentProfile.focusOwn')}
-              />
-            ) : focusState && (
-              <button
-                onClick={() => setActiveTab('diary')}
-                className="w-full flex items-center gap-3 bg-gray-50 border border-dashed border-gray-200 rounded-[20px] px-4 py-2.5 text-left active:scale-[0.99] transition-all"
-              >
-                <span className="material-symbols-outlined text-[22px] text-gray-300 shrink-0">track_changes</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 truncate">{t('studentProfile.focusLabel')}</p>
-                  <p className="text-[11px] font-bold text-gray-500 leading-snug truncate">{t('studentProfile.focusNone')}</p>
-                </div>
-                <span className="material-symbols-outlined text-[20px] text-gray-300 shrink-0">chevron_right</span>
-              </button>
-            )}
-            {/* Diagnostyka: które źródło fokusu się nie wczytało. Bez tego
-                błąd odczytu wyglądał jak „uczeń nie ma fokusu" albo pustka. */}
-            {focusState?.failed && (
-              <p className="text-[10px] font-bold text-red-500 px-1">
-                {t('studentProfile.focusLoadError', {
-                  parts: focusState.failed.map(p => t(`studentProfile.focusPart_${p}`)).join(', '),
-                })}
-              </p>
-            )}
 
             {/* NASTĘPNY CEL UCZNIA */}
             {nextTournament && (
@@ -999,7 +997,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-5 pt-3">
-            <CoachLogPanel studentId={studentId} currentUserId={coachId} />
+            <CoachLogPanel studentId={studentId} currentUserId={coachId} onChange={() => setFocusNonce(n => n + 1)} />
           </div>
         )}
 

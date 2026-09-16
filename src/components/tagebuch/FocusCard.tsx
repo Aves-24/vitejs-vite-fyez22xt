@@ -101,26 +101,32 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
   );
 }
 
-/** Wąski pasek na Home — przypomina fokus przed treningiem, klik = dziennik. */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel }: {
+/**
+ * Wąski pasek fokusu. Na Home przypomina fokus przed treningiem (klik =
+ * dziennik). W profilu ucznia trener widzi go w nagłówku — tam bez klikania
+ * (user 2026-09-16: przejście do dziennika po kliknięciu było niezrozumiałe)
+ * i w stylu kafelków nagłówka (`glass`), bo pełne tło zlewało się z zielenią.
+ */
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, glass = false }: {
   focus: ActiveFocus;
   dots: boolean;
   goal: number;
   count: number;
-  onOpen: () => void;
+  onOpen?: () => void;   // brak = pasek tylko do czytania, bez strzałki
   // Podpisy z perspektywy oglądającego. Domyślnie uczeń („Twój fokus · od
   // trenera"); trener w profilu ucznia podaje własne („Fokus ucznia · …").
   label?: string;
   sourceLabel?: string;
+  glass?: boolean;
 }) {
   const { t } = useTranslation();
   const showDots = dots && !!focus.topic;
   const source = sourceLabel ?? (focus.fromCoach ? t('tagebuch.focusFromCoach') : '');
-  return (
-    <button
-      onClick={onOpen}
-      className="w-full flex items-center gap-3 bg-[#0a3a2a] rounded-[20px] px-4 py-2.5 text-left active:scale-[0.99] transition-all shadow-sm"
-    >
+  const tone = glass
+    ? 'bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
+    : 'bg-[#0a3a2a] rounded-[20px] px-4 py-2.5 shadow-sm';
+  const content = (
+    <>
       <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
       <div className="flex-1 min-w-0">
         <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
@@ -135,7 +141,15 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
       </div>
-      <span className="material-symbols-outlined text-[20px] text-white/60 shrink-0">chevron_right</span>
+      {onOpen && <span className="material-symbols-outlined text-[20px] text-white/60 shrink-0">chevron_right</span>}
+    </>
+  );
+  if (!onOpen) {
+    return <div className={`w-full flex items-center gap-3 text-left ${tone}`}>{content}</div>;
+  }
+  return (
+    <button onClick={onOpen} className={`w-full flex items-center gap-3 text-left active:scale-[0.99] transition-all ${tone}`}>
+      {content}
     </button>
   );
 }

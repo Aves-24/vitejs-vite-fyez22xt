@@ -25,6 +25,9 @@ interface CoachLogEntry {
 interface CoachLogPanelProps {
   studentId: string;
   currentUserId: string;
+  // Wpis dodany albo usunięty — profil ucznia odświeża wtedy pasek fokusu
+  // (nowy „Cel" może zmienić fokus ucznia).
+  onChange?: () => void;
 }
 
 // Konfiguracja typów wpisu — kolor, ikona, etykieta
@@ -37,7 +40,7 @@ const TYPE_CONFIG: Record<EntryType, { color: string; bg: string; icon: string; 
 
 const MAX_TEXT = 400;
 
-export default function CoachLogPanel({ studentId, currentUserId }: CoachLogPanelProps) {
+export default function CoachLogPanel({ studentId, currentUserId, onChange }: CoachLogPanelProps) {
   const { t, i18n } = useTranslation();
 
   const [entries, setEntries] = useState<CoachLogEntry[]>([]);
@@ -138,6 +141,7 @@ export default function CoachLogPanel({ studentId, currentUserId }: CoachLogPane
       setType('observation');
       setLogTopics([]);
       setIsAdding(false);
+      onChange?.();
 
       // Powiadomienie u ucznia (dzwonek na Home) — trener dodał wpis w Tagebuch.
       // Idempotentne po id wpisu; best-effort.
@@ -158,6 +162,7 @@ export default function CoachLogPanel({ studentId, currentUserId }: CoachLogPane
     try {
       await deleteDoc(doc(db, `users/${studentId}/coachLog/${id}`));
       setEntries(prev => prev.filter(en => en.id !== id));
+      onChange?.();
     } catch (e) {
       console.error('CoachLog: błąd usuwania', e);
     }

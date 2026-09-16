@@ -63,27 +63,25 @@ const sameKind = (a: any, b: any) =>
 /**
  * [C37] Zielona kropka przy „Uczniowie" (życzenie usera 2026-09-16): trener
  * wchodzi w panel i ma widzieć, że doszedł ktoś nowy, bez rozwijania listy.
- * „Nowy" = uczeń, którego id nie ma w pamięci przeglądarki tego trenera.
- * Pamięć jest lokalna (per urządzenie) — świadomie, bo to tylko podpowiedź
- * wizualna, a nie dane do bazy; nie wymaga zmian w regułach Firestore.
- * Pierwsze uruchomienie zasiewa listę bieżącymi uczniami, żeby po aktualizacji
+ * „Nowy" = uczeń, którego id nie ma jeszcze na liście obejrzanych.
+ *
+ * Lista leży w `users/{coachId}.coachSeenStudents`, a nie w localStorage
+ * (decyzja usera 2026-09-16): dzięki temu odhaczenie na telefonie gasi kropkę
+ * także na laptopie. Dokument trenera i tak jest czytany przy wejściu w panel,
+ * więc nie kosztuje to dodatkowego odczytu. Reguł nie trzeba było ruszać —
+ * Path B (`allow update: if isSelf(uid)`) przepuszcza własne pola spoza listy
+ * chronionych, a `coachSeenStudents` do niej nie należy.
+ *
+ * Pierwsze wejście zasiewa listę bieżącymi uczniami, żeby po aktualizacji
  * aplikacji cała klasa nie zapaliła się naraz jako „nowa".
  */
-const seenStudentsKey = (coachId: string) => `grotX_coachSeenStudents_${coachId}`;
-
-function readSeenStudents(coachId: string): string[] | null {
+async function saveSeenStudents(coachId: string, ids: string[]) {
   try {
-    const raw = localStorage.getItem(seenStudentsKey(coachId));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null; // prywatne okno / zablokowane dane witryny
+    await setDoc(doc(db, 'users', coachId), { coachSeenStudents: ids }, { merge: true });
+  } catch (e) {
+    // Kropka to tylko podpowiedź — brak zapisu nie może wywrócić panelu.
+    console.error('Zapis obejrzanych uczniów nie powiódł się:', e);
   }
-}
-
-function writeSeenStudents(coachId: string, ids: string[]) {
-  try {
-    localStorage.setItem(seenStudentsKey(coachId), JSON.stringify(ids));
-  } catch { /* brak miejsca lub zablokowany storage — kropka po prostu zostanie */ }
 }
 
 async function loadFormCompare(coachId: string, students: any[]): Promise<Record<string, FormCompare>> {
@@ -357,17 +355,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
           // [C37] Kto doszedł od ostatniego zajrzenia w „Uczniowie".
           const currentIds = studentsData.map((s: any) => s.id);
-          const seen = readSeenStudents(userId);
+          const seen: string[] | null = Array.isArray(data.coachSeenStudents)
+            ? data.coachSeenStudents
+            : null;
           if (seen === null) {
-            // Pierwsze uruchomienie na tym urządzeniu — zasiewamy bez kropki.
-            writeSeenStudents(userId, currentIds);
+            // Pierwsze wejście od czasu tej funkcji — zasiewamy bez kropki.
             setNewStudentIds([]);
+            void saveSeenStudents(userId, currentIds);
           } else {
             setNewStudentIds(currentIds.filter((id: string) => !seen.includes(id)));
             // Sprzątanie po rozłączonych uczniach: gdyby ktoś wrócił, ma się
-            // znowu policzyć jako nowy.
+            // znowu policzyć jako nowy. Zapis tylko wtedy, gdy faktycznie ubyło.
             const stillLinked = seen.filter((id: string) => currentIds.includes(id));
-            if (stillLinked.length !== seen.length) writeSeenStudents(userId, stillLinked);
+            if (stillLinked.length !== seen.length) void saveSeenStudents(userId, stillLinked);
           }
 
           // Bez await — turniej podopiecznych nie blokuje listy uczniów.
@@ -416,7 +416,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           setStudentTournaments([]);
           setFormCompare({});
           setNewStudentIds([]);
-          writeSeenStudents(userId, []); // [C37] pusta lista = nie ma czego pamiętać
+          // [C37] Nie ma uczniów — czyścimy pamięć tylko, gdy coś w niej było.
+          if (Array.isArray(data.coachSeenStudents) && data.coachSeenStudents.length > 0) {
+            void saveSeenStudents(userId, []);
+          }
         }
       }
     } catch (error) {
@@ -1372,13 +1375,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         <button
           onClick={() => {
             // Stan liczymy przed setState: funkcja aktualizująca musi być czysta
-            // (StrictMode woła ją dwa razy), więc zapis do localStorage i drugi
+            // (StrictMode woła ją dwa razy), więc zapis do bazy i drugi
             // setState nie mogą siedzieć w środku.
             const opening = viewMode !== 'students';
-            // [C37] Wejście w listę = zobaczone; kropka gaśnie i nie wraca.
+            // [C37] Wejście w listę = zobaczone; kropka gaśnie na wszystkich
+            // urządzeniach trenera, bo lista idzie do jego dokumentu.
             if (opening && newStudentIds.length > 0) {
-              writeSeenStudents(userId, students.map(s => s.id));
               setNewStudentIds([]);
+              void saveSeenStudents(userId, students.map(s => s.id));
             }
             setViewMode(opening ? 'students' : null);
             setInactiveOnly(false); exitSelecting(); exitGroupSelecting();

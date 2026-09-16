@@ -1223,14 +1223,18 @@ Z ogona po C25 zostały: **jardy**.
       uczniami, żeby po aktualizacji aplikacji cała klasa nie zapaliła się
       naraz jako nowa. Rozłączeni uczniowie znikają z pamięci, więc gdyby
       ktoś wrócił — policzy się jako nowy. Bez zmian w regułach Firestore.
-      **Świadome ograniczenie:** pamięć jest lokalna, per urządzenie. Trener
-      z telefonu i z laptopa zobaczy kropkę na obu. Gdyby to przeszkadzało,
-      trzeba by trzymać stempel „ostatnio oglądałem uczniów" w `users/{uid}`
-      (wymaga dotknięcia reguł) — do decyzji, jeśli user zgłosi.
+      **Wspólna dla urządzeń (decyzja usera 2026-09-16):** lista obejrzanych
+      leży w `users/{coachId}.coachSeenStudents`, więc odhaczenie na telefonie
+      gasi kropkę także na laptopie. Reguł NIE trzeba było ruszać — Path B
+      (`allow update: if isSelf(uid)`) przepuszcza własne pola spoza listy
+      chronionych. Dokument trenera i tak jest czytany przy wejściu w panel,
+      więc nie doszedł żaden dodatkowy odczyt; zapis leci tylko przy zasiewie,
+      wejściu w listę i sprzątaniu po rozłączonym uczniu.
       **NIESPRAWDZONE NA ŻYWO** — panel trenera jest za logowaniem, user
       weryfikuje w Chrome na produkcji. Do sprawdzenia: czy kropka pojawia się
-      po akceptacji zaproszenia przez ucznia (relacja powstaje dopiero wtedy)
-      i czy gaśnie po wejściu w listę oraz po odświeżeniu.
+      po akceptacji zaproszenia przez ucznia (relacja powstaje dopiero wtedy),
+      czy gaśnie po wejściu w listę i po odświeżeniu, oraz czy jest zgaszona
+      na drugim urządzeniu.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

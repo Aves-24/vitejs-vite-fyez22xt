@@ -1453,6 +1453,10 @@ export const views = {
     trendDown: "Form declining",
   },
   studentProfile: {
+    focusLabel: "Student focus",
+    focusOwn: "set by the student",
+    focusFromCoachNamed: "from: {{name}}",
+    focusNone: "No focus · add a “Goal” entry in the Diary",
     loading: "Loading student profile...",
     headerLabel: "Student Profile",
     arrowsMonth: "Arrows/Mo.",

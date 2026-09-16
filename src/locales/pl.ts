@@ -1482,6 +1482,10 @@ export const views = {
     trendDown: "Forma spada",
   },
   studentProfile: {
+    focusLabel: "Fokus ucznia",
+    focusOwn: "ustawiony przez ucznia",
+    focusFromCoachNamed: "od: {{name}}",
+    focusNone: "Brak fokusu · dodaj wpis „Cel” w Dzienniku",
     loading: "Ładowanie profilu ucznia...",
     headerLabel: "Profil Ucznia",
     arrowsMonth: "Strzał/mies.",

@@ -101,7 +101,13 @@ export interface FocusState {
  * `withCount` dociąga treningi od dnia ustawienia fokusu — tylko gdy kropki
  * są włączone, żeby reszta ludzi nie płaciła za dodatkowy odczyt.
  */
-export function useActiveFocus(userId: string | null | undefined, withCount = false): FocusState | null {
+export function useActiveFocus(
+  userId: string | null | undefined,
+  withCount = false,
+  // Zmiana wartości = ponowne wczytanie (np. trener wraca z zakładki Dziennik,
+  // gdzie właśnie dodał „Ziel").
+  refreshKey: unknown = 0,
+): FocusState | null {
   const [state, setState] = useState<FocusState | null>(null);
 
   useEffect(() => {
@@ -133,7 +139,7 @@ export function useActiveFocus(userId: string | null | undefined, withCount = fa
       }
     })();
     return () => { cancelled = true; };
-  }, [userId, withCount]);
+  }, [userId, withCount, refreshKey]);
 
   return state;
 }

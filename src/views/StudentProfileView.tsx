@@ -16,6 +16,8 @@ import TopicPicker from '../components/TopicPicker';
 import StudentEquipmentCard from '../components/StudentEquipmentCard';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
+import { useActiveFocus } from '../utils/focus';
+import { FocusStrip } from '../components/tagebuch/FocusCard';
 const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
 
 function spCacheGet<T>(key: string): T | null {
@@ -376,6 +378,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   // TABS
   const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
+
+  // Fokus ucznia widziany oczami trenera — ten sam wynik co u ucznia na Home
+  // (własny fokus vs najnowszy „Ziel" z dziennika trenerskiego, wygrywa
+  // nowszy). Reguły przepuszczają trenera do users/{uid}, coachLog i sessions
+  // (relacja w coaches[]), więc hook działa bez zmian. `true` = kropki postępu.
+  // Klucz odświeżania: każdy powrót na Przegląd wczytuje fokus od nowa — trener
+  // mógł przed chwilą dodać „Ziel" w zakładce Dziennik.
+  const focusState = useActiveFocus(studentId, true, activeTab === 'overview');
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
@@ -788,6 +798,36 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 1: ÜBERBLICK ══════════════════════════════════ */}
         {activeTab === 'overview' && (
           <div className="px-5 pt-3 space-y-2">
+
+            {/* FOKUS UCZNIA — klik prowadzi do Dziennika, gdzie trener ustawia
+                nowy cel wpisem „Ziel". */}
+            {focusState?.focus ? (
+              <FocusStrip
+                focus={focusState.focus}
+                dots={focusState.dots}
+                goal={focusState.goal}
+                count={focusState.count}
+                onOpen={() => setActiveTab('diary')}
+                label={t('studentProfile.focusLabel')}
+                sourceLabel={focusState.focus.fromCoach
+                  ? (focusState.focus.authorName
+                      ? t('studentProfile.focusFromCoachNamed', { name: focusState.focus.authorName })
+                      : t('tagebuch.focusFromCoach'))
+                  : t('studentProfile.focusOwn')}
+              />
+            ) : focusState && (
+              <button
+                onClick={() => setActiveTab('diary')}
+                className="w-full flex items-center gap-3 bg-gray-50 border border-dashed border-gray-200 rounded-[20px] px-4 py-2.5 text-left active:scale-[0.99] transition-all"
+              >
+                <span className="material-symbols-outlined text-[22px] text-gray-300 shrink-0">track_changes</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 truncate">{t('studentProfile.focusLabel')}</p>
+                  <p className="text-[11px] font-bold text-gray-500 leading-snug truncate">{t('studentProfile.focusNone')}</p>
+                </div>
+                <span className="material-symbols-outlined text-[20px] text-gray-300 shrink-0">chevron_right</span>
+              </button>
+            )}
 
             {/* NASTĘPNY CEL UCZNIA */}
             {nextTournament && (

@@ -102,15 +102,20 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
 }
 
 /** Wąski pasek na Home — przypomina fokus przed treningiem, klik = dziennik. */
-export function FocusStrip({ focus, dots, goal, count, onOpen }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel }: {
   focus: ActiveFocus;
   dots: boolean;
   goal: number;
   count: number;
   onOpen: () => void;
+  // Podpisy z perspektywy oglądającego. Domyślnie uczeń („Twój fokus · od
+  // trenera"); trener w profilu ucznia podaje własne („Fokus ucznia · …").
+  label?: string;
+  sourceLabel?: string;
 }) {
   const { t } = useTranslation();
   const showDots = dots && !!focus.topic;
+  const source = sourceLabel ?? (focus.fromCoach ? t('tagebuch.focusFromCoach') : '');
   return (
     <button
       onClick={onOpen}
@@ -119,8 +124,8 @@ export function FocusStrip({ focus, dots, goal, count, onOpen }: {
       <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
       <div className="flex-1 min-w-0">
         <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
-          {t('tagebuch.focusLabel')}
-          {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
+          {label ?? t('tagebuch.focusLabel')}
+          {source && ` · ${source}`}
         </p>
         <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(focus, t)}</p>
         {showDots && (

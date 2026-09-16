@@ -1453,6 +1453,10 @@ export const views = {
     trendDown: "Form sinkt",
   },
   studentProfile: {
+    focusLabel: "Fokus des Schülers",
+    focusOwn: "selbst gesetzt",
+    focusFromCoachNamed: "von: {{name}}",
+    focusNone: "Kein Fokus · Eintrag „Ziel“ im Tagebuch anlegen",
     loading: "Schülerprofil wird geladen...",
     headerLabel: "Schülerprofil",
     arrowsMonth: "Pfeile/Mon.",

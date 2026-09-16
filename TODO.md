@@ -1244,7 +1244,12 @@ Z ogona po C25 zostały: **jardy**.
       Kropka siedzi na przycisku „Uczniowie" (`CoachDashboardView.tsx`) i gaśnie
       w chwili wejścia w listę. Pierwsze uruchomienie zasiewa listę bieżącymi
       uczniami, żeby po aktualizacji aplikacji cała klasa nie zapaliła się
-      naraz jako nowa. Rozłączeni uczniowie znikają z pamięci, więc gdyby
+      naraz jako nowa. Po rozwinięciu listy kropka przechodzi z przycisku na
+      wiersz nowego ucznia (znaczek „Nowy” z kropką obok nazwiska — osobny od
+      zielonej kropki na inicjałach, która znaczy „nowy trening”) i zostaje do
+      wyjścia z panelu; w bazie uczeń jest już odhaczony, więc przy kolejnym
+      wejściu znaczka nie ma (życzenie usera 2026-09-16, po teście).
+      Rozłączeni uczniowie znikają z pamięci, więc gdyby
       ktoś wrócił — policzy się jako nowy. Bez zmian w regułach Firestore.
       **Wspólna dla urządzeń (decyzja usera 2026-09-16):** lista obejrzanych
       leży w `users/{coachId}.coachSeenStudents`, więc odhaczenie na telefonie

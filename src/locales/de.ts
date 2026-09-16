@@ -1341,6 +1341,7 @@ export const views = {
     }
   },
   coachDashboard: {
+    newStudentBadge: "Neu",
     inviteSentTitle: "Einladung gesendet",
     inviteSentDesc: "{{name}} hat die Einladung erhalten. Sobald sie auf dem eigenen Handy angenommen wird, erscheint der Schüler in deiner Liste.",
     inviteSentDescNoName: "Der Schüler hat die Einladung erhalten. Sobald er sie annimmt, erscheint er in deiner Liste.",

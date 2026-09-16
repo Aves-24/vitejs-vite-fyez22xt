@@ -206,6 +206,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
   // [C37] Uczniowie, których trener jeszcze nie oglądał — źródło zielonej kropki.
   const [newStudentIds, setNewStudentIds] = useState<string[]>([]);
+  // [C37] Po rozwinięciu „Uczniowie" kropka z przycisku przechodzi na wiersze
+  // nowych uczniów (życzenie usera 2026-09-16) i zostaje do wyjścia z panelu —
+  // w bazie są już odhaczeni, więc przy następnym wejściu nie wrócą.
+  const [highlightStudentIds, setHighlightStudentIds] = useState<string[]>([]);
   
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | false>(false);
@@ -926,6 +930,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
     const isSelected = selectedStudents.includes(student.id);
     const trend = formCompare[student.id]?.dir;
+    const isNewStudent = highlightStudentIds.includes(student.id);
 
     return (
       <div key={student.id} className="relative animate-fade-in">
@@ -964,8 +969,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             )}
 
             <div className="flex flex-col justify-center truncate pr-2">
-              <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">
-                {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
+              <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight flex items-center gap-1.5 min-w-0">
+                <span className="truncate">
+                  {student.firstName || t('coachDashboard.defaultStudentName')} {student.lastName || ''}
+                </span>
+                {/* [C37] Nowy uczeń — napis obok kropki, bo sama zielona kropka
+                    na inicjałach znaczy już „nowy trening". */}
+                {isNewStudent && (
+                  <span className="shrink-0 inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-full pl-1 pr-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    {t('coachDashboard.newStudentBadge')}
+                  </span>
+                )}
               </h3>
               {/* tracking-wide, nie -widest: ta linia niesie dystans i wynik
                   i przy szerokim rozstrzeleniu ucinała się w połowie */}
@@ -1398,6 +1413,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             // [C37] Wejście w listę = zobaczone; kropka gaśnie na wszystkich
             // urządzeniach trenera, bo lista idzie do jego dokumentu.
             if (opening && newStudentIds.length > 0) {
+              setHighlightStudentIds(newStudentIds);
               setNewStudentIds([]);
               void saveSeenStudents(userId, students.map(s => s.id));
             }

@@ -1137,6 +1137,14 @@ Z ogona po C25 zostały: **jardy**.
       wyskoczył), ale samego okna nie dało się obejrzeć na żywo — pokazuje się
       tylko po zalogowaniu, raz w roku, w dniu urodzin.
 
+- [~] **ODRZUCONE 2026-09-16 — szybka ocena treningu 1–5.** Pomysł z
+      przebudowy dziennika (2026-09-14): po zapisanym treningu user
+      zaznaczałby samopoczucie/jakość sesji w skali 1–5, w bloku „Dziennik
+      treningowy" na ekranie wyników. Wymagałoby nowego pola w `sessions`
+      i deployu reguł. **Decyzja usera: rezygnujemy** — nie wchodzi w plan.
+      Nic z tego nie zostało zakodowane, więc nie ma czego cofać. Nie wracać
+      do tematu bez wyraźnej prośby.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

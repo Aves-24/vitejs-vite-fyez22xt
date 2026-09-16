@@ -1341,6 +1341,7 @@ export const views = {
     }
   },
   coachDashboard: {
+    newStudentDot: "Neuer Schüler ({{count}})",
     title: "Kader",
     subtitle: "Trainer-Panel",
     addBtn: "Hinzufügen",

@@ -60,6 +60,32 @@ const sameKind = (a: any, b: any) =>
  * więc wynik leży w pamięci — unieważniany, gdy którykolwiek uczeń zapisze
  * nowy trening (podpis z `exactLastActivity`).
  */
+/**
+ * [C37] Zielona kropka przy „Uczniowie" (życzenie usera 2026-09-16): trener
+ * wchodzi w panel i ma widzieć, że doszedł ktoś nowy, bez rozwijania listy.
+ * „Nowy" = uczeń, którego id nie ma w pamięci przeglądarki tego trenera.
+ * Pamięć jest lokalna (per urządzenie) — świadomie, bo to tylko podpowiedź
+ * wizualna, a nie dane do bazy; nie wymaga zmian w regułach Firestore.
+ * Pierwsze uruchomienie zasiewa listę bieżącymi uczniami, żeby po aktualizacji
+ * aplikacji cała klasa nie zapaliła się naraz jako „nowa".
+ */
+const seenStudentsKey = (coachId: string) => `grotX_coachSeenStudents_${coachId}`;
+
+function readSeenStudents(coachId: string): string[] | null {
+  try {
+    const raw = localStorage.getItem(seenStudentsKey(coachId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null; // prywatne okno / zablokowane dane witryny
+  }
+}
+
+function writeSeenStudents(coachId: string, ids: string[]) {
+  try {
+    localStorage.setItem(seenStudentsKey(coachId), JSON.stringify(ids));
+  } catch { /* brak miejsca lub zablokowany storage — kropka po prostu zostanie */ }
+}
+
 async function loadFormCompare(coachId: string, students: any[]): Promise<Record<string, FormCompare>> {
   const active = students.filter(s => s.exactLastActivity && Date.now() - s.exactLastActivity < INACTIVE_DAYS * DAY_MS);
   const key = `grotX_formCompare_${coachId}`;
@@ -180,6 +206,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
+  // [C37] Uczniowie, których trener jeszcze nie oglądał — źródło zielonej kropki.
+  const [newStudentIds, setNewStudentIds] = useState<string[]>([]);
   
   const [isScanning, setIsScanning] = useState(false);
   const [cameraError, setCameraError] = useState<string | false>(false);
@@ -327,6 +355,21 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
           setStudents(studentsData as any);
 
+          // [C37] Kto doszedł od ostatniego zajrzenia w „Uczniowie".
+          const currentIds = studentsData.map((s: any) => s.id);
+          const seen = readSeenStudents(userId);
+          if (seen === null) {
+            // Pierwsze uruchomienie na tym urządzeniu — zasiewamy bez kropki.
+            writeSeenStudents(userId, currentIds);
+            setNewStudentIds([]);
+          } else {
+            setNewStudentIds(currentIds.filter((id: string) => !seen.includes(id)));
+            // Sprzątanie po rozłączonych uczniach: gdyby ktoś wrócił, ma się
+            // znowu policzyć jako nowy.
+            const stillLinked = seen.filter((id: string) => currentIds.includes(id));
+            if (stillLinked.length !== seen.length) writeSeenStudents(userId, stillLinked);
+          }
+
           // Bez await — turniej podopiecznych nie blokuje listy uczniów.
           loadStudentTournaments(userId, studentsData)
             .then(setStudentTournaments)
@@ -372,6 +415,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           setStudents([]);
           setStudentTournaments([]);
           setFormCompare({});
+          setNewStudentIds([]);
+          writeSeenStudents(userId, []); // [C37] pusta lista = nie ma czego pamiętać
         }
       }
     } catch (error) {
@@ -1325,14 +1370,34 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {t('coachDashboard.viewGroups')}
         </button>
         <button
-          onClick={() => { setViewMode(m => (m === 'students' ? null : 'students')); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
+          onClick={() => {
+            // Stan liczymy przed setState: funkcja aktualizująca musi być czysta
+            // (StrictMode woła ją dwa razy), więc zapis do localStorage i drugi
+            // setState nie mogą siedzieć w środku.
+            const opening = viewMode !== 'students';
+            // [C37] Wejście w listę = zobaczone; kropka gaśnie i nie wraca.
+            if (opening && newStudentIds.length > 0) {
+              writeSeenStudents(userId, students.map(s => s.id));
+              setNewStudentIds([]);
+            }
+            setViewMode(opening ? 'students' : null);
+            setInactiveOnly(false); exitSelecting(); exitGroupSelecting();
+          }}
           aria-expanded={viewMode === 'students'}
-          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
+          className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
             viewMode === 'students' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
           }`}
         >
           <span className="material-symbols-outlined text-sm">group</span>
           {t('coachDashboard.viewStudents')}
+          {/* [C37] Zielona kropka: doszedł nowy uczeń, jeszcze nieoglądany. */}
+          {newStudentIds.length > 0 && (
+            <span
+              aria-label={t('coachDashboard.newStudentDot', { count: newStudentIds.length })}
+              title={t('coachDashboard.newStudentDot', { count: newStudentIds.length })}
+              className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white shadow-sm animate-pulse shrink-0"
+            />
+          )}
         </button>
       </div>
 

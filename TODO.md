@@ -583,6 +583,27 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
       BattleHistoryView, ScoringView, CoachDashboardView (+ zapytania `in`→getDoc
       w SettingsView, CalendarView, CoachDashboardView)
 
+- [ ] **C36. Dokumenty prawne a zgoda trener↔uczeń (pytanie usera 2026-09-16:
+      „czy to mamy w AGB i Datenschutzerklärung?").** Sprawdzone tego dnia:
+      - ✅ Datenschutzerklärung MA klauzulę: `datenschutz.html` §2.4
+        „Trainer-Schüler-Funktion", podstawa Art. 6 ust. 1 lit. a DSGVO
+        (zgoda, odwoływalna przez rozłączenie). Wymienia dostęp do
+        Trainingsdaten (Einheiten, Statistiken, Turniere), notatek
+        i wiadomości oraz prawo do odłączenia w Ustawieniach.
+      - ❌ NIE wymienia wprost, że trener widzi dane identyfikacyjne:
+        imię, nazwisko, klub. Popup zgody od C35 już to mówi, więc teraz
+        to POLITYKA jest węższa niż aplikacja. Dopisać w trzech wersjach
+        (`datenschutz.html`, `polityka-prywatnosci.html`, `privacy-policy.html`)
+        zdanie o Stammdaten (Vor-/Nachname, Verein) i o tym, że data
+        urodzenia i e-mail zostają niedostępne (C21).
+      - ❌ AGB / Nutzungsbedingungen / regulaminu NIE MA W OGÓLE — w repo są
+        tylko polityki prywatności i Impressum. Do decyzji przed startem,
+        szczególnie że planowane są płatności (patrz plan płatności): przy
+        odpłatnym PRO regulamin i pouczenie o odstąpieniu (Widerrufsrecht)
+        stają się realnie potrzebne.
+      **Uwaga:** to ustalenia z czytania plików, nie porada prawna — całość
+      i tak idzie do weryfikacji przez prawnika (patrz C1, otwarty punkt).
+
 ## 🟠 Priorytet 2 — Bezpieczeństwo (rules hardening, szybkie)
 
 - [x] **C7. Rules: walidacja `trialEndsAt`** ✅ (validTrialEndsAt — max now+31 dni,
@@ -1191,6 +1212,25 @@ Z ogona po C25 zostały: **jardy**.
       danych osobowych innej osobie, więc treść powinna być zgodna z tym, co
       mówi polityka prywatności (patrz zadania prawne przed publikacją).
       Przy małoletnich < 16 lat dochodzi C22 (zgoda opiekuna).
+
+- [x] **C37. ✅ ZROBIONE 2026-09-16 — zielona kropka „nowy uczeń" przy
+      zakładce Uczniowie.** Życzenie usera 2026-09-16: trener wchodzi
+      w panel i ma od razu widzieć, że ktoś doszedł, bez rozwijania listy.
+      **Jak działa:** „nowy" = uczeń, którego id nie ma jeszcze w pamięci
+      przeglądarki tego trenera (`grotX_coachSeenStudents_{coachId}`).
+      Kropka siedzi na przycisku „Uczniowie" (`CoachDashboardView.tsx`) i gaśnie
+      w chwili wejścia w listę. Pierwsze uruchomienie zasiewa listę bieżącymi
+      uczniami, żeby po aktualizacji aplikacji cała klasa nie zapaliła się
+      naraz jako nowa. Rozłączeni uczniowie znikają z pamięci, więc gdyby
+      ktoś wrócił — policzy się jako nowy. Bez zmian w regułach Firestore.
+      **Świadome ograniczenie:** pamięć jest lokalna, per urządzenie. Trener
+      z telefonu i z laptopa zobaczy kropkę na obu. Gdyby to przeszkadzało,
+      trzeba by trzymać stempel „ostatnio oglądałem uczniów" w `users/{uid}`
+      (wymaga dotknięcia reguł) — do decyzji, jeśli user zgłosi.
+      **NIESPRAWDZONE NA ŻYWO** — panel trenera jest za logowaniem, user
+      weryfikuje w Chrome na produkcji. Do sprawdzenia: czy kropka pojawia się
+      po akceptacji zaproszenia przez ucznia (relacja powstaje dopiero wtedy)
+      i czy gaśnie po wejściu w listę oraz po odświeżeniu.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

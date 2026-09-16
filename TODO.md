@@ -1145,6 +1145,29 @@ Z ogona po C25 zostały: **jardy**.
       Nic z tego nie zostało zakodowane, więc nie ma czego cofać. Nie wracać
       do tematu bez wyraźnej prośby.
 
+- [ ] **C34. Skaner QR w panelu trenera otwiera się na dole strony, nie jako
+      popup.** Zgłosił user 2026-09-16. Trener klika „Dodaj ucznia" i nic
+      widocznego się nie dzieje — skaner doczepia się niżej w treści, poniżej
+      listy uczniów, i łatwo go przeoczyć.
+      **Gdzie (sprawdzone w kodzie):** przycisk siedzi w nagłówku
+      (`CoachDashboardView.tsx` ~l. 1101, `startScanner()`), a blok skanera to
+      zwykła karta w przepływie strony (`{isScanning && ...}` ~l. 1339,
+      `<div id="reader">` ~l. 1375). Przy dłuższej liście uczniów ląduje poza
+      ekranem i nic tam nie przewija.
+      **Do zrobienia:** przerobić na modal w stylu reszty tego widoku —
+      `fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000]` (tak działają
+      grupy, wiadomości, usuwanie ucznia: ~l. 1609, 1784, 1836). Uwaga przy
+      przenoszeniu: `startScanner()` czeka mikrotask na `<div id="reader">`
+      w DOM i musi zachować kontekst gestu użytkownika (iOS nie da kamery
+      bez tego) — element ma istnieć w chwili startu, więc modal renderować
+      razem z `isScanning`, a nie z opóźnieniem/animacją wejścia. Zamknięcie
+      modala (tło, ✕, Esc) musi wołać `stopScanner()`, inaczej kamera zostaje
+      włączona. Sprawdzić na telefonie: podgląd kamery ma się mieścić
+      w oknie modala, a pole na ręczne wpisanie ID zostaje pod podglądem.
+      **Minimum, gdyby modal okazał się ryzykowny dla kamery:** zostawić
+      kartę w przepływie, ale po kliknięciu przewinąć do niej
+      (`scrollIntoView({ behavior: "smooth", block: "center" })`).
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

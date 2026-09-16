@@ -1453,6 +1453,10 @@ export const views = {
     trendDown: "Form declining",
   },
   studentProfile: {
+    focusLoadError: "Could not load: {{parts}}",
+    focusPart_user: "student profile",
+    focusPart_goal: "coach goals",
+    focusPart_sessions: "sessions",
     focusLabel: "Student focus",
     focusOwn: "set by the student",
     focusFromCoachNamed: "from: {{name}}",

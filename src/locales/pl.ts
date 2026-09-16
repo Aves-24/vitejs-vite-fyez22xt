@@ -1482,6 +1482,10 @@ export const views = {
     trendDown: "Forma spada",
   },
   studentProfile: {
+    focusLoadError: "Nie udało się wczytać: {{parts}}",
+    focusPart_user: "profil ucznia",
+    focusPart_goal: "cele trenera",
+    focusPart_sessions: "treningi",
     focusLabel: "Fokus ucznia",
     focusOwn: "ustawiony przez ucznia",
     focusFromCoachNamed: "od: {{name}}",

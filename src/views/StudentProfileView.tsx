@@ -828,6 +828,15 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 <span className="material-symbols-outlined text-[20px] text-gray-300 shrink-0">chevron_right</span>
               </button>
             )}
+            {/* Diagnostyka: które źródło fokusu się nie wczytało. Bez tego
+                błąd odczytu wyglądał jak „uczeń nie ma fokusu" albo pustka. */}
+            {focusState?.failed && (
+              <p className="text-[10px] font-bold text-red-500 px-1">
+                {t('studentProfile.focusLoadError', {
+                  parts: focusState.failed.map(p => t(`studentProfile.focusPart_${p}`)).join(', '),
+                })}
+              </p>
+            )}
 
             {/* NASTĘPNY CEL UCZNIA */}
             {nextTournament && (

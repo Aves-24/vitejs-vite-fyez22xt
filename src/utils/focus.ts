@@ -94,6 +94,10 @@ export interface FocusState {
   dots: boolean;
   goal: number;
   count: number;         // liczone tylko przy włączonych kropkach
+  // Które źródło się nie wczytało ('user' | 'goal' | 'sessions'). Pozostałe
+  // i tak są użyte — błąd jednego nie kasuje całego fokusu. Trener w profilu
+  // ucznia widzi to jako komunikat zamiast pustego miejsca.
+  failed?: string[];
 }
 
 /**
@@ -114,16 +118,32 @@ export function useActiveFocus(
     if (!userId) return;
     let cancelled = false;
     (async () => {
-      try {
-        const [userSnap, goal] = await Promise.all([
-          getDoc(doc(db, 'users', userId)),
-          loadLatestCoachGoal(userId),
-        ]);
-        const data = userSnap.exists() ? userSnap.data() : {};
-        const focus = resolveActiveFocus(readOwnFocus(data), goal);
-        const dots = data.focusDots === true;
-        let count = 0;
-        if (withCount && dots && focus?.topic) {
+      const failed: string[] = [];
+      // Każde źródło osobno: wcześniej jeden odrzucony odczyt (np. dziennik
+      // trenerski) wywracał Promise.all i fokus po cichu znikał w całości.
+      const [userRes, goalRes] = await Promise.allSettled([
+        getDoc(doc(db, 'users', userId)),
+        loadLatestCoachGoal(userId),
+      ]);
+      let data: any = {};
+      if (userRes.status === 'fulfilled') {
+        data = userRes.value.exists() ? userRes.value.data() : {};
+      } else {
+        failed.push('user');
+        console.error('Fokus: błąd odczytu profilu', userRes.reason);
+      }
+      let goal: CoachGoal | undefined;
+      if (goalRes.status === 'fulfilled') {
+        goal = goalRes.value;
+      } else {
+        failed.push('goal');
+        console.error('Fokus: błąd odczytu celów trenera', goalRes.reason);
+      }
+      const focus = resolveActiveFocus(readOwnFocus(data), goal);
+      const dots = data.focusDots === true;
+      let count = 0;
+      if (withCount && dots && focus?.topic) {
+        try {
           const sSnap = await getDocs(query(
             collection(db, `users/${userId}/sessions`),
             where('timestamp', '>=', Timestamp.fromMillis(focusFrom(focus))),
@@ -132,10 +152,13 @@ export function useActiveFocus(
             sSnap.docs.map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [] })),
             focus,
           );
+        } catch (e) {
+          failed.push('sessions');
+          console.error('Fokus: błąd odczytu treningów', e);
         }
-        if (!cancelled) setState({ focus, dots, goal: readFocusGoal(data), count });
-      } catch (e) {
-        console.error('Fokus: błąd wczytywania', e);
+      }
+      if (!cancelled) {
+        setState({ focus, dots, goal: readFocusGoal(data), count, ...(failed.length ? { failed } : {}) });
       }
     })();
     return () => { cancelled = true; };

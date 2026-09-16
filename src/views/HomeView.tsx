@@ -15,6 +15,7 @@ import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
+import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -104,7 +105,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [userClub, setUserClub] = useState(''); 
   const [aiAdvice, setAiAdvice] = useState('');
   const [showQR, setShowQR] = useState(false);
-  
+  // [C38] Trener zeskanował kod → zaproszenie na ekranie, kod QR znika sam.
+  useEffect(() => {
+    const close = () => setShowQR(false);
+    window.addEventListener(COACH_INVITE_SHOWN_EVENT, close);
+    return () => window.removeEventListener(COACH_INVITE_SHOWN_EVENT, close);
+  }, []);
+
   const [isQuickStatsOpen, setIsQuickStatsOpen] = useState(false);
   const [quickStatsInitialTab, setQuickStatsInitialTab] = useState<'ARROWS' | 'POINTS'>('ARROWS');
   const [refreshNonce, setRefreshNonce] = useState(0);

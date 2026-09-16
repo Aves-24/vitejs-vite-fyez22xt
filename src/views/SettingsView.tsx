@@ -33,6 +33,7 @@ import {
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import EquipmentSection from '../components/settings/EquipmentSection';
+import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import {
   EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID,
   isBlowgun, resolveSetupColors, setupColorHex,
@@ -251,6 +252,12 @@ export default function SettingsView({
   const [studentsCount, setStudentsCount] = useState<number>(0);
   const [myCoachesData, setMyCoachesData] = useState<any[]>([]);
   const [showMyQR, setShowMyQR] = useState(false);
+  // [C38] Trener zeskanował kod → zaproszenie na ekranie, kod QR znika sam.
+  useEffect(() => {
+    const close = () => setShowMyQR(false);
+    window.addEventListener(COACH_INVITE_SHOWN_EVENT, close);
+    return () => window.removeEventListener(COACH_INVITE_SHOWN_EVENT, close);
+  }, []);
 
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [confirmRevokeCoachId, setConfirmRevokeCoachId] = useState<string | null>(null);

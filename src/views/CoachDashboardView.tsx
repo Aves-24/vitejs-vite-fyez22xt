@@ -216,6 +216,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Uczniowie do usunięcia / do przypisania grup — zaznaczeni w trybie wyboru.
   const [studentsToDelete, setStudentsToDelete] = useState<string[] | null>(null);
   const [manualStudentId, setManualStudentId] = useState('');
+  // [C38] Potwierdzenie wysłania zaproszenia — okienko zamiast znikającego
+  // toastu (zgłoszenie usera 2026-09-16: informacja ginęła za szybko).
+  // Wartość = nazwa ucznia z publicznego lustra ('' gdy brak).
+  const [inviteSentTo, setInviteSentTo] = useState<string | null>(null);
 
   // Komunikacja Grupowa
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
@@ -594,7 +598,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       });
 
       setManualStudentId('');
-      showToast(t('coachDashboard.toastInviteSent'));
+      setInviteSentTo(studentPub.displayName || '');
     } catch (error) {
       console.error("Błąd wysyłania zaproszenia:", error);
       showToast(t('coachDashboard.toastError'));
@@ -1695,6 +1699,26 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           )}
           {renderStudentList(visibleStudents, t('coachDashboard.allStudents'))}
         </div>
+      )}
+
+      {inviteSentTo !== null && createPortal(
+        <div className="fixed inset-0 z-[500000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setInviteSentTo(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-emerald-50 border-2 border-emerald-100 flex items-center justify-center">
+              <span className="material-symbols-outlined text-emerald-500 text-3xl">send</span>
+            </div>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-2">{t('coachDashboard.inviteSentTitle')}</h2>
+            <p className="text-sm font-bold text-gray-600 mb-6 leading-relaxed">
+              {inviteSentTo
+                ? t('coachDashboard.inviteSentDesc', { name: inviteSentTo })
+                : t('coachDashboard.inviteSentDescNoName')}
+            </p>
+            <button onClick={() => setInviteSentTo(null)} className="w-full py-3.5 rounded-xl font-black text-[11px] uppercase tracking-widest text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all">
+              {t('coachDashboard.inviteSentOk')}
+            </button>
+          </div>
+        </div>,
+        document.body
       )}
 
       {toastMessage && (

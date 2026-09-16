@@ -1187,11 +1187,30 @@ Z ogona po C25 zostały: **jardy**.
       sprawdzenia przez usera na telefonie: (1) czy kamera w ogóle startuje
       (to jest tu jedyne realne ryzyko), (2) czy podgląd mieści się w oknie,
       (3) czy po zamknięciu dioda kamery gaśnie.
-      **UWAGA na przyszłość:** pozostałe modale w tym widoku (grupy,
-      wiadomości, usuwanie ucznia, ~l. 1609+) używają `fixed inset-0` BEZ
-      portalu, więc mają ten sam problem z transformem na `<main>` — przy
-      przewiniętej stronie mogą wyskakiwać poza ekranem. Nikt tego nie
-      zgłaszał, ale warto sprawdzić i ewentualnie przepiąć tak samo.
+      (Pozostałe modale w tym widoku — grupy, wiadomości, usuwanie ucznia —
+      JUŻ szły przez `createPortal`; skaner był jedynym wyjątkiem. Sprawdzone
+      2026-09-16.)
+
+- [x] **C38. ✅ ZROBIONE 2026-09-16 — przepływ „trener skanuje ucznia" po
+      obu stronach.** Zgłosił user 2026-09-16 po teście C34 na localhost:
+      - **Uczeń:** po zeskanowaniu kod QR dalej wisiał na ekranie, a „Trainer
+        Einladung" pokazywała się dopiero po jego ręcznym zamknięciu.
+        Przyczyna: okno QR w Ustawieniach ma `z-[400000]`, a popup zaproszenia
+        miał `z-[40000]` — był POD kodem. **Naprawa:** `CoachInvitePopup`
+        wysyła zdarzenie `grotx:coach-invite-shown` (`COACH_INVITE_SHOWN_EVENT`),
+        gdy pojawia się nowe zaproszenie; oba okna z kodem (`HomeView` →
+        `showQR`, `SettingsView` → `showMyQR`) nasłuchują i same się zamykają.
+        Dodatkowo popup zaproszenia podniesiony do `z-[450000]`, żeby był na
+        wierzchu nawet bez zamknięcia QR.
+      - **Trener:** po wysłaniu zaproszenia był tylko pływający toast, który
+        szybko znikał. **Naprawa:** okienko „Zaproszenie wysłane" z imieniem
+        ucznia (z publicznego lustra) i wyjaśnieniem, że uczeń pojawi się
+        na liście po akceptacji; zamykane przyciskiem OK / tłem. Klucze
+        `coachDashboard.inviteSent*` w PL/DE/EN. Ikona `send` — pierwotnie
+        `mark_email_read`, ale nie ma jej w okrojonym foncie (build pada
+        na `icon-font.mjs --check`).
+      **Do sprawdzenia przez usera:** czy kod QR u ucznia znika sam, gdy
+      trener zeskanuje, i czy okienko u trenera pokazuje właściwe imię.
 
 - [ ] **C35. Zgoda ucznia ma wprost mówić, że trener zobaczy imię
       i nazwisko.** Zgłosił user 2026-09-16 („po zeskanowaniu powinno u ucznia

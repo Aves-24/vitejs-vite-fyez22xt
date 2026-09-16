@@ -1341,6 +1341,10 @@ export const views = {
     }
   },
   coachDashboard: {
+    inviteSentTitle: "Invitation sent",
+    inviteSentDesc: "{{name}} has received the invitation. They will appear in your student list once they accept it on their phone.",
+    inviteSentDescNoName: "The student has received the invitation. They will appear in your list once they accept it.",
+    inviteSentOk: "OK",
     newStudentDot: "New student ({{count}})",
     title: "Squad",
     subtitle: "Coach Panel",

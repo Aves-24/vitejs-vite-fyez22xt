@@ -12,6 +12,15 @@ interface CoachInvitePopupProps {
   userId: string;
 }
 
+/**
+ * [C38] Sygnał „zaproszenie na ekranie". Uczeń zwykle trzyma otwarty swój kod
+ * QR (Home albo Ustawienia → Trener), a trener właśnie go skanuje — zgłoszenie
+ * usera 2026-09-16: popup zaproszenia wisiał POD kodem QR i trzeba było ręcznie
+ * zamknąć QR, żeby go zobaczyć. Okna z kodem nasłuchują tego zdarzenia i same
+ * się zamykają: po zeskanowaniu kod nie jest już do niczego potrzebny.
+ */
+export const COACH_INVITE_SHOWN_EVENT = 'grotx:coach-invite-shown';
+
 interface Invite {
   id: string;
   coachId: string;
@@ -71,6 +80,11 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
 
   const currentInvite = invites[0];
 
+  // [C38] Nowe zaproszenie na ekranie → zamknij otwarte okna z kodem QR.
+  useEffect(() => {
+    if (currentInvite) window.dispatchEvent(new Event(COACH_INVITE_SHOWN_EVENT));
+  }, [currentInvite?.id]);
+
   const handleAccept = async () => {
     if (!currentInvite || busy) return;
     setBusy(true);
@@ -107,7 +121,9 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
   if (!currentInvite) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[40000] bg-black/60 flex items-center justify-center p-6 animate-fade-in-up">
+    // [C38] z-index ponad oknem QR z Ustawień (z-[400000]) — nawet gdyby
+    // zamknięcie przez zdarzenie nie zadziałało, zaproszenie ma być na wierzchu.
+    <div className="fixed inset-0 z-[450000] bg-black/60 flex items-center justify-center p-6 animate-fade-in-up">
       <div className="bg-white rounded-3xl p-6 max-w-sm w-full shadow-2xl">
         <div className="flex justify-center mb-4">
           <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center border-2 border-blue-100">

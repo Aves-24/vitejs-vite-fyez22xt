@@ -53,6 +53,7 @@ export const components = {
     stop: "STOP / RESET"
   },
   notifications: {
+    defaultName: "Łuczniku",
     newYearTitle: "Szczęśliwego Nowego Roku, {{name}}! 🎆",
     newYearMsg: "Zaczynamy oficjalnie sezon {{year}}. To świetny moment na nowe rekordy życiowe!",
     classChanged: "W tym roku przechodzisz do nowej kategorii wiekowej! Zaktualizowałem Twoje domyślne dystanse i rozmiary tarcz zgodnie z regulaminem federacji.",

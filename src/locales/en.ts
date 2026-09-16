@@ -53,6 +53,7 @@ export const components = {
     stop: "STOP / RESET"
   },
   notifications: {
+    defaultName: "Archer",
     newYearTitle: "Happy New Year, {{name}}! 🎆",
     newYearMsg: "We officially begin the {{year}} season. It's a great time for new personal bests!",
     classChanged: "This year you're moving to a new age category! I've updated your default distances and target face sizes according to federation rules.",

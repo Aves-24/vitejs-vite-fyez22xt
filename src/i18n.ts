@@ -26,11 +26,20 @@ function normalize(lng?: string | null): Lng {
   return (SUPPORTED_LNGS as readonly string[]).includes(base) ? (base as Lng) : 'en';
 }
 
-/** Dociąga paczkę tłumaczeń, jeśli jeszcze jej nie ma w pamięci. */
+/**
+ * Dociąga paczkę tłumaczeń, jeśli jeszcze jej nie ma w pamięci.
+ * [C33] Jedno ponowienie przy błędzie sieci — na telefonie pierwszy strzał po
+ * wybudzeniu potrafi paść, a bez paczki cały ekran leci surowymi kluczami.
+ */
 export async function loadLanguage(lng?: string | null): Promise<Lng> {
   const key = normalize(lng);
   if (!i18n.hasResourceBundle(key, 'translation')) {
-    const mod = await loaders[key]();
+    let mod;
+    try {
+      mod = await loaders[key]();
+    } catch {
+      mod = await loaders[key]();
+    }
     i18n.addResourceBundle(key, 'translation', { ...mod.views, ...mod.components }, true, true);
   }
   return key;
@@ -65,6 +74,20 @@ export async function initI18n(): Promise<typeof i18n> {
       nonExplicitSupportedLngs: true,
       interpolation: {
         escapeValue: false, // React samo escape'uje wartości, chroniąc przed XSS
+      },
+      // [C33] Domyślnie react-i18next przerysowuje widoki TYLKO po zmianie
+      // języka. Paczki dochodzą przez addResourceBundle, więc komponent, który
+      // zdążył się zamontować bez tłumaczeń (wolna sieć, nieudany import),
+      // zostawał z surowymi kluczami do końca życia — statyczne okienka
+      // (urodziny, Nowy Rok) nie mają czym się przerysować. 'added'/'loaded'
+      // odświeża je w chwili, gdy paczka faktycznie dojdzie.
+      // Uwaga: samo bindI18n nie wystarczy — addResourceBundle emituje 'added'
+      // na MAGAZYNIE zasobów (i18n.store), a ten pilnuje się przez
+      // bindI18nStore. Sprawdzone na żywo: bez tej drugiej opcji ekran zostaje
+      // na kluczach nawet po dojściu paczki.
+      react: {
+        bindI18n: 'languageChanged loaded added',
+        bindI18nStore: 'added',
       },
       // Paczki dochodzą przez addResourceBundle w loadLanguage().
       resources: {},

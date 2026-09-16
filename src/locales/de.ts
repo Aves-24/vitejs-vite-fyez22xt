@@ -53,6 +53,7 @@ export const components = {
     stop: "STOP / RESET"
   },
   notifications: {
+    defaultName: "Schütze",
     newYearTitle: "Frohes neues Jahr, {{name}}! 🎆",
     newYearMsg: "Wir beginnen offiziell die Saison {{year}}. Es ist eine großartige Zeit für neue persönliche Bestleistungen!",
     classChanged: "In diesem Jahr wechselst du in eine neue Altersklasse! Ich habe deine Standarddistanzen und Scheibengrößen gemäß den Verbandsregeln aktualisiert.",

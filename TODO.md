@@ -1111,17 +1111,31 @@ Z ogona po C25 zostały: **jardy**.
       mogą wymagać wyjątku (Home ma własny układ z licznikami, Scoring
       tryb pełnoekranowy) — zdecydować z userem.
 
-- [ ] **C33. Popup urodzinowy pokazuje „jakieś bzdury”.** Zgłosił user
-      2026-09-15: gdy ktoś ma urodziny, w okienku z życzeniami pojawia się
-      niepoprawna treść. Nie badane. Kod: `src/components/SmartSeasonUpdater.tsx`
-      (wykrycie urodzin ~l. 64, popup ~l. 185–205; teksty
-      `notifications.birthdayTitle/Msg/Info/Close` w `src/locales/*.ts`,
-      imię przez `{ name: userName }`). Na start: zapytać usera o zrzut
-      ekranu / co dokładnie widział i w jakim języku; sprawdzić, skąd
-      bierze się `userName` i data urodzin (format `bDayStr`), oraz czy
-      teksty nie są już nieaktualne (np. wzmianka o „Trenerze AI”, który
-      jest ukryty). Dane urodzin są wrażliwe (C21) — nie logować ich
-      w konsoli (dziś ~l. 65 wypisuje datę urodzin).
+- [x] **C33. ✅ NAPRAWIONE 2026-09-16 — popup urodzinowy pokazywał surowe
+      klucze i18n** (`notifications.birthdayTitle` itd. zamiast tekstu).
+      Zgłosił user 2026-09-15 ze zrzutem ekranu (interfejs niemiecki).
+      **Przyczyna:** to nie był brak tłumaczeń — klucze są w komplecie
+      w pl/en/de. Paczki językowe dochodzą dynamicznie przez
+      `addResourceBundle` (`src/i18n.ts`), a react-i18next domyślnie
+      przerysowuje widoki TYLKO na `languageChanged`. Komponent, który zdążył
+      się zamontować, zanim paczka doszła (wolna sieć na telefonie, nieudany
+      pierwszy `import()`), zostawał z surowymi kluczami do końca życia.
+      Statyczne okienko urodzinowe nie ma czym się przerysować, więc zostało
+      tak na stałe — a tło (Home) odświeżało się od Firestore i wyglądało
+      normalnie. Stąd „bzdury" wyłącznie w popupie.
+      **Zrobione:** (1) `react.bindI18n: "languageChanged loaded added"`
+      + `react.bindI18nStore: "added"` — ta druga opcja jest tu kluczowa, bo
+      `addResourceBundle` emituje zdarzenie na MAGAZYNIE zasobów
+      (`i18n.store`), nie na instancji; sprawdzone na żywo w dev: bez niej
+      ekran zostaje na kluczach nawet po dojściu paczki, z nią sam wraca do
+      tłumaczeń; (2) jedno ponowienie `import()` paczki przy błędzie sieci;
+      (3) [C21] popup nie wypisuje już do konsoli całego dokumentu profilu
+      ani daty urodzin — zostały dwa logi dev-only bez danych wrażliwych;
+      (4) twarde polskie „Łuczniku" dla kont bez imienia zastąpione kluczem
+      `notifications.defaultName` (PL Łuczniku / DE Schütze / EN Archer).
+      **Uwaga na przyszłość:** wykrywanie urodzin działa (popup u usera
+      wyskoczył), ale samego okna nie dało się obejrzeć na żywo — pokazuje się
+      tylko po zalogowaniu, raz w roku, w dniu urodzin.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

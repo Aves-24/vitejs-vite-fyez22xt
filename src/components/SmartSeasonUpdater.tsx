@@ -39,7 +39,9 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
 
         if (docSnap.exists()) {
           const data = docSnap.data();
-          console.log("Trener AI: Pobrałem dane z bazy:", data);
+          // [RODO C21] Bez zrzutu całego dokumentu do konsoli — leżą w nim
+          // imię, data urodzin i płeć. W dev wystarczy sam fakt odczytu.
+          if (import.meta.env.DEV) console.log('SeasonUpdater: profil wczytany.');
 
           // [RODO C21] birthDate/gender żyją w users/{uid}/private/profile;
           // data.birthDate/gender to fallback dla kont sprzed migracji.
@@ -52,7 +54,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             return;
           }
 
-          const firstName = data.firstName || 'Łuczniku';
+          const firstName = data.firstName || '';
           setUserName(firstName);
           setCurrentYearStr(currentYear.toString());
 
@@ -62,7 +64,8 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           const bDay = parseInt(bDayStr, 10);
           
           const isBirthdayToday = (bMonth === currentMonth && bDay === currentDay);
-          console.log(`Trener AI: Urodziny dzisiaj? ${isBirthdayToday} (Baza: ${bDay}.${bMonth} | Dziś: ${currentDay}.${currentMonth})`);
+          // [RODO C21] Data urodzin NIE trafia do konsoli — tylko sam wynik.
+          if (import.meta.env.DEV) console.log(`SeasonUpdater: urodziny dzisiaj? ${isBirthdayToday}`);
 
           // 1. SPRAWDZAMY CZY TO NOWY ROK
           if (data.lastNewYearGreeting !== currentYear) {
@@ -133,6 +136,10 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
 
   if (modalType === 'NONE') return null;
 
+  // [C33] Zwrot grzecznościowy dla kont bez imienia — w języku interfejsu,
+  // a nie twardym polskim „Łuczniku" w niemieckim okienku.
+  const displayName = userName || t('notifications.defaultName');
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 animate-fade-in">
       
@@ -145,7 +152,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           </div>
 
           <h2 className="text-2xl font-black text-white tracking-tight mb-2 relative z-10">
-            {t('notifications.newYearTitle', { name: userName })}
+            {t('notifications.newYearTitle', { name: displayName })}
           </h2>
           
           <div className="space-y-4 mb-8 relative z-10">
@@ -184,7 +191,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           </div>
 
           <h2 className="text-2xl font-black text-white tracking-tight mb-2 relative z-10">
-            {t('notifications.birthdayTitle', { name: userName })}
+            {t('notifications.birthdayTitle', { name: displayName })}
           </h2>
           
           <div className="space-y-4 mb-8 relative z-10">

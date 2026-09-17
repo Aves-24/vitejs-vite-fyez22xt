@@ -5,6 +5,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, collection, query, where, getDocs, deleteDoc, updateDoc, writeBatch, addDoc, serverTimestamp, setDoc, getDoc, orderBy, limit, startAfter, getCountFromServer } from 'firebase/firestore';
 import { recalcUserRank } from '../utils/rankEngine';
 import { useTranslation } from 'react-i18next';
+import ViewHeader from '../components/ViewHeader';
 import StatsView from './StatsView';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
@@ -578,18 +579,13 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
   }
 
   return (
-    <div className="flex flex-col h-screen bg-[#fcfdfe] pt-[env(safe-area-inset-top)] max-w-md mx-auto relative overflow-hidden text-[#333]">
+    <div className="flex flex-col h-screen bg-[#fcfdfe] max-w-md mx-auto relative overflow-hidden text-[#333]">
+      <ViewHeader
+        onBack={() => onNavigate('SETTINGS')}
+        eyebrow="Statystyki odświeżane na żywo"
+        title="Admin Center"
+      />
       <div className="px-6 py-4 bg-white border-b border-gray-100 shrink-0">
-        <div className="flex items-center gap-4 mb-4">
-          <button onClick={() => onNavigate('SETTINGS')} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-[#0a3a2a] active:scale-90 transition-all">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <div>
-            <h1 className="text-xl font-black text-[#0a3a2a] leading-none">Admin Center</h1>
-            <p className="text-[8px] font-bold text-gray-400 uppercase mt-1 tracking-widest">Statystyki odświeżane na żywo</p>
-          </div>
-        </div>
-
         <div className="grid grid-cols-2 gap-2 mb-4">
            <div className="bg-[#0a3a2a] p-3 rounded-2xl shadow-sm border border-[#0a3a2a]">
               <span className="text-[7px] font-black text-emerald-400 uppercase tracking-widest">Wszyscy Użytkownicy</span>

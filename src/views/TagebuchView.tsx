@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+import ViewHeader from '../components/ViewHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
@@ -591,14 +592,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
 
-      {/* HEADER */}
-      <div className="bg-gradient-to-b from-[#0a3a2a] to-[#0d4a36] pt-[calc(env(safe-area-inset-top)+1rem)] pb-4 px-5 rounded-b-[36px] shadow-xl shadow-[#0a3a2a]/20 relative z-20 shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
-            <span className="material-symbols-outlined">arrow_back</span>
-          </button>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg font-black text-white leading-tight truncate">{t('tagebuch.title')}</h1>
+      <ViewHeader
+        onBack={onBack}
+        title={t('tagebuch.title')}
+        subtitle={<>
             {/* Trenerzy: jeden zwarty przycisk pod tytułem zamiast rzędu imion
                 (przy kilku trenerach lista się rozlewała). 1 trener = od razu czat. */}
             {hasCoach && (
@@ -652,8 +649,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 )}
               </div>
             )}
-          </div>
-          {/* Filtry schowane pod lupą — używane rzadko, a zajmowały cały rząd. */}
+        </>}
+        actions={
+          /* Filtry schowane pod lupą — używane rzadko, a zajmowały cały rząd. */
           <button
             onClick={() => setFiltersOpen(v => !v)}
             className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-90 shrink-0 ${showFilters ? 'bg-white/25' : 'bg-white/10 hover:bg-white/20'}`}
@@ -663,11 +661,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <span className="material-symbols-outlined text-[20px]">search</span>
             {filterActive && <span className="absolute top-1 right-1 w-2 h-2 bg-[#fed33e] rounded-full" />}
           </button>
-          <div className="flex items-center shrink-0">
-            <span className="text-base font-black text-white tracking-tighter leading-none">GROT-X</span>
-            <div className="bg-[#fed33e] w-1.5 h-1.5 rounded-full ml-1" />
-          </div>
-        </div>
+        }
+      >
         {!isLoading && (focusEditing ? (
           <FocusEditor
             initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
@@ -682,7 +677,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         ) : (
           <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
         ))}
-      </div>
+      </ViewHeader>
 
       <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">
 

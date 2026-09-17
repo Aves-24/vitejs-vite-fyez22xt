@@ -10,6 +10,7 @@ import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
 import { UserDistance, displayDistance, distancesForSetup } from '../config/distances';
+import ViewHeader from './ViewHeader';
 
 interface SessionSetupProps {
   userId: string;
@@ -310,10 +311,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] pt-[env(safe-area-inset-top)] px-3 pb-24 animate-fade-in max-w-md mx-auto relative">
-      <div className="mt-2 mb-2 text-center">
-        <h1 className="text-lg font-black text-[#0a3a2a] tracking-tight uppercase">{t('setup.title')}</h1>
-      </div>
+    <div className="flex flex-col h-full bg-[#fcfdfe] px-3 pb-24 animate-fade-in max-w-md mx-auto relative">
+      <ViewHeader className="-mx-3 mb-3" onBack={() => onNavigate?.('HOME')} title={t('setup.title')} />
 
       <div className="space-y-2">
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">

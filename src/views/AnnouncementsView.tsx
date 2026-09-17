@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import ViewHeader from '../components/ViewHeader';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 
 interface AnnouncementsViewProps {
@@ -129,25 +130,14 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
   const isCoachMessage = (ann: any) => !!ann.senderId;
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#fcfdfe] px-5 pt-[calc(env(safe-area-inset-top)+1rem)] pb-24 max-w-md mx-auto relative">
+    <div className="flex flex-col min-h-screen bg-[#fcfdfe] px-5 pb-24 max-w-md mx-auto relative">
 
-      {/* HEADER */}
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => onNavigate('HOME')}
-          className="w-10 h-10 bg-white rounded-xl shadow-sm border border-gray-100 flex items-center justify-center active:scale-90 transition-all text-gray-500"
-        >
-          <span className="material-symbols-outlined">arrow_back</span>
-        </button>
-        <div>
-          <h1 className="text-2xl font-black text-[#0a3a2a] tracking-tight leading-none">
-            {t('announcements.pageTitle')}
-          </h1>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">
-            {t('announcements.title', 'Wiadomości i ogłoszenia')}
-          </p>
-        </div>
-      </div>
+      <ViewHeader
+        className="-mx-5 mb-6"
+        onBack={() => onNavigate('HOME')}
+        eyebrow={t('announcements.title', 'Wiadomości i ogłoszenia')}
+        title={t('announcements.pageTitle')}
+      />
 
       {/* STAN ŁADOWANIA */}
       {isLoading && (

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
+import ViewHeader from '../components/ViewHeader';
 import CoachLogPanel from '../components/CoachLogPanel';
 import CoachFocusModal from '../components/CoachFocusModal';
 import SessionTrend from '../components/SessionTrend';
@@ -650,33 +651,24 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
       
-      {/* HEADER TRENERA */}
-      <div className="bg-gradient-to-b from-[#0a3a2a] to-[#0d4a36] pt-[calc(env(safe-area-inset-top)+1rem)] pb-5 px-5 rounded-b-[36px] shadow-xl shadow-[#0a3a2a]/20 relative z-20 shrink-0">
-        <div className="flex items-center gap-4 mb-2">
-          <button onClick={() => onNavigate('COACH')} className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all active:scale-90 shrink-0">
-            <span className="material-symbols-outlined">arrow_back</span>
+      <ViewHeader
+        onBack={() => onNavigate('COACH')}
+        eyebrow={t('studentProfile.headerLabel')}
+        title={`${student.firstName} ${student.lastName}`}
+        subtitle={(student.ageCategory || student.ageCategoryPL) && (
+          <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-0.5 truncate">{formatViewerAgeCategory(student.ageCategory, student.ageCategoryPL, i18n.language, t)}</p>
+        )}
+        hideLogo
+        actions={<>
+          <button onClick={() => setShowHardwareModal(true)} className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white shadow-sm active:scale-90 transition-all border border-white/10">
+            <span className="material-symbols-outlined text-[22px]">build</span>
           </button>
-          
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{t('studentProfile.headerLabel')}</p>
-            <h1 className="text-2xl font-black text-white leading-tight truncate">{student.firstName} {student.lastName}</h1>
-            {(student.ageCategory || student.ageCategoryPL) && (
-              <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-0.5">{formatViewerAgeCategory(student.ageCategory, student.ageCategoryPL, i18n.language, t)}</p>
-            )}
-          </div>
-          
-          {/* PRZYCISKI PO PRAWEJ STRONIE (Sprzęt i Notatka) */}
-          <div className="flex gap-2 shrink-0">
-            <button onClick={() => setShowHardwareModal(true)} className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white shadow-sm active:scale-90 transition-all border border-white/10">
-              <span className="material-symbols-outlined text-2xl">build</span>
-            </button>
-
-            <button onClick={() => setShowPrivateNoteModal(true)} className="w-12 h-12 bg-[#fed33e] rounded-2xl flex items-center justify-center text-[#0a3a2a] shadow-sm active:scale-90 transition-all relative">
-              <span className="material-symbols-outlined text-3xl">person</span>
-              {hasAnyPrivateNote && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></span>}
-            </button>
-          </div>
-        </div>
+          <button onClick={() => setShowPrivateNoteModal(true)} className="w-10 h-10 bg-[#fed33e] rounded-2xl flex items-center justify-center text-[#0a3a2a] shadow-sm active:scale-90 transition-all relative">
+            <span className="material-symbols-outlined text-2xl">person</span>
+            {hasAnyPrivateNote && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></span>}
+          </button>
+        </>}
+      >
 
         {/* STATYSTYKI — rząd 1: 3 kafelki */}
         <div className="flex gap-2 mt-3">
@@ -808,7 +800,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             })}
           </p>
         )}
-      </div>
+      </ViewHeader>
 
       {/* ─── TAB BAR ─────────────────────────────────────────── */}
       <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">

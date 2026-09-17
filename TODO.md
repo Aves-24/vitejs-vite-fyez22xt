@@ -1109,7 +1109,27 @@ Z ogona po C25 zostały: **jardy**.
       (dystans/runda w `ScoringView`, zapis ~l. 467); jeśli nie, trzeba ją
       stemplować przy starcie. Stare sesje bez flagi traktować jak pełne.
 
-- [ ] **C32. Ujednolicić nagłówki we wszystkich zakładkach.** Prośba usera
+- [x] **C32. ✅ ZROBIONE 2026-09-17 — jeden nagłówek we wszystkich zakładkach.**
+      Decyzje usera: wzór = zielony nagłówek z dziennika; strzałka wstecz
+      w nagłówku także w zakładkach dolnego paska (pływający „⟵ 🏠” z App.tsx
+      usunięty); wyjątki z własnym nagłówkiem: **Home, Scoring, Ranking świata,
+      Historia bitew**.
+      **Komponent:** `src/components/ViewHeader.tsx` — `title`, `onBack`,
+      `eyebrow` (mały napis nad tytułem), `subtitle` (pod tytułem, w kolumnie),
+      `actions` (przyciski przed logo), `hideLogo`, `children` (pełna szerokość
+      pod wierszem tytułu), `className` (np. `-mx-5`, gdy widok ma padding).
+      **Przepięte:** Tagebuch, StudentProfile (logo ukryte — dwa przyciski
+      + długie nazwisko), Calendar („+” żółty, bo ciemnozielony znikał na
+      tle), Stats (tylko pełnoekranowy; osadzony u trenera bez nagłówka),
+      Settings, SessionSetup, CoachDashboard (logo ukryte, „Dodaj ucznia”
+      jako żółta ikona z `aria-label`), Announcements, AdminDashboard (kafelki
+      i zakładki zostały na białym panelu pod nagłówkiem).
+      **Sprawdzone na żywo** (localhost:4173, konto gościa, 375 px, jasny
+      i ciemny motyw): Kalendarz, Dziennik, Statystyki, Ustawienia,
+      Vorbereitung; strzałka wraca na Home, „+” otwiera formularz terminu.
+      **NIESPRAWDZONE NA ŻYWO** (za rolą trenera/admina albo bez danych):
+      panel trenera, profil ucznia, Admin Center, Benachrichtigungen.
+      *Opis zgłoszenia poniżej.* Prośba usera
       2026-09-14, przy przebudowie dziennika. Dziś każdy widok ma własny
       nagłówek, pisany ręcznie (grep `safe-area-inset-top` w `src/views`):
       - zielony gradient z zaokrąglonym dołem, strzałką wstecz, tytułem

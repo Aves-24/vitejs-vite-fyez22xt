@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
+import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ProStatsView from '../components/ProStatsView';
@@ -750,24 +751,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const previewEnd = highlightedEnd !== null ? currentEnds[highlightedEnd] : null;
 
   return (
-    <div className={`flex flex-col overflow-x-hidden ${isEmbedded ? 'w-full pb-10' : 'h-full bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-32 max-w-md mx-auto'}`}>
-      
-      {!isEmbedded && (
-        <div className="px-10 mt-6 mb-1 h-12 flex justify-between items-center shrink-0">
-          <div className="flex items-center gap-2 ml-14">
-            <div className="flex items-center shrink-0 whitespace-nowrap">
-              <span className="text-[20px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-              <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-1.5 animate-pulse"></div>
-            </div>
-            <div className="w-[1.5px] h-[14px] bg-gray-200 rounded-full mx-2"></div>
-            <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none pt-0.5 whitespace-nowrap">
-              {t('stats.title')}
-            </h1>
-          </div>
-        </div>
-      )}
+    <div className={`flex flex-col overflow-x-hidden ${isEmbedded ? 'w-full pb-10' : 'h-full bg-[#fcfdfe] pb-32 max-w-md mx-auto'}`}>
 
-      <div className={`flex bg-gray-100 p-1 rounded-xl mb-1 shadow-inner ${isEmbedded ? 'mx-0 mt-2' : 'mx-6'}`}>
+      {!isEmbedded && <ViewHeader onBack={() => onNavigate('HOME')} title={t('stats.title')} />}
+
+      <div className={`flex bg-gray-100 p-1 rounded-xl mb-1 shadow-inner ${isEmbedded ? 'mx-0 mt-2' : 'mx-6 mt-4'}`}>
         <button 
           onClick={() => setActiveTab('DAILY')} 
           className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'DAILY' ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}

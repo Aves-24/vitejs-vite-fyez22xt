@@ -7,6 +7,7 @@ import { getRecommendation, BowType } from '../config/archeryRules';
 import { useTranslation } from 'react-i18next'; 
 import { switchLanguage } from '../i18n';
 import ProfileWizard from '../components/ProfileWizard'; 
+import ViewHeader from '../components/ViewHeader';
 import { QRCodeCanvas } from 'qrcode.react';
 
 // Importy komponentów ustawień
@@ -510,7 +511,7 @@ export default function SettingsView({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-24 max-w-md mx-auto relative">
+    <div className="flex flex-col h-full bg-[#fcfdfe] pb-24 max-w-md mx-auto relative">
       
       <ProfileWizard 
         userId={userId} wizardStep={wizardStep} setWizardStep={setWizardStep} autoStartWizard={autoStartWizard}
@@ -542,11 +543,9 @@ export default function SettingsView({
         }} onSaveSettings={saveAllSettings} onNavigate={onNavigate} onLogout={() => setShowLogoutConfirm(true)}
       />
 
-      <div className="px-6 mb-3 mt-6">
-        <h1 className="text-xl font-black text-[#0a3a2a] tracking-tight text-center">{t('settings.mainTitle')}</h1>
-      </div>
+      <ViewHeader onBack={() => onNavigate?.('HOME')} title={t('settings.mainTitle')} />
 
-      <div className="flex px-2 gap-1 overflow-x-auto hide-scrollbar shrink-0 mb-2">
+      <div className="flex px-2 gap-1 overflow-x-auto hide-scrollbar shrink-0 mt-4 mb-2">
         {[
           { id: 'PROFIL', label: t('settings.tabProfile') },
           { id: 'SPRZET', label: t('settings.tabEquipment') },

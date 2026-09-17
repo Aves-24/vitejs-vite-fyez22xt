@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 
 // IMPORTUJEMY NOWY KOMPONENT:
 import TournamentScoreInput from '../components/TournamentScoreInput';
+import ViewHeader from '../components/ViewHeader';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
 import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import { guestExpiryFields } from '../utils/guestMode';
@@ -632,30 +633,25 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const currentLocale = i18nCore.language === 'pl' ? 'pl-PL' : i18nCore.language === 'de' ? 'de-DE' : 'en-GB';
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-32">
-      
-      <div className="px-4 mt-6 mb-4 h-12 flex items-center shrink-0">
-        <div className="w-20 shrink-0" />
-        <div className="flex-1 flex items-center gap-1.5">
-          <span className="text-[20px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-          <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-0.5 animate-pulse" />
-          <div className="w-px h-3.5 bg-gray-200 rounded-full mx-1.5" />
-          <h1 className="text-[11px] font-black text-gray-400 uppercase tracking-[0.15em] leading-none whitespace-nowrap">
-            {t('nav.calendar')}
-          </h1>
-        </div>
-        <div className="relative shrink-0">
-          <div className="absolute inset-0 rounded-full bg-[#0a3a2a]/25 animate-ping" />
-          <button
-            onClick={handleOpenNewForm}
-            className="relative bg-[#0a3a2a] text-white w-11 h-11 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all z-10"
-          >
-            <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
-          </button>
-        </div>
-      </div>
+    <div className="flex flex-col h-full bg-[#fcfdfe] pb-32">
 
-      <div className="px-4 mb-2 shrink-0">
+      <ViewHeader
+        onBack={() => onNavigate?.('HOME')}
+        title={t('nav.calendar')}
+        actions={
+          <div className="relative">
+            <div className="absolute inset-0 rounded-full bg-[#fed33e]/30 animate-ping" />
+            <button
+              onClick={handleOpenNewForm}
+              className="relative bg-[#fed33e] text-[#0a3a2a] w-10 h-10 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all z-10"
+            >
+              <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
+            </button>
+          </div>
+        }
+      />
+
+      <div className="px-4 mt-4 mb-2 shrink-0">
         <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-2.5 shadow-sm">
            <div className="flex justify-between items-center mb-1.5 px-1">
              <button onClick={prevMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>

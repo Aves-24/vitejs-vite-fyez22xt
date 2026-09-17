@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+import ViewHeader from '../components/ViewHeader';
 import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { effectiveCoachLimit } from '../utils/coachAccess';
@@ -1157,44 +1158,32 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   return (
-    <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 pt-[calc(env(safe-area-inset-top)+1rem)] relative">
+    <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 relative">
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <button onClick={() => onNavigate('HOME')} className="w-10 h-10 bg-white rounded-full shadow-sm border border-gray-100 flex items-center justify-center text-gray-600 active:scale-90 transition-all">
-            <span className="material-symbols-outlined text-[20px]">arrow_back_ios_new</span>
-          </button>
-          <div>
-            <div className="flex items-baseline">
-              <h1 className="text-2xl font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</h1>
-              <div className="bg-[#fed33e] w-2 h-2 rounded-full animate-pulse ml-1 relative bottom-[0.3em]"></div>
-            </div>
-            <p className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest mt-1">{t('coachDashboard.subtitle')}</p>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <div className="bg-[#0a3a2a] text-[#fed33e] px-3 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md h-10">
+      <ViewHeader
+        className="-mx-5 mb-4"
+        onBack={() => onNavigate('HOME')}
+        title={t('coachDashboard.subtitle')}
+        hideLogo
+        actions={<>
+          <div className="bg-white/10 text-[#fed33e] px-2.5 rounded-xl flex items-center gap-1.5 h-10">
             <span className="material-symbols-outlined text-sm">groups</span>
             <span className="text-sm font-black">{students.length}/{coachLimit}</span>
           </div>
-          
-          <button 
+          <button
             onClick={() => { startScanner(); }}
             disabled={isLimitReached}
-            className={`h-10 px-3 rounded-xl flex items-center gap-1.5 shadow-md transition-all ${
-              isLimitReached 
-              ? 'bg-gray-100 text-gray-400 border border-gray-200' 
-              : 'bg-indigo-600 text-white active:scale-95'
+            aria-label={t('coachDashboard.addBtn')}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all ${
+              isLimitReached
+              ? 'bg-white/10 text-white/30'
+              : 'bg-[#fed33e] text-[#0a3a2a] active:scale-95'
             }`}
           >
-            <span className="material-symbols-outlined text-[18px]">add_reaction</span>
-            <span className="text-[10px] font-black uppercase tracking-widest hidden xs:block">
-              {t('coachDashboard.addBtn')}
-            </span>
+            <span className="material-symbols-outlined text-[20px]">add_reaction</span>
           </button>
-        </div>
-      </div>
+        </>}
+      />
 
       <div className="space-y-2 mb-4">
       {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy.

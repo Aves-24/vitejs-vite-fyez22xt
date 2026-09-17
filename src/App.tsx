@@ -566,16 +566,7 @@ export default function App() {
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
 
-      {(currentView !== 'HOME' && currentView !== 'SCORING' && currentView !== 'ANNOUNCEMENTS' && currentView !== 'COACH' && currentView !== 'STUDENT_PROFILE' && currentView !== 'ADMIN' && currentView !== 'BATTLE_LOBBY' && currentView !== 'DELAY_MIRROR' && currentView !== 'MY_COACH') && (
-        <button 
-          onClick={() => handleNavigate('HOME')} 
-          className="absolute top-5 left-4 z-[110] px-3 py-2 bg-white/90 backdrop-blur-md rounded-2xl shadow-sm border border-gray-100 text-gray-600 active:scale-95 transition-all flex items-center gap-1.5 hover:bg-gray-50"
-        >
-          <span className="material-symbols-outlined text-[16px] font-black">arrow_back_ios_new</span>
-          <span className="material-symbols-outlined text-[20px]">home</span>
-        </button>
-      )}
-      
+
       <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
       <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>

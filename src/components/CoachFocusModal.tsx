@@ -7,15 +7,19 @@ import TopicPicker from './TopicPicker';
 import { focusTitle } from './tagebuch/FocusCard';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
 
+const MIN_GOAL = FOCUS_GOAL_OPTIONS[0];
+const MAX_GOAL = FOCUS_GOAL_OPTIONS[FOCUS_GOAL_OPTIONS.length - 1];
+
 // Panel otwierany klikiem na pasek fokusu w profilu ucznia. Łączy w jednym
 // miejscu to, co wcześniej wymagało przejścia do Dziennika: zmianę liczby
 // lekcji, ustawienie nowego fokusu, zakończenie obecnego przed czasem i
 // podgląd dat treningów, które się do niego zaliczyły.
 //
 // Układ (user 2026-09-17): wszystko o OBECNYM fokusie (etykieta, tytuł,
-// kropki, daty treningów) na jednym zielonym tle, żeby było oczywiste, że
-// odnosi się do tego co jest aktywne teraz. Panel „Nowy fokus" zawsze widoczny
-// pod spodem (nie chowany za przyciskiem) — tekst → liczba lekcji → tematy.
+// kropki, daty treningów, liczba lekcji do utrwalenia) na jednym zielonym
+// tle — liczba lekcji dotyczy TEGO fokusu, więc żyje przy nim (+1/-1), a nie
+// w formularzu „Nowy fokus" niżej, gdzie sugerowałoby że dotyczy przyszłego.
+// Panel „Nowy fokus" zawsze widoczny pod spodem — tekst -> liczba lekcji -> tematy.
 export default function CoachFocusModal({ studentId, coachId, focusState, onClose, onChange }: {
   studentId: string;
   coachId: string;
@@ -26,8 +30,14 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const { t, i18n } = useTranslation();
   const focus = focusState?.focus ?? null;
 
-  const [goalInput, setGoalInput] = useState<number>(focusState?.goal ?? FOCUS_GOAL_DEFAULT);
-  useEffect(() => { if (focusState) setGoalInput(focusState.goal); }, [focusState?.goal]);
+  // Liczba lekcji OBECNEGO fokusu — bump +/-1, zapisywany od razu (bez
+  // osobnego przycisku), żeby jasno było że dotyczy tego co jest aktywne.
+  const [liveGoal, setLiveGoal] = useState<number>(focusState?.goal ?? FOCUS_GOAL_DEFAULT);
+  useEffect(() => { if (focusState) setLiveGoal(focusState.goal); }, [focusState?.goal]);
+
+  // Liczba lekcji dla NOWEGO fokusu — niezależny stan, ustawiany razem z
+  // tekstem/tematami przy zapisie "Ustaw fokus".
+  const [newGoal, setNewGoal] = useState<number>(focusState?.goal ?? FOCUS_GOAL_DEFAULT);
 
   const [dates, setDates] = useState<number[]>([]);
   useEffect(() => {
@@ -45,12 +55,18 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const [newTopics, setNewTopics] = useState<string[]>([]);
   const [isSavingNew, setIsSavingNew] = useState(false);
 
-  const handleBump = async () => {
+  const handleBumpDelta = async (delta: number) => {
+    const next = Math.min(MAX_GOAL, Math.max(MIN_GOAL, liveGoal + delta));
+    if (next === liveGoal) return;
+    setLiveGoal(next);
     setIsBumping(true);
     try {
-      await updateDoc(doc(db, 'users', studentId), { focusGoal: goalInput, focusDots: true });
+      await updateDoc(doc(db, 'users', studentId), { focusGoal: next, focusDots: true });
       onChange();
-    } catch (e) { console.error('Fokus: błąd zmiany liczby lekcji', e); }
+    } catch (e) {
+      console.error('Fokus: błąd zmiany liczby lekcji', e);
+      setLiveGoal(focusState?.goal ?? next);
+    }
     setIsBumping(false);
   };
 
@@ -85,7 +101,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
         topics: newTopics,
         createdAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'users', studentId), { focusGoal: goalInput, focusDots: true });
+      await updateDoc(doc(db, 'users', studentId), { focusGoal: newGoal, focusDots: true });
       onChange();
       onClose();
     } catch (e) { console.error('Fokus: błąd ustawiania nowego fokusu', e); }
@@ -94,6 +110,8 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
 
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
+
+  const alreadyDone = !!focusState?.dots && liveGoal <= focusState.count;
 
   return createPortal(
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
@@ -123,6 +141,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                     <p className="text-[10px] font-bold text-emerald-700 mt-1">{focusState.count}/{focusState.goal}</p>
                   )}
                 </div>
+
                 <div className="pt-1.5 border-t border-emerald-100/80">
                   <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">
                     {t('studentProfile.focusModalDates', { defaultValue: 'Treningi nad tym tematem' })}
@@ -137,6 +156,32 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                     </div>
                   ) : (
                     <p className="text-[10px] font-bold text-emerald-700/60">{t('studentProfile.focusModalNoDates', { defaultValue: 'Jeszcze żadnego' })}</p>
+                  )}
+                </div>
+
+                <div className="pt-1.5 border-t border-emerald-100/80">
+                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Liczba lekcji do utrwalenia' })}</p>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleBumpDelta(-1)}
+                      disabled={isBumping || liveGoal <= MIN_GOAL}
+                      className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">remove</span>
+                    </button>
+                    <span className="text-[15px] font-black text-[#0a3a2a] min-w-[1.5ch] text-center">{liveGoal}</span>
+                    <button
+                      onClick={() => handleBumpDelta(1)}
+                      disabled={isBumping || liveGoal >= MAX_GOAL}
+                      className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                    </button>
+                  </div>
+                  {alreadyDone && (
+                    <p className="text-[10px] font-bold text-amber-700 mt-1.5 leading-snug">
+                      {t('studentProfile.focusModalGoalWarning', { defaultValue: 'Uczeń ma już {{count}} treningów — ten fokus zostanie oznaczony jako ukończony.', count: focusState?.count })}
+                    </p>
                   )}
                 </div>
               </div>
@@ -187,22 +232,13 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                 {FOCUS_GOAL_OPTIONS.map(n => (
                   <button
                     key={n}
-                    onClick={() => setGoalInput(n)}
-                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-black border transition-all ${goalInput === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}
+                    onClick={() => setNewGoal(n)}
+                    className={`flex-1 py-1.5 rounded-lg text-[11px] font-black border transition-all ${newGoal === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}
                   >
                     {n}
                   </button>
                 ))}
               </div>
-              {focus && goalInput !== focusState?.goal && (
-                <button
-                  onClick={handleBump}
-                  disabled={isBumping}
-                  className="w-full mt-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-blue-700 border border-blue-200 active:scale-95 transition-all disabled:opacity-50"
-                >
-                  {isBumping ? t('coachLog.saving') : t('studentProfile.focusModalSaveGoal', { defaultValue: 'Zapisz liczbę lekcji' })}
-                </button>
-              )}
             </div>
 
             <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />

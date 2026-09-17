@@ -1497,7 +1497,7 @@ export const views = {
     focusModalCurrentLabel: "Aktualny fokus",
     focusModalDates: "Treningi nad tym tematem",
     focusModalNoDates: "Jeszcze żadnego",
-    focusModalSaveGoal: "Zapisz liczbę lekcji",
+    focusModalGoalWarning: "Uczeń ma już {{count}} treningów — ten fokus zostanie oznaczony jako ukończony.",
     focusModalEnd: "Zakończ fokus przed czasem",
     focusModalEndConfirm: "Zakończyć ten fokus? Uczeń zobaczy, że nie ma aktywnego fokusu, dopóki nie ustawisz nowego.",
     focusModalEndConfirmBtn: "Tak, zakończ",

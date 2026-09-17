@@ -1468,7 +1468,7 @@ export const views = {
     focusModalCurrentLabel: "Current focus",
     focusModalDates: "Sessions on this topic",
     focusModalNoDates: "None yet",
-    focusModalSaveGoal: "Save session count",
+    focusModalGoalWarning: "The student already has {{count}} sessions — this focus will be marked as completed.",
     focusModalEnd: "End focus early",
     focusModalEndConfirm: "End this focus? The student will see no active focus until you set a new one.",
     focusModalEndConfirmBtn: "Yes, end it",

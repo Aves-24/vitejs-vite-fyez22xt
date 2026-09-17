@@ -459,7 +459,6 @@ export const views = {
     sightSide: "Seite (L/R)",
     targetTitle: "Scheibenauflage",
     selected: "Ausgewählt:",
-    startBtn: "Training\nstarten",
     techBtn: "Technisches\nTraining",
     battleBtn: "Mehr-\nspieler",
     continueBtn: "Letzte fortsetzen",

@@ -325,7 +325,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] px-3 pb-16 animate-fade-in max-w-md mx-auto relative">
+    <div className={`flex flex-col h-full bg-[#fcfdfe] px-3 ${hasUnsaved ? 'pb-28' : 'pb-16'} animate-fade-in max-w-md mx-auto relative`}>
       <ViewHeader className="-mx-3 mb-3" onBack={() => onNavigate?.('HOME')} title={t('setup.title')} />
 
       <div className="space-y-2">
@@ -468,12 +468,22 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
       </div>
 
-      {/* Stały pasek startu — portal, bo <main> ma transform, a pod nim 96 px pustego pb. */}
+      {/* Stały pasek startu — ten sam kształt i kółko co dolna nawigacja w App.tsx.
+          Portal, bo <main> ma transform, a pod nim 96 px pustego pb. */}
       {createPortal(
-        <div className="fixed bottom-0 inset-x-0 z-[90] bg-[#fcfdfe] border-t border-gray-100 shadow-[0_-6px_20px_rgba(0,0,0,0.06)]">
-          <div className="max-w-md mx-auto px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[90]">
+          <div className="absolute bottom-full inset-x-0 mb-10 px-3 flex flex-col items-center gap-1.5 pointer-events-none">
+            {hasUnsaved && (
+              <button
+                onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
+                className="pointer-events-auto w-full py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">history</span>
+                {t('setup.continueBtn')}
+              </button>
+            )}
             {selectedId && (
-              <p className="flex items-center justify-center gap-1.5 text-[11px] font-black text-gray-500 uppercase tracking-wide mb-1.5 truncate">
+              <p className="max-w-full flex items-center gap-1.5 text-[11px] font-black text-gray-500 uppercase tracking-wide bg-white border border-gray-100 shadow-sm rounded-full px-3 py-1">
                 {setups.length > 0 && activeSetup && (
                   <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(activeSetup.id)) }} />
                 )}
@@ -482,51 +492,61 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 </span>
               </p>
             )}
-            {hasUnsaved && (
-              <button
-                onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
-                className="w-full py-2 mb-2 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">history</span>
-                {t('setup.continueBtn')}
-              </button>
-            )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
-                  setShowTechModal(true);
-                }}
-                disabled={!selectedDistance}
-                className="flex-1 h-16 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md transition-all disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined absolute text-[52px] text-white/10 -right-4 -bottom-4">psychology</span>
-                <span className="text-[10px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.techBtn')}</span>
-              </button>
+          </div>
 
-              <button
-                onClick={handleStartClick}
-                disabled={!selectedDistance}
-                className="flex-[1.5] h-16 bg-[#F2C94C] text-[#6b4d05] rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md shadow-yellow-200 transition-all disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined absolute text-[60px] text-[#8B6508]/10 -right-3 -bottom-4">target</span>
-                <span className="text-[14px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.startBtn')}</span>
-              </button>
+          <div className="relative h-20 w-full px-2">
+            <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{ filter: 'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))' }}>
+              <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white" />
+            </svg>
+            <div className="flex justify-between items-center h-full w-full relative">
+              <div className="flex flex-1 justify-center items-center h-full px-1">
+                <button
+                  onClick={() => {
+                    if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
+                    setShowTechModal(true);
+                  }}
+                  disabled={!selectedDistance}
+                  className="h-12 w-full max-w-[128px] rounded-2xl bg-emerald-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[20px] shrink-0">psychology</span>
+                  <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.techBtn')}</span>
+                </button>
+              </div>
 
-              <button
-                onClick={() => {
-                  if (onGoToBattle) {
-                    onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
-                  } else {
-                    onNavigate?.('BATTLE_LOBBY');
-                  }
-                }}
-                disabled={!selectedDistance}
-                className="flex-1 h-16 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md transition-all disabled:opacity-50"
-              >
-                <span className="material-symbols-outlined absolute text-[52px] text-white/10 -right-4 -bottom-4">swords</span>
-                <span className="text-[10px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.battleBtn')}</span>
-              </button>
+              <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
+                <button
+                  onClick={handleStartClick}
+                  disabled={!selectedDistance}
+                  aria-label={t('nav.training')}
+                  className="w-16 h-16 bg-[#F2C94C] shadow-[#F2C94C]/30 rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden disabled:opacity-50"
+                >
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute w-8 h-8 bg-white/20 rounded-full top-[-10%] left-[-10%] animate-pulse"></div>
+                    <div className="absolute w-6 h-6 bg-white/10 rounded-full bottom-0 right-0 animate-bounce" style={{ animationDuration: '3s' }}></div>
+                  </div>
+                  <span className="material-symbols-outlined text-white text-3xl font-black relative z-10">target</span>
+                </button>
+                <span className="text-[9px] font-black text-[#8B6508] uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm">
+                  {t('nav.training')}
+                </span>
+              </div>
+
+              <div className="flex flex-1 justify-center items-center h-full px-1">
+                <button
+                  onClick={() => {
+                    if (onGoToBattle) {
+                      onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
+                    } else {
+                      onNavigate?.('BATTLE_LOBBY');
+                    }
+                  }}
+                  disabled={!selectedDistance}
+                  className="h-12 w-full max-w-[128px] rounded-2xl bg-indigo-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[20px] shrink-0">swords</span>
+                  <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.battleBtn')}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>,

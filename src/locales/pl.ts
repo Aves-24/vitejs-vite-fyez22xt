@@ -475,7 +475,6 @@ export const views = {
     sightSide: "Bok (Lewo/Prawo)",
     targetTitle: "Rodzaj Tarczy",
     selected: "Wybrana:",
-    startBtn: "Zacznij Trening",
     techBtn: "Trening Techniczny",
     battleBtn: "Gra Wieloosobowa",
     continueBtn: "Kontynuuj poprzedni",

@@ -459,7 +459,6 @@ export const views = {
     sightSide: "Windage (L/R)",
     targetTitle: "Target Face",
     selected: "Selected:",
-    startBtn: "Start Training",
     techBtn: "Technical Training",
     battleBtn: "Multiplayer",
     continueBtn: "Continue previous",

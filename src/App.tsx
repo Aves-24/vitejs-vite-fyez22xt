@@ -435,7 +435,7 @@ export default function App() {
   };
 
   const renderBottomNav = () => {
-    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
+    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
 
     return (

@@ -59,10 +59,20 @@ const hash = createHash('sha256');
 for (const f of allFiles) hash.update(readFileSync(join(DIST, f)));
 const version = hash.digest('hex').slice(0, 12);
 
+// Cache fontów jest trwały MIĘDZY wersjami (patrz FONT_CACHE), ale musi mieć
+// własny hash treści — inaczej zmiana subsetu (npm run icons:update, nowa
+// ikona) nigdy się nie propaguje: cache-first na stały URL trzyma stary
+// plik na zawsze, nawet po 100 kolejnych deployach (błąd znaleziony
+// 2026-09-17 — nowa ikona "remove" renderowała się jako tekst na telefonie
+// z już zapełnionym cache'em fontów). `activate` niżej i tak kasuje każdy
+// cache inny niż CACHE/FONT_CACHE, więc zmiana hasha wystarcza.
+const fontHash = createHash('sha256');
+for (const f of allFiles.filter((f) => f.startsWith('fonts/'))) fontHash.update(readFileSync(join(DIST, f)));
+
 const sw = `/* GROT-X service worker — generowany przez scripts/generate-sw.mjs. NIE EDYTOWAĆ RĘCZNIE. */
 const VERSION = '${version}';
 const CACHE = 'grotx-' + VERSION;
-const FONT_CACHE = 'grotx-fonts'; // wspólny między wersjami
+const FONT_CACHE = 'grotx-fonts-${fontHash.digest('hex').slice(0, 12)}'; // trwały, ale rusza się z trescia
 const PRECACHE = ${JSON.stringify(urls, null, 1)};
 
 // cache: 'reload' — precache prosto z serwera, z pominięciem cache HTTP.

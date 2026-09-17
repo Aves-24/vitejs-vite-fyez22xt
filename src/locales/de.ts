@@ -1462,7 +1462,7 @@ export const views = {
     focusPart_goal: "Trainerziele",
     focusPart_sessions: "Trainingseinheiten",
     focusLabel: "Fokus",
-    focusNone: "Kein Fokus · Eintrag „Ziel“ im Tagebuch anlegen",
+    focusNone: "Kein Fokus · Eintrag „Fokus“ im Tagebuch anlegen",
     loading: "Schülerprofil wird geladen...",
     headerLabel: "Schülerprofil",
     arrowsMonth: "Pfeile/Mon.",

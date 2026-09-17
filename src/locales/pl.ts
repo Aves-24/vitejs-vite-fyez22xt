@@ -1491,7 +1491,7 @@ export const views = {
     focusPart_goal: "cele trenera",
     focusPart_sessions: "treningi",
     focusLabel: "Fokus",
-    focusNone: "Brak fokusu · dodaj wpis „Cel” w Dzienniku",
+    focusNone: "Brak fokusu · dodaj wpis „Fokus” w Dzienniku",
     loading: "Ładowanie profilu ucznia...",
     headerLabel: "Profil Ucznia",
     arrowsMonth: "Strzał/mies.",

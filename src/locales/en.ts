@@ -1462,7 +1462,7 @@ export const views = {
     focusPart_goal: "coach goals",
     focusPart_sessions: "sessions",
     focusLabel: "Focus",
-    focusNone: "No focus · add a “Goal” entry in the Diary",
+    focusNone: "No focus · add a “Focus” entry in the Diary",
     loading: "Loading student profile...",
     headerLabel: "Student Profile",
     arrowsMonth: "Arrows/Mo.",

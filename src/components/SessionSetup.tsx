@@ -371,26 +371,26 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           </div>
         </div>
 
-        <div className="bg-[#0a3a2a] px-3 py-2.5 rounded-[20px] shadow-lg border border-emerald-900 relative overflow-hidden">
+        <div className="bg-[#1f6e53] px-3 py-2.5 rounded-[20px] shadow-lg border border-[#2a7d61] relative overflow-hidden">
           <div className="flex justify-between items-center mb-1.5 relative z-10">
-             <span className="text-[9px] font-black text-emerald-400 uppercase tracking-widest">{t('setup.sightTitle')}</span>
+             <span className="text-[9px] font-black text-emerald-200 uppercase tracking-widest">{t('setup.sightTitle')}</span>
              <div className="flex items-center gap-2">
-               {isPremium && <button onClick={openSightEditor} className="w-5 h-5 flex items-center justify-center bg-white/5 border border-white/10 rounded-md text-emerald-400 active:scale-90 transition-all"><span className="material-symbols-outlined text-[12px]">edit</span></button>}
+               {isPremium && <button onClick={openSightEditor} className="w-5 h-5 flex items-center justify-center bg-white/5 border border-white/10 rounded-md text-emerald-200 active:scale-90 transition-all"><span className="material-symbols-outlined text-[12px]">edit</span></button>}
                <span className="text-[11px] font-black text-white bg-white/10 px-2 py-0.5 rounded-md">{selectedEntry ? displayDistance(selectedEntry) : selectedDistance}</span>
              </div>
           </div>
           {isPremium ? (
             <div className="grid grid-cols-3 gap-1.5 relative z-10">
               <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5">
-                <span className="text-[8px] font-bold text-emerald-300/60 uppercase mb-0.5 tracking-tighter">{t('setup.sightExt')}</span>
+                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightExt')}</span>
                 <span className="text-lg font-black text-[#fed33e]">{sightExtension || '-'}</span>
               </div>
               <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-                <span className="text-[8px] font-bold text-emerald-300/60 uppercase mb-0.5 tracking-tighter">{t('setup.sightHeight')}</span>
+                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightHeight')}</span>
                 <span className="text-2xl font-black text-white">{sightHeight || '-'}</span>
               </div>
               <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5">
-                <span className="text-[8px] font-bold text-emerald-300/60 uppercase mb-0.5 tracking-tighter">{t('setup.sightSide')}</span>
+                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightSide')}</span>
                 <span className="text-lg font-black text-[#fed33e]">{sightSide || '-'}</span>
               </div>
             </div>
@@ -403,8 +403,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-center">
             {t('setup.targetTitle')}
           </span>
-          <div className="w-full py-2 px-3 rounded-xl shadow-inner mb-2 flex items-center justify-center gap-3 relative overflow-hidden transition-colors bg-[#0a3a2a]">
-            <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-widest z-10">{t('setup.selected')}</span>
+          <div className="w-full py-2 px-3 rounded-xl shadow-inner mb-2 flex items-center justify-center gap-3 relative overflow-hidden transition-colors bg-[#1f6e53]">
+            <span className="text-[9px] font-bold text-emerald-200 uppercase tracking-widest z-10">{t('setup.selected')}</span>
             <TargetThumbnail targetType={selectedTarget} className="w-8 h-8 shrink-0 z-10" />
             <span className="text-xl font-black text-white uppercase tracking-tight z-10">{selectedTarget}</span>
           </div>

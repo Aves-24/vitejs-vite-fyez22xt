@@ -176,10 +176,8 @@ export const components = {
     delete: "Delete",
     defaultCoachName: "Coach",
     hint: "Note here what you last worked on with the student and what to focus on in the next training sessions.",
-    focusCurrent: "Student's current focus",
-    focusCurrentNone: "The student hasn't set a focus yet",
     focusGoalLabel: "Sessions to lock in",
-    focusBumpBtn: "Just raise the session count"
+    focusHint: "Manage the session count and ending the focus early from the focus panel — tap the “Focus” bar in the student profile."
   }
 };
 

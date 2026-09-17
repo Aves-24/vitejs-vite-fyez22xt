@@ -176,10 +176,8 @@ export const components = {
     delete: "Löschen",
     defaultCoachName: "Trainer",
     hint: "Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.",
-    focusCurrent: "Aktueller Fokus des Schülers",
-    focusCurrentNone: "Der Schüler hat noch keinen Fokus gesetzt",
     focusGoalLabel: "Anzahl Einheiten bis „gefestigt“",
-    focusBumpBtn: "Nur Anzahl erhöhen"
+    focusHint: "Die Anzahl Einheiten und das vorzeitige Beenden verwaltest du im Fokus-Panel — tippe auf den „Fokus“-Balken im Schülerprofil."
   }
 };
 

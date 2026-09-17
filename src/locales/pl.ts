@@ -190,10 +190,8 @@ export const components = {
     delete: "Usuń",
     defaultCoachName: "Trener",
     hint: "Tutaj notuj, nad czym ostatnio pracowaliście z uczniem i na czym należy skupić się podczas kolejnych treningów.",
-    focusCurrent: "Obecny fokus ucznia",
-    focusCurrentNone: "Uczeń nie ma jeszcze ustawionego fokusu",
     focusGoalLabel: "Liczba lekcji do utrwalenia",
-    focusBumpBtn: "Tylko zwiększ liczbę lekcji"
+    focusHint: "Liczbą lekcji i zakończeniem fokusu zarządzasz w panelu fokusu — kliknij pasek „Fokus” w profilu ucznia."
   }
 };
 

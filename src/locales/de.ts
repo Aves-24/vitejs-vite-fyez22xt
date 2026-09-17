@@ -162,7 +162,7 @@ export const components = {
     addBtn: "Eintrag",
     typeObservation: "Beobachtung",
     typeTip: "Tipp",
-    typeGoal: "Ziel",
+    typeGoal: "Fokus",
     typeFlag: "Wichtig",
     placeholder: "Schreibe einen Eintrag für die anderen Trainer…",
     cancel: "Abbrechen",
@@ -175,7 +175,11 @@ export const components = {
     deleteDesc: "Diese Aktion kann nicht rückgängig gemacht werden.",
     delete: "Löschen",
     defaultCoachName: "Trainer",
-    hint: "Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll."
+    hint: "Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.",
+    focusCurrent: "Aktueller Fokus des Schülers",
+    focusCurrentNone: "Der Schüler hat noch keinen Fokus gesetzt",
+    focusGoalLabel: "Anzahl Einheiten bis „gefestigt“",
+    focusBumpBtn: "Nur Anzahl erhöhen"
   }
 };
 

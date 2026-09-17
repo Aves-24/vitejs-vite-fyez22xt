@@ -302,6 +302,17 @@ service cloud.firestore {
         && (request.auth.uid in resource.data.get('coaches', [])
             || request.auth.uid in resource.data.get('students', []));
 
+      // Path K — coach adjusts student's focus-goal count (liczba lekcji).
+      //          Niezalezne od tego kto ustawil aktualny temat fokusu (dziennik
+      //          jest append-only, wiec bez tego trzeba by bylo tworzyc nowy
+      //          wpis w coachLog, co resetowaloby date startu i postep).
+      allow update: if isSignedIn()
+        && !isSelf(uid)
+        && onlyAffects(['focusGoal', 'focusDots'])
+        && request.auth.uid in resource.data.get('coaches', [])
+        && request.resource.data.get('focusGoal', 2) in [2, 3, 4, 5]
+        && request.resource.data.get('focusDots', false) is bool;
+
       // Path J — any signed-in user can append their coach request ID to the
       //          admin's newCoachRequests notification array (write-only signal,
       //          no sensitive data). Only the admin UID is the target.

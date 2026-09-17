@@ -121,7 +121,9 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
 }) {
   const { t } = useTranslation();
   const showDots = dots && !!focus.topic;
-  const source = sourceLabel ?? (focus.fromCoach ? t('tagebuch.focusFromCoach') : '');
+  const source = sourceLabel ?? (focus.fromCoach
+    ? `${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`
+    : '');
   const tone = glass
     ? 'bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
     : 'bg-[#0a3a2a] rounded-[20px] px-4 py-2.5 shadow-sm';

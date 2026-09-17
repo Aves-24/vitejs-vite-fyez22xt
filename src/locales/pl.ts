@@ -176,7 +176,7 @@ export const components = {
     addBtn: "Wpis",
     typeObservation: "Obserwacja",
     typeTip: "Wskazówka",
-    typeGoal: "Cel",
+    typeGoal: "Fokus",
     typeFlag: "Ważne",
     placeholder: "Napisz wpis dla pozostałych trenerów…",
     cancel: "Anuluj",
@@ -189,7 +189,11 @@ export const components = {
     deleteDesc: "Tej operacji nie można cofnąć.",
     delete: "Usuń",
     defaultCoachName: "Trener",
-    hint: "Tutaj notuj, nad czym ostatnio pracowaliście z uczniem i na czym należy skupić się podczas kolejnych treningów."
+    hint: "Tutaj notuj, nad czym ostatnio pracowaliście z uczniem i na czym należy skupić się podczas kolejnych treningów.",
+    focusCurrent: "Obecny fokus ucznia",
+    focusCurrentNone: "Uczeń nie ma jeszcze ustawionego fokusu",
+    focusGoalLabel: "Liczba lekcji do utrwalenia",
+    focusBumpBtn: "Tylko zwiększ liczbę lekcji"
   }
 };
 

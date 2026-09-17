@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachLogNotification } from '../utils/notificationTypes';
 import TopicPicker from './TopicPicker';
+import { useActiveFocus, FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT } from '../utils/focus';
+import { focusTitle } from './tagebuch/FocusCard';
 
 // --- TYPY WPISÓW ---
 type EntryType = 'observation' | 'tip' | 'goal' | 'flag';
@@ -52,6 +54,17 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
   const [type, setType] = useState<EntryType>('observation');
   const [logTopics, setLogTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [isBumping, setIsBumping] = useState(false);
+
+  // Fokus ucznia — pokazywany trenerowi przy wyborze typu wpisu „Fokus",
+  // żeby widział co już jest ustawione zanim doda nowy albo zwiększy liczbę
+  // lekcji. focusRefresh wymusza ponowny odczyt po własnym zapisie.
+  const [focusRefresh, setFocusRefresh] = useState(0);
+  const focusState = useActiveFocus(studentId, true, focusRefresh);
+  const [focusGoalInput, setFocusGoalInput] = useState<number>(FOCUS_GOAL_DEFAULT);
+  useEffect(() => {
+    if (focusState) setFocusGoalInput(focusState.goal);
+  }, [focusState?.goal]);
 
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const voice = useVoiceInput({
@@ -137,6 +150,18 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
         topics: logTopics,
         createdAt: Date.now(),
       }, ...prev]);
+      // Wpis typu „Fokus" ustawia jednocześnie liczbę lekcji (kropek) —
+      // to pole współdzielone z uczniem, niezależne od tego, kto ustawił
+      // aktualny temat (patrz Path K w firestore.rules).
+      if (type === 'goal') {
+        try {
+          await updateDoc(doc(db, 'users', studentId), { focusGoal: focusGoalInput, focusDots: true });
+        } catch (e) {
+          console.error('CoachLog: błąd zapisu liczby lekcji', e);
+        }
+        setFocusRefresh(v => v + 1);
+      }
+
       setText('');
       setType('observation');
       setLogTopics([]);
@@ -155,6 +180,23 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
       console.error('CoachLog: błąd zapisu', e);
     }
     setIsSaving(false);
+  };
+
+  // --- SAMO ZWIĘKSZENIE LICZBY LEKCJI (bez nowego wpisu w Dzienniku) ---
+  // Nie rusza tematu/tekstu aktualnego fokusu — dziennik jest append-only,
+  // więc nowy wpis zresetowałby datę startu i dotychczasowy postęp.
+  const handleBumpGoal = async () => {
+    setIsBumping(true);
+    try {
+      await updateDoc(doc(db, 'users', studentId), { focusGoal: focusGoalInput, focusDots: true });
+      setFocusRefresh(v => v + 1);
+      onChange?.();
+      setIsAdding(false);
+      setType('observation');
+    } catch (e) {
+      console.error('CoachLog: błąd zmiany liczby lekcji', e);
+    }
+    setIsBumping(false);
   };
 
   // --- USUWANIE WPISU ---
@@ -230,6 +272,48 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
               );
             })}
           </div>
+
+          {/* Fokus — podgląd obecnego stanu + liczba lekcji (tylko dla typu „Fokus") */}
+          {type === 'goal' && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-2.5 space-y-2">
+              <p className="text-[8px] font-black uppercase tracking-widest text-blue-700">
+                {t('coachLog.focusCurrent', { defaultValue: 'Obecny fokus ucznia' })}
+              </p>
+              {focusState?.focus ? (
+                <div>
+                  <p className="text-[11px] font-bold text-[#333] truncate">{focusTitle(focusState.focus, t)}</p>
+                  {focusState.dots && (
+                    <p className="text-[9px] font-bold text-gray-400">{focusState.count}/{focusState.goal}</p>
+                  )}
+                </div>
+              ) : (
+                <p className="text-[10px] font-bold text-gray-400">{t('coachLog.focusCurrentNone', { defaultValue: 'Uczeń nie ma jeszcze ustawionego fokusu' })}</p>
+              )}
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Liczba lekcji do utrwalenia' })}</p>
+                <div className="flex gap-1.5">
+                  {FOCUS_GOAL_OPTIONS.map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setFocusGoalInput(n)}
+                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-black border transition-all ${focusGoalInput === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {focusState?.focus && (
+                <button
+                  onClick={handleBumpGoal}
+                  disabled={isBumping}
+                  className="w-full py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white border border-blue-200 text-blue-700 active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {isBumping ? t('coachLog.saving') : t('coachLog.focusBumpBtn', { defaultValue: 'Tylko zwiększ liczbę lekcji' })}
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Treść + Przycisk mikrofonu */}
           <div className="relative">

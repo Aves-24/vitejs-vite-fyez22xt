@@ -162,7 +162,7 @@ export const components = {
     addBtn: "Entry",
     typeObservation: "Observation",
     typeTip: "Tip",
-    typeGoal: "Goal",
+    typeGoal: "Focus",
     typeFlag: "Important",
     placeholder: "Write an entry for the other coaches…",
     cancel: "Cancel",
@@ -175,7 +175,11 @@ export const components = {
     deleteDesc: "This action cannot be undone.",
     delete: "Delete",
     defaultCoachName: "Coach",
-    hint: "Note here what you last worked on with the student and what to focus on in the next training sessions."
+    hint: "Note here what you last worked on with the student and what to focus on in the next training sessions.",
+    focusCurrent: "Student's current focus",
+    focusCurrentNone: "The student hasn't set a focus yet",
+    focusGoalLabel: "Sessions to lock in",
+    focusBumpBtn: "Just raise the session count"
   }
 };
 

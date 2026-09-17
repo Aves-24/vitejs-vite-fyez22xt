@@ -205,10 +205,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
               )}
             </div>
 
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 mb-1">{t('sessionSetup.trainingTopics')}</p>
-              <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
-            </div>
+            <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
 
             <button
               onClick={handleSetNew}

@@ -4,6 +4,7 @@ import './tailwind.css';
 import App from './App';
 import { initI18n } from './i18n';
 import { initTheme } from './utils/theme';
+import { registerServiceWorker } from './utils/swUpdate';
 
 // [C20] Dark mode — aplikuje zapisany motyw + nasłuch zmian systemowych.
 // Anty-flash robi public/theme-init.js (przed pierwszym renderem).
@@ -11,13 +12,7 @@ initTheme();
 
 // [C11] Service worker — offline na strzelnicy. Generowany w buildzie przez
 // scripts/generate-sw.mjs (nie istnieje w dev, stąd guard na PROD).
-if (import.meta.env.PROD && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
-      console.warn('SW: rejestracja nieudana', err);
-    });
-  });
-}
+if (import.meta.env.PROD) registerServiceWorker();
 
 // Strażnik głównego CSS. 2026-09-11 telefon z Androidem uruchomił JS, ale nie
 // nałożył CSS (zielony ekran splasha, czarny tekst, bez ikon). Najpewniej

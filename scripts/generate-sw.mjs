@@ -90,6 +90,13 @@ self.addEventListener('install', (e) => {
 // których korzysta AKTUALNIE otwarta strona (lazy widoki dociągane w locie) —
 // a stare hashe nie istnieją już na Vercelu. Skutek: przy nawigacji cache-first
 // nowa wersja dociera do użytkownika przy NASTĘPNYM uruchomieniu aplikacji.
+// [C30] Wyjątek: klik „Odśwież" na pasku nowej wersji (src/utils/swUpdate.ts).
+// Strona przeładowuje się zaraz po przejęciu sterowania, więc stare chunki
+// nie są już potrzebne.
+self.addEventListener('message', (e) => {
+  if (e.data === 'SKIP_WAITING') self.skipWaiting();
+});
+
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>

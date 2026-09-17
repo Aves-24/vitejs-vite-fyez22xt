@@ -145,6 +145,11 @@ export const components = {
       errorGenerate: "An error occurred while generating the document."
     }
   },
+  appUpdate: {
+    available: "New version available",
+    reload: "Refresh",
+    later: "Later"
+  },
   messages: {
     headerSubtitle: "{{max}} msg max · 1 msg / 10 min",
     loading: "Loading…",

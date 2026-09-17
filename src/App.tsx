@@ -14,6 +14,7 @@ import SmartSeasonUpdater from './components/SmartSeasonUpdater';
 import ParentalConsentGate from './components/ParentalConsentGate';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
+import UpdateBanner from './components/UpdateBanner';
 import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -569,6 +570,7 @@ export default function App() {
           popup "Trener X chce Cię obserwować" zanim coach dostanie dostęp.
           Zamontowany na poziomie App, więc widoczny na każdym ekranie. */}
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
+      <UpdateBanner hidden={hasActiveSession || currentView === 'SCORING'} />
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
 
 

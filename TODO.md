@@ -1064,7 +1064,23 @@ Z ogona po C25 zostały: **jardy**.
       koncie gościa z zestawem dmuchawki.
       Po drodze: czy sesje dmuchawki zapisane z tym błędem (same M po 3.
       strzale) trzeba jakoś oznaczyć albo poprawić — do ustalenia z userem.
-- [ ] **C30. 🟠 PRZED PUBLIKACJĄ — pasek „Dostępna nowa wersja · Odśwież".**
+- [x] **C30. ✅ ZROBIONE 2026-09-17 — pasek „Dostępna nowa wersja · Odśwież".**
+      Decyzja usera: sprawdzanie **raz dziennie po 6:00** (pierwsze otwarcie
+      albo powrót z tła po 6:00; gdy appka jest otwarta o 6:00 — timer).
+      `src/utils/swUpdate.ts` (rejestracja SW, `grotX_swLastCheck`,
+      `registration.update()`, wykrycie czekającego SW) +
+      `src/components/UpdateBanner.tsx` (pływająca pigułka u góry, „Odśwież"
+      i ✕ „Później", ukryta przy aktywnym treningu i na ekranie Scoring).
+      SW (`generate-sw.mjs`) dostał obsługę `SKIP_WAITING` — wysyłane TYLKO
+      po kliknięciu; strona przeładowuje się na `controllerchange`.
+      Uwaga: przeglądarka i tak sama sprawdza SW przy każdym starcie appki,
+      więc pasek pokaże się też wtedy, gdy nowa wersja przyjdzie przy starcie.
+      **Sprawdzone na localhost (preview, prawdziwy SW):** pierwsze wejście po
+      6:00 → nowa wersja czeka → pasek → „Aktualisieren" → przeładowanie na
+      nowy build, stary cache skasowany; ✕ chowa pasek, wersja czeka na
+      następny start; drugi powrót tego samego dnia nie sprawdza ponownie.
+      Niesprawdzone: timer dokładnie o 6:00 i powrót z tła na telefonie.
+      *Opis zgłoszenia poniżej.*
       Pytanie usera 2026-09-10: czy ludzie dostaną aktualizację, skoro nie
       będą ciągnąć ekranu w dół jak on?
       **Dziś (sprawdzone w kodzie):** SW z `scripts/generate-sw.mjs` serwuje

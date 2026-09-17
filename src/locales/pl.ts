@@ -159,6 +159,11 @@ export const components = {
       errorGenerate: "Wystąpił błąd podczas generowania dokumentu."
     }
   },
+  appUpdate: {
+    available: "Dostępna nowa wersja",
+    reload: "Odśwież",
+    later: "Później"
+  },
   messages: {
     headerSubtitle: "{{max}} wiad. max · 1 wiad. / 10 min",
     loading: "Ładowanie…",

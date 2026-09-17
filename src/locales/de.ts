@@ -145,6 +145,11 @@ export const components = {
       errorGenerate: "Beim Generieren des Dokuments ist ein Fehler aufgetreten."
     }
   },
+  appUpdate: {
+    available: "Neue Version verfügbar",
+    reload: "Aktualisieren",
+    later: "Später"
+  },
   messages: {
     headerSubtitle: "{{max}} Nachr. max · 1 Nachr. / 10 Min.",
     loading: "Laden…",

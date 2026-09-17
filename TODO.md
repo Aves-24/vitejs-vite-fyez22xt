@@ -1264,6 +1264,23 @@ Z ogona po C25 zostały: **jardy**.
       czy gaśnie po wejściu w listę i po odświeżeniu, oraz czy jest zgaszona
       na drugim urządzeniu.
 
+- [ ] **C39. Własne tematy treningowe w panelu trenera.** Życzenie usera
+      2026-09-17: dziś lista tematów (`src/constants/trainingTopics.ts`) jest
+      na sztywno zakodowana — 5 głównych kategorii (`fundamenty`, `naciag`,
+      `celowanie`, `zwolnienie`, `taktyka`) i pod nimi tematy poboczne
+      (`subtopics`). Trener powinien móc dopisywać WŁASNE tematy — zarówno
+      nowe tematy poboczne pod jedną z 5 głównych kategorii, jak i (do
+      ustalenia) całkiem nowe pozycje poza tą piątką.
+      **Do ustalenia przed kodowaniem:** czy własne tematy trenera są
+      prywatne dla niego, czy widoczne dla wszystkich trenerów; gdzie żyją
+      w Firestore (per-coach kolekcja czy pole na dokumencie trenera); czy
+      user chce też umieć dodawać zupełnie nowe główne kategorie, czy tylko
+      podtematy pod istniejącą piątką; limit FREE/PRO (wzorem zestawów
+      sprzętowych i własnych dystansów — [[project_equipment_setups_plan]],
+      C25). Dotyka `TopicPicker.tsx`, `TopicFeedTab.tsx`, `SessionSetup.tsx`,
+      `CalendarView.tsx`, `StudentProfileView.tsx` — wszędzie tam import
+      dziś idzie ze stałej listy `TRAINING_TOPICS`.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

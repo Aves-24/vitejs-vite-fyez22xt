@@ -61,6 +61,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [editExt, setEditExt] = useState('');
   const [editHeight, setEditHeight] = useState('');
   const [editSide, setEditSide] = useState('');
+  const [editTarget, setEditTarget] = useState('');
   const [isSavingSight, setIsSavingSight] = useState(false);
 
   // Stany dla treningu technicznego
@@ -189,13 +190,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       const saved = localStorage.getItem(`grotX_lastSetup_${userId}`);
       if (saved) {
         try {
-          const { distanceId, distance, targetType } = JSON.parse(saved);
+          const { distanceId, distance } = JSON.parse(saved);
           // Cache sprzed C25 nie zna id — wtedy dopasowujemy po metrach.
           const stillActive = distanceOptions.find(d => d.id === distanceId)
             || (!distanceId ? distanceOptions.find(d => d.m === distance) : undefined);
           if (stillActive) {
             updateSelection(stillActive.id);
-            setSelectedTarget(targetType);
             return;
           }
         } catch (_) { /* ignore malformed cache */ }
@@ -219,11 +219,17 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     if (!profileDist) return;
     setSelectedId(id);
     setSelectedDistance(profileDist.m);
-    setSelectedTarget(profileDist.targetType || '122cm');
-    setSightExtension(profileDist.sightExtension || '');
-    setSightHeight(profileDist.sightHeight || '');
-    setSightSide(profileDist.sightSide || '');
   };
+
+  // Tarcza i celownik zawsze z zapisanego dystansu. Pierwszy snapshot bywa z lokalnego
+  // cache Firestore, więc bez tego świeższe dane z serwera nie dochodziły do ekranu.
+  useEffect(() => {
+    if (!selectedEntry) return;
+    setSelectedTarget(selectedEntry.targetType || '122cm');
+    setSightExtension(selectedEntry.sightExtension || '');
+    setSightHeight(selectedEntry.sightHeight || '');
+    setSightSide(selectedEntry.sightSide || '');
+  }, [selectedEntry?.id, selectedEntry?.targetType, selectedEntry?.sightExtension, selectedEntry?.sightHeight, selectedEntry?.sightSide]);
 
   // [DMUCHAWKA] Tarcza zapisana przy dystansie może nie pasować do dyscypliny
   // aktywnego zestawu — np. dystans pamięta „122cm", a user przesiadł się na
@@ -250,6 +256,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   const openSightEditor = () => {
     setEditExt(sightExtension); setEditHeight(sightHeight); setEditSide(sightSide);
+    setEditTarget(selectedTarget);
     setShowSightEditor(true);
   };
 
@@ -298,11 +305,17 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         const userDistances = profileSnap.data().userDistances || [];
         const idx = userDistances.findIndex((d: any) => d.id === selectedId);
         if (idx !== -1) {
-          userDistances[idx].sightExtension = editExt;
-          userDistances[idx].sightHeight = editHeight;
-          userDistances[idx].sightSide = editSide;
+          // Tarcza jest darmowa, nastawy celownika tylko w PRO — reguły tego nie pilnują, pilnuje UI.
+          userDistances[idx].targetType = editTarget;
+          if (isPremium) {
+            userDistances[idx].sightExtension = editExt;
+            userDistances[idx].sightHeight = editHeight;
+            userDistances[idx].sightMark = editHeight;
+            userDistances[idx].sightSide = editSide;
+          }
           await setDoc(doc(db, 'users', userId), { userDistances }, { merge: true });
-          setSightExtension(editExt); setSightHeight(editHeight); setSightSide(editSide);
+          setSelectedTarget(editTarget);
+          if (isPremium) { setSightExtension(editExt); setSightHeight(editHeight); setSightSide(editSide); }
           if (onUpdateDistances) onUpdateDistances(userDistances);
         }
       }
@@ -312,7 +325,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#fcfdfe] px-3 pb-24 animate-fade-in max-w-md mx-auto relative">
+    <div className="flex flex-col h-full bg-[#fcfdfe] px-3 pb-16 animate-fade-in max-w-md mx-auto relative">
       <ViewHeader className="-mx-3 mb-3" onBack={() => onNavigate?.('HOME')} title={t('setup.title')} />
 
       <div className="space-y-2">
@@ -320,7 +333,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           {/* [KOLORY] Kropki zestawów — klik pokazuje dystanse tego zestawu
               i od razu robi go aktywnym (sesja dostanie jego stempel). */}
           {setups.length > 1 && (
-            <div className="flex gap-1.5 justify-center flex-wrap mb-2.5 pb-2.5 border-b border-gray-50">
+            <div className="flex gap-1.5 justify-center flex-wrap mb-1.5 pb-1.5 border-b border-gray-50">
               {setups.map(s => {
                 const on = s.id === activeSetup?.id;
                 return (
@@ -340,7 +353,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           {setupSwitchError && (
             <p className="text-[10px] text-red-500 font-black text-center mb-2">{t('setup.setupSwitchFailed')}</p>
           )}
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-center">{t('setup.selectDistance')}</span>
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1.5 text-center">{t('setup.selectDistance')}</span>
           {/* [DYSCYPLINY] Pustka jest możliwa tylko wtedy, gdy user odznaczył
               WSZYSTKIE dystanse swojej dyscypliny — lista standardowa ma je
               obie. Zamiast pustego pola mówimy, gdzie je z powrotem włączyć. */}
@@ -372,87 +385,78 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           </div>
         </div>
 
-        <div className="bg-[#1f6e53] px-3 py-2.5 rounded-[20px] shadow-lg border border-[#2a7d61] relative overflow-hidden">
-          <div className="flex justify-between items-center mb-1.5 relative z-10">
-             <span className="text-[9px] font-black text-emerald-200 uppercase tracking-widest">{t('setup.sightTitle')}</span>
-             <div className="flex items-center gap-2">
-               {isPremium && <button onClick={openSightEditor} className="w-5 h-5 flex items-center justify-center bg-white/5 border border-white/10 rounded-md text-emerald-200 active:scale-90 transition-all"><span className="material-symbols-outlined text-[12px]">edit</span></button>}
-               <span className="text-[11px] font-black text-white bg-white/10 px-2 py-0.5 rounded-md">{selectedEntry ? displayDistance(selectedEntry) : selectedDistance}</span>
-             </div>
-          </div>
-          {isPremium ? (
-            <div className="grid grid-cols-3 gap-1.5 relative z-10">
-              <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5">
-                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightExt')}</span>
-                <span className="text-lg font-black text-[#fed33e]">{sightExtension || '-'}</span>
-              </div>
-              <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5 shadow-inner">
-                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightHeight')}</span>
-                <span className="text-2xl font-black text-white">{sightHeight || '-'}</span>
-              </div>
-              <div className="bg-black/20 rounded-xl py-1.5 px-1 flex flex-col items-center justify-center border border-white/5">
-                <span className="text-[8px] font-bold text-emerald-100/70 uppercase mb-0.5 tracking-tighter">{t('setup.sightSide')}</span>
-                <span className="text-lg font-black text-[#fed33e]">{sightSide || '-'}</span>
-              </div>
+        {/* Wybrany dystans: tarcza + celownik w jednej karcie, edycja w jednym oknie. */}
+        {selectedId && (
+        <div className="bg-[#1f6e53] px-3 py-2.5 rounded-[20px] shadow-lg border border-[#2a7d61]">
+          <div className="flex items-center gap-3">
+            <TargetThumbnail targetType={selectedTarget} className="w-10 h-10 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <span className="text-[9px] font-black text-emerald-200 uppercase tracking-widest block leading-none">{t('setup.targetTitle')}</span>
+              <span className="text-lg font-black text-white uppercase tracking-tight leading-tight block truncate">{selectedTarget}</span>
             </div>
-          ) : (
-            <button onClick={() => onNavigate?.('SETTINGS', 'PRO')} className="w-full relative z-10 flex flex-col items-center justify-center py-1.5 active:scale-95"><span className="material-symbols-outlined text-[#F2C94C] text-lg mb-0.5">diamond</span><span className="text-[9px] font-black text-[#F2C94C] uppercase tracking-widest">{t('setup.sightPro')}</span></button>
-          )}
-        </div>
-
-        <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm transition-all duration-300">
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2 text-center">
-            {t('setup.targetTitle')}
-          </span>
-          <div className="w-full py-2 px-3 rounded-xl shadow-inner mb-2 flex items-center justify-center gap-3 relative overflow-hidden transition-colors bg-[#1f6e53]">
-            <span className="text-[9px] font-bold text-emerald-200 uppercase tracking-widest z-10">{t('setup.selected')}</span>
-            <TargetThumbnail targetType={selectedTarget} className="w-8 h-8 shrink-0 z-10" />
-            <span className="text-xl font-black text-white uppercase tracking-tight z-10">{selectedTarget}</span>
+            <button
+              onClick={openSightEditor}
+              className="shrink-0 h-9 px-3 rounded-xl bg-white/15 border border-white/15 text-white flex items-center gap-1.5 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[16px]">edit</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t('setup.change')}</span>
+            </button>
           </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-            {targetOptions.filter(t => t !== selectedTarget).map((t) => (
-              <button
-                key={t}
-                onClick={() => setSelectedTarget(t)}
-                className="py-2.5 flex items-center justify-center rounded-lg border bg-white text-gray-400 border-gray-100 hover:border-gray-200 transition-all active:scale-95"
-              >
-                <span className="text-[10px] font-black uppercase tracking-tight text-center leading-none px-1 truncate w-full">{t}</span>
+          <div className="mt-2 pt-2 border-t border-white/10">
+            {isPremium ? (
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { label: t('setup.editorExt'), value: sightExtension },
+                  { label: t('setup.editorHeight'), value: sightHeight },
+                  { label: t('setup.editorSide'), value: sightSide },
+                ].map(f => (
+                  <div key={f.label} className="bg-black/20 rounded-lg px-1 py-1 text-center min-w-0">
+                    <span className="block text-[8px] font-bold text-emerald-100/70 uppercase tracking-tight truncate leading-tight">{f.label}</span>
+                    <span className="block text-base font-black text-[#fed33e] leading-tight truncate">{f.value || '-'}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => onNavigate?.('SETTINGS', 'PRO')} className="w-full flex items-center justify-center gap-1.5 py-0.5 active:scale-95">
+                <span className="material-symbols-outlined text-[#F2C94C] text-[16px]">diamond</span>
+                <span className="text-[9px] font-black text-[#F2C94C] uppercase tracking-widest">{t('setup.sightPro')}</span>
               </button>
-            ))}
+            )}
           </div>
         </div>
+        )}
       </div>
 
-      <div className="mt-3">
+      <div className="mt-2">
 
         {/* PFEILZÄHLER */}
-        <div className="bg-white rounded-[20px] border-2 border-[#0a3a2a] shadow-sm px-3 pt-2 pb-2.5 mb-2">
-          <div className="flex items-center justify-center gap-2 mb-1.5">
-            <span className="text-[13px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('sessionSetup.arrowCounter')}</span>
+        <div className="bg-white rounded-[20px] border-2 border-[#0a3a2a] shadow-sm px-3 pt-1.5 pb-2">
+          <div className="flex items-center justify-center gap-2 mb-1">
+            <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('sessionSetup.arrowCounter')}</span>
             <span className={`text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${counterSaved ? 'text-blue-400 opacity-100' : 'opacity-0'}`}>
               ✓ {parseInt(techArrows || '0')}
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 6)))}
-              className="flex-1 py-2.5 bg-blue-500 text-white rounded-xl font-black text-base active:scale-95 transition-all"
+              className="flex-1 h-10 bg-blue-500 text-white rounded-xl font-black text-base active:scale-95 transition-all"
             >+6</button>
             <button
               onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 1)))}
-              className="flex-1 py-2.5 bg-blue-100 text-blue-700 rounded-xl font-black text-base active:scale-95 transition-all"
+              className="flex-1 h-10 bg-blue-100 text-blue-700 rounded-xl font-black text-base active:scale-95 transition-all"
             >+1</button>
             <button
               onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') - 1)))}
-              className="flex-1 py-2.5 bg-red-50 text-red-500 rounded-xl font-black text-base active:scale-95 transition-all border border-red-100"
+              className="flex-1 h-10 bg-red-50 text-red-500 rounded-xl font-black text-base active:scale-95 transition-all border border-red-100"
             >−1</button>
-            <div className="flex-1 py-2.5 bg-[#0a3a2a] text-white rounded-xl font-black text-2xl flex items-center justify-center">
+            <div className="flex-1 h-10 bg-[#0a3a2a] text-white rounded-xl font-black text-xl flex items-center justify-center">
               {techArrows || '0'}
             </div>
             <button
               onClick={handleSaveCounter}
               disabled={isSavingCounter}
-              className="px-4 py-2.5 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all disabled:opacity-50 shadow-sm font-black text-[13px] uppercase tracking-wide"
+              className="px-3 h-10 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all disabled:opacity-50 shadow-sm font-black text-[11px] uppercase tracking-wide"
             >
               {isSavingCounter
                 ? <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
@@ -462,57 +466,75 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           </div>
         </div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => {
-              if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
-              setShowTechModal(true);
-            }}
-            disabled={!selectedDistance}
-            className="flex-1 py-5 bg-emerald-600 text-white rounded-[20px] font-black flex flex-col items-center justify-end relative overflow-hidden active:scale-95 shadow-lg shadow-emerald-100 transition-all disabled:opacity-50 min-h-[90px]"
-          >
-            <span className="material-symbols-outlined absolute text-[80px] text-white/10 -top-3 left-1/2 -translate-x-1/2">psychology</span>
-            <span className="text-[13px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10">{t('setup.techBtn')}</span>
-          </button>
-
-          <button
-            onClick={handleStartClick}
-            disabled={!selectedDistance}
-            className="flex-1 py-5 bg-[#F2C94C] text-[#8B6508] rounded-[20px] font-black flex flex-col items-center justify-end relative overflow-hidden active:scale-95 shadow-lg shadow-yellow-200 transition-all disabled:opacity-50 min-h-[90px]"
-          >
-            <span className="material-symbols-outlined absolute text-[80px] text-[#8B6508]/10 -top-3 left-1/2 -translate-x-1/2">target</span>
-            <span className="text-[13px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10">{t('setup.startBtn')}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (onGoToBattle) {
-                onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
-              } else {
-                onNavigate?.('BATTLE_LOBBY');
-              }
-            }}
-            disabled={!selectedDistance}
-            className="flex-1 py-5 bg-indigo-600 text-white rounded-[20px] font-black flex flex-col items-center justify-end relative overflow-hidden active:scale-95 shadow-lg shadow-indigo-200 transition-all disabled:opacity-50 min-h-[90px]"
-          >
-            <span className="material-symbols-outlined absolute text-[80px] text-white/10 -top-3 left-1/2 -translate-x-1/2">swords</span>
-            <span className="text-[13px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10">{t('setup.battleBtn')}</span>
-          </button>
-        </div>
-        
-        {hasUnsaved && (
-          <button 
-            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
-            className="w-full py-4 mt-2 rounded-[20px] font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined text-sm">history</span>
-            {t('setup.continueBtn')}
-          </button>
-        )}
       </div>
 
+      {/* Stały pasek startu — portal, bo <main> ma transform, a pod nim 96 px pustego pb. */}
+      {createPortal(
+        <div className="fixed bottom-0 inset-x-0 z-[90] bg-[#fcfdfe] border-t border-gray-100 shadow-[0_-6px_20px_rgba(0,0,0,0.06)]">
+          <div className="max-w-md mx-auto px-3 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.75rem)]">
+            {selectedId && (
+              <p className="flex items-center justify-center gap-1.5 text-[11px] font-black text-gray-500 uppercase tracking-wide mb-1.5 truncate">
+                {setups.length > 0 && activeSetup && (
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(activeSetup.id)) }} />
+                )}
+                <span className="truncate">
+                  {[selectedEntry ? displayDistance(selectedEntry) : selectedDistance, selectedTarget, setups.length > 0 ? activeSetup?.name : null].filter(Boolean).join(' · ')}
+                </span>
+              </p>
+            )}
+            {hasUnsaved && (
+              <button
+                onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
+                className="w-full py-2 mb-2 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-sm">history</span>
+                {t('setup.continueBtn')}
+              </button>
+            )}
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (focusTopic) setSelectedTopics(prev => prev.length ? prev : [focusTopic]);
+                  setShowTechModal(true);
+                }}
+                disabled={!selectedDistance}
+                className="flex-1 h-16 bg-emerald-600 text-white rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined absolute text-[52px] text-white/10 -right-4 -bottom-4">psychology</span>
+                <span className="text-[10px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.techBtn')}</span>
+              </button>
+
+              <button
+                onClick={handleStartClick}
+                disabled={!selectedDistance}
+                className="flex-[1.5] h-16 bg-[#F2C94C] text-[#6b4d05] rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md shadow-yellow-200 transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined absolute text-[60px] text-[#8B6508]/10 -right-3 -bottom-4">target</span>
+                <span className="text-[14px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.startBtn')}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  if (onGoToBattle) {
+                    onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
+                  } else {
+                    onNavigate?.('BATTLE_LOBBY');
+                  }
+                }}
+                disabled={!selectedDistance}
+                className="flex-1 h-16 bg-indigo-600 text-white rounded-2xl font-black flex items-center justify-center relative overflow-hidden active:scale-95 shadow-md transition-all disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined absolute text-[52px] text-white/10 -right-4 -bottom-4">swords</span>
+                <span className="text-[10px] uppercase tracking-wide text-center leading-tight whitespace-pre-line relative z-10 px-1">{t('setup.battleBtn')}</span>
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {/* MODAL TRENINGU TECHNICZNEGO */}
-      {showTechModal && (
+      {showTechModal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100001] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+56px)]">
           <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-6 animate-fade-in-up shadow-2xl border-t-4 border-emerald-600">
 
@@ -671,7 +693,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               {isSavingTech ? t('common.saving') : t('sessionSetup.saveBtn')}
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Portal: <main> w App.tsx ma transform, przy którym `fixed` kotwiczy się do strony, nie do okna. */}
@@ -680,32 +703,82 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+56px)]"
           onClick={() => setShowSightEditor(false)}
         >
-          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-6 animate-fade-in-up shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex items-start justify-between gap-3 mb-5">
-              <h2 className="text-xl font-black text-[#0a3a2a]">{t('setup.editorTitle')} ({selectedEntry ? displayDistance(selectedEntry) : selectedDistance})</h2>
+          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-5 animate-fade-in-up shadow-2xl max-h-[calc(100dvh-80px)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('setup.distSettings')}</p>
+                <h2 className="text-2xl font-black text-[#0a3a2a] leading-tight truncate">{selectedEntry ? displayDistance(selectedEntry) : selectedDistance}</h2>
+              </div>
               <button onClick={() => setShowSightEditor(false)} className="w-9 h-9 shrink-0 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="space-y-3 mb-5 text-center">
-              <input type="text" value={editExt} onChange={e => setEditExt(e.target.value)} placeholder={t('setup.editorExt')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
-              <input type="text" value={editHeight} onChange={e => setEditHeight(e.target.value)} placeholder={t('setup.editorHeight')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
-              <input type="text" value={editSide} onChange={e => setEditSide(e.target.value)} placeholder={t('setup.editorSide')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
+
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('setup.targetTitle')}</p>
+            <div className="w-full py-2 px-3 rounded-xl mb-2 flex items-center gap-3 bg-[#1f6e53]">
+              <TargetThumbnail targetType={editTarget} className="w-9 h-9 shrink-0" />
+              <span className="text-lg font-black text-white uppercase tracking-tight truncate">{editTarget}</span>
             </div>
-            <button onClick={saveSightSettings} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black uppercase">{t('setup.editorSave')}</button>
+            <div className="grid grid-cols-3 gap-1.5 mb-4">
+              {targetOptions.filter(o => o !== editTarget).map(o => (
+                <button
+                  key={o}
+                  onClick={() => setEditTarget(o)}
+                  className="h-10 flex items-center justify-center rounded-lg border bg-white text-gray-500 border-gray-200 active:scale-95 transition-all"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-tight text-center leading-none px-1 truncate w-full">{o}</span>
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('setup.sightTitle')}</p>
+            {isPremium ? (
+              <div className="grid grid-cols-3 gap-1.5 mb-5">
+                {[
+                  { label: t('setup.editorExt'), value: editExt, set: setEditExt },
+                  { label: t('setup.editorHeight'), value: editHeight, set: setEditHeight },
+                  { label: t('setup.editorSide'), value: editSide, set: setEditSide },
+                ].map(f => (
+                  <label key={f.label} className="min-w-0">
+                    <span className="block text-[8px] font-black text-gray-400 uppercase tracking-tight truncate mb-0.5 text-center">{f.label}</span>
+                    <input
+                      type="text" maxLength={8}
+                      value={f.value}
+                      onChange={e => f.set(e.target.value)}
+                      className="w-full h-11 bg-gray-50 border border-gray-200 rounded-xl font-black text-center text-base text-[#0a3a2a] outline-none focus:border-emerald-500"
+                    />
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <button onClick={() => { setShowSightEditor(false); onNavigate?.('SETTINGS', 'PRO'); }} className="w-full mb-5 py-2.5 rounded-xl bg-[#0a3a2a] flex items-center justify-center gap-1.5 active:scale-95">
+                <span className="material-symbols-outlined text-[#F2C94C] text-[16px]">diamond</span>
+                <span className="text-[10px] font-black text-[#F2C94C] uppercase tracking-widest">{t('setup.sightPro')}</span>
+              </button>
+            )}
+
+            <button onClick={saveSightSettings} disabled={isSavingSight} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black uppercase disabled:opacity-50">{t('setup.editorSave')}</button>
+            <button
+              onClick={() => { setShowSightEditor(false); onNavigate?.('SETTINGS', 'VISIER'); }}
+              className="w-full mt-2 py-2 text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center justify-center gap-1 active:scale-95"
+            >
+              {t('setup.allDistances')}
+              <span className="material-symbols-outlined text-[14px]">chevron_right</span>
+            </button>
           </div>
         </div>,
         document.body
       )}
 
-      {showWarning && (
+      {showWarning && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
             <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <style>{`

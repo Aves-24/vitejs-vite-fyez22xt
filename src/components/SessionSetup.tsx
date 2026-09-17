@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
@@ -673,18 +674,28 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         </div>
       )}
 
-      {showSightEditor && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-end justify-center">
-          <div className="bg-white w-full max-w-md rounded-t-[32px] p-6 pb-12 animate-fade-in-up">
-            <h2 className="text-xl font-black text-[#0a3a2a] mb-6">{t('setup.editorTitle')} ({selectedEntry ? displayDistance(selectedEntry) : selectedDistance})</h2>
-            <div className="space-y-4 mb-8 text-center">
+      {/* Portal: <main> w App.tsx ma transform, przy którym `fixed` kotwiczy się do strony, nie do okna. */}
+      {showSightEditor && createPortal(
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+56px)]"
+          onClick={() => setShowSightEditor(false)}
+        >
+          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-6 animate-fade-in-up shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-5">
+              <h2 className="text-xl font-black text-[#0a3a2a]">{t('setup.editorTitle')} ({selectedEntry ? displayDistance(selectedEntry) : selectedDistance})</h2>
+              <button onClick={() => setShowSightEditor(false)} className="w-9 h-9 shrink-0 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+            <div className="space-y-3 mb-5 text-center">
               <input type="text" value={editExt} onChange={e => setEditExt(e.target.value)} placeholder={t('setup.editorExt')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
               <input type="text" value={editHeight} onChange={e => setEditHeight(e.target.value)} placeholder={t('setup.editorHeight')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
               <input type="text" value={editSide} onChange={e => setEditSide(e.target.value)} placeholder={t('setup.editorSide')} className="w-full bg-gray-50 border p-4 rounded-xl font-bold" />
             </div>
             <button onClick={saveSightSettings} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black uppercase">{t('setup.editorSave')}</button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {showWarning && (

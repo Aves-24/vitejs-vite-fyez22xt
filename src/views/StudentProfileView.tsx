@@ -764,7 +764,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         </button>
         {/* STATYSTYKI — rząd 3: fokus ucznia (user 2026-09-16: pod
             Ergebniskurve, w nagłówku, bez klikania). Ten sam wynik co u ucznia
-            na Home: własny fokus vs najnowszy „Cel" z dziennika trenerskiego. */}
+            na Home: własny fokus vs najnowszy „Cel" z dziennika trenerskiego.
+            Bez dopisku o autorze (user 2026-09-17: nieważne kto ustawił). */}
         {focusState?.focus ? (
           <div className="mt-2">
             <FocusStrip
@@ -774,11 +775,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               goal={focusState.goal}
               count={focusState.count}
               label={t('studentProfile.focusLabel')}
-              sourceLabel={focusState.focus.fromCoach
-                ? (focusState.focus.authorName
-                    ? t('studentProfile.focusFromCoachNamed', { name: focusState.focus.authorName })
-                    : t('tagebuch.focusFromCoach'))
-                : t('studentProfile.focusOwn')}
+              sourceLabel=""
             />
           </div>
         ) : focusState && (

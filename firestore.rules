@@ -313,6 +313,19 @@ service cloud.firestore {
         && request.resource.data.get('focusGoal', 2) in [2, 3, 4, 5]
         && request.resource.data.get('focusDots', false) is bool;
 
+      // Path L — coach ends the student's active focus early. Writes the SAME
+      // "cleared" marker the student's own end-focus flow writes (see
+      // TagebuchView endFocus) — never a fabricated topic/text pretending to
+      // be the student's own choice, only this exact clear shape, so provenance
+      // stays honest even though the UI doesn't show who ended it.
+      allow update: if isSignedIn()
+        && !isSelf(uid)
+        && onlyAffects(['focus'])
+        && request.auth.uid in resource.data.get('coaches', [])
+        && request.resource.data.focus.keys().hasOnly(['cleared', 'setAt'])
+        && request.resource.data.focus.cleared == true
+        && request.resource.data.focus.setAt is number;
+
       // Path J — any signed-in user can append their coach request ID to the
       //          admin's newCoachRequests notification array (write-only signal,
       //          no sensitive data). Only the admin UID is the target.

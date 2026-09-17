@@ -89,6 +89,22 @@ async function loadLatestCoachGoal(userId: string): Promise<CoachGoal | undefine
     .sort((a, b) => b.ts - a.ts)[0];
 }
 
+// Daty treningów zaliczonych do fokusu (do podglądu w panelu trenera —
+// "kiedy uczeń nad tym pracował"). Ten sam filtr co countFocusSessions,
+// ale zwraca same znaczniki czasu, bez opakowania w hook.
+export async function loadFocusSessionDates(userId: string, focus: ActiveFocus): Promise<number[]> {
+  if (!focus.topic) return [];
+  const snap = await getDocs(query(
+    collection(db, `users/${userId}/sessions`),
+    where('timestamp', '>=', Timestamp.fromMillis(focusFrom(focus))),
+  ));
+  return snap.docs
+    .map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [] }))
+    .filter(s => s.topics.includes(focus.topic))
+    .map(s => s.ts)
+    .sort((a, b) => a - b);
+}
+
 export interface FocusState {
   focus: ActiveFocus | null;
   dots: boolean;

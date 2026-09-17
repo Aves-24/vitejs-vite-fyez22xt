@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 import CoachLogPanel from '../components/CoachLogPanel';
+import CoachFocusModal from '../components/CoachFocusModal';
 import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import { useVoiceInput } from '../hooks/useVoiceInput';
@@ -387,6 +388,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // nowy „Cel" może zmienić fokus, a pasek w nagłówku widać na każdej zakładce.
   const [focusNonce, setFocusNonce] = useState(0);
   const focusState = useActiveFocus(studentId, true, focusNonce);
+  const [showFocusModal, setShowFocusModal] = useState(false);
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
@@ -763,11 +765,13 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         </button>
         {/* STATYSTYKI — rząd 3: fokus ucznia (user 2026-09-16: pod
-            Ergebniskurve, w nagłówku, bez klikania). Ten sam wynik co u ucznia
-            na Home: własny fokus vs najnowszy „Cel" z dziennika trenerskiego.
-            Bez dopisku o autorze (user 2026-09-17: nieważne kto ustawił). */}
+            Ergebniskurve, w nagłówku). Ten sam wynik co u ucznia na Home:
+            własny fokus vs najnowszy „Cel" z dziennika trenerskiego. Bez
+            dopisku o autorze (user 2026-09-17: nieważne kto ustawił).
+            Klikalne (user 2026-09-17): otwiera CoachFocusModal — zmiana
+            liczby lekcji, nowy fokus, zakończenie przed czasem, daty treningów. */}
         {focusState?.focus ? (
-          <div className="mt-2">
+          <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full text-left">
             <FocusStrip
               glass
               focus={focusState.focus}
@@ -777,15 +781,24 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               label={t('studentProfile.focusLabel')}
               sourceLabel=""
             />
-          </div>
+          </button>
         ) : focusState && (
-          <div className="mt-2 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2">
+          <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2 text-left">
             <span className="material-symbols-outlined text-[22px] text-white/25 shrink-0">track_changes</span>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300/60 truncate">{t('studentProfile.focusLabel')}</p>
               <p className="text-[11px] font-bold text-white/50 leading-snug truncate">{t('studentProfile.focusNone')}</p>
             </div>
-          </div>
+          </button>
+        )}
+        {showFocusModal && (
+          <CoachFocusModal
+            studentId={studentId}
+            coachId={coachId}
+            focusState={focusState}
+            onClose={() => setShowFocusModal(false)}
+            onChange={() => setFocusNonce(n => n + 1)}
+          />
         )}
         {/* Diagnostyka: które źródło fokusu się nie wczytało. */}
         {focusState?.failed && (

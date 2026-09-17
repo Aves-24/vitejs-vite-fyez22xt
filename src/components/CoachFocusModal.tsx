@@ -1,0 +1,229 @@
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
+import { db } from '../firebase';
+import { doc, updateDoc, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore';
+import TopicPicker from './TopicPicker';
+import { focusTitle } from './tagebuch/FocusCard';
+import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
+
+// Panel otwierany klikiem na pasek fokusu w profilu ucznia. Łączy w jednym
+// miejscu to, co wcześniej wymagało przejścia do Dziennika: zmianę liczby
+// lekcji, ustawienie nowego fokusu, zakończenie obecnego przed czasem i
+// podgląd dat treningów, które się do niego zaliczyły.
+export default function CoachFocusModal({ studentId, coachId, focusState, onClose, onChange }: {
+  studentId: string;
+  coachId: string;
+  focusState: FocusState | null;
+  onClose: () => void;
+  onChange: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const focus = focusState?.focus ?? null;
+
+  const [goalInput, setGoalInput] = useState<number>(focusState?.goal ?? FOCUS_GOAL_DEFAULT);
+  useEffect(() => { if (focusState) setGoalInput(focusState.goal); }, [focusState?.goal]);
+
+  const [dates, setDates] = useState<number[]>([]);
+  useEffect(() => {
+    if (!focus?.topic) { setDates([]); return; }
+    let cancelled = false;
+    loadFocusSessionDates(studentId, focus).then(d => { if (!cancelled) setDates(d); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [studentId, focus?.topic, focus?.since]);
+
+  const [isBumping, setIsBumping] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+
+  const [isSettingNew, setIsSettingNew] = useState(!focus);
+  const [newText, setNewText] = useState('');
+  const [newTopics, setNewTopics] = useState<string[]>([]);
+  const [isSavingNew, setIsSavingNew] = useState(false);
+
+  const handleBump = async () => {
+    setIsBumping(true);
+    try {
+      await updateDoc(doc(db, 'users', studentId), { focusGoal: goalInput, focusDots: true });
+      onChange();
+    } catch (e) { console.error('Fokus: błąd zmiany liczby lekcji', e); }
+    setIsBumping(false);
+  };
+
+  const handleEnd = async () => {
+    setIsEnding(true);
+    try {
+      await updateDoc(doc(db, 'users', studentId), { focus: { cleared: true, setAt: Date.now() } });
+      onChange();
+      onClose();
+    } catch (e) { console.error('Fokus: błąd zakończenia', e); }
+    setIsEnding(false);
+    setConfirmEnd(false);
+  };
+
+  const handleSetNew = async () => {
+    const cleanText = newText.trim().slice(0, FOCUS_TEXT_MAX);
+    if (!cleanText) return;
+    setIsSavingNew(true);
+    try {
+      const cacheKey = `grotX_userName_${coachId}`;
+      let authorName = localStorage.getItem(cacheKey) || '';
+      if (!authorName) {
+        const coachDoc = await getDoc(doc(db, 'users', coachId));
+        const d = coachDoc.exists() ? coachDoc.data() : {};
+        authorName = `${d.firstName || ''} ${d.lastName || ''}`.trim() || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' });
+      }
+      await addDoc(collection(db, `users/${studentId}/coachLog`), {
+        authorId: coachId,
+        authorName,
+        text: cleanText,
+        type: 'goal',
+        topics: newTopics,
+        createdAt: serverTimestamp(),
+      });
+      await updateDoc(doc(db, 'users', studentId), { focusGoal: goalInput, focusDots: true });
+      onChange();
+      onClose();
+    } catch (e) { console.error('Fokus: błąd ustawiania nowego fokusu', e); }
+    setIsSavingNew(false);
+  };
+
+  const formatDate = (ts: number) =>
+    new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full active:scale-90 transition-all">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+
+        <div className="flex items-center gap-3 mb-4 mt-2 shrink-0">
+          <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[#fed33e]">track_changes</span>
+          </div>
+          <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.focusModalTitle', { defaultValue: 'Fokus ucznia' })}</h2>
+        </div>
+
+        <div className="overflow-y-auto flex-1 space-y-3 pr-1 pb-2 hide-scrollbar">
+          {focus ? (
+            <>
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+                <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(focus, t)}</p>
+                {focusState?.dots && (
+                  <p className="text-[10px] font-bold text-emerald-700 mt-1">{focusState.count}/{focusState.goal}</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
+                  {t('studentProfile.focusModalDates', { defaultValue: 'Treningi nad tym tematem' })}
+                </p>
+                {dates.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {dates.map(ts => (
+                      <span key={ts} className="bg-gray-50 border border-gray-100 text-gray-600 px-2 py-1 rounded-lg text-[10px] font-bold">
+                        {formatDate(ts)}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[10px] font-bold text-gray-400">{t('studentProfile.focusModalNoDates', { defaultValue: 'Jeszcze żadnego' })}</p>
+                )}
+              </div>
+
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Liczba lekcji do utrwalenia' })}</p>
+                <div className="flex gap-1.5">
+                  {FOCUS_GOAL_OPTIONS.map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setGoalInput(n)}
+                      className={`flex-1 py-1.5 rounded-lg text-[11px] font-black border transition-all ${goalInput === n ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+                {goalInput !== focusState?.goal && (
+                  <button
+                    onClick={handleBump}
+                    disabled={isBumping}
+                    className="w-full mt-2 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isBumping ? t('coachLog.saving') : t('studentProfile.focusModalSaveGoal', { defaultValue: 'Zapisz liczbę lekcji' })}
+                  </button>
+                )}
+              </div>
+
+              {!isSettingNew && !confirmEnd && (
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => setConfirmEnd(true)}
+                    className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 active:scale-95 transition-all"
+                  >
+                    {t('studentProfile.focusModalEnd', { defaultValue: 'Zakończ fokus przed czasem' })}
+                  </button>
+                  <button
+                    onClick={() => setIsSettingNew(true)}
+                    className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
+                  >
+                    {t('studentProfile.focusModalChange', { defaultValue: 'Zmień fokus' })}
+                  </button>
+                </div>
+              )}
+
+              {confirmEnd && (
+                <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-2">
+                  <p className="text-[11px] font-bold text-red-700 leading-snug">
+                    {t('studentProfile.focusModalEndConfirm', { defaultValue: 'Zakończyć ten fokus? Uczeń zobaczy, że nie ma aktywnego fokusu, dopóki nie ustawisz nowego.' })}
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setConfirmEnd(false)} className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-500 border border-gray-200">
+                      {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
+                    </button>
+                    <button onClick={handleEnd} disabled={isEnding} className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-red-500 text-white disabled:opacity-50">
+                      {isEnding ? t('coachLog.saving') : t('studentProfile.focusModalEndConfirmBtn', { defaultValue: 'Tak, zakończ' })}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-[11px] font-bold text-gray-400">{t('studentProfile.focusNone')}</p>
+          )}
+
+          {isSettingNew && (
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2">
+              <p className="text-[8px] font-black uppercase tracking-widest text-blue-700">
+                {t('studentProfile.focusModalNewTitle', { defaultValue: 'Nowy fokus' })}
+              </p>
+              <textarea
+                value={newText}
+                onChange={e => setNewText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
+                maxLength={FOCUS_TEXT_MAX}
+                placeholder={t('coachLog.placeholder', { defaultValue: 'Napisz wpis dla pozostałych trenerów…' })}
+                className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-blue-500 resize-none h-16"
+              />
+              <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
+              <div className="flex gap-2 pt-1">
+                {focus && (
+                  <button onClick={() => setIsSettingNew(false)} className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-white text-gray-500 border border-gray-200">
+                    {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
+                  </button>
+                )}
+                <button
+                  onClick={handleSetNew}
+                  disabled={isSavingNew || !newText.trim()}
+                  className="flex-1 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
+                >
+                  {isSavingNew ? t('coachLog.saving') : t('studentProfile.focusModalSaveNew', { defaultValue: 'Ustaw fokus' })}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>, document.body
+  );
+}

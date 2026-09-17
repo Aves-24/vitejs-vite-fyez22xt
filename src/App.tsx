@@ -435,14 +435,19 @@ export default function App() {
   };
 
   const renderBottomNav = () => {
-    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'COACH', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
+    const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
+
+    // W panelu trenera zostają Home, Kalendarz i Trener; reszta niewidoczna, ale trzyma miejsce,
+    // żeby ikony stały dokładnie tam, gdzie zwykle.
+    const coachMode = currentView === 'COACH';
+    const hideInCoach = coachMode ? 'invisible' : '';
 
     return (
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
         <div className="relative h-20 w-full px-2">
           <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
-            <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white"/>
+            <path d={coachMode ? "M0,0 H390 V80 H0 Z" : "M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z"} fill="white"/>
           </svg>
         <div className="flex justify-between items-center h-full w-full relative">
           
@@ -455,13 +460,13 @@ export default function App() {
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
               {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
-            <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('MY_COACH')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">menu_book</span>
               {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.tagebuch')}</span>}
             </button>
           </div>
           
-          <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
+          <div className={`${hideInCoach} relative -top-7 w-20 shrink-0 flex flex-col items-center z-50`}>
             {hasActiveSession && (
               <div className="absolute top-0 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white z-20 animate-pulse shadow-sm"></div>
             )}
@@ -483,7 +488,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('STATS')} className={`flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('STATS')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
               {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
             </button>
@@ -495,7 +500,7 @@ export default function App() {
               </button>
             )}
 
-            <button onClick={() => handleNavigate('SETTINGS')} className={`flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('SETTINGS')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
               {currentView === 'SETTINGS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>}
             </button>

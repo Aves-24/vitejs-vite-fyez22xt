@@ -668,12 +668,20 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           {/* [FOKUS] Miniatura fokusu w miejscu logo (user 2026-09-18) — ta sama
               wysokość paska, więc klawiatura nie zjeżdża. Klik = pełny tytuł. */}
           {focusState?.focus ? (
+            <>
+            {/* Mniejsze logo zostaje obok fokusu (user 2026-09-18). */}
+            <div className="flex items-center shrink-0 pl-1 pr-2.5 border-r border-gray-100 h-full">
+              <div className="flex items-baseline whitespace-nowrap">
+                <span className="text-[15px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
+                <div className="w-1 h-1 bg-[#fed33e] rounded-full ml-0.5 relative bottom-[0.35em]"></div>
+              </div>
+            </div>
             <button
               onClick={() => {
                 const fc = focusState.focus!;
                 showToast(fc.text && fc.topic ? `${focusTitle(fc, t)} · ${topicLabel(fc.topic, t)}` : focusTitle(fc, t));
               }}
-              className="flex items-center gap-2 pl-1 pr-3 border-r border-gray-100 h-full min-w-0 max-w-[40%] text-left active:scale-95 transition-all"
+              className="flex items-center gap-1.5 pl-2 pr-2.5 border-r border-gray-100 h-full min-w-0 max-w-[34%] text-left active:scale-95 transition-all"
               aria-label={t('tagebuch.focusLabel')}
             >
               <span className="w-7 h-7 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
@@ -686,6 +694,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   : <span className="text-[8px] font-black uppercase tracking-widest text-amber-700 leading-none truncate">{t('tagebuch.focusLabel')}</span>}
               </span>
             </button>
+            </>
           ) : (
           <div className="flex items-center pl-6 shrink-0 border-r border-gray-100 pr-4 h-full">
             <div className="flex items-baseline whitespace-nowrap">

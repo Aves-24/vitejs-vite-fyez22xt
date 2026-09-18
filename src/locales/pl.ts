@@ -1226,6 +1226,7 @@ export const views = {
     private: "Prywatna",
     techSessionType: "Sesja bez tarczy",
     techSessionTitle: "Trening Techniczny",
+    sessionFocus: "Fokus tego treningu",
     techHistory: "Historia Techniki",
     techHistoryDesc: "Ostatnie 3 sesje bez tarczy",
     noSessionNotes: "Brak notatek z tego treningu.",

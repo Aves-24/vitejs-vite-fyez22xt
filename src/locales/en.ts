@@ -1207,6 +1207,7 @@ export const views = {
     private: "Private",
     techSessionType: "Off-target session",
     techSessionTitle: "Technical Training",
+    sessionFocus: "Focus of this session",
     techHistory: "Technique History",
     techHistoryDesc: "Last 3 off-target sessions",
     noSessionNotes: "No notes for this session.",

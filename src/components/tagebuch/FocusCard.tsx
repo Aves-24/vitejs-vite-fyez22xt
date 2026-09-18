@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ActiveFocus } from '../../utils/focus';
+import { readSessionFocus, type ActiveFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
 // --- FOKUS ---
@@ -268,4 +268,25 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
       {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : 'text-amber-500'}`}>chevron_right</span>}
     </>
   ));
+}
+
+/**
+ * Fokus zapisany w sesji (migawka z chwili treningu) — karta w statystykach.
+ * Starsze sesje bez migawki nic tu nie pokazują (tematy mają swoje miejsce).
+ */
+export function SessionFocusCard({ session }: { session: any }) {
+  const { t } = useTranslation();
+  const snap = readSessionFocus(session);
+  if (!snap) return null;
+  const focus: ActiveFocus = { text: snap.text, topic: snap.topic, since: snap.since, fromCoach: snap.fromCoach, authorName: snap.authorName };
+  const dots = !!(snap.step && snap.goal);
+  return (
+    <FocusStrip
+      focus={focus}
+      dots={dots}
+      goal={snap.goal || 0}
+      count={Math.min(snap.step || 0, snap.goal || 0)}
+      label={t('stats.sessionFocus')}
+    />
+  );
 }

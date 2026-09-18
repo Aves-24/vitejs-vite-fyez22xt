@@ -1207,6 +1207,7 @@ export const views = {
     private: "Privat",
     techSessionType: "Einheit ohne Scheibe",
     techSessionTitle: "Technisches Training",
+    sessionFocus: "Fokus dieses Trainings",
     techHistory: "Technik-Historie",
     techHistoryDesc: "Letzte 3 Einheiten ohne Scheibe",
     noSessionNotes: "Keine Notizen für dieses Training.",

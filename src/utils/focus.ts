@@ -81,6 +81,38 @@ export function countFocusSessions(sessions: { ts: number; topics: string[] }[],
   return sessions.filter(s => s.ts >= from && countsForFocus(s.topics, focus)).length;
 }
 
+// Migawka fokusu zapisywana w sesji (`session.focus`) — po zmianie albo
+// zakończeniu fokusu w statystykach nadal widać, pod jaki fokus był trening.
+// step/goal tylko przy włączonych kropkach: „trening 2 z 5".
+export interface SessionFocus {
+  text: string;
+  topic: string;
+  since: number;
+  fromCoach: boolean;
+  authorName?: string;
+  step?: number;
+  goal?: number;
+}
+
+/** Migawka dla nowej sesji z tematami `topics` — null, gdy trening nie liczy się do fokusu. */
+export function sessionFocusSnapshot(state: FocusState | null, topics: string[]): SessionFocus | null {
+  const focus = state?.focus;
+  if (!focus || !countsForFocus(topics, focus)) return null;
+  return {
+    text: focus.text,
+    topic: focus.topic,
+    since: focus.since,
+    fromCoach: focus.fromCoach,
+    ...(focus.authorName ? { authorName: focus.authorName } : {}),
+    ...(state.dots ? { step: state.count + 1, goal: state.goal } : {}),
+  };
+}
+
+export function readSessionFocus(session: any): SessionFocus | null {
+  const f = session?.focus;
+  return f && typeof f.since === 'number' && (f.text || f.topic) ? f : null;
+}
+
 function toMs(v: any): number {
   if (!v) return 0;
   if (typeof v === 'number') return v;

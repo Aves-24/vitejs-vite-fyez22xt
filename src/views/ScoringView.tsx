@@ -15,7 +15,7 @@ import Weather from '../components/Weather';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
-import { useActiveFocus } from '../utils/focus';
+import { useActiveFocus, sessionFocusSnapshot } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
@@ -475,6 +475,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       // [ZESTAWY] Z czego padł ten wynik — bez tego rekordy różnych klas
       // sprzętu zmieszają się bezpowrotnie. Patrz utils/setupStamp.ts
       const setupStamp = await getSetupStamp(userId);
+      // [FOKUS] Migawka na stałe — widać ją później w statystykach.
+      const sessionTopics = focusTopic && focusOn ? [focusTopic] : [];
+      const focusSnap = sessionFocusSnapshot(focusState, sessionTopics);
 
       await addDoc(collection(db, `users/${userId}/sessions`), {
         ...setupStamp,
@@ -494,7 +497,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         timestamp: sessionTimestamp,
         note: sessionNote,
         isNotePublic: isNotePublic,
-        ...(focusTopic && focusOn ? { topics: [focusTopic] } : {}),
+        ...(sessionTopics.length ? { topics: sessionTopics } : {}),
+        ...(focusSnap ? { focus: focusSnap } : {}),
         weather: currentWeather,
         ends: submittedEnds,
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),

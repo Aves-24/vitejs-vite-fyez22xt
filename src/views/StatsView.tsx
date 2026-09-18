@@ -12,6 +12,7 @@ import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
 import TechSessionCard from '../components/TechSessionCard';
+import { SessionFocusCard } from '../components/tagebuch/FocusCard';
 import BiomechCard from '../components/BiomechCard';
 import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
@@ -916,6 +917,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                     <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.average')}</span><span className="text-2xl font-black text-[#0a3a2a]">{((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1)).toFixed(2)}</span></div>
                     <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.dailyArrows', 'Strzały dzisiaj')}</span><span className="text-2xl font-black text-emerald-600">{dailyArrows}</span></div>
                   </div>
+
+                  {/* [FOKUS] Migawka z chwili treningu — patrz utils/focus.ts */}
+                  <div className="mb-4 empty:hidden"><SessionFocusCard session={selectedSession} /></div>
 
                   <NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />
 

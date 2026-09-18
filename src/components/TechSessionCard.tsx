@@ -4,6 +4,7 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import TopicPicker from './TopicPicker';
+import { SessionFocusCard } from './tagebuch/FocusCard';
 
 interface TechSessionCardProps {
   session: any;
@@ -65,6 +66,9 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
           {session.totalArrows || 0} {t('common.arrows')}
         </div>
       </div>
+
+      {/* FOKUS z chwili treningu */}
+      <div className="mb-3 empty:hidden"><SessionFocusCard session={session} /></div>
 
       {/* TEMATY */}
       <div className="mb-3">

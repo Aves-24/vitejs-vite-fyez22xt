@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
-import { useActiveFocus } from '../utils/focus';
+import { useActiveFocus, sessionFocusSnapshot } from '../utils/focus';
 import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
@@ -262,9 +262,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       // [ZESTAWY] Trening techniczny też stemplujemy — te strzały liczą się
       // do zużycia cięciwy i strzał danego zestawu.
       const setupStamp = await getSetupStamp(userId);
+      // [FOKUS] Migawka na stałe — widać ją później w statystykach.
+      const focusSnap = sessionFocusSnapshot(focusState, selectedTopics);
 
       await addDoc(collection(db, `users/${userId}/sessions`), {
         ...setupStamp,
+        ...(focusSnap ? { focus: focusSnap } : {}),
         userId,
         distance: 'TECH',
         targetType: 'TECHNICAL',

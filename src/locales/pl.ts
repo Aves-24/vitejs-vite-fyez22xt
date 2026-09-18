@@ -1494,6 +1494,8 @@ export const views = {
     lastSessionArrows: "{{count}} strz.",
     trendUp: "Forma rośnie",
     trendDown: "Forma spada",
+    pauseBadge: "Pauza",
+    pauseReminder: "Pauza od miesiąca — sprawdź",
   },
   coachSheet: {
     close: "Zamknij",
@@ -1527,6 +1529,12 @@ export const views = {
     lastAvg: "Ø na strzałę: {{list}}",
     scoreOf: "{{score}}/{{arrows}} strz.",
     fromLast: "(z {{count}} ostatnich)",
+    pauseStart: "Wstrzymaj (pauza)",
+    pauseHint: "Np. choroba. Uczeń zniknie z „bez treningu” — przypomnę raz po miesiącu. Pierwszy trening kończy pauzę.",
+    pausedSince: "Pauza od {{date}} — bez alertów „bez treningu”.",
+    pauseReminderText: "Pauza trwa już miesiąc. Nadal pauza?",
+    pauseKeep: "Nadal pauza",
+    pauseEnd: "Zakończ pauzę",
   },
   studentProfile: {
     focusLoadError: "Nie udało się wczytać: {{parts}}",

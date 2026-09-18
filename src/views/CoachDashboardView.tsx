@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
@@ -20,6 +20,18 @@ import { formatViewerAgeCategory } from '../utils/privateProfile';
 const INACTIVE_DAYS = 14;
 /** Ilu z nich widać w rozwiniętej sekcji; resztę pokazuje lista z filtrem. */
 const INACTIVE_SHOWN = 5;
+// [PAUZA] Po tylu dniach pauzy uczeń wraca RAZ do „bez treningu" jako
+// przypomnienie (user 2026-09-18: najpierw 14 dni, potem jeszcze miesiąc).
+const PAUSE_REMIND_DAYS = 30;
+
+/**
+ * [PAUZA] Uczniowie wstrzymani przez trenera (choroba, kontuzja — bez powodu
+ * i bez daty, user 2026-09-18). Leży w `users/{coachId}.coachPausedStudents`
+ * jako `{ [studentId]: { at, reminded? } }` — pole spoza chronionych, więc
+ * przechodzi przez Path B reguł bez zmian. Pauza kończy się sama, gdy uczeń
+ * zapisze trening po `at`.
+ */
+export interface StudentPause { at: number; reminded?: boolean }
 
 /**
  * Forma = ostatni trening kontra POPRZEDNI na tym samym dystansie, tarczy
@@ -277,6 +289,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
   // Fokus każdego ucznia na liście (user 2026-09-18: bez wchodzenia w profil).
   const [studentFocus, setStudentFocus] = useState<Record<string, FocusState>>({});
+  // [PAUZA] Z nasłuchu na dokument trenera — zmiana w karcie od razu widać.
+  const [pausedStudents, setPausedStudents] = useState<Record<string, StudentPause>>({});
   // [KARTA UCZNIA] Tapnięcie ucznia otwiera kartę; pełny profil z jej przycisku.
   const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
 
@@ -477,6 +491,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       const data = snap.data();
       // Świeży coachLimit z każdego snapshota — admin może go zmienić w locie.
       setCoachLimit(effectiveCoachLimit(data));
+      setPausedStudents(data.coachPausedStudents && typeof data.coachPausedStudents === 'object' ? data.coachPausedStudents : {});
       const ids = (data.students || []) as string[];
       const key = [...ids].sort().join(',');
       // Pierwszy snapshot (prevStudentsKey === null) albo zmiana listy studentów → pełny refetch
@@ -696,9 +711,33 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
-  // Uczeń, który nigdy nie trenował (0), też „wypada z rytmu".
+  // [PAUZA] Aktywna, dopóki uczeń nie zapisał treningu po jej ustawieniu.
+  const pauseOf = (s: any): StudentPause | null => {
+    const p = pausedStudents[s.id];
+    return p && typeof p.at === 'number' && (s.exactLastActivity || 0) <= p.at ? p : null;
+  };
+  // Przypomnienie: miesiąc pauzy minął i trener jeszcze go nie odhaczył.
+  const pauseReminderDue = (s: any) => {
+    const p = pauseOf(s);
+    return !!p && !p.reminded && Date.now() - p.at >= PAUSE_REMIND_DAYS * 24 * 60 * 60 * 1000;
+  };
+
+  const setPause = async (studentId: string, value: StudentPause | null) => {
+    setPausedStudents(prev => {
+      const next = { ...prev };
+      if (value) next[studentId] = value; else delete next[studentId];
+      return next;
+    });
+    try {
+      await updateDoc(doc(db, 'users', userId), { [`coachPausedStudents.${studentId}`]: value ?? deleteField() });
+    } catch (e) { console.error('Pauza: błąd zapisu', e); }
+  };
+
+  // Uczeń, który nigdy nie trenował (0), też „wypada z rytmu". Wstrzymani
+  // (pauza) nie — chyba że właśnie minął miesiąc i jest jedno przypomnienie.
   const inactiveCutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
-  const isInactive = (s: any) => (s.exactLastActivity || 0) < inactiveCutoff;
+  const isInactive = (s: any) => (s.exactLastActivity || 0) < inactiveCutoff
+    && (!pauseOf(s) || pauseReminderDue(s));
   // Najdłużej bez treningu na górze (nigdy nie trenował = 0, więc pierwszy).
   const inactiveStudents = students
     .filter(isInactive)
@@ -991,6 +1030,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </span>
                 {/* [C37] Nowy uczeń — napis obok kropki, bo sama zielona kropka
                     na inicjałach znaczy już „nowy trening". */}
+                {pauseOf(student) && (
+                  <span className="shrink-0 inline-flex items-center gap-0.5 bg-gray-100 border border-gray-200 text-gray-500 rounded-full px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest">
+                    <span className="material-symbols-outlined text-[10px]">pause</span>
+                    {t('coachDashboard.pauseBadge')}
+                  </span>
+                )}
                 {isNewStudent && (
                   <span className="shrink-0 inline-flex items-center gap-1 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-full pl-1 pr-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1397,7 +1442,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <div className="space-y-1.5">
             {inactiveStudents.slice(0, INACTIVE_SHOWN).map(s => renderMiniStudentRow(
               s,
-              <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
+              pauseReminderDue(s)
+                ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
+                : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
               'bg-amber-50 text-amber-800 border-amber-100',
             ))}
             <button
@@ -2147,6 +2194,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             coachId={userId}
             subtitle={subtitle}
             focusState={studentFocus[st.id]}
+            pause={pauseOf(st)}
+            pauseReminder={pauseReminderDue(st)}
+            onPause={() => setPause(st.id, { at: Date.now() })}
+            onEndPause={() => setPause(st.id, null)}
+            onKeepPause={() => { const p = pauseOf(st); if (p) setPause(st.id, { ...p, reminded: true }); }}
             onClose={() => setSheetStudentId(null)}
             onOpenProfile={() => { setSheetStudentId(null); handleCheckStudent(st.id); }}
             onOpenChat={() => { setSheetStudentId(null); setOpenMessageStudentId(st.id); }}

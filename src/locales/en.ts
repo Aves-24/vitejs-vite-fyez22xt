@@ -1465,6 +1465,8 @@ export const views = {
     lastSessionArrows: "{{count}} arrows",
     trendUp: "Form improving",
     trendDown: "Form declining",
+    pauseBadge: "Paused",
+    pauseReminder: "Paused for a month — check in",
   },
   coachSheet: {
     close: "Close",
@@ -1498,6 +1500,12 @@ export const views = {
     lastAvg: "Ø per arrow: {{list}}",
     scoreOf: "{{score}}/{{arrows}} arr.",
     fromLast: "(last {{count}})",
+    pauseStart: "Pause",
+    pauseHint: "E.g. illness. Hidden from “no training” — one reminder after a month. Their first session ends the pause.",
+    pausedSince: "Paused since {{date}} — no “no training” alerts.",
+    pauseReminderText: "Paused for a month now. Keep pausing?",
+    pauseKeep: "Keep pausing",
+    pauseEnd: "End pause",
   },
   studentProfile: {
     focusLoadError: "Could not load: {{parts}}",

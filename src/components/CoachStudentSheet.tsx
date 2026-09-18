@@ -28,11 +28,20 @@ function toMs(v: any): number {
 
 interface NextStart { title: string; date: string }
 
-export default function CoachStudentSheet({ student, coachId, subtitle, focusState, onClose, onOpenProfile, onOpenChat }: {
+export default function CoachStudentSheet({
+  student, coachId, subtitle, focusState, pause, pauseReminder, onPause, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
+}: {
   student: any;
   coachId: string;
   subtitle: string;
   focusState?: FocusState;
+  /** [PAUZA] Aktywna pauza (od kiedy) albo null. */
+  pause: { at: number } | null;
+  /** Minął miesiąc pauzy — jedno przypomnienie. */
+  pauseReminder: boolean;
+  onPause: () => void;
+  onEndPause: () => void;
+  onKeepPause: () => void;
   onClose: () => void;
   onOpenProfile: () => void;
   onOpenChat: () => void;
@@ -143,6 +152,38 @@ export default function CoachStudentSheet({ student, coachId, subtitle, focusSta
             <span className="material-symbols-outlined text-[20px]">chat</span>
           </button>
         </div>
+
+        {/* [PAUZA] Bez powodu i bez daty. Wstrzymany znika z „bez treningu 14+
+            dni", po miesiącu wraca tam raz jako przypomnienie. */}
+        {pause ? (
+          <div className={`mt-3 rounded-xl px-3 py-2 border ${pauseReminder ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-[11px] font-bold leading-snug ${pauseReminder ? 'text-amber-800' : 'text-gray-600'}`}>
+              <span className="material-symbols-outlined text-[14px] align-[-3px] mr-1">pause_circle</span>
+              {pauseReminder ? t('coachSheet.pauseReminderText') : t('coachSheet.pausedSince', { date: fmtDate(pause.at) })}
+            </p>
+            <div className="flex gap-2 mt-2">
+              {pauseReminder && (
+                <button onClick={onKeepPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-600 border border-gray-200 active:scale-95 transition-all">
+                  {t('coachSheet.pauseKeep')}
+                </button>
+              )}
+              <button onClick={onEndPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-[#0a3a2a] text-white active:scale-95 transition-all">
+                {t('coachSheet.pauseEnd')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={onPause}
+            className="mt-3 w-full flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 text-left active:scale-[0.99] transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px] text-gray-500">pause_circle</span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[11px] font-black text-[#0a3a2a]">{t('coachSheet.pauseStart')}</span>
+              <span className="block text-[9px] font-bold text-gray-400 leading-snug">{t('coachSheet.pauseHint')}</span>
+            </span>
+          </button>
+        )}
 
         {failed && <p className="text-[11px] font-bold text-red-500 mt-4">{t('coachSheet.loadError')}</p>}
         {!snap && !failed && (

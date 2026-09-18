@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
 import FocusEditForm from './FocusEditForm';
-import { focusTitle, FocusDots, FocusProgressText } from './FocusCard';
+import { focusTitle, FocusDots, FocusProgress } from './FocusCard';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type ActiveFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
@@ -28,7 +28,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
   onEnd: () => Promise<void>;
   onClose: () => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
 
   const [liveStep, setLiveStep] = useState(dots ? goal : 0);
   const [isBumping, setIsBumping] = useState(false);
@@ -111,9 +111,6 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
     }
   };
 
-  const formatDate = (ts: number) =>
-    new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
-
   const stepLabel = (n: number) => (n === 0 ? t('tagebuch.focusDotsOff') : String(n));
 
   return createPortal(
@@ -171,30 +168,8 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                       )}
                     </>
                   )}
-                  {hasFocus && dots && (
-                    <div className="flex items-center gap-2 mt-1.5 bg-[#0a3a2a] rounded-lg px-2 py-1 w-fit">
-                      <FocusDots count={count} goal={goal} small />
-                      <FocusProgressText count={count} goal={goal} />
-                    </div>
-                  )}
+                  <FocusProgress dots={dots} count={count} goal={goal} dates={dates} since={focus.since} />
                 </div>
-
-                {hasFocus && (
-                  <div className="pt-1.5 border-t border-emerald-100/80">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('studentProfile.focusModalDates')}</p>
-                    {dates.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {dates.map(ts => (
-                          <span key={ts} className="bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-1 rounded-lg text-[10px] font-bold">
-                            {formatDate(ts)}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-[10px] font-bold text-emerald-700/60">{t('studentProfile.focusModalNoDates')}</p>
-                    )}
-                  </div>
-                )}
 
                 {hasFocus && (
                   <div className="pt-1.5 border-t border-emerald-100/80">

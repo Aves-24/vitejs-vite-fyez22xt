@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore';
 import TopicPicker from './TopicPicker';
-import { focusTitle } from './tagebuch/FocusCard';
+import { focusTitle, FocusProgress } from './tagebuch/FocusCard';
 import FocusEditForm from './tagebuch/FocusEditForm';
 import { topicLabel } from '../constants/trainingTopics';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
@@ -30,7 +30,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   onClose: () => void;
   onChange: () => void;
 }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const focus = focusState?.focus ?? null;
 
   // Liczba lekcji OBECNEGO fokusu — +/-1 na ekranie, zapis przyciskiem ✓ obok.
@@ -133,9 +133,6 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
     setIsSavingNew(false);
   };
 
-  const formatDate = (ts: number) =>
-    new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
-
   const alreadyDone = !!focusState?.dots && liveGoal !== savedGoal && liveGoal <= focusState.count;
 
   return createPortal(
@@ -195,26 +192,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                       )}
                     </>
                   )}
-                  {focusState?.dots && (
-                    <p className="text-[10px] font-bold text-emerald-700 mt-1">{focusState.count}/{focusState.goal}</p>
-                  )}
-                </div>
-
-                <div className="pt-1.5 border-t border-emerald-100/80">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">
-                    {t('studentProfile.focusModalDates', { defaultValue: 'Treningi nad tym tematem' })}
-                  </p>
-                  {dates.length > 0 ? (
-                    <div className="flex flex-wrap gap-1">
-                      {dates.map(ts => (
-                        <span key={ts} className="bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-1 rounded-lg text-[10px] font-bold">
-                          {formatDate(ts)}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-[10px] font-bold text-emerald-700/60">{t('studentProfile.focusModalNoDates', { defaultValue: 'Jeszcze żadnego' })}</p>
-                  )}
+                  <FocusProgress dots={!!focusState?.dots} count={focusState?.count ?? 0} goal={focusState?.goal ?? FOCUS_GOAL_DEFAULT} dates={dates} since={focus.since} />
                 </div>
 
                 <div className="pt-1.5 border-t border-emerald-100/80">

@@ -38,6 +38,41 @@ export function FocusProgressText({ count, goal }: { count: number; goal: number
   );
 }
 
+/**
+ * Postęp obecnego fokusu w oknach fokusu (uczeń i trener): kropki, a pod nimi
+ * daty treningów, które je zapełniły — każda data to jedna kropka (user
+ * 2026-09-18: osobna sekcja „Treningi zaliczone…" przy zerze nic nie mówiła).
+ * Przy zerze same kropki; bez kropek same daty „od …", a przy zerze nic.
+ */
+export function FocusProgress({ dots, count, goal, dates, since }: {
+  dots: boolean;
+  count: number;
+  goal: number;
+  dates: number[];
+  since: number;
+}) {
+  const { t, i18n } = useTranslation();
+  const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+  const list = dates.map(fmt).join(' · ');
+  if (!dots && !list) return null;
+  return (
+    <div className="mt-1.5">
+      {dots && (
+        <div className="flex items-center gap-2 bg-[#0a3a2a] rounded-lg px-2 py-1 w-fit">
+          <FocusDots count={count} goal={goal} small />
+          <FocusProgressText count={count} goal={goal} />
+        </div>
+      )}
+      {list && (
+        <p className="text-[10px] font-bold text-emerald-800/80 mt-1 leading-snug">
+          {!dots && `${t('tagebuch.focusSince', { date: fmt(since) })}: `}
+          {list}
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function FocusCard({ focus, dots, goal, count, onEdit }: {
   focus: ActiveFocus | null;
   dots: boolean;        // użytkownik włączył kropki

@@ -7,6 +7,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachLogNotification } from '../utils/notificationTypes';
 import TopicPicker from './TopicPicker';
+import { topicLabel } from '../constants/trainingTopics';
 
 // --- TYPY WPISÓW ---
 type EntryType = 'observation' | 'tip' | 'goal' | 'flag';
@@ -332,7 +333,7 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {entry.topics.map(id => (
                               <span key={id} className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-1.5 py-0.5 rounded-full text-[8px] font-black">
-                                {t(`sessionSetup.topic_${id}`)}
+                                {topicLabel(id, t)}
                               </span>
                             ))}
                           </div>

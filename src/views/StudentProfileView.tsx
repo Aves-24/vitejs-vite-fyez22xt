@@ -16,11 +16,10 @@ import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 import TopicPicker from '../components/TopicPicker';
 import StudentEquipmentCard from '../components/StudentEquipmentCard';
-import { TRAINING_TOPICS } from '../constants/trainingTopics';
+import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
-const TRAINING_TOPICS_FLAT = TRAINING_TOPICS.flatMap(c => c.subtopics);
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -189,15 +188,11 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
            </p>
            {coachTopics.length > 0 && (
              <div className="flex flex-wrap gap-1 mt-2">
-               {coachTopics.map(id => {
-                 const sub = TRAINING_TOPICS_FLAT.find(s => s.id === id);
-                 if (!sub) return null;
-                 return (
-                   <span key={id} className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full text-[9px] font-black">
-                     {t(`sessionSetup.topic_${sub.id}`)}
-                   </span>
-                 );
-               })}
+               {coachTopics.filter(isKnownTopic).map(id => (
+                 <span key={id} className="bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full text-[9px] font-black">
+                   {topicLabel(id, t)}
+                 </span>
+               ))}
              </div>
            )}
          </>

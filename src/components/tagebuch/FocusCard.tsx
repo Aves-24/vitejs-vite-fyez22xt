@@ -1,13 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveFocus } from '../../utils/focus';
+import { topicLabel } from '../../constants/trainingTopics';
 
 // --- FOKUS ---
 // Karta „Twój fokus" na górze dziennika i pasek na Home (edycja: FocusModal). Logika
 // (który fokus obowiązuje, liczenie treningów) siedzi w utils/focus.ts.
 
 export function focusTitle(focus: ActiveFocus, t: (k: string) => string): string {
-  return focus.text || (focus.topic ? t(`sessionSetup.topic_${focus.topic}`) : '');
+  return focus.text || (focus.topic ? topicLabel(focus.topic, t) : '');
 }
 
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
@@ -76,7 +77,7 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
       </div>
       <p className="text-[14px] font-black text-white leading-snug mt-1 break-words">{focusTitle(focus, t)}</p>
       {focus.text && focus.topic && (
-        <p className="text-[10px] font-bold text-white/60 mt-0.5">{t(`sessionSetup.topic_${focus.topic}`)}</p>
+        <p className="text-[10px] font-bold text-white/60 mt-0.5">{topicLabel(focus.topic, t)}</p>
       )}
       <div className="flex items-center gap-2 mt-2 flex-wrap">
         {showDots ? (

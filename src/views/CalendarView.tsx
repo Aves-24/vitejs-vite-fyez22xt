@@ -19,6 +19,7 @@ import {
   distancesForAnySetup, distanceColorMap,
 } from '../config/distances';
 import { EquipmentSetup } from '../config/equipmentSetups';
+import { topicLabel } from '../constants/trainingTopics';
 
 interface Event {
   id: string;
@@ -1535,7 +1536,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <div className="flex flex-wrap gap-1">
                         {viewingEvent.topics.map((id: string) => (
                           <span key={id} className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black">
-                            {t(`sessionSetup.topic_${id}`)}
+                            {topicLabel(id, t)}
                           </span>
                         ))}
                       </div>

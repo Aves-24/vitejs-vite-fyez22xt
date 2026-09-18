@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
 import { focusTitle, FocusDots, FocusProgressText } from './FocusCard';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type ActiveFocus } from '../../utils/focus';
+import { topicLabel } from '../../constants/trainingTopics';
 
 // 0 = kropki wyłączone; stepper przechodzi 0 → 2 → 3 → 4 → 5.
 const GOAL_STEPS = [0, ...FOCUS_GOAL_OPTIONS];
@@ -131,7 +132,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                   </p>
                   <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(focus, t)}</p>
                   {focus.text && focus.topic && (
-                    <p className="text-[10px] font-bold text-emerald-700/70 mt-0.5">{t(`sessionSetup.topic_${focus.topic}`)}</p>
+                    <p className="text-[10px] font-bold text-emerald-700/70 mt-0.5">{topicLabel(focus.topic, t)}</p>
                   )}
                   {hasFocus && dots && (
                     <div className="flex items-center gap-2 mt-1.5 bg-[#0a3a2a] rounded-lg px-2 py-1 w-fit">

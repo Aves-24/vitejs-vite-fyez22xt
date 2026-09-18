@@ -7,7 +7,7 @@ import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
-import { TRAINING_TOPICS } from '../constants/trainingTopics';
+import { TRAINING_TOPICS, CUSTOM_CATEGORY_ID, isCustomTopic, topicLabel } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard } from '../components/tagebuch/FocusCard';
@@ -452,6 +452,18 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return { items: list, hasMore: sessionsFull || notesFull, cutoff };
   }, [sessions, notes, coachEntries, filter, topic, pageSize]);
 
+  // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
+  // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
+  const customTopicOptions = useMemo(() => {
+    const ids = new Set<string>();
+    const add = (arr?: string[]) => arr?.forEach(id => { if (isCustomTopic(id)) ids.add(id); });
+    sessions.forEach(s => { add(s.topics); add(s.coachTopics); });
+    notes.forEach(n => add(n.topics));
+    coachEntries.forEach(e => add(e.topics));
+    if (topic && isCustomTopic(topic)) ids.add(topic);
+    return [...ids].sort((a, b) => a.localeCompare(b));
+  }, [sessions, notes, coachEntries, topic]);
+
   // Rekord można ogłosić tylko, gdy wczytana jest cała historia treningów —
   // inaczej odznaka mówi uczciwie „najlepszy z ostatnich N".
   const insights = useMemo(
@@ -736,10 +748,17 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
               {TRAINING_TOPICS.map(cat => (
                 <optgroup key={cat.id} label={`${cat.num}. ${t(`sessionSetup.topicCat_${cat.id}`)}`}>
                   {cat.subtopics.map(sub => (
-                    <option key={sub.id} value={sub.id}>{t(`sessionSetup.topic_${sub.id}`)}</option>
+                    <option key={sub.id} value={sub.id}>{topicLabel(sub.id, t)}</option>
                   ))}
                 </optgroup>
               ))}
+              {customTopicOptions.length > 0 && (
+                <optgroup label={t(`sessionSetup.topicCat_${CUSTOM_CATEGORY_ID}`)}>
+                  {customTopicOptions.map(id => (
+                    <option key={id} value={id}>{topicLabel(id, t)}</option>
+                  ))}
+                </optgroup>
+              )}
             </select>
             <span className="material-symbols-outlined text-[14px] absolute right-1.5 pointer-events-none">expand_more</span>
           </div>

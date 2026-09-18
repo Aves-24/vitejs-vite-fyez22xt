@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { TRAINING_TOPICS } from '../constants/trainingTopics';
+import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
+import TopicPicker from './TopicPicker';
 
 interface TechSessionCardProps {
   session: any;
@@ -17,12 +18,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
 
   const [isEditingTopics, setIsEditingTopics] = useState(false);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(session.topics || []);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-
-  const toggleTopic = (id: string) => {
-    setSelectedTopics(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]);
-  };
 
   const handleSaveTopics = async () => {
     if (!userId || !session.id) return;
@@ -32,7 +28,6 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
         topics: selectedTopics,
       });
       setIsEditingTopics(false);
-      setExpandedCategory(null);
     } catch (e) {
       console.error('Error saving topics:', e);
     } finally {
@@ -42,7 +37,6 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
 
   const handleCancelEdit = () => {
     setSelectedTopics(session.topics || []);
-    setExpandedCategory(null);
     setIsEditingTopics(false);
   };
 
@@ -90,27 +84,16 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
         </div>
 
         {/* Wyświetl chipy tematów */}
-        {displayTopics.length > 0 ? (
-          <div className="flex flex-wrap gap-1 mb-2">
-            {displayTopics.map(id => {
-              const sub = TRAINING_TOPICS.flatMap(c => c.subtopics).find(s => s.id === id);
-              if (!sub) return null;
-              return (
-                <span key={id}
-                  onClick={isEditingTopics ? () => toggleTopic(id) : undefined}
-                  className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black border transition-all ${
-                    isEditingTopics
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200 cursor-pointer active:scale-95'
-                      : 'bg-gray-50 text-gray-600 border-gray-100'
-                  }`}>
-                  {t(`sessionSetup.topic_${sub.id}`)}
-                  {isEditingTopics && <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>}
+        {!isEditingTopics && (
+          displayTopics.some(isKnownTopic) ? (
+            <div className="flex flex-wrap gap-1 mb-2">
+              {displayTopics.filter(isKnownTopic).map(id => (
+                <span key={id} className="flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black border bg-gray-50 text-gray-600 border-gray-100">
+                  {topicLabel(id, t)}
                 </span>
-              );
-            })}
-          </div>
-        ) : (
-          !isEditingTopics && (
+              ))}
+            </div>
+          ) : (
             <p className="text-[10px] text-gray-300 font-bold mb-2">—</p>
           )
         )}
@@ -118,53 +101,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
         {/* PICKER TEMATÓW (tryb edycji) */}
         {isEditingTopics && (
           <div className="mt-1">
-            {/* Przyciski kategorii */}
-            <div className="grid grid-cols-5 gap-1 mb-1">
-              {TRAINING_TOPICS.map(cat => {
-                const hasSelected = cat.subtopics.some(s => selectedTopics.includes(s.id));
-                return (
-                  <button key={cat.id}
-                    onClick={() => setExpandedCategory(v => v === cat.id ? null : cat.id)}
-                    className={`py-1.5 rounded-xl text-[9px] font-black text-center leading-tight transition-all relative ${
-                      expandedCategory === cat.id
-                        ? 'bg-emerald-600 text-white'
-                        : hasSelected
-                        ? 'bg-emerald-50 text-emerald-700 border-2 border-emerald-200'
-                        : 'bg-gray-50 text-gray-500 border border-gray-100'
-                    }`}>
-                    {cat.num}
-                    {hasSelected && expandedCategory !== cat.id && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 bg-emerald-500 rounded-full" />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Rozwinięte podtematy */}
-            {expandedCategory && (
-              <div className="bg-gray-50 rounded-xl p-2 space-y-0.5 border border-gray-100 mb-2">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 px-1">
-                  {t(`sessionSetup.topicCat_${expandedCategory}`)}
-                </p>
-                {TRAINING_TOPICS.find(c => c.id === expandedCategory)?.subtopics.map(sub => {
-                  const checked = selectedTopics.includes(sub.id);
-                  return (
-                    <button key={sub.id} onClick={() => toggleTopic(sub.id)}
-                      className={`w-full flex items-center gap-2 py-1.5 px-2 rounded-lg text-left transition-all active:scale-[0.98] ${
-                        checked ? 'bg-emerald-100' : 'hover:bg-gray-100'
-                      }`}>
-                      <span className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                        checked ? 'bg-emerald-500 border-emerald-500' : 'border-gray-300 bg-white'
-                      }`}>
-                        {checked && <span className="material-symbols-outlined text-white text-[11px]">check</span>}
-                      </span>
-                      <span className="text-[11px] font-black text-[#0a3a2a] min-w-0">{t(`sessionSetup.topic_${sub.id}`)}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            <TopicPicker selectedTopics={selectedTopics} onChange={setSelectedTopics} hideCaption />
 
             {/* Przyciski zapisz / anuluj */}
             <div className="flex gap-2 mt-2">

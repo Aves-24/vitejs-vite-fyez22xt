@@ -10,6 +10,7 @@ import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { effectiveCoachLimit } from '../utils/coachAccess';
 import CollapsibleSection from '../components/CollapsibleSection';
+import { topicLabel } from '../constants/trainingTopics';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -1223,7 +1224,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     {/* Tematy treningu z formularza terminu (TopicPicker) */}
                     {Array.isArray(ev.topics) && ev.topics.length > 0 && (
                       <p className="text-[9px] font-bold text-emerald-700 mt-0.5 truncate">
-                        {ev.topics.map((id: string) => t(`sessionSetup.topic_${id}`)).join(' · ')}
+                        {ev.topics.map((id: string) => topicLabel(id, t)).join(' · ')}
                       </p>
                     )}
                   </div>

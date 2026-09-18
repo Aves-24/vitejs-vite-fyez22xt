@@ -19,6 +19,7 @@ import { useActiveFocus } from '../utils/focus';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { isBlowgunSession } from '../config/targets/blowgun';
+import { topicLabel } from '../constants/trainingTopics';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -867,7 +868,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 <span className="material-symbols-outlined text-[20px] text-[#b8860b] shrink-0">track_changes</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-[12px] font-black text-[#0a3a2a] truncate">
-                    {t('scoringView.focusToggle', { topic: t(`sessionSetup.topic_${focusTopic}`) })}
+                    {t('scoringView.focusToggle', { topic: topicLabel(focusTopic, t) })}
                   </p>
                   <p className="text-[10px] font-bold text-gray-400">{t('scoringView.focusToggleHint')}</p>
                 </div>

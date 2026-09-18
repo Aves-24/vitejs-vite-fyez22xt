@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
+import { topicLabel } from '../../constants/trainingTopics';
 
 // --- TYPY WPISÓW OSI CZASU ---
 // Read-model złożony z istniejących kolekcji — nic nie jest zapisywane w nowym
@@ -92,7 +93,7 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
     <div className="flex flex-wrap gap-1 mt-1.5">
       {topics.map(id => (
         <span key={id} className={`border px-2 py-0.5 rounded-full text-[9px] font-black ${cls}`}>
-          {t(`sessionSetup.topic_${id}`)}
+          {topicLabel(id, t)}
         </span>
       ))}
     </div>
@@ -373,7 +374,7 @@ function FocusToggle({ topic, marked, onToggle }: { topic: string; marked: boole
       aria-pressed={marked}
     >
       <span className="material-symbols-outlined text-[14px]">{marked ? 'check_circle' : 'radio_button_unchecked'}</span>
-      {t('tagebuch.focusChip')}: {t(`sessionSetup.topic_${topic}`)}
+      {t('tagebuch.focusChip')}: {topicLabel(topic, t)}
     </button>
   );
 }

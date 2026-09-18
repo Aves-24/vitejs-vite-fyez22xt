@@ -1300,22 +1300,24 @@ Z ogona po C25 zostały: **jardy**.
       czy gaśnie po wejściu w listę i po odświeżeniu, oraz czy jest zgaszona
       na drugim urządzeniu.
 
-- [ ] **C39. Własne tematy treningowe w panelu trenera.** Życzenie usera
-      2026-09-17: dziś lista tematów (`src/constants/trainingTopics.ts`) jest
-      na sztywno zakodowana — 5 głównych kategorii (`fundamenty`, `naciag`,
-      `celowanie`, `zwolnienie`, `taktyka`) i pod nimi tematy poboczne
-      (`subtopics`). Trener powinien móc dopisywać WŁASNE tematy — zarówno
-      nowe tematy poboczne pod jedną z 5 głównych kategorii, jak i (do
-      ustalenia) całkiem nowe pozycje poza tą piątką.
-      **Do ustalenia przed kodowaniem:** czy własne tematy trenera są
-      prywatne dla niego, czy widoczne dla wszystkich trenerów; gdzie żyją
-      w Firestore (per-coach kolekcja czy pole na dokumencie trenera); czy
-      user chce też umieć dodawać zupełnie nowe główne kategorie, czy tylko
-      podtematy pod istniejącą piątką; limit FREE/PRO (wzorem zestawów
-      sprzętowych i własnych dystansów — [[project_equipment_setups_plan]],
-      C25). Dotyka `TopicPicker.tsx`, `TopicFeedTab.tsx`, `SessionSetup.tsx`,
-      `CalendarView.tsx`, `StudentProfileView.tsx` — wszędzie tam import
-      dziś idzie ze stałej listy `TRAINING_TOPICS`.
+- [x] **C39. Własne tematy treningowe w panelu trenera.** Życzenie usera
+      2026-09-17, zrobione 2026-09-18. Decyzje usera: własne podtematy pod
+      każdą z 5 kategorii + szósta kategoria „Własne” (ikona edit_note) na
+      tematy spoza piątki; nowych głównych kategorii NIE ma; lista prywatna
+      dla trenera; bez limitu FREE/PRO (techniczny sufit 50).
+      **Jak działa:** własny temat ma ID z nazwą w środku (`c:Praca na
+      klikerze`), więc wyświetla się wszędzie — także u ucznia w fokusie,
+      terminie, dzienniku — bez czytania dokumentu trenera i bez zmian reguł.
+      Lista do wyboru: `users/{coachId}.customTopics` (`[{id, cat}]`, Path B),
+      hook `useCustomTopics`. Dodawanie/usuwanie tylko gdy `isCoach`, w
+      rozwiniętej kategorii `TopicPicker`. Usunięcie z listy nie rusza starych
+      wpisów (nazwa siedzi w ID). Etykiety wszędzie przez `topicLabel()`.
+      SessionSetup i TechSessionCard używają teraz wspólnego `TopicPicker`
+      (wcześniej kopie kodu). Filtr tematu w dzienniku ma grupę „Własne” z
+      tematami obecnymi we wczytanych wpisach.
+      **NIESPRAWDZONE NA ŻYWO** (za logowaniem): dodać temat pod np. „2” i w
+      „Własne”, przypisać go uczniowi w fokusie, sprawdzić u ucznia (Home,
+      dziennik, formularz treningu, kropki), usunąć z listy.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 

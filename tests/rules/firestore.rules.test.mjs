@@ -765,3 +765,12 @@ test('[C39] autor fokusu zmienia tytul i temat wpisu goal', async () => {
   });
   await assertFails(updateDoc(g1(), { topics: ['anker'] }));
 });
+
+test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
+  const a = () => doc(coach1(), 'users/alice');
+  await assertSucceeds(updateDoc(a(), { focusGoal: 1, focusDots: true }));
+  await assertSucceeds(updateDoc(a(), { focusGoal: 5, focusDots: true }));
+  await assertFails(updateDoc(a(), { focusGoal: 0, focusDots: true }));
+  await assertFails(updateDoc(a(), { focusGoal: 6, focusDots: true }));
+  await assertFails(updateDoc(doc(bob(), 'users/alice'), { focusGoal: 1 }));
+});

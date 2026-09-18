@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
 import FocusEditForm from './FocusEditForm';
-import { focusTitle, FocusDots, FocusProgress } from './FocusCard';
+import { focusTitle, FocusDots, FocusProgress, SetFocusButton } from './FocusCard';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type ActiveFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
@@ -302,13 +302,13 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
             />
 
 
-            <button
-              onClick={handleSetNew}
-              disabled={isSavingNew || (!newTopic && !newText.trim())}
-              className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
-            >
-              {t('studentProfile.focusModalSaveNew')}
-            </button>
+            <SetFocusButton
+              current={focus ? focusTitle(focus, t) : null}
+              unfinished={!goalReached}
+              disabled={!newTopic && !newText.trim()}
+              saving={isSavingNew}
+              onConfirm={handleSetNew}
+            />
             </>)}
           </div>
         </div>

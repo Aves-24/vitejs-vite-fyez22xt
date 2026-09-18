@@ -310,7 +310,7 @@ service cloud.firestore {
         && !isSelf(uid)
         && onlyAffects(['focusGoal', 'focusDots'])
         && request.auth.uid in resource.data.get('coaches', [])
-        && request.resource.data.get('focusGoal', 2) in [2, 3, 4, 5]
+        && request.resource.data.get('focusGoal', 2) in [1, 2, 3, 4, 5]
         && request.resource.data.get('focusDots', false) is bool;
 
       // Path L — coach ends the student's active focus early. Writes the SAME

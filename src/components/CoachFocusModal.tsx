@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore';
 import TopicPicker from './TopicPicker';
-import { focusTitle, FocusProgress } from './tagebuch/FocusCard';
+import { focusTitle, FocusProgress, SetFocusButton } from './tagebuch/FocusCard';
 import FocusEditForm from './tagebuch/FocusEditForm';
 import { topicLabel } from '../constants/trainingTopics';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
@@ -294,13 +294,13 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
 
             <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
 
-            <button
-              onClick={handleSetNew}
-              disabled={isSavingNew || !newText.trim()}
-              className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
-            >
-              {isSavingNew ? t('coachLog.saving') : t('studentProfile.focusModalSaveNew', { defaultValue: 'Ustaw fokus' })}
-            </button>
+            <SetFocusButton
+              current={focus ? focusTitle(focus, t) : null}
+              unfinished={!(focusState?.dots && focusState.count >= focusState.goal)}
+              disabled={!newText.trim()}
+              saving={isSavingNew}
+              onConfirm={handleSetNew}
+            />
             </>)}
           </div>
         </div>

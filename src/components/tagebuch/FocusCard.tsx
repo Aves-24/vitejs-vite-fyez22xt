@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ActiveFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
@@ -33,7 +33,7 @@ export function FocusProgressText({ count, goal }: { count: number; goal: number
     <span className="text-[10px] font-bold text-white/75">
       {count >= goal
         ? t('tagebuch.focusDone', { count })
-        : t('tagebuch.focusCount', { hit: count, goal })}
+        : t(goal === 1 ? 'tagebuch.focusCountOne' : 'tagebuch.focusCount', { hit: count, goal })}
     </span>
   );
 }
@@ -70,6 +70,54 @@ export function FocusProgress({ dots, count, goal, dates, since }: {
         </p>
       )}
     </div>
+  );
+}
+
+/**
+ * Przycisk zapisu nowego fokusu (uczeń i trener). Przy obecnym fokusie to
+ * „Zastąp fokus", a gdy obecny nie jest ukończony — najpierw pytanie, bo jego
+ * postęp się zamyka (user 2026-09-18). Ukończonego nie ma czego żałować.
+ */
+export function SetFocusButton({ current, unfinished, disabled, saving, onConfirm }: {
+  current: string | null;   // tytuł obecnego fokusu; null = brak fokusu
+  unfinished: boolean;
+  disabled: boolean;
+  saving: boolean;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  const replace = current !== null;
+  const label = saving ? t('coachLog.saving') : t(replace ? 'studentProfile.focusModalReplace' : 'studentProfile.focusModalSaveNew');
+
+  if (asking) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+        <p className="text-[11px] font-black text-amber-800 leading-snug">{t('studentProfile.focusReplaceConfirm', { title: current })}</p>
+        <p className="text-[10px] font-bold text-amber-800/70 leading-snug">{t('studentProfile.focusReplaceHint')}</p>
+        <div className="flex gap-2">
+          <button onClick={() => setAsking(false)} className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-500 border border-gray-200">
+            {t('tagebuch.focusBack')}
+          </button>
+          <button
+            onClick={() => { setAsking(false); onConfirm(); }}
+            disabled={disabled || saving}
+            className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
+          >
+            {t('studentProfile.focusReplaceYes')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={() => (replace && unfinished ? setAsking(true) : onConfirm())}
+      disabled={disabled || saving}
+      className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
+    >
+      {label}
+    </button>
   );
 }
 

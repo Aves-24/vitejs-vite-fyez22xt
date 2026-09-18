@@ -12,7 +12,8 @@ import { db } from '../firebase';
 // „utrwalony". Trening bez fokusu niczego nie zeruje — suma, nie seria.
 
 export const FOCUS_TEXT_MAX = 120;
-export const FOCUS_GOAL_OPTIONS = [2, 3, 4, 5] as const;
+// 1 dopuszczone od 2026-09-18 (user: „nie można ustawić 1 jednostki”).
+export const FOCUS_GOAL_OPTIONS = [1, 2, 3, 4, 5] as const;
 export const FOCUS_GOAL_DEFAULT = 5;
 
 export function readFocusGoal(userData: any): number {

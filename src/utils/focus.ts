@@ -233,3 +233,18 @@ export function useActiveFocus(
 
   return state;
 }
+
+/** Fokus ukończony: kropki włączone i komplet treningów. */
+export function isFocusDone(state: FocusState | null): boolean {
+  return !!state?.focus && state.dots && state.count >= state.goal;
+}
+
+/**
+ * Fokus do pracy „teraz” (Home, Vorbereitung, trening): ukończony fokus
+ * znika — zostaje tylko w dzienniku jako „ostatni zakończony” (user
+ * 2026-09-18). Treningi nie dostają już jego tematu ani migawki.
+ */
+export function useCurrentFocus(userId: string | null | undefined): FocusState | null {
+  const state = useActiveFocus(userId, true);
+  return state && isFocusDone(state) ? { ...state, focus: null } : state;
+}

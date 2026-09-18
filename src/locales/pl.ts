@@ -317,6 +317,7 @@ export const views = {
     bestOfLast: "Najlepszy z {{count}}",
     focusLabel: "Twój fokus",
     focusFromCoach: "od trenera",
+    focusLastDone: "Twój ostatni zakończony fokus",
     coachSeen: "Trener przeczytał Twoją notatkę",
     focusEmpty: "Ustaw fokus: nad czym teraz pracujesz?",
     focusCount: "{{hit}} z {{goal}} treningów",

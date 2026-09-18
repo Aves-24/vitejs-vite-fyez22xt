@@ -863,6 +863,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       time={timeOf(it.ts)}
                       insight={insights.get(it.session.id)}
                       focus={focusDots && activeFocus?.topic && it.session.ts >= focusFrom
+                        // Ukończony fokus: nowe treningi już się nie dopisują,
+                        // zaliczone można jeszcze odznaczyć.
+                        && (focusCount < focusGoal || it.session.topics.includes(activeFocus.topic))
                         ? { topic: activeFocus.topic, onToggle: () => toggleSessionFocus(it.session, activeFocus.topic) }
                         : undefined}
                       linkedNotes={it.linked}

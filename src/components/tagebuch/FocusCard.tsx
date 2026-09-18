@@ -161,7 +161,7 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-800">
           <span className="truncate">
-            {t('tagebuch.focusLabel')}
+            {t(done ? 'tagebuch.focusLastDone' : 'tagebuch.focusLabel')}
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />

@@ -302,6 +302,7 @@ export const views = {
     bestOfLast: "Best of {{count}}",
     focusLabel: "Your focus",
     focusFromCoach: "from coach",
+    focusLastDone: "Your last completed focus",
     coachSeen: "Your coach has read your note",
     focusEmpty: "Set a focus: what are you working on?",
     focusCount: "{{hit}} of {{goal}} trainings",

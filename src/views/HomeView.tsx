@@ -13,7 +13,7 @@ import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
-import { useActiveFocus } from '../utils/focus';
+import { useCurrentFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 
@@ -59,7 +59,7 @@ interface HomeViewProps {
 export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
   const { t, i18n } = useTranslation();
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
-  const focusState = useActiveFocus(userId, true);
+  const focusState = useCurrentFocus(userId);
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);

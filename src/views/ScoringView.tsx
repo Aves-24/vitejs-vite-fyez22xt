@@ -15,7 +15,7 @@ import Weather from '../components/Weather';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
-import { useActiveFocus, sessionFocusSnapshot } from '../utils/focus';
+import { useCurrentFocus, sessionFocusSnapshot } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
@@ -185,7 +185,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // ma się liczyć przy normalnym treningu; bez kropek trening trafia do dat).
   // Fokus bez tematu liczy każdy trening sam. W Arenie się nie pokazuje.
   // `true` = z liczbą treningów — miniatura fokusu w nagłówku pokazuje kropki.
-  const focusState = useActiveFocus(battleId ? null : userId, true);
+  const focusState = useCurrentFocus(battleId ? null : userId);
   const focusTopic = focusState?.focus?.topic || '';
   const [focusOn, setFocusOn] = useState(true);
   const [currentWeather, setCurrentWeather] = useState<any>(null);

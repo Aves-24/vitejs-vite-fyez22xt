@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
-import { useActiveFocus, sessionFocusSnapshot } from '../utils/focus';
+import { useCurrentFocus, sessionFocusSnapshot } from '../utils/focus';
 import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
@@ -73,7 +73,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   // [FOKUS] Aktualny fokus widać w oknie treningu technicznego, a jego temat
   // jest zaznaczony z góry — dla każdego, kto ma fokus; można go odznaczyć.
-  const focusState = useActiveFocus(userId, true);
+  const focusState = useCurrentFocus(userId);
   const activeFocus = focusState?.focus ?? null;
   const focusTopic = activeFocus?.topic || '';
 

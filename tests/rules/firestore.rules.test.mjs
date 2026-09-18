@@ -732,7 +732,7 @@ test('[DYSCYPLINY] backfill 10 → 13 przechodzi na koncie FREE z pelnym limitem
   }));
 });
 
-test('[C39] autor fokusu zmienia tylko temat wpisu goal', async () => {
+test('[C39] autor fokusu zmienia tytul i temat wpisu goal', async () => {
   await env.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await setDoc(doc(db, 'users/alice/coachLog/g1'), {
@@ -746,8 +746,12 @@ test('[C39] autor fokusu zmienia tylko temat wpisu goal', async () => {
 
   // Zmiana tematu (także na własny) — wolno.
   await assertSucceeds(updateDoc(g1(), { topics: ['c:Praca na klikerze'], editedAt: Date.now() }));
-  // Tekst, data startu, typ — nie.
-  await assertFails(updateDoc(g1(), { text: 'Inny' }));
+  // Tytuł — wolno, ale nie pusty.
+  await assertSucceeds(updateDoc(g1(), { text: 'Kotwica pod brodą', topics: ['anker'], editedAt: Date.now() }));
+  await assertFails(updateDoc(g1(), { text: '' }));
+  // Data startu, typ, autor — nie.
+  await assertFails(updateDoc(g1(), { type: 'tip' }));
+  await assertFails(updateDoc(g1(), { authorId: 'bob' }));
   await assertFails(updateDoc(g1(), { createdAt: 2 }));
   await assertFails(updateDoc(g1(), { topics: 'anker' }));
   // Inne typy wpisów — nie.

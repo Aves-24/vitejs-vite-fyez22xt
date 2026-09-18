@@ -396,14 +396,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     if (dots) setFocusGoal(goal);
   }, [userId]);
 
-  // [C39] Zmiana tematu WŁASNEGO fokusu — data startu (setAt) zostaje, więc
-  // kropki przeliczają się pod nowy temat bez resetu.
-  const changeFocusTopic = useCallback(async (topic: string) => {
-    if (!ownFocus || ownFocus.cleared) return;
-    const focus: OwnFocus = { ...ownFocus, topic };
+  // Edycja obecnego fokusu (tytuł + temat). Data startu zostaje, więc postęp
+  // się nie resetuje. Fokus od trenera staje się przy tym własnym fokusem ucznia
+  // (ta sama data startu = własny wygrywa w resolveActiveFocus) — wpisu trenera
+  // w coachLog uczeń nie zmienia, więc nie podpisuje się pod nim cudzym tekstem.
+  const editFocus = useCallback(async (text: string, topic: string) => {
+    if (!activeFocus) return;
+    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: activeFocus.since };
     await updateDoc(doc(db, 'users', userId), { focus });
     setOwnFocus(focus);
-  }, [userId, ownFocus]);
+  }, [userId, activeFocus]);
 
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
@@ -693,7 +695,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             count={focusCount}
             onSetGoal={saveFocusGoal}
             onSetNew={setNewFocus}
-            onChangeTopic={changeFocusTopic}
+            onEditFocus={editFocus}
             onEnd={endFocus}
             onClose={() => setFocusEditing(false)}
           />

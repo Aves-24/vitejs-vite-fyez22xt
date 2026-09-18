@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from '../TopicPicker';
+import FocusEditForm from './FocusEditForm';
 import { focusTitle, FocusDots, FocusProgressText } from './FocusCard';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type ActiveFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
@@ -12,9 +13,9 @@ const GOAL_STEPS = [0, ...FOCUS_GOAL_OPTIONS];
 // Fokus ucznia w dzienniku — ten sam układ co panel trenera (CoachFocusModal,
 // user 2026-09-18: „tam jest to dobrze rozłożone"). Zielone = OBECNY fokus
 // (postęp, daty, liczba lekcji +/- i zapis ✓, zakończenie), niebieskie =
-// NOWY fokus, zawsze widoczny: tekst -> liczba lekcji -> temat. Wcześniej jeden
-// edytor robił oba naraz i nowy fokus wymagał najpierw „Zakończ".
-export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal, onSetNew, onChangeTopic, onEnd, onClose }: {
+// NOWY fokus (zwinięty przy obecnym): tekst -> liczba lekcji -> temat. Obecny
+// fokus edytuje się w miejscu (tytuł + temat, FocusEditForm).
+export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal, onSetNew, onEditFocus, onEnd, onClose }: {
   userId: string;
   focus: ActiveFocus | null;
   dots: boolean;
@@ -22,8 +23,8 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
   count: number;
   onSetGoal: (dots: boolean, goal: number) => Promise<void>;
   onSetNew: (topic: string, text: string, dots: boolean, goal: number) => Promise<void>;
-  /** Zmiana tematu WŁASNEGO fokusu — data startu zostaje. */
-  onChangeTopic: (topic: string) => Promise<void>;
+  /** Edycja obecnego fokusu (tytuł + temat) — data startu zostaje. */
+  onEditFocus: (text: string, topic: string) => Promise<void>;
   onEnd: () => Promise<void>;
   onClose: () => void;
 }) {
@@ -43,22 +44,9 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
   // „Nowy fokus” zwinięty, dopóki jest obecny fokus (user 2026-09-18).
   const [newOpen, setNewOpen] = useState(!focus);
 
-  // [C39] Temat obecnego fokusu: własny zmienia uczeń, fokus od trenera tylko trener.
-  const [editingTopic, setEditingTopic] = useState(false);
-  const [editTopic, setEditTopic] = useState('');
-  const [isSavingTopic, setIsSavingTopic] = useState(false);
-  const saveTopic = async () => {
-    setIsSavingTopic(true);
-    setError(false);
-    try {
-      await onChangeTopic(editTopic);
-      setEditingTopic(false);
-    } catch (e) {
-      console.error('Tagebuch: błąd zmiany tematu fokusu', e);
-      setError(true);
-    }
-    setIsSavingTopic(false);
-  };
+  // Edycja obecnego fokusu (tytuł + temat) — także fokusu od trenera: wtedy
+  // zapis robi z niego własny fokus ucznia z tą samą datą startu.
+  const [editing, setEditing] = useState(false);
 
   const [dates, setDates] = useState<number[]>([]);
   useEffect(() => {
@@ -148,65 +136,45 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
               {/* Wszystko o obecnym fokusie — jedno zielone tło. */}
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 space-y-2.5">
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700">
-                    {t('studentProfile.focusModalCurrentLabel')}
-                    {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
-                  </p>
-                  <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(focus, t)}</p>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700">
+                      {t('studentProfile.focusModalCurrentLabel')}
+                      {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
+                    </p>
+                    {!editing && (
+                      <button onClick={() => setEditing(true)} className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700 shrink-0 active:scale-95 transition-all">
+                        <span className="material-symbols-outlined text-[12px]">edit</span>
+                        {t('studentProfile.focusModalEdit')}
+                      </button>
+                    )}
+                  </div>
+                  {editing ? (
+                    <div className="mt-1.5">
+                      <FocusEditForm
+                        initialText={focus.text}
+                        initialTopic={focus.topic}
+                        hint={focus.fromCoach ? t('tagebuch.focusEditBecomesOwn') : undefined}
+                        onCancel={() => setEditing(false)}
+                        onSave={async (text, topic) => { await onEditFocus(text, topic); setEditing(false); }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(focus, t)}</p>
+                      {focus.text && focus.topic && (
+                        <span className="inline-block mt-1 bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded-lg text-[10px] font-black">
+                          {topicLabel(focus.topic, t)}
+                        </span>
+                      )}
+                      {!focus.topic && (
+                        <p className="text-[10px] font-bold text-emerald-700/60 mt-0.5">{t('studentProfile.focusModalNoTopic')}</p>
+                      )}
+                    </>
+                  )}
                   {hasFocus && dots && (
                     <div className="flex items-center gap-2 mt-1.5 bg-[#0a3a2a] rounded-lg px-2 py-1 w-fit">
                       <FocusDots count={count} goal={goal} small />
                       <FocusProgressText count={count} goal={goal} />
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-1.5 border-t border-emerald-100/80">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70">{t('studentProfile.focusModalTopic')}</p>
-                    {!focus.fromCoach && !editingTopic && (
-                      <button
-                        onClick={() => { setEditTopic(focus.topic); setEditingTopic(true); }}
-                        className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700 active:scale-95 transition-all"
-                      >
-                        <span className="material-symbols-outlined text-[12px]">edit</span>
-                        {t('studentProfile.focusModalTopicChange')}
-                      </button>
-                    )}
-                  </div>
-                  {!editingTopic ? (
-                    <>
-                      {focus.topic ? (
-                        <span className="inline-block bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-1 rounded-lg text-[10px] font-black">
-                          {topicLabel(focus.topic, t)}
-                        </span>
-                      ) : (
-                        <p className="text-[10px] font-bold text-emerald-700/60">{t('studentProfile.focusModalNoTopic')}</p>
-                      )}
-                      {focus.fromCoach && (
-                        <p className="text-[10px] font-bold text-emerald-700/60 mt-1 leading-snug">{t('tagebuch.focusTopicByCoach')}</p>
-                      )}
-                    </>
-                  ) : (
-                    <div className="space-y-2">
-                      <TopicPicker
-                        selectedTopics={editTopic ? [editTopic] : []}
-                        onChange={next => setEditTopic(next.filter(x => x !== editTopic)[0] ?? '')}
-                        hideCaption
-                      />
-                      <p className="text-[10px] font-bold text-emerald-700/70 leading-snug">{t('studentProfile.focusModalTopicHint')}</p>
-                      <div className="flex gap-2">
-                        <button onClick={() => setEditingTopic(false)} className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-500 border border-gray-200">
-                          {t('tagebuch.focusBack')}
-                        </button>
-                        <button
-                          onClick={saveTopic}
-                          disabled={isSavingTopic || editTopic === focus.topic || (!editTopic && !focus.text)}
-                          className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white disabled:opacity-50"
-                        >
-                          {t('tagebuch.save')}
-                        </button>
-                      </div>
                     </div>
                   )}
                 </div>

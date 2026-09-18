@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { doc, updateDoc, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore';
 import TopicPicker from './TopicPicker';
 import { focusTitle } from './tagebuch/FocusCard';
+import FocusEditForm from './tagebuch/FocusEditForm';
 import { topicLabel } from '../constants/trainingTopics';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
 
@@ -52,27 +53,17 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const [isEnding, setIsEnding] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
 
-  // [C39] Zmiana tematu OBECNEGO fokusu — tylko autor wpisu (reguła coachLog).
-  // Data startu zostaje, kropki przeliczą się pod nowy temat. Fokus liczy
-  // tylko pierwszy temat, więc wybór jest pojedynczy.
-  const canEditTopic = !!focus?.fromCoach && !!focus.goalId && focus.authorId === coachId;
-  const [editingTopic, setEditingTopic] = useState(false);
-  const [editTopics, setEditTopics] = useState<string[]>([]);
-  const [isSavingTopic, setIsSavingTopic] = useState(false);
-  const startEditTopic = () => { setEditTopics(focus?.topic ? [focus.topic] : []); setEditingTopic(true); };
-  const pickSingleTopic = (next: string[]) => {
-    const added = next.filter(x => !editTopics.includes(x));
-    setEditTopics(added.length ? [added[added.length - 1]] : next);
-  };
-  const handleSaveTopic = async () => {
+  // [C39] Edycja OBECNEGO fokusu (tytuł + temat) — tylko autor wpisu (reguła
+  // coachLog). Data startu (createdAt) zostaje, kropki przeliczą się pod nowy temat.
+  const canEdit = !!focus?.fromCoach && !!focus.goalId && focus.authorId === coachId;
+  const [editing, setEditing] = useState(false);
+  const handleSaveEdit = async (text: string, topic: string) => {
     if (!focus?.goalId) return;
-    setIsSavingTopic(true);
-    try {
-      await updateDoc(doc(db, `users/${studentId}/coachLog`, focus.goalId), { topics: editTopics, editedAt: Date.now() });
-      setEditingTopic(false);
-      onChange();
-    } catch (e) { console.error('Fokus: błąd zmiany tematu', e); }
-    setIsSavingTopic(false);
+    await updateDoc(doc(db, `users/${studentId}/coachLog`, focus.goalId), {
+      text, topics: topic ? [topic] : [], editedAt: Date.now(),
+    });
+    setEditing(false);
+    onChange();
   };
 
   // „Nowy fokus” zwinięty, dopóki jest obecny fokus (user 2026-09-18).
@@ -167,56 +158,45 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
               {/* Wszystko o obecnym fokusie — jedno zielone tło. */}
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-3 space-y-2.5">
                 <div>
-                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700">
-                    {t('studentProfile.focusModalCurrentLabel', { defaultValue: 'Aktualny fokus' })}
-                  </p>
-                  <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(focus, t)}</p>
-                  {focusState?.dots && (
-                    <p className="text-[10px] font-bold text-emerald-700 mt-1">{focusState.count}/{focusState.goal}</p>
-                  )}
-                </div>
-
-                <div className="pt-1.5 border-t border-emerald-100/80">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70">
-                      {t('studentProfile.focusModalTopic', { defaultValue: 'Temat' })}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700">
+                      {t('studentProfile.focusModalCurrentLabel', { defaultValue: 'Aktualny fokus' })}
                     </p>
-                    {canEditTopic && !editingTopic && (
-                      <button onClick={startEditTopic} className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700 active:scale-95 transition-all">
+                    {canEdit && !editing && (
+                      <button onClick={() => setEditing(true)} className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700 shrink-0 active:scale-95 transition-all">
                         <span className="material-symbols-outlined text-[12px]">edit</span>
-                        {t('studentProfile.focusModalTopicChange', { defaultValue: 'Zmień' })}
+                        {t('studentProfile.focusModalEdit')}
                       </button>
                     )}
                   </div>
-                  {!editingTopic ? (
-                    focus.topic ? (
-                      <span className="inline-block bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-1 rounded-lg text-[10px] font-black">
-                        {topicLabel(focus.topic, t)}
-                      </span>
-                    ) : (
-                      <p className="text-[10px] font-bold text-emerald-700/60">
-                        {t('studentProfile.focusModalNoTopic', { defaultValue: 'Bez tematu — liczy się każdy trening' })}
-                      </p>
-                    )
-                  ) : (
-                    <div className="space-y-2">
-                      <TopicPicker selectedTopics={editTopics} onChange={pickSingleTopic} hideCaption />
-                      <p className="text-[10px] font-bold text-emerald-700/70 leading-snug">
-                        {t('studentProfile.focusModalTopicHint', { defaultValue: 'Data startu zostaje — kropki przeliczą się pod nowy temat.' })}
-                      </p>
-                      <div className="flex gap-2">
-                        <button onClick={() => setEditingTopic(false)} className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-500 border border-gray-200">
-                          {t('coachLog.cancel', { defaultValue: 'Abbrechen' })}
-                        </button>
-                        <button
-                          onClick={handleSaveTopic}
-                          disabled={isSavingTopic || (editTopics[0] || '') === (focus.topic || '')}
-                          className="flex-1 py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-emerald-600 text-white disabled:opacity-50"
-                        >
-                          {isSavingTopic ? t('coachLog.saving') : t('tagebuch.save')}
-                        </button>
-                      </div>
+                  {editing ? (
+                    <div className="mt-1.5">
+                      <FocusEditForm
+                        initialText={focus.text}
+                        initialTopic={focus.topic}
+                        textRequired
+                        onCancel={() => setEditing(false)}
+                        onSave={handleSaveEdit}
+                      />
                     </div>
+                  ) : (
+                    <>
+                      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(focus, t)}</p>
+                      {focus.text && focus.topic && (
+                        <span className="inline-block mt-1 bg-white/70 border border-emerald-100 text-emerald-800 px-2 py-0.5 rounded-lg text-[10px] font-black">
+                          {topicLabel(focus.topic, t)}
+                        </span>
+                      )}
+                      {!focus.topic && (
+                        <p className="text-[10px] font-bold text-emerald-700/60 mt-0.5">{t('studentProfile.focusModalNoTopic')}</p>
+                      )}
+                      {!canEdit && (
+                        <p className="text-[10px] font-bold text-emerald-700/60 mt-1 leading-snug">{t('studentProfile.focusModalNotYours')}</p>
+                      )}
+                    </>
+                  )}
+                  {focusState?.dots && (
+                    <p className="text-[10px] font-bold text-emerald-700 mt-1">{focusState.count}/{focusState.goal}</p>
                   )}
                 </div>
 

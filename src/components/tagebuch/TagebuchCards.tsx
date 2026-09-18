@@ -453,11 +453,16 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
         </span>
       </span>
       {/* Zwinięta: znaczki, że w środku coś jest (trener, notatki). */}
-      {!expanded && (session.coachNote || noteCount > 0) && (
+      {!expanded && (session.coachNote || noteCount > 0 || session.coachSeen) && (
         <span className="shrink-0 flex items-center gap-1">
           {session.coachNote && (
             <span className={`flex items-center justify-center w-6 h-6 rounded-full ${isNew ? 'bg-emerald-600 text-white' : 'bg-amber-50 text-amber-800'}`}>
               <span className="material-symbols-outlined text-[14px]">sports</span>
+            </span>
+          )}
+          {session.coachSeen && !session.coachNote && (
+            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-amber-50 text-amber-800" title={t('tagebuch.coachSeen')}>
+              <span className="material-symbols-outlined text-[14px]">done_all</span>
             </span>
           )}
           {noteCount > 0 && (
@@ -501,6 +506,13 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
             )}
           </div>
           <p className="text-[12px] font-medium text-gray-600 leading-relaxed whitespace-pre-wrap break-words">„{session.note}"</p>
+          {/* Trener odhaczył „Widziałem” w karcie ucznia (bez odpowiedzi). */}
+          {session.isNotePublic && session.coachSeen && !session.coachNote && (
+            <p className="mt-1 flex items-center gap-1 text-[10px] font-black text-amber-800">
+              <span className="material-symbols-outlined text-[14px]">done_all</span>
+              {t('tagebuch.coachSeen')}
+            </p>
+          )}
         </div>
       )}
 
@@ -528,12 +540,6 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           <p className="text-[12px] font-bold text-amber-900 leading-relaxed whitespace-pre-wrap break-words">„{session.coachNote}"</p>
           <TopicChips topics={session.coachTopics} tone="amber" />
         </div>
-      )}
-      {!session.coachNote && session.coachSeen && session.note && session.isNotePublic && (
-        <p className="mt-2 flex items-center gap-1 text-[10px] font-black text-amber-800">
-          <span className="material-symbols-outlined text-[14px]">done_all</span>
-          {t('tagebuch.coachSeen')}
-        </p>
       )}
 
       {composing ? (

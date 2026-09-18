@@ -1009,15 +1009,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
                 {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
               </p>
-              {/* Fokus ucznia — aktualny albo ukończony (złote kropki), dopóki
-                  nie zostanie zakończony lub zastąpiony. */}
-              {fc?.focus && (
-                <p className="text-[9px] font-bold mt-0.5 flex items-center gap-1 min-w-0 text-amber-800">
-                  <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">track_changes</span>
-                  <span className="truncate">{focusTitle(fc.focus, t)}</span>
-                  {fc.dots && <span className="shrink-0 ml-0.5"><FocusDots count={fc.count} goal={fc.goal} small light /></span>}
-                </p>
-              )}
+              {renderFocusLine(student.id)}
               {/* Ostatni wpis z dziennika — bez celu, gdy fokus już jest wyżej. */}
               {lastLogEntries[student.id] && !(fc?.focus && lastLogEntries[student.id]!.type === 'goal') && (() => {
                 const entry = lastLogEntries[student.id]!;
@@ -1153,6 +1145,21 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // Mały wiersz ucznia w sekcjach u góry (nowe treningi, forma, bez
   // treningu): inicjały, nazwisko, jedna linia opisu; klik = profil.
+  // Linijka fokusu ucznia — w pełnym wierszu listy i w małych wierszach sekcji
+  // (nowe treningi, forma, bez treningu 14+ dni). Aktualny albo ukończony
+  // (złote kropki), dopóki nie zostanie zakończony lub zastąpiony.
+  const renderFocusLine = (studentId: string) => {
+    const fc = studentFocus[studentId];
+    if (!fc?.focus) return null;
+    return (
+      <p className="text-[9px] font-bold mt-0.5 flex items-center gap-1 min-w-0 text-amber-800">
+        <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">track_changes</span>
+        <span className="truncate">{focusTitle(fc.focus, t)}</span>
+        {fc.dots && <span className="shrink-0 ml-0.5"><FocusDots count={fc.count} goal={fc.goal} small light /></span>}
+      </p>
+    );
+  };
+
   const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string) => {
     const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
     return (
@@ -1172,6 +1179,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
           </p>
           <p className="text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate">{sub}</p>
+          {renderFocusLine(s.id)}
         </div>
         <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
       </button>

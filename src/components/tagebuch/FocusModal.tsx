@@ -45,25 +45,28 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
     return () => { cancelled = true; };
   }, [userId, focus?.topic, focus?.since]);
 
+  const savedStep = dots ? goal : 0;
   const liveDots = liveStep > 0;
   const hasFocus = !!focus;
   const goalReached = hasFocus && dots && count >= goal;
-  const alreadyDone = hasFocus && liveDots && liveStep !== goal && count >= liveStep;
+  const alreadyDone = hasFocus && liveDots && liveStep !== savedStep && count >= liveStep;
   const endTopicLabel = focus ? focusTitle(focus, t) : '';
 
-  const handleStep = async (delta: number) => {
+  // +/- zmienia tylko liczbę na ekranie; zapis dopiero przyciskiem ✓ obok
+  // (user 2026-09-18: szukał zapisu, auto-zapis był niejasny).
+  const handleStep = (delta: number) => {
     const idx = GOAL_STEPS.indexOf(liveStep as typeof GOAL_STEPS[number]);
-    const next = GOAL_STEPS[Math.min(GOAL_STEPS.length - 1, Math.max(0, idx + delta))];
-    if (next === liveStep) return;
-    const prev = liveStep;
-    setLiveStep(next);
+    setLiveStep(GOAL_STEPS[Math.min(GOAL_STEPS.length - 1, Math.max(0, idx + delta))]);
+  };
+
+  const saveStep = async () => {
+    if (liveStep === savedStep) return;
     setIsBumping(true);
     setError(false);
     try {
-      await onSetGoal(next > 0, next > 0 ? next : goal);
+      await onSetGoal(liveStep > 0, liveStep > 0 ? liveStep : goal);
     } catch (e) {
       console.error('Tagebuch: błąd zmiany liczby lekcji', e);
-      setLiveStep(prev);
       setError(true);
     }
     setIsBumping(false);
@@ -175,6 +178,15 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                         className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
                       >
                         <span className="material-symbols-outlined text-[16px]">add</span>
+                      </button>
+                      <button
+                        onClick={saveStep}
+                        disabled={isBumping || liveStep === savedStep}
+                        aria-label={t('tagebuch.save')}
+                        title={t('tagebuch.save')}
+                        className="w-10 h-8 ml-auto rounded-lg bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center disabled:bg-white disabled:text-emerald-300 disabled:border disabled:border-emerald-100 active:scale-90 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">check</span>
                       </button>
                     </div>
                     {alreadyDone && (

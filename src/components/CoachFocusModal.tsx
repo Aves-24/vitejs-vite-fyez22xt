@@ -55,10 +55,17 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const [newTopics, setNewTopics] = useState<string[]>([]);
   const [isSavingNew, setIsSavingNew] = useState(false);
 
-  const handleBumpDelta = async (delta: number) => {
-    const next = Math.min(MAX_GOAL, Math.max(MIN_GOAL, liveGoal + delta));
-    if (next === liveGoal) return;
-    setLiveGoal(next);
+  // +/- zmienia tylko liczbę na ekranie; zapis dopiero przyciskiem ✓ obok
+  // (user 2026-09-18: szukał zapisu, auto-zapis był niejasny).
+  const savedGoal = focusState?.goal ?? FOCUS_GOAL_DEFAULT;
+  const goalChanged = liveGoal !== savedGoal || !focusState?.dots;
+  const handleBumpDelta = (delta: number) => {
+    setLiveGoal(g => Math.min(MAX_GOAL, Math.max(MIN_GOAL, g + delta)));
+  };
+
+  const handleSaveGoal = async () => {
+    const next = liveGoal;
+    if (!goalChanged) return;
     setIsBumping(true);
     try {
       await updateDoc(doc(db, 'users', studentId), { focusGoal: next, focusDots: true });
@@ -111,7 +118,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const formatDate = (ts: number) =>
     new Date(ts).toLocaleDateString(i18n.language, { day: '2-digit', month: 'short' });
 
-  const alreadyDone = !!focusState?.dots && liveGoal <= focusState.count;
+  const alreadyDone = !!focusState?.dots && liveGoal !== savedGoal && liveGoal <= focusState.count;
 
   return createPortal(
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
@@ -176,6 +183,15 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                       className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[16px]">add</span>
+                    </button>
+                    <button
+                      onClick={handleSaveGoal}
+                      disabled={isBumping || !goalChanged}
+                      aria-label={t('tagebuch.save')}
+                      title={t('tagebuch.save')}
+                      className="w-10 h-8 ml-auto rounded-lg bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center disabled:bg-white disabled:text-emerald-300 disabled:border disabled:border-emerald-100 active:scale-90 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">check</span>
                     </button>
                   </div>
                   {alreadyDone && (

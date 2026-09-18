@@ -4,6 +4,7 @@ import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, up
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
+import { topicLabel } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { useActiveFocus } from '../utils/focus';
 import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
@@ -596,6 +597,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     {activeFocus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
                   </p>
                   <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(activeFocus, t)}</p>
+                  {activeFocus.text && activeFocus.topic && (
+                    <p className="text-[10px] font-bold text-white/60 truncate">{topicLabel(activeFocus.topic, t)}</p>
+                  )}
                   {focusState?.dots && (
                     <div className="flex items-center gap-2 mt-1">
                       <FocusDots count={focusState.count} goal={focusState.goal} small />

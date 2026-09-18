@@ -136,6 +136,10 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           {source && ` · ${source}`}
         </p>
         <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(focus, t)}</p>
+        {/* Temat pod tekstem (user 2026-09-18) — bez tekstu tytułem jest sam temat. */}
+        {focus.text && focus.topic && (
+          <p className="text-[10px] font-bold text-white/60 truncate">{topicLabel(focus.topic, t)}</p>
+        )}
         {showDots && (
           <div className="flex items-center gap-2 mt-1">
             <FocusDots count={count} goal={goal} small />

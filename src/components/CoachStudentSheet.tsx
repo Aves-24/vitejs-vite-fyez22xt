@@ -5,7 +5,8 @@ import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, upd
 import { db } from '../firebase';
 import { buildSnapshot, type SnapSession, type StudentSnapshot } from '../utils/studentSnapshot';
 import type { FocusState } from '../utils/focus';
-import { FocusStrip } from './tagebuch/FocusCard';
+import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
+import { topicLabel } from '../constants/trainingTopics';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 
@@ -156,16 +157,27 @@ export default function CoachStudentSheet({ student, coachId, subtitle, focusSta
             <div className="mt-4">
               <div className="flex items-center justify-between">
                 <p className={sectionLabel}>{t('coachSheet.last14')}</p>
+                {/* Legenda tylko kolorów, które faktycznie są na pasku. */}
                 <p className="flex items-center gap-2 text-[9px] font-bold text-gray-400 mb-1.5">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#1f6e53]" />{t('coachSheet.legendScore')}</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>
+                  {snap.days.includes('score') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#1f6e53]" />{t('coachSheet.legendScore')}</span>}
+                  {snap.days.includes('practice') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>}
                 </p>
               </div>
-              <div className="flex gap-[3px] mb-2">
+              <div className="flex gap-[3px]">
                 {snap.days.map((k, i) => (
-                  <span key={i} className={`flex-1 h-3.5 rounded-[3px] ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'}`} />
+                  <span
+                    key={i}
+                    className={`flex-1 h-4 rounded-[3px] flex items-center justify-center text-[8px] font-black text-white ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'}`}
+                  >
+                    {snap.dayCounts[i] > 1 ? snap.dayCounts[i] : ''}
+                  </span>
                 ))}
               </div>
+              <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-0.5 mb-2">
+                <span>{fmtDate(snap.fromTs)}</span>
+                <span>{t('coachSheet.today')}</span>
+              </div>
+              <p className="text-[9px] font-bold text-gray-400 mb-1">{t('coachSheet.tilesCaption')}</p>
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="bg-gray-50 rounded-xl px-2.5 py-1.5">
                   <p className="text-[9px] font-bold text-gray-400">{t('coachSheet.sessions')}</p>
@@ -187,20 +199,23 @@ export default function CoachStudentSheet({ student, coachId, subtitle, focusSta
                   </p>
                 </div>
               </div>
-              <p className="text-[9px] font-bold text-gray-400 mt-1">{t('coachSheet.vsPrev')}</p>
             </div>
 
-            {/* 2 + 3. WYNIKI I SYGNAŁY */}
-            {snap.scores.length > 0 && (
+            {/* 2 + 3. WYNIKI I SYGNAŁY — po średniej na strzałę, bo 36 i 72 strzały
+                się nie porównują (user 2026-09-18). */}
+            {snap.recent.length > 0 && (
               <div className="mt-4">
                 <p className={sectionLabel}>{t('coachSheet.results', { distance: snap.distanceLabel || '' })}</p>
                 <div className="flex items-center gap-3">
-                  <Sparkline values={snap.scores} />
+                  <Sparkline values={snap.recent.map(r => r.avg)} />
                   <div className="text-[11px] font-bold text-[#0a3a2a] leading-snug min-w-0">
-                    <p>{t('coachSheet.lastScores', { list: snap.scores.slice(-3).join(' · ') })}</p>
-                    {snap.goldPct !== null && (
+                    <p>{t('coachSheet.lastAvg', { list: snap.recent.slice(-3).map(r => r.avg.toFixed(1)).join(' · ') })}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {t('coachSheet.lastScores', { list: snap.recent.slice(-3).map(r => t('coachSheet.scoreOf', { score: r.score, arrows: r.arrows })).join(' · ') })}
+                    </p>
+                    {snap.goldOf > 0 && (
                       <p>
-                        {t('coachSheet.gold', { pct: snap.goldPct })}
+                        {t('coachSheet.gold', { count: snap.gold, of: snap.goldOf })}
                         {' · '}
                         <span className={snap.misses > 0 ? 'text-red-600' : ''}>{t('coachSheet.misses', { count: snap.misses })}</span>
                       </p>
@@ -213,6 +228,7 @@ export default function CoachStudentSheet({ student, coachId, subtitle, focusSta
                       {snap.roundDiff < 0
                         ? t('coachSheet.round2Weaker', { count: Math.abs(snap.roundDiff) })
                         : t('coachSheet.round2Stronger', { count: snap.roundDiff })}
+                      {' '}{t('coachSheet.fromLast', { count: snap.roundN })}
                     </Signal>
                   )}
                   {snap.endRange && (
@@ -223,16 +239,32 @@ export default function CoachStudentSheet({ student, coachId, subtitle, focusSta
                 </div>
               </div>
             )}
-            {snap.sessions === 0 && snap.scores.length === 0 && (
+            {snap.sessions === 0 && snap.recent.length === 0 && (
               <p className="text-[11px] font-bold text-gray-400 mt-4">{t('coachSheet.noData')}</p>
             )}
           </>
         )}
 
-        {/* 4. FOKUS */}
+        {/* 4. FOKUS — z nagłówkiem jak reszta sekcji, prostokątny kafel (user
+            2026-09-18: pigułka tu nie pasowała). */}
         {focusState?.focus && (
           <div className="mt-4">
-            <FocusStrip focus={focusState.focus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} variant="pill" />
+            <p className={sectionLabel}>{t('tagebuch.focusLabel')}</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2">
+              <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-px">track_changes</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(focusState.focus, t)}</p>
+                {focusState.focus.text && focusState.focus.topic && (
+                  <p className="text-[10px] font-bold text-amber-700">{topicLabel(focusState.focus.topic, t)}</p>
+                )}
+                {focusState.dots && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <FocusDots count={focusState.count} goal={focusState.goal} small light />
+                    <FocusProgressText count={focusState.count} goal={focusState.goal} light />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 

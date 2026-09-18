@@ -29,18 +29,25 @@ export interface SnapSession {
 
 export interface StudentSnapshot {
   days: DayKind[];             // 14 dni, najstarszy pierwszy, dziś ostatni
+  dayCounts: number[];         // ile treningów danego dnia (cyfra w kwadracie przy 2+)
+  fromTs: number;              // początek pierwszego dnia paska
   sessions: number;            // treningi (z wynikiem + techniczne) w 14 dniach
   sessionsPrev: number;        // to samo w poprzednich 14 dniach
   arrows: number;              // strzały (sesje + licznik) w 14 dniach
   arrowsPrev: number;
   distance: string | null;     // główny dystans (najczęstszy z wynikiem)
   distanceLabel: string | null;
-  scores: number[];            // do 5 ostatnich wyników na głównym dystansie, najstarszy pierwszy
+  // Do 5 ostatnich treningów na głównym dystansie, najstarszy pierwszy. Wykres
+  // idzie po średniej na strzałę — suma 36 i 72 strzał nie jest porównywalna
+  // (user 2026-09-18: 173 obok 541 wyglądało jak skok formy).
+  recent: { score: number; arrows: number; avg: number }[];
   avgArrow: number | null;     // średnia na strzałę, 14 dni, główny dystans
   avgArrowPrev: number | null;
-  goldPct: number | null;      // udział X/10/9 w ostatnich 3 treningach na głównym dystansie
+  gold: number;                // strzały X/10/9 w ostatnich 3 treningach na głównym dystansie
+  goldOf: number;              // wszystkie strzały z tych treningów (0 = brak serii)
   misses: number;              // pudła (M) w tych samych treningach
   roundDiff: number | null;    // śr. (runda 2 − runda 1) z ostatnich 3 pełnych treningów
+  roundN: number;              // z ilu treningów liczona roundDiff
   endRange: [number, number] | null; // najsłabsza i najlepsza seria ostatniego treningu
   note: SnapSession | null;    // ostatnia notatka udostępniona trenerowi
 }
@@ -77,9 +84,11 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
   const prev = sessions.filter(s => s.ts >= prevFrom && s.ts < from);
 
   // Pasek dni: wynik wygrywa z treningiem technicznym i samym licznikiem.
+  const inDayOf = (i: number) => cur.filter(s => s.ts >= from + i * DAY && s.ts < from + (i + 1) * DAY);
+  const dayCounts = Array.from({ length: SNAPSHOT_DAYS }, (_, i) => inDayOf(i).length);
   const days: DayKind[] = Array.from({ length: SNAPSHOT_DAYS }, (_, i) => {
     const d0 = from + i * DAY;
-    const inDay = cur.filter(s => s.ts >= d0 && s.ts < d0 + DAY);
+    const inDay = inDayOf(i);
     if (inDay.some(hasScore)) return 'score';
     if (inDay.length > 0 || (counter?.[counterKey(d0)] || 0) > 0) return 'practice';
     return 'none';
@@ -107,9 +116,9 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
     return arr > 0 ? pts / arr : null;
   };
 
-  const recent = onDist.slice(-3);
+  const last3 = onDist.slice(-3);
   let gold = 0, all = 0, misses = 0;
-  recent.forEach(s => (s.ends || []).forEach(e => (e.arrows || []).forEach(a => {
+  last3.forEach(s => (s.ends || []).forEach(e => (e.arrows || []).forEach(a => {
     all++;
     if (a === 'X' || a === '10' || a === '9') gold++;
     if (a === 'M') misses++;
@@ -135,18 +144,26 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
 
   return {
     days,
+    dayCounts,
+    fromTs: from,
     sessions: cur.length,
     sessionsPrev: prev.length,
     arrows,
     arrowsPrev,
     distance,
     distanceLabel,
-    scores: onDist.slice(-5).map(s => s.score || 0),
+    recent: onDist.slice(-5).map(s => ({
+      score: s.score || 0,
+      arrows: s.scoreArrows || 0,
+      avg: (s.scoreArrows || 0) > 0 ? (s.score || 0) / (s.scoreArrows || 1) : 0,
+    })),
     avgArrow: avg(onDist.filter(s => s.ts >= from)),
     avgArrowPrev: avg(onDist.filter(s => s.ts >= prevFrom && s.ts < from)),
-    goldPct: all > 0 ? Math.round((gold / all) * 100) : null,
+    gold,
+    goldOf: all,
     misses,
     roundDiff: roundDiff === null ? null : Math.round(roundDiff),
+    roundN: full.length,
     endRange,
     note,
   };

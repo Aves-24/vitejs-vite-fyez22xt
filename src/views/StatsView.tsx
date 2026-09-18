@@ -441,6 +441,13 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
                 ) : (
                   <span className="text-emerald-600/50 font-medium text-[12px] italic">{t('stats.noNote', 'Brak notatki. Pamiętaj, by zostawiać wnioski.')}</span>
                 )}
+                {/* Trener odhaczył „Widziałem” w karcie ucznia (bez odpowiedzi). */}
+                {!viewingStudentId && session.note && session.isNotePublic !== false && session.coachSeenAt && !session.coachNote && (
+                  <p className="mt-2 flex items-center gap-1 text-[11px] font-black text-amber-800">
+                    <span className="material-symbols-outlined text-[15px]">done_all</span>
+                    {t('tagebuch.coachSeen')}
+                  </p>
+                )}
               </div>
             )}
          </div>

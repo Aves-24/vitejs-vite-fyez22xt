@@ -18,7 +18,7 @@ const MAX_GOAL = FOCUS_GOAL_OPTIONS[FOCUS_GOAL_OPTIONS.length - 1];
 // podgląd dat treningów, które się do niego zaliczyły.
 //
 // Układ (user 2026-09-17): wszystko o OBECNYM fokusie (etykieta, tytuł,
-// kropki, daty treningów, liczba lekcji do utrwalenia) na jednym zielonym
+// kropki, daty treningów, liczba treningów do celu) na jednym zielonym
 // tle — liczba lekcji dotyczy TEGO fokusu, więc żyje przy nim (+1/-1), a nie
 // w formularzu „Nowy fokus" niżej, gdzie sugerowałoby że dotyczy przyszłego.
 // Panel „Nowy fokus" pod spodem — tekst -> liczba lekcji -> tematy; przy
@@ -196,7 +196,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                 </div>
 
                 <div className="pt-1.5 border-t border-emerald-100/80">
-                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Liczba lekcji do utrwalenia' })}</p>
+                  <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Ile treningów?' })}</p>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleBumpDelta(-1)}
@@ -278,7 +278,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
             />
 
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Liczba lekcji do utrwalenia' })}</p>
+              <p className="text-[8px] font-black uppercase tracking-widest text-blue-700/70 mb-1">{t('coachLog.focusGoalLabel', { defaultValue: 'Ile treningów?' })}</p>
               <div className="flex gap-1.5">
                 {FOCUS_GOAL_OPTIONS.map(n => (
                   <button

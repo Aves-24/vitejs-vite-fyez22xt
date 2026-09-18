@@ -35,7 +35,7 @@ export function FocusProgressText({ count, goal, light = false }: { count: numbe
   return (
     <span className={`text-[10px] font-bold ${light ? 'text-amber-800' : 'text-white/75'}`}>
       {count >= goal
-        ? t('tagebuch.focusDone', { count })
+        ? t('tagebuch.focusDone', { count, goal })
         : t(goal === 1 ? 'tagebuch.focusCountOne' : 'tagebuch.focusCount', { hit: count, goal })}
     </span>
   );
@@ -129,7 +129,7 @@ export function SetFocusButton({ current, unfinished, disabled, saving, onConfir
 export function FocusCard({ focus, dots, goal, count, onEdit }: {
   focus: ActiveFocus | null;
   dots: boolean;        // użytkownik włączył kropki
-  goal: number;         // ile treningów do „utrwalone"
+  goal: number;         // ile treningów do „zrobione"
   count: number;        // treningi z zaznaczonym fokusem od jego ustawienia
   onEdit: () => void;
 }) {

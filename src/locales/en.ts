@@ -181,7 +181,7 @@ export const components = {
     delete: "Delete",
     defaultCoachName: "Coach",
     hint: "Note here what you last worked on with the student and what to focus on in the next training sessions.",
-    focusGoalLabel: "Sessions to lock in",
+    focusGoalLabel: "How many sessions?",
     focusHint: "Manage the session count and ending the focus early from the focus panel — tap the “Focus” bar in the student profile."
   }
 };
@@ -305,7 +305,7 @@ export const views = {
     focusEmpty: "Set a focus: what are you working on?",
     focusCount: "{{hit}} of {{goal}} trainings",
     focusCountOne: "{{hit}} of 1 training",
-    focusDone: "Locked in · {{count}}×",
+    focusDone: "Done! {{count}} of {{goal}}",
     focusPickNew: "Pick a new focus",
     focusDotsOff: "Off",
     focusDotsHint: "Each technique training on this topic fills a dot. Scored trainings count via the switch when you save.",

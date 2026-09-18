@@ -195,7 +195,7 @@ export const components = {
     delete: "Usuń",
     defaultCoachName: "Trener",
     hint: "Tutaj notuj, nad czym ostatnio pracowaliście z uczniem i na czym należy skupić się podczas kolejnych treningów.",
-    focusGoalLabel: "Liczba lekcji do utrwalenia",
+    focusGoalLabel: "Ile treningów?",
     focusHint: "Liczbą lekcji i zakończeniem fokusu zarządzasz w panelu fokusu — kliknij pasek „Fokus” w profilu ucznia."
   }
 };
@@ -320,13 +320,13 @@ export const views = {
     focusEmpty: "Ustaw fokus: nad czym teraz pracujesz?",
     focusCount: "{{hit}} z {{goal}} treningów",
     focusCountOne: "{{hit}} z 1 treningu",
-    focusDone: "Utrwalone · {{count}}×",
+    focusDone: "Zrobione! {{count}} z {{goal}}",
     focusPickNew: "Wybierz nowy fokus",
     focusDotsOff: "Wył.",
     focusDotsHint: "Kropka przybywa za każdy trening techniczny z tym tematem. Trening na punkty zaliczysz przełącznikiem przy zapisie.",
     focusSince: "od {{date}}",
     focusNewPlaceholder: "Krótko opisz, nad czym teraz pracujesz…",
-    focusGoalWarning: "Masz już {{count}} treningów z tym tematem — fokus będzie od razu utrwalony.",
+    focusGoalWarning: "Masz już {{count}} treningów z tym tematem — fokus będzie od razu zrobiony.",
     focusEnd: "Zakończ fokus",
     focusEndConfirm: "Zakończyć fokus „{{topic}}”?",
     focusEndConfirmHint: "Znika tylko karta fokusu. Treningi i notatki zostają w dzienniku.",

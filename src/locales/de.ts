@@ -181,7 +181,7 @@ export const components = {
     delete: "Löschen",
     defaultCoachName: "Trainer",
     hint: "Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.",
-    focusGoalLabel: "Anzahl Einheiten bis „gefestigt“",
+    focusGoalLabel: "Wie viele Trainings?",
     focusHint: "Die Anzahl Einheiten und das vorzeitige Beenden verwaltest du im Fokus-Panel — tippe auf den „Fokus“-Balken im Schülerprofil."
   }
 };
@@ -305,13 +305,13 @@ export const views = {
     focusEmpty: "Setz dir einen Fokus: Woran arbeitest du gerade?",
     focusCount: "{{hit}} von {{goal}} Trainings",
     focusCountOne: "{{hit}} von 1 Training",
-    focusDone: "Gefestigt · {{count}}×",
+    focusDone: "Geschafft! {{count}} von {{goal}}",
     focusPickNew: "Neuen Fokus wählen",
     focusDotsOff: "Aus",
     focusDotsHint: "Jedes Techniktraining mit diesem Thema füllt einen Punkt. Ein Training mit Wertung zählst du per Schalter beim Speichern.",
     focusSince: "seit {{date}}",
     focusNewPlaceholder: "Beschreibe kurz, woran du gerade arbeitest…",
-    focusGoalWarning: "Du hast schon {{count}} Trainings zu diesem Thema — der Fokus gilt dann sofort als gefestigt.",
+    focusGoalWarning: "Du hast schon {{count}} Trainings zu diesem Thema — der Fokus ist dann sofort geschafft.",
     focusEnd: "Fokus beenden",
     focusEndConfirm: "Fokus „{{topic}}“ beenden?",
     focusEndConfirmHint: "Nur die Fokus-Karte verschwindet. Trainings und Notizen bleiben im Tagebuch.",

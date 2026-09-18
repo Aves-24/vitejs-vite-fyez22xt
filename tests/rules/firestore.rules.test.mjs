@@ -731,3 +731,33 @@ test('[DYSCYPLINY] backfill 10 → 13 przechodzi na koncie FREE z pelnym limitem
     userDistances: mkDistances(15),
   }));
 });
+
+test('[C39] autor fokusu zmienia tylko temat wpisu goal', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/alice/coachLog/g1'), {
+      authorId: 'coach1', authorName: 'Coach', text: 'Kotwica', type: 'goal', topics: ['anker'], createdAt: 1,
+    });
+    await setDoc(doc(db, 'users/alice/coachLog/t1'), {
+      authorId: 'coach1', authorName: 'Coach', text: 'Wskazówka', type: 'tip', topics: [], createdAt: 1,
+    });
+  });
+  const g1 = () => doc(coach1(), 'users/alice/coachLog/g1');
+
+  // Zmiana tematu (także na własny) — wolno.
+  await assertSucceeds(updateDoc(g1(), { topics: ['c:Praca na klikerze'], editedAt: Date.now() }));
+  // Tekst, data startu, typ — nie.
+  await assertFails(updateDoc(g1(), { text: 'Inny' }));
+  await assertFails(updateDoc(g1(), { createdAt: 2 }));
+  await assertFails(updateDoc(g1(), { topics: 'anker' }));
+  // Inne typy wpisów — nie.
+  await assertFails(updateDoc(doc(coach1(), 'users/alice/coachLog/t1'), { topics: ['anker'] }));
+  // Nie-autor (uczeń, obcy) — nie.
+  await assertFails(updateDoc(doc(alice(), 'users/alice/coachLog/g1'), { topics: ['anker'] }));
+  await assertFails(updateDoc(doc(bob(), 'users/alice/coachLog/g1'), { topics: ['anker'] }));
+  // Trener rozłączony z uczniem — nie.
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'users/alice'), { coaches: [] });
+  });
+  await assertFails(updateDoc(g1(), { topics: ['anker'] }));
+});

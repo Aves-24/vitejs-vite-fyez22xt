@@ -30,6 +30,8 @@ export interface OwnFocus {
 }
 
 export interface CoachGoal {
+  id?: string;           // ID wpisu w coachLog — autor może zmienić temat (C39)
+  authorId?: string;
   ts: number;
   text: string;
   topics: string[];
@@ -42,6 +44,8 @@ export interface ActiveFocus {
   since: number;
   fromCoach: boolean;
   authorName?: string;
+  goalId?: string;       // tylko fokus trenera — wpis w coachLog
+  authorId?: string;
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -56,7 +60,7 @@ export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undef
     return { topic: own.topic || '', text: own.text || '', since: own.setAt, fromCoach: false };
   }
   if (!goal) return null;
-  return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName };
+  return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName, goalId: goal.id, authorId: goal.authorId };
 }
 
 // Liczą się treningi od początku dnia ustawienia fokusu — ktoś trenuje rano,
@@ -91,7 +95,7 @@ async function loadLatestCoachGoal(userId: string): Promise<CoachGoal | undefine
   return snap.docs
     .map(d => {
       const data = d.data();
-      return { ts: toMs(data.createdAt), text: data.text || '', topics: data.topics || [], authorName: data.authorName };
+      return { id: d.id, authorId: data.authorId, ts: toMs(data.createdAt), text: data.text || '', topics: data.topics || [], authorName: data.authorName };
     })
     .sort((a, b) => b.ts - a.ts)[0];
 }

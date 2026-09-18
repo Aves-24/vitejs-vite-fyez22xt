@@ -428,7 +428,17 @@ service cloud.firestore {
         && request.resource.data.get('text', '').size() <= 300
         && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag'];
 
-      allow update: if false;
+      // [C39] Autor fokusu (wpis 'goal') zmienia tylko jego temat — tekst,
+      // autor i data startu (createdAt = początek liczenia kropek) zostają,
+      // więc postęp się nie resetuje. Autor musi nadal być trenerem ucznia.
+      allow update: if isSignedIn()
+        && resource.data.authorId == request.auth.uid
+        && resource.data.get('type', '') == 'goal'
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && onlyAffects(['topics', 'editedAt'])
+        && request.resource.data.topics is list
+        && request.resource.data.topics.size() <= 10
+        && request.resource.data.get('editedAt', 0) is number;
 
       allow delete: if isSelf(uid)
         || (isSignedIn() && resource.data.authorId == request.auth.uid)

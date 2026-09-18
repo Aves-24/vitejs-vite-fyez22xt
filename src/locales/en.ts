@@ -311,6 +311,7 @@ export const views = {
     focusSince: "since {{date}}",
     focusNewPlaceholder: "Briefly describe what you are working on…",
     focusGoalWarning: "You already have {{count}} trainings on this topic — the focus will count as done right away.",
+    focusTopicRequired: "Pick a topic — progress counts trainings with this topic.",
     focusEnd: "End focus",
     focusEndConfirm: "End your focus “{{topic}}”?",
     focusEndConfirmHint: "Only the focus card goes away. Your trainings and notes stay in your journal.",

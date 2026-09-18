@@ -83,7 +83,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
 
   const handleSetNew = async () => {
     const cleanText = newText.trim().slice(0, FOCUS_TEXT_MAX);
-    if (!cleanText) return;
+    if (!cleanText || !newTopics.length) return;
     setIsSavingNew(true);
     try {
       const cacheKey = `grotX_userName_${coachId}`;
@@ -243,9 +243,14 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
 
             <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
 
+            {/* Kropki liczą treningi z tematem — bez niego liczba lekcji nic by nie znaczyła. */}
+            {newTopics.length === 0 && (
+              <p className="text-[10px] font-bold text-amber-700 leading-snug">{t('tagebuch.focusTopicRequired')}</p>
+            )}
+
             <button
               onClick={handleSetNew}
-              disabled={isSavingNew || !newText.trim()}
+              disabled={isSavingNew || !newText.trim() || newTopics.length === 0}
               className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
             >
               {isSavingNew ? t('coachLog.saving') : t('studentProfile.focusModalSaveNew', { defaultValue: 'Ustaw fokus' })}

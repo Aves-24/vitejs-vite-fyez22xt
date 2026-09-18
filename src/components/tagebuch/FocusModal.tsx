@@ -50,6 +50,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
   const goalReached = hasTopic && dots && count >= goal;
   const alreadyDone = hasTopic && liveDots && liveStep !== goal && count >= liveStep;
   const endTopicLabel = focus ? focusTitle(focus, t) : '';
+  const topicMissing = newStep > 0 && !newTopic;
 
   const handleStep = async (delta: number) => {
     const idx = GOAL_STEPS.indexOf(liveStep as typeof GOAL_STEPS[number]);
@@ -265,11 +266,14 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
               onChange={next => setNewTopic(next.filter(x => x !== newTopic)[0] ?? '')}
             />
 
+            {/* Kropki liczą treningi z tematem — bez tematu liczba lekcji nic by nie znaczyła. */}
+            {topicMissing && <p className="text-[10px] font-bold text-amber-700 leading-snug">{t('tagebuch.focusTopicRequired')}</p>}
+
             {error && <p className="text-[10px] font-bold text-red-600">{t('tagebuch.focusSaveError')}</p>}
 
             <button
               onClick={handleSetNew}
-              disabled={isSavingNew || (!newTopic && !newText.trim())}
+              disabled={isSavingNew || (!newTopic && !newText.trim()) || topicMissing}
               className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
             >
               {t('studentProfile.focusModalSaveNew')}

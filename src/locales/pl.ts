@@ -326,6 +326,7 @@ export const views = {
     focusSince: "od {{date}}",
     focusNewPlaceholder: "Krótko opisz, nad czym teraz pracujesz…",
     focusGoalWarning: "Masz już {{count}} treningów z tym tematem — fokus będzie od razu utrwalony.",
+    focusTopicRequired: "Wybierz temat — postęp liczy treningi z tym tematem.",
     focusEnd: "Zakończ fokus",
     focusEndConfirm: "Zakończyć fokus „{{topic}}”?",
     focusEndConfirmHint: "Znika tylko karta fokusu. Treningi i notatki zostają w dzienniku.",

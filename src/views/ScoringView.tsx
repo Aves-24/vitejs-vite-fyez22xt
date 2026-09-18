@@ -673,7 +673,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <div className="flex items-center shrink-0 pl-1 pr-2.5 border-r border-gray-100 h-full">
               <div className="flex items-baseline whitespace-nowrap">
                 <span className="text-[15px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
-                <div className="w-1 h-1 bg-[#fed33e] rounded-full ml-0.5 relative bottom-[0.35em]"></div>
+                {/* Środek kropki na środku wysokości „X": wersalik ~11px przy 15px,
+                    więc środek ~5.5px nad baseline; kropka 6px -> dół na 2.5px.
+                    Stałe px, nie em — em brałoby odziedziczony font-size. */}
+                <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-0.5 relative bottom-[2.5px]"></div>
               </div>
             </div>
             <button

@@ -17,6 +17,7 @@ import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useActiveFocus } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
+import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { isBlowgunSession } from '../config/targets/blowgun';
@@ -808,8 +809,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               />
             )}
           </div>
-          <div onClick={() => setActiveInputTab(activeInputTab === 0 ? 1 : 0)} className="w-10 bg-emerald-50 hover:bg-emerald-100 flex items-center justify-center border-l border-emerald-200 cursor-pointer shrink-0 transition-colors">
+          <div onClick={() => setActiveInputTab(activeInputTab === 0 ? 1 : 0)} className="w-10 bg-emerald-50 hover:bg-emerald-100 flex flex-col items-center justify-center gap-2 border-l border-emerald-200 cursor-pointer shrink-0 transition-colors">
             <span style={{ writingMode: 'vertical-rl' }} className="rotate-180 text-[10px] font-black tracking-widest text-emerald-600 uppercase">{activeInputTab === 0 ? t('scoringView.targetTab', 'Tarcza') : t('scoringView.keyboardTab', 'Klawiatura')}</span>
+            {/* Miniatura strzelanej tarczy pod „Auflage" (user 2026-09-18) — tylko na
+                klawiaturze, bo wtedy przełącznik prowadzi do tarczy. */}
+            {activeInputTab === 0 && <TargetThumbnail targetType={targetType} className="w-7 h-7 shrink-0" />}
           </div>
         </div>
       )}

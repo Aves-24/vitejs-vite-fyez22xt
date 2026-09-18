@@ -58,6 +58,8 @@ interface FormCompare {
   prev: number; prevArrows: number;
   /** Zmiana średniej na strzałę, np. 0.07 = +7%. */
   pct: number;
+  /** Czas ostatniego treningu — po obejrzeniu ucznia wpis znika z „Forma”. */
+  at: number;
 }
 
 // Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony i brałby
@@ -104,7 +106,7 @@ async function saveSeenStudents(coachId: string, ids: string[]) {
 
 async function loadFormCompare(coachId: string, students: any[]): Promise<Record<string, FormCompare>> {
   const active = students.filter(s => s.exactLastActivity && Date.now() - s.exactLastActivity < INACTIVE_DAYS * DAY_MS);
-  const key = `grotX_formCompare_${coachId}`;
+  const key = `grotX_formCompare2_${coachId}`;
   const sig = active.map(s => `${s.id}:${s.exactLastActivity}`).sort().join(',');
   try {
     const raw = localStorage.getItem(key);
@@ -136,6 +138,7 @@ async function loadFormCompare(coachId: string, students: any[]): Promise<Record
         now: last.score, nowArrows: scoredArrows(last),
         prev: prev.score, prevArrows: scoredArrows(prev),
         pct,
+        at: last.timestamp?.toMillis ? last.timestamp.toMillis() : (last.timestamp?.seconds || 0) * 1000,
       };
       return [s.id, cmp] as const;
     } catch { return null; }
@@ -682,13 +685,28 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     setStudentsToDelete(null);
   };
 
-  const handleCheckStudent = async (studentId: string) => {
+  // Uczeń obejrzany (karta albo profil) — schodzi z „Nowe treningi” i „Forma”.
+  const markStudentChecked = async (studentId: string) => {
     const now = Date.now();
-    await updateDoc(doc(db, 'users', userId), {
-      [`studentLastChecked.${studentId}`]: now
-    });
-    
     setStudentLastChecked(prev => ({ ...prev, [studentId]: now }));
+    try {
+      await updateDoc(doc(db, 'users', userId), {
+        [`studentLastChecked.${studentId}`]: now
+      });
+    } catch (e) {
+      console.error('Zapis obejrzenia ucznia nie powiódł się:', e);
+    }
+  };
+
+  // Od 2026-09-18 tapnięcie otwiera kartę ucznia, nie profil — samo otwarcie
+  // karty też liczy się jako obejrzenie (user: sekcje nie chciały zniknąć).
+  useEffect(() => {
+    if (sheetStudentId) void markStudentChecked(sheetStudentId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetStudentId]);
+
+  const handleCheckStudent = async (studentId: string) => {
+    await markStudentChecked(studentId);
     onNavigate('STUDENT_PROFILE', undefined, undefined, studentId);
   };
 
@@ -753,7 +771,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Zmiana formy (loadFormCompare): najpierw lepsi, potem słabsi, każdy od
   // największej zmiany.
   const formStudents = students
-    .filter(s => formCompare[s.id])
+    .filter(s => formCompare[s.id] && (formCompare[s.id].at || 0) > (studentLastChecked[s.id] || 0))
     .map(s => ({ s, trend: formCompare[s.id] }))
     .sort((a, b) =>
       (a.trend.dir === b.trend.dir ? 0 : a.trend.dir === 'up' ? -1 : 1)

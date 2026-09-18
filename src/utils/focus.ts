@@ -128,6 +128,57 @@ export interface FocusState {
 }
 
 /**
+ * Fokus jednej osoby: profil (własny fokus, kropki, liczba) + ostatni cel
+ * trenera, a przy `withCount` i włączonych kropkach — treningi od startu.
+ * `userData` = już wczytany dokument `users/{uid}` (panel trenera ma go
+ * z listy uczniów), wtedy bez drugiego odczytu profilu.
+ */
+export async function loadFocusState(userId: string, withCount: boolean, userData?: any): Promise<FocusState> {
+  const failed: string[] = [];
+  // Każde źródło osobno: wcześniej jeden odrzucony odczyt (np. dziennik
+  // trenerski) wywracał Promise.all i fokus po cichu znikał w całości.
+  const [userRes, goalRes] = await Promise.allSettled([
+    userData !== undefined ? Promise.resolve(null) : getDoc(doc(db, 'users', userId)),
+    loadLatestCoachGoal(userId),
+  ]);
+  let data: any = userData ?? {};
+  if (userData === undefined) {
+    if (userRes.status === 'fulfilled' && userRes.value) {
+      data = userRes.value.exists() ? userRes.value.data() : {};
+    } else {
+      failed.push('user');
+      console.error('Fokus: błąd odczytu profilu', userRes.status === 'rejected' ? userRes.reason : null);
+    }
+  }
+  let goal: CoachGoal | undefined;
+  if (goalRes.status === 'fulfilled') {
+    goal = goalRes.value;
+  } else {
+    failed.push('goal');
+    console.error('Fokus: błąd odczytu celów trenera', goalRes.reason);
+  }
+  const focus = resolveActiveFocus(readOwnFocus(data), goal);
+  const dots = data.focusDots === true;
+  let count = 0;
+  if (withCount && dots && focus) {
+    try {
+      const sSnap = await getDocs(query(
+        collection(db, `users/${userId}/sessions`),
+        where('timestamp', '>=', Timestamp.fromMillis(focusFrom(focus))),
+      ));
+      count = countFocusSessions(
+        sSnap.docs.map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [] })),
+        focus,
+      );
+    } catch (e) {
+      failed.push('sessions');
+      console.error('Fokus: błąd odczytu treningów', e);
+    }
+  }
+  return { focus, dots, goal: readFocusGoal(data), count, ...(failed.length ? { failed } : {}) };
+}
+
+/**
  * Fokus dla ekranów poza dziennikiem (Home, start treningu, wyniki).
  * `withCount` dociąga treningi od dnia ustawienia fokusu — tylko gdy kropki
  * są włączone, żeby reszta ludzi nie płaciła za dodatkowy odczyt.
@@ -144,50 +195,7 @@ export function useActiveFocus(
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    (async () => {
-      const failed: string[] = [];
-      // Każde źródło osobno: wcześniej jeden odrzucony odczyt (np. dziennik
-      // trenerski) wywracał Promise.all i fokus po cichu znikał w całości.
-      const [userRes, goalRes] = await Promise.allSettled([
-        getDoc(doc(db, 'users', userId)),
-        loadLatestCoachGoal(userId),
-      ]);
-      let data: any = {};
-      if (userRes.status === 'fulfilled') {
-        data = userRes.value.exists() ? userRes.value.data() : {};
-      } else {
-        failed.push('user');
-        console.error('Fokus: błąd odczytu profilu', userRes.reason);
-      }
-      let goal: CoachGoal | undefined;
-      if (goalRes.status === 'fulfilled') {
-        goal = goalRes.value;
-      } else {
-        failed.push('goal');
-        console.error('Fokus: błąd odczytu celów trenera', goalRes.reason);
-      }
-      const focus = resolveActiveFocus(readOwnFocus(data), goal);
-      const dots = data.focusDots === true;
-      let count = 0;
-      if (withCount && dots && focus) {
-        try {
-          const sSnap = await getDocs(query(
-            collection(db, `users/${userId}/sessions`),
-            where('timestamp', '>=', Timestamp.fromMillis(focusFrom(focus))),
-          ));
-          count = countFocusSessions(
-            sSnap.docs.map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [] })),
-            focus,
-          );
-        } catch (e) {
-          failed.push('sessions');
-          console.error('Fokus: błąd odczytu treningów', e);
-        }
-      }
-      if (!cancelled) {
-        setState({ focus, dots, goal: readFocusGoal(data), count, ...(failed.length ? { failed } : {}) });
-      }
-    })();
+    loadFocusState(userId, withCount).then(st => { if (!cancelled) setState(st); });
     return () => { cancelled = true; };
   }, [userId, withCount, refreshKey]);
 

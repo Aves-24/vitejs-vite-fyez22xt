@@ -11,6 +11,8 @@ import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { effectiveCoachLimit } from '../utils/coachAccess';
 import CollapsibleSection from '../components/CollapsibleSection';
 import { topicLabel } from '../constants/trainingTopics';
+import { loadFocusState, type FocusState } from '../utils/focus';
+import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -271,6 +273,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // Ostatni wpis CoachLog per uczeń
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
+  // Fokus każdego ucznia na liście (user 2026-09-18: bez wchodzenia w profil).
+  const [studentFocus, setStudentFocus] = useState<Record<string, FocusState>>({});
 
   // Wiadomości per uczeń
   const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
@@ -400,6 +404,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           loadFormCompare(userId, studentsData)
             .then(setFormCompare)
             .catch(() => setFormCompare({}));
+          // Fokus — profil ucznia już mamy, dochodzi cel trenera i (przy
+          // kropkach) treningi od startu fokusu. Bez await, jak wyżej.
+          Promise.all((studentsData as any[]).map(async (s: any) => {
+            try { return [s.id, await loadFocusState(s.id, true, s)] as const; } catch { return null; }
+          })).then(list => setStudentFocus(Object.fromEntries(list.filter(Boolean) as [string, FocusState][])));
 
           // Fetch ostatniego wpisu CoachLog dla każdego ucznia
           const entries: Record<string, { text: string; type: string } | null> = {};
@@ -933,6 +942,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const isSelected = selectedStudents.includes(student.id);
     const trend = formCompare[student.id]?.dir;
     const isNewStudent = highlightStudentIds.includes(student.id);
+    const fc = studentFocus[student.id];
 
     return (
       <div key={student.id} className="relative animate-fade-in">
@@ -999,7 +1009,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
                 {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
               </p>
-              {lastLogEntries[student.id] && (() => {
+              {/* Fokus ucznia — aktualny albo ukończony (złote kropki), dopóki
+                  nie zostanie zakończony lub zastąpiony. */}
+              {fc?.focus && (
+                <p className="text-[9px] font-bold mt-0.5 flex items-center gap-1 min-w-0 text-amber-800">
+                  <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">track_changes</span>
+                  <span className="truncate">{focusTitle(fc.focus, t)}</span>
+                  {fc.dots && <span className="shrink-0 ml-0.5"><FocusDots count={fc.count} goal={fc.goal} small light /></span>}
+                </p>
+              )}
+              {/* Ostatni wpis z dziennika — bez celu, gdy fokus już jest wyżej. */}
+              {lastLogEntries[student.id] && !(fc?.focus && lastLogEntries[student.id]!.type === 'goal') && (() => {
                 const entry = lastLogEntries[student.id]!;
                 const typeColors: Record<string, string> = {
                   observation: '#059669',

@@ -1319,6 +1319,27 @@ Z ogona po C25 zostały: **jardy**.
       „Własne”, przypisać go uczniowi w fokusie, sprawdzić u ucznia (Home,
       dziennik, formularz treningu, kropki), usunąć z listy.
 
+- [ ] **C40. „Co nowego” przy nowej wersji.** Życzenie usera 2026-09-18:
+      gdy wyskakuje baner nowej wersji (C30, `UpdateBanner.tsx` +
+      `src/utils/swUpdate.ts`), użytkownik powinien w kilku słowach
+      dowiedzieć się, co się zmieniło.
+      **Pułapka:** baner renderuje STARY kod, więc nie zna treści nowej wersji
+      z bundla. Dlatego proponowany podział:
+      1. Baner zostaje krótki („Nowa wersja — Odśwież”).
+      2. Po odświeżeniu NOWY kod pokazuje raz kartkę „Co nowego” (1–3 punkty),
+         porównując wersję z `localStorage` (`grotX_lastSeenVersion`).
+         Pierwsze uruchomienie aplikacji = tylko zapis wersji, bez kartki.
+      3. Treść w `src/constants/changelog.ts`: `[{ version/date, pl, de, en }]`
+         — trzy języki, zdania dla użytkownika, nie commity. Wpis opcjonalny:
+         deploy bez wpisu (poprawki techniczne) = brak kartki.
+      4. Opcjonalnie osobne punkty dla trenera (`coachOnly`) — uczeń nie
+         musi czytać o zmianach w panelu trenera.
+      Opcja B (do rozważenia): `public/changelog.json` pobierany przez baner
+      z `cache: 'no-store'` — wtedy zmiany widać JUŻ w banerze, ale dochodzi
+      odczyt sieci i trzeba go wyłączyć z precache SW.
+      Proces: przy commicie z widoczną zmianą dopisuję wpis do changelogu
+      (w 3 językach) — do dopisania w zasadach pracy.
+
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
 ---

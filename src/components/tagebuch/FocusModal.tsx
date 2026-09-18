@@ -10,7 +10,7 @@ const GOAL_STEPS = [0, ...FOCUS_GOAL_OPTIONS];
 
 // Fokus ucznia w dzienniku — ten sam układ co panel trenera (CoachFocusModal,
 // user 2026-09-18: „tam jest to dobrze rozłożone"). Zielone = OBECNY fokus
-// (postęp, daty, liczba lekcji +/- z auto-zapisem, zakończenie), niebieskie =
+// (postęp, daty, liczba lekcji +/- i zapis ✓, zakończenie), niebieskie =
 // NOWY fokus, zawsze widoczny: tekst -> liczba lekcji -> temat. Wcześniej jeden
 // edytor robił oba naraz i nowy fokus wymagał najpierw „Zakończ".
 export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal, onSetNew, onEnd, onClose }: {

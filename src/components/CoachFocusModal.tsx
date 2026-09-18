@@ -30,8 +30,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const { t, i18n } = useTranslation();
   const focus = focusState?.focus ?? null;
 
-  // Liczba lekcji OBECNEGO fokusu — bump +/-1, zapisywany od razu (bez
-  // osobnego przycisku), żeby jasno było że dotyczy tego co jest aktywne.
+  // Liczba lekcji OBECNEGO fokusu — +/-1 na ekranie, zapis przyciskiem ✓ obok.
   const [liveGoal, setLiveGoal] = useState<number>(focusState?.goal ?? FOCUS_GOAL_DEFAULT);
   useEffect(() => { if (focusState) setLiveGoal(focusState.goal); }, [focusState?.goal]);
 

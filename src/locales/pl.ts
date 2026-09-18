@@ -335,6 +335,7 @@ export const views = {
     focusCongratsText: "Ukończony cały {{goal}}-etapowy trening: „{{topic}}”.",
     focusComplete: "Zamknij fokus",
     focusSaveError: "Nie udało się zapisać fokusu. Spróbuj ponownie.",
+    focusTopicByCoach: "Temat ustawił trener — zmienić go może tylko on.",
     focusChip: "Fokus",
     newNote: "Nowa notatka",
     coachChat: "Czat z trenerem",

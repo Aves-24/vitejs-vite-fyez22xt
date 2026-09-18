@@ -320,6 +320,7 @@ export const views = {
     focusCongratsText: "You've completed the full {{goal}}-step training on “{{topic}}”.",
     focusComplete: "Complete focus",
     focusSaveError: "Couldn't save your focus. Try again.",
+    focusTopicByCoach: "Your coach set this topic — only they can change it.",
     focusChip: "Focus",
     newNote: "New note",
     coachChat: "Chat with coach",

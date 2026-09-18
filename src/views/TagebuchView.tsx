@@ -396,6 +396,15 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     if (dots) setFocusGoal(goal);
   }, [userId]);
 
+  // [C39] Zmiana tematu WŁASNEGO fokusu — data startu (setAt) zostaje, więc
+  // kropki przeliczają się pod nowy temat bez resetu.
+  const changeFocusTopic = useCallback(async (topic: string) => {
+    if (!ownFocus || ownFocus.cleared) return;
+    const focus: OwnFocus = { ...ownFocus, topic };
+    await updateDoc(doc(db, 'users', userId), { focus });
+    setOwnFocus(focus);
+  }, [userId, ownFocus]);
+
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
     await updateDoc(doc(db, `users/${userId}/sessions`, s.id), { topics });
@@ -684,6 +693,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             count={focusCount}
             onSetGoal={saveFocusGoal}
             onSetNew={setNewFocus}
+            onChangeTopic={changeFocusTopic}
             onEnd={endFocus}
             onClose={() => setFocusEditing(false)}
           />

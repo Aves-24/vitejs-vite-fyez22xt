@@ -20,7 +20,8 @@ const MAX_GOAL = FOCUS_GOAL_OPTIONS[FOCUS_GOAL_OPTIONS.length - 1];
 // kropki, daty treningów, liczba lekcji do utrwalenia) na jednym zielonym
 // tle — liczba lekcji dotyczy TEGO fokusu, więc żyje przy nim (+1/-1), a nie
 // w formularzu „Nowy fokus" niżej, gdzie sugerowałoby że dotyczy przyszłego.
-// Panel „Nowy fokus" zawsze widoczny pod spodem — tekst -> liczba lekcji -> tematy.
+// Panel „Nowy fokus" pod spodem — tekst -> liczba lekcji -> tematy; przy
+// obecnym fokusie zwinięty, rozwija się kliknięciem (user 2026-09-18).
 export default function CoachFocusModal({ studentId, coachId, focusState, onClose, onChange }: {
   studentId: string;
   coachId: string;
@@ -73,6 +74,9 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
     } catch (e) { console.error('Fokus: błąd zmiany tematu', e); }
     setIsSavingTopic(false);
   };
+
+  // „Nowy fokus” zwinięty, dopóki jest obecny fokus (user 2026-09-18).
+  const [newOpen, setNewOpen] = useState(!focus);
 
   const [newText, setNewText] = useState('');
   const [newTopics, setNewTopics] = useState<string[]>([]);
@@ -296,11 +300,17 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
             <p className="text-[11px] font-bold text-gray-400">{t('studentProfile.focusNone')}</p>
           )}
 
-          {/* Nowy fokus — zawsze widoczny, tekst -> liczba lekcji -> tematy. */}
+          {/* Nowy fokus — zwinięty przy obecnym fokusie, rozwija się kliknięciem. */}
           <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 space-y-2.5">
-            <p className="text-[8px] font-black uppercase tracking-widest text-blue-700">
-              {t('studentProfile.focusModalNewTitle', { defaultValue: 'Nowy fokus' })}
-            </p>
+            <button
+              onClick={() => setNewOpen(o => !o)}
+              aria-expanded={newOpen}
+              className="w-full flex items-center justify-between text-left"
+            >
+              <span className="text-[8px] font-black uppercase tracking-widest text-blue-700">{t('studentProfile.focusModalNewTitle', { defaultValue: 'Nowy fokus' })}</span>
+              <span className="material-symbols-outlined text-[18px] text-blue-700">{newOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+            {newOpen && (<>
             <textarea
               value={newText}
               onChange={e => setNewText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
@@ -333,6 +343,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
             >
               {isSavingNew ? t('coachLog.saving') : t('studentProfile.focusModalSaveNew', { defaultValue: 'Ustaw fokus' })}
             </button>
+            </>)}
           </div>
         </div>
       </div>

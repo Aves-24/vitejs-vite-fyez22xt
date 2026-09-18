@@ -7,7 +7,7 @@ import TopicPicker from './TopicPicker';
 import { topicLabel } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { useActiveFocus } from '../utils/focus';
-import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
+import { FocusDots, FocusProgressText, FocusStrip, focusTitle } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -324,6 +324,17 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       <ViewHeader className="-mx-3 mb-3" onBack={() => onNavigate?.('HOME')} title={t('setup.title')} />
 
       <div className="space-y-2">
+        {/* [FOKUS] Przypomnienie przed treningiem (user 2026-09-18) — ten sam pasek
+            co na Home; klik prowadzi do dziennika. Liczenie: przełącznik przy zapisie. */}
+        {activeFocus && focusState && (
+          <FocusStrip
+            focus={activeFocus}
+            dots={focusState.dots}
+            goal={focusState.goal}
+            count={focusState.count}
+            onOpen={() => onNavigate?.('MY_COACH')}
+          />
+        )}
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
           {/* [KOLORY] Kropki zestawów — klik pokazuje dystanse tego zestawu
               i od razu robi go aktywnym (sesja dostanie jego stempel). */}

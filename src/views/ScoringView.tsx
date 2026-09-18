@@ -178,10 +178,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   
   const [sessionNote, setSessionNote] = useState('');
   const [isNotePublic, setIsNotePublic] = useState(true); // NOWY STAN DLA CHECKBOXA TRENERA
-  // [FOKUS] Tylko u tych, którzy włączyli kropki — domyślnie zaznaczony, żeby
-  // nikt nie tracił postępu przez zapomnienie. W Arenie się nie pokazuje.
+  // [FOKUS] Przełącznik przy zapisie — domyślnie zaznaczony, żeby nikt nie
+  // tracił postępu przez zapomnienie. Także bez kropek (user 2026-09-18: fokus
+  // ma się liczyć przy normalnym treningu; bez kropek trening trafia do dat).
+  // Fokus bez tematu liczy każdy trening sam. W Arenie się nie pokazuje.
   const focusState = useActiveFocus(battleId ? null : userId);
-  const focusTopic = focusState?.dots ? focusState.focus?.topic || '' : '';
+  const focusTopic = focusState?.focus?.topic || '';
   const [focusOn, setFocusOn] = useState(true);
   const [currentWeather, setCurrentWeather] = useState<any>(null);
   

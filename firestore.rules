@@ -396,6 +396,14 @@ service cloud.firestore {
         && request.resource.data.coachNote.size() <= 500
         && request.resource.data.get('coachTopics', []) is list
         && request.resource.data.get('coachTopics', []).size() <= 20;
+
+      // Trener odhacza notatkę ucznia jako przeczytaną bez odpowiedzi (karta
+      // ucznia, user 2026-09-18). Tylko własny uid i czas serwera.
+      allow update: if isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && onlyAffects(['coachSeenAt', 'coachSeenBy'])
+        && request.resource.data.coachSeenBy == request.auth.uid
+        && request.resource.data.coachSeenAt == request.time;
     }
 
     // ─── /users/{uid}/techShots/{shotId} ────────────────────────

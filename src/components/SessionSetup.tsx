@@ -280,6 +280,15 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         timestamp: Timestamp.fromDate(new Date()),
         date: new Date().toLocaleDateString('pl-PL'),
       });
+      // Denormalizacja jak w ScoringView — bez tego trener nie widział
+      // treningu technicznego w „Nowe treningi" (user 2026-09-18).
+      await updateDoc(doc(db, 'users', userId), {
+        lastSessionTimestamp: Timestamp.now(),
+        lastSessionType: 'TECHNICAL',
+        lastSessionScore: 0,
+        lastSessionArrows: count,
+        lastSessionDistance: '',
+      }).catch(e => console.error('Tech: błąd aktualizacji profilu', e));
       setShowTechModal(false);
       setTechArrows('0');
       setTechNote('');

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { buildSnapshot, type SnapSession, type StudentSnapshot } from '../utils/studentSnapshot';
 import type { FocusState } from '../utils/focus';
@@ -52,6 +52,8 @@ export default function CoachStudentSheet({
   const [reply, setReply] = useState('');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  // Edycja już zapisanej notatki trenera (user 2026-09-18: poprawić/dopisać).
+  const [editing, setEditing] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -93,6 +95,7 @@ export default function CoachStudentSheet({
       });
       setSnap(s => s && s.note ? { ...s, note: { ...s.note, coachNote: text, coachEditCount: edits } } : s);
       setReply('');
+      setEditing(false);
       // Dzwonek u ucznia — jak w profilu ucznia, tylko przy pierwszej notatce.
       if (edits === 1) {
         (async () => {
@@ -113,6 +116,33 @@ export default function CoachStudentSheet({
       setSaveError(true);
     }
     setSaving(false);
+  };
+
+  // Trener przeczytał, ale nie chce nic pisać — ✓ zamiast odpowiedzi.
+  const markSeen = async () => {
+    const note = snap?.note;
+    if (!note) return;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await updateDoc(doc(db, `users/${student.id}/sessions`, note.id), {
+        coachSeenAt: serverTimestamp(),
+        coachSeenBy: coachId,
+      });
+      setSnap(s => s && s.note ? { ...s, note: { ...s.note, coachSeenAt: Date.now() } } : s);
+    } catch (e) {
+      console.error('Karta ucznia: błąd odhaczenia notatki', e);
+      setSaveError(true);
+    }
+    setSaving(false);
+  };
+
+  // Którego treningu dotyczy notatka: „Trening techniczny” albo „70m · 312/36”.
+  const noteSessionLabel = (n: SnapSession) => {
+    if (n.type === 'TECHNICAL' || n.distance === 'TECH') return t('coachSheet.techTraining');
+    const parts = [n.distanceLabel || n.distance || ''];
+    if ((n.score || 0) > 0) parts.push(t('coachSheet.scoreOf', { score: n.score, arrows: n.scoreArrows || n.arrows || 0 }));
+    return parts.filter(Boolean).join(' · ');
   };
 
   const fmtDate = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
@@ -312,16 +342,38 @@ export default function CoachStudentSheet({
         {snap?.note && (
           <div className="mt-4">
             <p className={sectionLabel}>{t('coachSheet.studentWrote', { date: fmtDate(snap.note.ts) })}</p>
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2 text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">
-              „{snap.note.note}”
+            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
+              {/* Którego treningu dotyczy (user 2026-09-18) */}
+              {noteSessionLabel(snap.note) && (
+                <p className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest mb-0.5 ${snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH' ? 'text-sky-700' : 'text-emerald-700'}`}>
+                  <span className="material-symbols-outlined text-[12px]">{snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH' ? 'fitness_center' : 'target'}</span>
+                  {noteSessionLabel(snap.note)}
+                </p>
+              )}
+              <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">„{snap.note.note}”</p>
             </div>
-            {snap.note.coachNote ? (
-              <div className="mt-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-blue-700">{t('coachSheet.yourReply')}</p>
-                <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">{snap.note.coachNote}</p>
+            {snap.note.coachNote && !editing ? (
+              <div className="mt-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 flex items-start gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-blue-700">{t('coachSheet.yourReply')}</p>
+                  <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">{snap.note.coachNote}</p>
+                </div>
+                <button
+                  onClick={() => { setReply(snap.note!.coachNote || ''); setEditing(true); }}
+                  className="w-8 h-8 shrink-0 rounded-lg bg-white border border-blue-100 text-blue-700 flex items-center justify-center active:scale-90 transition-all"
+                  aria-label={t('common.edit')}
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                </button>
               </div>
             ) : (
               <>
+                {snap.note.coachSeenAt && !editing && (
+                  <p className="flex items-center gap-1 text-[10px] font-black text-emerald-700 mt-1.5">
+                    <span className="material-symbols-outlined text-[14px]">done_all</span>
+                    {t('coachSheet.seenDone')}
+                  </p>
+                )}
                 <div className="flex gap-1.5 mt-1.5">
                   <input
                     value={reply}
@@ -337,10 +389,31 @@ export default function CoachStudentSheet({
                     className="w-10 shrink-0 rounded-xl bg-[#1f6e53] text-white flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all"
                     aria-label={t('coachSheet.send')}
                   >
-                    <span className="material-symbols-outlined text-[18px]">send</span>
+                    <span className="material-symbols-outlined text-[18px]">{editing ? 'check' : 'send'}</span>
                   </button>
+                  {editing && (
+                    <button
+                      onClick={() => { setEditing(false); setReply(''); }}
+                      className="w-10 shrink-0 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"
+                      aria-label={t('common.cancel')}
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  )}
                 </div>
-                <p className="text-[9px] font-bold text-gray-400 mt-1">{t('coachSheet.replyHint')}</p>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <p className="text-[9px] font-bold text-gray-400">{t('coachSheet.replyHint')}</p>
+                  {!editing && !snap.note.coachSeenAt && (
+                    <button
+                      onClick={markSeen}
+                      disabled={saving}
+                      className="shrink-0 flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-2.5 py-1 text-[10px] font-black disabled:opacity-40 active:scale-95 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">check</span>
+                      {t('coachSheet.markSeen')}
+                    </button>
+                  )}
+                </div>
                 {saveError && <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachSheet.saveError')}</p>}
               </>
             )}

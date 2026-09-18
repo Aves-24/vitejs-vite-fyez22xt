@@ -543,6 +543,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         lastSessionScore: globalStats.score,
         lastSessionArrows: globalStats.count,
         lastSessionDistance: distance,
+        lastSessionType: 'SCORE', // 'TECHNICAL' pisze SessionSetup
         // THE TARGET SERIES
         xp: newTotalXp,
         last10Avgs: newLast10,

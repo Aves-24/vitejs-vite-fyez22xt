@@ -32,6 +32,7 @@ export interface TbSession {
   isNotePublic: boolean;
   editCount: number;
   coachNote: string;
+  coachSeen: boolean;    // trener odhaczył notatkę bez odpowiedzi
   topics: string[];
   coachTopics: string[];
 }
@@ -527,6 +528,12 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           <p className="text-[12px] font-bold text-amber-900 leading-relaxed whitespace-pre-wrap break-words">„{session.coachNote}"</p>
           <TopicChips topics={session.coachTopics} tone="amber" />
         </div>
+      )}
+      {!session.coachNote && session.coachSeen && session.note && session.isNotePublic && (
+        <p className="mt-2 flex items-center gap-1 text-[10px] font-black text-amber-800">
+          <span className="material-symbols-outlined text-[14px]">done_all</span>
+          {t('tagebuch.coachSeen')}
+        </p>
       )}
 
       {composing ? (

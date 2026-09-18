@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let env;
@@ -248,6 +248,21 @@ test('T6b: trener zapisze coachNote razem z coachTopics (jak CoachNoteModule)', 
   }));
   await assertFails(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
     coachNote: 'ok', coachEditCount: 2, coachTopics: Array.from({ length: 21 }, (_, i) => `t${i}`),
+  }));
+});
+
+test('T6c: trener odhacza notatkę jako widzianą (tylko swój uid + czas serwera)', async () => {
+  await assertSucceeds(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
+    coachSeenAt: serverTimestamp(), coachSeenBy: 'coach1',
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
+    coachSeenAt: serverTimestamp(), coachSeenBy: 'ktos-inny',
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'users/alice/sessions/s1'), {
+    coachSeenAt: serverTimestamp(), coachSeenBy: 'coach1', note: 'x',
+  }));
+  await assertFails(updateDoc(doc(bob(), 'users/alice/sessions/s1'), {
+    coachSeenAt: serverTimestamp(), coachSeenBy: 'bob',
   }));
 });
 

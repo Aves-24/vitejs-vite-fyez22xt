@@ -786,7 +786,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // dokumencie ucznia (ScoringView), więc bez dodatkowego odczytu.
   const lastSessionDetails = (s: any) => {
     const parts: string[] = [];
-    if (s.lastSessionDistance) parts.push(String(s.lastSessionDistance));
+    if (s.lastSessionType === 'TECHNICAL') parts.push(t('coachDashboard.lastSessionTech'));
+    else if (s.lastSessionDistance) parts.push(String(s.lastSessionDistance));
     if (s.lastSessionArrows > 0) {
       parts.push(s.lastSessionScore > 0
         ? t('coachDashboard.lastSessionScore', { score: s.lastSessionScore, arrows: s.lastSessionArrows })

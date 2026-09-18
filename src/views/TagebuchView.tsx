@@ -289,6 +289,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             isNotePublic: data.isNotePublic !== false,
             editCount: data.editCount || 0,
             coachNote: data.coachNote || '',
+            coachSeen: !!data.coachSeenAt,
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
           };

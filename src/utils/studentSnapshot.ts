@@ -23,6 +23,7 @@ export interface SnapSession {
   isNotePublic?: boolean;
   coachNote?: string;
   coachEditCount?: number;
+  coachSeenAt?: unknown;       // trener odhaczył notatkę bez odpowiedzi
   coachTopics?: string[];
   date?: string;
 }

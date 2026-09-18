@@ -49,7 +49,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
       <div className="flex justify-between items-start mb-3">
         <div>
           <div className="flex items-center gap-1.5 mb-0.5">
-            <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+            <div className="w-2 h-2 rounded-full bg-sky-500"></div>
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
               {t('stats.techSessionType')}
             </span>
@@ -60,7 +60,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
           <p className="text-[10px] text-gray-300 font-bold uppercase">{session.date}</p>
         </div>
 
-        <div className="bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 border border-emerald-100/50">
+        <div className="bg-sky-50 text-sky-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 border border-sky-100/50">
           <span className="material-symbols-outlined text-[14px]">fitness_center</span>
           {session.totalArrows || 0} {t('common.arrows')}
         </div>
@@ -75,7 +75,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
           {userId && canDelete && !isEditingTopics && (
             <button
               onClick={() => setIsEditingTopics(true)}
-              className="flex items-center gap-0.5 text-[9px] font-black text-emerald-600 active:scale-95 transition-all"
+              className="flex items-center gap-0.5 text-[9px] font-black text-sky-600 active:scale-95 transition-all"
             >
               <span className="material-symbols-outlined text-[12px]">edit</span>
               {t('common.edit')}
@@ -114,7 +114,7 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
               <button
                 onClick={handleSaveTopics}
                 disabled={isSaving}
-                className="flex-1 py-2 rounded-xl bg-emerald-600 text-white font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                className="flex-1 py-2 rounded-xl bg-sky-600 text-white font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 {isSaving
                   ? <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>

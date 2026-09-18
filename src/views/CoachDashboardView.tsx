@@ -13,6 +13,8 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
+import CoachStudentSheet from '../components/CoachStudentSheet';
+import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -275,6 +277,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [lastLogEntries, setLastLogEntries] = useState<Record<string, { text: string; type: string } | null>>({});
   // Fokus każdego ucznia na liście (user 2026-09-18: bez wchodzenia w profil).
   const [studentFocus, setStudentFocus] = useState<Record<string, FocusState>>({});
+  // [KARTA UCZNIA] Tapnięcie ucznia otwiera kartę; pełny profil z jej przycisku.
+  const [sheetStudentId, setSheetStudentId] = useState<string | null>(null);
 
   // Wiadomości per uczeń
   const [unreadStudentIds, setUnreadStudentIds] = useState<Set<string>>(new Set());
@@ -948,7 +952,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       <div key={student.id} className="relative animate-fade-in">
         {/* W trybie wyboru klik zaznacza zamiast otwierać statystyki */}
         <div
-          onClick={(e) => isSelecting ? toggleStudentSelection(e, student.id) : handleCheckStudent(student.id)}
+          onClick={(e) => isSelecting ? toggleStudentSelection(e, student.id) : setSheetStudentId(student.id)}
           className={`bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
             isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
           }`}
@@ -1166,7 +1170,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       <button
         key={s.id}
         type="button"
-        onClick={() => handleCheckStudent(s.id)}
+        onClick={() => setSheetStudentId(s.id)}
         className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
       >
         <div className={`w-9 h-9 border rounded-full flex items-center justify-center shrink-0 ${avatarClass}`}>
@@ -2128,6 +2132,27 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
         </div>, document.body
       )}
+
+      {sheetStudentId && (() => {
+        const st = students.find((x: any) => x.id === sheetStudentId);
+        if (!st) return null;
+        const last = st.exactLastActivity || 0;
+        const subtitle = [
+          formatViewerAgeCategory(st.ageCategory, st.ageCategoryPL, i18n.language, t),
+          last > 0 ? [getTimeSinceLastActivity(last), lastSessionDetails(st)].filter(Boolean).join(' · ') : t('coachDashboard.noTrainings'),
+        ].filter(Boolean).join(' · ');
+        return (
+          <CoachStudentSheet
+            student={st}
+            coachId={userId}
+            subtitle={subtitle}
+            focusState={studentFocus[st.id]}
+            onClose={() => setSheetStudentId(null)}
+            onOpenProfile={() => { setSheetStudentId(null); handleCheckStudent(st.id); }}
+            onOpenChat={() => { setSheetStudentId(null); setOpenMessageStudentId(st.id); }}
+          />
+        );
+      })()}
 
       {openMessageStudentId && (() => {
         const student = students.find(s => s.id === openMessageStudentId);

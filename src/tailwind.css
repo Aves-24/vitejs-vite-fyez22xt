@@ -105,6 +105,11 @@
 .dark .bg-orange-50 { background-color: #2b1d10; }
 .dark .bg-yellow-50 { background-color: #2a2510; }
 .dark .bg-amber-50 { background-color: #2a2310; }
+/* [TECH] błękit treningu technicznego */
+.dark .bg-sky-50 { background-color: #0f2230; }
+.dark .bg-sky-100 { background-color: #133047; }
+.dark .text-sky-700 { color: #7dd3fc; }
+.dark .border-sky-100\/50 { border-color: rgba(56, 189, 248, 0.2); }
 .dark .bg-amber-200 { background-color: #4a3d14; }
 .dark .border-amber-200 { border-color: #5a4a14; }
 .dark .border-amber-300 { border-color: #6b5716; }

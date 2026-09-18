@@ -512,7 +512,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     setShowTechModal(true);
                   }}
                   disabled={!selectedDistance}
-                  className="h-12 w-full max-w-[128px] rounded-2xl bg-emerald-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
+                  className="h-12 w-full max-w-[128px] rounded-2xl bg-sky-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
                 >
                   <span className="material-symbols-outlined text-[20px] shrink-0">psychology</span>
                   <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.techBtn')}</span>
@@ -562,16 +562,16 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       {/* MODAL TRENINGU TECHNICZNEGO */}
       {showTechModal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100001] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+56px)]">
-          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-6 animate-fade-in-up shadow-2xl border-t-4 border-emerald-600">
+          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-6 animate-fade-in-up shadow-2xl border-t-4 border-sky-600">
 
             {/* HEADER */}
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-emerald-600 text-lg">psychology</span>
+                <span className="material-symbols-outlined text-sky-600 text-lg">psychology</span>
                 <h2 className="text-base font-black text-[#0a3a2a] uppercase">{t('stats.techSessionTitle')}</h2>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg uppercase tracking-widest">{t('sessionSetup.techSubtitle')}</span>
+                <span className="text-[10px] font-black text-sky-700 bg-sky-50 px-2 py-1 rounded-lg uppercase tracking-widest">{t('sessionSetup.techSubtitle')}</span>
                 <button onClick={() => setShowTechModal(false)} className="text-gray-400 p-1 active:scale-90 transition-all"><span className="material-symbols-outlined text-lg">close</span></button>
               </div>
             </div>
@@ -582,11 +582,11 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               <div className="flex items-center gap-1.5">
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') + 6)))}
-                  className="flex-1 py-2 bg-emerald-500 text-white rounded-xl font-black text-sm active:scale-95 transition-all"
+                  className="flex-1 py-2 bg-sky-500 text-white rounded-xl font-black text-sm active:scale-95 transition-all"
                 >+6</button>
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') + 1)))}
-                  className="flex-1 py-2 bg-emerald-100 text-emerald-700 rounded-xl font-black text-sm active:scale-95 transition-all"
+                  className="flex-1 py-2 bg-sky-100 text-sky-700 rounded-xl font-black text-sm active:scale-95 transition-all"
                 >+1</button>
                 <button
                   onClick={() => setTechArrows(v => String(Math.max(0, parseInt(v || '0') - 1)))}
@@ -621,7 +621,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 onChange={e => setTechNote(e.target.value)}
                 maxLength={400}
                 placeholder={t('sessionSetup.notePlaceholder')}
-                className="w-full bg-gray-50 border-2 border-gray-100 p-3 rounded-xl font-bold text-sm text-[#0a3a2a] focus:border-emerald-500 outline-none transition-all h-24 resize-none"
+                className="w-full bg-gray-50 border-2 border-gray-100 p-3 rounded-xl font-bold text-sm text-[#0a3a2a] focus:border-sky-500 outline-none transition-all h-24 resize-none"
               />
             </div>
 
@@ -629,7 +629,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               onClick={handleSaveTechnical}
               disabled={isSavingTech}
               className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all active:scale-95 flex items-center justify-center gap-2 ${
-                isSavingTech ? 'bg-gray-100 text-gray-400' : 'bg-emerald-600 text-white shadow-xl shadow-emerald-100'
+                isSavingTech ? 'bg-gray-100 text-gray-400' : 'bg-sky-600 text-white shadow-xl shadow-sky-100'
               }`}
             >
               {isSavingTech ? t('common.saving') : t('sessionSetup.saveBtn')}

@@ -58,7 +58,7 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
     );
   }
 
-  const showDots = dots && !!focus.topic;
+  const showDots = dots;
   const done = showDots && count >= goal;
   return (
     <button
@@ -119,7 +119,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   glass?: boolean;
 }) {
   const { t } = useTranslation();
-  const showDots = dots && !!focus.topic;
+  const showDots = dots;
   const source = sourceLabel ?? (focus.fromCoach
     ? `${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`
     : '');

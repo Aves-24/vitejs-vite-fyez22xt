@@ -602,7 +602,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     {activeFocus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
                   </p>
                   <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(activeFocus, t)}</p>
-                  {focusState?.dots && focusTopic && (
+                  {focusState?.dots && (
                     <div className="flex items-center gap-2 mt-1">
                       <FocusDots count={focusState.count} goal={focusState.goal} small />
                       <FocusProgressText count={focusState.count} goal={focusState.goal} />

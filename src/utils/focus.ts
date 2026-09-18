@@ -6,7 +6,8 @@ import { db } from '../firebase';
 // „Nad czym teraz pracuję". Własny fokus siedzi w users/{uid}.focus; trener
 // ustawia fokus wpisem typu „Ziel" w coachLog. Obowiązuje nowszy z nich.
 // Kropki (postęp) są opcjonalne — users/{uid}.focusDots. Kto je włączy,
-// zbiera kropkę za każdy trening z tematem fokusu (session.topics); po
+// zbiera kropkę za każdy trening z tematem fokusu (session.topics; fokus bez
+// tematu — za każdy trening); po
 // users/{uid}.focusGoal takich treningach (2–5, sam wybiera) fokus jest
 // „utrwalony". Trening bez fokusu niczego nie zeruje — suma, nie seria.
 
@@ -36,7 +37,7 @@ export interface CoachGoal {
 }
 
 export interface ActiveFocus {
-  topic: string;         // '' = bez tematu (cel trenera bez tematów) — bez kropek
+  topic: string;         // '' = bez tematu — kropki liczą wtedy każdy trening
   text: string;
   since: number;
   fromCoach: boolean;
@@ -50,7 +51,7 @@ export function readOwnFocus(userData: any): OwnFocus | null {
 
 export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undefined): ActiveFocus | null {
   if (own && (!goal || own.setAt >= goal.ts)) {
-    // Sam tekst bez tematu też jest fokusem (jak u trenera) — tylko bez kropek.
+    // Sam tekst bez tematu też jest fokusem (jak u trenera).
     if (own.cleared || (!own.topic && !own.text)) return null;
     return { topic: own.topic || '', text: own.text || '', since: own.setAt, fromCoach: false };
   }
@@ -64,10 +65,15 @@ export function focusFrom(focus: ActiveFocus): number {
   return new Date(focus.since).setHours(0, 0, 0, 0);
 }
 
+// Fokus bez tematu (user 2026-09-18: temat nieobowiązkowy) — każdy trening
+// od dnia ustawienia dokłada kropkę; z tematem tylko treningi z tym tematem.
+function countsForFocus(topics: string[], focus: ActiveFocus): boolean {
+  return !focus.topic || topics.includes(focus.topic);
+}
+
 export function countFocusSessions(sessions: { ts: number; topics: string[] }[], focus: ActiveFocus): number {
-  if (!focus.topic) return 0;
   const from = focusFrom(focus);
-  return sessions.filter(s => s.ts >= from && s.topics.includes(focus.topic)).length;
+  return sessions.filter(s => s.ts >= from && countsForFocus(s.topics, focus)).length;
 }
 
 function toMs(v: any): number {
@@ -94,14 +100,13 @@ async function loadLatestCoachGoal(userId: string): Promise<CoachGoal | undefine
 // "kiedy uczeń nad tym pracował"). Ten sam filtr co countFocusSessions,
 // ale zwraca same znaczniki czasu, bez opakowania w hook.
 export async function loadFocusSessionDates(userId: string, focus: ActiveFocus): Promise<number[]> {
-  if (!focus.topic) return [];
   const snap = await getDocs(query(
     collection(db, `users/${userId}/sessions`),
     where('timestamp', '>=', Timestamp.fromMillis(focusFrom(focus))),
   ));
   return snap.docs
     .map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [] }))
-    .filter(s => s.topics.includes(focus.topic))
+    .filter(s => countsForFocus(s.topics, focus))
     .map(s => s.ts)
     .sort((a, b) => a - b);
 }
@@ -159,7 +164,7 @@ export function useActiveFocus(
       const focus = resolveActiveFocus(readOwnFocus(data), goal);
       const dots = data.focusDots === true;
       let count = 0;
-      if (withCount && dots && focus?.topic) {
+      if (withCount && dots && focus) {
         try {
           const sSnap = await getDocs(query(
             collection(db, `users/${userId}/sessions`),

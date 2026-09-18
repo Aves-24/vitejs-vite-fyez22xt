@@ -39,18 +39,17 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
 
   const [dates, setDates] = useState<number[]>([]);
   useEffect(() => {
-    if (!focus?.topic) { setDates([]); return; }
+    if (!focus) { setDates([]); return; }
     let cancelled = false;
     loadFocusSessionDates(userId, focus).then(d => { if (!cancelled) setDates(d); }).catch(() => {});
     return () => { cancelled = true; };
   }, [userId, focus?.topic, focus?.since]);
 
   const liveDots = liveStep > 0;
-  const hasTopic = !!focus?.topic;
-  const goalReached = hasTopic && dots && count >= goal;
-  const alreadyDone = hasTopic && liveDots && liveStep !== goal && count >= liveStep;
+  const hasFocus = !!focus;
+  const goalReached = hasFocus && dots && count >= goal;
+  const alreadyDone = hasFocus && liveDots && liveStep !== goal && count >= liveStep;
   const endTopicLabel = focus ? focusTitle(focus, t) : '';
-  const topicMissing = newStep > 0 && !newTopic;
 
   const handleStep = async (delta: number) => {
     const idx = GOAL_STEPS.indexOf(liveStep as typeof GOAL_STEPS[number]);
@@ -131,7 +130,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                   {focus.text && focus.topic && (
                     <p className="text-[10px] font-bold text-emerald-700/70 mt-0.5">{t(`sessionSetup.topic_${focus.topic}`)}</p>
                   )}
-                  {hasTopic && dots && (
+                  {hasFocus && dots && (
                     <div className="flex items-center gap-2 mt-1.5 bg-[#0a3a2a] rounded-lg px-2 py-1 w-fit">
                       <FocusDots count={count} goal={goal} small />
                       <FocusProgressText count={count} goal={goal} />
@@ -139,7 +138,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                   )}
                 </div>
 
-                {hasTopic && (
+                {hasFocus && (
                   <div className="pt-1.5 border-t border-emerald-100/80">
                     <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('studentProfile.focusModalDates')}</p>
                     {dates.length > 0 ? (
@@ -156,7 +155,7 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
                   </div>
                 )}
 
-                {hasTopic && (
+                {hasFocus && (
                   <div className="pt-1.5 border-t border-emerald-100/80">
                     <p className="text-[8px] font-black uppercase tracking-widest text-emerald-700/70 mb-1">{t('coachLog.focusGoalLabel')}</p>
                     <div className="flex items-center gap-3">
@@ -266,14 +265,11 @@ export default function FocusModal({ userId, focus, dots, goal, count, onSetGoal
               onChange={next => setNewTopic(next.filter(x => x !== newTopic)[0] ?? '')}
             />
 
-            {/* Kropki liczą treningi z tematem — bez tematu liczba lekcji nic by nie znaczyła. */}
-            {topicMissing && <p className="text-[10px] font-bold text-amber-700 leading-snug">{t('tagebuch.focusTopicRequired')}</p>}
-
             {error && <p className="text-[10px] font-bold text-red-600">{t('tagebuch.focusSaveError')}</p>}
 
             <button
               onClick={handleSetNew}
-              disabled={isSavingNew || (!newTopic && !newText.trim()) || topicMissing}
+              disabled={isSavingNew || (!newTopic && !newText.trim())}
               className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-blue-600 text-white disabled:opacity-50"
             >
               {t('studentProfile.focusModalSaveNew')}

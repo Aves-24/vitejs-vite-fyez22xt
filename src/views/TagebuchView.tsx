@@ -683,9 +683,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </button>
         }
       >
-        {!isLoading && (
-          <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
-        )}
         {focusEditing && (
           <FocusModal
             userId={userId}
@@ -703,6 +700,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       </ViewHeader>
 
       <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">
+
+        {/* FOKUS — pod nagłówkiem, jasnożółta karta jak na Home */}
+        {!isLoading && (
+          <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
+        )}
 
         {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}
         {composerOpen && (

@@ -124,6 +124,8 @@ export function SetFocusButton({ current, unfinished, disabled, saving, onConfir
   );
 }
 
+// W dzienniku pod nagłówkiem, na jasnym tle — ta sama jasnożółta karta co na
+// Home (user 2026-09-18: wyjęta z ciemnozielonego nagłówka).
 export function FocusCard({ focus, dots, goal, count, onEdit }: {
   focus: ActiveFocus | null;
   dots: boolean;        // użytkownik włączył kropki
@@ -137,52 +139,57 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
     return (
       <button
         onClick={onEdit}
-        className="mt-3 w-full flex items-center gap-2.5 bg-white/10 hover:bg-white/15 border border-dashed border-white/30 rounded-2xl px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+        className="w-full flex items-center gap-2.5 bg-amber-50 border border-dashed border-amber-300 rounded-[20px] px-3.5 py-2.5 text-left active:scale-[0.99] transition-all"
       >
-        <span className="material-symbols-outlined text-[20px] text-[#fed33e] shrink-0">track_changes</span>
-        <span className="text-[12px] font-bold text-white/90 leading-snug">{t('tagebuch.focusEmpty')}</span>
+        <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[20px]">track_changes</span>
+        </span>
+        <span className="text-[12px] font-bold text-amber-900 leading-snug">{t('tagebuch.focusEmpty')}</span>
       </button>
     );
   }
 
-  const showDots = dots;
-  const done = showDots && count >= goal;
+  const done = dots && count >= goal;
   return (
     <button
       onClick={onEdit}
-      className="mt-3 w-full bg-white/10 hover:bg-white/15 rounded-2xl px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+      className="w-full flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all"
     >
-      <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-[#fed33e]">
-        <span className="material-symbols-outlined text-[13px]">track_changes</span>
-        <span className="truncate">
-          {t('tagebuch.focusLabel')}
-          {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
-        </span>
-        <span className="flex-1" />
-        <span className="material-symbols-outlined text-[14px] text-white/50">edit</span>
-      </div>
-      <p className="text-[14px] font-black text-white leading-snug mt-1 break-words">{focusTitle(focus, t)}</p>
-      {focus.text && focus.topic && (
-        <p className="text-[10px] font-bold text-white/60 mt-0.5">{topicLabel(focus.topic, t)}</p>
-      )}
-      <div className="flex items-center gap-2 mt-2 flex-wrap">
-        {showDots ? (
-          <>
-            <FocusDots count={count} goal={goal} />
-            <FocusProgressText count={count} goal={goal} />
-          </>
-        ) : (
-          <span className="text-[10px] font-bold text-white/60">
-            {t('tagebuch.focusSince', { date: new Date(focus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) })}
+      <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
+        <span className="material-symbols-outlined text-[20px]">track_changes</span>
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-800">
+          <span className="truncate">
+            {t('tagebuch.focusLabel')}
+            {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
+          </span>
+          <span className="flex-1" />
+          <span className="material-symbols-outlined text-[14px] text-amber-500">edit</span>
+        </div>
+        <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
+        {focus.text && focus.topic && (
+          <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(focus.topic, t)}</p>
+        )}
+        <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+          {dots ? (
+            <>
+              <FocusDots count={count} goal={goal} light />
+              <FocusProgressText count={count} goal={goal} light />
+            </>
+          ) : (
+            <span className="text-[10px] font-bold text-amber-700">
+              {t('tagebuch.focusSince', { date: new Date(focus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) })}
+            </span>
+          )}
+        </div>
+        {/* Cała karta i tak otwiera edytor — to tylko zachęta, nie osobny przycisk. */}
+        {done && (
+          <span className="inline-block mt-2 bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">
+            {t('tagebuch.focusPickNew')}
           </span>
         )}
       </div>
-      {/* Cała karta i tak otwiera edytor — to tylko zachęta, nie osobny przycisk. */}
-      {done && (
-        <span className="inline-block mt-2 bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">
-          {t('tagebuch.focusPickNew')}
-        </span>
-      )}
     </button>
   );
 }

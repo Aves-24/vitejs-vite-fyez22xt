@@ -935,6 +935,50 @@ konta testowego, otwarcie /legal/datenschutz.html.
       b) przy zmianie dostawcy: aktualizacja §2.6 + tabeli odbiorców we
          wszystkich 3 politykach prywatności i LEGAL_DATA_INVENTORY.md
 
+## STAN NA 2026-09-18 — czytaj to najpierw (nowszy niż 09-10 niżej)
+
+**Wszystko na `main`, wdrożone na Vercel, reguły Firestore wdrożone (87/87 `test:rules`).**
+
+### Zrobione 2026-09-18 (NIESPRAWDZONE jeszcze przez usera na żywo — zacząć od testu)
+1. **Fokus na stałe w statystykach** (`f4e8f97`): sesja dostaje migawkę
+   `focus {text, topic, since, fromCoach, authorName?, step?, goal?}` (utils/focus.ts
+   `sessionFocusSnapshot`), StatsView pokazuje kartę „Fokus tego treningu”.
+2. **Ukończony fokus** (kropki pełne) znika z Home / Vorbereitung / treningu
+   (`useCurrentFocus`), w dzienniku zostaje jako „Twój ostatni zakończony fokus” (`6963960`).
+   Panel trenera nadal widzi go przez `useActiveFocus`.
+3. **Trening techniczny widoczny u trenera w „Nowe treningi”** — SessionSetup pisze
+   `lastSession*` + `lastSessionType:'TECHNICAL'` na profilu ucznia (`a5ca566`).
+4. **Karta ucznia (CoachStudentSheet)**: nad notatką ucznia podpis, którego treningu
+   dotyczy; przycisk „✓ Widziałem” (`coachSeenAt/coachSeenBy`, nowa reguła sessions,
+   test T6c); edycja notatki trenera ołówkiem. Uczeń widzi „Trener przeczytał Twoją
+   notatkę” w Dzienniku (ikonka ✓✓ też na zwiniętej karcie) i w Statystykach.
+   User potwierdził, że w Dzienniku działa.
+5. **„Nowe treningi” i „Forma” nie znikały** (`0893a8a`): od kiedy tapnięcie otwiera
+   kartę ucznia zamiast profilu, `studentLastChecked` się nie zapisywał. Teraz samo
+   otwarcie karty = obejrzane; „Forma” pokazuje ucznia tylko do obejrzenia
+   (`FormCompare.at`, cache `grotX_formCompare2_`).
+
+### Do sprawdzenia na start
+- Czy „Nowe treningi” i „Forma” gasną po otwarciu karty ucznia (pkt 5).
+- Fokus: ukończony nie pokazuje się poza dziennikiem; nowy fokus → trening → karta w Statystykach.
+- Trening Z WYNIKIEM z fokusem → karta fokusu w Statystykach (sprawdzony był tylko techniczny).
+- C30 pasek „nowa wersja” — nadal niesprawdzony.
+
+### Otwarte / pomysły
+- Fokus zakończony przyciskiem „Fokus beenden” (przed kompletem) znika całkiem — może
+  też ma zostać w dzienniku jako „ostatni zakończony”? (zapytać usera; wymaga zapisu
+  tekstu w znaczniku `cleared`, uwaga na regułę Path L trenera: tylko `cleared`+`setAt`).
+- Migawka fokusu w karcie treningu w Dzienniku / filtr statystyk „treningi pod fokus”.
+- C31 przerwany trening, C36 prawne, C40 „Co nowego”, drobiazgi przedpublikacyjne.
+
+### Uwagi techniczne
+- Po `npm run icons:update` commitować RAZEM `public/fonts/*.woff2` i
+  `scripts/icon-font.manifest.json` — inaczej build na Vercelu pada (tak padł `a5ca566`).
+- Reguły: `JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public" npm run test:rules`,
+  deploy `npx firebase deploy --only firestore:rules --project grotx-fb8f8` (najpierw reguły, potem push).
+- Nowy komputer: `.env` i `.env.local` (Firebase + App Check debug token) NIE są w git —
+  skopiować ręcznie; nowy debug token trzeba zarejestrować w Firebase Console → App Check.
+
 ## STAN NA 2026-09-10 — czytaj to najpierw
 
 **Kolory zestawów zastąpiły filtr dystansów samą dyscypliną.** Sprawdzone na

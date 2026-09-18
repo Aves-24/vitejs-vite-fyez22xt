@@ -50,8 +50,9 @@ export function readOwnFocus(userData: any): OwnFocus | null {
 
 export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undefined): ActiveFocus | null {
   if (own && (!goal || own.setAt >= goal.ts)) {
-    if (own.cleared || !own.topic) return null;
-    return { topic: own.topic, text: own.text || '', since: own.setAt, fromCoach: false };
+    // Sam tekst bez tematu też jest fokusem (jak u trenera) — tylko bez kropek.
+    if (own.cleared || (!own.topic && !own.text)) return null;
+    return { topic: own.topic || '', text: own.text || '', since: own.setAt, fromCoach: false };
   }
   if (!goal) return null;
   return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName };

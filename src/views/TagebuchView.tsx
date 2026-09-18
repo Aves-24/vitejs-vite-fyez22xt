@@ -10,7 +10,8 @@ import { notificationId, type NotificationType } from '../utils/notificationType
 import { TRAINING_TOPICS } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
-import { FocusCard, FocusEditor } from '../components/tagebuch/FocusCard';
+import { FocusCard } from '../components/tagebuch/FocusCard';
+import FocusModal from '../components/tagebuch/FocusModal';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, focusFrom as focusStartOf, readFocusGoal, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type OwnFocus,
@@ -376,28 +377,24 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     const focus: OwnFocus = { cleared: true, setAt: Date.now() };
     await updateDoc(doc(db, 'users', userId), { focus });
     setOwnFocus(focus);
-    setFocusEditing(false);
   }, [userId]);
 
-  // Ten sam temat = ta sama data startu, więc poprawka słów nie zeruje kropek.
-  // Nic się nie zmieniło w fokusie (np. tylko przełącznik kropek) — fokus nie
-  // jest przepisywany, żeby cel od trenera nie stał się „własnym".
-  const saveFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
-    const clean = text.slice(0, FOCUS_TEXT_MAX);
-    const update: { focus?: OwnFocus; focusDots?: boolean; focusGoal?: number } = {};
-    if (!activeFocus || topic !== activeFocus.topic || clean !== activeFocus.text) {
-      update.focus = { topic, text: clean, setAt: activeFocus && topic === activeFocus.topic ? activeFocus.since : Date.now() };
-    }
-    if (dots !== focusDots) update.focusDots = dots;
-    if (dots && goal !== focusGoal) update.focusGoal = goal;
-    if (Object.keys(update).length) {
-      await updateDoc(doc(db, 'users', userId), update);
-    }
-    if (update.focus) setOwnFocus(update.focus);
+  // Liczba lekcji obecnego fokusu (stepper w FocusModal) — sam fokus nietknięty,
+  // więc cel od trenera nie staje się „własnym", a postęp zostaje.
+  const saveFocusGoal = useCallback(async (dots: boolean, goal: number) => {
+    await updateDoc(doc(db, 'users', userId), dots ? { focusDots: true, focusGoal: goal } : { focusDots: false });
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
-    setFocusEditing(false);
-  }, [userId, activeFocus, focusDots, focusGoal]);
+  }, [userId]);
+
+  // Nowy fokus = nowa data startu, postęp od zera — także przy tym samym temacie.
+  const setNewFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
+    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: Date.now() };
+    await updateDoc(doc(db, 'users', userId), dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false });
+    setOwnFocus(focus);
+    setFocusDots(dots);
+    if (dots) setFocusGoal(goal);
+  }, [userId]);
 
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
@@ -663,20 +660,22 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </button>
         }
       >
-        {!isLoading && (focusEditing ? (
-          <FocusEditor
-            initial={{ topic: activeFocus?.topic || '', text: activeFocus?.text || '' }}
-            initialDots={focusDots}
-            initialGoal={focusGoal}
-            progress={focusDots && activeFocus?.topic ? { count: focusCount, goal: focusGoal } : null}
-            canEnd={!!activeFocus}
-            onSave={saveFocus}
-            onEnd={endFocus}
-            onCancel={() => setFocusEditing(false)}
-          />
-        ) : (
+        {!isLoading && (
           <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
-        ))}
+        )}
+        {focusEditing && (
+          <FocusModal
+            userId={userId}
+            focus={activeFocus}
+            dots={focusDots}
+            goal={focusGoal}
+            count={focusCount}
+            onSetGoal={saveFocusGoal}
+            onSetNew={setNewFocus}
+            onEnd={endFocus}
+            onClose={() => setFocusEditing(false)}
+          />
+        )}
       </ViewHeader>
 
       <div className="flex-1 overflow-y-auto pb-32 px-4 pt-4 space-y-3">

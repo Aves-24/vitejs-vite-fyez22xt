@@ -1209,14 +1209,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
-  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string) => {
+  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string, action?: React.ReactNode) => {
     const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
     return (
+      <div key={s.id} className="w-full flex items-center bg-white rounded-xl shadow-sm border border-gray-100">
       <button
-        key={s.id}
         type="button"
         onClick={() => setSheetStudentId(s.id)}
-        className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
+        className="flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 active:scale-[0.98] transition-all text-left"
       >
         <div className={`w-9 h-9 border rounded-full flex items-center justify-center shrink-0 ${avatarClass}`}>
           {initials
@@ -1230,8 +1230,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <p className="text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate">{sub}</p>
           {renderFocusLine(s.id)}
         </div>
-        <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+        {!action && <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>}
       </button>
+      {action && <div className="flex items-center gap-1 pr-2 shrink-0">{action}</div>}
+      </div>
     );
   };
 
@@ -1446,7 +1448,39 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
                 : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
               'bg-amber-50 text-amber-800 border-amber-100',
+              pauseReminderDue(s) ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { const p = pauseOf(s); if (p) setPause(s.id, { ...p, reminded: true }); }}
+                    className="h-7 px-2 rounded-lg bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-0.5 active:scale-95 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">pause</span>
+                    {t('coachDashboard.pauseKeepShort')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPause(s.id, null)}
+                    className="h-7 w-7 rounded-lg bg-[#0a3a2a] text-white flex items-center justify-center active:scale-95 transition-all"
+                    aria-label={t('coachSheet.pauseEnd')}
+                    title={t('coachSheet.pauseEnd')}
+                  >
+                    <span className="material-symbols-outlined text-[15px]">play_arrow</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPause(s.id, { at: Date.now() })}
+                  className="h-7 px-2 rounded-lg bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-0.5 active:scale-95 transition-all"
+                  title={t('coachDashboard.pauseHintShort')}
+                >
+                  <span className="material-symbols-outlined text-[13px]">pause</span>
+                  {t('coachDashboard.pauseBadge')}
+                </button>
+              ),
             ))}
+            <p className="text-[9px] font-bold text-gray-400 px-1 leading-snug">{t('coachDashboard.pauseHintShort')}</p>
             <button
               type="button"
               onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}
@@ -2196,7 +2230,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             focusState={studentFocus[st.id]}
             pause={pauseOf(st)}
             pauseReminder={pauseReminderDue(st)}
-            onPause={() => setPause(st.id, { at: Date.now() })}
             onEndPause={() => setPause(st.id, null)}
             onKeepPause={() => { const p = pauseOf(st); if (p) setPause(st.id, { ...p, reminded: true }); }}
             onClose={() => setSheetStudentId(null)}

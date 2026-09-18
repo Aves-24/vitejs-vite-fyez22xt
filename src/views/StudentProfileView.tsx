@@ -760,7 +760,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {focusState?.focus ? (
           <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full text-left">
             <FocusStrip
-              glass
+              variant="glass"
               focus={focusState.focus}
               dots={focusState.dots}
               goal={focusState.goal}

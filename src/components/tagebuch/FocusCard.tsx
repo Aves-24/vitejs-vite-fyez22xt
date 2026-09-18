@@ -12,25 +12,28 @@ export function focusTitle(focus: ActiveFocus, t: (k: string) => string): string
 }
 
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
-export function FocusDots({ count, goal, small = false }: { count: number; goal: number; small?: boolean }) {
+export function FocusDots({ count, goal, small = false, light = false }: { count: number; goal: number; small?: boolean; light?: boolean }) {
   const done = count >= goal;
   const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
+  const [doneCls, onCls, offCls] = light
+    ? ['bg-amber-400', 'bg-[#1f6e53]', 'bg-amber-200']
+    : ['bg-[#fed33e]', 'bg-emerald-400', 'bg-white/25'];
   return (
     <span className="flex items-center gap-1">
       {Array.from({ length: goal }, (_, i) => (
         <span
           key={i}
-          className={`${size} rounded-full ${done ? 'bg-[#fed33e]' : i < count ? 'bg-emerald-400' : 'bg-white/25'}`}
+          className={`${size} rounded-full ${done ? doneCls : i < count ? onCls : offCls}`}
         />
       ))}
     </span>
   );
 }
 
-export function FocusProgressText({ count, goal }: { count: number; goal: number }) {
+export function FocusProgressText({ count, goal, light = false }: { count: number; goal: number; light?: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className="text-[10px] font-bold text-white/75">
+    <span className={`text-[10px] font-bold ${light ? 'text-amber-800' : 'text-white/75'}`}>
       {count >= goal
         ? t('tagebuch.focusDone', { count })
         : t(goal === 1 ? 'tagebuch.focusCountOne' : 'tagebuch.focusCount', { hit: count, goal })}
@@ -185,12 +188,14 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
 }
 
 /**
- * Wąski pasek fokusu. Na Home przypomina fokus przed treningiem (klik =
- * dziennik). W profilu ucznia trener widzi go w nagłówku — tam bez klikania
- * (user 2026-09-16: przejście do dziennika po kliknięciu było niezrozumiałe)
- * i w stylu kafelków nagłówka (`glass`), bo pełne tło zlewało się z zielenią.
+ * Pasek fokusu. Na Home i w oknie treningu technicznego jasnożółta karta (B),
+ * na ekranie Vorbereitung wąska pigułka w tych samych kolorach (C) — user
+ * 2026-09-18: ciemnozielony blok był ciężki i zlewał się z kartą zawodów.
+ * Żółty = kolor fokusu (ikona celu), zielony zostaje dla zawodów.
+ * W profilu ucznia trener widzi go w nagłówku jako `glass` (zielone tło
+ * nagłówka), bez klikania (user 2026-09-16).
  */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, glass = false }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card' }: {
   focus: ActiveFocus;
   dots: boolean;
   goal: number;
@@ -200,45 +205,60 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   // trenera"); trener w profilu ucznia podaje własne („Fokus ucznia · …").
   label?: string;
   sourceLabel?: string;
-  glass?: boolean;
+  variant?: 'card' | 'pill' | 'glass';
 }) {
   const { t } = useTranslation();
-  const showDots = dots;
   const source = sourceLabel ?? (focus.fromCoach
     ? `${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`
     : '');
-  const tone = glass
-    ? 'bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
-    : 'bg-[#0a3a2a] rounded-[20px] px-4 py-2.5 shadow-sm';
-  const content = (
+  const title = focusTitle(focus, t);
+  const topic = focus.text && focus.topic ? topicLabel(focus.topic, t) : '';
+
+  const wrap = (cls: string, content: React.ReactNode) => onOpen
+    ? <button onClick={onOpen} className={`w-full flex items-center text-left active:scale-[0.99] transition-all ${cls}`}>{content}</button>
+    : <div className={`w-full flex items-center text-left ${cls}`}>{content}</div>;
+
+  if (variant === 'pill') {
+    return wrap('gap-2 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5', (
+      <>
+        <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">track_changes</span>
+        <span className="flex-1 min-w-0 text-[12px] font-black text-[#0a3a2a] truncate">
+          {title}{topic && <span className="text-amber-700 font-bold"> · {topic}</span>}
+        </span>
+        {dots && <FocusDots count={count} goal={goal} small light />}
+        {onOpen && <span className="material-symbols-outlined text-[18px] text-amber-500 shrink-0">chevron_right</span>}
+      </>
+    ));
+  }
+
+  const glass = variant === 'glass';
+  return wrap(glass
+    ? 'gap-3 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
+    : 'gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-2.5', (
     <>
-      <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
+      {glass
+        ? <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
+        : (
+          <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">track_changes</span>
+          </span>
+        )}
       <div className="flex-1 min-w-0">
-        <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
+        <p className={`text-[9px] font-black uppercase tracking-widest truncate ${glass ? 'text-[#fed33e]' : 'text-amber-800'}`}>
           {label ?? t('tagebuch.focusLabel')}
           {source && ` · ${source}`}
         </p>
-        <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(focus, t)}</p>
+        <p className={`text-[13px] font-black leading-snug truncate ${glass ? 'text-white' : 'text-[#0a3a2a]'}`}>{title}</p>
         {/* Temat pod tekstem (user 2026-09-18) — bez tekstu tytułem jest sam temat. */}
-        {focus.text && focus.topic && (
-          <p className="text-[10px] font-bold text-white/60 truncate">{topicLabel(focus.topic, t)}</p>
-        )}
-        {showDots && (
+        {topic && <p className={`text-[10px] font-bold truncate ${glass ? 'text-white/60' : 'text-amber-700'}`}>{topic}</p>}
+        {dots && (
           <div className="flex items-center gap-2 mt-1">
-            <FocusDots count={count} goal={goal} small />
-            <FocusProgressText count={count} goal={goal} />
+            <FocusDots count={count} goal={goal} small light={!glass} />
+            <FocusProgressText count={count} goal={goal} light={!glass} />
           </div>
         )}
       </div>
-      {onOpen && <span className="material-symbols-outlined text-[20px] text-white/60 shrink-0">chevron_right</span>}
+      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : 'text-amber-500'}`}>chevron_right</span>}
     </>
-  );
-  if (!onOpen) {
-    return <div className={`w-full flex items-center gap-3 text-left ${tone}`}>{content}</div>;
-  }
-  return (
-    <button onClick={onOpen} className={`w-full flex items-center gap-3 text-left active:scale-[0.99] transition-all ${tone}`}>
-      {content}
-    </button>
-  );
+  ));
 }

@@ -4,10 +4,9 @@ import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, up
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
-import { topicLabel } from '../constants/trainingTopics';
 import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
 import { useActiveFocus } from '../utils/focus';
-import { FocusDots, FocusProgressText, FocusStrip, focusTitle } from './tagebuch/FocusCard';
+import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -333,6 +332,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             goal={focusState.goal}
             count={focusState.count}
             onOpen={() => onNavigate?.('MY_COACH')}
+            variant="pill"
           />
         )}
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
@@ -599,25 +599,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </div>
 
             {/* TWÓJ FOKUS — przypomnienie; temat już zaznaczony niżej */}
-            {activeFocus && (
-              <div className="bg-[#0a3a2a] rounded-2xl px-3 py-2 mb-3 flex items-center gap-2.5">
-                <span className="material-symbols-outlined text-[20px] text-[#fed33e] shrink-0">track_changes</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-[#fed33e] truncate">
-                    {t('tagebuch.focusLabel')}
-                    {activeFocus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}`}
-                  </p>
-                  <p className="text-[13px] font-black text-white leading-snug truncate">{focusTitle(activeFocus, t)}</p>
-                  {activeFocus.text && activeFocus.topic && (
-                    <p className="text-[10px] font-bold text-white/60 truncate">{topicLabel(activeFocus.topic, t)}</p>
-                  )}
-                  {focusState?.dots && (
-                    <div className="flex items-center gap-2 mt-1">
-                      <FocusDots count={focusState.count} goal={focusState.goal} small />
-                      <FocusProgressText count={focusState.count} goal={focusState.goal} />
-                    </div>
-                  )}
-                </div>
+            {activeFocus && focusState && (
+              <div className="mb-3">
+                <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} />
               </div>
             )}
 

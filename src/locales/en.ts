@@ -1648,6 +1648,7 @@ export const views = {
     pauseBtn: "Pause",
     resumePause: "I'm back",
     pausedBanner: "Paused",
+    drainHint: "{{seconds}}s left from the buffer",
     finish: "Finish",
     finishToReplay: "replay",
     finishToMenu: "to menu",

@@ -15,6 +15,9 @@ const CLIP_STORAGE_KEY = 'delayMirror.clipMode';
 // pauza w trakcie nagrania siedzi w osobnym `recordingPaused`.
 type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'review' | 'unsupported' | 'error';
 
+// Fazy chwilowej pauzy — patrz toggleRecordingPause.
+type PausePhase = 'none' | 'draining' | 'frozen';
+
 interface Props {
   onBack: () => void;
   onUpgrade?: () => void;
@@ -117,6 +120,14 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const showGridRef = useRef(showGrid);
   useEffect(() => { showGridRef.current = showGrid; }, [showGrid]);
   const [recordingPaused, setRecordingPaused] = useState(false);
+  // Pauza ma dwie fazy. Po wcisnieciu w buforze siedzi jeszcze material,
+  // ktorego user nie widzial — 'draining' dogrywa go z odliczaniem, dopiero
+  // potem 'frozen' zatrzymuje obraz na stop-klatce.
+  const [pausePhase, setPausePhase] = useState<PausePhase>('none');
+  const pausePhaseRef = useRef<PausePhase>('none');
+  useEffect(() => { pausePhaseRef.current = pausePhase; }, [pausePhase]);
+  const [drainMs, setDrainMs] = useState(0);
+  const drainTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -184,8 +195,13 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     isPausedRef.current = true;
     if (timerRef.current) clearInterval(timerRef.current);
     if (bufferTimerRef.current) clearInterval(bufferTimerRef.current);
+    if (drainTimerRef.current) clearInterval(drainTimerRef.current);
     timerRef.current = null;
     bufferTimerRef.current = null;
+    drainTimerRef.current = null;
+    setPausePhase('none');
+    pausePhaseRef.current = 'none';
+    setDrainMs(0);
     try {
       if (activeRecorderRef.current && activeRecorderRef.current.state !== 'inactive') {
         activeRecorderRef.current.stop();
@@ -349,7 +365,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     // Korekta drftu byla zrodlem mikro-cofniec na Android.
     const tick = () => {
       mseRafRef.current = requestAnimationFrame(tick);
-      if (stopped || isPausedRef.current || !sb || !delayedVideoRef.current) return;
+      // W pauzie pętla musi milczeć. Bez tego "pilnowanie autoplay" ponizej
+      // wciska play z powrotem w kazdej klatce i pauza jest nie do zauwazenia.
+      if (stopped || isPausedRef.current || pausePhaseRef.current !== 'none') return;
+      if (!sb || !delayedVideoRef.current) return;
       const vid = delayedVideoRef.current;
       let buffered: TimeRanges;
       try { buffered = sb.buffered; } catch { return; }
@@ -386,7 +405,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       if (waitingTimer) return;
       waitingTimer = setTimeout(() => {
         waitingTimer = null;
-        if (stopped || !sb || !delayedVideoRef.current) return;
+        // Ten sam powod co w tick(): w pauzie nie wolno wznawiac gry,
+        // bo fallback rozjechalby stop-klatke.
+        if (stopped || pausePhaseRef.current !== 'none') return;
+        if (!sb || !delayedVideoRef.current) return;
         const vid2 = delayedVideoRef.current;
         try {
           if (sb.buffered.length === 0) return;
@@ -608,6 +630,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
+    if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
+    setPausePhase('none');
+    pausePhaseRef.current = 'none';
+    setDrainMs(0);
     if (mseRafRef.current !== null) { cancelAnimationFrame(mseRafRef.current); mseRafRef.current = null; }
     if (mseCleanupRef.current) {
       try { mseCleanupRef.current(); } catch { /* ignore */ }
@@ -650,23 +676,91 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
   }, []);
 
+  // PAUZA ("idę po strzały"). Nie zamraza obrazu natychmiast: w buforze
+  // siedzi jeszcze cale okno opoznienia, ktorego user nie widzial. Wiec
+  // najpierw odcinamy doplyw nowych klatek, dogrywamy reszte z odliczaniem
+  // ('draining'), a dopiero na koncu zatrzymujemy obraz ('frozen').
+  // WZNOWIENIE odbudowuje pipeline od zera — bufor napelnia sie na nowo,
+  // dokladnie ta sama sciezka co przy starcie sesji.
   const toggleRecordingPause = useCallback(() => {
+    const vid = delayedVideoRef.current;
+
     if (!recordingPaused) {
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      delayedVideoRef.current?.pause();
+      // Odetnij doplyw do MSE — bufor przestaje rosnac, wiec konczy sie
+      // dokladnie na momencie wcisniecia pauzy.
+      try {
+        const ar = activeRecorderRef.current;
+        if (ar && ar.state === 'recording') ar.pause();
+      } catch { /* ignore */ }
+      // Klip zatrzymuje sie na momencie wcisniecia — ogon, ktory user
+      // wlasnie oglada, jest juz w pliku.
       try { fullRecorderRef.current?.pause(); } catch { /* nie wszystkie przegladarki wspieraja */ }
+
       setRecordingPaused(true);
-    } else {
-      delayedVideoRef.current?.play().catch(() => { /* ignore */ });
-      // Wznawiamy klip TYLKO jesli byl uzbrojony przed pauza — inaczej pauza
-      // po wylaczeniu REC po cichu wlaczylaby nagrywanie z powrotem.
-      if (clipActive) {
-        try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
-      }
-      timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
-      setRecordingPaused(false);
+      setPausePhase('draining');
+      pausePhaseRef.current = 'draining';
+
+      const started = Date.now();
+      const hardStopMs = delayMsRef.current + 4000; // bezpiecznik na stall
+      if (drainTimerRef.current) clearInterval(drainTimerRef.current);
+      const freeze = () => {
+        if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
+        try { delayedVideoRef.current?.pause(); } catch { /* ignore */ }
+        setDrainMs(0);
+        setPausePhase('frozen');
+        pausePhaseRef.current = 'frozen';
+      };
+      drainTimerRef.current = setInterval(() => {
+        const v2 = delayedVideoRef.current;
+        if (!v2) { freeze(); return; }
+        // Pauza wcisnieta jeszcze w buforowaniu: obraz nie gra, wiec nie ma
+        // czego dogrywac — zamrazamy od razu zamiast czekac na bezpiecznik.
+        if (v2.paused) { freeze(); return; }
+        let end = 0;
+        try { end = v2.buffered.length ? v2.buffered.end(v2.buffered.length - 1) : 0; } catch { /* ignore */ }
+        const remain = Math.max(0, end - v2.currentTime);
+        setDrainMs(Math.round(remain * 1000));
+        if (remain <= 0.25 || Date.now() - started > hardStopMs) freeze();
+      }, 200);
+      return;
     }
-  }, [recordingPaused, clipActive]);
+
+    // ─── Wznowienie ───────────────────────────────────────────────────────
+    if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
+    setDrainMs(0);
+    setPausePhase('none');
+    pausePhaseRef.current = 'none';
+
+    // Zburz stary pipeline MSE i zbuduj od nowa — bufor napelnia sie
+    // od zera, zamiast wznawiac gre ze starego, juz nieaktualnego okna.
+    if (mseRafRef.current !== null) { cancelAnimationFrame(mseRafRef.current); mseRafRef.current = null; }
+    if (mseCleanupRef.current) {
+      try { mseCleanupRef.current(); } catch { /* ignore */ }
+      mseCleanupRef.current = null;
+    }
+    activeRecorderRef.current = null;
+    if (vid) {
+      try { vid.pause(); vid.removeAttribute('src'); vid.load(); } catch { /* ignore */ }
+    }
+
+    // Wznawiamy klip TYLKO jesli byl uzbrojony przed pauza — inaczej pauza
+    // po wylaczeniu REC po cichu wlaczylaby nagrywanie z powrotem.
+    if (clipActive) {
+      try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+    }
+
+    setRecordingPaused(false);
+    setBufferMs(0);
+    timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
+
+    // runMSE wolane wprost, nie przez pendingMSERef: gdyby pauza wypadla
+    // jeszcze w trakcie buforowania, setMirrorState('buffering') nie zmienia
+    // stanu i useEffect by nie wystartowal.
+    const stream = streamRef.current;
+    const codec = getStreamCodec();
+    if (stream && codec) runMSE(stream, codec);
+  }, [recordingPaused, clipActive, runMSE]);
 
   // REC w trakcie sesji. Pierwsze uzbrojenie buduje potok klipu; kolejne
   // przelaczenia to pause/resume tego samego recordera, wiec caly material
@@ -1179,11 +1273,20 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       {/* Pasek pauzy — bez niego user odchodzi od telefonu myslac, ze skonczyl */}
       {recordingPaused && (mirrorState === 'live' || mirrorState === 'buffering') && (
         <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 z-30 flex justify-center px-8 pointer-events-none">
-          <div className="flex items-center gap-2 bg-[#fed33e]/20 backdrop-blur-sm rounded-2xl px-5 py-3 border border-[#fed33e]/50">
-            <span className="material-symbols-outlined text-[#fed33e] text-xl">pause</span>
-            <span className="text-[#fed33e] text-sm font-black uppercase tracking-widest">
-              {t('delayMirror.pausedBanner')}
-            </span>
+          <div className="flex flex-col items-center gap-1 bg-[#fed33e]/20 backdrop-blur-sm rounded-2xl px-5 py-3 border border-[#fed33e]/50">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[#fed33e] text-xl">pause</span>
+              <span className="text-[#fed33e] text-sm font-black uppercase tracking-widest">
+                {t('delayMirror.pausedBanner')}
+              </span>
+            </div>
+            {/* Dogrywanie reszty bufora — bez tego user widzi ruchomy obraz
+                pod napisem "wstrzymane" i nie wie, czy pauza zadzialala. */}
+            {pausePhase === 'draining' && (
+              <span className="text-[#fed33e]/80 text-xs font-bold tabular-nums">
+                {t('delayMirror.drainHint', { seconds: Math.ceil(drainMs / 1000) })}
+              </span>
+            )}
           </div>
         </div>
       )}

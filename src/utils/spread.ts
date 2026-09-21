@@ -12,7 +12,9 @@ export interface SpreadResult {
 const is3Spot = (targetType: string) => isSpotFace(targetType);
 
 // Środek tarczy dla danego dot — pełna tarcza = (150,150); 3-spot = najbliższy spot.
-function centerFor(targetType: string, x: number, y: number): { cX: number; cY: number } {
+// Eksportowane, bo kierunek strzały (godzina) liczy się względem TEGO środka —
+// bez tego każda strzała na dolnym spocie wychodziłaby „na szóstej”.
+export function centerFor(targetType: string, x: number, y: number): { cX: number; cY: number } {
   if (is3Spot(targetType)) {
     const cX = x < 150 ? 75 : 225;
     let cY = 333;

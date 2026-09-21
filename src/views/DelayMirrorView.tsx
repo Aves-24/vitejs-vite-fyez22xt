@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
+import DelayMirrorSeries, { TechSeriesDraft } from './DelayMirrorSeries';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -126,8 +127,17 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const [pausePhase, setPausePhase] = useState<PausePhase>('none');
   const pausePhaseRef = useRef<PausePhase>('none');
   useEffect(() => { pausePhaseRef.current = pausePhase; }, [pausePhase]);
+  // Analiza dopiero po dograniu bufora — user najpierw oglada ostatnie
+  // strzaly, dopiero potem idzie je zbierac.
+  useEffect(() => {
+    if (pausePhase === 'frozen' && hasClipRef.current) setShowSeries(true);
+  }, [pausePhase]);
   const [drainMs, setDrainMs] = useState(0);
   const drainTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Analiza serii (tarcza + wbijanie strzal). Otwiera sie po zamrozeniu
+  // obrazu, ale tylko w trybie z nagraniem — w samym lustrze nie ma klipu,
+  // do ktorego te strzaly mialyby sie odnosic.
+  const [showSeries, setShowSeries] = useState(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -762,6 +772,20 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     if (stream && codec) runMSE(stream, codec);
   }, [recordingPaused, clipActive, runMSE]);
 
+  // Zapis analizy serii. Celowo localStorage, nie Firestore: nowa kolekcja
+  // wymagalaby wdrozenia regul, a bez nich zapis cicho odbija. Ksztalt jest
+  // docelowy, wiec przeniesienie do Firestore przy ekranie ze znacznikami
+  // to podmiana samego zapisu.
+  const saveSeriesDraft = useCallback((draft: TechSeriesDraft) => {
+    try {
+      const key = `grotX_techSeries_${auth.currentUser?.uid || 'anon'}`;
+      const prev = JSON.parse(localStorage.getItem(key) || '[]');
+      prev.push({ ...draft, id: `${Date.now()}`, createdAt: new Date().toISOString() });
+      // Trzymamy ostatnie 50 serii — to kilkadziesiat kB, nie ma po co wiecej.
+      localStorage.setItem(key, JSON.stringify(prev.slice(-50)));
+    } catch { /* ignore — brak miejsca nie moze wywalic sesji */ }
+  }, []);
+
   // REC w trakcie sesji. Pierwsze uzbrojenie buduje potok klipu; kolejne
   // przelaczenia to pause/resume tego samego recordera, wiec caly material
   // laduje w JEDNYM pliku i wczesniejsze ujecia nie gina.
@@ -1190,6 +1214,18 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         </div>
       )}
 
+      {/* Analiza serii — tarcza i wbijanie strzal. Lezy nad podgladem,
+          bo obraz jest w tym momencie zamrozony i nic sie pod spodem
+          nie dzieje. */}
+      {showSeries && (
+        <DelayMirrorSeries
+          userId={auth.currentUser?.uid || ''}
+          onBack={() => { setShowSeries(false); toggleRecordingPause(); }}
+          onWatchOnly={() => { setShowSeries(false); toggleRecordingPause(); }}
+          onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); toggleRecordingPause(); }}
+        />
+      )}
+
       {mirrorState === 'review' && (
         <DelayMirrorReplay
           blob={lastBlob}
@@ -1207,7 +1243,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         <div className={`absolute top-4 z-30 flex items-center gap-2 flex-wrap max-w-[calc(100%-5rem)] ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
           {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
               samego lustra czerwona kropka bylaby klamstwem. */}
-          {clipActive && (
+          {clipActive && !recordingPaused && (
             <div className="flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-red-500/40">
               <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
               <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
@@ -1301,11 +1337,20 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
             }`}
           >
             <span className="material-symbols-outlined text-2xl leading-none">
-              {recordingPaused ? 'play_arrow' : 'pause'}
+              {recordingPaused ? 'play_arrow' : hasClip ? 'flag' : 'pause'}
             </span>
+            {/* Z klipem pauza konczy serie i otwiera analize, wiec „Pauza”
+                przestalaby opisywac, co ten przycisk robi. */}
             <span className="text-[11px] font-black uppercase tracking-widest leading-tight">
-              {recordingPaused ? t('delayMirror.resumePause') : t('delayMirror.pauseBtn')}
+              {recordingPaused
+                ? t('delayMirror.resumePause')
+                : hasClip ? t('delayMirror.endSeries') : t('delayMirror.pauseBtn')}
             </span>
+            {!recordingPaused && hasClip && (
+              <span className="text-[10px] font-bold text-white/50 leading-tight">
+                {t('delayMirror.endSeriesSub')}
+              </span>
+            )}
           </button>
 
           {/* ZAKONCZ — akcja terminalna. Druga linia mowi, gdzie laduje user:

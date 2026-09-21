@@ -1655,6 +1655,8 @@ export const views = {
     seriesArrowsTitle: "Wie viele Pfeile pro Passe?",
     seriesGoCollect: "Pfeile holen",
     seriesWatchOnly: "Analyse überspringen",
+    expertMode: "Expertenmodus",
+    simpleHint: "{{seconds}} s Verzögerung, quer, nichts wird gespeichert.",
     endSeries: "Passe beenden",
     endSeriesSub: "Analyse",
     seriesEnterHint: "Wo sitzt Pfeil {{n}}?",

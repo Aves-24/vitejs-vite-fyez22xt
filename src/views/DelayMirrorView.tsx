@@ -11,6 +11,7 @@ const MIN_DELAY_S = 1;
 const MAX_DELAY_S = 30;
 const STORAGE_KEY = 'delayMirror.delaySeconds';
 const CLIP_STORAGE_KEY = 'delayMirror.clipMode';
+const EXPERT_STORAGE_KEY = 'delayMirror.expert';
 
 // 'review' = sesja zakonczona, pokazujemy powtorke. To NIE jest pauza —
 // pauza w trakcie nagrania siedzi w osobnym `recordingPaused`.
@@ -85,6 +86,15 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const [clipMode, setClipMode] = useState<boolean>(() => {
     try { return localStorage.getItem(CLIP_STORAGE_KEY) === '1'; } catch { return false; }
   });
+  // Tryb prosty vs ekspercki. Prosty to samo lustro: 15 s, poziomo, nic nie
+  // zapisuje i nie pokazuje zadnych ustawien. Ekspercki odslania suwak
+  // opoznienia, orientacje, nagrywanie i analize serii.
+  const [expert, setExpert] = useState<boolean>(() => {
+    try { return localStorage.getItem(EXPERT_STORAGE_KEY) === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(EXPERT_STORAGE_KEY, expert ? '1' : '0'); } catch { /* ignore */ }
+  }, [expert]);
   // Czy klip zbiera dane w tej chwili (REC uzbrojony i nie na pauzie).
   const [clipActive, setClipActive] = useState(false);
   // Czy w tej sesji powstal juz jakikolwiek material do klipu — decyduje,
@@ -163,8 +173,12 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Persist delay setting + sync ref
   useEffect(() => {
     delayMsRef.current = delaySeconds * 1000;
-    try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
-  }, [delaySeconds]);
+    // Zapisujemy tylko wybor eksperta — inaczej 15 s wymuszone przez tryb
+    // prosty kasowaloby ustawienie, ktore ekspert swiadomie zmienil.
+    if (expert) {
+      try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
+    }
+  }, [delaySeconds, expert]);
 
   // Persist wybor trybu nagrywania
   useEffect(() => {
@@ -1078,7 +1092,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           <h2 className={`font-black text-white mb-2 ${_displayAsLandscape ? 'text-xl' : 'text-2xl'}`}>{t('delayMirror.title')}</h2>
           <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-4">
             <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-            <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+            {/* W trybie prostym badge musi pokazywac to, co faktycznie
+                wystartuje, a nie opoznienie zapamietane przez eksperta. */}
+            <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: expert ? delaySeconds : DEFAULT_DELAY_S })}</span>
           </div>
           {/* Privacy note — w landscape w lewej kolumnie */}
           {_displayAsLandscape && (
@@ -1091,6 +1107,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
         {/* PRAWA KOLUMNA (lub dolna w portrait): suwak + orientacja + start */}
         <div className={`flex flex-col items-stretch ${_displayAsLandscape ? 'flex-1 max-w-xs gap-2.5' : 'w-full max-w-xs gap-3 mt-1'}`}>
+          {/* Ustawienia eksperckie — ukryte, dopoki user sam ich nie zazada.
+              Tryb prosty ma byc jednym przyciskiem, nie formularzem. */}
+          {expert && (
+          <>
           {/* Suwak opóźnienia */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -1161,17 +1181,46 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               {clipMode ? t('delayMirror.modeRecordHint') : t('delayMirror.modeMirrorHint')}
             </p>
           </div>
+          </>
+          )}
 
           <button
-            onClick={startRecording}
-            disabled={!orientationConfirmed}
+            onClick={() => {
+              // Tryb prosty narzuca standard: 15 s, poziomo, bez klipu.
+              if (!expert) {
+                setDelaySeconds(DEFAULT_DELAY_S);
+                setClipMode(false);
+                setManualLandscape(true);
+                setOrientationConfirmed(true);
+              }
+              startRecording();
+            }}
+            disabled={expert && !orientationConfirmed}
             className={`w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest transition-all ${
-              orientationConfirmed
+              !expert || orientationConfirmed
                 ? 'bg-[#fed33e] text-[#0a3a2a] active:scale-95 shadow-lg shadow-[#fed33e]/20'
                 : 'bg-white/10 text-white/30 cursor-not-allowed'
             }`}
           >
             {t('delayMirror.start')}
+          </button>
+
+          {!expert && (
+            <p className="text-white/40 text-[11px] leading-snug text-center -mt-1">
+              {t('delayMirror.simpleHint', { seconds: DEFAULT_DELAY_S })}
+            </p>
+          )}
+
+          <button
+            onClick={() => setExpert(v => !v)}
+            className={`w-full py-2.5 rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 border ${
+              expert
+                ? 'bg-[#fed33e]/15 text-[#fed33e] border-[#fed33e]/40'
+                : 'bg-white/5 text-white/60 border-white/15'
+            }`}
+          >
+            <span className="material-symbols-outlined text-base">{expert ? 'expand_less' : 'tune'}</span>
+            {t('delayMirror.expertMode')}
           </button>
 
           {/* Privacy note — w portrait pod startem */}
@@ -1265,7 +1314,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               na bufor to naturalny moment, zeby je ustawic. Tylko suwak
               opoznienia czeka na 'live', bo zmiana w trakcie buforowania
               przestawialaby prog, ktory wlasnie jest odliczany. */}
-              {/* REC — czy ten fragment ma trafic do klipu */}
+              {/* REC — czy ten fragment ma trafic do klipu. Tylko ekspert:
+                  w trybie prostym nic sie nie zapisuje, wiec uzbrajanie
+                  nagrania nie ma tam czego robic. */}
+              {expert && (
               <button
                 onClick={toggleClipRecording}
                 disabled={recordingPaused}
@@ -1284,6 +1336,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
                   {clipActive ? t('delayMirror.recOn') : t('delayMirror.recOff')}
                 </span>
               </button>
+              )}
 
               {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
               <button
@@ -1298,8 +1351,8 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
                 <span className="text-xs font-bold">{t('delayMirror.grid')}</span>
               </button>
 
-              {/* Opoznienie — ustawienie widoku */}
-              {mirrorState === 'live' && (
+              {/* Opoznienie — ustawienie widoku, tylko dla eksperta */}
+              {expert && mirrorState === 'live' && (
                 <button
                   onClick={() => setShowDelayPicker(true)}
                   className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"

@@ -1687,6 +1687,8 @@ export const views = {
     seriesArrowsTitle: "Ile strzał w serii?",
     seriesGoCollect: "Idę po strzały",
     seriesWatchOnly: "Pomiń analizę",
+    expertMode: "Tryb ekspercki",
+    simpleHint: "{{seconds}} s opóźnienia, poziomo, nic nie zapisujemy.",
     endSeries: "Koniec serii",
     endSeriesSub: "analiza",
     seriesEnterHint: "Gdzie wbiła się strzała {{n}}?",

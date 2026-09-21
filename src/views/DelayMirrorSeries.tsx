@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TargetInput from '../components/targets/TargetInput';
 import { isSpotFace, DEFAULT_TARGET_FACE } from '../config/targetFaces';
@@ -66,6 +66,23 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     try { return localStorage.getItem('delayMirror.seriesArrows') === '3' ? 3 : 6; } catch { return 6; }
   });
   const [shots, setShots] = useState<TechShot[]>([]);
+
+  // W poziomie tarcza musi skalowac sie do WYSOKOSCI, nie szerokosci —
+  // TargetInput domyslnie robi odwrotnie (w-full + maxHeight 58vh), przez co
+  // na lezacym telefonie widac tylko gorna czesc tarczy.
+  const [landscape, setLandscape] = useState(
+    typeof window !== 'undefined' ? window.innerWidth > window.innerHeight : false
+  );
+  useEffect(() => {
+    const update = () => setLandscape(window.innerWidth > window.innerHeight);
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('orientationchange', update);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('orientationchange', update);
+    };
+  }, []);
 
   const targetType = useSpot ? SPOT_FACE : roundFace;
 
@@ -179,43 +196,62 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
         currentCoords={currentCoords}
         onUndo={undo}
         targetType={targetType}
+        embed={{
+          // Wyjscie robi wlasny przycisk. Bez tego TargetInput po szostej
+          // strzale sam wywoluje onToggleFullscreen i wyrzuca do wyboru tarczy.
+          autoExit: false,
+          padClass: landscape ? 'pb-1' : 'pb-24',
+          headerClass: landscape ? 'px-4 pt-2 mb-1' : undefined,
+          // Bezwzglednie, nie w procentach — patrz uwaga przy `embed`.
+          // 160px = zmierzony naglowek (~56) + pasek z kafelkami kierunku (~97).
+          svgStyle: landscape ? { maxHeight: 'calc(100vh - 160px)' } : undefined,
+        }}
       />
 
       {/* Pasek nad tarcza. pl-20 zostawia wolny celownik offsetu w lewym
-          dolnym rogu (TargetInput: left-6 bottom-8). */}
+          dolnym rogu (TargetInput: left-6 bottom-8). W poziomie wszystko
+          w jednej linii, bo wysokosc jest tam towarem deficytowym. */}
       <div
-        className="fixed bottom-0 inset-x-0 z-[100001] bg-[#050f0a]/95 backdrop-blur-sm border-t border-white/15 px-4 pl-20 pt-2 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className={`fixed bottom-0 inset-x-0 z-[100001] bg-[#050f0a]/95 backdrop-blur-sm border-t border-white/15 pl-20 pr-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+          landscape ? 'pt-1.5 flex items-center gap-3' : 'pt-2 px-4'
+        }`}
       >
-        <p className="text-white/70 text-[10px] font-black uppercase tracking-wider text-center mb-1.5">
-          {complete ? t('delayMirror.seriesEnterDone') : t('delayMirror.seriesEnterHint', { n: nextN })}
-        </p>
+        <div className={landscape ? 'flex-1 min-w-0' : ''}>
+          <p className={`text-white/70 text-[10px] font-black uppercase tracking-wider ${landscape ? 'text-left truncate' : 'text-center mb-1.5'}`}>
+            {complete ? t('delayMirror.seriesEnterDone') : t('delayMirror.seriesEnterHint', { n: nextN })}
+          </p>
 
-        {/* Odczyt kierunku — informacja, po ktora user tu przyszedl.
-            Punkty sa produktem ubocznym, wektor jest sygnalem. */}
-        {shots.length > 0 && (
-          <div className="flex flex-wrap gap-1 justify-center mb-2">
-            {shots.map(s => {
-              const { clock } = shotDirection(targetType, s.x, s.y);
-              return (
-                <span
-                  key={s.n}
-                  className="text-[10px] font-bold text-white/80 bg-white/10 rounded-lg px-1.5 py-0.5 tabular-nums"
-                >
-                  <span className="text-[#fed33e]">{s.n}</span>
-                  {' '}
-                  {clock === null
-                    ? t('delayMirror.seriesCenter', { score: s.score })
-                    : t('delayMirror.seriesClock', { score: s.score, clock })}
-                </span>
-              );
-            })}
-          </div>
-        )}
+          {/* Odczyt kierunku — informacja, po ktora user tu przyszedl.
+              Punkty sa produktem ubocznym, wektor jest sygnalem. */}
+          {/* W poziomie JEDEN przewijalny rzad — zawijanie urosloby pasek
+              do trzech linii i zjadlo dolna krawedz tarczy. */}
+          {shots.length > 0 && (
+            <div className={`flex gap-1 ${landscape ? 'flex-nowrap overflow-x-auto mt-0.5 pb-0.5' : 'flex-wrap justify-center mb-2'}`}>
+              {shots.map(s => {
+                const { clock } = shotDirection(targetType, s.x, s.y);
+                return (
+                  <span
+                    key={s.n}
+                    className="text-[10px] font-bold text-white/80 bg-white/10 rounded-lg px-1.5 py-0.5 tabular-nums whitespace-nowrap shrink-0"
+                  >
+                    <span className="text-[#fed33e]">{s.n}</span>
+                    {' '}
+                    {clock === null
+                      ? t('delayMirror.seriesCenter', { score: s.score })
+                      : t('delayMirror.seriesClock', { score: s.score, clock })}
+                  </span>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         <button
           onClick={() => onReady({ targetType, arrowCount, shots })}
           disabled={shots.length === 0}
-          className={`w-full py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+          className={`rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+            landscape ? 'shrink-0 py-2.5 px-5' : 'w-full py-3'
+          } ${
             shots.length === 0
               ? 'bg-white/10 text-white/30 cursor-not-allowed'
               : 'bg-[#fed33e] text-[#0a3a2a] active:scale-95 shadow-lg shadow-[#fed33e]/20'

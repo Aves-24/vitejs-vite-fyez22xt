@@ -24,7 +24,17 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
   return { bg: '#F9F9F9', text: 'transparent', stroke: '#f3f4f6' };
 };
 
-export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType }: any) {
+// `embed` — opcjonalne nadpisania dla osadzenia w innym przepływie niż
+// ScoringView. Bez tego propu komponent zachowuje się dokładnie jak wcześniej.
+//   autoExit  false = nie wychodź sam po 6 strzałach (seria może mieć 3,
+//                     a w treningu technicznym wyjście robi własny przycisk)
+//   svgStyle  nadpisania rozmiaru SVG. UWAGA: maxHeight musi być bezwzględne
+//             (vh/px). Procenty liczą się względem rodzica `flex-1`, który ma
+//             min-height:auto, więc rozciąga się do naturalnej wysokości SVG
+//             i ogranicznik sam się unieważnia.
+//   padClass  odstęp pod tarczą w trybie pełnoekranowym
+//   headerClass  odstępy paska ze slotami (w poziomie 88px to za dużo)
+export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed }: any) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoom] = useState(() => parseFloat(localStorage.getItem('grotx-zoom') || '1'));
   const [isAiming, setIsAiming] = useState(false);
@@ -62,13 +72,14 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   }, [isFullscreen]);
 
   useEffect(() => {
+    if (embed?.autoExit === false) return;
     if (currentArrows.length === 6 && isFullscreen) {
       const timer = setTimeout(() => {
         onToggleFullscreen();
       }, 500); 
       return () => clearTimeout(timer);
     }
-  }, [currentArrows.length, isFullscreen, onToggleFullscreen]);
+  }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit]);
 
   const getSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -147,7 +158,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           LEWO: lupa (absolute, gdy celujesz).
           ŚRODEK: shot badges + undo — wycentrowane by nie nachodziły na lupę.
           PRAWO: fullscreen / close button. */}
-      <div className={`w-full flex justify-between items-start z-20 pointer-events-none shrink-0 ${isFullscreen ? 'relative px-6 pt-6 mb-4' : 'px-2 pt-2 absolute top-0'}`}>
+      <div className={`w-full flex justify-between items-start z-20 pointer-events-none shrink-0 ${isFullscreen ? `relative ${embed?.headerClass ?? 'px-6 pt-6 mb-4'}` : 'px-2 pt-2 absolute top-0'}`}>
 
         {/* LEWO: kontener dla lupy. Zarezerwowana szerokość mała (lupa jest
             absolute i wystaje do 115px/88px wizualnie). Duża kolumna przepełniała
@@ -260,7 +271,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         )}
       </div>
 
-      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? 'pb-24' : ''}`}>
+      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : ''}`}>
         <svg 
           ref={svgRef} 
           viewBox={is3Spot ? "-20 -40 340 480" : isCompactFace ? (isFullscreen ? "-20 -50 340 410" : "-20 -30 340 360") : (isFullscreen ? "-20 -50 340 390" : "-20 0 340 300")}
@@ -270,7 +281,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             transform: spotFocus !== 'ALL' ? 'scale(1.8)' : `scale(${zoom})`, 
             transformOrigin: getOrigin(),
             maxHeight: isFullscreen ? '58vh' : '100%',
-            height: isFullscreen ? 'auto' : '230px'
+            height: isFullscreen ? 'auto' : '230px',
+            ...(embed?.svgStyle || {}),
           }}
         >
           {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={setSpotFocus} /> : <StandardTarget targetType={targetType} />}

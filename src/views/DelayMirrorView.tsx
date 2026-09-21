@@ -127,6 +127,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const [pausePhase, setPausePhase] = useState<PausePhase>('none');
   const pausePhaseRef = useRef<PausePhase>('none');
   useEffect(() => { pausePhaseRef.current = pausePhase; }, [pausePhase]);
+  useEffect(() => { recordingPausedRef.current = recordingPaused; }, [recordingPaused]);
   // Analiza dopiero po dograniu bufora — user najpierw oglada ostatnie
   // strzaly, dopiero potem idzie je zbierac.
   useEffect(() => {
@@ -138,6 +139,11 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // obrazu, ale tylko w trybie z nagraniem — w samym lustrze nie ma klipu,
   // do ktorego te strzaly mialyby sie odnosic.
   const [showSeries, setShowSeries] = useState(false);
+  // Refy dla handlera visibilitychange — ten efekt nie zalezy od tych stanow,
+  // wiec bez refow czytalby wartosci z momentu podpiecia.
+  const showSeriesRef = useRef(false);
+  useEffect(() => { showSeriesRef.current = showSeries; }, [showSeries]);
+  const recordingPausedRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   const isPausedRef = useRef(false);
@@ -270,6 +276,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Auto-pause on background
   useEffect(() => {
     const onVisibility = () => {
+      // Wstrzymana sesja NIE moze ginac w tle: user idzie z telefonem do
+      // tarczy wbic strzaly, ekran po drodze gasnie. Przed tym warunkiem
+      // wracal do menu i traci cala serie.
+      if (recordingPausedRef.current || showSeriesRef.current) return;
       if (document.hidden && (mirrorState === 'live' || mirrorState === 'buffering')) {
         finishRecording();
       }
@@ -1182,6 +1192,20 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   return (
     <>
     {orientationToggle}
+
+    {/* Analiza serii — POZA kontenerem rotujacym UI lustra. Rotacja sluzy
+        podgladowi kamery; przy wbijaniu strzal user trzyma telefon w rece
+        jak chce, a `position: fixed` w TargetInput rozwiazuje sie wzgledem
+        przodka z transformacja i caly ekran wychodzi przekrecony. */}
+    {showSeries && (
+      <DelayMirrorSeries
+        userId={auth.currentUser?.uid || ''}
+        onBack={() => { setShowSeries(false); toggleRecordingPause(); }}
+        onWatchOnly={() => { setShowSeries(false); toggleRecordingPause(); }}
+        onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); toggleRecordingPause(); }}
+      />
+    )}
+
     <div className="bg-black overflow-hidden select-none" style={screenStyle}>
       {/* Camera video — natywna orientacja, NIE rotuje się z togglem.
           MSE pipeline: jeden ciagly stream, zero segmentow = brak migania. */}
@@ -1212,18 +1236,6 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           </div>
           <p className="text-[#fed33e] text-xs mt-2 font-bold">{bufferPct}%</p>
         </div>
-      )}
-
-      {/* Analiza serii — tarcza i wbijanie strzal. Lezy nad podgladem,
-          bo obraz jest w tym momencie zamrozony i nic sie pod spodem
-          nie dzieje. */}
-      {showSeries && (
-        <DelayMirrorSeries
-          userId={auth.currentUser?.uid || ''}
-          onBack={() => { setShowSeries(false); toggleRecordingPause(); }}
-          onWatchOnly={() => { setShowSeries(false); toggleRecordingPause(); }}
-          onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); toggleRecordingPause(); }}
-        />
       )}
 
       {mirrorState === 'review' && (

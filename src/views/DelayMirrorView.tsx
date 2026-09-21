@@ -9,8 +9,11 @@ const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
 const MAX_DELAY_S = 30;
 const STORAGE_KEY = 'delayMirror.delaySeconds';
+const CLIP_STORAGE_KEY = 'delayMirror.clipMode';
 
-type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'paused' | 'unsupported' | 'error';
+// 'review' = sesja zakonczona, pokazujemy powtorke. To NIE jest pauza —
+// pauza w trakcie nagrania siedzi w osobnym `recordingPaused`.
+type MirrorState = 'idle' | 'requesting' | 'positioning' | 'buffering' | 'live' | 'review' | 'unsupported' | 'error';
 
 interface Props {
   onBack: () => void;
@@ -72,6 +75,19 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     return DEFAULT_DELAY_S;
   });
   const delayMsRef = useRef<number>(delaySeconds * 1000);
+  // Tryb wybrany na ekranie startowym: czy w ogole zapisujemy klip.
+  // false = samo lustro — pelny recorder i potok canvas w ogole nie powstaja,
+  // wiec nie ma rosnacego bloba w RAM ani petli rAF rysujacej kazda klatke.
+  const [clipMode, setClipMode] = useState<boolean>(() => {
+    try { return localStorage.getItem(CLIP_STORAGE_KEY) === '1'; } catch { return false; }
+  });
+  // Czy klip zbiera dane w tej chwili (REC uzbrojony i nie na pauzie).
+  const [clipActive, setClipActive] = useState(false);
+  // Czy w tej sesji powstal juz jakikolwiek material do klipu — decyduje,
+  // czy "Zakoncz" prowadzi do powtorki, czy prosto do menu. Ref czyta
+  // finishRecording (deps []), stan renderuje etykiete przycisku.
+  const hasClipRef = useRef(false);
+  const [hasClip, setHasClip] = useState(false);
   const [premiumLoading, setPremiumLoading] = useState(true);
   const [mirrorState, setMirrorState] = useState<MirrorState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
@@ -122,6 +138,11 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     delayMsRef.current = delaySeconds * 1000;
     try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
   }, [delaySeconds]);
+
+  // Persist wybor trybu nagrywania
+  useEffect(() => {
+    try { localStorage.setItem(CLIP_STORAGE_KEY, clipMode ? '1' : '0'); } catch { /* ignore */ }
+  }, [clipMode]);
 
   // PRO gate
   useEffect(() => {
@@ -177,6 +198,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
     fullChunksRef.current = [];
+    setClipActive(false);
+    hasClipRef.current = false;
+    setHasClip(false);
     if (rotateCleanupRef.current) {
       try { rotateCleanupRef.current(); } catch { /* ignore */ }
       rotateCleanupRef.current = null;
@@ -221,7 +245,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   useEffect(() => {
     const onVisibility = () => {
       if (document.hidden && (mirrorState === 'live' || mirrorState === 'buffering')) {
-        pauseMirror();
+        finishRecording();
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
@@ -460,25 +484,16 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     } catch { /* ignore — niektore telefony odrzucaja srodkowe wartosci */ }
   }, []);
 
-  // Krok 2: po kliknieciu "Start" w positioning — odlacz live preview,
-  // odpal pelny recorder i MSE pipeline.
-  const beginDelayedRecording = useCallback(() => {
+  // Potok klipu: canvas (rotacja + wypalona siatka) -> MediaRecorder.
+  // Wydzielony z beginDelayedRecording, bo startuje albo razem z sesja
+  // (tryb "Lustro + nagranie"), albo dopiero gdy user uzbroi REC w trakcie.
+  // W trybie samego lustra nie powstaje wcale — nie ma ani rosnacego bloba
+  // w RAM, ani petli rAF przerysowujacej kazda klatke.
+  const startClipPipeline = useCallback(() => {
     const stream = streamRef.current;
-    if (!stream) return;
-    const streamCodec = getStreamCodec();
     const fullCodec = getFullCodec();
-    if (!streamCodec || !fullCodec) {
-      setMirrorState('unsupported');
-      return;
-    }
-
-    // Odepnij live preview <video> ZANIM odpalimy MSE — zeby decoder
-    // mial stream tylko dla siebie.
-    if (liveVideoRef.current) {
-      liveVideoRef.current.pause();
-      liveVideoRef.current.srcObject = null;
-    }
-
+    if (!stream || !fullCodec) return;
+    if (fullRecorderRef.current) return; // juz leci
     try {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
@@ -490,6 +505,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         // gdzie timeslice=1000ms dawalo moov z duration ~3s.
         fullRec.start();
         fullRecorderRef.current = fullRec;
+        hasClipRef.current = true;
+        setHasClip(true);
+        setClipActive(true);
       };
       // Pelny recorder ZAWSZE nagrywa z canvasa (nie z surowego streamu):
       // 1. Tryb poziomy przy zablokowanym portrait: kamera daje klatki pionowe,
@@ -543,6 +561,28 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       hv.play().catch(() => { /* autoplay — i tak rysujemy z rAF */ });
       setLastBlob(null);
     } catch { /* ignore — MSE delay nadal dziala */ }
+  }, [manualLandscape, isPortrait]);
+
+  // Krok 2: po kliknieciu "Start" w positioning — odlacz live preview,
+  // odpal MSE pipeline i (tylko w trybie z nagraniem) potok klipu.
+  const beginDelayedRecording = useCallback(() => {
+    const stream = streamRef.current;
+    if (!stream) return;
+    const streamCodec = getStreamCodec();
+    const fullCodec = getFullCodec();
+    if (!streamCodec || !fullCodec) {
+      setMirrorState('unsupported');
+      return;
+    }
+
+    // Odepnij live preview <video> ZANIM odpalimy MSE — zeby decoder
+    // mial stream tylko dla siebie.
+    if (liveVideoRef.current) {
+      liveVideoRef.current.pause();
+      liveVideoRef.current.srcObject = null;
+    }
+
+    if (clipMode) startClipPipeline();
 
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
@@ -552,7 +592,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     pendingMSERef.current = { stream, codec: streamCodec };
     setMirrorState('buffering');
     setBufferMs(0);
-  }, [manualLandscape, isPortrait]);
+  }, [clipMode, startClipPipeline]);
 
   useEffect(() => {
     if (mirrorState === 'buffering' && pendingMSERef.current && delayedVideoRef.current) {
@@ -562,7 +602,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     }
   }, [mirrorState, runMSE]);
 
-  const pauseMirror = useCallback(() => {
+  // Konczy sesje: zatrzymuje kamere, MSE i klip. Nazwa celowo bez slowa
+  // "pause" — chwilowa pauza to osobne `toggleRecordingPause`.
+  const finishRecording = useCallback(() => {
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
@@ -598,12 +640,14 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       }
     } catch { /* ignore */ }
     fullRecorderRef.current = null;
+    setClipActive(false);
     streamRef.current?.getTracks().forEach(t => t.stop());
     streamRef.current = null;
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     delayedVideoRef.current?.pause();
     setRecordingPaused(false);
-    setMirrorState('paused');
+    // Bez klipu nie ma czego ogladac — wracamy prosto do menu startowego.
+    setMirrorState(hasClipRef.current ? 'review' : 'idle');
   }, []);
 
   const toggleRecordingPause = useCallback(() => {
@@ -614,11 +658,30 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       setRecordingPaused(true);
     } else {
       delayedVideoRef.current?.play().catch(() => { /* ignore */ });
-      try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+      // Wznawiamy klip TYLKO jesli byl uzbrojony przed pauza — inaczej pauza
+      // po wylaczeniu REC po cichu wlaczylaby nagrywanie z powrotem.
+      if (clipActive) {
+        try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+      }
       timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
       setRecordingPaused(false);
     }
-  }, [recordingPaused]);
+  }, [recordingPaused, clipActive]);
+
+  // REC w trakcie sesji. Pierwsze uzbrojenie buduje potok klipu; kolejne
+  // przelaczenia to pause/resume tego samego recordera, wiec caly material
+  // laduje w JEDNYM pliku i wczesniejsze ujecia nie gina.
+  const toggleClipRecording = useCallback(() => {
+    const fr = fullRecorderRef.current;
+    if (!fr) { startClipPipeline(); return; }
+    if (clipActive) {
+      try { fr.pause(); } catch { /* ignore */ }
+      setClipActive(false);
+    } else {
+      try { fr.resume(); } catch { /* ignore */ }
+      setClipActive(true);
+    }
+  }, [clipActive, startClipPipeline]);
 
   const resumeMirror = useCallback(() => {
     setMirrorState('idle');
@@ -943,6 +1006,40 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
             </div>
           </div>
 
+          {/* Tryb sesji — samo lustro czy lustro z zapisem klipu */}
+          <div>
+            <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-2 text-center">
+              {t('delayMirror.modeLabel')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setClipMode(false)}
+                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
+                  !clipMode
+                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
+                    : 'bg-white/5 text-white/70 border-white/15'
+                }`}
+              >
+                <span className="material-symbols-outlined text-2xl">visibility</span>
+                {t('delayMirror.modeMirror')}
+              </button>
+              <button
+                onClick={() => setClipMode(true)}
+                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
+                  clipMode
+                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
+                    : 'bg-white/5 text-white/70 border-white/15'
+                }`}
+              >
+                <span className="material-symbols-outlined text-2xl">videocam</span>
+                {t('delayMirror.modeRecord')}
+              </button>
+            </div>
+            <p className="text-white/40 text-[10px] leading-snug mt-1.5 text-center">
+              {clipMode ? t('delayMirror.modeRecordHint') : t('delayMirror.modeMirrorHint')}
+            </p>
+          </div>
+
           <button
             onClick={startRecording}
             disabled={!orientationConfirmed}
@@ -1005,7 +1102,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         </div>
       )}
 
-      {mirrorState === 'paused' && (
+      {mirrorState === 'review' && (
         <DelayMirrorReplay
           blob={lastBlob}
           displayAsLandscape={_displayAsLandscape}
@@ -1019,49 +1116,115 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
 
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className={`absolute top-4 z-30 flex items-center gap-2 ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
-          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span className="text-white text-xs font-bold">{formatTime(recSeconds)}</span>
-          </div>
-          {mirrorState === 'live' && (
-            <button
-              onClick={() => setShowDelayPicker(true)}
-              className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
-              title={t('delayMirror.delayLabel')}
-            >
-              <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
-              <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
-            </button>
+        <div className={`absolute top-4 z-30 flex items-center gap-2 flex-wrap max-w-[calc(100%-5rem)] ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
+          {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
+              samego lustra czerwona kropka bylaby klamstwem. */}
+          {clipActive && (
+            <div className="flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-red-500/40">
+              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
+            </div>
           )}
+          {/* REC i siatka dzialaja juz w trakcie buforowania — czekanie
+              na bufor to naturalny moment, zeby je ustawic. Tylko suwak
+              opoznienia czeka na 'live', bo zmiana w trakcie buforowania
+              przestawialaby prog, ktory wlasnie jest odliczany. */}
+              {/* REC — czy ten fragment ma trafic do klipu */}
+              <button
+                onClick={toggleClipRecording}
+                disabled={recordingPaused}
+                className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border ${
+                  recordingPaused
+                    ? 'bg-white/5 text-white/25 border-white/10'
+                    : clipActive
+                      ? 'bg-red-600/80 text-white border-red-500/40'
+                      : 'bg-black/60 text-white/60 border-white/20'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">
+                  {clipActive ? 'radio_button_checked' : 'radio_button_unchecked'}
+                </span>
+                <span className="text-xs font-bold uppercase tracking-wider">
+                  {clipActive ? t('delayMirror.recOn') : t('delayMirror.recOff')}
+                </span>
+              </button>
+
+              {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
+              <button
+                onClick={() => setShowGrid(v => !v)}
+                className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border ${
+                  showGrid
+                    ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+                    : 'bg-black/60 text-white/60 border-white/20'
+                }`}
+              >
+                <span className="material-symbols-outlined text-sm">grid_on</span>
+                <span className="text-xs font-bold">{t('delayMirror.grid')}</span>
+              </button>
+
+              {/* Opoznienie — ustawienie widoku */}
+              {mirrorState === 'live' && (
+                <button
+                  onClick={() => setShowDelayPicker(true)}
+                  className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
+                >
+                  <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
+                  <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
+                  <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+                </button>
+              )}
         </div>
       )}
 
+      {/* Pasek pauzy — bez niego user odchodzi od telefonu myslac, ze skonczyl */}
+      {recordingPaused && (mirrorState === 'live' || mirrorState === 'buffering') && (
+        <div className="absolute top-1/2 -translate-y-1/2 inset-x-0 z-30 flex justify-center px-8 pointer-events-none">
+          <div className="flex items-center gap-2 bg-[#fed33e]/20 backdrop-blur-sm rounded-2xl px-5 py-3 border border-[#fed33e]/50">
+            <span className="material-symbols-outlined text-[#fed33e] text-xl">pause</span>
+            <span className="text-[#fed33e] text-sm font-black uppercase tracking-widest">
+              {t('delayMirror.pausedBanner')}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* DOLNY PASEK = akcje sesji. Ustawienia widoku (siatka, opoznienie)
+          i REC siedza na gorze — dzieki temu nic, co tylko zmienia obraz,
+          nie stoi obok przycisku konczacego nagranie. */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center items-center gap-3 px-8">
-          {/* STOP → idzie do powtórki */}
-          <button
-            onClick={pauseMirror}
-            className="py-4 px-7 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-red-500/40 shadow-lg shadow-red-900/30"
-          >
-            <span className="material-symbols-outlined text-2xl">stop</span>
-          </button>
-          {/* PAUSE — chwilowe zamrożenie bez kończenia sesji */}
+        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center items-stretch gap-3 px-8">
+          {/* PAUZA — "idę po strzały": zamraza obraz i oszczedza baterie.
+              Dziala w obu trybach, bo nie dotyczy klipu tylko mojej obecnosci. */}
           <button
             onClick={toggleRecordingPause}
-            className={`py-4 px-7 backdrop-blur-sm rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center border ${
+            className={`flex-1 max-w-[10rem] py-3 px-4 backdrop-blur-sm rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
               recordingPaused
                 ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
-                : 'bg-white/10 text-white/70 border-white/15'
+                : 'bg-white/10 text-white/80 border-white/15'
             }`}
           >
-            <span className="material-symbols-outlined text-2xl">
+            <span className="material-symbols-outlined text-2xl leading-none">
               {recordingPaused ? 'play_arrow' : 'pause'}
             </span>
+            <span className="text-[11px] font-black uppercase tracking-widest leading-tight">
+              {recordingPaused ? t('delayMirror.resumePause') : t('delayMirror.pauseBtn')}
+            </span>
           </button>
-          {/* GRID toggle */}
-          {gridToggleBtn}
+
+          {/* ZAKONCZ — akcja terminalna. Druga linia mowi, gdzie laduje user:
+              z klipem do powtorki, bez klipu prosto do menu. */}
+          <button
+            onClick={finishRecording}
+            className="flex-1 max-w-[10rem] py-3 px-4 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border border-red-500/40 shadow-lg shadow-red-900/30"
+          >
+            <span className="material-symbols-outlined text-2xl leading-none">stop_circle</span>
+            <span className="text-[11px] font-black uppercase tracking-widest leading-tight">
+              {t('delayMirror.finish')}
+            </span>
+            <span className="text-[10px] font-bold text-white/60 leading-tight">
+              {hasClip ? t('delayMirror.finishToReplay') : t('delayMirror.finishToMenu')}
+            </span>
+          </button>
         </div>
       )}
 

@@ -918,6 +918,16 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     </button>
   );
 
+  // Kafelek wyboru na ekranie startowym (orientacja + tryb sesji). Jeden
+  // wzorzec zamiast czterech kopii tego samego lancucha klas. Celowo drobny:
+  // na malych telefonach cztery duze kafle spychaly Start pod krawedz.
+  const pickerBtn = (active: boolean) =>
+    `flex-1 py-2 px-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider leading-tight text-center active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
+      active
+        ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
+        : 'bg-white/5 text-white/70 border-white/15'
+    }`;
+
   if (mirrorState === 'positioning') {
     return (
       <>
@@ -1046,7 +1056,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         </div>
 
         {/* PRAWA KOLUMNA (lub dolna w portrait): suwak + orientacja + start */}
-        <div className={`flex flex-col items-stretch ${_displayAsLandscape ? 'flex-1 max-w-xs gap-3' : 'w-full max-w-xs gap-4 mt-2'}`}>
+        <div className={`flex flex-col items-stretch ${_displayAsLandscape ? 'flex-1 max-w-xs gap-2.5' : 'w-full max-w-xs gap-3 mt-1'}`}>
           {/* Suwak opóźnienia */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -1071,30 +1081,22 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
           {/* Wybór orientacji */}
           <div>
-            <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-2 text-center">
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
               {t('delayMirror.chooseOrientation')}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => { setManualLandscape(false); setOrientationConfirmed(true); }}
-                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
-                  orientationConfirmed && !manualLandscape
-                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
-                    : 'bg-white/5 text-white/70 border-white/15'
-                }`}
+                className={pickerBtn(orientationConfirmed && !manualLandscape)}
               >
-                <span className="material-symbols-outlined text-2xl">stay_current_portrait</span>
+                <span className="material-symbols-outlined text-lg">stay_current_portrait</span>
                 {t('delayMirror.orientationPortrait')}
               </button>
               <button
                 onClick={() => { setManualLandscape(true); setOrientationConfirmed(true); }}
-                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
-                  orientationConfirmed && manualLandscape
-                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
-                    : 'bg-white/5 text-white/70 border-white/15'
-                }`}
+                className={pickerBtn(orientationConfirmed && manualLandscape)}
               >
-                <span className="material-symbols-outlined text-2xl">stay_current_landscape</span>
+                <span className="material-symbols-outlined text-lg">stay_current_landscape</span>
                 {t('delayMirror.orientationLandscape')}
               </button>
             </div>
@@ -1102,30 +1104,22 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
           {/* Tryb sesji — samo lustro czy lustro z zapisem klipu */}
           <div>
-            <p className="text-white/70 text-xs font-bold uppercase tracking-widest mb-2 text-center">
+            <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
               {t('delayMirror.modeLabel')}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setClipMode(false)}
-                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
-                  !clipMode
-                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
-                    : 'bg-white/5 text-white/70 border-white/15'
-                }`}
+                className={pickerBtn(!clipMode)}
               >
-                <span className="material-symbols-outlined text-2xl">visibility</span>
+                <span className="material-symbols-outlined text-lg">visibility</span>
                 {t('delayMirror.modeMirror')}
               </button>
               <button
                 onClick={() => setClipMode(true)}
-                className={`flex-1 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest active:scale-95 transition-all flex flex-col items-center gap-1 border-2 ${
-                  clipMode
-                    ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
-                    : 'bg-white/5 text-white/70 border-white/15'
-                }`}
+                className={pickerBtn(clipMode)}
               >
-                <span className="material-symbols-outlined text-2xl">videocam</span>
+                <span className="material-symbols-outlined text-lg">videocam</span>
                 {t('delayMirror.modeRecord')}
               </button>
             </div>

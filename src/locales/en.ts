@@ -1657,6 +1657,7 @@ export const views = {
     seriesWatchOnly: "Skip analysis",
     expertMode: "Expert mode",
     simpleHint: "{{seconds}}s delay, landscape, nothing is saved.",
+    delayReset: "Back to {{seconds}}s",
     endSeries: "End of end",
     endSeriesSub: "analysis",
     seriesEnterHint: "Where did arrow {{n}} land?",

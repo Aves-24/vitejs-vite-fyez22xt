@@ -1689,6 +1689,7 @@ export const views = {
     seriesWatchOnly: "Pomiń analizę",
     expertMode: "Tryb ekspercki",
     simpleHint: "{{seconds}} s opóźnienia, poziomo, nic nie zapisujemy.",
+    delayReset: "Wróć do {{seconds}} s",
     endSeries: "Koniec serii",
     endSeriesSub: "analiza",
     seriesEnterHint: "Gdzie wbiła się strzała {{n}}?",

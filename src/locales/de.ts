@@ -1657,6 +1657,7 @@ export const views = {
     seriesWatchOnly: "Analyse überspringen",
     expertMode: "Expertenmodus",
     simpleHint: "{{seconds}} s Verzögerung, quer, nichts wird gespeichert.",
+    delayReset: "Zurück auf {{seconds}} s",
     endSeries: "Passe beenden",
     endSeriesSub: "Analyse",
     seriesEnterHint: "Wo sitzt Pfeil {{n}}?",

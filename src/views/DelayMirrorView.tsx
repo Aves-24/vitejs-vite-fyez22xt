@@ -173,12 +173,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Persist delay setting + sync ref
   useEffect(() => {
     delayMsRef.current = delaySeconds * 1000;
-    // Zapisujemy tylko wybor eksperta — inaczej 15 s wymuszone przez tryb
-    // prosty kasowaloby ustawienie, ktore ekspert swiadomie zmienil.
-    if (expert) {
-      try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
-    }
-  }, [delaySeconds, expert]);
+    // Jedno ustawienie wspolne dla obu trybow — 15 s jest wartoscia
+    // poczatkowa, nie ograniczeniem trybu prostego.
+    try { localStorage.setItem(STORAGE_KEY, String(delaySeconds)); } catch { /* ignore */ }
+  }, [delaySeconds]);
 
   // Persist wybor trybu nagrywania
   useEffect(() => {
@@ -966,6 +964,56 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     </button>
   );
 
+  // Suwak opoznienia w modalu. Wydzielony, bo uzywaja go dwa ekrany:
+  // startowy (odznaka w trybie prostym) i sesja na zywo (chip eksperta).
+  // `fixed`, zeby dzialal niezaleznie od kontenera, w ktorym go osadzimy.
+  const delayPickerModal = showDelayPicker ? (
+    <div
+      className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-[60] px-8"
+      onClick={() => setShowDelayPicker(false)}
+    >
+      <div
+        className="bg-[#0a0a0a] border border-white/15 rounded-3xl p-6 w-full max-w-xs"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
+          <span className="text-[#fed33e] text-2xl font-black tabular-nums">{delaySeconds}s</span>
+        </div>
+        <input
+          type="range"
+          min={MIN_DELAY_S}
+          max={MAX_DELAY_S}
+          step={1}
+          value={delaySeconds}
+          onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
+          className="w-full accent-[#fed33e]"
+          style={{ height: 24 }}
+        />
+        <div className="flex justify-between text-[10px] text-white/40 mt-1 mb-4 font-bold">
+          <span>{MIN_DELAY_S}s</span>
+          <span>{MAX_DELAY_S}s</span>
+        </div>
+        {/* Powrot do standardu jednym dotknieciem — bez tego user, ktory
+            raz przesunal suwak, musi trafic w 15 palcem. */}
+        {delaySeconds !== DEFAULT_DELAY_S && (
+          <button
+            onClick={() => setDelaySeconds(DEFAULT_DELAY_S)}
+            className="w-full py-2 mb-2 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-white/5 text-white/60 border border-white/15 active:scale-95 transition-all"
+          >
+            {t('delayMirror.delayReset', { seconds: DEFAULT_DELAY_S })}
+          </button>
+        )}
+        <button
+          onClick={() => setShowDelayPicker(false)}
+          className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+        >
+          OK
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   // Kafelek wyboru na ekranie startowym (orientacja + tryb sesji). Jeden
   // wzorzec zamiast czterech kopii tego samego lancucha klas. Celowo drobny:
   // na malych telefonach cztery duze kafle spychaly Start pod krawedz.
@@ -1072,6 +1120,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     return (
       <>
       {orientationToggle}
+      {delayPickerModal}
       <div style={screenStyle} className="bg-[#050f0a]">
         <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? 'flex flex-row items-center justify-center gap-8 px-10 py-4' : 'flex flex-col items-center justify-center px-8 py-6'}`}>
         <button onClick={onBack} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
@@ -1090,12 +1139,23 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
             <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>
           </div>
           <h2 className={`font-black text-white mb-2 ${_displayAsLandscape ? 'text-xl' : 'text-2xl'}`}>{t('delayMirror.title')}</h2>
-          <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-4">
-            <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-            {/* W trybie prostym badge musi pokazywac to, co faktycznie
-                wystartuje, a nie opoznienie zapamietane przez eksperta. */}
-            <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: expert ? delaySeconds : DEFAULT_DELAY_S })}</span>
-          </div>
+          {/* W trybie prostym odznaka jest jedynym wejsciem do opoznienia —
+              ekspert ma suwak nizej, wiec tam zostaje zwyklym napisem. */}
+          {expert ? (
+            <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-4">
+              <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
+              <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDelayPicker(true)}
+              className="flex items-center gap-2 bg-[#fed33e]/10 border border-[#fed33e]/30 rounded-xl px-4 py-2 mb-4 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
+              <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+              <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
+            </button>
+          )}
           {/* Privacy note — w landscape w lewej kolumnie */}
           {_displayAsLandscape && (
             <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2 mt-auto">
@@ -1186,9 +1246,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
           <button
             onClick={() => {
-              // Tryb prosty narzuca standard: 15 s, poziomo, bez klipu.
+              // Tryb prosty narzuca poziom i brak klipu. Opoznienia NIE
+              // narzuca — 15 s to wartosc poczatkowa, ale user moze ja
+              // zmienic odznaka nad przyciskiem.
               if (!expert) {
-                setDelaySeconds(DEFAULT_DELAY_S);
                 setClipMode(false);
                 setManualLandscape(true);
                 setOrientationConfirmed(true);
@@ -1207,7 +1268,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
           {!expert && (
             <p className="text-white/40 text-[11px] leading-snug text-center -mt-1">
-              {t('delayMirror.simpleHint', { seconds: DEFAULT_DELAY_S })}
+              {t('delayMirror.simpleHint', { seconds: delaySeconds })}
             </p>
           )}
 
@@ -1435,42 +1496,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         </div>
       )}
 
-      {showDelayPicker && (
-        <div
-          className="absolute inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-40 px-8"
-          onClick={() => setShowDelayPicker(false)}
-        >
-          <div
-            className="bg-[#0a0a0a] border border-white/15 rounded-3xl p-6 w-full max-w-xs"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
-              <span className="text-[#fed33e] text-2xl font-black tabular-nums">{delaySeconds}s</span>
-            </div>
-            <input
-              type="range"
-              min={MIN_DELAY_S}
-              max={MAX_DELAY_S}
-              step={1}
-              value={delaySeconds}
-              onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
-              className="w-full accent-[#fed33e]"
-              style={{ height: 24 }}
-            />
-            <div className="flex justify-between text-[10px] text-white/40 mt-1 mb-5 font-bold">
-              <span>{MIN_DELAY_S}s</span>
-              <span>{MAX_DELAY_S}s</span>
-            </div>
-            <button
-              onClick={() => setShowDelayPicker(false)}
-              className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
-            >
-              OK
-            </button>
-          </div>
-        </div>
-      )}
+      {delayPickerModal}
 
       {showSetupInstructions && (
         <div

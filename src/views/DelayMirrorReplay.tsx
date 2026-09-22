@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DelayMirrorGrid from './DelayMirrorGrid';
+import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
+import type { TechSeriesDraft } from './DelayMirrorSeries';
 
 interface Props {
   blob: Blob | null;
@@ -8,12 +10,17 @@ interface Props {
   showGridInitial?: boolean;
   onResume: () => void;
   onEndSession: () => void;
+  /** Podsumowanie passy zamiast konca sesji: inne napisy, wyjscie wraca
+   *  do nagrywania nastepnej passy zamiast budzic zapauzowana kamere. */
+  passMode?: boolean;
+  /** Wbite strzaly — rysowane na malej tarczy obok wideo. */
+  series?: TechSeriesDraft | null;
   // FREE ma pełny podgląd i replay; zapis/udostępnienie klipu to jedyny gate PRO.
   isPremium?: boolean;
   onUpgrade?: () => void;
 }
 
-export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession, isPremium = true, onUpgrade }: Props) {
+export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession, passMode = false, series = null, isPremium = true, onUpgrade }: Props) {
   const { t } = useTranslation();
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBoxRef = useRef<HTMLDivElement>(null);
@@ -148,6 +155,16 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // wiec dodatkowy obrot by je polozyl na boku.
   const needsRotate = displayAsLandscape && sourceIsPortrait;
 
+  // Tarcza tej passy. Celowo mala — ma pokazac uklad trafien obok nagrania,
+  // nie zajac miejsce suwakowi i przyciskom, ktore w poziomie sa na styk.
+  const targetPanel = passMode && series && series.shots.length > 0 ? (
+    <DelayMirrorSeriesTarget
+      targetType={series.targetType}
+      shots={series.shots}
+      className={displayAsLandscape ? 'w-full' : 'w-36'}
+    />
+  ) : null;
+
   return (
     <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
       displayAsLandscape && hasFullBlob
@@ -270,18 +287,43 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         )
       )}
 
+      {/* Srodkowa kolumna w landscape = tarcza tej passy, tuz obok nagrania.
+          Wlasna kolumna, a nie miejsce w menu: tam tarcza spychala „Nastepna
+          seria" i „Zakoncz sesje" pod krawedz (kolumna rosla o 185 px ponad
+          wysokosc ekranu). */}
+      {displayAsLandscape && hasFullBlob && targetPanel && (
+        <div className="shrink-0 w-[9rem] flex flex-col items-center justify-center gap-1.5">
+          {targetPanel}
+          {/* Tytul mieszka tutaj, nie w menu: kolumna z przyciskami ma
+              w poziomie ~30 px zapasu i kazda dodatkowa linijka spycha
+              „Zakoncz sesje" pod krawedz. */}
+          <p className="text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+        </div>
+      )}
+
       {/* Prawa kolumna w landscape = menu/kontrolki. W portrait = poniżej filmiku. */}
       <div className={`${
         displayAsLandscape && hasFullBlob
           ? 'w-[30%] max-w-xs flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
           : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
       }`}>
-        <p className={`text-white font-black ${displayAsLandscape && hasFullBlob ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>
-          {t('delayMirror.pauseTitle')}
-        </p>
-        <p className={`text-white/50 text-xs text-center ${displayAsLandscape && hasFullBlob ? 'mb-1' : 'mb-2'}`}>
-          {t('delayMirror.pauseHint')}
-        </p>
+        {/* W pionie tarcza ladzie nad przyciskami, bo obok wideo nie ma
+            miejsca. W poziomie ma wlasna kolumne — patrz `targetColumn`. */}
+        {targetPanel && !(displayAsLandscape && hasFullBlob) && (
+          <div className="w-full flex justify-center mb-1">{targetPanel}</div>
+        )}
+
+        {/* W poziomie z tarcza tytul stoi pod nia — tu bylby drugi raz. */}
+        {!(displayAsLandscape && hasFullBlob && targetPanel) && (
+          <p className={`text-white font-black ${displayAsLandscape && hasFullBlob ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>
+            {passMode ? t('delayMirror.passReviewTitle') : t('delayMirror.pauseTitle')}
+          </p>
+        )}
+        {(!passMode || !targetPanel) && (
+          <p className={`text-white/50 text-xs text-center ${displayAsLandscape && hasFullBlob ? 'mb-1' : 'mb-2'}`}>
+            {passMode ? t('delayMirror.passReviewNoShots') : t('delayMirror.pauseHint')}
+          </p>
+        )}
 
         {hasFullBlob && (
           <div className="w-full">
@@ -331,7 +373,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           onClick={onResume}
           className={`${displayAsLandscape && hasFullBlob ? 'w-full' : 'w-full max-w-xs'} py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
         >
-          {t('delayMirror.resumeBtn')}
+          {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
         </button>
         {hasFullBlob && (
           isPremium ? (

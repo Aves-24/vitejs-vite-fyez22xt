@@ -148,6 +148,12 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
             {t('delayMirror.seriesGoCollect')}
           </button>
 
+          {/* Bez tej linijki user nie wie, ze ma wziac telefon ze soba —
+              „Pfeile holen" brzmialo jak „idz po strzaly i wroc". */}
+          <p className="text-white/50 text-[11px] leading-snug text-center -mt-2">
+            {t('delayMirror.seriesGoCollectHint')}
+          </p>
+
           <button
             onClick={onWatchOnly}
             className="w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest bg-white/5 text-white/60 border border-white/15 active:scale-95 transition-all"

@@ -150,6 +150,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // obrazu, ale tylko w trybie z nagraniem — w samym lustrze nie ma klipu,
   // do ktorego te strzaly mialyby sie odnosic.
   const [showSeries, setShowSeries] = useState(false);
+  // Podsumowanie passy: nagranie tej passy + tarcza z wbitymi strzalami.
+  // Draft moze byc null — user mogl pominac analize i chciec samo wideo.
+  const [showPassReview, setShowPassReview] = useState(false);
+  const [passDraft, setPassDraft] = useState<TechSeriesDraft | null>(null);
   // Refy dla handlera visibilitychange — ten efekt nie zalezy od tych stanow,
   // wiec bez refow czytalby wartosci z momentu podpiecia.
   const showSeriesRef = useRef(false);
@@ -709,6 +713,33 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
   }, []);
 
+  // Zamyka klip biezacej passy jako KOMPLETNY plik. Recorder jedzie bez
+  // timeslice (patrz startClipPipeline), wiec dane wychodza dopiero na
+  // stop() — bez tego nie ma czego pokazac zaraz po passie.
+  // requestData() odpada: na iOS daje fragmentowany MP4 z popsutym moov,
+  // czyli dokladnie ten blad, ktory rezygnacja z timeslice naprawila.
+  // Refy zerujemy SYNCHRONICZNIE, zeby restart potoku po wznowieniu nie
+  // trafil na stary recorder; potok canvasa gasimy dopiero po flushu.
+  const closePassClip = useCallback(() => {
+    const fr = fullRecorderRef.current;
+    fullRecorderRef.current = null;
+    const cleanupCanvas = rotateCleanupRef.current;
+    rotateCleanupRef.current = null;
+    try {
+      if (fr && fr.state !== 'inactive') {
+        fr.onstop = () => {
+          if (fullChunksRef.current.length > 0) {
+            setLastBlob(new Blob(fullChunksRef.current, { type: fullMimeRef.current }));
+          }
+          if (cleanupCanvas) { try { cleanupCanvas(); } catch { /* ignore */ } }
+        };
+        fr.stop();
+        return;
+      }
+    } catch { /* ignore */ }
+    if (cleanupCanvas) { try { cleanupCanvas(); } catch { /* ignore */ } }
+  }, []);
+
   // PAUZA ("idę po strzały") / KONIEC PASY. Odcinamy doplyw nowych klatek,
   // a potem zalezy od trybu: z klipem obraz staje od razu ('frozen'), bo
   // ogon bufora jest juz w pliku; bez klipu dogrywamy go najpierw z
@@ -751,6 +782,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       // w ogole zobaczyc ostatnie strzaly.
       if (hasClipRef.current) {
         freeze();
+        // Passa konczy sie wlasnym, kompletnym plikiem — to on leci na
+        // ekran podsumowania obok tarczy.
+        closePassClip();
         return;
       }
 
@@ -795,7 +829,14 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     // Wznawiamy klip TYLKO jesli byl uzbrojony przed pauza — inaczej pauza
     // po wylaczeniu REC po cichu wlaczylaby nagrywanie z powrotem.
     if (clipActive) {
-      try { fullRecorderRef.current?.resume(); } catch { /* ignore */ }
+      if (fullRecorderRef.current) {
+        try { fullRecorderRef.current.resume(); } catch { /* ignore */ }
+      } else {
+        // Passa zostala zamknieta jako osobny plik (closePassClip), wiec
+        // nastepna dostaje wlasny potok od zera. Bez tego recorder jest juz
+        // 'inactive' i kolejne passy nie nagralyby sie wcale.
+        startClipPipeline();
+      }
     }
 
     setRecordingPaused(false);
@@ -808,7 +849,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     const stream = streamRef.current;
     const codec = getStreamCodec();
     if (stream && codec) runMSE(stream, codec);
-  }, [recordingPaused, clipActive, runMSE]);
+  }, [recordingPaused, clipActive, runMSE, closePassClip, startClipPipeline]);
 
   // Zapis analizy serii. Celowo localStorage, nie Firestore: nowa kolekcja
   // wymagalaby wdrozenia regul, a bez nich zapis cicho odbija. Ksztalt jest
@@ -1359,9 +1400,13 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     {showSeries && (
       <DelayMirrorSeries
         userId={auth.currentUser?.uid || ''}
+        /* Strzalka wstecz = rezygnacja z analizy, wracamy prosto do nagrywania. */
         onBack={() => { setShowSeries(false); toggleRecordingPause(); }}
-        onWatchOnly={() => { setShowSeries(false); toggleRecordingPause(); }}
-        onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); toggleRecordingPause(); }}
+        /* „Pomin analize" i „Obejrzyj i zaznacz" prowadza w to samo miejsce:
+           nagranie tej passy. Roznica jest tylko w tym, czy obok jest tarcza
+           z wbitymi strzalami. */
+        onWatchOnly={() => { setShowSeries(false); setPassDraft(null); setShowPassReview(true); }}
+        onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
       />
     )}
 
@@ -1407,6 +1452,25 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           isPremium={isPremium}
           onUpgrade={() => onUpgrade?.()}
         />
+      )}
+
+      {/* Podsumowanie passy. Wlasny z-40, bo sesja formalnie trwa (mirrorState
+          dalej 'live') i dolny pasek akcji ma z-30 — bez tego przebijalby
+          sie przez nagranie. */}
+      {showPassReview && mirrorState === 'live' && (
+        <div className="absolute inset-0 z-40">
+          <DelayMirrorReplay
+            blob={lastBlob}
+            displayAsLandscape={_displayAsLandscape}
+            showGridInitial={showGrid}
+            passMode
+            series={passDraft}
+            onResume={() => { setShowPassReview(false); toggleRecordingPause(); }}
+            onEndSession={() => { setShowPassReview(false); endSession(); }}
+            isPremium={isPremium}
+            onUpgrade={() => onUpgrade?.()}
+          />
+        </div>
       )}
 
 

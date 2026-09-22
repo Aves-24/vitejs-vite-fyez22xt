@@ -1017,8 +1017,12 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Kafelek wyboru na ekranie startowym (orientacja + tryb sesji). Jeden
   // wzorzec zamiast czterech kopii tego samego lancucha klas. Celowo drobny:
   // na malych telefonach cztery duze kafle spychaly Start pod krawedz.
+  // W ciasnym ukladzie ikona stoi OBOK napisu, nie nad nim — kafel schodzi
+  // z ~48px do ~28px wysokosci.
   const pickerBtn = (active: boolean) =>
-    `flex-1 ${_compactExpert ? 'py-1 px-1' : 'py-2 px-1.5'} rounded-xl font-black text-[10px] uppercase tracking-wider leading-tight text-center active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
+    `flex-1 rounded-xl font-black text-[10px] uppercase tracking-wider leading-tight text-center active:scale-95 transition-all border flex items-center justify-center ${
+      _compactExpert ? 'py-1.5 px-2 flex-row gap-1.5' : 'py-2 px-1.5 flex-col gap-0.5'
+    } ${
       active
         ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] shadow-lg shadow-[#fed33e]/20'
         : 'bg-white/5 text-white/70 border-white/15'
@@ -1029,13 +1033,16 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // rozkladamy je na obie kolumny i rezygnujemy z logo oraz duzej ikony.
   const _compactExpert = _displayAsLandscape && expert;
 
+  // Zwarty uklad: przyciski nie rozciagaja sie na cala kolumne.
+  const _compactRow = _compactExpert ? 'w-full max-w-[14rem] mx-auto' : '';
+
   // Bloki ustawien wydzielone, bo w kazdym ukladzie ladują w innej kolumnie.
   // Zwarty wariant: etykieta i wartosc w jednym wierszu z suwakiem zamiast
   // nad nim, bez skrajnych wartosci. Oszczedza ~40px na blok.
   const delayBlock = _compactExpert ? (
     // pr-12 odsuwa wartosc spod przycisku orientacji (fixed top-4 right-4, z-70),
     // ktory inaczej ja zaslania — kolumna zaczyna sie przy gornej krawedzi.
-    <div className="flex items-center gap-2 pr-12">
+    <div className={`flex items-center gap-2 pr-12 ${_compactRow}`}>
       <span className="text-white/70 text-[9px] font-bold uppercase tracking-wider shrink-0">{t('delayMirror.delayLabel')}</span>
       <input
         type="range"
@@ -1077,7 +1084,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       <p className={`text-white/70 text-[9px] font-bold uppercase tracking-wider text-center ${_compactExpert ? "mb-1" : "mb-1.5"}`}>
         {t('delayMirror.chooseOrientation')}
       </p>
-      <div className="flex gap-2">
+      <div className={`flex gap-2 ${_compactRow}`}>
         <button
           onClick={() => { setManualLandscape(false); setOrientationConfirmed(true); }}
           className={pickerBtn(orientationConfirmed && !manualLandscape)}
@@ -1101,7 +1108,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       <p className={`text-white/70 text-[9px] font-bold uppercase tracking-wider text-center ${_compactExpert ? "mb-1" : "mb-1.5"}`}>
         {t('delayMirror.modeLabel')}
       </p>
-      <div className="flex gap-2">
+      <div className={`flex gap-2 ${_compactRow}`}>
         <button onClick={() => setClipMode(false)} className={pickerBtn(!clipMode)}>
           <span className={`material-symbols-outlined ${_compactExpert ? "text-sm" : "text-lg"}`}>visibility</span>
           {t('delayMirror.modeMirror')}
@@ -1269,6 +1276,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         </div>
 
         {/* PRAWA KOLUMNA (lub dolna w portrait): suwak + orientacja + start */}
+        {/* Bez max-w na kolumnie: limit szerokosci siedzi na samych przyciskach
+            (_compactRow). Ograniczanie kolumny sciskalo lewa do 98px i nota
+            o prywatnosci rozlewala sie w pionie poza ekran. */}
         <div className={`flex flex-col items-stretch ${_compactExpert ? 'flex-1 gap-1.5' : _displayAsLandscape ? 'flex-1 max-w-xs gap-2.5' : 'w-full max-w-xs gap-3 mt-1'}`}>
           {/* Ustawienia eksperckie — ukryte, dopoki user sam ich nie zazada.
               Tryb prosty ma byc jednym przyciskiem, nie formularzem.
@@ -1295,7 +1305,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               startRecording();
             }}
             disabled={expert && !orientationConfirmed}
-            className={`w-full ${_compactExpert ? 'py-3 text-sm' : 'py-4 text-base'} rounded-2xl font-black uppercase tracking-widest transition-all ${
+            className={`w-full ${_compactRow} ${_compactExpert ? 'py-3 text-sm' : 'py-4 text-base'} rounded-2xl font-black uppercase tracking-widest transition-all ${
               !expert || orientationConfirmed
                 ? 'bg-[#fed33e] text-[#0a3a2a] active:scale-95 shadow-lg shadow-[#fed33e]/20'
                 : 'bg-white/10 text-white/30 cursor-not-allowed'
@@ -1312,7 +1322,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
           <button
             onClick={() => setExpert(v => !v)}
-            className={`w-full ${_compactExpert ? "py-1.5" : "py-2.5"} rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 border ${
+            className={`w-full ${_compactRow} ${_compactExpert ? "py-1.5" : "py-2.5"} rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 border ${
               expert
                 ? 'bg-[#fed33e]/15 text-[#fed33e] border-[#fed33e]/40'
                 : 'bg-white/5 text-white/60 border-white/15'

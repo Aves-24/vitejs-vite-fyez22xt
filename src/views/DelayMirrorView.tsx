@@ -1024,6 +1024,94 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         : 'bg-white/5 text-white/70 border-white/15'
     }`;
 
+  // Poziomo + ekspercko to najciasniejszy przypadek: wszystkie ustawienia
+  // w jednej kolumnie mialy 451px przy 375 dostepnych. W tym ukladzie
+  // rozkladamy je na obie kolumny i rezygnujemy z logo oraz duzej ikony.
+  const _compactExpert = _displayAsLandscape && expert;
+
+  // Bloki ustawien wydzielone, bo w kazdym ukladzie ladują w innej kolumnie.
+  const delayBlock = (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-white/70 text-[10px] font-bold uppercase tracking-wider">{t('delayMirror.delayLabel')}</span>
+        <span className="text-[#fed33e] text-base font-black tabular-nums">{delaySeconds}s</span>
+      </div>
+      <input
+        type="range"
+        min={MIN_DELAY_S}
+        max={MAX_DELAY_S}
+        step={1}
+        value={delaySeconds}
+        onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
+        className="w-full accent-[#fed33e]"
+        style={{ height: 24 }}
+      />
+      {/* Skrajne wartosci tylko w pionie — w poziomie kazde 16px sie liczy,
+          a suwak i tak pokazuje polozenie. */}
+      {!_displayAsLandscape && (
+        <div className="flex justify-between text-[10px] text-white/40 mt-1 font-bold">
+          <span>{MIN_DELAY_S}s</span>
+          <span>{MAX_DELAY_S}s</span>
+        </div>
+      )}
+    </div>
+  );
+
+  const orientationBlock = (
+    <div>
+      <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
+        {t('delayMirror.chooseOrientation')}
+      </p>
+      <div className="flex gap-2">
+        <button
+          onClick={() => { setManualLandscape(false); setOrientationConfirmed(true); }}
+          className={pickerBtn(orientationConfirmed && !manualLandscape)}
+        >
+          <span className="material-symbols-outlined text-lg">stay_current_portrait</span>
+          {t('delayMirror.orientationPortrait')}
+        </button>
+        <button
+          onClick={() => { setManualLandscape(true); setOrientationConfirmed(true); }}
+          className={pickerBtn(orientationConfirmed && manualLandscape)}
+        >
+          <span className="material-symbols-outlined text-lg">stay_current_landscape</span>
+          {t('delayMirror.orientationLandscape')}
+        </button>
+      </div>
+    </div>
+  );
+
+  const modeBlock = (
+    <div>
+      <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
+        {t('delayMirror.modeLabel')}
+      </p>
+      <div className="flex gap-2">
+        <button onClick={() => setClipMode(false)} className={pickerBtn(!clipMode)}>
+          <span className="material-symbols-outlined text-lg">visibility</span>
+          {t('delayMirror.modeMirror')}
+        </button>
+        <button onClick={() => setClipMode(true)} className={pickerBtn(clipMode)}>
+          <span className="material-symbols-outlined text-lg">videocam</span>
+          {t('delayMirror.modeRecord')}
+        </button>
+      </div>
+      {/* Objasnienie trybu odpada w ciasnym ukladzie — kafle sa podpisane. */}
+      {!_compactExpert && (
+        <p className="text-white/40 text-[10px] leading-snug mt-1.5 text-center">
+          {clipMode ? t('delayMirror.modeRecordHint') : t('delayMirror.modeMirrorHint')}
+        </p>
+      )}
+    </div>
+  );
+
+  const privacyNote = (
+    <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2">
+      <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
+      <p className="text-white/50 text-[10px] leading-snug">{t('delayMirror.privacyNote')}</p>
+    </div>
+  );
+
   if (mirrorState === 'positioning') {
     return (
       <>
@@ -1123,126 +1211,68 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       {delayPickerModal}
       <div style={screenStyle} className="bg-[#050f0a]">
         <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? 'flex flex-row items-center justify-center gap-8 px-10 py-4' : 'flex flex-col items-center justify-center px-8 py-6'}`}>
-        <button onClick={onBack} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
+        {/* W ciasnym ukladzie powrot idzie w lewy gorny rog: po prawej
+            siedzi przycisk orientacji (z-70) i calkowicie go przykrywa. */}
+        <button onClick={onBack} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_compactExpert ? 'top-3 left-4' : _displayAsLandscape ? 'top-6 right-5' : 'top-6 left-5'}`}>
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
 
-        {/* LEWA KOLUMNA (lub górna w portrait): logo + ikona + tytuł + opóźnienie + privacy */}
-        <div className={`flex flex-col items-center ${_displayAsLandscape ? 'flex-1 max-w-xs' : 'w-full'}`}>
-          {/* Logo GROT-X z kropką */}
-          <div className="flex items-baseline gap-0.5 mb-3">
-            <h1 className="text-4xl font-black text-[#fed33e] tracking-tighter leading-none">GROT</h1>
-            <h1 className="text-4xl font-black text-white tracking-tighter leading-none">-X</h1>
-            <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm" />
-          </div>
-          <div className="w-14 h-14 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-2">
-            <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>
-          </div>
-          <h2 className={`font-black text-white mb-2 ${_displayAsLandscape ? 'text-xl' : 'text-2xl'}`}>{t('delayMirror.title')}</h2>
-          {/* W trybie prostym odznaka jest jedynym wejsciem do opoznienia —
-              ekspert ma suwak nizej, wiec tam zostaje zwyklym napisem. */}
-          {expert ? (
-            <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-4">
-              <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
-            </div>
+        {/* LEWA KOLUMNA. Normalnie marka i tytul; w ciasnym ukladzie
+            poziomo+ekspercko oddaje miejsce ustawieniom. */}
+        <div className={`flex flex-col ${_compactExpert ? 'flex-1 max-w-xs gap-2.5 justify-center' : 'items-center'} ${_displayAsLandscape ? 'flex-1 max-w-xs' : 'w-full'}`}>
+          {_compactExpert ? (
+            <>
+              {delayBlock}
+              {orientationBlock}
+            </>
           ) : (
-            <button
-              onClick={() => setShowDelayPicker(true)}
-              className="flex items-center gap-2 bg-[#fed33e]/10 border border-[#fed33e]/30 rounded-xl px-4 py-2 mb-4 active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
-              <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
-            </button>
-          )}
-          {/* Privacy note — w landscape w lewej kolumnie */}
-          {_displayAsLandscape && (
-            <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2 mt-auto">
-              <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
-              <p className="text-white/50 text-[10px] leading-snug">{t('delayMirror.privacyNote')}</p>
-            </div>
+            <>
+              {/* Logo GROT-X z kropką */}
+              <div className="flex items-baseline gap-0.5 mb-3">
+                <h1 className="text-4xl font-black text-[#fed33e] tracking-tighter leading-none">GROT</h1>
+                <h1 className="text-4xl font-black text-white tracking-tighter leading-none">-X</h1>
+                <div className="w-2.5 h-2.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[0.48em] shadow-sm" />
+              </div>
+              <div className="w-14 h-14 bg-[#fed33e]/10 rounded-3xl flex items-center justify-center mb-2">
+                <span className="material-symbols-outlined text-[#fed33e] text-4xl">slow_motion_video</span>
+              </div>
+              <h2 className={`font-black text-white mb-2 ${_displayAsLandscape ? 'text-xl' : 'text-2xl'}`}>{t('delayMirror.title')}</h2>
+              {/* W trybie prostym odznaka jest jedynym wejsciem do opoznienia —
+                  ekspert ma suwak, wiec tam zostaje zwyklym napisem. */}
+              {expert ? (
+                <div className="flex items-center gap-2 bg-[#fed33e]/10 rounded-xl px-4 py-2 mb-4">
+                  <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
+                  <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowDelayPicker(true)}
+                  className="flex items-center gap-2 bg-[#fed33e]/10 border border-[#fed33e]/30 rounded-xl px-4 py-2 mb-4 active:scale-95 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
+                  <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+                  <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
+                </button>
+              )}
+              {_displayAsLandscape && <div className="mt-auto w-full">{privacyNote}</div>}
+            </>
           )}
         </div>
 
         {/* PRAWA KOLUMNA (lub dolna w portrait): suwak + orientacja + start */}
         <div className={`flex flex-col items-stretch ${_displayAsLandscape ? 'flex-1 max-w-xs gap-2.5' : 'w-full max-w-xs gap-3 mt-1'}`}>
           {/* Ustawienia eksperckie — ukryte, dopoki user sam ich nie zazada.
-              Tryb prosty ma byc jednym przyciskiem, nie formularzem. */}
-          {expert && (
-          <>
-          {/* Suwak opóźnienia */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-white/70 text-xs font-bold uppercase tracking-widest">{t('delayMirror.delayLabel')}</span>
-              <span className="text-[#fed33e] text-lg font-black tabular-nums">{delaySeconds}s</span>
-            </div>
-            <input
-              type="range"
-              min={MIN_DELAY_S}
-              max={MAX_DELAY_S}
-              step={1}
-              value={delaySeconds}
-              onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
-              className="w-full accent-[#fed33e]"
-              style={{ height: 24 }}
-            />
-            <div className="flex justify-between text-[10px] text-white/40 mt-1 font-bold">
-              <span>{MIN_DELAY_S}s</span>
-              <span>{MAX_DELAY_S}s</span>
-            </div>
-          </div>
-
-          {/* Wybór orientacji */}
-          <div>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
-              {t('delayMirror.chooseOrientation')}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setManualLandscape(false); setOrientationConfirmed(true); }}
-                className={pickerBtn(orientationConfirmed && !manualLandscape)}
-              >
-                <span className="material-symbols-outlined text-lg">stay_current_portrait</span>
-                {t('delayMirror.orientationPortrait')}
-              </button>
-              <button
-                onClick={() => { setManualLandscape(true); setOrientationConfirmed(true); }}
-                className={pickerBtn(orientationConfirmed && manualLandscape)}
-              >
-                <span className="material-symbols-outlined text-lg">stay_current_landscape</span>
-                {t('delayMirror.orientationLandscape')}
-              </button>
-            </div>
-          </div>
-
-          {/* Tryb sesji — samo lustro czy lustro z zapisem klipu */}
-          <div>
-            <p className="text-white/70 text-[10px] font-bold uppercase tracking-wider mb-1.5 text-center">
-              {t('delayMirror.modeLabel')}
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setClipMode(false)}
-                className={pickerBtn(!clipMode)}
-              >
-                <span className="material-symbols-outlined text-lg">visibility</span>
-                {t('delayMirror.modeMirror')}
-              </button>
-              <button
-                onClick={() => setClipMode(true)}
-                className={pickerBtn(clipMode)}
-              >
-                <span className="material-symbols-outlined text-lg">videocam</span>
-                {t('delayMirror.modeRecord')}
-              </button>
-            </div>
-            <p className="text-white/40 text-[10px] leading-snug mt-1.5 text-center">
-              {clipMode ? t('delayMirror.modeRecordHint') : t('delayMirror.modeMirrorHint')}
-            </p>
-          </div>
-          </>
-          )}
+              Tryb prosty ma byc jednym przyciskiem, nie formularzem.
+              Poziomo opoznienie i orientacja siedza w lewej kolumnie,
+              tu zostaje sam tryb sesji — inaczej kolumna nie miesci sie
+              na ekranie. */}
+          {expert && (_compactExpert ? modeBlock : (
+            <>
+              {delayBlock}
+              {orientationBlock}
+              {modeBlock}
+            </>
+          ))}
 
           <button
             onClick={() => {
@@ -1257,7 +1287,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               startRecording();
             }}
             disabled={expert && !orientationConfirmed}
-            className={`w-full py-4 rounded-2xl font-black text-base uppercase tracking-widest transition-all ${
+            className={`w-full ${_compactExpert ? 'py-3 text-sm' : 'py-4 text-base'} rounded-2xl font-black uppercase tracking-widest transition-all ${
               !expert || orientationConfirmed
                 ? 'bg-[#fed33e] text-[#0a3a2a] active:scale-95 shadow-lg shadow-[#fed33e]/20'
                 : 'bg-white/10 text-white/30 cursor-not-allowed'
@@ -1284,13 +1314,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
             {t('delayMirror.expertMode')}
           </button>
 
-          {/* Privacy note — w portrait pod startem */}
-          {!_displayAsLandscape && (
-            <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2">
-              <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
-              <p className="text-white/50 text-[11px] leading-snug">{t('delayMirror.privacyNote')}</p>
-            </div>
-          )}
+          {/* Privacy note — w pionie pod startem, a w ciasnym ukladzie tutaj,
+              bo lewa kolumna oddala miejsce ustawieniom. */}
+          {(!_displayAsLandscape || _compactExpert) && privacyNote}
         </div>
 
         </div>{/* /uiRotateStyle */}

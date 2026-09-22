@@ -209,10 +209,12 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   maxHeight: needsRotate || displayAsLandscape ? undefined : '40vh',
                   objectFit: 'contain',
                   display: 'block',
-                  // Mirror — live preview ma scaleX(-1), recording surowy.
-                  // Po parent rotate(90deg) scaleY(-1) na childu = poziomy flip
-                  // wizualny. W portrait (bez rotate) potrzeba scaleX(-1).
-                  transform: needsRotate ? 'scaleY(-1)' : 'scaleX(-1)',
+                  // BEZ lustra. Wczesniej powtorka odbijala obraz, zeby zgadzac
+                  // sie z podgladem na zywo — ale plik jest nieodbity, wiec
+                  // wypalony znak GROT-X wychodzil tu lustrzany. Powtorka
+                  // pokazuje teraz dokladnie to, co siedzi w pliku; lustro
+                  // zostaje tam, gdzie ma sens, czyli w widoku na zywo.
+                  transform: undefined,
                 }}
                 onLoadedMetadata={(e) => {
                   const v = e.currentTarget;

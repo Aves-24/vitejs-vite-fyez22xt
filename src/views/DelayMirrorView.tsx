@@ -4,6 +4,7 @@ import { db, auth } from '../firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
+import { drawBrandOnCanvas } from './DelayMirrorBrand';
 import DelayMirrorSeries, { TechSeriesDraft } from './DelayMirrorSeries';
 
 const DEFAULT_DELAY_S = 15;
@@ -598,6 +599,8 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           ctx.drawImage(hv, 0, 0);
         }
         if (showGridRef.current) drawGridOnCanvas(ctx, cw, ch);
+        // Znak marki ZAWSZE — klip ma byc rozpoznawalny po udostepnieniu.
+        drawBrandOnCanvas(ctx, cw, ch);
       };
       // Recorder startuje dopiero gdy znamy wymiary klatki — inaczej
       // pierwsze chunki mialyby domyslny rozmiar canvasa 300x150.

@@ -131,15 +131,16 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const showGridRef = useRef(showGrid);
   useEffect(() => { showGridRef.current = showGrid; }, [showGrid]);
   const [recordingPaused, setRecordingPaused] = useState(false);
-  // Pauza ma dwie fazy. Po wcisnieciu w buforze siedzi jeszcze material,
-  // ktorego user nie widzial — 'draining' dogrywa go z odliczaniem, dopiero
-  // potem 'frozen' zatrzymuje obraz na stop-klatce.
+  // Pauza bez klipu ma dwie fazy. Po wcisnieciu w buforze siedzi jeszcze
+  // material, ktorego user nie widzial — 'draining' dogrywa go z odliczaniem,
+  // dopiero potem 'frozen' zatrzymuje obraz na stop-klatce. Z klipem
+  // ('Passę zakończ') idziemy prosto do 'frozen' — patrz toggleRecordingPause.
   const [pausePhase, setPausePhase] = useState<PausePhase>('none');
   const pausePhaseRef = useRef<PausePhase>('none');
   useEffect(() => { pausePhaseRef.current = pausePhase; }, [pausePhase]);
   useEffect(() => { recordingPausedRef.current = recordingPaused; }, [recordingPaused]);
-  // Analiza dopiero po dograniu bufora — user najpierw oglada ostatnie
-  // strzaly, dopiero potem idzie je zbierac.
+  // Analiza otwiera sie na stop-klatce. Z klipem to moment wcisniecia
+  // przycisku, bo ogon bufora czeka w pliku, nie na ekranie.
   useEffect(() => {
     if (pausePhase === 'frozen' && hasClipRef.current) setShowSeries(true);
   }, [pausePhase]);
@@ -708,10 +709,10 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
   }, []);
 
-  // PAUZA ("idę po strzały"). Nie zamraza obrazu natychmiast: w buforze
-  // siedzi jeszcze cale okno opoznienia, ktorego user nie widzial. Wiec
-  // najpierw odcinamy doplyw nowych klatek, dogrywamy reszte z odliczaniem
-  // ('draining'), a dopiero na koncu zatrzymujemy obraz ('frozen').
+  // PAUZA ("idę po strzały") / KONIEC PASY. Odcinamy doplyw nowych klatek,
+  // a potem zalezy od trybu: z klipem obraz staje od razu ('frozen'), bo
+  // ogon bufora jest juz w pliku; bez klipu dogrywamy go najpierw z
+  // odliczaniem ('draining'), bo inaczej przepadlby bezpowrotnie.
   // WZNOWIENIE odbudowuje pipeline od zera — bufor napelnia sie na nowo,
   // dokladnie ta sama sciezka co przy starcie sesji.
   const toggleRecordingPause = useCallback(() => {
@@ -730,19 +731,34 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       try { fullRecorderRef.current?.pause(); } catch { /* nie wszystkie przegladarki wspieraja */ }
 
       setRecordingPaused(true);
+
+      if (drainTimerRef.current) clearInterval(drainTimerRef.current);
+      const freeze = () => {
+        if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
+        // Ref PRZED pause(): petla MSE sprawdza go przy kazdej klatce i bez
+        // tego zdazylaby wznowic odtwarzanie tuz po zatrzymaniu.
+        pausePhaseRef.current = 'frozen';
+        try { delayedVideoRef.current?.pause(); } catch { /* ignore */ }
+        setDrainMs(0);
+        setPausePhase('frozen');
+      };
+
+      // Z klipem („Passę zakończ”) obraz staje NATYCHMIAST. Ogon bufora nie
+      // przepada — siedzi w pliku klipu, wiec user obejrzy go w analizie
+      // i w powtorce. Dogrywanie go tutaj na zywo tylko kazaloby czekac
+      // cale okno opoznienia przed ekranem wpisywania strzal.
+      // Bez klipu dogrywanie zostaje: tam bufor to jedyna szansa, zeby
+      // w ogole zobaczyc ostatnie strzaly.
+      if (hasClipRef.current) {
+        freeze();
+        return;
+      }
+
       setPausePhase('draining');
       pausePhaseRef.current = 'draining';
 
       const started = Date.now();
       const hardStopMs = delayMsRef.current + 4000; // bezpiecznik na stall
-      if (drainTimerRef.current) clearInterval(drainTimerRef.current);
-      const freeze = () => {
-        if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
-        try { delayedVideoRef.current?.pause(); } catch { /* ignore */ }
-        setDrainMs(0);
-        setPausePhase('frozen');
-        pausePhaseRef.current = 'frozen';
-      };
       drainTimerRef.current = setInterval(() => {
         const v2 = delayedVideoRef.current;
         if (!v2) { freeze(); return; }

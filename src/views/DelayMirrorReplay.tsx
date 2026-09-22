@@ -157,11 +157,14 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
 
   // Tarcza tej passy. Celowo mala — ma pokazac uklad trafien obok nagrania,
   // nie zajac miejsce suwakowi i przyciskom, ktore w poziomie sa na styk.
+  // `max-h-full` nie jest ozdoba: 3-Spot ma viewBox 340x480, wiec przy
+  // szerokosci kolumny bylby WYZSZY niz rzad z wideo i wylazlby poza ekran.
+  // Z limitem wysokosci SVG skaluje sie w dol i siedzi wysrodkowany.
   const targetPanel = passMode && series && series.shots.length > 0 ? (
     <DelayMirrorSeriesTarget
       targetType={series.targetType}
       shots={series.shots}
-      className={displayAsLandscape ? 'w-full' : 'w-36'}
+      className={displayAsLandscape ? 'w-full max-h-full' : 'w-44'}
     />
   ) : null;
 
@@ -282,10 +285,15 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   );
 
   // Kolumna tarczy — tuz obok nagrania, po prawej.
+  // 13 rem to nie przypadek: przy 757x335 obraz klipu 16:9 i tak konczy sie
+  // na 451 px (ogranicza go wysokosc rzedu), a na wideo zostaje 476 px — wiec
+  // az do tej szerokosci tarcza rosnie NIE zabierajac nic nagraniu.
   const targetColumn = targetPanel ? (
-    <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[8rem]' : 'w-36'}`}>
-      {targetPanel}
-      <p className="text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+    <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[13rem] h-full min-h-0' : 'w-44'}`}>
+      <div className={wide ? 'flex-1 min-h-0 w-full flex items-center justify-center' : 'w-full flex justify-center'}>
+        {targetPanel}
+      </div>
+      <p className="shrink-0 text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
     </div>
   ) : null;
 

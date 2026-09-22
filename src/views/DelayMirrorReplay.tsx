@@ -165,21 +165,18 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     />
   ) : null;
 
-  return (
-    <div className={`absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 ${
-      displayAsLandscape && hasFullBlob
-        ? 'flex flex-row items-stretch gap-4'
-        : 'flex flex-col items-center'
-    }`}>
-      {/* Lewa kolumna w landscape = filmik. W portrait = wszystko na górze. */}
-      {hasFullBlob ? (
-        <div className={`${displayAsLandscape ? 'flex-1 flex flex-col items-center justify-center min-w-0 gap-2' : 'w-full max-w-md'}`}>
+  // W poziomie menu lezy PASKIEM NA DOLE, nie kolumna po prawej. Kolumna
+  // zabierala 30% szerokosci na przyciski, ktore i tak sa niskie — wideo
+  // dostawalo ~330 px zamiast ~580. Pasek kosztuje ~50 px wysokosci.
+  const wide = displayAsLandscape && hasFullBlob;
+
+  const videoBox = (
           <div
             ref={replayBoxRef}
             className={`${displayAsLandscape ? 'relative' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
             style={
               displayAsLandscape
-                ? { width: '100%', flex: '1 1 auto', minHeight: 0, alignSelf: 'stretch' }
+                ? { width: '100%', flex: '1 1 auto', minHeight: 0, minWidth: 0, alignSelf: 'stretch' }
                 : undefined
             }
           >
@@ -236,10 +233,12 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               {showGrid && <DelayMirrorGrid />}
             </div>
           </div>
+  );
 
-          {/* Custom scrubber + play/pause + czas — na dole w landscape,
-              zawsze niezaleznie od rotacji video */}
-          <div className={`${displayAsLandscape ? 'w-full flex items-center gap-2 px-2' : 'w-full flex items-center gap-2 px-2 mt-2 mb-3'}`}>
+  // Transport: play/pauza, siatka, czas i suwak. W poziomie wchodzi w pasek
+  // na dole, w pionie zostaje pod filmikiem.
+  const transportRow = (
+          <div className={`${wide ? 'flex items-center gap-2 flex-1 min-w-0' : 'w-full flex items-center gap-2 px-2 mt-2 mb-3'}`}>
             <button
               onClick={() => {
                 const v = replayVideoRef.current;
@@ -280,6 +279,95 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             />
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayDuration)}</span>
           </div>
+  );
+
+  // Kolumna tarczy — tuz obok nagrania, po prawej.
+  const targetColumn = targetPanel ? (
+    <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[8rem]' : 'w-36'}`}>
+      {targetPanel}
+      <p className="text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+    </div>
+  ) : null;
+
+  // ─── Poziomo: wideo + tarcza u gory, menu paskiem na dole ────────────────
+  if (wide) {
+    return (
+      <div className="absolute inset-0 bg-black/95 z-20 flex flex-col px-3 py-2.5 gap-2">
+        <div className="flex-1 min-h-0 flex flex-row items-stretch gap-3">
+          <div className="flex-1 min-w-0 flex items-stretch">{videoBox}</div>
+          {targetColumn}
+        </div>
+
+        {/* Jeden rzad: transport, predkosc, akcje. Dwa rzedy zjadlyby
+            ~50 px wysokosci, czyli caly zysk z przeniesienia menu w dol. */}
+        <div className="shrink-0 flex items-center gap-2">
+          {transportRow}
+
+          {/* Przewijanie ±5 s i restart odpadaja — suwak obok robi to samo,
+              a w pasku licza sie piksele. */}
+          <div className="flex items-center gap-1 shrink-0">
+            {[0.25, 0.5, 1, 2].map(rate => (
+              <button
+                key={rate}
+                onClick={() => setReplayRate(rate)}
+                className={`px-2 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 ${
+                  replayRate === rate
+                    ? 'bg-[#fed33e] text-[#0a3a2a]'
+                    : 'bg-white/10 text-white/70 border border-white/15'
+                }`}
+              >
+                {rate}x
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={onResume}
+            className="shrink-0 px-4 py-2.5 bg-[#fed33e] text-[#0a3a2a] rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all"
+          >
+            {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
+          </button>
+
+          {/* Udostepnianie jako sama ikona — stan i tak widac po ikonie
+              (check / error), a pelny napis nie zmiescilby sie w pasku. */}
+          {isPremium ? (
+            <button
+              onClick={shareVideo}
+              disabled={shareState === 'sharing'}
+              title={t('delayMirror.shareIdle')}
+              className="shrink-0 w-10 h-10 bg-white/15 text-white rounded-xl active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-lg">
+                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={onUpgrade}
+              title={t('delayMirror.savePro', { defaultValue: 'Zapisz wideo — PRO' })}
+              className="shrink-0 w-10 h-10 bg-[#fed33e]/15 text-[#fed33e] rounded-xl active:scale-95 transition-all flex items-center justify-center border border-[#fed33e]/30"
+            >
+              <span className="material-symbols-outlined text-lg">diamond</span>
+            </button>
+          )}
+
+          <button
+            onClick={onEndSession}
+            className="shrink-0 px-3 py-2.5 bg-white/10 text-white/70 rounded-xl font-bold text-[11px] active:scale-95 transition-all"
+          >
+            {t('delayMirror.endSession')}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 flex flex-col items-center">
+      {hasFullBlob ? (
+        <div className="w-full max-w-md">
+          {videoBox}
+          {transportRow}
         </div>
       ) : (
         !displayAsLandscape && (
@@ -287,40 +375,18 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         )
       )}
 
-      {/* Srodkowa kolumna w landscape = tarcza tej passy, tuz obok nagrania.
-          Wlasna kolumna, a nie miejsce w menu: tam tarcza spychala „Nastepna
-          seria" i „Zakoncz sesje" pod krawedz (kolumna rosla o 185 px ponad
-          wysokosc ekranu). */}
-      {displayAsLandscape && hasFullBlob && targetPanel && (
-        <div className="shrink-0 w-[9rem] flex flex-col items-center justify-center gap-1.5">
-          {targetPanel}
-          {/* Tytul mieszka tutaj, nie w menu: kolumna z przyciskami ma
-              w poziomie ~30 px zapasu i kazda dodatkowa linijka spycha
-              „Zakoncz sesje" pod krawedz. */}
-          <p className="text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
-        </div>
-      )}
-
-      {/* Prawa kolumna w landscape = menu/kontrolki. W portrait = poniżej filmiku. */}
-      <div className={`${
-        displayAsLandscape && hasFullBlob
-          ? 'w-[30%] max-w-xs flex flex-col items-stretch gap-2 overflow-y-auto max-h-full py-2'
-          : 'w-full max-w-md flex flex-col items-center gap-2 mt-2'
-      }`}>
+      <div className="w-full max-w-md flex flex-col items-center gap-2 mt-2">
         {/* W pionie tarcza ladzie nad przyciskami, bo obok wideo nie ma
             miejsca. W poziomie ma wlasna kolumne — patrz `targetColumn`. */}
-        {targetPanel && !(displayAsLandscape && hasFullBlob) && (
+        {targetPanel && (
           <div className="w-full flex justify-center mb-1">{targetPanel}</div>
         )}
 
-        {/* W poziomie z tarcza tytul stoi pod nia — tu bylby drugi raz. */}
-        {!(displayAsLandscape && hasFullBlob && targetPanel) && (
-          <p className={`text-white font-black ${displayAsLandscape && hasFullBlob ? 'text-base text-center mb-0' : 'text-lg mt-1'}`}>
-            {passMode ? t('delayMirror.passReviewTitle') : t('delayMirror.pauseTitle')}
-          </p>
-        )}
+        <p className="text-white font-black text-lg mt-1">
+          {passMode ? t('delayMirror.passReviewTitle') : t('delayMirror.pauseTitle')}
+        </p>
         {(!passMode || !targetPanel) && (
-          <p className={`text-white/50 text-xs text-center ${displayAsLandscape && hasFullBlob ? 'mb-1' : 'mb-2'}`}>
+          <p className="text-white/50 text-xs text-center mb-2">
             {passMode ? t('delayMirror.passReviewNoShots') : t('delayMirror.pauseHint')}
           </p>
         )}
@@ -371,7 +437,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
 
         <button
           onClick={onResume}
-          className={`${displayAsLandscape && hasFullBlob ? 'w-full' : 'w-full max-w-xs'} py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
+          className={`w-full max-w-xs py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
         >
           {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
         </button>
@@ -380,7 +446,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             <button
               onClick={shareVideo}
               disabled={shareState === 'sharing'}
-              className={`${displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
+              className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
             >
               <span className="material-symbols-outlined text-lg">
                 {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
@@ -393,7 +459,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           ) : (
             <button
               onClick={onUpgrade}
-              className={`${displayAsLandscape ? 'w-full' : 'w-full max-w-xs'} py-3 bg-[#fed33e]/15 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30`}
+              className={`w-full max-w-xs py-3 bg-[#fed33e]/15 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30`}
             >
               <span className="material-symbols-outlined text-lg">diamond</span>
               {t('delayMirror.savePro', { defaultValue: 'Zapisz wideo — PRO' })}
@@ -402,7 +468,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         )}
         <button
           onClick={onEndSession}
-          className={`${displayAsLandscape && hasFullBlob ? 'w-full' : 'w-full max-w-xs'} py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
+          className={`w-full max-w-xs py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
         >
           {t('delayMirror.endSession')}
         </button>

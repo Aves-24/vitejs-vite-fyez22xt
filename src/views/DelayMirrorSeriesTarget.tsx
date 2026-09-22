@@ -22,19 +22,25 @@ interface Props {
   onPick?: (n: number) => void;
 }
 
-export default function DelayMirrorSeriesTarget({ targetType, shots, className, activeN = null, onPick }: Props) {
+/** Kadr tarczy w jednostkach SVG. Eksportowane, bo wypalanie tarczy w klip
+ *  musi przeliczyc x/y strzaly na piksele canvasa tym SAMYM kadrem — inaczej
+ *  strzala na wypalonej tarczy siedzialaby gdzie indziej niz w aplikacji. */
+export function seriesTargetViewBox(targetType: string): { x: number; y: number; w: number; h: number } {
   const face = resolveTargetFace(targetType);
-  const is3Spot = isSpotFace(targetType);
-  const isVertical = isVerticalSpotFace(targetType);
   // Tarcze bez zewnetrznych pierscieni (6-Ring, 3-5-7) rysuja sie mniejsze
   // niz pelne 300 jednostek, wiec dostaja ciasniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
+  if (isSpotFace(targetType)) return { x: -20, y: -40, w: 340, h: 480 };
+  if (isCompactFace) return { x: -20, y: -30, w: 340, h: 360 };
+  return { x: -20, y: 0, w: 340, h: 300 };
+}
 
-  const viewBox = is3Spot
-    ? '-20 -40 340 480'
-    : isCompactFace
-      ? '-20 -30 340 360'
-      : '-20 0 340 300';
+export default function DelayMirrorSeriesTarget({ targetType, shots, className, activeN = null, onPick }: Props) {
+  const is3Spot = isSpotFace(targetType);
+  const isVertical = isVerticalSpotFace(targetType);
+
+  const vb = seriesTargetViewBox(targetType);
+  const viewBox = `${vb.x} ${vb.y} ${vb.w} ${vb.h}`;
 
   return (
     <svg viewBox={viewBox} className={className}>

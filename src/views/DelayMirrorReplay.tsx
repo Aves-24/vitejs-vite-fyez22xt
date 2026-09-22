@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DelayMirrorGrid from './DelayMirrorGrid';
 import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
+import DelayMirrorExport from './DelayMirrorExport';
 import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 
 interface Props {
@@ -90,6 +91,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // `tSource` w modelu danych czeka na to od v1.
   const [shots, setShots] = useState<TechShot[]>(series?.shots ?? []);
   const [marking, setMarking] = useState(false);
+  // Eksport z wypalona tarcza — osobny, swiadomy krok, bo trwa tyle co klip.
+  const [exporting, setExporting] = useState(false);
   // Nowa passa = nowy komplet strzal. Rodzic nie oddaje tych zmian z powrotem
   // (zapisuje je tylko do localStorage), wiec to nie zapetli sie z markShot.
   useEffect(() => { setShots(series?.shots ?? []); setMarking(false); }, [series]);
@@ -153,10 +156,12 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     v.play().catch(() => { /* ignore */ });
   };
 
-  const shareVideo = async () => {
-    if (!blob) return;
+  // `source` pozwala wyslac wersje z wypalona tarcza zamiast surowego klipu.
+  const shareVideo = async (source?: Blob) => {
+    const out = source ?? blob;
+    if (!out) return;
     setShareState('sharing');
-    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+    const ext = out.type.includes('mp4') ? 'mp4' : 'webm';
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const hh = String(now.getHours()).padStart(2, '0');
@@ -167,7 +172,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         canShare?: (data: { files: File[] }) => boolean;
         share?: (data: { files?: File[]; title?: string; text?: string }) => Promise<void>;
       };
-      const file = new File([blob], filename, { type: blob.type });
+      const file = new File([out], filename, { type: out.type });
       if (nav.canShare && nav.share && nav.canShare({ files: [file] })) {
         await nav.share({
           files: [file],
@@ -177,7 +182,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         return;
       }
       // Fallback – pobranie na dysk
-      const url = URL.createObjectURL(blob);
+      const url = URL.createObjectURL(out);
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -414,6 +419,19 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     )
   ) : null;
 
+  // Nakladka eksportu — ten sam element w obu ukladach, wiec wychodzi poza
+  // oba `return`. Po zbudowaniu klipu od razu otwieramy arkusz udostepniania:
+  // wersja z tarcza powstaje po to, zeby ja wyslac.
+  const exportOverlay = exporting && blob && series ? (
+    <DelayMirrorExport
+      blob={blob}
+      targetType={series.targetType}
+      shots={shots}
+      onDone={(out) => { setExporting(false); shareVideo(out); }}
+      onCancel={() => setExporting(false)}
+    />
+  ) : null;
+
   const targetColumn = targetPanel ? (
     <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[13rem] h-full min-h-0' : 'w-44'}`}>
       <div className={wide ? 'flex-1 min-h-0 w-full relative' : 'w-full flex justify-center'}>
@@ -465,11 +483,23 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
           </button>
 
+          {/* Klip z wypalona tarcza. Sama ikona — pasek jest na styk, a
+              transport obok jest flex-1, wiec oddaje te 40 px. */}
+          {isPremium && targetPanel && (
+            <button
+              onClick={() => setExporting(true)}
+              title={t('delayMirror.exportWithTarget')}
+              className="shrink-0 w-10 h-10 bg-white/15 text-[#fed33e] rounded-xl active:scale-95 transition-all flex items-center justify-center border border-[#fed33e]/30"
+            >
+              <span className="material-symbols-outlined text-lg">adjust</span>
+            </button>
+          )}
+
           {/* Udostepnianie jako sama ikona — stan i tak widac po ikonie
               (check / error), a pelny napis nie zmiescilby sie w pasku. */}
           {isPremium ? (
             <button
-              onClick={shareVideo}
+              onClick={() => shareVideo()}
               disabled={shareState === 'sharing'}
               title={t('delayMirror.shareIdle')}
               className="shrink-0 w-10 h-10 bg-white/15 text-white rounded-xl active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:opacity-50"
@@ -495,6 +525,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             {t('delayMirror.endSession')}
           </button>
         </div>
+        {exportOverlay}
       </div>
     );
   }
@@ -578,10 +609,19 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         >
           {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
         </button>
+        {isPremium && targetPanel && (
+          <button
+            onClick={() => setExporting(true)}
+            className="w-full max-w-xs py-3 bg-white/10 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30"
+          >
+            <span className="material-symbols-outlined text-lg">adjust</span>
+            {t('delayMirror.exportWithTarget')}
+          </button>
+        )}
         {hasFullBlob && (
           isPremium ? (
             <button
-              onClick={shareVideo}
+              onClick={() => shareVideo()}
               disabled={shareState === 'sharing'}
               className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
             >
@@ -610,6 +650,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {t('delayMirror.endSession')}
         </button>
       </div>
+      {exportOverlay}
     </div>
   );
 }

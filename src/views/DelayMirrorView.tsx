@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 import { drawBrandOnCanvas } from './DelayMirrorBrand';
+import { getFullCodec } from '../utils/mediaCodecs';
 import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 
 const DEFAULT_DELAY_S = 15;
@@ -26,25 +27,6 @@ interface Props {
   onUpgrade?: () => void;
 }
 
-// Pelny codec do "Udostepnij" (kompletny plik) — preferuj mp4 dla WhatsApp/iOS.
-function getFullCodec(): string | null {
-  if (typeof MediaRecorder === 'undefined') return null;
-  const candidates = [
-    'video/mp4;codecs=h264,aac',
-    'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-    'video/mp4;codecs=h264',
-    'video/mp4',
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm;codecs=vp9',
-    'video/webm;codecs=vp8',
-    'video/webm',
-  ];
-  for (const c of candidates) {
-    if (MediaRecorder.isTypeSupported(c)) return c;
-  }
-  return null;
-}
 
 // Codec dla MSE pipeline — musi byc obslugiwany przez MediaRecorder I MediaSource.
 function getStreamCodec(): string | null {

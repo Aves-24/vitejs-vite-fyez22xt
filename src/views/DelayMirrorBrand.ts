@@ -42,10 +42,13 @@ export function drawBrandOnCanvas(ctx: CanvasRenderingContext2D, w: number, h: n
   ctx.fillStyle = '#ffffff';
   ctx.fillText('-X', x + wGrot, y);
 
-  // Kropka marki — lekko nad linia bazowa, tak jak w logo w aplikacji.
+  // Kropka marki dokladnie na polowie wysokosci „X". Mierzymy sam glif
+  // zamiast mnozyc rozmiar czcionki przez zgadniety wspolczynnik — wysokosc
+  // wersalika zalezy od kroju, a na telefonach kroj systemowy bywa inny.
+  const capX = ctx.measureText('X').actualBoundingBoxAscent || size * 0.72;
   ctx.beginPath();
   ctx.fillStyle = GOLD;
-  ctx.arc(x + wGrot + wX + gap + dotR, y - size * 0.42, dotR, 0, Math.PI * 2);
+  ctx.arc(x + wGrot + wX + gap + dotR, y - capX / 2, dotR, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

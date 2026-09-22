@@ -5,7 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 import { drawBrandOnCanvas } from './DelayMirrorBrand';
-import DelayMirrorSeries, { TechSeriesDraft } from './DelayMirrorSeries';
+import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -155,6 +155,8 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Draft moze byc null — user mogl pominac analize i chciec samo wideo.
   const [showPassReview, setShowPassReview] = useState(false);
   const [passDraft, setPassDraft] = useState<TechSeriesDraft | null>(null);
+  // Id wpisu w localStorage — po nim dopisujemy czasy z osi czasu.
+  const passDraftIdRef = useRef<string | null>(null);
   // Refy dla handlera visibilitychange — ten efekt nie zalezy od tych stanow,
   // wiec bez refow czytalby wartosci z momentu podpiecia.
   const showSeriesRef = useRef(false);
@@ -858,14 +860,34 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // wymagalaby wdrozenia regul, a bez nich zapis cicho odbija. Ksztalt jest
   // docelowy, wiec przeniesienie do Firestore przy ekranie ze znacznikami
   // to podmiana samego zapisu.
-  const saveSeriesDraft = useCallback((draft: TechSeriesDraft) => {
+  const seriesKey = () => `grotX_techSeries_${auth.currentUser?.uid || 'anon'}`;
+
+  // Zapis od razu po wbiciu strzal, nie na wyjsciu z podsumowania: gdyby
+  // apka zginela w tle na ekranie powtorki, seria przepadlaby w calosci.
+  // Zwracane id sluzy pozniejszemu dopisaniu czasow z osi.
+  const saveSeriesDraft = useCallback((draft: TechSeriesDraft): string => {
+    const id = `${Date.now()}`;
     try {
-      const key = `grotX_techSeries_${auth.currentUser?.uid || 'anon'}`;
+      const key = seriesKey();
       const prev = JSON.parse(localStorage.getItem(key) || '[]');
-      prev.push({ ...draft, id: `${Date.now()}`, createdAt: new Date().toISOString() });
+      prev.push({ ...draft, id, createdAt: new Date().toISOString() });
       // Trzymamy ostatnie 50 serii — to kilkadziesiat kB, nie ma po co wiecej.
       localStorage.setItem(key, JSON.stringify(prev.slice(-50)));
     } catch { /* ignore — brak miejsca nie moze wywalic sesji */ }
+    return id;
+  }, []);
+
+  // Dopisanie `tMs` po oznaczeniu strzal na osi. Podmieniamy wpis po id,
+  // a nie dokladamy drugi — inaczej kazde stukniecie robiloby nowa serie.
+  const updateSeriesShots = useCallback((id: string, shots: TechShot[]) => {
+    try {
+      const key = seriesKey();
+      const prev = JSON.parse(localStorage.getItem(key) || '[]');
+      const i = prev.findIndex((e: { id?: string }) => e.id === id);
+      if (i < 0) return;
+      prev[i] = { ...prev[i], shots };
+      localStorage.setItem(key, JSON.stringify(prev));
+    } catch { /* ignore */ }
   }, []);
 
   // REC w trakcie sesji. Pierwsze uzbrojenie buduje potok klipu; kolejne
@@ -1409,7 +1431,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
            nagranie tej passy. Roznica jest tylko w tym, czy obok jest tarcza
            z wbitymi strzalami. */
         onWatchOnly={() => { setShowSeries(false); setPassDraft(null); setShowPassReview(true); }}
-        onReady={(draft) => { saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
+        onReady={(draft) => { passDraftIdRef.current = saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
       />
     )}
 
@@ -1468,6 +1490,11 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
             showGridInitial={showGrid}
             passMode
             series={passDraft}
+            onShotsChange={(shots) => {
+              // Celowo BEZ setPassDraft: `series` jest propem wejsciowym
+              // powtorki, a jej zmiana zresetowalaby tam stan oznaczania.
+              if (passDraftIdRef.current) updateSeriesShots(passDraftIdRef.current, shots);
+            }}
             onResume={() => { setShowPassReview(false); toggleRecordingPause(); }}
             onEndSession={() => { setShowPassReview(false); endSession(); }}
             isPremium={isPremium}

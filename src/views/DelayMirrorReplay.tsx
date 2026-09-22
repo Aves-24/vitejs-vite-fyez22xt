@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DelayMirrorGrid from './DelayMirrorGrid';
 import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
-import type { TechSeriesDraft } from './DelayMirrorSeries';
+import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 
 interface Props {
   blob: Blob | null;
@@ -15,12 +15,14 @@ interface Props {
   passMode?: boolean;
   /** Wbite strzaly — rysowane na malej tarczy obok wideo. */
   series?: TechSeriesDraft | null;
+  /** Strzaly po oznaczeniu czasow na osi — do zapisu w rodzicu. */
+  onShotsChange?: (shots: TechShot[]) => void;
   // FREE ma pełny podgląd i replay; zapis/udostępnienie klipu to jedyny gate PRO.
   isPremium?: boolean;
   onUpgrade?: () => void;
 }
 
-export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession, passMode = false, series = null, isPremium = true, onUpgrade }: Props) {
+export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridInitial = false, onResume, onEndSession, passMode = false, series = null, onShotsChange, isPremium = true, onUpgrade }: Props) {
   const { t } = useTranslation();
   const replayVideoRef = useRef<HTMLVideoElement>(null);
   const replayBoxRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,60 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   useEffect(() => {
     if (replayVideoRef.current) replayVideoRef.current.playbackRate = replayRate;
   }, [replayRate]);
+
+  // ─── Oznaczanie strzal na osi czasu ─────────────────────────────────────
+  // Czasy powstaja TYLKO tutaj i tylko recznie. Detekcja z dzwieku odpada,
+  // bo klip nagrywa canvas.captureStream() — w pliku nie ma sciezki audio.
+  // `tSource` w modelu danych czeka na to od v1.
+  const [shots, setShots] = useState<TechShot[]>(series?.shots ?? []);
+  const [marking, setMarking] = useState(false);
+  // Nowa passa = nowy komplet strzal. Rodzic nie oddaje tych zmian z powrotem
+  // (zapisuje je tylko do localStorage), wiec to nie zapetli sie z markShot.
+  useEffect(() => { setShots(series?.shots ?? []); setMarking(false); }, [series]);
+
+  const nextIdx = shots.findIndex(s => s.tMs === null);
+  const markedCount = shots.filter(s => s.tMs !== null).length;
+
+  const pushShots = (next: TechShot[]) => {
+    setShots(next);
+    onShotsChange?.(next);
+  };
+
+  const markShot = () => {
+    const v = replayVideoRef.current;
+    if (!v || nextIdx < 0) return;
+    const tMs = Math.round(v.currentTime * 1000);
+    pushShots(shots.map((s, i) => (i === nextIdx ? { ...s, tMs, tSource: 'manual' as const } : s)));
+    // Ostatnia strzala konczy tryb sama — inaczej user zostawalby w nim
+    // bez zadnego przycisku do klikniecia.
+    if (nextIdx === shots.length - 1) setMarking(false);
+  };
+
+  const undoMark = () => {
+    let lastI = -1;
+    shots.forEach((s, i) => { if (s.tMs !== null) lastI = i; });
+    if (lastI < 0) return;
+    pushShots(shots.map((s, i) => (i === lastI ? { ...s, tMs: null, tSource: null } : s)));
+  };
+
+  const seekToShot = (n: number) => {
+    const s = shots.find(x => x.n === n);
+    const v = replayVideoRef.current;
+    if (!s || s.tMs === null || !v) return;
+    v.currentTime = s.tMs / 1000;
+    setReplayTime(s.tMs / 1000);
+  };
+
+  // Podswietlona strzala = ostatnia, ktorej moment juz minal. Dzieki temu
+  // podczas odtwarzania tarcza sama pokazuje, ktory strzal wlasnie leci.
+  const activeN = (() => {
+    let cur: number | null = null;
+    shots
+      .filter(s => s.tMs !== null)
+      .sort((a, b) => (a.tMs as number) - (b.tMs as number))
+      .forEach(s => { if ((s.tMs as number) / 1000 <= replayTime + 0.05) cur = s.n; });
+    return cur;
+  })();
 
   const replaySeek = (delta: number) => {
     const v = replayVideoRef.current;
@@ -160,11 +216,13 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // `max-h-full` nie jest ozdoba: 3-Spot ma viewBox 340x480, wiec przy
   // szerokosci kolumny bylby WYZSZY niz rzad z wideo i wylazlby poza ekran.
   // Z limitem wysokosci SVG skaluje sie w dol i siedzi wysrodkowany.
-  const targetPanel = passMode && series && series.shots.length > 0 ? (
+  const targetPanel = passMode && series && shots.length > 0 ? (
     <DelayMirrorSeriesTarget
       targetType={series.targetType}
-      shots={series.shots}
-      className={displayAsLandscape ? 'w-full max-h-full' : 'w-44'}
+      shots={shots}
+      activeN={activeN}
+      onPick={seekToShot}
+      className={displayAsLandscape ? 'absolute inset-0 w-full h-full' : 'w-44'}
     />
   ) : null;
 
@@ -267,21 +325,42 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               <span className="material-symbols-outlined text-lg">grid_on</span>
             </button>
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
-            <input
-              type="range"
-              min={0}
-              max={replayDuration || 1}
-              step={0.05}
-              value={Math.min(replayTime, replayDuration || 1)}
-              onChange={(e) => {
-                const v = replayVideoRef.current;
-                if (!v) return;
-                const nt = parseFloat(e.target.value);
-                v.currentTime = nt;
-                setReplayTime(nt);
-              }}
-              className="flex-1 accent-[#fed33e]"
-            />
+            {/* Suwak + znaczniki strzal. Numerki leza NAD torem i tylko one
+                lapia dotyk — gdyby przykrywaly tor, w tych miejscach nie dalo
+                by sie przeciagnac suwaka. */}
+            <div className="relative flex-1 min-w-0">
+              <input
+                type="range"
+                min={0}
+                max={replayDuration || 1}
+                step={0.05}
+                value={Math.min(replayTime, replayDuration || 1)}
+                onChange={(e) => {
+                  const v = replayVideoRef.current;
+                  if (!v) return;
+                  const nt = parseFloat(e.target.value);
+                  v.currentTime = nt;
+                  setReplayTime(nt);
+                }}
+                className="w-full accent-[#fed33e] block"
+              />
+              {replayDuration > 0 && shots.filter(s => s.tMs !== null).map(s => {
+                const pct = Math.max(0, Math.min(100, ((s.tMs as number) / 1000 / replayDuration) * 100));
+                return (
+                  <button
+                    key={s.n}
+                    onClick={() => seekToShot(s.n)}
+                    style={{ left: `${pct}%` }}
+                    title={t('delayMirror.markShotN', { n: s.n })}
+                    className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full text-[8px] font-black flex items-center justify-center border border-black/40 shadow transition-all ${
+                      activeN === s.n ? 'bg-[#fed33e] text-[#0a3a2a] scale-125' : 'bg-white text-black'
+                    }`}
+                  >
+                    {s.n}
+                  </button>
+                );
+              })}
+            </div>
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayDuration)}</span>
           </div>
   );
@@ -290,12 +369,60 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // 13 rem to nie przypadek: przy 757x335 obraz klipu 16:9 i tak konczy sie
   // na 451 px (ogranicza go wysokosc rzedu), a na wideo zostaje 476 px — wiec
   // az do tej szerokosci tarcza rosnie NIE zabierajac nic nagraniu.
+  // Sterowanie oznaczaniem siedzi POD tarcza, nie w dolnym pasku: tam nie ma
+  // juz miejsca (698 z 733 px zajete), a tutaj user i tak patrzy na numery
+  // strzal, ktore zaraz bedzie oznaczal.
+  const markControls = targetPanel ? (
+    marking ? (
+      <div className="shrink-0 w-full flex flex-col items-center gap-1">
+        <button
+          onClick={markShot}
+          className="w-full py-2.5 rounded-xl bg-[#fed33e] text-[#0a3a2a] font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
+        >
+          {t('delayMirror.markShotN', { n: nextIdx >= 0 ? shots[nextIdx].n : shots.length })}
+        </button>
+        <div className="w-full flex gap-1">
+          <button
+            onClick={undoMark}
+            disabled={markedCount === 0}
+            className="flex-1 py-1.5 rounded-lg bg-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all disabled:opacity-30"
+          >
+            {t('delayMirror.markUndo')}
+          </button>
+          <button
+            onClick={() => setMarking(false)}
+            className="flex-1 py-1.5 rounded-lg bg-white/10 text-white/70 text-[10px] font-bold uppercase tracking-wider active:scale-95 transition-all"
+          >
+            {t('delayMirror.markFinish')}
+          </button>
+        </div>
+        {/* Licznik dopiero po pierwszym stuknieciu — zanim cokolwiek jest
+            zaznaczone, user potrzebuje instrukcji, nie stanu „0 z 6". */}
+        <p className="text-white/40 text-[9px] leading-tight text-center">
+          {markedCount > 0
+            ? t('delayMirror.markDone', { done: markedCount, total: shots.length })
+            : t('delayMirror.markHint')}
+        </p>
+      </div>
+    ) : (
+      <button
+        onClick={() => { setMarking(true); replayRestart(); }}
+        className="shrink-0 w-full py-2 rounded-xl bg-white/10 text-white/70 border border-white/15 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all"
+      >
+        {markedCount > 0 ? t('delayMirror.markRedo') : t('delayMirror.markShots')}
+      </button>
+    )
+  ) : null;
+
   const targetColumn = targetPanel ? (
     <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[13rem] h-full min-h-0' : 'w-44'}`}>
-      <div className={wide ? 'flex-1 min-h-0 w-full flex items-center justify-center' : 'w-full flex justify-center'}>
+      <div className={wide ? 'flex-1 min-h-0 w-full relative' : 'w-full flex justify-center'}>
         {targetPanel}
       </div>
-      <p className="shrink-0 text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+      {!marking && (
+        <p className="shrink-0 text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+      )}
+      {markControls}
     </div>
   ) : null;
 
@@ -386,15 +513,15 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       )}
 
       <div className="w-full max-w-md flex flex-col items-center gap-2 mt-2">
-        {/* W pionie tarcza ladzie nad przyciskami, bo obok wideo nie ma
-            miejsca. W poziomie ma wlasna kolumne — patrz `targetColumn`. */}
-        {targetPanel && (
-          <div className="w-full flex justify-center mb-1">{targetPanel}</div>
-        )}
+        {/* W pionie tarcza (z tytulem i oznaczaniem) ladzie nad przyciskami,
+            bo obok wideo nie ma miejsca. W poziomie ma wlasna kolumne. */}
+        {targetColumn}
 
-        <p className="text-white font-black text-lg mt-1">
-          {passMode ? t('delayMirror.passReviewTitle') : t('delayMirror.pauseTitle')}
-        </p>
+        {!targetColumn && (
+          <p className="text-white font-black text-lg mt-1">
+            {passMode ? t('delayMirror.passReviewTitle') : t('delayMirror.pauseTitle')}
+          </p>
+        )}
         {(!passMode || !targetPanel) && (
           <p className="text-white/50 text-xs text-center mb-2">
             {passMode ? t('delayMirror.passReviewNoShots') : t('delayMirror.pauseHint')}

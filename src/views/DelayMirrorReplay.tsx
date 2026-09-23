@@ -157,16 +157,22 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     setLastMarkedN(n);
   };
 
-  // Podswietlona strzala = ostatnia, ktorej moment juz minal. Dzieki temu
-  // podczas odtwarzania tarcza sama pokazuje, ktory strzal wlasnie leci.
-  const activeN = (() => {
-    let cur: number | null = null;
-    shots
-      .filter(s => s.tMs !== null)
-      .sort((a, b) => (a.tMs as number) - (b.tMs as number))
-      .forEach(s => { if ((s.tMs as number) / 1000 <= replayTime + 0.05) cur = s.n; });
-    return cur;
-  })();
+  // Podswietlona strzala. Dwa rozne znaczenia zaleznie od trybu:
+  // - w markowaniu: strzala, KTORA WLASNIE MASZ ZAZNACZYC (nextIdx) — user
+  //   wchodzil w tryb i tarcza nie pokazywala nic, dopoki nie stuknal
+  //   pierwszego markShot. Teraz "1" swieci od razu po wejsciu w tryb.
+  // - poza markowaniem: ostatnia, ktorej moment juz minal wg replayTime —
+  //   podczas przewijania/ogladania tarcza pokazuje, ktory strzal wlasnie leci.
+  const activeN = marking
+    ? (nextIdx >= 0 ? shots[nextIdx].n : null)
+    : (() => {
+        let cur: number | null = null;
+        shots
+          .filter(s => s.tMs !== null)
+          .sort((a, b) => (a.tMs as number) - (b.tMs as number))
+          .forEach(s => { if ((s.tMs as number) / 1000 <= replayTime + 0.05) cur = s.n; });
+        return cur;
+      })();
 
   // Notatka widoczna NA PODGLADZIE, nie tylko w polu edycji — user pisal
   // tekst, a potem puszczajac klip od nowa nigdzie go nie widzial. Ta sama

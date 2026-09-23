@@ -70,6 +70,13 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     const url = URL.createObjectURL(blob);
     if (replayBlobUrlRef.current) URL.revokeObjectURL(replayBlobUrlRef.current);
     replayBlobUrlRef.current = url;
+    // replayTime/replayDuration zyja tylko z eventow <video> (onTimeUpdate/
+    // onLoadedMetadata) — bez tego resetu suwak i licznik zostawialy pozycje
+    // z POPRZEDNIEGO klipu (np. 0:45 z konca passy 1), mimo ze nowy plik
+    // faktycznie gral juz od 0. Wygladalo to jak "nowy klip zaczyna sie w
+    // polowie", choc obraz byl poprawny — tylko cyfry sie nie zgadzaly.
+    setReplayTime(0);
+    setReplayDuration(0);
     const v = replayVideoRef.current;
     if (v) {
       v.src = url;

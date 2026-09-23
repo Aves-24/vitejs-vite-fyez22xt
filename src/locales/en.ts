@@ -1673,6 +1673,7 @@ export const views = {
     exportDone: "Clip ready",
     exportBack: "Back to replay",
     ffHoldHint: "Hold: 4x, release: normal speed",
+    noteInputPlaceholder: "Note for shot {{n}}, e.g. elbow too high",
     markHint: "Play the clip and tap at each shot",
     markDone: "{{done}} of {{total}} marked",
     expertMode: "Expert mode",

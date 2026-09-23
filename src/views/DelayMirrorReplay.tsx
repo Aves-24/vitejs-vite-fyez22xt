@@ -102,11 +102,15 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // `tSource` w modelu danych czeka na to od v1.
   const [shots, setShots] = useState<TechShot[]>(series?.shots ?? []);
   const [marking, setMarking] = useState(false);
+  // Strzala, do ktorej user wlasnie moze wpisac notatke — ta OSTATNIO
+  // oznaczona, nie ta aktualnie aktywna na osi (user zdazyl juz odjechac
+  // dalej suwakiem, a notatka ma zostac przy strzale ktora wlasnie oznaczyl).
+  const [lastMarkedN, setLastMarkedN] = useState<number | null>(null);
   // Eksport z wypalona tarcza — osobny, swiadomy krok, bo trwa tyle co klip.
   const [exporting, setExporting] = useState(false);
   // Nowa passa = nowy komplet strzal. Rodzic nie oddaje tych zmian z powrotem
   // (zapisuje je tylko do localStorage), wiec to nie zapetli sie z markShot.
-  useEffect(() => { setShots(series?.shots ?? []); setMarking(false); }, [series]);
+  useEffect(() => { setShots(series?.shots ?? []); setMarking(false); setLastMarkedN(null); }, [series]);
 
   const nextIdx = shots.findIndex(s => s.tMs === null);
   const markedCount = shots.filter(s => s.tMs !== null).length;
@@ -120,17 +124,24 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     const v = replayVideoRef.current;
     if (!v || nextIdx < 0) return;
     const tMs = Math.round(v.currentTime * 1000);
+    const n = shots[nextIdx].n;
     pushShots(shots.map((s, i) => (i === nextIdx ? { ...s, tMs, tSource: 'manual' as const } : s)));
+    setLastMarkedN(n);
     // Ostatnia strzala konczy tryb sama — inaczej user zostawalby w nim
     // bez zadnego przycisku do klikniecia.
     if (nextIdx === shots.length - 1) setMarking(false);
+  };
+
+  const setShotNote = (n: number, note: string) => {
+    pushShots(shots.map(s => (s.n === n ? { ...s, note: note.slice(0, 60) || null } : s)));
   };
 
   const undoMark = () => {
     let lastI = -1;
     shots.forEach((s, i) => { if (s.tMs !== null) lastI = i; });
     if (lastI < 0) return;
-    pushShots(shots.map((s, i) => (i === lastI ? { ...s, tMs: null, tSource: null } : s)));
+    if (shots[lastI].n === lastMarkedN) setLastMarkedN(null);
+    pushShots(shots.map((s, i) => (i === lastI ? { ...s, tMs: null, tSource: null, note: null } : s)));
   };
 
   const seekToShot = (n: number) => {
@@ -418,6 +429,19 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             »4x
           </button>
         </div>
+        {/* Notatka do WLASNIE oznaczonej strzaly — max 60 znakow, wypalana
+            pozniej w klip przez caly czas aktywnosci tego strzalu. Krotkie
+            "Arm zu hoch" tuz po oznaczeniu, zanim user zdazy zapomniec. */}
+        {lastMarkedN !== null && (
+          <input
+            type="text"
+            value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
+            onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
+            maxLength={60}
+            placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
+            className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
+          />
+        )}
         <div className="w-full flex gap-1">
           <button
             onClick={undoMark}

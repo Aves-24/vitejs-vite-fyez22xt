@@ -1705,6 +1705,7 @@ export const views = {
     exportDone: "Klip gotowy",
     exportBack: "Wróć do powtórki",
     ffHoldHint: "Przytrzymaj: 4x, puść: normalna prędkość",
+    noteInputPlaceholder: "Notatka do strzały {{n}}, np. ramię za wysoko",
     markHint: "Puść nagranie i stuknij przy każdym strzale",
     markDone: "Zaznaczone {{done}} z {{total}}",
     expertMode: "Tryb ekspercki",

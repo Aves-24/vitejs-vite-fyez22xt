@@ -21,6 +21,10 @@ export interface TechShot {
   /** Skad wziety czas. Pole istnieje od v1, zeby pozniejsza detekcja
    *  audio nie wymagala migracji danych. */
   tSource: 'manual' | 'audio' | null;
+  /** Krotka notatka do tego strzalu (np. "Arm zu hoch", max 60 znakow) —
+   *  wypalana w klip przez caly czas, w ktorym ten strzal jest aktywny.
+   *  Undefined dla strzalow zapisanych przed dodaniem tego pola. */
+  note?: string | null;
 }
 
 export interface TechSeriesDraft {
@@ -203,7 +207,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
   // polozenie, bo to analiza techniki, a nie punktacja do statystyk.
   const addShot = (score: string, x: number, y: number, spotId: string | null) => {
     if (shots.length >= arrowCount) return;
-    setShots(prev => [...prev, { n: prev.length + 1, x, y, score, spotId, tMs: null, tSource: null }]);
+    setShots(prev => [...prev, { n: prev.length + 1, x, y, score, spotId, tMs: null, tSource: null, note: null }]);
   };
 
   const undo = () => setShots(prev => prev.slice(0, -1));

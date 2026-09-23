@@ -205,6 +205,28 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
             }
           }
 
+          // Notatka do aktywnej strzaly (np. "Arm zu hoch") — top-left, po
+          // przekatnej od panelu tarczy. Wypalana przez cala aktywnosc tego
+          // strzalu, tak jak obwodka na tarczy — to samo okno czasowe.
+          if (activeN !== null) {
+            const s = shots.find(x => x.n === activeN);
+            if (s && s.note) {
+              ctx.save();
+              ctx.font = `700 ${Math.round(pad * 0.9)}px system-ui, -apple-system, sans-serif`;
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              const textW = ctx.measureText(s.note).width;
+              const boxPadX = pad * 0.7;
+              const boxH = pad * 1.9;
+              const boxW = textW + boxPadX * 2;
+              ctx.fillStyle = 'rgba(0,0,0,0.55)';
+              roundRect(ctx, pad, pad, boxW, boxH, boxH / 2);
+              ctx.fillStyle = '#ffffff';
+              ctx.fillText(s.note, pad + boxPadX, pad + boxH / 2 + 1);
+              ctx.restore();
+            }
+          }
+
           // Os czasu ze znacznikami — tylko gdy cokolwiek oznaczono.
           if (dur > 0 && marked.length > 0) {
             ctx.save();

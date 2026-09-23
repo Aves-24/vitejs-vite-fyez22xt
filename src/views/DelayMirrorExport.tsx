@@ -349,7 +349,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
   }, []);
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
+    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
       {/* Ukryta instancja tarczy — zrodlo obrazka do wypalenia. Zawsze bez
           podswietlenia, zeby serializowany SVG byl deterministyczny. */}
       <div ref={hiddenTargetRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
@@ -384,11 +384,13 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
       <div className="shrink-0 flex flex-col items-center gap-2">
         {result ? (
           <>
-            <p className="text-white font-black text-xs uppercase tracking-widest">{t('delayMirror.exportDone')}</p>
-            {/* Wszystkie 4 akcje w JEDNYM wierszu — trzy osobne rzedy
-                (tytul+play+powieksz, pelny Udostepnij, Wroc) razem z wideo
-                wystawaly za gorna krawedz ekranu, zwlaszcza w powiekszeniu. */}
+            {/* Tytul + wszystkie 4 akcje w JEDNYM wierszu, tytul po lewej —
+                osobny wiersz na tytul (nad rzedem przyciskow) razem z wideo
+                wystawal za gorna krawedz ekranu, zwlaszcza w powiekszeniu. */}
             <div className="w-full max-w-xs flex items-center gap-2">
+              <p className="shrink-0 text-white font-black text-[10px] uppercase tracking-wider leading-tight">
+                {t('delayMirror.exportDone')}
+              </p>
               <button
                 onClick={() => resultVideoRef.current?.play().catch(() => { /* ignore */ })}
                 title={t('delayMirror.watchAgain')}

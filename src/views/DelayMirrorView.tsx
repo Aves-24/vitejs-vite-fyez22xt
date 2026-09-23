@@ -519,11 +519,14 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        // `ideal` jest tylko preferencja, nie wymogiem — slaba przednia
-        // kamera i tak odda swoj maksymalny tryb, nic sie nie wywali.
-        // Wczesniej 1280x720 samo ograniczalo jakosc na telefonach, ktore
-        // umialy dac wiecej.
-        video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 } },
+        // `ideal` jest tylko preferencja, nie wymogiem. UWAGA: 4K tu
+        // wywalalo aplikacje na buforowaniu — ten strumien karmi RAZEM
+        // MediaRecorder pipeline'u MSE (podglad z opoznieniem) I drugi
+        // recorder na canvasie (pelny klip), czyli DWA kodery na raz z
+        // tego samego zrodla. To duzo cieszsze niz zwykle nagrywanie i
+        // slabszy telefon/koder sprzetowy tego nie wytrzymal. 1080p jest
+        // bezpiecznym kompromisem — wciaz wiecej niz poprzednie 720p.
+        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
         audio: false,
       });
     } catch (err: unknown) {

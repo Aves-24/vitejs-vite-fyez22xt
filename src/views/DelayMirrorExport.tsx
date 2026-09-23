@@ -31,6 +31,12 @@ interface Props {
 }
 
 const GOLD = '#fed33e';
+// Obwodka aktywnej strzaly NA TARCZY musi byc kolorem, ktorego nie ma na
+// zadnym polu tarczy WA (zloto/zolty, czerwony, niebieski, czarny, bialy) —
+// inaczej strzala w dziesiatce dostaje zolta obwodke na zoltym tle i znika.
+// Reszta nakladki (pasek czasu, znaczniki) zostaje na GOLD — tam nie stoi
+// na tle pierscieni tarczy, wiec problem tam nie wystepuje.
+const HIGHLIGHT = '#4ade80';
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
@@ -190,7 +196,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
               const sx = panelX + ((s.x - vb.x) / vb.w) * panelW;
               const sy = panelY + ((s.y - vb.y) / vb.h) * panelH;
               ctx.save();
-              ctx.strokeStyle = GOLD;
+              ctx.strokeStyle = HIGHLIGHT;
               ctx.lineWidth = Math.max(2, panelW * 0.012);
               ctx.beginPath();
               ctx.arc(sx, sy, panelW * 0.045, 0, Math.PI * 2);

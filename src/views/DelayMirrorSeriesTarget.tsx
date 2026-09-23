@@ -56,11 +56,14 @@ export default function DelayMirrorSeriesTarget({ targetType, shots, className, 
             onClick={onPick ? () => onPick(s.n) : undefined}
             style={onPick ? { cursor: 'pointer' } : undefined}
           >
+            {/* Aktywna strzala: NIE zloty/zolty — w dziesiatce (zlote pole)
+                zolty znacznik znika. Ten sam kolor co obwodka w wypalonym
+                eksporcie (DelayMirrorExport), zeby sie zgadzalo. */}
             <circle
               cx={s.x}
               cy={s.y}
               r={active ? 8 : 6}
-              fill={active ? '#fed33e' : 'white'}
+              fill={active ? '#4ade80' : 'white'}
               stroke="black"
               strokeWidth="1.5"
             />

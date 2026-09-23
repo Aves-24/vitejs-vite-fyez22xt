@@ -187,10 +187,22 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
 
           const now = v.currentTime;
           let activeN: number | null = null;
-          marked
-            .slice()
-            .sort((a, b) => (a.tMs as number) - (b.tMs as number))
-            .forEach(s => { if ((s.tMs as number) / 1000 <= now + 0.05) activeN = s.n; });
+          const byTime = marked.slice().sort((a, b) => (a.tMs as number) - (b.tMs as number));
+          byTime.forEach(s => { if ((s.tMs as number) / 1000 <= now + 0.05) activeN = s.n; });
+
+          // Notatka do strzalu N ma byc widoczna PRZED nim, nie po — to
+          // komentarz/przypomnienie na czas przygotowania i naciagu, nie
+          // podsumowanie po fakcie. Okno: od konca poprzedniego strzalu
+          // (albo od 0:00 dla pierwszego) do WLASNEGO momentu tego strzalu.
+          // Osobne od activeN (obwodka na tarczy), ktora ma zostac na
+          // strzale, ktory WLASNIE trafil.
+          let noteShot: TechShot | null = null;
+          for (let i = 0; i < byTime.length; i++) {
+            const s = byTime[i];
+            const windowEnd = (s.tMs as number) / 1000;
+            const windowStart = i === 0 ? 0 : (byTime[i - 1].tMs as number) / 1000;
+            if (now >= windowStart && now <= windowEnd + 0.05) { noteShot = s; break; }
+          }
 
           // Podklad panelu — bez niego biala tarcza na jasnym tle traci krawedz.
           ctx.save();
@@ -216,26 +228,23 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
             }
           }
 
-          // Notatka do aktywnej strzaly (np. "Arm zu hoch") — top-left, po
-          // przekatnej od panelu tarczy. Wypalana przez cala aktywnosc tego
-          // strzalu, tak jak obwodka na tarczy — to samo okno czasowe.
-          if (activeN !== null) {
-            const s = shots.find(x => x.n === activeN);
-            if (s && s.note) {
-              ctx.save();
-              ctx.font = `700 ${Math.round(pad * 0.9)}px system-ui, -apple-system, sans-serif`;
-              ctx.textAlign = 'left';
-              ctx.textBaseline = 'middle';
-              const textW = ctx.measureText(s.note).width;
-              const boxPadX = pad * 0.7;
-              const boxH = pad * 1.9;
-              const boxW = textW + boxPadX * 2;
-              ctx.fillStyle = 'rgba(0,0,0,0.55)';
-              roundRect(ctx, pad, pad, boxW, boxH, boxH / 2);
-              ctx.fillStyle = '#ffffff';
-              ctx.fillText(s.note, pad + boxPadX, pad + boxH / 2 + 1);
-              ctx.restore();
-            }
+          // Notatka do strzalu (np. "Arm zu hoch") — top-left, po przekatnej
+          // od panelu tarczy. Okno czasowe: noteShot, patrz wyzej.
+          if (noteShot && noteShot.note) {
+            const note = noteShot.note;
+            ctx.save();
+            ctx.font = `700 ${Math.round(pad * 0.9)}px system-ui, -apple-system, sans-serif`;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'middle';
+            const textW = ctx.measureText(note).width;
+            const boxPadX = pad * 0.7;
+            const boxH = pad * 1.9;
+            const boxW = textW + boxPadX * 2;
+            ctx.fillStyle = 'rgba(0,0,0,0.55)';
+            roundRect(ctx, pad, pad, boxW, boxH, boxH / 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(note, pad + boxPadX, pad + boxH / 2 + 1);
+            ctx.restore();
           }
 
           // Os czasu ze znacznikami — tylko gdy cokolwiek oznaczono.

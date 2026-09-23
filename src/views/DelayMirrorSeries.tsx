@@ -228,6 +228,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
           // strzale sam wywoluje onToggleFullscreen i wyrzuca do wyboru tarczy.
           autoExit: false,
           title: t('delayMirror.seriesEnterTitle'),
+          slots: arrowCount,
           padClass: landscape ? 'pb-1' : 'pb-24',
           headerClass: landscape ? 'px-4 pt-2 mb-1' : undefined,
           // Bezwzglednie, nie w procentach — patrz uwaga przy `embed`.

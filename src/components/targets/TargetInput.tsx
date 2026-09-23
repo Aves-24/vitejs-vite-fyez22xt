@@ -37,6 +37,8 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //   title  podpis pod paskiem ze slotami (np. "Pfeile eintragen") — biale
 //          tlo pod nim jest inaczej puste, wywolujacy ekran nie ma zadnego
 //          tytulu wlasnego
+//   slots  liczba pol w pasku ze strzalami (domyslnie 6) — passa moze miec
+//          inna liczbe strzal niz standardowa serie
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed }: any) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoom] = useState(() => parseFloat(localStorage.getItem('grotx-zoom') || '1'));
@@ -202,7 +204,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         {isFullscreen ? (
           <div className="flex items-center gap-2 pointer-events-auto ml-auto">
             <div className="flex gap-0.5 bg-white/90 p-1 rounded-xl shadow-sm border border-gray-100">
-              {[0,1,2,3,4,5].map(i => <div key={i} className={`w-6 h-6 flex items-center justify-center text-[9px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}</div>)}
+              {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
+                  strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
+                  embed (ScoringView), zeby nic tam sie nie zmienilo. */}
+              {Array.from({ length: embed?.slots ?? 6 }, (_, i) => i).map(i => <div key={i} className={`w-6 h-6 flex items-center justify-center text-[9px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}</div>)}
             </div>
             <button onClick={onUndo} className="p-2 bg-white border border-red-100 shadow-md rounded-full active:scale-90 transition-all">
               <span className="material-symbols-outlined text-red-500 font-bold text-xl">undo</span>

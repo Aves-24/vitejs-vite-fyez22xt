@@ -1151,7 +1151,12 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           {t('delayMirror.modeMirror')}
         </button>
         <button onClick={() => setClipMode(true)} className={pickerBtn(clipMode)}>
-          <span className={`material-symbols-outlined ${_compactExpert ? "text-base" : "text-lg"}`}>videocam</span>
+          {/* Dwie ikonki: ten tryb nagrywa, ale zwierciadlo dziala w nim
+              tez — "Spiegel + Aufnahme" bez oka wygladalo jak sama kamera. */}
+          <span className="flex items-center gap-0.5">
+            <span className={`material-symbols-outlined ${_compactExpert ? "text-base" : "text-lg"}`}>visibility</span>
+            <span className={`material-symbols-outlined ${_compactExpert ? "text-base" : "text-lg"}`}>videocam</span>
+          </span>
           {t('delayMirror.modeRecord')}
         </button>
       </div>

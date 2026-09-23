@@ -49,6 +49,18 @@ function getStreamCodec(): string | null {
   return null;
 }
 
+// Bitrate rosnacy z rozdzielczoscia, ktora faktycznie dostalismy od
+// kamery — 1.5 Mbps na 720p wygladalo ok, ale to samo na 1080p+ (odkad
+// getUserMedia prosi o wiecej niz 720p) wygladaloby gorzej niz przedtem.
+// Progi orientacyjne, nie naukowe — H.264/VP8 przy typowej tresci selfie.
+function bitrateForResolution(w: number, h: number): number {
+  const px = w * h;
+  if (px <= 1280 * 720) return 1_500_000;
+  if (px <= 1920 * 1080) return 4_000_000;
+  if (px <= 2560 * 1440) return 6_000_000;
+  return 8_000_000; // 4K i wyzej
+}
+
 export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const { t } = useTranslation();
   const [isPremium, setIsPremium] = useState(false);
@@ -146,6 +158,9 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const recordingPausedRef = useRef(false);
   const streamRef = useRef<MediaStream | null>(null);
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
+  // Ustawiany raz po getUserMedia wg realnej rozdzielczosci toru — patrz
+  // bitrateForResolution. Czytaja go oba recordery (MSE i pelny klip).
+  const videoBitrateRef = useRef<number>(1_500_000);
   const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -362,7 +377,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       }
 
       try {
-        recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 1_500_000 });
+        recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: videoBitrateRef.current });
       } catch (err) {
         const m = err instanceof Error ? err.message : String(err);
         setErrorMsg(`MediaRecorder: ${m}`);
@@ -504,7 +519,11 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        // `ideal` jest tylko preferencja, nie wymogiem — slaba przednia
+        // kamera i tak odda swoj maksymalny tryb, nic sie nie wywali.
+        // Wczesniej 1280x720 samo ograniczalo jakosc na telefonach, ktore
+        // umialy dac wiecej.
+        video: { facingMode: 'user', width: { ideal: 3840 }, height: { ideal: 2160 } },
         audio: false,
       });
     } catch (err: unknown) {
@@ -516,6 +535,16 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
     streamRef.current = stream;
     isPausedRef.current = false;
+    // Bitrate MUSI rosnac z rozdzielczoscia, ktora faktycznie dostalismy —
+    // 1.5 Mbps na 1080p+ wygladaloby gorzej niz przedtem na 720p, mimo
+    // wiekszej rozdzielczosci. Odczyt z realnych ustawien toru, nie z
+    // `ideal` powyzej (telefon moze dac mniej niz poprosilismy).
+    try {
+      const settings = stream.getVideoTracks()[0]?.getSettings();
+      if (settings?.width && settings?.height) {
+        videoBitrateRef.current = bitrateForResolution(settings.width, settings.height);
+      }
+    } catch { /* ignore */ }
     detectZoomCaps(stream);
     setMirrorState('positioning');
   }, [t, detectZoomCaps]);
@@ -545,7 +574,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       fullChunksRef.current = [];
       fullMimeRef.current = fullCodec.split(';')[0];
       const startFullRec = (recStream: MediaStream) => {
-        const fullRec = new MediaRecorder(recStream, { mimeType: fullCodec, videoBitsPerSecond: 1_500_000 });
+        const fullRec = new MediaRecorder(recStream, { mimeType: fullCodec, videoBitsPerSecond: videoBitrateRef.current });
         fullRec.ondataavailable = (e) => { if (e.data && e.data.size > 0) fullChunksRef.current.push(e.data); };
         // Brak timeslice — encoder produkuje jeden kompletny plik z prawidlowym
         // moov/duration zamiast fragmentow fMP4. Rozwiazuje problem iOS/WhatsApp

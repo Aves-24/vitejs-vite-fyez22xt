@@ -38,6 +38,17 @@ const GOLD = '#fed33e';
 // na tle pierscieni tarczy, wiec problem tam nie wystepuje.
 const HIGHLIGHT = '#4ade80';
 
+// Ta sama tabela co w DelayMirrorView (nagrywanie) — eksport przekodowuje
+// klip, ktory moze juz byc w wyzszej rozdzielczosci, wiec sztywne 2 Mbps
+// z v1 byloby teraz za niskie.
+function bitrateForResolution(w: number, h: number): number {
+  const px = w * h;
+  if (px <= 1280 * 720) return 1_500_000;
+  if (px <= 1920 * 1080) return 4_000_000;
+  if (px <= 2560 * 1440) return 6_000_000;
+  return 8_000_000;
+}
+
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -271,7 +282,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
         };
 
         const stream = canvas.captureStream(30);
-        rec = new MediaRecorder(stream, { mimeType: codec, videoBitsPerSecond: 2_000_000 });
+        rec = new MediaRecorder(stream, { mimeType: codec, videoBitsPerSecond: bitrateForResolution(W, H) });
         const chunks: BlobPart[] = [];
         rec.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
         rec.onstop = () => {

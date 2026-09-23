@@ -29,6 +29,10 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const replayBoxRef = useRef<HTMLDivElement>(null);
   const replayBlobUrlRef = useRef<string | null>(null);
   const [replayRate, setReplayRate] = useState<number>(1);
+  // Pasek predkosci w poziomie: zamiast piatki przyciskow na stale, pokazujemy
+  // tylko aktualna i wysuwamy reszte do gory na stuknieciu — pasek na dole
+  // byl za szeroki na jeden rzad z transportem i akcjami sesji.
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
   const [replayTime, setReplayTime] = useState(0);
   const [replayDuration, setReplayDuration] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
@@ -483,21 +487,37 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {transportRow}
 
           {/* Przewijanie ±5 s i restart odpadaja — suwak obok robi to samo,
-              a w pasku licza sie piksele. */}
-          <div className="flex items-center gap-1 shrink-0">
-            {[0.25, 0.5, 1, 2, 4].map(rate => (
-              <button
-                key={rate}
-                onClick={() => setReplayRate(rate)}
-                className={`px-2 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 ${
-                  replayRate === rate
-                    ? 'bg-[#fed33e] text-[#0a3a2a]'
-                    : 'bg-white/10 text-white/70 border border-white/15'
-                }`}
-              >
-                {rate}x
-              </button>
-            ))}
+              a w pasku licza sie piksele. Predkosc: tylko AKTUALNA na stale,
+              reszta wysuwa sie do gory po stuknieciu — piatka przyciskow na
+              stale zjadala za duzo szerokosci w jednym rzedzie z transportem
+              i akcjami sesji. */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setShowSpeedMenu(v => !v)}
+              className={`flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 border ${
+                showSpeedMenu
+                  ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
+                  : 'bg-white/10 text-white/70 border-white/15'
+              }`}
+            >
+              {replayRate}x
+              <span className="material-symbols-outlined text-sm">expand_less</span>
+            </button>
+            {showSpeedMenu && (
+              <div className="absolute bottom-full mb-2 left-0 flex flex-col gap-1 bg-[#0a0a0a] border border-white/15 rounded-xl p-1.5 shadow-xl z-20">
+                {[0.25, 0.5, 1, 2, 4].map(rate => (
+                  <button
+                    key={rate}
+                    onClick={() => { setReplayRate(rate); setShowSpeedMenu(false); }}
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 whitespace-nowrap ${
+                      replayRate === rate ? 'bg-[#fed33e] text-[#0a3a2a]' : 'text-white/70 active:bg-white/10'
+                    }`}
+                  >
+                    {rate}x
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <button

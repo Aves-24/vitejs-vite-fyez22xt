@@ -1669,6 +1669,8 @@ export const views = {
     exportHint: "Der Clip läuft einmal komplett durch — das dauert so lange wie die Aufnahme.",
     exportCancel: "Abbrechen",
     exportFailed: "Hat nicht geklappt — teile den Clip ohne Scheibe.",
+    exportDone: "Clip fertig",
+    exportBack: "Zurück zur Wiedergabe",
     markHint: "Clip abspielen und bei jedem Schuss tippen",
     markDone: "{{done}} von {{total}} markiert",
     expertMode: "Expertenmodus",

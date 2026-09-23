@@ -1701,6 +1701,8 @@ export const views = {
     exportHint: "Nagranie musi przelecieć raz w całości — to trwa tyle, co klip.",
     exportCancel: "Przerwij",
     exportFailed: "Nie wyszło — udostępnij klip bez tarczy.",
+    exportDone: "Klip gotowy",
+    exportBack: "Wróć do powtórki",
     markHint: "Puść nagranie i stuknij przy każdym strzale",
     markDone: "Zaznaczone {{done}} z {{total}}",
     expertMode: "Tryb ekspercki",

@@ -1669,6 +1669,8 @@ export const views = {
     exportHint: "The clip plays through once — it takes as long as the recording.",
     exportCancel: "Cancel",
     exportFailed: "Did not work — share the clip without the target.",
+    exportDone: "Clip ready",
+    exportBack: "Back to replay",
     markHint: "Play the clip and tap at each shot",
     markDone: "{{done}} of {{total}} marked",
     expertMode: "Expert mode",

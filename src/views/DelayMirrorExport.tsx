@@ -24,7 +24,9 @@ interface Props {
   blob: Blob;
   targetType: string;
   shots: TechShot[];
-  onDone: (out: Blob) => void;
+  shareState: 'idle' | 'sharing' | 'saved' | 'error';
+  onShare: (out: Blob) => void;
+  onClose: () => void;
   onCancel: () => void;
 }
 
@@ -41,12 +43,17 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.fill();
 }
 
-export default function DelayMirrorExport({ blob, targetType, shots, onDone, onCancel }: Props) {
+export default function DelayMirrorExport({ blob, targetType, shots, shareState, onShare, onClose, onCancel }: Props) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenTargetRef = useRef<HTMLDivElement>(null);
   const [progress, setProgress] = useState(0);
   const [failed, setFailed] = useState(false);
+  // Klip zostaje na TYM ekranie po zbudowaniu — zamrozona ostatnia klatka
+  // canvasa jest jedynym dowodem, ze wypalanie sie udalo, a user chcial
+  // udostepniac wlasnie z tego miejsca, nie z powtorki (tam ma tylko surowy
+  // blob wejsciowy).
+  const [result, setResult] = useState<Blob | null>(null);
 
   useEffect(() => {
     // Flaga per URUCHOMIENIE efektu, nie ref. W trybie deweloperskim React
@@ -243,7 +250,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, onDone, onC
           stream.getTracks().forEach(tr => tr.stop());
           if (cancelled || stalled) return;
           if (chunks.length === 0) { setFailed(true); return; }
-          onDone(new Blob(chunks, { type: codec.split(';')[0] }));
+          setResult(new Blob(chunks, { type: codec.split(';')[0] }));
         };
 
         draw();
@@ -279,7 +286,30 @@ export default function DelayMirrorExport({ blob, targetType, shots, onDone, onC
 
       <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
 
-      {failed ? (
+      {result ? (
+        <>
+          <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.exportDone')}</p>
+          <button
+            onClick={() => onShare(result)}
+            disabled={shareState === 'sharing'}
+            className="w-full max-w-xs py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            <span className="material-symbols-outlined text-lg">
+              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+            </span>
+            {shareState === 'sharing' && t('delayMirror.shareSharing')}
+            {shareState === 'saved' && t('delayMirror.shareSaved')}
+            {shareState === 'error' && t('delayMirror.shareError')}
+            {shareState === 'idle' && t('delayMirror.shareIdle')}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-5 py-2 rounded-xl bg-white/10 text-white/70 font-bold text-xs active:scale-95 transition-all"
+          >
+            {t('delayMirror.exportBack')}
+          </button>
+        </>
+      ) : failed ? (
         <>
           <p className="text-white/70 text-sm text-center">{t('delayMirror.exportFailed')}</p>
           <button

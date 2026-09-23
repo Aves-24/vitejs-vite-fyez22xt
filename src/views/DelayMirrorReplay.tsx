@@ -420,14 +420,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   ) : null;
 
   // Nakladka eksportu — ten sam element w obu ukladach, wiec wychodzi poza
-  // oba `return`. Po zbudowaniu klipu od razu otwieramy arkusz udostepniania:
-  // wersja z tarcza powstaje po to, zeby ja wyslac.
+  // oba `return`. Zostaje na ekranie po zbudowaniu klipu: user udostepnia
+  // wypalona wersje STAD, bo powtorka pod nia ma tylko surowy blob wejsciowy
+  // i po powrocie wypalona tarcza bylaby nie do odzyskania.
   const exportOverlay = exporting && blob && series ? (
     <DelayMirrorExport
       blob={blob}
       targetType={series.targetType}
       shots={shots}
-      onDone={(out) => { setExporting(false); shareVideo(out); }}
+      shareState={shareState}
+      onShare={(out) => shareVideo(out)}
+      onClose={() => setExporting(false)}
       onCancel={() => setExporting(false)}
     />
   ) : null;

@@ -437,6 +437,11 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             type="text"
             value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
             onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
+            // Wideo lecialo dalej podczas pisania — user tracil orientacje,
+            // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
+            // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
+            // pisania; wznowienie jest recznie (play/pauza), nie automatem.
+            onFocus={() => replayVideoRef.current?.pause()}
             maxLength={60}
             placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
             className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"

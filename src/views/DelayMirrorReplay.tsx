@@ -433,19 +433,31 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             pozniej w klip przez caly czas aktywnosci tego strzalu. Krotkie
             "Arm zu hoch" tuz po oznaczeniu, zanim user zdazy zapomniec. */}
         {lastMarkedN !== null && (
-          <input
-            type="text"
-            value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
-            onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
-            // Wideo lecialo dalej podczas pisania — user tracil orientacje,
-            // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
-            // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
-            // pisania; wznowienie jest recznie (play/pauza), nie automatem.
-            onFocus={() => replayVideoRef.current?.pause()}
-            maxLength={60}
-            placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
-            className="w-full px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
-          />
+          <div className="w-full flex gap-1.5">
+            <input
+              type="text"
+              value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
+              onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
+              // Wideo lecialo dalej podczas pisania — user tracil orientacje,
+              // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
+              // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
+              // pisania.
+              onFocus={() => replayVideoRef.current?.pause()}
+              maxLength={60}
+              placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
+              className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
+            />
+            {/* Odznacz "gotowe" i wznow odtwarzanie jednym stukniecem — bez
+                tego user musial siegac po play/pauze w transportRow, daleko
+                od miejsca, gdzie wlasnie pisal. */}
+            <button
+              onClick={() => replayVideoRef.current?.play().catch(() => { /* ignore */ })}
+              title={t('delayMirror.noteDoneHint')}
+              className="shrink-0 w-9 h-9 rounded-lg bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/40 flex items-center justify-center active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-lg">check</span>
+            </button>
+          </div>
         )}
         <div className="w-full flex gap-1">
           <button

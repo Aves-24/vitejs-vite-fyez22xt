@@ -519,14 +519,15 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        // `ideal` jest tylko preferencja, nie wymogiem. UWAGA: 4K tu
-        // wywalalo aplikacje na buforowaniu — ten strumien karmi RAZEM
-        // MediaRecorder pipeline'u MSE (podglad z opoznieniem) I drugi
-        // recorder na canvasie (pelny klip), czyli DWA kodery na raz z
-        // tego samego zrodla. To duzo cieszsze niz zwykle nagrywanie i
-        // slabszy telefon/koder sprzetowy tego nie wytrzymal. 1080p jest
-        // bezpiecznym kompromisem — wciaz wiecej niz poprzednie 720p.
-        video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } },
+        // PROBOWANE i WYCOFANE: ideal 3840x2160, potem 1920x1080 — obie
+        // wersje wywalaly aplikacje na buforowaniu (czarny ekran, potem
+        // crash). To znaczy, ze problem NIE jest w konkretnej liczbie, a w
+        // samym fakcie zadania wyzszej rozdzielczosci na tym pipeline (dwa
+        // rownolegle kodery z tego samego strumienia — MSE podglad +
+        // canvas pelnego klipu). Wraca do 1280x720, jedynej wartosci
+        // potwierdzonej jako stabilna. NIE zwiekszac bez najpierw
+        // przetestowania osobno samego bitrate (bez zmiany rozdzielczosci).
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: false,
       });
     } catch (err: unknown) {

@@ -150,6 +150,11 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     if (!s || s.tMs === null || !v) return;
     v.currentTime = s.tMs / 1000;
     setReplayTime(s.tMs / 1000);
+    // Stuknieta strzala otwiera/odswieza swoj edytor notatki — bez tego
+    // po oznaczeniu OSTATNIEGO strzalu (tryb marking sam sie zamykal) albo
+    // po przejsciu do nastepnego strzalu notatka poprzedniego byla juz
+    // nigdzie nie do edycji.
+    setLastMarkedN(n);
   };
 
   // Podswietlona strzala = ostatnia, ktorej moment juz minal. Dzieki temu
@@ -399,6 +404,41 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // Sterowanie oznaczaniem siedzi POD tarcza, nie w dolnym pasku: tam nie ma
   // juz miejsca (698 z 733 px zajete), a tutaj user i tak patrzy na numery
   // strzal, ktore zaraz bedzie oznaczal.
+  // Notatka do OSTATNIO oznaczonej/stukniete strzaly — wydzielona spod
+  // `marking`, bo oznaczenie OSTATNIEGO strzalu samo zamyka tryb marking
+  // (patrz markShot) i notatka do wlasnie tego strzalu bylaby wtedy
+  // nigdzie nieedytowalna. Dziala zawsze, gdy lastMarkedN wskazuje na
+  // istniejacy strzal — takze po wyjsciu z marking (stuknieta strzala na
+  // osi/tarczy w seekToShot rowniez ustawia lastMarkedN, wiec kazda juz
+  // oznaczona strzala jest do edycji w kazdej chwili).
+  const noteEditor = lastMarkedN !== null ? (
+    <div className="w-full flex gap-1.5">
+      <input
+        type="text"
+        value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
+        onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
+        // Wideo lecialo dalej podczas pisania — user tracil orientacje,
+        // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
+        // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
+        // pisania.
+        onFocus={() => replayVideoRef.current?.pause()}
+        maxLength={60}
+        placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
+        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
+      />
+      {/* Odznacz "gotowe" i wznow odtwarzanie jednym stukniecem — bez
+          tego user musial siegac po play/pauze w transportRow, daleko
+          od miejsca, gdzie wlasnie pisal. */}
+      <button
+        onClick={() => replayVideoRef.current?.play().catch(() => { /* ignore */ })}
+        title={t('delayMirror.noteDoneHint')}
+        className="shrink-0 w-9 h-9 rounded-lg bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/40 flex items-center justify-center active:scale-95 transition-all"
+      >
+        <span className="material-symbols-outlined text-lg">check</span>
+      </button>
+    </div>
+  ) : null;
+
   const markControls = targetPanel ? (
     marking ? (
       <div className="shrink-0 w-full flex flex-col items-center gap-1">
@@ -429,36 +469,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             »4x
           </button>
         </div>
-        {/* Notatka do WLASNIE oznaczonej strzaly — max 60 znakow, wypalana
-            pozniej w klip przez caly czas aktywnosci tego strzalu. Krotkie
-            "Arm zu hoch" tuz po oznaczeniu, zanim user zdazy zapomniec. */}
-        {lastMarkedN !== null && (
-          <div className="w-full flex gap-1.5">
-            <input
-              type="text"
-              value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
-              onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
-              // Wideo lecialo dalej podczas pisania — user tracil orientacje,
-              // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
-              // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
-              // pisania.
-              onFocus={() => replayVideoRef.current?.pause()}
-              maxLength={60}
-              placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
-              className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
-            />
-            {/* Odznacz "gotowe" i wznow odtwarzanie jednym stukniecem — bez
-                tego user musial siegac po play/pauze w transportRow, daleko
-                od miejsca, gdzie wlasnie pisal. */}
-            <button
-              onClick={() => replayVideoRef.current?.play().catch(() => { /* ignore */ })}
-              title={t('delayMirror.noteDoneHint')}
-              className="shrink-0 w-9 h-9 rounded-lg bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/40 flex items-center justify-center active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-lg">check</span>
-            </button>
-          </div>
-        )}
+        {noteEditor}
         <div className="w-full flex gap-1">
           <button
             onClick={undoMark}
@@ -483,12 +494,18 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         </p>
       </div>
     ) : (
-      <button
-        onClick={() => { setMarking(true); replayRestart(); }}
-        className="shrink-0 w-full py-2 rounded-xl bg-white/10 text-white/70 border border-white/15 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all"
-      >
-        {markedCount > 0 ? t('delayMirror.markRedo') : t('delayMirror.markShots')}
-      </button>
+      <div className="shrink-0 w-full flex flex-col items-center gap-1">
+        {/* Poza trybem marking, ale notatka do ostatnio dotknietej strzaly
+            zostaje edytowalna — inaczej po zaznaczeniu OSTATNIEGO strzalu
+            (marking sam sie zamyka) nie dalo sie jej wpisac wcale. */}
+        {noteEditor}
+        <button
+          onClick={() => { setMarking(true); replayRestart(); }}
+          className="w-full py-2 rounded-xl bg-white/10 text-white/70 border border-white/15 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all"
+        >
+          {markedCount > 0 ? t('delayMirror.markRedo') : t('delayMirror.markShots')}
+        </button>
+      </div>
     )
   ) : null;
 

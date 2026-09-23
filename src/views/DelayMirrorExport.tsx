@@ -248,8 +248,11 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
             }
           }
 
-          // Notatka do strzalu (np. "Arm zu hoch") — top-left, po przekatnej
-          // od panelu tarczy. Okno czasowe: noteShot, patrz wyzej.
+          // Notatka do strzalu (np. "Arm zu hoch") — user chcial ja NAD
+          // paskiem postepu (dol kadru), nie w gornym lewym rogu. X
+          // wyrownany z barX, Y nad pinami znacznikow (pinR*2 daje im
+          // zapas, zeby capsula nie nachodzila na numerki na pasku).
+          // Okno czasowe: noteShot, patrz wyzej.
           if (noteShot && noteShot.note) {
             const note = noteShot.note;
             ctx.save();
@@ -260,10 +263,11 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
             const boxPadX = pad * 0.7;
             const boxH = pad * 1.9;
             const boxW = textW + boxPadX * 2;
+            const noteY = barY - boxH - Math.round(pinR * 2 + pad * 0.4);
             ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            roundRect(ctx, pad, pad, boxW, boxH, boxH / 2);
+            roundRect(ctx, barX, noteY, boxW, boxH, boxH / 2);
             ctx.fillStyle = '#ffffff';
-            ctx.fillText(note, pad + boxPadX, pad + boxH / 2 + 1);
+            ctx.fillText(note, barX + boxPadX, noteY + boxH / 2 + 1);
             ctx.restore();
           }
 

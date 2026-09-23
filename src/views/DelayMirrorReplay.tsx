@@ -352,11 +352,12 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             </div>
             {/* Notatka na PODGLADZIE, nie tylko w polu edycji — user pisal
                 tekst i po puszczeniu klipu od nowa nigdzie go nie widzial.
-                Wzgledem outer boxa, nie rotowanego wrappera — user i tak
-                widzi to jako "gorny lewy rog filmiku", wystarczajaco
-                dokladnie na podglad (dokladna pozycja jest w eksporcie). */}
+                Dol, nie gora — user chcial to nad paskiem postepu, tak jak
+                w wypalonym eksporcie (DelayMirrorExport). Wzgledem outer
+                boxa, nie rotowanego wrappera — wystarczajaco dokladnie na
+                podglad, dokladna pozycja jest w eksporcie. */}
             {previewNote && (
-              <div className="absolute top-2 left-2 z-10 max-w-[70%] px-2.5 py-1.5 rounded-lg bg-black/70 text-white text-[11px] font-bold pointer-events-none truncate">
+              <div className="absolute bottom-2 left-2 z-10 max-w-[70%] px-2.5 py-1.5 rounded-lg bg-black/70 text-white text-[11px] font-bold pointer-events-none truncate">
                 {previewNote}
               </div>
             )}

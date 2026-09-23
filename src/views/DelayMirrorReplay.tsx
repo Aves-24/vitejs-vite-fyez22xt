@@ -179,7 +179,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // logika okna co w wypalanym eksporcie (DelayMirrorExport): notatka do
   // strzalu N pokazuje sie PRZED nim, od konca poprzedniego strzalu (albo
   // 0:00 dla pierwszego) do jego wlasnego momentu.
-  const previewNote = (() => {
+  const previewNote = !isPremium ? null : (() => {
     const byTime = shots
       .filter(s => s.tMs !== null)
       .sort((a, b) => (a.tMs as number) - (b.tMs as number));
@@ -445,32 +445,45 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // istniejacy strzal — takze po wyjsciu z marking (stuknieta strzala na
   // osi/tarczy w seekToShot rowniez ustawia lastMarkedN, wiec kazda juz
   // oznaczona strzala jest do edycji w kazdej chwili).
+  // JEDYNY PRO gate w Delay Mirror (decyzja usera 2026-09-23) — reszta
+  // (zwierciadlo, nagranie, powtorka, eksport z tarcza i znakiem GROT-X,
+  // udostepnienie) jest darmowa dla wszystkich.
   const noteEditor = lastMarkedN !== null ? (
-    <div className="w-full flex gap-1.5">
-      <input
-        type="text"
-        value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
-        onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
-        // Wideo lecialo dalej podczas pisania — user tracil orientacje,
-        // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
-        // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
-        // pisania.
-        onFocus={() => replayVideoRef.current?.pause()}
-        maxLength={60}
-        placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
-        className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
-      />
-      {/* Odznacz "gotowe" i wznow odtwarzanie jednym stukniecem — bez
-          tego user musial siegac po play/pauze w transportRow, daleko
-          od miejsca, gdzie wlasnie pisal. */}
+    isPremium ? (
+      <div className="w-full flex gap-1.5">
+        <input
+          type="text"
+          value={shots.find(s => s.n === lastMarkedN)?.note ?? ''}
+          onChange={(e) => setShotNote(lastMarkedN, e.target.value)}
+          // Wideo lecialo dalej podczas pisania — user tracil orientacje,
+          // gdzie akurat jest, i po wpisaniu notatki zastawal chaos na
+          // ekranie. Pauza na focus, zeby czas stal w miejscu na czas
+          // pisania.
+          onFocus={() => replayVideoRef.current?.pause()}
+          maxLength={60}
+          placeholder={t('delayMirror.noteInputPlaceholder', { n: lastMarkedN })}
+          className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-white/10 border border-white/15 text-white text-[11px] placeholder-white/30 focus:outline-none focus:border-[#fed33e]/50"
+        />
+        {/* Odznacz "gotowe" i wznow odtwarzanie jednym stukniecem — bez
+            tego user musial siegac po play/pauze w transportRow, daleko
+            od miejsca, gdzie wlasnie pisal. */}
+        <button
+          onClick={() => replayVideoRef.current?.play().catch(() => { /* ignore */ })}
+          title={t('delayMirror.noteDoneHint')}
+          className="shrink-0 w-9 h-9 rounded-lg bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/40 flex items-center justify-center active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-lg">check</span>
+        </button>
+      </div>
+    ) : (
       <button
-        onClick={() => replayVideoRef.current?.play().catch(() => { /* ignore */ })}
-        title={t('delayMirror.noteDoneHint')}
-        className="shrink-0 w-9 h-9 rounded-lg bg-[#4ade80]/20 text-[#4ade80] border border-[#4ade80]/40 flex items-center justify-center active:scale-95 transition-all"
+        onClick={onUpgrade}
+        className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#fed33e]/15 text-[#fed33e] border border-[#fed33e]/30 text-[11px] font-bold active:scale-95 transition-all"
       >
-        <span className="material-symbols-outlined text-lg">check</span>
+        <span className="material-symbols-outlined text-base">diamond</span>
+        {t('delayMirror.notesPro')}
       </button>
-    </div>
+    )
   ) : null;
 
   const markControls = targetPanel ? (
@@ -552,6 +565,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       blob={blob}
       targetType={series.targetType}
       shots={shots}
+      isPremium={isPremium}
       shareState={shareState}
       onShare={(out) => shareVideo(out)}
       onClose={() => setExporting(false)}
@@ -626,34 +640,26 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
           </button>
 
-          {/* JEDEN przycisk "Udostepnij" — wczesniej samotna ikona "adjust"
-              (wypalanie tarczy) nic nie mowila, a to najwazniejsza akcja na
-              tym ekranie. Z tarcza do wypalenia idzie przez ekran eksportu
-              (ten juz ma wlasny Udostepnij na koncu, patrz DelayMirrorExport);
-              bez tarczy (nic do wypalenia) idzie prosto do shareVideo. */}
-          {isPremium ? (
-            <button
-              onClick={() => { if (targetPanel) setExporting(true); else shareVideo(); }}
-              disabled={shareState === 'sharing'}
-              title={t('delayMirror.shareIdle')}
-              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 text-white rounded-xl active:scale-95 transition-all border border-white/20 disabled:opacity-50"
-            >
-              <span className="material-symbols-outlined text-lg">
-                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-widest">
-                {t('delayMirror.shareIdle')}
-              </span>
-            </button>
-          ) : (
-            <button
-              onClick={onUpgrade}
-              title={t('delayMirror.savePro', { defaultValue: 'Zapisz wideo — PRO' })}
-              className="shrink-0 w-10 h-10 bg-[#fed33e]/15 text-[#fed33e] rounded-xl active:scale-95 transition-all flex items-center justify-center border border-[#fed33e]/30"
-            >
-              <span className="material-symbols-outlined text-lg">diamond</span>
-            </button>
-          )}
+          {/* JEDEN przycisk "Udostepnij" — darmowy dla wszystkich (patrz
+              decyzja usera: PRO zostaje TYLKO notatkami do strzal, reszta
+              Delay Mirror w tym eksport z tarcza i znak GROT-X ma "hulac
+              po internecie" bez plotu). Z tarcza do wypalenia idzie przez
+              ekran eksportu (ten juz ma wlasny Udostepnij na koncu, patrz
+              DelayMirrorExport); bez tarczy (nic do wypalenia) idzie prosto
+              do shareVideo. */}
+          <button
+            onClick={() => { if (targetPanel) setExporting(true); else shareVideo(); }}
+            disabled={shareState === 'sharing'}
+            title={t('delayMirror.shareIdle')}
+            className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 text-white rounded-xl active:scale-95 transition-all border border-white/20 disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-lg">
+              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-widest">
+              {t('delayMirror.shareIdle')}
+            </span>
+          </button>
 
           {/* Koniec sesji — sama ikonka domku, nie kolejny przycisk z
               "beenden"/"Zakoncz" (patrz wczesniejszy fix na ekranie live). */}
@@ -749,7 +755,9 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         >
           {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
         </button>
-        {isPremium && targetPanel && (
+        {/* Eksport z tarcza i Udostepnij — darmowe dla wszystkich, patrz
+            decyzja usera przy wide layout wyzej. */}
+        {targetPanel && (
           <button
             onClick={() => setExporting(true)}
             className="w-full max-w-xs py-3 bg-white/10 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30"
@@ -759,29 +767,19 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           </button>
         )}
         {hasFullBlob && (
-          isPremium ? (
-            <button
-              onClick={() => shareVideo()}
-              disabled={shareState === 'sharing'}
-              className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
-            >
-              <span className="material-symbols-outlined text-lg">
-                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-              </span>
-              {shareState === 'sharing' && t('delayMirror.shareSharing')}
-              {shareState === 'saved' && t('delayMirror.shareSaved')}
-              {shareState === 'error' && t('delayMirror.shareError')}
-              {shareState === 'idle' && t('delayMirror.shareIdle')}
-            </button>
-          ) : (
-            <button
-              onClick={onUpgrade}
-              className={`w-full max-w-xs py-3 bg-[#fed33e]/15 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30`}
-            >
-              <span className="material-symbols-outlined text-lg">diamond</span>
-              {t('delayMirror.savePro', { defaultValue: 'Zapisz wideo — PRO' })}
-            </button>
-          )
+          <button
+            onClick={() => shareVideo()}
+            disabled={shareState === 'sharing'}
+            className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
+          >
+            <span className="material-symbols-outlined text-lg">
+              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+            </span>
+            {shareState === 'sharing' && t('delayMirror.shareSharing')}
+            {shareState === 'saved' && t('delayMirror.shareSaved')}
+            {shareState === 'error' && t('delayMirror.shareError')}
+            {shareState === 'idle' && t('delayMirror.shareIdle')}
+          </button>
         )}
         <button
           onClick={onEndSession}

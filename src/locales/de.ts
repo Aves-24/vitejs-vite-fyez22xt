@@ -1677,6 +1677,7 @@ export const views = {
     ffHoldHint: "Halten: 4x, loslassen: normale Geschwindigkeit",
     noteInputPlaceholder: "Notiz zu Pfeil {{n}}",
     noteDoneHint: "Fertig — Wiedergabe fortsetzen",
+    notesPro: "Notizen zu Pfeilen — PRO",
     markHint: "Clip abspielen und bei jedem Schuss tippen",
     markDone: "{{done}} von {{total}} markiert",
     expertMode: "Expertenmodus",

@@ -1677,6 +1677,7 @@ export const views = {
     ffHoldHint: "Hold: 4x, release: normal speed",
     noteInputPlaceholder: "Note for shot {{n}}",
     noteDoneHint: "Done — resume playback",
+    notesPro: "Shot notes — PRO",
     markHint: "Play the clip and tap at each shot",
     markDone: "{{done}} of {{total}} marked",
     expertMode: "Expert mode",

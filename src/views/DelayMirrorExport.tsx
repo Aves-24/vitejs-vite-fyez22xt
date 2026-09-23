@@ -24,6 +24,10 @@ interface Props {
   blob: Blob;
   targetType: string;
   shots: TechShot[];
+  // Notatki sa JEDYNYM PRO gate w Delay Mirror — wypalanie ich w klip
+  // sprawdza to tutaj, nie tylko w UI edycji (obrona przed sytuacja, gdzie
+  // user zapisal notatki jako PRO, a potem subskrypcja wygasla).
+  isPremium: boolean;
   shareState: 'idle' | 'sharing' | 'saved' | 'error';
   onShare: (out: Blob) => void;
   onClose: () => void;
@@ -61,7 +65,7 @@ function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: numbe
   ctx.fill();
 }
 
-export default function DelayMirrorExport({ blob, targetType, shots, shareState, onShare, onClose, onCancel }: Props) {
+export default function DelayMirrorExport({ blob, targetType, shots, isPremium, shareState, onShare, onClose, onCancel }: Props) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenTargetRef = useRef<HTMLDivElement>(null);
@@ -254,7 +258,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
           // wyrownany z barX, Y nad pinami znacznikow (pinR*2 daje im
           // zapas, zeby capsula nie nachodzila na numerki na pasku).
           // Okno czasowe: noteShot, patrz wyzej.
-          if (noteShot && noteShot.note) {
+          if (isPremium && noteShot && noteShot.note) {
             const note = noteShot.note;
             ctx.save();
             ctx.font = `700 ${Math.round(pad * 0.9)}px system-ui, -apple-system, sans-serif`;

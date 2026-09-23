@@ -1709,6 +1709,7 @@ export const views = {
     ffHoldHint: "Przytrzymaj: 4x, puść: normalna prędkość",
     noteInputPlaceholder: "Notatka do strzały {{n}}",
     noteDoneHint: "Gotowe — wznów odtwarzanie",
+    notesPro: "Notatki do strzał — PRO",
     markHint: "Puść nagranie i stuknij przy każdym strzale",
     markDone: "Zaznaczone {{done}} z {{total}}",
     expertMode: "Tryb ekspercki",

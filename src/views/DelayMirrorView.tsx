@@ -1217,7 +1217,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
                 className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-xl">play_arrow</span>
-                {t('delayMirror.positioningStart')}
+                {clipMode ? t('delayMirror.positioningStart') : t('delayMirror.positioningStartMirror')}
               </button>
             </div>
           </div>

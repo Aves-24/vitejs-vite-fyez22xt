@@ -168,6 +168,24 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     return cur;
   })();
 
+  // Notatka widoczna NA PODGLADZIE, nie tylko w polu edycji — user pisal
+  // tekst, a potem puszczajac klip od nowa nigdzie go nie widzial. Ta sama
+  // logika okna co w wypalanym eksporcie (DelayMirrorExport): notatka do
+  // strzalu N pokazuje sie PRZED nim, od konca poprzedniego strzalu (albo
+  // 0:00 dla pierwszego) do jego wlasnego momentu.
+  const previewNote = (() => {
+    const byTime = shots
+      .filter(s => s.tMs !== null)
+      .sort((a, b) => (a.tMs as number) - (b.tMs as number));
+    for (let i = 0; i < byTime.length; i++) {
+      const s = byTime[i];
+      const windowEnd = (s.tMs as number) / 1000;
+      const windowStart = i === 0 ? 0 : (byTime[i - 1].tMs as number) / 1000;
+      if (replayTime >= windowStart && replayTime <= windowEnd + 0.05) return s.note ?? null;
+    }
+    return null;
+  })();
+
   const replaySeek = (delta: number) => {
     const v = replayVideoRef.current;
     if (!v) return;
@@ -266,7 +284,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const videoBox = (
           <div
             ref={replayBoxRef}
-            className={`${displayAsLandscape ? 'relative' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
+            className={`relative ${displayAsLandscape ? '' : 'w-full mb-3 rounded-2xl overflow-hidden border border-white/15'} bg-black flex items-center justify-center`}
             style={
               displayAsLandscape
                 ? { width: '100%', flex: '1 1 auto', minHeight: 0, minWidth: 0, alignSelf: 'stretch' }
@@ -327,6 +345,16 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   procentowa wiec pokrywa sie 1:1 z kadrem video */}
               {showGrid && <DelayMirrorGrid />}
             </div>
+            {/* Notatka na PODGLADZIE, nie tylko w polu edycji — user pisal
+                tekst i po puszczeniu klipu od nowa nigdzie go nie widzial.
+                Wzgledem outer boxa, nie rotowanego wrappera — user i tak
+                widzi to jako "gorny lewy rog filmiku", wystarczajaco
+                dokladnie na podglad (dokladna pozycja jest w eksporcie). */}
+            {previewNote && (
+              <div className="absolute top-2 left-2 z-10 max-w-[70%] px-2.5 py-1.5 rounded-lg bg-black/70 text-white text-[11px] font-bold pointer-events-none truncate">
+                {previewNote}
+              </div>
+            )}
           </div>
   );
 

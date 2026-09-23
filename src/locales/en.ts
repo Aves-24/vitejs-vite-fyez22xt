@@ -1671,6 +1671,8 @@ export const views = {
     exportCancel: "Cancel",
     exportFailed: "Did not work — share the clip without the target.",
     exportDone: "Clip ready",
+    watchAgain: "Play",
+    watchFullscreen: "Fullscreen",
     exportBack: "Back to replay",
     ffHoldHint: "Hold: 4x, release: normal speed",
     noteInputPlaceholder: "Note for shot {{n}}",

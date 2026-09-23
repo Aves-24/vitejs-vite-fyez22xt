@@ -1671,6 +1671,8 @@ export const views = {
     exportCancel: "Abbrechen",
     exportFailed: "Hat nicht geklappt — teile den Clip ohne Scheibe.",
     exportDone: "Clip fertig",
+    watchAgain: "Abspielen",
+    watchFullscreen: "Vollbild",
     exportBack: "Zurück zur Wiedergabe",
     ffHoldHint: "Halten: 4x, loslassen: normale Geschwindigkeit",
     noteInputPlaceholder: "Notiz zu Pfeil {{n}}",

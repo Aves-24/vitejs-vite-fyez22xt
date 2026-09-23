@@ -71,6 +71,29 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
   // udostepniac wlasnie z tego miejsca, nie z powtorki (tam ma tylko surowy
   // blob wejsciowy).
   const [result, setResult] = useState<Blob | null>(null);
+  const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const resultVideoRef = useRef<HTMLVideoElement>(null);
+
+  // Klip gotowy = mozna go obejrzec jeszcze raz, nie tylko udostepnic —
+  // user chcial sprawdzic wynik przed wyslaniem. URL na WYNIKOWYM blobie
+  // (juz z wypalona tarcza i notatkami), nie na hidden <video> uzywanym
+  // do rysowania — ten drugi jest tylko zrodlem klatek, nie do odtwarzania.
+  useEffect(() => {
+    if (!result) return;
+    const url = URL.createObjectURL(result);
+    setResultUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [result]);
+
+  const watchFullscreen = () => {
+    const v = resultVideoRef.current;
+    if (!v) return;
+    const el = v as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
+    if (v.requestFullscreen) v.requestFullscreen().catch(() => { /* ignore */ });
+    // iOS Safari nie ma requestFullscreen na <video> — ma wlasny natywny odtwarzacz.
+    else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
+    v.play().catch(() => { /* ignore */ });
+  };
 
   useEffect(() => {
     // Flaga per URUCHOMIENIE efektu, nie ref. W trybie deweloperskim React
@@ -332,11 +355,47 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
         <DelayMirrorSeriesTarget targetType={targetType} shots={shots} className="w-[300px]" />
       </div>
 
-      <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
+      {/* Po zbudowaniu klipu podglad przechodzi z zamrozonego canvasa na
+          prawdziwe <video> na wynikowym blobie — juz z wypalona tarcza i
+          notatkami w pikselach, wiec do odtworzenia nie trzeba przerysowywac
+          nakladki. Canvas zostaje widoczny tylko w trakcie/po niepowodzeniu. */}
+      {result && resultUrl ? (
+        <video
+          ref={resultVideoRef}
+          src={resultUrl}
+          playsInline
+          className="max-w-full max-h-[55%] rounded-xl border border-white/15"
+          onEnded={() => {
+            // Powrot do "Video teilen" po skonczeniu pelnoekranowego
+            // odtwarzania — strona pod spodem juz jest tym ekranem, wiec
+            // wystarczy zamknac fullscreen.
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => { /* ignore */ });
+          }}
+        />
+      ) : (
+        <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
+      )}
 
       {result ? (
         <>
           <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.exportDone')}</p>
+          {/* Obejrzyj jeszcze raz — play inline albo pelny ekran. */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => resultVideoRef.current?.play().catch(() => { /* ignore */ })}
+              title={t('delayMirror.watchAgain')}
+              className="w-11 h-11 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+            >
+              <span className="material-symbols-outlined text-xl">play_arrow</span>
+            </button>
+            <button
+              onClick={watchFullscreen}
+              title={t('delayMirror.watchFullscreen')}
+              className="w-11 h-11 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+            >
+              <span className="material-symbols-outlined text-xl">fullscreen</span>
+            </button>
+          </div>
           <button
             onClick={() => onShare(result)}
             disabled={shareState === 'sharing'}

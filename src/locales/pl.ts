@@ -1703,6 +1703,8 @@ export const views = {
     exportCancel: "Przerwij",
     exportFailed: "Nie wyszło — udostępnij klip bez tarczy.",
     exportDone: "Klip gotowy",
+    watchAgain: "Odtwórz",
+    watchFullscreen: "Pełny ekran",
     exportBack: "Wróć do powtórki",
     ffHoldHint: "Przytrzymaj: 4x, puść: normalna prędkość",
     noteInputPlaceholder: "Notatka do strzały {{n}}",

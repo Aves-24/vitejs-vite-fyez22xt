@@ -534,29 +534,23 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
           </button>
 
-          {/* Klip z wypalona tarcza. Sama ikona — pasek jest na styk, a
-              transport obok jest flex-1, wiec oddaje te 40 px. */}
-          {isPremium && targetPanel && (
-            <button
-              onClick={() => setExporting(true)}
-              title={t('delayMirror.exportWithTarget')}
-              className="shrink-0 w-10 h-10 bg-white/15 text-[#fed33e] rounded-xl active:scale-95 transition-all flex items-center justify-center border border-[#fed33e]/30"
-            >
-              <span className="material-symbols-outlined text-lg">adjust</span>
-            </button>
-          )}
-
-          {/* Udostepnianie jako sama ikona — stan i tak widac po ikonie
-              (check / error), a pelny napis nie zmiescilby sie w pasku. */}
+          {/* JEDEN przycisk "Udostepnij" — wczesniej samotna ikona "adjust"
+              (wypalanie tarczy) nic nie mowila, a to najwazniejsza akcja na
+              tym ekranie. Z tarcza do wypalenia idzie przez ekran eksportu
+              (ten juz ma wlasny Udostepnij na koncu, patrz DelayMirrorExport);
+              bez tarczy (nic do wypalenia) idzie prosto do shareVideo. */}
           {isPremium ? (
             <button
-              onClick={() => shareVideo()}
+              onClick={() => { if (targetPanel) setExporting(true); else shareVideo(); }}
               disabled={shareState === 'sharing'}
               title={t('delayMirror.shareIdle')}
-              className="shrink-0 w-10 h-10 bg-white/15 text-white rounded-xl active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:opacity-50"
+              className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 text-white rounded-xl active:scale-95 transition-all border border-white/20 disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-lg">
                 {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              </span>
+              <span className="text-[11px] font-black uppercase tracking-widest">
+                {t('delayMirror.shareIdle')}
               </span>
             </button>
           ) : (
@@ -569,11 +563,14 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             </button>
           )}
 
+          {/* Koniec sesji — sama ikonka domku, nie kolejny przycisk z
+              "beenden"/"Zakoncz" (patrz wczesniejszy fix na ekranie live). */}
           <button
             onClick={onEndSession}
-            className="shrink-0 px-3 py-2.5 bg-white/10 text-white/70 rounded-xl font-bold text-[11px] active:scale-95 transition-all"
+            title={t('delayMirror.endSession')}
+            className="shrink-0 w-10 h-10 bg-white/10 text-white/70 rounded-xl active:scale-95 transition-all flex items-center justify-center"
           >
-            {t('delayMirror.endSession')}
+            <span className="material-symbols-outlined text-lg">home</span>
           </button>
         </div>
         {exportOverlay}

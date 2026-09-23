@@ -381,30 +381,32 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     marking ? (
       <div className="shrink-0 w-full flex flex-col items-center gap-1">
         {/* Przewijanie WLASNIE TU: przy 3-minutowym klipie czekanie na
-            kazdy strzal w 1x jest zbyt dlugie. User przyspiesza miedzy
-            strzalami i zwalnia z powrotem tuz przed trafieniem — stad
-            szybki dostep obok przycisku, nie tylko w dalekim pasku predkosci. */}
-        <div className="w-full flex gap-1">
-          {[1, 2, 4].map(rate => (
-            <button
-              key={rate}
-              onClick={() => setReplayRate(rate)}
-              className={`flex-1 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 ${
-                replayRate === rate
-                  ? 'bg-[#fed33e] text-[#0a3a2a]'
-                  : 'bg-white/10 text-white/70 border border-white/15'
-              }`}
-            >
-              {rate}x
-            </button>
-          ))}
+            kazdy strzal w 1x jest zbyt dlugie. Przytrzymanie »4x zamiast
+            przelacznika — user chce puscic przycisk dokladnie w momencie
+            strzalu i od razu trafic markShot w normalnej predkosci, bez
+            dodatkowego stuknieca "wroc do 1x". */}
+        <div className="w-full flex gap-1.5">
+          <button
+            onClick={markShot}
+            className="flex-1 py-2 rounded-xl bg-[#fed33e] text-[#0a3a2a] font-black text-xs uppercase tracking-widest active:scale-95 transition-all"
+          >
+            {t('delayMirror.markShotN', { n: nextIdx >= 0 ? shots[nextIdx].n : shots.length })}
+          </button>
+          <button
+            onPointerDown={() => setReplayRate(4)}
+            onPointerUp={() => setReplayRate(1)}
+            onPointerLeave={() => setReplayRate(1)}
+            onPointerCancel={() => setReplayRate(1)}
+            title={t('delayMirror.ffHoldHint')}
+            className={`shrink-0 w-14 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all border select-none touch-none ${
+              replayRate === 4
+                ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e] scale-95'
+                : 'bg-white/10 text-white/80 border-white/15 active:scale-95'
+            }`}
+          >
+            »4x
+          </button>
         </div>
-        <button
-          onClick={markShot}
-          className="w-full py-2.5 rounded-xl bg-[#fed33e] text-[#0a3a2a] font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
-        >
-          {t('delayMirror.markShotN', { n: nextIdx >= 0 ? shots[nextIdx].n : shots.length })}
-        </button>
         <div className="w-full flex gap-1">
           <button
             onClick={undoMark}

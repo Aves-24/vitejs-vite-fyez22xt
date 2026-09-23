@@ -1671,6 +1671,7 @@ export const views = {
     exportFailed: "Did not work — share the clip without the target.",
     exportDone: "Clip ready",
     exportBack: "Back to replay",
+    ffHoldHint: "Hold: 4x, release: normal speed",
     markHint: "Play the clip and tap at each shot",
     markDone: "{{done}} of {{total}} marked",
     expertMode: "Expert mode",

@@ -1703,6 +1703,7 @@ export const views = {
     exportFailed: "Nie wyszło — udostępnij klip bez tarczy.",
     exportDone: "Klip gotowy",
     exportBack: "Wróć do powtórki",
+    ffHoldHint: "Przytrzymaj: 4x, puść: normalna prędkość",
     markHint: "Puść nagranie i stuknij przy każdym strzale",
     markDone: "Zaznaczone {{done}} z {{total}}",
     expertMode: "Tryb ekspercki",

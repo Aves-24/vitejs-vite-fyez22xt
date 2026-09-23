@@ -1671,6 +1671,7 @@ export const views = {
     exportFailed: "Hat nicht geklappt — teile den Clip ohne Scheibe.",
     exportDone: "Clip fertig",
     exportBack: "Zurück zur Wiedergabe",
+    ffHoldHint: "Halten: 4x, loslassen: normale Geschwindigkeit",
     markHint: "Clip abspielen und bei jedem Schuss tippen",
     markDone: "{{done}} von {{total}} markiert",
     expertMode: "Expertenmodus",

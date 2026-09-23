@@ -1589,22 +1589,27 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               </span>
             )}
           </button>
-
-          {/* ZAKONCZ — akcja terminalna. Druga linia mowi, gdzie laduje user:
-              z klipem do powtorki, bez klipu prosto do menu. */}
-          <button
-            onClick={finishRecording}
-            className="w-full py-2.5 px-3 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border border-red-500/40 shadow-lg shadow-red-900/30"
-          >
-            <span className="material-symbols-outlined text-xl leading-none">stop_circle</span>
-            <span className="text-[10px] font-black uppercase tracking-widest leading-tight">
-              {t('delayMirror.finish')}
-            </span>
-            <span className="text-[9px] font-bold text-white/60 leading-tight">
-              {hasClip ? t('delayMirror.finishToReplay') : t('delayMirror.finishToMenu')}
-            </span>
-          </button>
         </div>
+      )}
+
+      {/* Wyjscie z calej sesji — jedna cicha ikona, nie drugi przycisk
+          obok "Koniec serii" z podobnie brzmiaca etykieta (byla to glowna
+          skarga: "Passe beenden" i "Beenden" nie do odroznienia). Bez
+          etykiety = bez konfliktu slownego, wiec ladzie osobno od gornego
+          panelu. Rog logiczny bottom-left, bo top-right zajmuje juz panel
+          wyzej, a top-left pod force-rotate wypadlby pod orientationToggle
+          (ten sam fizyczny-vs-logiczny unik, co przy przycisku powrotu na
+          ekranie idle — patrz komentarz tam). Dziala identycznie w obu
+          trybach: z klipem konczy sesje i pokazuje pelna powtorke, bez
+          klipu wraca prosto do menu. */}
+      {(mirrorState === 'buffering' || mirrorState === 'live') && (
+        <button
+          onClick={finishRecording}
+          title={t('delayMirror.finish')}
+          className="absolute bottom-5 left-5 z-30 text-white/70 active:scale-90 transition-all bg-black/40 backdrop-blur-sm rounded-full p-2.5"
+        >
+          <span className="material-symbols-outlined text-2xl">arrow_back</span>
+        </button>
       )}
 
       {/* Pasek pauzy — bez niego user odchodzi od telefonu myslac, ze skonczyl */}

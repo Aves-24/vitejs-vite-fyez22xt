@@ -63,8 +63,16 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     try { return localStorage.getItem('delayMirror.seriesSpot') === '1'; } catch { return false; }
   });
   const [arrowCount, setArrowCount] = useState<number>(() => {
-    try { return localStorage.getItem('delayMirror.seriesArrows') === '3' ? 3 : 6; } catch { return 6; }
+    try {
+      const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10);
+      if (!isNaN(n) && n >= 1 && n <= 6) return n;
+    } catch { /* ignore */ }
+    return 6;
   });
+  const pickArrowCount = (n: number) => {
+    setArrowCount(n);
+    try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ }
+  };
   const [shots, setShots] = useState<TechShot[]>([]);
 
   // W poziomie tarcza musi skalowac sie do WYSOKOSCI, nie szerokosci —
@@ -130,12 +138,25 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
             </p>
             <div className="flex gap-2">
               {[3, 6].map(n => (
+                <button key={n} onClick={() => pickArrowCount(n)} className={pickBtn(arrowCount === n)}>
+                  <span className="text-lg font-black">{n}</span>
+                </button>
+              ))}
+            </div>
+            {/* Inne liczby strzal — mniejsze kafelki pod glownymi 3/6, bo
+                to rzadszy przypadek (niedostrzelana lub niepelna passa). */}
+            <div className="flex gap-1.5 mt-1.5">
+              {[1, 2, 4, 5].map(n => (
                 <button
                   key={n}
-                  onClick={() => { setArrowCount(n); try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ } }}
-                  className={pickBtn(arrowCount === n)}
+                  onClick={() => pickArrowCount(n)}
+                  className={`flex-1 py-1.5 rounded-lg font-black text-xs transition-all active:scale-95 border ${
+                    arrowCount === n
+                      ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
+                      : 'bg-white/5 text-white/50 border-white/10'
+                  }`}
                 >
-                  <span className="text-lg font-black">{n}</span>
+                  {n}
                 </button>
               ))}
             </div>

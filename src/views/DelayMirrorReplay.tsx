@@ -380,6 +380,25 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const markControls = targetPanel ? (
     marking ? (
       <div className="shrink-0 w-full flex flex-col items-center gap-1">
+        {/* Przewijanie WLASNIE TU: przy 3-minutowym klipie czekanie na
+            kazdy strzal w 1x jest zbyt dlugie. User przyspiesza miedzy
+            strzalami i zwalnia z powrotem tuz przed trafieniem — stad
+            szybki dostep obok przycisku, nie tylko w dalekim pasku predkosci. */}
+        <div className="w-full flex gap-1">
+          {[1, 2, 4].map(rate => (
+            <button
+              key={rate}
+              onClick={() => setReplayRate(rate)}
+              className={`flex-1 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 ${
+                replayRate === rate
+                  ? 'bg-[#fed33e] text-[#0a3a2a]'
+                  : 'bg-white/10 text-white/70 border border-white/15'
+              }`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
         <button
           onClick={markShot}
           className="w-full py-2.5 rounded-xl bg-[#fed33e] text-[#0a3a2a] font-black text-sm uppercase tracking-widest active:scale-95 transition-all"
@@ -464,7 +483,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {/* Przewijanie ±5 s i restart odpadaja — suwak obok robi to samo,
               a w pasku licza sie piksele. */}
           <div className="flex items-center gap-1 shrink-0">
-            {[0.25, 0.5, 1, 2].map(rate => (
+            {[0.25, 0.5, 1, 2, 4].map(rate => (
               <button
                 key={rate}
                 onClick={() => setReplayRate(rate)}
@@ -568,7 +587,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               {t('delayMirror.replaySpeed')}
             </p>
             <div className="flex justify-center gap-2 mb-2">
-              {[0.25, 0.5, 1, 2].map(rate => (
+              {[0.25, 0.5, 1, 2, 4].map(rate => (
                 <button
                   key={rate}
                   onClick={() => setReplayRate(rate)}

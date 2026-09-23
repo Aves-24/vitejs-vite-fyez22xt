@@ -875,21 +875,6 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     } catch { /* ignore */ }
   }, []);
 
-  // REC w trakcie sesji. Pierwsze uzbrojenie buduje potok klipu; kolejne
-  // przelaczenia to pause/resume tego samego recordera, wiec caly material
-  // laduje w JEDNYM pliku i wczesniejsze ujecia nie gina.
-  const toggleClipRecording = useCallback(() => {
-    const fr = fullRecorderRef.current;
-    if (!fr) { startClipPipeline(); return; }
-    if (clipActive) {
-      try { fr.pause(); } catch { /* ignore */ }
-      setClipActive(false);
-    } else {
-      try { fr.resume(); } catch { /* ignore */ }
-      setClipActive(true);
-    }
-  }, [clipActive, startClipPipeline]);
-
   const resumeMirror = useCallback(() => {
     setMirrorState('idle');
     setBufferMs(0);
@@ -1509,33 +1494,21 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
                 <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
               </div>
             )}
-            {/* REC i siatka dzialaja juz w trakcie buforowania — czekanie
-                na bufor to naturalny moment, zeby je ustawic. Tylko suwak
-                opoznienia czeka na 'live', bo zmiana w trakcie buforowania
-                przestawialaby prog, ktory wlasnie jest odliczany. */}
-                {/* REC — czy ten fragment ma trafic do klipu. Tylko ekspert:
-                    w trybie prostym nic sie nie zapisuje, wiec uzbrajanie
-                    nagrania nie ma tam czego robic. */}
-                {expert && (
-                <button
-                  onClick={toggleClipRecording}
-                  disabled={recordingPaused}
-                  className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-2.5 py-1.5 active:scale-95 transition-all border ${
-                    recordingPaused
-                      ? 'bg-white/5 text-white/25 border-white/10'
-                      : clipActive
-                        ? 'bg-red-600/80 text-white border-red-500/40'
-                        : 'bg-black/60 text-white/60 border-white/20'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-sm">
-                    {clipActive ? 'radio_button_checked' : 'radio_button_unchecked'}
-                  </span>
-                  <span className="text-xs font-bold uppercase tracking-wider">
-                    {clipActive ? t('delayMirror.recOn') : t('delayMirror.recOff')}
-                  </span>
-                </button>
-                )}
+            {/* Siatka dziala juz w trakcie buforowania — czekanie na bufor
+                to naturalny moment, zeby ja ustawic. Tylko suwak opoznienia
+                czeka na 'live', bo zmiana w trakcie buforowania przestawialaby
+                prog, ktory wlasnie jest odliczany.
+                BYL TU przelacznik REC wlacz/wylacz w trakcie passy — usuniety:
+                wybor "Lustro + nagranie" na ekranie startowym juz oznacza
+                cala passe, a mid-pass toggle polegal na MediaRecorder
+                pause()/resume() na strumieniu z canvasa, co na czesci
+                telefonow nie wykluczalo wstrzymanego fragmentu z pliku
+                (user zglosil: "wylaczam Nimmt auf i tak nagrywa dalej").
+                Realna naprawa (osobne segmenty sklejane w jeden plik) jest
+                niebezpieczna — zlepienie dwoch kompletnych plikow wideo w
+                jeden Blob najczesciej nie odtworzy sie poprawnie. Zamiast
+                tego: jesli wybrales nagranie, nagrywa sie cala passa, koniec
+                zdejmujesz przyciskiem "Koniec serii". */}
 
                 {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
                 <button

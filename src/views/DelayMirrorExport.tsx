@@ -73,6 +73,13 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
   const [result, setResult] = useState<Blob | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const resultVideoRef = useRef<HTMLVideoElement>(null);
+  // Powiekszony podglad = wiecej wysokosci dla wideo (do 70vh), ale WCIAZ
+  // w tym samym ekranie — NIE prawdziwy Fullscreen API. User: requestFullscreen/
+  // webkitEnterFullscreen wywolywalo systemowe powiadomienie na telefonie
+  // (potencjalne zrodlo problemow w przyszlosci), a przy tym chowalo
+  // przyciski Udostepnij/Powrot pod natywnym odtwarzaczem. Plus tego
+  // podejscia: przyciski zostaja widoczne na dole NAWET w powiekszeniu.
+  const [enlarged, setEnlarged] = useState(false);
 
   // Klip gotowy = mozna go obejrzec jeszcze raz, nie tylko udostepnic —
   // user chcial sprawdzic wynik przed wyslaniem. URL na WYNIKOWYM blobie
@@ -84,16 +91,6 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
     setResultUrl(url);
     return () => URL.revokeObjectURL(url);
   }, [result]);
-
-  const watchFullscreen = () => {
-    const v = resultVideoRef.current;
-    if (!v) return;
-    const el = v as HTMLVideoElement & { webkitEnterFullscreen?: () => void };
-    if (v.requestFullscreen) v.requestFullscreen().catch(() => { /* ignore */ });
-    // iOS Safari nie ma requestFullscreen na <video> — ma wlasny natywny odtwarzacz.
-    else if (el.webkitEnterFullscreen) el.webkitEnterFullscreen();
-    v.play().catch(() => { /* ignore */ });
-  };
 
   useEffect(() => {
     // Flaga per URUCHOMIENIE efektu, nie ref. W trybie deweloperskim React
@@ -348,99 +345,107 @@ export default function DelayMirrorExport({ blob, targetType, shots, shareState,
   }, []);
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col items-center justify-center px-6 gap-3">
+    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
       {/* Ukryta instancja tarczy — zrodlo obrazka do wypalenia. Zawsze bez
           podswietlenia, zeby serializowany SVG byl deterministyczny. */}
       <div ref={hiddenTargetRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
         <DelayMirrorSeriesTarget targetType={targetType} shots={shots} className="w-[300px]" />
       </div>
 
-      {/* Po zbudowaniu klipu podglad przechodzi z zamrozonego canvasa na
-          prawdziwe <video> na wynikowym blobie — juz z wypalona tarcza i
-          notatkami w pikselach, wiec do odtworzenia nie trzeba przerysowywac
-          nakladki. Canvas zostaje widoczny tylko w trakcie/po niepowodzeniu. */}
-      {result && resultUrl ? (
-        <video
-          ref={resultVideoRef}
-          src={resultUrl}
-          playsInline
-          className="max-w-full max-h-[55%] rounded-xl border border-white/15"
-          onEnded={() => {
-            // Powrot do "Video teilen" po skonczeniu pelnoekranowego
-            // odtwarzania — strona pod spodem juz jest tym ekranem, wiec
-            // wystarczy zamknac fullscreen.
-            if (document.fullscreenElement) document.exitFullscreen().catch(() => { /* ignore */ });
-          }}
-        />
-      ) : (
-        <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
-      )}
+      {/* Wideo/canvas w GORNEJ, elastycznej czesci — kontrolki zawsze na
+          dole (shrink-0 nizej), zamiast calego bloku wysrodkowanego na
+          ekranie. Bez tego maly wynikowy <video> (mniej tresci niz canvas
+          z pasem eksportu) przesuwal caly ukrywany widok za wysoko. */}
+      <div className="flex-1 min-h-0 flex items-center justify-center">
+        {/* Po zbudowaniu klipu podglad przechodzi z zamrozonego canvasa na
+            prawdziwe <video> na wynikowym blobie — juz z wypalona tarcza i
+            notatkami w pikselach, wiec do odtworzenia nie trzeba przerysowywac
+            nakladki. Canvas zostaje widoczny tylko w trakcie/po niepowodzeniu. */}
+        {result && resultUrl ? (
+          <video
+            ref={resultVideoRef}
+            src={resultUrl}
+            playsInline
+            className={`max-w-full rounded-xl border border-white/15 transition-all ${enlarged ? 'max-h-[70vh]' : 'max-h-[45vh]'}`}
+            onEnded={() => setEnlarged(false)}
+          />
+        ) : (
+          <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
+        )}
+      </div>
 
-      {result ? (
-        <>
-          <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.exportDone')}</p>
-          {/* Obejrzyj jeszcze raz — play inline albo pelny ekran. */}
-          <div className="flex gap-2">
+      <div className="shrink-0 flex flex-col items-center gap-3">
+        {result ? (
+          <>
+            {/* Tytul obok przyciskow — osobny wiersz nad nimi zabieral
+                wysokosc bez potrzeby. */}
+            <div className="w-full max-w-xs flex items-center justify-between gap-2">
+              <p className="text-white font-black text-xs uppercase tracking-widest">{t('delayMirror.exportDone')}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => resultVideoRef.current?.play().catch(() => { /* ignore */ })}
+                  title={t('delayMirror.watchAgain')}
+                  className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+                >
+                  <span className="material-symbols-outlined text-lg">play_arrow</span>
+                </button>
+                {/* Powiekszenie DO 70vh w tym samym ekranie, NIE prawdziwy
+                    Fullscreen API — patrz komentarz przy stanie `enlarged`. */}
+                <button
+                  onClick={() => setEnlarged(v => !v)}
+                  title={t('delayMirror.watchFullscreen')}
+                  className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+                >
+                  <span className="material-symbols-outlined text-lg">{enlarged ? 'fullscreen_exit' : 'fullscreen'}</span>
+                </button>
+              </div>
+            </div>
             <button
-              onClick={() => resultVideoRef.current?.play().catch(() => { /* ignore */ })}
-              title={t('delayMirror.watchAgain')}
-              className="w-11 h-11 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+              onClick={() => onShare(result)}
+              disabled={shareState === 'sharing'}
+              className="w-full max-w-xs py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              <span className="material-symbols-outlined text-xl">play_arrow</span>
+              <span className="material-symbols-outlined text-lg">
+                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              </span>
+              {shareState === 'sharing' && t('delayMirror.shareSharing')}
+              {shareState === 'saved' && t('delayMirror.shareSaved')}
+              {shareState === 'error' && t('delayMirror.shareError')}
+              {shareState === 'idle' && t('delayMirror.shareIdle')}
             </button>
             <button
-              onClick={watchFullscreen}
-              title={t('delayMirror.watchFullscreen')}
-              className="w-11 h-11 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
+              onClick={onClose}
+              className="px-5 py-2 rounded-xl bg-white/10 text-white/70 font-bold text-xs active:scale-95 transition-all"
             >
-              <span className="material-symbols-outlined text-xl">fullscreen</span>
+              {t('delayMirror.exportBack')}
             </button>
-          </div>
-          <button
-            onClick={() => onShare(result)}
-            disabled={shareState === 'sharing'}
-            className="w-full max-w-xs py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <span className="material-symbols-outlined text-lg">
-              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-            </span>
-            {shareState === 'sharing' && t('delayMirror.shareSharing')}
-            {shareState === 'saved' && t('delayMirror.shareSaved')}
-            {shareState === 'error' && t('delayMirror.shareError')}
-            {shareState === 'idle' && t('delayMirror.shareIdle')}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-white/10 text-white/70 font-bold text-xs active:scale-95 transition-all"
-          >
-            {t('delayMirror.exportBack')}
-          </button>
-        </>
-      ) : failed ? (
-        <>
-          <p className="text-white/70 text-sm text-center">{t('delayMirror.exportFailed')}</p>
-          <button
-            onClick={onCancel}
-            className="px-6 py-3 rounded-2xl bg-white/10 text-white font-bold text-sm active:scale-95 transition-all"
-          >
-            {t('delayMirror.finishToMenu')}
-          </button>
-        </>
-      ) : (
-        <>
-          <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.exportRunning')}</p>
-          <div className="w-full max-w-xs h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-[#fed33e] rounded-full transition-all duration-100" style={{ width: `${Math.round(progress * 100)}%` }} />
-          </div>
-          <p className="text-white/40 text-[11px] text-center leading-snug">{t('delayMirror.exportHint')}</p>
-          <button
-            onClick={onCancel}
-            className="px-5 py-2 rounded-xl bg-white/10 text-white/70 font-bold text-xs active:scale-95 transition-all"
-          >
-            {t('delayMirror.exportCancel')}
-          </button>
-        </>
-      )}
+          </>
+        ) : failed ? (
+          <>
+            <p className="text-white/70 text-sm text-center">{t('delayMirror.exportFailed')}</p>
+            <button
+              onClick={onCancel}
+              className="px-6 py-3 rounded-2xl bg-white/10 text-white font-bold text-sm active:scale-95 transition-all"
+            >
+              {t('delayMirror.finishToMenu')}
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.exportRunning')}</p>
+            <div className="w-full max-w-xs h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-[#fed33e] rounded-full transition-all duration-100" style={{ width: `${Math.round(progress * 100)}%` }} />
+            </div>
+            <p className="text-white/40 text-[11px] text-center leading-snug">{t('delayMirror.exportHint')}</p>
+            <button
+              onClick={onCancel}
+              className="px-5 py-2 rounded-xl bg-white/10 text-white/70 font-bold text-xs active:scale-95 transition-all"
+            >
+              {t('delayMirror.exportCancel')}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

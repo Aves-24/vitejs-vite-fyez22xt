@@ -831,6 +831,12 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
     setRecordingPaused(false);
     setBufferMs(0);
+    // Kazde wznowienie z klipem startuje NOWA passe (closePassClip zawsze
+    // zamyka poprzedni plik i zeruje fullRecorderRef PRZED tym momentem —
+    // patrz komentarz wyzej), wiec licznik tez musi wrocic do zera. Bez
+    // tego pokazywal czas z KONCA poprzedniej passy i liczyl dalej od niego,
+    // mimo ze to juz zupelnie nowy plik.
+    setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
     // runMSE wolane wprost, nie przez pendingMSERef: gdyby pauza wypadla

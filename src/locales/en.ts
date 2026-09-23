@@ -1652,6 +1652,7 @@ export const views = {
     seriesTargetTitle: "Which target did you shoot?",
     seriesTargetSpot: "Spot",
     seriesTargetRound: "Round",
+    seriesEnterTitle: "Enter arrows",
     seriesArrowsTitle: "Arrows per end?",
     seriesGoCollect: "Mark arrows",
     seriesGoCollectHint: "Take the phone with you to the target — you'll tap each arrow where it sits.",

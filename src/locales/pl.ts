@@ -1684,6 +1684,7 @@ export const views = {
     seriesTargetTitle: "Na jaką tarczę strzelałeś?",
     seriesTargetSpot: "Spot",
     seriesTargetRound: "Okrągła",
+    seriesEnterTitle: "Wpisz strzały",
     seriesArrowsTitle: "Ile strzał w serii?",
     seriesGoCollect: "Wbij strzały",
     seriesGoCollectHint: "Weź telefon ze sobą do tarczy — tam wbijesz każdą strzałę tam, gdzie siedzi.",

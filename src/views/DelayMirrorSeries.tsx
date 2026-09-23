@@ -206,6 +206,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
           // Wyjscie robi wlasny przycisk. Bez tego TargetInput po szostej
           // strzale sam wywoluje onToggleFullscreen i wyrzuca do wyboru tarczy.
           autoExit: false,
+          title: t('delayMirror.seriesEnterTitle'),
           padClass: landscape ? 'pb-1' : 'pb-24',
           headerClass: landscape ? 'px-4 pt-2 mb-1' : undefined,
           // Bezwzglednie, nie w procentach — patrz uwaga przy `embed`.
@@ -218,8 +219,12 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
           dolnym rogu (TargetInput: left-6 bottom-8). W poziomie wszystko
           w jednej linii, bo wysokosc jest tam towarem deficytowym. */}
       <div
-        className={`fixed bottom-0 inset-x-0 z-[100001] bg-[#050f0a]/95 backdrop-blur-sm border-t border-white/15 pl-20 pr-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
-          landscape ? 'pt-1.5 flex items-center gap-3' : 'pt-2 px-4'
+        className={`fixed bottom-0 inset-x-0 z-[100001] bg-[#050f0a]/95 backdrop-blur-sm border-t border-white/15 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+          // W poziomie pl-20/pr-4 to celowa asymetria (tekst po lewej, przycisk
+          // po prawej, nic tu nie ma byc scentrowane). W pionie tekst i przycisk
+          // MAJA byc na srodku ekranu, wiec oba marginesy musza byc rowne —
+          // inaczej "wycentrowany" tekst siedzi wizualnie bardziej w prawo.
+          landscape ? 'pl-20 pr-4 pt-1.5 flex items-center gap-3' : 'pl-20 pr-20 pt-2'
         }`}
       >
         <div className={landscape ? 'flex-1 min-w-0' : ''}>

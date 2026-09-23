@@ -34,6 +34,9 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //             i ogranicznik sam się unieważnia.
 //   padClass  odstęp pod tarczą w trybie pełnoekranowym
 //   headerClass  odstępy paska ze slotami (w poziomie 88px to za dużo)
+//   title  podpis pod paskiem ze slotami (np. "Pfeile eintragen") — biale
+//          tlo pod nim jest inaczej puste, wywolujacy ekran nie ma zadnego
+//          tytulu wlasnego
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed }: any) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoom] = useState(() => parseFloat(localStorage.getItem('grotx-zoom') || '1'));
@@ -213,6 +216,12 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           <button onClick={onToggleFullscreen} className="p-2 bg-white/90 border border-gray-200 rounded-full shadow-md text-gray-400 active:scale-90 pointer-events-auto transition-all"><span className="material-symbols-outlined text-lg">fullscreen</span></button>
         )}
       </div>
+
+      {isFullscreen && embed?.title && (
+        <p className="w-full text-center text-[#0a3a2a]/55 text-[11px] font-black uppercase tracking-widest shrink-0 -mt-2 mb-2 z-20 pointer-events-none">
+          {embed.title}
+        </p>
+      )}
 
       {/* LEWY DÓŁ: INTUICYJNY CELOWNIK (OFFSET) POMNIEJSZONY I W 80% KRYCIA */}
       <div className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : 'left-2 bottom-2'}`}>

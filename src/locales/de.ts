@@ -1652,6 +1652,7 @@ export const views = {
     seriesTargetTitle: "Auf welche Scheibe hast du geschossen?",
     seriesTargetSpot: "Spot",
     seriesTargetRound: "Rund",
+    seriesEnterTitle: "Pfeile eintragen",
     seriesArrowsTitle: "Wie viele Pfeile pro Passe?",
     seriesGoCollect: "Pfeile eintragen",
     seriesGoCollectHint: "Nimm das Handy mit zur Scheibe — dort tippst du jeden Pfeil dort an, wo er sitzt.",

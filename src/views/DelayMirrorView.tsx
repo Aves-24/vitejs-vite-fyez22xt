@@ -204,10 +204,13 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     };
   }, []);
 
-  // Manualny override rotacji — przycisk pion/poziom
-  const [manualLandscape, setManualLandscape] = useState(false);
-  // Czy user wybral juz orientacje na ekranie idle (warunek odblokowania Start)
-  const [orientationConfirmed, setOrientationConfirmed] = useState(false);
+  // Manualny override rotacji — przycisk pion/poziom. Domyslnie poziomo:
+  // to jedyna orientacja, w ktorej lucznik faktycznie nagrywa (telefon
+  // stoi na statywie pionowo, obraz i tak leci przez force-rotate).
+  const [manualLandscape, setManualLandscape] = useState(true);
+  // Czy user wybral juz orientacje na ekranie idle (warunek odblokowania Start).
+  // Poziomo jest domyslne, wiec ekran startowy nie musi juz o to pytac.
+  const [orientationConfirmed, setOrientationConfirmed] = useState(true);
 
   const cleanup = useCallback(() => {
     isPausedRef.current = true;
@@ -1486,68 +1489,121 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       )}
 
 
+      {/* Caly klaster kontrolek nagrywania siedzi w JEDNYM rogu — logiczny
+          top-right kontenera uiRotateStyle, czyli TO SAMO miejsce (wzgledem
+          kadru), w ktorym DelayMirrorExport rysuje wypalona tarcze (patrz
+          panelX/panelY tam). Dzieki temu lucznik od razu kadruje z pominieciem
+          tego rogu, zamiast dowiadywac sie po fakcie, ze tarcza cos zaslania.
+          Odsuniete od physical top-right, bo tam zawsze siedzi orientationToggle
+          (poza tym kontenerem, fizyczny rog) — w force-rotate te dwa rogi sa
+          rozne (patrz komentarz przy uiRotateStyle), w native landscape sa
+          te same, stad wiekszy odstep od gory tylko w tym drugim przypadku. */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className={`absolute top-4 z-30 flex items-center gap-2 flex-wrap max-w-[calc(100%-5rem)] ${_uiForceRotate ? 'right-4 flex-row-reverse' : 'left-4'}`}>
-          {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
-              samego lustra czerwona kropka bylaby klamstwem. */}
-          {clipActive && !recordingPaused && (
-            <div className="flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-3 py-1.5 border border-red-500/40">
-              <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
-            </div>
-          )}
-          {/* REC i siatka dzialaja juz w trakcie buforowania — czekanie
-              na bufor to naturalny moment, zeby je ustawic. Tylko suwak
-              opoznienia czeka na 'live', bo zmiana w trakcie buforowania
-              przestawialaby prog, ktory wlasnie jest odliczany. */}
-              {/* REC — czy ten fragment ma trafic do klipu. Tylko ekspert:
-                  w trybie prostym nic sie nie zapisuje, wiec uzbrajanie
-                  nagrania nie ma tam czego robic. */}
-              {expert && (
-              <button
-                onClick={toggleClipRecording}
-                disabled={recordingPaused}
-                className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border ${
-                  recordingPaused
-                    ? 'bg-white/5 text-white/25 border-white/10'
-                    : clipActive
-                      ? 'bg-red-600/80 text-white border-red-500/40'
-                      : 'bg-black/60 text-white/60 border-white/20'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">
-                  {clipActive ? 'radio_button_checked' : 'radio_button_unchecked'}
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider">
-                  {clipActive ? t('delayMirror.recOn') : t('delayMirror.recOff')}
-                </span>
-              </button>
-              )}
-
-              {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
-              <button
-                onClick={() => setShowGrid(v => !v)}
-                className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border ${
-                  showGrid
-                    ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
-                    : 'bg-black/60 text-white/60 border-white/20'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm">grid_on</span>
-                <span className="text-xs font-bold">{t('delayMirror.grid')}</span>
-              </button>
-
-              {/* Opoznienie — ustawienie widoku, tylko dla eksperta */}
-              {expert && mirrorState === 'live' && (
+        <div className={`absolute z-30 flex flex-col items-stretch gap-1.5 w-[27%] max-w-[11rem] min-w-[7.5rem] right-4 ${_uiForceRotate ? 'top-4' : 'top-20'}`}>
+          <div className="flex flex-wrap gap-1.5 justify-end">
+            {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
+                samego lustra czerwona kropka bylaby klamstwem. */}
+            {clipActive && !recordingPaused && (
+              <div className="flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-red-500/40">
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
+              </div>
+            )}
+            {/* REC i siatka dzialaja juz w trakcie buforowania — czekanie
+                na bufor to naturalny moment, zeby je ustawic. Tylko suwak
+                opoznienia czeka na 'live', bo zmiana w trakcie buforowania
+                przestawialaby prog, ktory wlasnie jest odliczany. */}
+                {/* REC — czy ten fragment ma trafic do klipu. Tylko ekspert:
+                    w trybie prostym nic sie nie zapisuje, wiec uzbrajanie
+                    nagrania nie ma tam czego robic. */}
+                {expert && (
                 <button
-                  onClick={() => setShowDelayPicker(true)}
-                  className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-3 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
+                  onClick={toggleClipRecording}
+                  disabled={recordingPaused}
+                  className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-2.5 py-1.5 active:scale-95 transition-all border ${
+                    recordingPaused
+                      ? 'bg-white/5 text-white/25 border-white/10'
+                      : clipActive
+                        ? 'bg-red-600/80 text-white border-red-500/40'
+                        : 'bg-black/60 text-white/60 border-white/20'
+                  }`}
                 >
-                  <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
-                  <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
-                  <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+                  <span className="material-symbols-outlined text-sm">
+                    {clipActive ? 'radio_button_checked' : 'radio_button_unchecked'}
+                  </span>
+                  <span className="text-xs font-bold uppercase tracking-wider">
+                    {clipActive ? t('delayMirror.recOn') : t('delayMirror.recOff')}
+                  </span>
                 </button>
-              )}
+                )}
+
+                {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
+                <button
+                  onClick={() => setShowGrid(v => !v)}
+                  className={`flex items-center gap-1.5 backdrop-blur-sm rounded-xl px-2.5 py-1.5 active:scale-95 transition-all border ${
+                    showGrid
+                      ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+                      : 'bg-black/60 text-white/60 border-white/20'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">grid_on</span>
+                  <span className="text-xs font-bold">{t('delayMirror.grid')}</span>
+                </button>
+
+                {/* Opoznienie — ustawienie widoku, tylko dla eksperta */}
+                {expert && mirrorState === 'live' && (
+                  <button
+                    onClick={() => setShowDelayPicker(true)}
+                    className="flex items-center gap-1.5 bg-[#fed33e]/20 backdrop-blur-sm rounded-xl px-2.5 py-1.5 active:scale-95 transition-all border border-[#fed33e]/40"
+                  >
+                    <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
+                    <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
+                    <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+                  </button>
+                )}
+          </div>
+
+          {/* PAUZA — "idę po strzały": zamraza obraz i oszczedza baterie.
+              Dziala w obu trybach, bo nie dotyczy klipu tylko mojej obecnosci. */}
+          <button
+            onClick={toggleRecordingPause}
+            className={`w-full py-2.5 px-3 backdrop-blur-sm rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
+              recordingPaused
+                ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
+                : 'bg-white/10 text-white/80 border-white/15'
+            }`}
+          >
+            <span className="material-symbols-outlined text-xl leading-none">
+              {recordingPaused ? 'play_arrow' : hasClip ? 'flag' : 'pause'}
+            </span>
+            {/* Z klipem pauza konczy serie i otwiera analize, wiec „Pauza”
+                przestalaby opisywac, co ten przycisk robi. */}
+            <span className="text-[10px] font-black uppercase tracking-widest leading-tight text-center">
+              {recordingPaused
+                ? t('delayMirror.resumePause')
+                : hasClip ? t('delayMirror.endSeries') : t('delayMirror.pauseBtn')}
+            </span>
+            {!recordingPaused && hasClip && (
+              <span className="text-[9px] font-bold text-white/50 leading-tight">
+                {t('delayMirror.endSeriesSub')}
+              </span>
+            )}
+          </button>
+
+          {/* ZAKONCZ — akcja terminalna. Druga linia mowi, gdzie laduje user:
+              z klipem do powtorki, bez klipu prosto do menu. */}
+          <button
+            onClick={finishRecording}
+            className="w-full py-2.5 px-3 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border border-red-500/40 shadow-lg shadow-red-900/30"
+          >
+            <span className="material-symbols-outlined text-xl leading-none">stop_circle</span>
+            <span className="text-[10px] font-black uppercase tracking-widest leading-tight">
+              {t('delayMirror.finish')}
+            </span>
+            <span className="text-[9px] font-bold text-white/60 leading-tight">
+              {hasClip ? t('delayMirror.finishToReplay') : t('delayMirror.finishToMenu')}
+            </span>
+          </button>
         </div>
       )}
 
@@ -1569,55 +1625,6 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               </span>
             )}
           </div>
-        </div>
-      )}
-
-      {/* DOLNY PASEK = akcje sesji. Ustawienia widoku (siatka, opoznienie)
-          i REC siedza na gorze — dzieki temu nic, co tylko zmienia obraz,
-          nie stoi obok przycisku konczacego nagranie. */}
-      {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center items-stretch gap-3 px-8">
-          {/* PAUZA — "idę po strzały": zamraza obraz i oszczedza baterie.
-              Dziala w obu trybach, bo nie dotyczy klipu tylko mojej obecnosci. */}
-          <button
-            onClick={toggleRecordingPause}
-            className={`flex-1 max-w-[10rem] py-3 px-4 backdrop-blur-sm rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
-              recordingPaused
-                ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
-                : 'bg-white/10 text-white/80 border-white/15'
-            }`}
-          >
-            <span className="material-symbols-outlined text-2xl leading-none">
-              {recordingPaused ? 'play_arrow' : hasClip ? 'flag' : 'pause'}
-            </span>
-            {/* Z klipem pauza konczy serie i otwiera analize, wiec „Pauza”
-                przestalaby opisywac, co ten przycisk robi. */}
-            <span className="text-[11px] font-black uppercase tracking-widest leading-tight">
-              {recordingPaused
-                ? t('delayMirror.resumePause')
-                : hasClip ? t('delayMirror.endSeries') : t('delayMirror.pauseBtn')}
-            </span>
-            {!recordingPaused && hasClip && (
-              <span className="text-[10px] font-bold text-white/50 leading-tight">
-                {t('delayMirror.endSeriesSub')}
-              </span>
-            )}
-          </button>
-
-          {/* ZAKONCZ — akcja terminalna. Druga linia mowi, gdzie laduje user:
-              z klipem do powtorki, bez klipu prosto do menu. */}
-          <button
-            onClick={finishRecording}
-            className="flex-1 max-w-[10rem] py-3 px-4 bg-red-600/80 backdrop-blur-sm text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border border-red-500/40 shadow-lg shadow-red-900/30"
-          >
-            <span className="material-symbols-outlined text-2xl leading-none">stop_circle</span>
-            <span className="text-[11px] font-black uppercase tracking-widest leading-tight">
-              {t('delayMirror.finish')}
-            </span>
-            <span className="text-[10px] font-bold text-white/60 leading-tight">
-              {hasClip ? t('delayMirror.finishToReplay') : t('delayMirror.finishToMenu')}
-            </span>
-          </button>
         </div>
       )}
 

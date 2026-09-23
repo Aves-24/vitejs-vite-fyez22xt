@@ -55,7 +55,10 @@ function getStreamCodec(): string | null {
 // Progi orientacyjne, nie naukowe — H.264/VP8 przy typowej tresci selfie.
 function bitrateForResolution(w: number, h: number): number {
   const px = w * h;
-  if (px <= 1280 * 720) return 1_500_000;
+  // 720p 1.5 Mbps -> 3 Mbps: TEST, rozdzielczosc BEZ zmiany (patrz
+  // REGRESJA 4K/1080p w pamieci projektu — to wylacznie proba samego
+  // bitrate, nie kroku wstecz do wiekszej rozdzielczosci).
+  if (px <= 1280 * 720) return 3_000_000;
   if (px <= 1920 * 1080) return 4_000_000;
   if (px <= 2560 * 1440) return 6_000_000;
   return 8_000_000; // 4K i wyzej
@@ -160,7 +163,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   const activeRecorderRef = useRef<MediaRecorder | null>(null);
   // Ustawiany raz po getUserMedia wg realnej rozdzielczosci toru — patrz
   // bitrateForResolution. Czytaja go oba recordery (MSE i pelny klip).
-  const videoBitrateRef = useRef<number>(1_500_000);
+  const videoBitrateRef = useRef<number>(3_000_000);
   const isPausedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const bufferTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);

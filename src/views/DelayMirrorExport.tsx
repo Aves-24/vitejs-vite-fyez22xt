@@ -43,7 +43,8 @@ const HIGHLIGHT = '#4ade80';
 // z v1 byloby teraz za niskie.
 function bitrateForResolution(w: number, h: number): number {
   const px = w * h;
-  if (px <= 1280 * 720) return 1_500_000;
+  // Ta sama tabela co w DelayMirrorView — patrz komentarz tam.
+  if (px <= 1280 * 720) return 3_000_000;
   if (px <= 1920 * 1080) return 4_000_000;
   if (px <= 2560 * 1440) return 6_000_000;
   return 8_000_000;

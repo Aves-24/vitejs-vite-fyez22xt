@@ -339,7 +339,6 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   else v.pause();
                 }}
                 playsInline
-                loop
               />
               {/* Siatka pozycjonowania — identyczna jak przy nagrywaniu,
                   procentowa wiec pokrywa sie 1:1 z kadrem video */}

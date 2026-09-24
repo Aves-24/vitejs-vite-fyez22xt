@@ -1430,8 +1430,10 @@ Z ogona po C25 zostały: **jardy**.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
-- [~] **C41. Brak internetu na strzelnicy — ZROBIONE W KODZIE 2026-09-24,
-      czeka na test usera w trybie samolotowym na telefonie.**
+- [x] **C41. ✅ Brak internetu na strzelnicy — ZROBIONE 2026-09-24,
+      sprawdzone przez usera na telefonie w trybie samolotowym („wszystko
+      działa").** Pierwszy test poszedł jeszcze na starej wersji (przycisk
+      „Speichern” szary bez końca) — dokładnie błąd opisany w pkt 3 niżej.
       Życzenie usera 2026-09-24: co się dzieje bez zasięgu, jak zapisywać
       dane, żeby nie znikały i same się wysłały, gdy telefon wróci do zasięgu.
       ✅ Sprawdzone przez usera 2026-09-24: Delay Mirror w trybie samolotowym

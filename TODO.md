@@ -1075,6 +1075,10 @@ Z ogona po C25 zostały: **jardy**.
         strzała zaznaczona na tarczy w analizie serii = +1, cofnięcie = −1.
         Bez nagrania (tryb podstawowy i lustro w eksperckim) „Pauza" pyta
         „Ile strzał oddałeś?" 1–6 (ostatni wybór podświetlony) + „Pomiń".
+        To samo okienko otwiera stuknięcie licznika w rogu przy żywym
+        obrazie — ludzie często nie pauzują, żeby nie czekać znów na bufor.
+        Z nagraniem licznik nie jest przyciskiem (liczy tarcza, inaczej
+        podwójnie).
         Liczy się zawsze, niezależnie od ptaszka. Licznik widać cały czas
         na ekranie lustra.
       - Zapis NA BIEŻĄCO: każda zmiana licznika od razu idzie do

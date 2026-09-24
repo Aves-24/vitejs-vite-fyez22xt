@@ -1939,11 +1939,27 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                 tego: jesli wybrales nagranie, nagrywa sie cala passa, koniec
                 zdejmujesz przyciskiem "Koniec serii". */}
 
-                {/* Strzaly dnia z tarczy — widoczne zawsze, nie tylko w treningu technicznym */}
-                <div className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40">
-                  <ArrowGlyph className="w-4 h-4 text-white" />
-                  <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
-                </div>
+                {/* Licznik strzal — widoczny zawsze. Bez nagrania to tez przycisk:
+                    wiele osob nie wciska pauzy przed pojsciem po strzaly (po
+                    wznowieniu czekaloby znow caly bufor), wiec dopisanie serii
+                    musi dzialac przy zywym obrazie. Z nagraniem strzaly licza
+                    sie z tarczy — drugie wejscie liczyloby je podwojnie. */}
+                {hasClip ? (
+                  <div className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40">
+                    <ArrowGlyph className="w-4 h-4 text-white" />
+                    <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowPauseCount(v => !v)}
+                    aria-label={t('delayMirror.pauseCountTitle')}
+                    className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40 active:scale-95 transition-all"
+                  >
+                    <ArrowGlyph className="w-4 h-4 text-white" />
+                    <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
+                    <span className="material-symbols-outlined text-white text-sm leading-none">add</span>
+                  </button>
+                )}
 
                 {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
                 <button
@@ -2020,9 +2036,10 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
         </button>
       )}
 
-      {/* Ile strzal w tej serii — pauza bez nagrania. Na dole, bo srodek
-          zajmuje pasek pauzy, a lewy dolny rog przycisk wyjscia. */}
-      {showPauseCount && recordingPaused && (mirrorState === 'live' || mirrorState === 'buffering') && (
+      {/* Ile strzal w tej serii — po pauzie albo po stuknieciu licznika (bez
+          nagrania). Na dole, bo srodek zajmuje pasek pauzy, a lewy dolny rog
+          przycisk wyjscia. */}
+      {showPauseCount && (mirrorState === 'live' || mirrorState === 'buffering') && (
         <div className="absolute bottom-4 inset-x-0 z-[35] flex justify-center px-16">
           <div className="bg-black/80 backdrop-blur-sm rounded-2xl border border-white/20 px-3 py-2.5 flex flex-col items-center gap-2 max-w-full">
             <p className="flex items-center gap-1.5 text-white text-xs font-black uppercase tracking-wider">

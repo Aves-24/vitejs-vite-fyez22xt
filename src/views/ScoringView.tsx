@@ -450,6 +450,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   }, [globalStats.score, globalStats.x, globalStats.t, globalStats.n, activeBattle?.id, userId]);
 
+  const discardSession = () => {
+    localStorage.removeItem('grotX_activeSession');
+    window.dispatchEvent(new Event('session_state_changed'));
+    onNavigate('HOME');
+  };
+
   // [C31] Przed 12. seria pytamy, czy wynik ma trafic do sum i krzywych.
   // W Arenie/Battle nie pytamy — tam liczy sie wynik, jaki padl.
   const requestSave = () => {
@@ -1043,11 +1049,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 <span className="block text-[10px] font-bold text-emerald-100/80 mt-0.5 normal-case">{t('scoringView.partialMarkHint')}</span>
               </button>
               <button
-                onClick={() => saveTrainingSession(false)}
+                onClick={() => { setShowPartialModal(false); discardSession(); }}
                 disabled={isSaving}
-                className="w-full py-3.5 bg-gray-100 text-[#0a3a2a] rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-3 px-4 bg-white text-red-500 rounded-xl border-2 border-red-100 active:scale-95 transition-all disabled:opacity-50"
               >
-                {t('scoringView.partialFull')}
+                <span className="block font-black uppercase text-[11px] tracking-widest">{t('scoringView.partialDiscard')}</span>
+                <span className="block text-[10px] font-bold text-red-400/80 mt-0.5 normal-case">{t('scoringView.partialDiscardHint')}</span>
               </button>
               <button onClick={() => setShowPartialModal(false)} className="w-full py-2.5 text-gray-400 font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
                 {t('scoringView.cancelAbort', 'Wróć do strzelania')}
@@ -1068,12 +1075,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <p className="text-xs text-gray-500 font-bold mb-8 leading-relaxed uppercase tracking-widest opacity-70">{t('scoringView.abortConfirmDesc', 'Wszystkie nie zapisane wyniki zostaną utracone bezpowrotnie.')}</p>
             <div className="space-y-3">
               <button 
-                onClick={() => {
-                  localStorage.removeItem('grotX_activeSession');
-                  window.dispatchEvent(new Event('session_state_changed'));
-                  setShowAbortModal(false);
-                  onNavigate('HOME');
-                }} 
+                onClick={() => { setShowAbortModal(false); discardSession(); }} 
                 className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase text-[11px] tracking-widest shadow-lg shadow-red-500/20 active:scale-95 transition-all"
               >
                 {t('scoringView.confirmAbort', 'Tak, przerwij')}

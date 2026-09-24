@@ -1177,7 +1177,8 @@ Z ogona po C25 zostały: **jardy**.
       2026-09-24 w wariancie (c), NIESPRAWDZONE NA ŻYWO.**
       Trening w ScoringView ma zawsze 12 serii (`PLANNED_ENDS` w
       `src/utils/partialSession.ts`). „Zapisz trening" przed 12. serią (poza
-      Areną/Battle) pyta: „Oznacz jako niepełny" / „Licz jak pełny trening".
+      Areną/Battle) pyta: „Oznacz jako niepełny" / „Wyjdź bez zapisywania"
+      (jak „Przerwij"; zamiast „Licz jak pełny" — decyzja usera 2026-09-24).
       Niepełny dostaje `isPartial: true`, `endsShot`, `endsPlanned`.
       Pomijają go: sparkline, „Ø 3 ostatnie" i „Schnitt Monat" (globalnie
       i per dystans), Ø ringów na trening w tygodniu — na Home, w ProStats

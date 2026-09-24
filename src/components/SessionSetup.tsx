@@ -7,6 +7,7 @@ import TopicPicker from './TopicPicker';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
+import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
@@ -92,7 +93,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     if (count <= 0) { updateCounter('0'); return; }
     setIsSavingCounter(true);
     try {
-      await addToDailyArrowCounter(userId, count);
+      // [C41] Bez zasiegu licznik czeka w telefonie — przycisk nie kreci sie w nieskonczonosc.
+      await settleWrite(addToDailyArrowCounter(userId, count));
       setTechArrows('0');
       localStorage.removeItem(`grotX_techCounter_${userId}`);
       setCounterSaved(true);
@@ -129,10 +131,13 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setActiveSetupId(id);
     setSetupSwitchError(false);
     const bow = asBowType(setups.find(s => s.id === id)?.discipline);
+    // [C41] Przed zapisem: bez zasiegu `await` wisi do powrotu sieci, a stempel
+    // z pamieci podpisalby trening starym zestawem. Cache Firestore ma juz nowy.
+    invalidateSetupStamp(userId);
     try {
       await setDoc(doc(db, 'users', userId), { activeSetupId: id, ...(bow ? { bowType: bow } : {}) }, { merge: true });
-      invalidateSetupStamp(userId);
     } catch (e) {
+      invalidateSetupStamp(userId);
       console.error('Setup switch failed:', e);
       setActiveSetupId(prevId);
       setSetupSwitchError(true);
@@ -266,7 +271,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const saveSightSettings = async () => {
     setIsSavingSight(true);
     try {
-      const profileSnap = await getDoc(doc(db, 'users', userId));
+      const profileSnap = await userDocCacheFirst(userId);
       if (profileSnap.exists()) {
         const userDistances = profileSnap.data().userDistances || [];
         const idx = userDistances.findIndex((d: any) => d.id === selectedId);
@@ -279,7 +284,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             userDistances[idx].sightMark = editHeight;
             userDistances[idx].sightSide = editSide;
           }
-          await setDoc(doc(db, 'users', userId), { userDistances }, { merge: true });
+          await settleWrite(setDoc(doc(db, 'users', userId), { userDistances }, { merge: true }));
           setSelectedTarget(editTarget);
           if (isPremium) { setSightExtension(editExt); setSightHeight(editHeight); setSightSide(editSide); }
           if (onUpdateDistances) onUpdateDistances(userDistances);

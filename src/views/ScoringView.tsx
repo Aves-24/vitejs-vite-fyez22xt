@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { invalidateRecentSessions } from '../lib/recentSessions';
-import { collection, addDoc, doc, getDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocFromCache, setDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
+import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
@@ -208,6 +209,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [battleGuests, setBattleGuests] = useState<{guestId: string, name: string}[]>([]);
   
   const audioCtxRef = useRef<AudioContext | null>(null);
+  // [C41] Id sesji nadany przy pierwszym „Zapisz" i trzymany w activeSession.
+  // Gdy aplikacja zamknie sie zanim zapis dojdzie do serwera, wznowiony trening
+  // wie, ze jest juz w telefonie — zamiast drugiej kopii w statystykach.
+  const saveIdRef = useRef<string | null>(null);
 
   const isRestingBetweenRounds = submittedEnds.length === 6 && inputArrows.length === 0;
   const isTrainingFinished = submittedEnds.length === 12;
@@ -229,6 +234,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           if (data.inputArrows) setInputArrows(data.inputArrows);
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
           if (data.activeRoundTab) setActiveRoundTab(data.activeRoundTab);
+          if (data.saveId) saveIdRef.current = data.saveId;
         }
       } catch (e) {
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
@@ -245,7 +251,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         inputArrows,
         inputCoordinates,
         submittedEnds,
-        activeRoundTab
+        activeRoundTab,
+        ...(saveIdRef.current ? { saveId: saveIdRef.current } : {}),
       }));
       window.dispatchEvent(new Event('session_state_changed'));
     } else if (inputArrows.length === 0 && submittedEnds.length === 0) {
@@ -469,6 +476,19 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     saveTrainingSession(false);
   };
 
+  const finishSave = () => {
+    saveIdRef.current = null;
+    localStorage.removeItem('grotX_activeSession');
+    // Unieważnienie wszystkich cache'y statystyk po nowym treningu
+    localStorage.removeItem(`grotX_quickStats_${userId}`);
+    localStorage.removeItem(`grotX_proStats_${userId}`);
+    localStorage.removeItem(`grotX_stats_v13_${userId}`);
+    localStorage.removeItem(`grotX_lastSession_${userId}`);
+    invalidateRecentSessions(userId); // wyczyść dedup w pamięci wspólnego źródła sesji
+    window.dispatchEvent(new Event('session_state_changed'));
+    onNavigate('HOME');
+  };
+
   const saveTrainingSession = async (markPartial: boolean) => {
     if (!userId) return;
     setShowPartialModal(false);
@@ -480,8 +500,26 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
     setIsSaving(true);
     try {
+      // [C41] Zaden zapis ponizej nie czeka na serwer dluzej niz chwile —
+      // bez zasiegu trafia do telefonu i wysle sie sam (utils/offlineWrite).
+      const sessionsCol = collection(db, `users/${userId}/sessions`);
+      if (!saveIdRef.current) {
+        saveIdRef.current = doc(sessionsCol).id;
+        try {
+          const raw = localStorage.getItem('grotX_activeSession');
+          if (raw) localStorage.setItem('grotX_activeSession', JSON.stringify({ ...JSON.parse(raw), saveId: saveIdRef.current }));
+        } catch { /* bez localStorage: najwyzej brak ochrony przed duplikatem */ }
+      }
+      const sessionRef = doc(sessionsCol, saveIdRef.current);
+      // Poprzednia proba zapisu (aplikacja zamknieta w trakcie) juz jest w telefonie.
+      const alreadySaved = await getDocFromCache(sessionRef).then(snap => snap.exists(), () => false);
+      if (alreadySaved) {
+        finishSave();
+        return;
+      }
+
       // Ostatnia, niedokonczona seria nie poszla jeszcze do pojedynku.
-      if (inputArrows.length > 0) await pushLiveScore(globalStats);
+      if (inputArrows.length > 0) pushLiveScore(globalStats);
       const sessionTimestamp = Timestamp.now();
 
       const isWorldBattle = !!activeBattle?.isWorldBattle;
@@ -499,11 +537,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       // [ZESTAWY] Z czego padł ten wynik — bez tego rekordy różnych klas
       // sprzętu zmieszają się bezpowrotnie. Patrz utils/setupStamp.ts
       const setupStamp = await getSetupStamp(userId);
+      // Profil czytany PRZED wydaniem zapisow — blad odczytu nie zostawi
+      // zapisanej sesji z komunikatem „Blad zapisu" (i pokusa drugiego klikniecia).
+      const userSnap = await userDocCacheFirst(userId);
+      const ud = userSnap.exists() ? userSnap.data() : {};
       // [FOKUS] Migawka na stałe — widać ją później w statystykach.
       const sessionTopics = focusTopic && focusOn ? [focusTopic] : [];
       const focusSnap = sessionFocusSnapshot(focusState, sessionTopics);
 
-      await addDoc(collection(db, `users/${userId}/sessions`), {
+      const sessionWrite = settleWrite(setDoc(sessionRef, {
         ...setupStamp,
         score: globalStats.score,
         scoreArrows: sessionArrows, // = sessionArrows, M liczone do średniej
@@ -528,12 +570,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: PLANNED_ENDS } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
         ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
-      });
+      }));
 
       // Denormalizacja + aktualizacja XP i rangi
       const userRef = doc(db, 'users', userId);
-      const userSnap = await getDoc(userRef);
-      const ud = userSnap.exists() ? userSnap.data() : {};
 
       const sessionXp  = calculateSessionXp(globalStats.count, globalStats.score);
       const newTotalXp = (ud.xp || 0) + sessionXp + worldXp;
@@ -563,7 +603,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
            ...prevLast10Handicaps].slice(0, 10);
       const currentHandicap = calculateCurrentHandicap(newLast10Handicaps);
 
-      await updateDoc(userRef, {
+      // Odrzucenie sesji przez serwer rzuca tutaj — trening zostaje na ekranie,
+      // a XP nie jest doliczane. Bez zasiegu: 'queued', profil idzie za sesja.
+      await sessionWrite;
+
+      // Profil osobno od sesji: jego odrzucenie nie moze zabrac zapisanego treningu.
+      settleWrite(updateDoc(userRef, {
         lastSessionTimestamp: sessionTimestamp,
         lastSessionScore: globalStats.score,
         lastSessionArrows: globalStats.count,
@@ -581,16 +626,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         // HANDICAP
         last10Handicaps: newLast10Handicaps,
         currentHandicap,
-      });
+      })).catch(e => console.error('Błąd aktualizacji profilu po treningu:', e));
 
       if (activeBattle) {
-         try {
-           await updateDoc(doc(db, 'battles', activeBattle.id), {
-               finishedParticipants: arrayUnion(userId)
-           });
-         } catch (error) {
-           console.warn("Zignorowano błąd uprawnień przy aktualizacji statusu Areny.");
-         }
+        updateDoc(doc(db, 'battles', activeBattle.id), {
+          finishedParticipants: arrayUnion(userId)
+        }).catch(() => console.warn("Zignorowano błąd uprawnień przy aktualizacji statusu Areny."));
       }
 
       if (isWorldBattle) {
@@ -600,7 +641,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           // nazwisko jest ZAWSZE skrócone do inicjału (showFullName: false) —
           // flagi mogą tylko dodatkowo ograniczyć (nickname, ukrycie klubu).
           const pub = buildPublicProfile({ ...ud, showFullName: false });
-          await updateWorldStatsOnly(
+          updateWorldStatsOnly(
             userId,
             pub.displayName || 'Schütze',
             pub.club,
@@ -608,22 +649,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             ud.level     || 1,
             didWinWorld,
             worldXp,
-          );
+          ).catch(e => console.warn('Błąd zapisu world_stats:', e));
         } catch (e) {
           console.warn('Błąd zapisu world_stats:', e);
         }
       }
 
-      localStorage.removeItem('grotX_activeSession');
-      // Unieważnienie wszystkich cache'y statystyk po nowym treningu
-      localStorage.removeItem(`grotX_quickStats_${userId}`);
-      localStorage.removeItem(`grotX_proStats_${userId}`);
-      localStorage.removeItem(`grotX_stats_v13_${userId}`);
-      localStorage.removeItem(`grotX_lastSession_${userId}`);
-      invalidateRecentSessions(userId); // wyczyść dedup w pamięci wspólnego źródła sesji
-      window.dispatchEvent(new Event('session_state_changed'));
-
-      onNavigate('HOME');
+      finishSave();
 
     } catch (error) {
       console.error("Krytyczny błąd zapisu sesji:", error);

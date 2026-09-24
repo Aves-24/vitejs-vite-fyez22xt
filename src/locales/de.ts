@@ -150,6 +150,13 @@ export const components = {
     reload: "Aktualisieren",
     later: "Später"
   },
+  offline: {
+    noNetwork: "Kein Netz — Einträge warten auf dem Handy",
+    queued: "Kein Netz — wartende Einträge: {{count}}. Werden automatisch gesendet",
+    sending: "Sende Einträge vom Handy ({{count}})…",
+    sent: "Alles gesendet",
+    failed: "Server hat einen Offline-Eintrag abgelehnt"
+  },
   messages: {
     headerSubtitle: "{{max}} Nachr. max · 1 Nachr. / 10 Min.",
     loading: "Laden…",

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { settleWrite } from '../utils/offlineWrite';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
@@ -314,12 +315,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   // --- ZAPIS / USUWANIE ---
   const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string) => {
-    const ref = await addDoc(collection(db, `users/${userId}/privateNotes`), {
+    // [C41] Id nadany w telefonie — bez zasiegu notatka czeka i wysle sie sama.
+    const ref = doc(collection(db, `users/${userId}/privateNotes`));
+    await settleWrite(setDoc(ref, {
       text,
       topics,
       ...(sessionId ? { sessionId } : {}),
       createdAt: serverTimestamp(),
-    });
+    }));
     setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now() }, ...prev]);
   }, [userId]);
 
@@ -327,12 +330,12 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     if (!shared) return addPrivateNote(text, topics, s.id);
     const clean = text.slice(0, SESSION_NOTE_MAX);
     const mergedTopics = [...new Set([...s.topics, ...topics])];
-    await updateDoc(doc(db, `users/${userId}/sessions`, s.id), {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, s.id), {
       note: clean,
       isNotePublic: true,
       editCount: s.editCount + 1,
       ...(topics.length ? { topics: mergedTopics } : {}),
-    });
+    }));
     setSessions(prev => prev.map(x => x.id === s.id
       ? { ...x, note: clean, isNotePublic: true, editCount: x.editCount + 1, topics: topics.length ? mergedTopics : x.topics }
       : x));
@@ -340,7 +343,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   const deleteNote = useCallback(async (id: string) => {
     try {
-      await deleteDoc(doc(db, `users/${userId}/privateNotes/${id}`));
+      await settleWrite(deleteDoc(doc(db, `users/${userId}/privateNotes/${id}`)));
       setNotes(prev => prev.filter(n => n.id !== id));
     } catch (e) {
       console.error('Tagebuch: błąd usuwania notatki', e);
@@ -376,14 +379,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   const endFocus = useCallback(async () => {
     const focus: OwnFocus = { cleared: true, setAt: Date.now() };
-    await updateDoc(doc(db, 'users', userId), { focus });
+    await settleWrite(updateDoc(doc(db, 'users', userId), { focus }));
     setOwnFocus(focus);
   }, [userId]);
 
   // Liczba lekcji obecnego fokusu (stepper w FocusModal) — sam fokus nietknięty,
   // więc cel od trenera nie staje się „własnym", a postęp zostaje.
   const saveFocusGoal = useCallback(async (dots: boolean, goal: number) => {
-    await updateDoc(doc(db, 'users', userId), dots ? { focusDots: true, focusGoal: goal } : { focusDots: false });
+    await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focusDots: true, focusGoal: goal } : { focusDots: false }));
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
   }, [userId]);
@@ -391,7 +394,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Nowy fokus = nowa data startu, postęp od zera — także przy tym samym temacie.
   const setNewFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
     const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: Date.now() };
-    await updateDoc(doc(db, 'users', userId), dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false });
+    await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false }));
     setOwnFocus(focus);
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
@@ -404,13 +407,13 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const editFocus = useCallback(async (text: string, topic: string) => {
     if (!activeFocus) return;
     const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: activeFocus.since };
-    await updateDoc(doc(db, 'users', userId), { focus });
+    await settleWrite(updateDoc(doc(db, 'users', userId), { focus }));
     setOwnFocus(focus);
   }, [userId, activeFocus]);
 
   const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
     const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
-    await updateDoc(doc(db, `users/${userId}/sessions`, s.id), { topics });
+    await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, s.id), { topics }));
     setSessions(prev => prev.map(x => x.id === s.id ? { ...x, topics } : x));
   }, [userId]);
 

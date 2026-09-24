@@ -1430,25 +1430,56 @@ Z ogona po C25 zostały: **jardy**.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
-- [ ] **C41. Brak internetu na strzelnicy — sprawdzić całą aplikację.**
+- [~] **C41. Brak internetu na strzelnicy — ZROBIONE W KODZIE 2026-09-24,
+      czeka na test usera w trybie samolotowym na telefonie.**
       Życzenie usera 2026-09-24: co się dzieje bez zasięgu, jak zapisywać
       dane, żeby nie znikały i same się wysłały, gdy telefon wróci do zasięgu.
-      ✅ **Sprawdzone przez usera 2026-09-24:** Delay Mirror w trybie
-      samolotowym dopisuje strzały (licznik dnia czeka w telefonie).
-      **Co już wiadomo:** Firestore ma `persistentLocalCache` (`firebase.ts`),
-      więc zapisy wydane offline czekają w IndexedDB i wysyłają się same,
-      także po zamknięciu aplikacji. Delay Mirror (C28) na tym polega.
-      **Do sprawdzenia (tryb samolotowy na telefonie):**
-      - `await addDoc/updateDoc/batch.commit()` kończy się dopiero po
-        potwierdzeniu serwera, więc offline przyciski „Zapisz" (trening,
-        trening techniczny, notatki) mogą kręcić się w nieskończoność —
-        przejrzeć, gdzie UI czeka na `await`, a gdzie wystarczy wydać zapis.
-      - Odczyty: czy statystyki, strona główna i start treningu działają
-        z cache (`getDocs` offline), czy wiszą.
-      - App Check / reCAPTCHA offline i przy słabym zasięgu.
-      - Service worker: czy aplikacja w ogóle się otwiera bez sieci (C11).
-      - Zapis wyniku zawodów, Battle, zaproszenia — co z nimi offline.
-      - Jasny komunikat w UI „offline — zapiszę po połączeniu" zamiast ciszy.
+      ✅ Sprawdzone przez usera 2026-09-24: Delay Mirror w trybie samolotowym
+      dopisuje strzały (licznik dnia czeka w telefonie).
+      **Znalezione i naprawione:**
+      1. 🔴 **Aplikacja w ogóle się nie otwierała offline** (sprawdzone
+         Playwrightem na `vite preview`): SW szukał plików w cache bez
+         `ignoreVary`, a przy `Vary: Origin` skrypt modułu nie pasował do wpisu
+         z precache → cały shell szedł do sieci → biały ekran. Czy Vercel wysyła
+         `Vary: Origin`, nie dało się sprawdzić (proxy); poprawka działa tak czy
+         inaczej. To samo z fontem ikon.
+      2. 🔴 **Po każdym deployu trening/statystyki/dziennik/Delay Mirror/paczka
+         języka nie istniały w telefonie**, dopóki nie otwarto ich z siecią
+         (`activate` kasuje stary cache, lazy widoki nie były w precache).
+         Teraz `generate-sw.mjs` liczy listę WARM (widoki + języki + ich
+         statyczne importy, np. StatsView → pdf-vendor) i dogrzewa ją przy
+         instalacji SW, po jednym pliku, niezmienione chunki kopiując ze starego
+         cache'u. Pomijane: panel trenera/admina, pojedynki, ogłoszenia, skaner QR.
+         Font ikon też w instalacji (przy pierwszej wizycie strona nie jest pod SW).
+      3. **Przyciski „Zapisz" kręciły się bez końca** (`await` na zapisie
+         kończy się dopiero po odpowiedzi serwera). `utils/offlineWrite.ts`
+         → `settleWrite`: czeka na serwer max 4 s (offline 0 s), potem idzie
+         dalej, zapis czeka w IndexedDB. Odrzucenie przez reguły w tym oknie
+         rzuca jak dotąd. Podpięte: zapis treningu, trening techniczny (start
+         + Delay Mirror), licznik strzał, nastawy celownika, dziennik (notatki,
+         fokus, tematy), wynik zawodów, tematy przy treningu technicznym.
+      4. **Duplikat treningu**: trening dostaje id przy pierwszym „Zapisz"
+         (`saveId` w `grotX_activeSession`); wznowiony po zamknięciu aplikacji
+         i zapisany drugi raz nie tworzy kopii (sprawdzenie w cache).
+         XP/ranga liczone dopiero po przyjęciu sesji.
+      5. **Start treningu wisiał offline** — `App.tsx` czekał na kasowanie
+         starej kolekcji `scores`; teraz w tle.
+      6. Przełączenie zestawu offline: stempel sesji brał stary zestaw z pamięci.
+      7. **Pasek `OfflineBanner`**: „Brak zasięgu — zapisy poczekają",
+         „czekające zapisy: N", „Wysyłam…", „Wszystko wysłane", błąd, gdy
+         serwer odrzuci zapis po powrocie sieci. Ukryty w treningu i Delay Mirror.
+      **Do sprawdzenia przez usera (tryb samolotowy, zalogowany):**
+      - zamknąć aplikację, włączyć tryb samolotowy, otworzyć — czy wstaje;
+      - trening z wynikiem → Zapisz → wraca do Home od razu, pasek „czekające
+        zapisy: 2" (sesja + profil); wyłączyć tryb samolotowy → „Wszystko wysłane";
+      - trening techniczny, licznik strzał, notatka w dzienniku — to samo;
+      - statystyki i dziennik offline — czy pokazują dane z telefonu.
+      **Świadomie NIE ruszone (wymagają sieci z natury):** panel trenera,
+      kalendarz z lustrem do uczniów, pojedynki/World, zaproszenia, ustawienia
+      konta/prywatności, admin. Tam `await` nadal czeka na serwer.
+      **Otwarte:** App Check / reCAPTCHA przy słabym zasięgu (skrypt reCAPTCHA
+      nie ładuje się offline — zapisy z kolejki powinny dostać token po
+      powrocie sieci, nie sprawdzone na żywo).
 - [ ] **C42. Hosting: z Vercel Hobby na Firebase Hosting PRZED płatnościami.**
       Uwaga znajomego (2026-09-24), potwierdzona: plan Vercel Hobby jest
       tylko do użytku niekomercyjnego, a PRO/Stripe to użytek komercyjny.

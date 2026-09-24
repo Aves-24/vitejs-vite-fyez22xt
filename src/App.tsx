@@ -15,6 +15,7 @@ import ParentalConsentGate from './components/ParentalConsentGate';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import UpdateBanner from './components/UpdateBanner';
+import OfflineBanner from './components/OfflineBanner';
 import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -380,10 +381,12 @@ export default function App() {
         localStorage.removeItem('grotX_activeSession');
         window.dispatchEvent(new Event('session_state_changed'));
 
-        const q = query(collection(db, `users/${user.uid}/scores`));
-        const s = await getDocs(q);
-        const deletePromises = s.docs.map(d => deleteDoc(doc(db, `users/${user.uid}/scores`, d.id)));
-        await Promise.all(deletePromises);
+        // [C41] Sprzatanie starej kolekcji w tle — `await` na kasowaniu bez
+        // zasiegu blokowal sam start treningu do powrotu sieci.
+        const uid = user.uid;
+        getDocs(query(collection(db, `users/${uid}/scores`)))
+          .then(s => s.docs.forEach(d => { deleteDoc(doc(db, `users/${uid}/scores`, d.id)).catch(() => {}); }))
+          .catch(() => {});
       }
       
       setSessionDistance(distance);
@@ -571,6 +574,7 @@ export default function App() {
           Zamontowany na poziomie App, więc widoczny na każdym ekranie. */}
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
       <UpdateBanner hidden={hasActiveSession || currentView === 'SCORING'} />
+      <OfflineBanner hidden={currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
 
 

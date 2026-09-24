@@ -1,5 +1,4 @@
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { userDocCacheFirst } from './offlineWrite';
 
 /**
  * [ZESTAWY] Stempel zestawu sprzętowego na sesji.
@@ -41,7 +40,8 @@ export async function getSetupStamp(userId: string): Promise<SetupStamp> {
   if (cached) return cached;
 
   try {
-    const snap = await getDoc(doc(db, 'users', userId));
+    // [C41] Z telefonu najpierw — przy slabym zasiegu getDoc czekal sekundy.
+    const snap = await userDocCacheFirst(userId);
     const data = snap.exists() ? snap.data() : null;
 
     // Zestawy są źródłem prawdy, gdy już istnieją. Gdy nie — spadamy na stare

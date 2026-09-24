@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { settleWrite } from '../utils/offlineWrite';
 import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import TopicPicker from './TopicPicker';
 import { SessionFocusCard } from './tagebuch/FocusCard';
@@ -25,9 +26,9 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
     if (!userId || !session.id) return;
     setIsSaving(true);
     try {
-      await updateDoc(doc(db, `users/${userId}/sessions`, session.id), {
+      await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, session.id), {
         topics: selectedTopics,
-      });
+      }));
       setIsEditingTopics(false);
     } catch (e) {
       console.error('Error saving topics:', e);

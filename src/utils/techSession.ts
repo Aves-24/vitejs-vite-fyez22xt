@@ -1,6 +1,7 @@
 import { collection, doc, increment, serverTimestamp, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
+import { settleWrite } from './offlineWrite';
 import { sessionFocusSnapshot, FocusState } from './focus';
 
 function invalidateStatsCache(userId: string) {
@@ -18,6 +19,8 @@ function dayCounterField(): string {
  * Strzaly bez sesji — licznik dnia na profilu (Pfeilzaehler), liczony na
  * stronie glownej. Zapis trafia od razu do trwalego bufora Firestore, wiec
  * bez zasiegu zostaje w telefonie; promise konczy sie dopiero po wyslaniu.
+ * Delay Mirror nie czeka na ten promise (liczy wyslane sam); przycisk
+ * w starcie treningu czeka przez `settleWrite` najwyzej chwile (C41).
  */
 export async function addToDailyArrowCounter(userId: string, count: number): Promise<void> {
   const write = updateDoc(doc(db, 'users', userId), { [dayCounterField()]: increment(count) });
@@ -65,16 +68,17 @@ export async function saveTechnicalSession(userId: string, { arrows, note, topic
   if (fromDailyCounter > 0) {
     batch.update(doc(db, 'users', userId), { [dayCounterField()]: increment(-fromDailyCounter) });
   }
-  await batch.commit();
+  // [C41] Bez zasiegu nie czekamy na serwer — sesja czeka w telefonie.
+  await settleWrite(batch.commit());
   // Denormalizacja jak w ScoringView — bez tego trener nie widział
   // treningu technicznego w „Nowe treningi" (user 2026-09-18).
-  await updateDoc(doc(db, 'users', userId), {
+  settleWrite(updateDoc(doc(db, 'users', userId), {
     lastSessionTimestamp: Timestamp.now(),
     lastSessionType: 'TECHNICAL',
     lastSessionScore: 0,
     lastSessionArrows: arrows,
     lastSessionDistance: '',
-  }).catch(e => console.error('Tech: błąd aktualizacji profilu', e));
+  })).catch(e => console.error('Tech: błąd aktualizacji profilu', e));
 
   invalidateStatsCache(userId);
 }

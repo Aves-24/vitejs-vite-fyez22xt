@@ -150,6 +150,13 @@ export const components = {
     reload: "Refresh",
     later: "Later"
   },
+  offline: {
+    noNetwork: "No signal — entries will wait on your phone",
+    queued: "No signal — entries waiting: {{count}}. They will send automatically",
+    sending: "Sending entries from your phone ({{count}})…",
+    sent: "All sent",
+    failed: "Server rejected an entry saved offline"
+  },
   messages: {
     headerSubtitle: "{{max}} msg max · 1 msg / 10 min",
     loading: "Loading…",

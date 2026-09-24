@@ -52,6 +52,29 @@ const urls = [...new Set([...EXTRA_SHELL, ...shellFromHtml])]
   .filter((u) => allFiles.includes(u.slice(1)))
   .sort();
 
+// [C41] DOGRZANIE: lazy widoki potrzebne na strzelnicy bez zasiegu. Samo
+// „wpada do cache'u przy pierwszym uzyciu" nie wystarcza — `activate` kasuje
+// cache starej wersji, wiec po KAZDYM deployu trening/statystyki/dziennik
+// i paczka jezyka istnialy w telefonie dopiero po otwarciu z siecia. Pierwsze
+// uruchomienie nowej wersji na strzelnicy = ekran bledu zamiast treningu.
+// Korzenie: widoki (poza tymi, ktore bez sieci i tak nic nie pokaza) i paczki
+// jezykow; do tego wszystko, co importuja STATYCZNIE (np. StatsView ciagnie
+// pdf-vendor) — liczone z samych chunkow, wiec lista nie rozjedzie sie
+// z code splittingiem. Nowy widok trafia tu sam.
+const ONLINE_ONLY = /^assets\/(AdminDashboardView|CoachDashboardView|StudentProfileView|BattleLobbyView|BattleHistoryView|WorldLeaderboardView|AnnouncementsView)-/;
+const roots = allFiles.filter((f) =>
+  (/^assets\/[A-Z]\w*View-[\w-]+\.js$/.test(f) && !ONLINE_ONLY.test(f)) || /^assets\/(pl|en|de)-[\w-]+\.js$/.test(f)
+);
+const warmSet = new Set();
+const visit = (f) => {
+  if (warmSet.has(f) || !allFiles.includes(f)) return;
+  warmSet.add(f);
+  const code = readFileSync(join(DIST, f), 'utf8');
+  for (const m of code.matchAll(/(?:from|import)\s*"\.\/([^"]+\.js)"/g)) visit('assets/' + m[1]);
+};
+roots.forEach(visit);
+const warm = [...warmSet].map((f) => '/' + f).filter((u) => !urls.includes(u)).sort();
+
 // Wersja cache'u = hash zawartości CAŁEGO dist (nie tylko shella) — deploy,
 // który zmienia wyłącznie lazy widok, też musi unieważnić stary cache.
 // Deploy bez zmian → ten sam hash → przeglądarka nie reinstaluje SW.
@@ -74,13 +97,40 @@ const VERSION = '${version}';
 const CACHE = 'grotx-' + VERSION;
 const FONT_CACHE = 'grotx-fonts-${fontHash.digest('hex').slice(0, 12)}'; // trwały, ale rusza się z trescia
 const PRECACHE = ${JSON.stringify(urls, null, 1)};
+const WARM = ${JSON.stringify(warm, null, 1)};
+const ICON_FONT = '/fonts/material-symbols-outlined.woff2';
 
 // cache: 'reload' — precache prosto z serwera, z pominięciem cache HTTP.
 // Zatruty wpis (np. 404 z nagłówkiem immutable) wywracałby addAll, a z nim
 // instalację nowej wersji.
+//
+// [C41] Po shellu dogrzewamy WARM: po jednym pliku (nie konkuruje o pasmo
+// z dzialajaca aplikacja), najpierw ze starego cache'u — hash w nazwie =
+// ta sama tresc, wiec niezmieniony chunk nie idzie przez siec. Blad pojedynczego
+// pliku nie wywraca instalacji; taki plik dociagnie sie przy pierwszym uzyciu.
 self.addEventListener('install', (e) => {
   e.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' }))))
+    caches.open(CACHE).then(async (c) => {
+      await c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })));
+      // [C41] Font ikon: przy pierwszej wizycie strona nie jest jeszcze pod SW,
+      // wiec font z <link rel=preload> nie trafial do FONT_CACHE — offline
+      // ikony renderowaly sie jako tekst ("cloud_off").
+      try {
+        const fc = await caches.open(FONT_CACHE);
+        if (!(await fc.match(ICON_FONT, { ignoreVary: true }))) {
+          const res = await fetch(ICON_FONT);
+          if (res.ok) await fc.put(ICON_FONT, res);
+        }
+      } catch { /* best effort */ }
+      for (const u of WARM) {
+        try {
+          const old = await caches.match(u, { ignoreVary: true });
+          if (old) { await c.put(u, old); continue; }
+          const res = await fetch(u);
+          if (res.ok) await c.put(u, res);
+        } catch { /* best effort */ }
+      }
+    })
   );
 });
 
@@ -122,7 +172,7 @@ self.addEventListener('fetch', (e) => {
     // — nie shell SPA. Te strony mają skutki prawne, więc zostaje przy nich
     // stare zachowanie: sieć najpierw, cache tylko jako fallback offline.
     if (/\\.[a-z0-9]+$/i.test(url.pathname)) {
-      e.respondWith(fetch(req).catch(() => caches.match(req).then((hit) => hit || Response.error())));
+      e.respondWith(fetch(req).catch(() => caches.match(req, { ignoreVary: true }).then((hit) => hit || Response.error())));
       return;
     }
 
@@ -155,7 +205,7 @@ self.addEventListener('fetch', (e) => {
   if (url.pathname.startsWith('/fonts/')) {
     e.respondWith(
       caches.open(FONT_CACHE).then((c) =>
-        c.match(req).then(
+        c.match(req, { ignoreVary: true }).then(
           (hit) =>
             hit ||
             fetch(req).then((res) => {
@@ -172,8 +222,13 @@ self.addEventListener('fetch', (e) => {
   // miss → sieć + dopisanie do cache'u bieżącej wersji.
   // Błąd na /assets/ → jeszcze raz z pominięciem cache HTTP: 404 mógł tam
   // utknąć z nagłówkiem immutable (stary vercel.json), a plik już istnieje.
+  //
+  // [C41] ignoreVary: przy \`Vary: Origin\` (np. vite preview) skrypt modulu
+  // (z naglowkiem Origin) NIE pasowal do wpisu z precache (bez Origin), wiec
+  // offline caly shell szedl do sieci i aplikacja w ogole sie nie otwierala.
+  // Pliki maja hash w nazwie — ta sama nazwa = ta sama tresc.
   e.respondWith(
-    caches.match(req).then(
+    caches.match(req, { ignoreVary: true }).then(
       (hit) =>
         hit ||
         fetch(req)
@@ -193,7 +248,8 @@ self.addEventListener('fetch', (e) => {
 `;
 
 writeFileSync(join(DIST, 'sw.js'), sw);
-const bytes = urls.reduce((n, u) => n + statSync(join(DIST, u.slice(1))).size, 0);
+const sizeOf = (list) => list.reduce((n, u) => n + statSync(join(DIST, u.slice(1))).size, 0);
 console.log(
-  `sw.js: ${urls.length} plikow w precache (${(bytes / 1024).toFixed(0)} KB), wersja ${version}`
+  `sw.js: ${urls.length} plikow w precache (${(sizeOf(urls) / 1024).toFixed(0)} KB), ` +
+  `${warm.length} dogrzewanych offline (${(sizeOf(warm) / 1024).toFixed(0)} KB), wersja ${version}`
 );

@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc 
 import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { getSetupStamp } from '../utils/setupStamp';
+import { settleWrite } from '../utils/offlineWrite';
 import { distanceMeters } from '../config/distances';
 
 interface TournamentScoreInputProps {
@@ -182,16 +183,17 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     try {
       // Oznaczenie turnieju jako posiadającego wynik
       if (eventId) {
-        await updateDoc(doc(db, 'users', userId, 'tournaments', eventId), {
+        // [C41] Na zawodach czesto bez zasiegu — zapisy czekaja w telefonie.
+        settleWrite(updateDoc(doc(db, 'users', userId, 'tournaments', eventId), {
           hasScore: true
-        });
+        })).catch(e => console.warn('Znacznik wyniku zawodow:', e));
       }
 
       // [ZESTAWY] Start rozegrany dzisiaj — bieżąca klasa sprzętu jest właściwa.
       const setupStamp = await getSetupStamp(userId);
 
       // ZAPIS SESJI
-      await addDoc(collection(db, 'users', userId, 'sessions'), {
+      await settleWrite(addDoc(collection(db, 'users', userId, 'sessions'), {
         ...setupStamp,
         date: todayStr,
         timestamp: serverTimestamp(),
@@ -219,15 +221,17 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         // [C25] Po metrach, nie po napisie — dystans moze niesc etykiete.
         targetType: distanceMeters(distance) === 18 ? '3-Spot' : 'Full',
         ...guestExpiryFields() // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
-      });
+      }));
 
       // Aktualizacje nieblokujące — błędy nie przerywają nawigacji
       try {
         const userRef = doc(db, 'users', userId);
         const totalCount = sessionArrows + practiceArrows;
-        await updateDoc(userRef, { totalArrows: increment(totalCount), monthlyArrows: increment(totalCount) });
+        settleWrite(updateDoc(userRef, { totalArrows: increment(totalCount), monthlyArrows: increment(totalCount) }))
+          .catch(e => console.warn('Nieblokujący błąd aktualizacji statystyk:', e));
         const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
-        await setDoc(dailyRef, { arrows: increment(totalCount), ...guestExpiryFields() }, { merge: true });
+        settleWrite(setDoc(dailyRef, { arrows: increment(totalCount), ...guestExpiryFields() }, { merge: true }))
+          .catch(e => console.warn('Nieblokujący błąd aktualizacji statystyk:', e));
       } catch (secondaryError) {
         console.warn('Nieblokujący błąd aktualizacji statystyk:', secondaryError);
       }

@@ -164,6 +164,13 @@ export const components = {
     reload: "Odśwież",
     later: "Później"
   },
+  offline: {
+    noNetwork: "Brak zasięgu — zapisy poczekają w telefonie",
+    queued: "Brak zasięgu — czekające zapisy: {{count}}. Wyślą się same",
+    sending: "Wysyłam zapisy z telefonu ({{count}})…",
+    sent: "Wszystko wysłane",
+    failed: "Serwer odrzucił zapis z trybu offline"
+  },
   messages: {
     headerSubtitle: "{{max}} wiad. max · 1 wiad. / 10 min",
     loading: "Ładowanie…",

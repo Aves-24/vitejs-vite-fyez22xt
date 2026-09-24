@@ -1074,7 +1074,8 @@ Z ogona po C25 zostały: **jardy**.
       - Liczenie (poprawka usera 2026-09-24, zamiast „N na serię"): każda
         strzała zaznaczona na tarczy w analizie serii = +1, cofnięcie = −1.
         Bez nagrania (tryb podstawowy i lustro w eksperckim) „Pauza" pyta
-        „Ile strzał oddałeś?" 1–6 (ostatni wybór podświetlony) + „Pomiń".
+        „Ile strzał oddałeś?" 1–6 + „Pomiń". Bez podświetlonej domyślnej
+        liczby — user brał ją za już wpisane strzały (2026-09-24).
         To samo okienko otwiera stuknięcie licznika w rogu przy żywym
         obrazie — ludzie często nie pauzują, żeby nie czekać znów na bufor.
         Z nagraniem licznik nie jest przyciskiem (liczy tarcza, inaczej
@@ -1415,6 +1416,8 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
 - [ ] **C41. Brak internetu na strzelnicy — sprawdzić całą aplikację.**
       Życzenie usera 2026-09-24: co się dzieje bez zasięgu, jak zapisywać
       dane, żeby nie znikały i same się wysłały, gdy telefon wróci do zasięgu.
+      ✅ **Sprawdzone przez usera 2026-09-24:** Delay Mirror w trybie
+      samolotowym dopisuje strzały (licznik dnia czeka w telefonie).
       **Co już wiadomo:** Firestore ma `persistentLocalCache` (`firebase.ts`),
       więc zapisy wydane offline czekają w IndexedDB i wysyłają się same,
       także po zamknięciu aplikacji. Delay Mirror (C28) na tym polega.

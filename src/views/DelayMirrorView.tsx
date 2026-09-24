@@ -205,18 +205,11 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   // Pauza bez nagrania ("ide po strzaly") pyta o liczbe strzal — tam nie ma
   // tarczy, na ktorej daloby sie je wbic.
+  // Bez podswietlonej domyslnej liczby — user odczytywal ja jako juz
+  // wpisane strzaly.
   const [showPauseCount, setShowPauseCount] = useState(false);
-  const [lastPauseCount, setLastPauseCount] = useState<number>(() => {
-    try {
-      const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10);
-      if (!isNaN(n) && n >= 1 && n <= 6) return n;
-    } catch { /* ignore */ }
-    return 6;
-  });
   const pickPauseCount = (n: number) => {
     setTechArrows(a => a + n);
-    setLastPauseCount(n);
-    try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ }
     setShowPauseCount(false);
   };
 
@@ -2051,11 +2044,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                 <button
                   key={n}
                   onClick={() => pickPauseCount(n)}
-                  className={`w-10 h-10 rounded-xl font-black text-base active:scale-95 transition-all border ${
-                    n === lastPauseCount
-                      ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
-                      : 'bg-white/10 text-white border-white/15'
-                  }`}
+                  className="w-10 h-10 rounded-xl font-black text-base active:scale-95 transition-all border bg-white/10 text-white border-white/15"
                 >
                   {n}
                 </button>

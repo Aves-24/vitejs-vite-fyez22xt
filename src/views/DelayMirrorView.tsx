@@ -37,6 +37,8 @@ const TECH_NOTE_MAX = 400;
 interface TechDraft {
   on: boolean;
   arrows: number;
+  /** Ile z `arrows` poszlo juz do licznika dnia w Firestore. */
+  synced: number;
   topics: string[];
   note: string;
   day: string;
@@ -51,9 +53,10 @@ function writeTechDraft(uid: string, d: Omit<TechDraft, 'day'>) {
 }
 
 // Szkic przezywa wyjscie systemowym "wstecz" (omija podsumowanie), ale tylko
-// do konca dnia — wczorajsze strzaly nie moga wpasc do dzisiejszego treningu.
+// do konca dnia — wczorajsze strzaly nie moga wpasc do dzisiejszego treningu
+// (w liczniku dnia i tak juz sa, pod wczorajsza data).
 function loadTechDraft(uid: string): TechDraft {
-  const empty: TechDraft = { on: false, arrows: 0, topics: [], note: '', day: todayKey() };
+  const empty: TechDraft = { on: false, arrows: 0, synced: 0, topics: [], note: '', day: todayKey() };
   try {
     const raw = localStorage.getItem(`grotX_dmTech_${uid}`);
     if (!raw) return empty;
@@ -62,6 +65,7 @@ function loadTechDraft(uid: string): TechDraft {
     return {
       on: !!d.on,
       arrows: typeof d.arrows === 'number' && d.arrows > 0 ? d.arrows : 0,
+      synced: typeof d.synced === 'number' && d.synced > 0 ? d.synced : 0,
       topics: Array.isArray(d.topics) ? d.topics : [],
       note: typeof d.note === 'string' ? d.note.slice(0, TECH_NOTE_MAX) : '',
       day: todayKey(),
@@ -141,8 +145,35 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const activeFocus = focusState?.focus ?? null;
   const focusTopic = activeFocus?.topic || '';
 
+  // Strzaly ida do licznika dnia na biezaco, nie dopiero przy wyjsciu —
+  // dzieki temu mozna wyjsc w kazdej chwili (takze systemowym "wstecz")
+  // i nic nie przepada. Bez zasiegu zapis czeka w trwalym buforze Firestore.
+  const syncedRef = useRef(techDraft.synced);
+  const [pendingSyncs, setPendingSyncs] = useState(0);
+  const [syncError, setSyncError] = useState(false);
+  const mountedRef = useRef(true);
   useEffect(() => {
-    if (uid) writeTechDraft(uid, { on: techOn, arrows: techArrows, topics: techTopics, note: techNote });
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!uid) return;
+    const delta = techArrows - syncedRef.current;
+    if (delta !== 0) {
+      syncedRef.current = techArrows;
+      setSyncError(false);
+      setPendingSyncs(n => n + 1);
+      addToDailyArrowCounter(uid, delta)
+        .catch(e => {
+          console.error('Delay Mirror: zapis licznika strzal', e);
+          if (!mountedRef.current) return;
+          syncedRef.current -= delta;
+          setSyncError(true);
+        })
+        .finally(() => { if (mountedRef.current) setPendingSyncs(n => n - 1); });
+    }
+    writeTechDraft(uid, { on: techOn, arrows: techArrows, synced: syncedRef.current, topics: techTopics, note: techNote });
   }, [uid, techOn, techArrows, techTopics, techNote]);
 
   const onShotDelta = useCallback((delta: number) => {
@@ -157,12 +188,36 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   // Wolane tuz przed wyjsciem z widoku: po odmontowaniu efekt zapisu szkicu
   // juz sie nie odpali, wiec szkic zerujemy wprost — inaczej te same strzaly
-  // wrocilyby przy nastepnym wejsciu.
-  const resetTech = () => {
+  // wrocilyby przy nastepnym wejsciu. Strzaly zostaja w liczniku dnia.
+  const resetTech = (keepTopicsAndNote = false) => {
+    syncedRef.current = 0;
     setTechArrows(0);
-    setTechTopics([]);
-    setTechNote('');
-    if (uid) writeTechDraft(uid, { on: techOn, arrows: 0, topics: [], note: '' });
+    if (!keepTopicsAndNote) {
+      setTechTopics([]);
+      setTechNote('');
+    }
+    if (uid) writeTechDraft(uid, {
+      on: techOn, arrows: 0, synced: 0,
+      topics: keepTopicsAndNote ? techTopics : [],
+      note: keepTopicsAndNote ? techNote : '',
+    });
+  };
+
+  // Pauza bez nagrania ("ide po strzaly") pyta o liczbe strzal — tam nie ma
+  // tarczy, na ktorej daloby sie je wbic.
+  const [showPauseCount, setShowPauseCount] = useState(false);
+  const [lastPauseCount, setLastPauseCount] = useState<number>(() => {
+    try {
+      const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10);
+      if (!isNaN(n) && n >= 1 && n <= 6) return n;
+    } catch { /* ignore */ }
+    return 6;
+  });
+  const pickPauseCount = (n: number) => {
+    setTechArrows(a => a + n);
+    setLastPauseCount(n);
+    try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ }
+    setShowPauseCount(false);
   };
 
   const [isPremium, setIsPremium] = useState(false);
@@ -834,6 +889,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     if (liveVideoRef.current) liveVideoRef.current.srcObject = null;
     delayedVideoRef.current?.pause();
     setRecordingPaused(false);
+    setShowPauseCount(false);
     // Bez klipu nie ma czego ogladac — wracamy prosto do menu startowego.
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
   }, []);
@@ -913,6 +969,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
         return;
       }
 
+      setShowPauseCount(true);
       setPausePhase('draining');
       pausePhaseRef.current = 'draining';
 
@@ -934,6 +991,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     }
 
     // ─── Wznowienie ───────────────────────────────────────────────────────
+    setShowPauseCount(false);
     if (drainTimerRef.current) { clearInterval(drainTimerRef.current); drainTimerRef.current = null; }
     setDrainMs(0);
     setPausePhase('none');
@@ -1030,7 +1088,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   // Kazde wyjscie z narzedzia idzie tedy: z policzonymi strzalami najpierw
   // podsumowanie treningu technicznego, zeby nic nie zapisalo sie przypadkiem.
-  const requestExit = useCallback(() => {
+  const requestExit = () => {
     cleanup();
     if (techOn && techArrows > 0) {
       setMirrorState('idle');
@@ -1039,15 +1097,10 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       setShowTechSummary(true);
       return;
     }
-    // Bez treningu technicznego strzaly i tak ida do licznika dnia
-    // (ten sam co Pfeilzaehler) — strona glowna ma je widziec.
-    if (uid && techArrows > 0) {
-      writeTechDraft(uid, { on: techOn, arrows: 0, topics: techTopics, note: techNote });
-      addToDailyArrowCounter(uid, techArrows)
-        .catch(e => console.error('Delay Mirror: zapis licznika strzal', e));
-    }
+    // Strzaly sa juz w liczniku dnia — zerujemy tylko licznik tego treningu.
+    if (techArrows > 0) resetTech(true);
     onBack();
-  }, [cleanup, onBack, techOn, techArrows, techTopics, techNote, uid]);
+  };
 
   const stopMirror = requestExit;
 
@@ -1056,7 +1109,10 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     setIsSavingTech(true);
     setTechSaveError(false);
     try {
-      await saveTechnicalSession(uid, { arrows: techArrows, note: techNote.trim(), topics: techTopics, focusState, source: 'DELAY_MIRROR' });
+      await saveTechnicalSession(uid, {
+        arrows: techArrows, note: techNote.trim(), topics: techTopics, focusState,
+        source: 'DELAY_MIRROR', fromDailyCounter: syncedRef.current,
+      });
       resetTech();
       setShowTechSummary(false);
       (onOpenStats ?? onBack)();
@@ -1397,6 +1453,26 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     </div>
   );
 
+  // Czy strzaly tego treningu sa bezpieczne — widac przy liczniku na starcie.
+  const syncStatus = techArrows > 0 ? (
+    syncError ? (
+      <p className={`w-full flex items-center gap-1.5 text-red-300 text-[10px] font-bold leading-tight ${_compactExpert ? '-mt-0.5 mb-1' : '-mt-2 mb-3'}`}>
+        <span className="material-symbols-outlined text-sm">error</span>
+        {t('delayMirror.techSyncError')}
+      </p>
+    ) : pendingSyncs > 0 ? (
+      <p className={`w-full flex items-center gap-1.5 text-amber-200 text-[10px] font-bold leading-tight ${_compactExpert ? '-mt-0.5 mb-1' : '-mt-2 mb-3'}`}>
+        <span className="material-symbols-outlined text-sm">sync</span>
+        {t('delayMirror.techSyncPending')}
+      </p>
+    ) : (
+      <p className={`w-full flex items-center gap-1.5 text-emerald-300 text-[10px] font-bold leading-tight ${_compactExpert ? '-mt-0.5 mb-1' : '-mt-2 mb-3'}`}>
+        <span className="material-symbols-outlined text-sm">check_circle</span>
+        {t('delayMirror.techSynced')}
+      </p>
+    )
+  ) : null;
+
   const techTopicsAndNotes = (
     <>
       {activeFocus && focusState && (
@@ -1514,6 +1590,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       >
         {t('delayMirror.techDiscard')}
       </button>
+      <p className="text-white/40 text-[10px] leading-snug text-center mt-1.5">{t('delayMirror.techDiscardHint')}</p>
     </>,
     () => setShowTechSummary(false),
   ) : null;
@@ -1661,6 +1738,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
             </button>
           )}
           {techRow}
+          {syncStatus}
           {_displayAsLandscape && <div className={`w-full ${_compactExpert ? "mt-1" : "mt-auto"}`}>{privacyNote}</div>}
         </div>
 
@@ -1940,6 +2018,40 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
         >
           <span className="material-symbols-outlined text-2xl">arrow_back</span>
         </button>
+      )}
+
+      {/* Ile strzal w tej serii — pauza bez nagrania. Na dole, bo srodek
+          zajmuje pasek pauzy, a lewy dolny rog przycisk wyjscia. */}
+      {showPauseCount && recordingPaused && (mirrorState === 'live' || mirrorState === 'buffering') && (
+        <div className="absolute bottom-4 inset-x-0 z-[35] flex justify-center px-16">
+          <div className="bg-black/80 backdrop-blur-sm rounded-2xl border border-white/20 px-3 py-2.5 flex flex-col items-center gap-2 max-w-full">
+            <p className="flex items-center gap-1.5 text-white text-xs font-black uppercase tracking-wider">
+              <ArrowGlyph className="w-4 h-4 text-sky-300" />
+              {t('delayMirror.pauseCountTitle')}
+            </p>
+            <div className="flex flex-wrap justify-center gap-1.5">
+              {[1, 2, 3, 4, 5, 6].map(n => (
+                <button
+                  key={n}
+                  onClick={() => pickPauseCount(n)}
+                  className={`w-10 h-10 rounded-xl font-black text-base active:scale-95 transition-all border ${
+                    n === lastPauseCount
+                      ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
+                      : 'bg-white/10 text-white border-white/15'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+              <button
+                onClick={() => setShowPauseCount(false)}
+                className="h-10 px-3 rounded-xl font-bold text-[11px] uppercase tracking-wider bg-transparent text-white/60 border border-white/15 active:scale-95 transition-all"
+              >
+                {t('delayMirror.pauseCountSkip')}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Pasek pauzy — bez niego user odchodzi od telefonu myslac, ze skonczyl */}

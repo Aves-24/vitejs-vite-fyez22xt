@@ -1,4 +1,4 @@
-import { addDoc, collection, doc, increment, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
+import { collection, doc, increment, serverTimestamp, Timestamp, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
 import { sessionFocusSnapshot, FocusState } from './focus';
@@ -9,12 +9,20 @@ function invalidateStatsCache(userId: string) {
   window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
 }
 
-/** Strzaly bez sesji — licznik dnia na profilu (Pfeilzaehler), liczony na stronie glownej. */
-export async function addToDailyArrowCounter(userId: string, count: number): Promise<void> {
+function dayCounterField(): string {
   const now = new Date();
-  const dayKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
-  await updateDoc(doc(db, 'users', userId), { [`pfeilzaehler.${dayKey}`]: increment(count) });
+  return `pfeilzaehler.${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * Strzaly bez sesji — licznik dnia na profilu (Pfeilzaehler), liczony na
+ * stronie glownej. Zapis trafia od razu do trwalego bufora Firestore, wiec
+ * bez zasiegu zostaje w telefonie; promise konczy sie dopiero po wyslaniu.
+ */
+export async function addToDailyArrowCounter(userId: string, count: number): Promise<void> {
+  const write = updateDoc(doc(db, 'users', userId), { [dayCounterField()]: increment(count) });
   invalidateStatsCache(userId);
+  await write;
 }
 
 export type TechSessionSource = 'DELAY_MIRROR';
@@ -25,15 +33,20 @@ interface TechSessionInput {
   topics: string[];
   focusState: FocusState | null;
   source?: TechSessionSource;
+  /** Strzaly juz zapisane w liczniku dnia — przechodza do sesji, zeby nie liczyc ich dwa razy. */
+  fromDailyCounter?: number;
 }
 
 /** Zapis treningu technicznego — wspólny dla startu treningu i Delay Mirror. */
-export async function saveTechnicalSession(userId: string, { arrows, note, topics, focusState, source }: TechSessionInput): Promise<void> {
+export async function saveTechnicalSession(userId: string, { arrows, note, topics, focusState, source, fromDailyCounter = 0 }: TechSessionInput): Promise<void> {
   // [ZESTAWY] Te strzały liczą się do zużycia cięciwy i strzał zestawu.
   const setupStamp = await getSetupStamp(userId);
   const focusSnap = sessionFocusSnapshot(focusState, topics);
 
-  await addDoc(collection(db, `users/${userId}/sessions`), {
+  // Jeden batch: sesja i zdjecie tych samych strzal z licznika dnia wchodza
+  // razem albo wcale — inaczej strona glowna pokazalaby je podwojnie.
+  const batch = writeBatch(db);
+  batch.set(doc(collection(db, `users/${userId}/sessions`)), {
     ...setupStamp,
     ...(focusSnap ? { focus: focusSnap } : {}),
     ...(source ? { source } : {}),
@@ -49,6 +62,10 @@ export async function saveTechnicalSession(userId: string, { arrows, note, topic
     timestamp: Timestamp.fromDate(new Date()),
     date: new Date().toLocaleDateString('pl-PL'),
   });
+  if (fromDailyCounter > 0) {
+    batch.update(doc(db, 'users', userId), { [dayCounterField()]: increment(-fromDailyCounter) });
+  }
+  await batch.commit();
   // Denormalizacja jak w ScoringView — bez tego trener nie widział
   // treningu technicznego w „Nowe treningi" (user 2026-09-18).
   await updateDoc(doc(db, 'users', userId), {

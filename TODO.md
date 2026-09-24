@@ -1073,13 +1073,22 @@ Z ogona po C25 zostały: **jardy**.
         Mirror", tematy treningowe, notatki (bez Pfeilzählera).
       - Liczenie (poprawka usera 2026-09-24, zamiast „N na serię"): każda
         strzała zaznaczona na tarczy w analizie serii = +1, cofnięcie = −1.
+        Bez nagrania (tryb podstawowy i lustro w eksperckim) „Pauza" pyta
+        „Ile strzał oddałeś?" 1–6 (ostatni wybór podświetlony) + „Pomiń".
         Liczy się zawsze, niezależnie od ptaszka. Licznik widać cały czas
-        na ekranie lustra. W samym lustrze (bez tarczy) nic się nie liczy.
+        na ekranie lustra.
+      - Zapis NA BIEŻĄCO: każda zmiana licznika od razu idzie do
+        `pfeilzaehler.{dzień}` (strona główna widzi ją od razu). Na starcie
+        Delay Mirror pod licznikiem: ✓ „Zapisane — możesz spokojnie wyjść",
+        ⟳ „Zapisane w telefonie — wyśle się po połączeniu" (czeka na
+        potwierdzenie serwera) albo błąd. Szkic trzyma `synced`, żeby po
+        restarcie nie wysłać tych samych strzał drugi raz.
       - Wyjście z narzędzia: z ptaszkiem → podsumowanie (korekta ±1, tematy,
         notatka) → Zapisz jako sesja `type: 'TECHNICAL'`, `source:
-        'DELAY_MIRROR'` (znaczek w statystykach) / Odrzuć. Bez ptaszka →
-        strzały po cichu do `pfeilzaehler.{dzień}`. Obie drogi wliczają się
-        do licznika strzał na stronie głównej.
+        'DELAY_MIRROR'` (znaczek w statystykach); sesja i zdjęcie tych
+        samych strzał z licznika dnia idą jednym `writeBatch`, żeby nie
+        liczyły się podwójnie. „Wyjdź bez zapisu treningu" = strzały
+        zostają w liczniku dnia.
       - Wspólne zapisy: `src/utils/techSession.ts` (`saveTechnicalSession`,
         `addToDailyArrowCounter`, używane też przez SessionSetup).
       - Szkic (`grotX_dmTech_{uid}`) przeżywa systemowe „wstecz", ale tylko
@@ -1401,6 +1410,23 @@ Z ogona po C25 zostały: **jardy**.
 
 Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna.
 
+- [ ] **C41. Brak internetu na strzelnicy — sprawdzić całą aplikację.**
+      Życzenie usera 2026-09-24: co się dzieje bez zasięgu, jak zapisywać
+      dane, żeby nie znikały i same się wysłały, gdy telefon wróci do zasięgu.
+      **Co już wiadomo:** Firestore ma `persistentLocalCache` (`firebase.ts`),
+      więc zapisy wydane offline czekają w IndexedDB i wysyłają się same,
+      także po zamknięciu aplikacji. Delay Mirror (C28) na tym polega.
+      **Do sprawdzenia (tryb samolotowy na telefonie):**
+      - `await addDoc/updateDoc/batch.commit()` kończy się dopiero po
+        potwierdzeniu serwera, więc offline przyciski „Zapisz" (trening,
+        trening techniczny, notatki) mogą kręcić się w nieskończoność —
+        przejrzeć, gdzie UI czeka na `await`, a gdzie wystarczy wydać zapis.
+      - Odczyty: czy statystyki, strona główna i start treningu działają
+        z cache (`getDocs` offline), czy wiszą.
+      - App Check / reCAPTCHA offline i przy słabym zasięgu.
+      - Service worker: czy aplikacja w ogóle się otwiera bez sieci (C11).
+      - Zapis wyniku zawodów, Battle, zaproszenia — co z nimi offline.
+      - Jasny komunikat w UI „offline — zapiszę po połączeniu" zamiast ciszy.
 ---
 
 ## STAN NA 2026-09-08

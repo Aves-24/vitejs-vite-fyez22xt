@@ -1064,8 +1064,8 @@ Z ogona po C25 zostały: **jardy**.
       kółka zaznaczania i menu „⋮". Zaznaczanie przez tryb „Wybierz"; pasek
       nad listą: wiadomość, grupy, usunięcie — dla wielu naraz. Karta
       sprzętu ucznia czyta zestawy (`StudentEquipmentCard`).
-- [~] **C28. Delay Mirror = trening techniczny — ZAKODOWANE 2026-09-24,
-      NIESPRAWDZONE NA ŻYWO.** Decyzja usera: Delay Mirror to trening
+- [x] **C28. ✅ ZROBIONE 2026-09-24 — Delay Mirror = trening techniczny.
+      Sprawdzone przez usera na telefonie („wszystko działa").** Decyzja usera: Delay Mirror to trening
       techniczny, nie sesja z wynikiem.
       - Ekran startowy Delay Mirror, lewa kolumna: przycisk z ptaszkiem
         „Trening techniczny" + licznik strzał (ikona strzały) + strzałka
@@ -1098,8 +1098,6 @@ Z ogona po C25 zostały: **jardy**.
       - Szkic (`grotX_dmTech_{uid}`) przeżywa systemowe „wstecz", ale tylko
         do końca dnia; przy wyjściu zerowany wprost (widok znika, zanim
         efekt zdąży go zapisać).
-      **Do sprawdzenia na telefonie:** licznik przy wbijaniu i cofaniu
-      strzał, zapis z ptaszkiem i bez, liczba na stronie głównej.
 - [x] **C29. ✅ NAPRAWIONE 2026-09-11 — dmuchawka po 3 strzałach dawała
       same M.** Przyczyna: `addScoreFromTarget` w `ScoringView.tsx:333-356`
       pilnuje zasady „jedna strzała na spot" (druga w tym samym spocie → M,

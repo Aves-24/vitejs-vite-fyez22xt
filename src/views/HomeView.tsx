@@ -16,6 +16,7 @@ import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
+import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -80,7 +81,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [avgArrowsMonth, setAvgArrowsMonth] = useState<number>(0);
   const [avgPointsMonth, setAvgPointsMonth] = useState<number>(0);
   const [recentScores, setRecentScores] = useState<number[]>([]);
-  const [recentSessions, setRecentSessions] = useState<{ score: number; date: string; distance: string; type: string; ts: number }[]>([]);
+  const [recentSessions, setRecentSessions] = useState<({ score: number; date: string; distance: string; type: string; ts: number } & PartialInfo)[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
   // snapshotu co liczniki, dzięki czemu modal nie robi już osobnego odczytu.
   const [weeklyArrows, setWeeklyArrows] = useState<number[]>(Array(12).fill(0));
@@ -504,11 +505,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const weekArrows = Array(12).fill(0);
         const weekScore = Array(12).fill(0);
         const weekScoreArrows = Array(12).fill(0);
+        // [C31] Ø ringów na trening liczy tylko pełne treningi — niepełny
+        // zaniżyłby sumę. Średnia na strzałę (weekScore/weekScoreArrows) je bierze.
         const weekSessions = Array(12).fill(0);
+        const weekFullScore = Array(12).fill(0);
         // Per dystans (chipy w zakładce Ringe & Präzision)
         const weekScoreByDist: Record<string, number[]> = {};
         const weekScoreArrowsByDist: Record<string, number[]> = {};
         const weekSessionsByDist: Record<string, number[]> = {};
+        const weekFullScoreByDist: Record<string, number[]> = {};
 
         snapYear.forEach(docSnap => {
           const data = docSnap.data();
@@ -517,6 +522,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const sc  = data.score  || 0;
           const ts  = getSafeTime(data.timestamp);
           const isTechnical = data.type === 'TECHNICAL';
+          const partial = isPartialSession(data);
 
           // Strażnik: snapshot może sięgać poprzedniego roku (rolling 12 tyg.),
           // więc roczny licznik liczymy tylko od początku bieżącego roku.
@@ -530,18 +536,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           if (ts >= startOfMonth) m += arr;
           else if (ts >= startOfPrevMonth) pm += arr;
           if (ts >= fourteenDaysAgo.getTime() && !isTechnical) { a14 += scoreArr; s14 += sc; }
-          if (ts >= startOfMonth && !isTechnical && sc > 0) { monthCount++; monthArrows += arr; monthScore += sc; }
+          if (ts >= startOfMonth && !isTechnical && !partial && sc > 0) { monthCount++; monthArrows += arr; monthScore += sc; }
 
           const diffWeeks = Math.floor(Math.max(0, now.getTime() - ts) / (1000 * 60 * 60 * 24 * 7));
           if (diffWeeks < 12) {
             const idx = 11 - diffWeeks;
             weekArrows[idx] += arr;
             if (!isTechnical && scoreArr > 0 && sc > 0) {
-              weekScore[idx] += sc; weekScoreArrows[idx] += scoreArr; weekSessions[idx]++;
+              weekScore[idx] += sc; weekScoreArrows[idx] += scoreArr;
+              if (!partial) { weekSessions[idx]++; weekFullScore[idx] += sc; }
               const dist = data.distance || '';
               if (dist && dist !== 'TECH') {
-                if (!weekScoreByDist[dist]) { weekScoreByDist[dist] = Array(12).fill(0); weekScoreArrowsByDist[dist] = Array(12).fill(0); weekSessionsByDist[dist] = Array(12).fill(0); }
-                weekScoreByDist[dist][idx] += sc; weekScoreArrowsByDist[dist][idx] += scoreArr; weekSessionsByDist[dist][idx]++;
+                if (!weekScoreByDist[dist]) { weekScoreByDist[dist] = Array(12).fill(0); weekScoreArrowsByDist[dist] = Array(12).fill(0); weekSessionsByDist[dist] = Array(12).fill(0); weekFullScoreByDist[dist] = Array(12).fill(0); }
+                weekScoreByDist[dist][idx] += sc; weekScoreArrowsByDist[dist][idx] += scoreArr;
+                if (!partial) { weekSessionsByDist[dist][idx]++; weekFullScoreByDist[dist][idx] += sc; }
               }
             }
           }
@@ -549,12 +557,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         const weekPoints = weekScore.map((sc, i) => weekScoreArrows[i] > 0 ? sc / weekScoreArrows[i] : 0);
         // Ø ringów na trening w tygodniu (druga linia nad słupkiem)
-        const weekSessionAvg = weekScore.map((sc, i) => weekSessions[i] > 0 ? Math.round(sc / weekSessions[i]) : 0);
+        const weekSessionAvg = weekFullScore.map((sc, i) => weekSessions[i] > 0 ? Math.round(sc / weekSessions[i]) : 0);
         const weekPointsByDist: Record<string, number[]> = {};
         const weekSessionAvgByDist: Record<string, number[]> = {};
         Object.keys(weekScoreByDist).forEach(dist => {
           weekPointsByDist[dist] = weekScoreByDist[dist].map((sc, i) => weekScoreArrowsByDist[dist][i] > 0 ? sc / weekScoreArrowsByDist[dist][i] : 0);
-          weekSessionAvgByDist[dist] = weekScoreByDist[dist].map((sc, i) => weekSessionsByDist[dist][i] > 0 ? Math.round(sc / weekSessionsByDist[dist][i]) : 0);
+          weekSessionAvgByDist[dist] = weekFullScoreByDist[dist].map((sc, i) => weekSessionsByDist[dist][i] > 0 ? Math.round(sc / weekSessionsByDist[dist][i]) : 0);
         });
 
         // Pfeilzähler: strzały zapisane na profilu (nie tworzą sesji)
@@ -593,16 +601,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '' };
+            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
-        const recent = sessionList.slice(-6).map(s => s.score);
+        // [C31] Sumy, trend i średnie „na trening" tylko z pełnych treningów.
+        // Lista w modalu (recentFull) pokazuje wszystkie, ze znaczkiem.
+        const fullSessions = sessionList.filter(s => !s.isPartial);
+        const recent = fullSessions.slice(-6).map(s => s.score);
         // Do 50 — modal Ergebniskurve dociąga więcej przyciskiem "Pokaż więcej" (tylko PRO)
         const recentFull = sessionList.slice(-50);
 
         // ─── ŚREDNIE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
-        const last3NonTech = sessionList.filter(s => s.type !== 'TECHNICAL').slice(-3);
+        const last3NonTech = fullSessions.filter(s => s.type !== 'TECHNICAL').slice(-3);
         const avgArrows3v = last3NonTech.length
           ? Math.round(last3NonTech.reduce((acc, s) => acc + s.arrows, 0) / last3NonTech.length)
           : 0;
@@ -613,7 +624,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // ─── ŚREDNIE PER DYSTANS (karty w zakładce Ringe & Präzision) ──
         // Ta sama logika co globalna, ale grupowana po dystansie.
         const avgByDist: Record<string, { avgArrows3: number; avgPoints3: number; avgArrowsMonth: number; avgPointsMonth: number }> = {};
-        const nonTechScored = sessionList.filter(s => s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH');
+        const nonTechScored = fullSessions.filter(s => s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH');
         const meanRound = (arr: typeof nonTechScored, key: 'arrows' | 'score') =>
           arr.length ? Math.round(arr.reduce((acc, s) => acc + (s[key] || 0), 0) / arr.length) : 0;
         Array.from(new Set(nonTechScored.map(s => s.distance))).forEach(dist => {
@@ -1194,7 +1205,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           }}
         >
           <p className="text-[28px] font-black text-[#725b00] leading-none">{realLastSession ? realLastSession.score : '--'}</p>
-          <span className="text-[9px] font-bold text-[#725b00]/70 leading-none mt-1 whitespace-nowrap block">{realLastSession ? realLastSession.distance : '--'}</span>
+          <span className="text-[9px] font-bold text-[#725b00]/70 leading-none mt-1 whitespace-nowrap block">{realLastSession ? `${realLastSession.distance || ''}${isPartialSession(realLastSession) ? ` · ${partialLabel(realLastSession)}` : ''}` : '--'}</span>
           <span className="text-[9px] font-bold text-[#725b00]/60 leading-none mt-0.5 whitespace-nowrap block">
             {realLastSession
               ? (realLastSession.date || (() => {
@@ -1872,7 +1883,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               const W = 300, H = 100, pad = 12;
               const allSessions = recentSessions.length >= 2
                 ? recentSessions
-                : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 }));
+                : recentScores.map(s => ({ score: s, date: '', distance: '', type: 'Trening', ts: 0 } as typeof recentSessions[number]));
 
               const availTypes = Array.from(new Set(allSessions.map(s => s.type || 'Trening')));
               const availDists = Array.from(new Set(allSessions.map(s => s.distance).filter(Boolean))).sort();
@@ -1883,7 +1894,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 return typeOk && distOk;
               });
 
-              const scores = sessionsForModal.map(s => s.score);
+              // [C31] Krzywa bez niepełnych treningów — lista niżej je pokazuje.
+              const scores = sessionsForModal.filter(s => !isPartialSession(s)).map(s => s.score);
               const minS = scores.length ? Math.min(...scores) : 0;
               const maxS = scores.length ? Math.max(...scores) : 0;
               const range = maxS - minS || 1;
@@ -2012,6 +2024,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0">
                                   {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
+                                  {isPartialSession(sess) && (
+                                    <span className="text-[8px] font-black text-amber-700 bg-amber-100 rounded px-1 py-0.5">{partialLabel(sess)}</span>
+                                  )}
                                   <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                                   {handleSessionClick && <span className="material-symbols-outlined text-gray-300" style={{ fontSize: 14 }}>chevron_right</span>}
                                 </div>

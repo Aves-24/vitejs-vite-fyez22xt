@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isPartialSession, partialLabel, PartialInfo } from '../../utils/partialSession';
 
 // Krzywa wyników (Ergebniskurve) + lista ostatnich sesji z filtrami typ/dystans.
 // Prezentacyjny — dane (lista sesji) podaje rodzic. Używany w przeglądzie ProStats.
-export interface CurveSession {
+export interface CurveSession extends PartialInfo {
   score: number;
   date?: string;
   distance?: string;
@@ -24,7 +25,8 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel,
   // jest w sekcji poniżej separatora "Dane dla: ...".
   const filtered = sessions;
 
-  const scores = filtered.map(s => s.score);
+  // [C31] Krzywa bez niepełnych treningów — lista niżej pokazuje wszystkie.
+  const scores = filtered.filter(s => !isPartialSession(s)).map(s => s.score);
   const minS = scores.length ? Math.min(...scores) : 0;
   const maxS = scores.length ? Math.max(...scores) : 0;
   const range = maxS - minS || 1;
@@ -132,6 +134,9 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel,
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
+                {isPartialSession(sess) && (
+                  <span className="text-[8px] font-black text-amber-700 bg-amber-100 rounded px-1 py-0.5">{partialLabel(sess)}</span>
+                )}
                 <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                 {handleClick && <span className="material-symbols-outlined text-gray-300" style={{ fontSize: 14 }}>chevron_right</span>}
               </div>

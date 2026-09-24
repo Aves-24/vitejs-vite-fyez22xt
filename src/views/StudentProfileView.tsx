@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { isPartialSession, partialLabel } from '../utils/partialSession';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
@@ -449,7 +450,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
         recentSessions = nonTech.slice(0, 3);
-        sparkline = nonTech.slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
+        // [C31] Trend i średnie „na trening" bez niepełnych treningów.
+        sparkline = nonTech.filter((s: any) => !isPartialSession(s)).slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
         setAllModalSessions(nonTech);
         techSessions = all.filter((s: any) => s.type === 'TECHNICAL').slice(0, 3);
         setRecentTechSessions(techSessions);
@@ -460,7 +462,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           if (ts >= startOfMonth) monthTotal += arrows;
           if (ts >= startOfYear)  yearTotal  += arrows;
           if (ts >= fourteenDaysAgo && s.type !== 'TECHNICAL') { tScore14 += (s.score || 0); tArrows14 += arrows; }
-          if (ts >= startOfMonth && s.type !== 'TECHNICAL' && (s.score || 0) > 0) { monthCount++; monthArrowsSum += arrows; monthScoreSum += (s.score || 0); }
+          if (ts >= startOfMonth && s.type !== 'TECHNICAL' && !isPartialSession(s) && (s.score || 0) > 0) { monthCount++; monthArrowsSum += arrows; monthScoreSum += (s.score || 0); }
         });
       }
 
@@ -470,7 +472,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       // Średnie na sesję z 3 ostatnich sesji z wynikiem, bez technicznych.
       // snap jest posortowany malejąco (timestamp desc), więc bierzemy pierwsze 3.
       const last3NonTech = (snap.empty ? [] : snap.docs.map(d => d.data()))
-        .filter((s: any) => (s.score || 0) > 0 && s.type !== 'TECHNICAL')
+        .filter((s: any) => (s.score || 0) > 0 && s.type !== 'TECHNICAL' && !isPartialSession(s))
         .slice(0, 3);
       const avgArrows3Val = last3NonTech.length
         ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.arrows || 0), 0) / last3NonTech.length)
@@ -509,9 +511,11 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const wScore = Array(12).fill(0);
         const wScoreArrows = Array(12).fill(0);
         const wSessions = Array(12).fill(0);
+        const wFullScore = Array(12).fill(0);
         const wScoreByDist: Record<string, number[]> = {};
         const wScoreArrowsByDist: Record<string, number[]> = {};
         const wSessionsByDist: Record<string, number[]> = {};
+        const wFullScoreByDist: Record<string, number[]> = {};
         sessions.forEach((data: any) => {
           const ts = data.timestamp?.toMillis ? data.timestamp.toMillis() : (typeof data.timestamp === 'number' ? data.timestamp : 0);
           const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
@@ -521,23 +525,26 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             const scoreArr = data.scoreArrows || data.arrows || 0;
             wArrows[idx] += arr;
             if (data.type !== 'TECHNICAL' && scoreArr > 0 && (data.score || 0) > 0) {
-              wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr; wSessions[idx]++;
+              const full = !isPartialSession(data);
+              wScore[idx] += (data.score || 0); wScoreArrows[idx] += scoreArr;
+              if (full) { wSessions[idx]++; wFullScore[idx] += (data.score || 0); }
               const dist = data.distance || '';
               if (dist && dist !== 'TECH') {
-                if (!wScoreByDist[dist]) { wScoreByDist[dist] = Array(12).fill(0); wScoreArrowsByDist[dist] = Array(12).fill(0); wSessionsByDist[dist] = Array(12).fill(0); }
-                wScoreByDist[dist][idx] += (data.score || 0); wScoreArrowsByDist[dist][idx] += scoreArr; wSessionsByDist[dist][idx]++;
+                if (!wScoreByDist[dist]) { wScoreByDist[dist] = Array(12).fill(0); wScoreArrowsByDist[dist] = Array(12).fill(0); wSessionsByDist[dist] = Array(12).fill(0); wFullScoreByDist[dist] = Array(12).fill(0); }
+                wScoreByDist[dist][idx] += (data.score || 0); wScoreArrowsByDist[dist][idx] += scoreArr;
+                if (full) { wSessionsByDist[dist][idx]++; wFullScoreByDist[dist][idx] += (data.score || 0); }
               }
             }
           }
         });
         setWeeklyArrows(wArrows);
         setWeeklyPoints(wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0));
-        setWeeklySessionAvg(wScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0));
+        setWeeklySessionAvg(wFullScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0));
         const byDist: Record<string, number[]> = {};
         const sessAvgByDist: Record<string, number[]> = {};
         Object.keys(wScoreByDist).forEach(dist => {
           byDist[dist] = wScoreByDist[dist].map((sc, i) => wScoreArrowsByDist[dist][i] > 0 ? sc / wScoreArrowsByDist[dist][i] : 0);
-          sessAvgByDist[dist] = wScoreByDist[dist].map((sc, i) => wSessionsByDist[dist][i] > 0 ? Math.round(sc / wSessionsByDist[dist][i]) : 0);
+          sessAvgByDist[dist] = wFullScoreByDist[dist].map((sc, i) => wSessionsByDist[dist][i] > 0 ? Math.round(sc / wSessionsByDist[dist][i]) : 0);
         });
         setWeeklyPointsByDist(byDist);
         setWeeklySessionAvgByDist(sessAvgByDist);
@@ -551,8 +558,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             distance: s.distance || '',
             type: s.type || 'Trening',
             ts: s.timestamp?.toMillis ? s.timestamp.toMillis() : (typeof s.timestamp === 'number' ? s.timestamp : 0),
+            partial: isPartialSession(s),
           }))
-          .filter((s: any) => s.score > 0 && s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH')
+          .filter((s: any) => s.score > 0 && !s.partial && s.type !== 'TECHNICAL' && s.distance && s.distance !== 'TECH')
           .sort((a: any, b: any) => a.ts - b.ts);
         const meanRound = (arr: any[], key: 'arrows' | 'score') =>
           arr.length ? Math.round(arr.reduce((acc: number, s: any) => acc + (s[key] || 0), 0) / arr.length) : 0;
@@ -887,7 +895,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 </div>
                 <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">
                   <div className="grid grid-cols-5 text-center pb-2.5 border-b border-gray-50">
-                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}</p></div>
+                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}{isPartialSession(currentSession) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(currentSession)}</span>}</p></div>
                     <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
                     <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#b8860b] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.x}</p></div>
                     <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
@@ -1073,7 +1081,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 return typeMatch && distMatch;
               });
 
-              const scores = filtered.slice(0, 10).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
+              const scores = filtered.filter(s => !isPartialSession(s)).slice(0, 10).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
               const W = 300, H = 100, pad = 12;
               const minS = scores.length ? Math.min(...scores) : 0;
               const maxS = scores.length ? Math.max(...scores) : 0;
@@ -1184,6 +1192,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
                             {dateStr && <span className="text-[9px] font-bold text-gray-300">{dateStr}</span>}
+                            {isPartialSession(sess) && (
+                              <span className="text-[8px] font-black text-amber-700 bg-amber-100 rounded px-1 py-0.5">{partialLabel(sess)}</span>
+                            )}
                             <span className="text-sm font-black text-[#0a3a2a]">{sess.score}</span>
                           </div>
                         </div>

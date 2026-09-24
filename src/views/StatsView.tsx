@@ -18,6 +18,7 @@ import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
+import { isPartialSession, partialLabel } from '../utils/partialSession';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
@@ -474,6 +475,7 @@ interface Session {
   type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
   isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; scoreArrows?: number; sessionArrows?: number; practiceArrows?: number;
+  isPartial?: boolean; endsShot?: number; endsPlanned?: number;
 }
 
 interface StatsViewProps {
@@ -915,6 +917,13 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         )}
                         {sessionDistanceLabel(selectedSession)}
                       </p>
+                      {/* [C31] Niepełny trening — suma nie wchodzi do krzywych i średnich „na trening". */}
+                      {isPartialSession(selectedSession) && (
+                        <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
+                          <span className="material-symbols-outlined text-[12px]">hourglass_top</span>
+                          {t('stats.partialBadge', { label: partialLabel(selectedSession) })}
+                        </span>
+                      )}
                     </div>
                     <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">{displayTargetType || t('stats.sessionInfo.dynamic')}</div>
                   </div>

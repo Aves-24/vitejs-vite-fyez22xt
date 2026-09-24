@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { isBlowgunSession } from '../config/targets/blowgun';
 import { topicLabel } from '../constants/trainingTopics';
+import { PLANNED_ENDS } from '../utils/partialSession';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -196,6 +197,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const [showAbortModal, setShowAbortModal] = useState(false);
+  const [showPartialModal, setShowPartialModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [toastType, setToastType] = useState<'INFO' | 'ERROR'>('INFO');
 
@@ -448,8 +450,19 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   }, [globalStats.score, globalStats.x, globalStats.t, globalStats.n, activeBattle?.id, userId]);
 
-  const saveTrainingSession = async () => {
+  // [C31] Przed 12. seria pytamy, czy wynik ma trafic do sum i krzywych.
+  // W Arenie/Battle nie pytamy — tam liczy sie wynik, jaki padl.
+  const requestSave = () => {
+    if (!battleId && submittedEnds.length > 0 && submittedEnds.length < PLANNED_ENDS) {
+      setShowPartialModal(true);
+      return;
+    }
+    saveTrainingSession(false);
+  };
+
+  const saveTrainingSession = async (markPartial: boolean) => {
     if (!userId) return;
+    setShowPartialModal(false);
     
     if (submittedEnds.length === 0) {
       showToast(t('scoringView.errorNoArrows', 'Brak strzał na tarczy. Dodaj wyniki.'), 'ERROR');
@@ -501,6 +514,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(focusSnap ? { focus: focusSnap } : {}),
         weather: currentWeather,
         ends: submittedEnds,
+        ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: PLANNED_ENDS } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
         ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       });
@@ -994,7 +1008,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       )}
 
       <div className="flex gap-2 pt-4 px-2 mb-24">
-        <button onClick={saveTrainingSession} disabled={isSaving || submittedEnds.length === 0} className={`flex-1 py-4 rounded-xl font-black text-[12px] uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 ${isSaving || submittedEnds.length === 0 ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#0a3a2a] text-white active:scale-95'}`}>{isSaving ? t('scoringView.saving', 'Zapisywanie...') : t('scoringView.saveTraining', 'Zapisz trening')}</button>
+        <button onClick={requestSave} disabled={isSaving || submittedEnds.length === 0} className={`flex-1 py-4 rounded-xl font-black text-[12px] uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 ${isSaving || submittedEnds.length === 0 ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#0a3a2a] text-white active:scale-95'}`}>{isSaving ? t('scoringView.saving', 'Zapisywanie...') : t('scoringView.saveTraining', 'Zapisz trening')}</button>
         <button onClick={() => setShowAbortModal(true)} className="flex-1 py-4 bg-white text-red-500 rounded-xl font-black text-[12px] uppercase border-2 border-red-100 active:scale-95 shadow-sm">{t('scoringView.abort', 'Przerwij')}</button>
       </div>
 
@@ -1007,6 +1021,41 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           onClose={() => setZoomedRoundData(null)} 
           t={t}
         />
+      )}
+
+      {showPartialModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200000] flex items-center justify-center p-6 animate-fade-in-up">
+          <div className="bg-white rounded-[32px] p-7 w-full max-w-sm shadow-2xl text-center border border-gray-100">
+            <div className="w-14 h-14 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="material-symbols-outlined text-3xl">hourglass_top</span>
+            </div>
+            <h2 className="text-xl font-black text-[#0a3a2a] mb-2 uppercase tracking-tighter">{t('scoringView.partialTitle')}</h2>
+            <p className="text-sm text-gray-500 font-bold mb-6 leading-relaxed">
+              {t('scoringView.partialDesc', { shot: submittedEnds.length, planned: PLANNED_ENDS })}
+            </p>
+            <div className="space-y-2.5">
+              <button
+                onClick={() => saveTrainingSession(true)}
+                disabled={isSaving}
+                className="w-full py-3.5 px-4 bg-[#0a3a2a] text-white rounded-xl active:scale-95 transition-all disabled:opacity-50"
+              >
+                <span className="block font-black uppercase text-[11px] tracking-widest">{t('scoringView.partialMark')}</span>
+                <span className="block text-[10px] font-bold text-emerald-100/80 mt-0.5 normal-case">{t('scoringView.partialMarkHint')}</span>
+              </button>
+              <button
+                onClick={() => saveTrainingSession(false)}
+                disabled={isSaving}
+                className="w-full py-3.5 bg-gray-100 text-[#0a3a2a] rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all disabled:opacity-50"
+              >
+                {t('scoringView.partialFull')}
+              </button>
+              <button onClick={() => setShowPartialModal(false)} className="w-full py-2.5 text-gray-400 font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all">
+                {t('scoringView.cancelAbort', 'Wróć do strzelania')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {showAbortModal && typeof document !== 'undefined' && createPortal(

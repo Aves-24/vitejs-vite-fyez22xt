@@ -1173,7 +1173,23 @@ Z ogona po C25 zostały: **jardy**.
       w trakcie aktywnej sesji punktowania (`grotX_activeSession`).
       Ważne przy zmianach reguł Firestore, z którymi stara wersja przestaje
       działać — wtedy pasek to jedyny sposób, żeby ludzie szybko przeszli.
-- [ ] **C31. Przerwany (niepełny) trening psuje statystyki.** Zgłosił user
+- [~] **C31. Przerwany (niepełny) trening psuje statystyki — ZAKODOWANE
+      2026-09-24 w wariancie (c), NIESPRAWDZONE NA ŻYWO.**
+      Trening w ScoringView ma zawsze 12 serii (`PLANNED_ENDS` w
+      `src/utils/partialSession.ts`). „Zapisz trening" przed 12. serią (poza
+      Areną/Battle) pyta: „Oznacz jako niepełny" / „Licz jak pełny trening".
+      Niepełny dostaje `isPartial: true`, `endsShot`, `endsPlanned`.
+      Pomijają go: sparkline, „Ø 3 ostatnie" i „Schnitt Monat" (globalnie
+      i per dystans), Ø ringów na trening w tygodniu — na Home, w ProStats
+      i w profilu ucznia; krzywe wyników (Home-modal, ErgebniskurvePanel,
+      modal w profilu ucznia). Liczą go dalej: strzały, XP, ranga, handicap,
+      średnia na strzałę. Znaczek „7/12" na listach sesji, w „Ostatnim
+      wyniku" na Home, w podglądzie sesji u trenera; w szczegółach sesji
+      w Stats „Niepełny · 7/12 serii". Dziennik (`sessionInsights`) już
+      porównuje sumy tylko przy tej samej liczbie strzał — bez zmian.
+      Nietknięte: eksport PDF, rekordy turniejowe (niepełny i tak nie pobije
+      rekordu). Stare sesje bez flagi = pełne.
+      *Opis zgłoszenia poniżej.* Zgłosił user
       2026-09-11. Ktoś strzela np. 7 serii po 6 strzał i musi skończyć
       wcześniej. Zapisana sesja ma wtedy ~70% zwykłego wyniku, a statystyki
       pokazują to jak słaby trening.

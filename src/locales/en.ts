@@ -700,6 +700,11 @@ export const views = {
     placeholderDraw: "e.g. 28.5"
   },
   scoringView: {
+    partialTitle: "Incomplete training",
+    partialDesc: "You shot {{shot}} of {{planned}} ends. Should this score count like a full training?",
+    partialMark: "Mark as incomplete",
+    partialMarkHint: "Arrows and average per arrow count; the total stays out of the curve and per-training averages",
+    partialFull: "Count as full training",
     trainingJournal: "Training Journal",
     confirmAbort: "Yes, abort",
     previewTitle: "Shot Grouping",
@@ -1145,6 +1150,7 @@ export const views = {
     topic_nockpunkt: "Nocking point"
   },
   stats: {
+    partialBadge: "Incomplete · {{label}} ends",
     title: "Stats",
     tabDaily: "Daily",
     tabRecords: "Records",

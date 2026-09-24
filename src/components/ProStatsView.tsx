@@ -7,6 +7,11 @@ import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
 import { getRecentSessions } from '../lib/recentSessions';
 import RingePraezisionPanel from './stats/RingePraezisionPanel';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
+import { isPartialSession, PartialInfo } from '../utils/partialSession';
+
+// [C31] Flaga niepełnego treningu przenoszona na punkty krzywej.
+const partialOf = (s: PartialInfo): PartialInfo =>
+  isPartialSession(s) ? { isPartial: true, endsShot: s.endsShot, endsPlanned: s.endsPlanned } : {};
 import BiomechCard from './BiomechCard';
 import HeatmapTarget from './HeatmapTarget';
 import { calculateSpreadSessions } from '../utils/spread';
@@ -358,6 +363,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         distance: s.distance || '',
         type: s.type || 'Trening',
         title: (s as any).title || (s as any).tournamentName || '',
+        ...partialOf(s as PartialInfo),
       } as CurveSession))
       .sort((a, b) => (a.ts || 0) - (b.ts || 0))
       .slice(-15);
@@ -389,17 +395,21 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         distance: s.distance || '',
         type: s.type || 'Trening',
         title: (s as any).title || (s as any).tournamentName || '',
+        ...partialOf(s as PartialInfo),
       } as CurveSession & { arrows: number }))
       .sort((a, b) => (a.ts || 0) - (b.ts || 0));
 
-    const last3 = scored.slice(-3) as Array<CurveSession & { arrows: number }>;
-    const monthScored = (scored as Array<CurveSession & { arrows: number }>).filter(s => (s.ts || 0) >= startOfMonth);
+    // [C31] Średnie „na trening" tylko z pełnych treningów.
+    const full = (scored as Array<CurveSession & { arrows: number }>).filter(s => !isPartialSession(s));
+    const last3 = full.slice(-3);
+    const monthScored = full.filter(s => (s.ts || 0) >= startOfMonth);
 
     // Słupki 12-tygodniowe (globalne) — strzały (wszystkie) + punkty/strzałę (bez TECH)
     const weeklyArrows = Array(12).fill(0);
     const wScore = Array(12).fill(0);
     const wScoreArrows = Array(12).fill(0);
     const wSessions = Array(12).fill(0);
+    const wFullScore = Array(12).fill(0);
     sessions.forEach(s => {
       const ts = getTs(s);
       const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
@@ -408,7 +418,10 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         const arr = s.arrows || s.totalArrows || 0;
         const scoreArr = (s as any).scoreArrows ?? s.arrows ?? 0;
         weeklyArrows[idx] += arr;
-        if (s.type !== 'TECHNICAL' && scoreArr > 0 && (s.score || 0) > 0) { wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr; wSessions[idx]++; }
+        if (s.type !== 'TECHNICAL' && scoreArr > 0 && (s.score || 0) > 0) {
+          wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr;
+          if (!isPartialSession(s as PartialInfo)) { wSessions[idx]++; wFullScore[idx] += (s.score || 0); }
+        }
       }
     });
     // Pfeilzähler (klucze dzienne YYYY_MM_DD) — dolicz do słupków strzał;
@@ -430,7 +443,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       avgPointsMonth: mean(monthScored.map(s => s.score)),
       weeklyArrows,
       weeklyPoints,
-      weeklySessionAvg: wScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0),
+      weeklySessionAvg: wFullScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0),
       recent: scored.slice(-15) as CurveSession[],
     };
   }, [sessions, pfeilzaehler]);

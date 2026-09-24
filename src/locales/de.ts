@@ -700,6 +700,11 @@ export const views = {
     placeholderDraw: "z.B. 28.5"
   },
   scoringView: {
+    partialTitle: "Unvollständiges Training",
+    partialDesc: "Du hast {{shot}} von {{planned}} Passen geschossen. Soll das Ergebnis wie ein volles Training zählen?",
+    partialMark: "Als unvollständig markieren",
+    partialMarkHint: "Pfeile und Schnitt pro Pfeil zählen, die Summe geht nicht in Kurve und Schnitt pro Training ein",
+    partialFull: "Wie volles Training zählen",
     trainingJournal: "Trainingstagbuch",
     confirmAbort: "Ja, abbrechen",
     previewTitle: "Trefferbild",
@@ -1145,6 +1150,7 @@ export const views = {
     topic_nockpunkt: "Nockpunkt"
   },
   stats: {
+    partialBadge: "Unvollständig · {{label}} Passen",
     title: "Statistiken",
     tabDaily: "Täglich",
     tabRecords: "Rekorde",

@@ -717,6 +717,11 @@ export const views = {
     placeholderDraw: "np. 28.5"
   },
   scoringView: {
+    partialTitle: "Trening niepełny",
+    partialDesc: "Zagrałeś {{shot}} z {{planned}} serii. Czy ten wynik ma się liczyć jak pełny trening?",
+    partialMark: "Oznacz jako niepełny",
+    partialMarkHint: "Strzały i średnia na strzałę się liczą, suma nie trafi do krzywej ani średnich na trening",
+    partialFull: "Licz jak pełny trening",
     trainingJournal: "Dziennik Treningowy",
     confirmAbort: "Tak, przerwij",
     previewTitle: "Podgląd Rozrzutu",
@@ -1162,6 +1167,7 @@ export const views = {
     topic_nockpunkt: "Punkt nałożenia strzały"
   },
   stats: {
+    partialBadge: "Niepełny · {{label}} serii",
     title: "Statystyki",
     tabDaily: "Dzienne",
     tabRecords: "Rekordy",

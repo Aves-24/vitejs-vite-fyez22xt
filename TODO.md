@@ -1449,6 +1449,53 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       - Service worker: czy aplikacja w ogóle się otwiera bez sieci (C11).
       - Zapis wyniku zawodów, Battle, zaproszenia — co z nimi offline.
       - Jasny komunikat w UI „offline — zapiszę po połączeniu" zamiast ciszy.
+- [ ] **C42. Hosting: z Vercel Hobby na Firebase Hosting PRZED płatnościami.**
+      Uwaga znajomego (2026-09-24), potwierdzona: plan Vercel Hobby jest
+      tylko do użytku niekomercyjnego, a PRO/Stripe to użytek komercyjny.
+      Opcje: Vercel Pro (~20 $/mies.) albo Firebase Hosting — ten jest już
+      skonfigurowany jako zapasowy (`firebase.json`, nagłówki = lustro
+      `vercel.json`, sw.js z no-cache).
+      **Koszt Firebase Hosting (sprawdzone 2026-09):** Spark i Blaze mają
+      za darmo 10 GB miejsca i 360 MB/dzień transferu (~10,8 GB/mies.),
+      SSL i CDN w cenie; na Blaze ponad limit 0,15 $/GB transferu
+      i 0,026 $/GB miejsca. Aplikacja to ~1,1 MB pierwszego ładowania
+      (precache SW), potem cache — czyli ~300 nowych instalacji dziennie
+      za darmo; przy dużej skali pełna aktualizacja dla 100k osób to
+      rząd 100 GB ≈ 15 $.
+      **Przy przeprowadzce:** autoryzowane domeny w Firebase Auth
+      (`grotx-fb8f8.web.app` Firebase dodaje domyślnie — sprawdzić, czy jest), domena w kluczu reCAPTCHA (App
+      Check!), link udostępniania + QR w `SettingsView.tsx`, stara domena
+      Vercela jako przekierowanie. C24 (zmiana nazwy na Vercelu) wtedy
+      odpada.
+- [ ] **C43. Cloud Functions (plan Blaze) — Faza B.** Uwaga znajomego
+      2026-09-24, zgodna z notatkami wyżej („Custom Claims", „Atomic
+      Coach-Student Add"):
+      1. **Stripe tylko przez webhook w Cloud Function** — przeglądarka
+         nigdy nie przyznaje PRO. Dziś `isPremium` jest polem chronionym
+         w regułach i ustawia je admin ręcznie — to zostaje, dopóki nie ma
+         funkcji.
+      2. **Admin przez custom claims** zamiast listy e-maili w `isAdmin()`
+         (`firestore.rules`) i `ADMIN_IDS`/`ADMIN_UID` w kodzie.
+      3. **Walidacja wyników World/Battle — NISKI PRIORYTET (decyzja usera:
+         „szlachetny sport, ludzie są uczciwi").** Stan faktyczny: każdy
+         pisze własne `liveScores` bez kontroli, o wygranej World decyduje
+         klient; reguły `world_stats` pilnują tylko +1 wygranej/+100 XP na
+         zapis, nie liczby zapisów. Wrócić, gdy ranking świata zacznie
+         mieć znaczenie (nagrody, publiczny top).
+      Przy Blaze od razu budget alert (patrz C10.3).
+- [ ] **C44. Delay Mirror na prawdziwym iPhonie.** Uwaga znajomego
+      2026-09-24: Safari/PWA na iOS ma ograniczenia pamięci i pracy w tle
+      przy wielominutowym nagrywaniu. User testuje 2026-09-24. Sprawdzić:
+      samo lustro 15 s, tryb z nagraniem kilka serii pod rząd, pauza
+      i wznowienie, eksport/udostępnienie klipu, wygaszanie ekranu.
+      Gdyby PWA nie dawało rady — natywna kamera przez Capacitor (C12).
+- [x] **C45. ✅ ZROBIONE 2026-09-24 — wynik pojedynku na żywo raz na serię.**
+      `ScoringView` wysyłał `liveScores` przy każdej strzale (~72 zapisy
+      na gracza + odczyty u każdego przeciwnika). Teraz wynik liczony
+      z zatwierdzonych serii → zapis raz na 6 strzał; przy zapisie
+      treningu dosyłany wynik z niedokończoną serią. Goście już wcześniej
+      szli raz na serię. Przejście na Realtime Database (sugestia
+      znajomego) odłożone — przy tej liczbie zapisów koszty są groszowe.
 ---
 
 ## STAN NA 2026-09-08

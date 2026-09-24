@@ -437,18 +437,21 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const r1TotalScore = r1Ends.reduce((sum, end) => sum + (end.total_sum || 0), 0);
   const isRound1Finished = submittedEnds.length >= 6;
 
+  // Wynik na zywo idzie do pojedynku raz na serie (z zatwierdzonych serii),
+  // nie przy kazdej strzale — 6x mniej zapisow i odczytow u przeciwnikow.
+  // Wynik koncowy (z niedokonczona seria) dosyla saveTrainingSession.
+  const endsStats = getStats(submittedEnds);
+  const pushLiveScore = (st: { score: number; x: number; t: number; n: number }) => {
+    if (!activeBattle?.id || !userId || !activeBattle?.participants?.includes(userId)) return Promise.resolve();
+    return updateDoc(doc(db, 'battles', activeBattle.id), {
+      [`liveScores.${userId}`]: { score: st.score, x: st.x, t: st.t, n: st.n }
+    }).catch(e => console.error("Silent live update failed:", e));
+  };
+
   useEffect(() => {
-    if (activeBattle?.id && userId && activeBattle?.participants?.includes(userId)) {
-      updateDoc(doc(db, 'battles', activeBattle.id), {
-        [`liveScores.${userId}`]: {
-          score: globalStats.score,
-          x: globalStats.x,
-          t: globalStats.t,
-          n: globalStats.n
-        }
-      }).catch(e => console.error("Silent live update failed:", e));
-    }
-  }, [globalStats.score, globalStats.x, globalStats.t, globalStats.n, activeBattle?.id, userId]);
+    pushLiveScore(endsStats);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [endsStats.score, endsStats.x, endsStats.t, endsStats.n, activeBattle?.id, userId]);
 
   const discardSession = () => {
     localStorage.removeItem('grotX_activeSession');
@@ -477,6 +480,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
     setIsSaving(true);
     try {
+      // Ostatnia, niedokonczona seria nie poszla jeszcze do pojedynku.
+      if (inputArrows.length > 0) await pushLiveScore(globalStats);
       const sessionTimestamp = Timestamp.now();
 
       const isWorldBattle = !!activeBattle?.isWorldBattle;

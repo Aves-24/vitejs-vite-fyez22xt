@@ -1173,8 +1173,8 @@ Z ogona po C25 zostały: **jardy**.
       w trakcie aktywnej sesji punktowania (`grotX_activeSession`).
       Ważne przy zmianach reguł Firestore, z którymi stara wersja przestaje
       działać — wtedy pasek to jedyny sposób, żeby ludzie szybko przeszli.
-- [~] **C31. Przerwany (niepełny) trening psuje statystyki — ZAKODOWANE
-      2026-09-24 w wariancie (c), NIESPRAWDZONE NA ŻYWO.**
+- [x] **C31. ✅ ZROBIONE 2026-09-24 — przerwany (niepełny) trening nie psuje
+      statystyk (wariant c). Sprawdzone przez usera na telefonie.**
       Trening w ScoringView ma zawsze 12 serii (`PLANNED_ENDS` w
       `src/utils/partialSession.ts`). „Zapisz trening" przed 12. serią (poza
       Areną/Battle) pyta: „Oznacz jako niepełny" / „Wyjdź bez zapisywania"

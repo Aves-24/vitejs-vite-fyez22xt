@@ -1619,6 +1619,13 @@ export const views = {
     unknownHost: "Schütze",
   },
   delayMirror: {
+    techToggle: "Technisches Training",
+    techSeriesHint: "Jede „Pause“ oder „Passe beenden“ zählt so viele Pfeile. Trägst du die Pfeile in der Passen-Analyse auf der Scheibe ein, zählt ihre tatsächliche Anzahl.",
+    techArrowsSoFar: "Pfeile in dieser Sitzung",
+    techDone: "Fertig",
+    techSummaryTitle: "Technisches Training speichern?",
+    techDiscard: "Verwerfen und beenden",
+    techSaveError: "Speichern fehlgeschlagen. Bitte erneut versuchen.",
     title: "Delay Mirror",
     description: "Live-Kamera mit {{seconds}}s Verzögerung — beobachte deine eigene Schusstechnik direkt nach der Rückkehr vom Ziel.",
     proRequired: "Funktion in GROT-X PRO verfügbar",

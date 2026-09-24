@@ -1064,14 +1064,25 @@ Z ogona po C25 zostały: **jardy**.
       kółka zaznaczania i menu „⋮". Zaznaczanie przez tryb „Wybierz"; pasek
       nad listą: wiadomość, grupy, usunięcie — dla wielu naraz. Karta
       sprzętu ucznia czyta zestawy (`StudentEquipmentCard`).
-- [ ] **C28. Delay Mirror — wpisywanie strzał na tarczę.**
-      `src/views/DelayMirrorView.tsx` (+ `DelayMirrorGrid`, `DelayMirrorReplay`)
-      nie ma dziś żadnego wpisu wyniku. Do ustalenia z userem: czy to pełna
-      sesja zapisywana do statystyk (wtedy stempel zestawu i dystansu jak
-      w `ScoringView`, wybór dystansu/tarczy przed startem), czy tylko notatka
-      przy nagraniu; czy strzały klikane na tarczy (współrzędne → heatmapa,
-      rozrzut), czy klawiatura wartości. Reużyć rysowania i punktacji
-      z `config/targetFaces.ts`, nie pisać drugiego.
+- [~] **C28. Delay Mirror = trening techniczny — ZAKODOWANE 2026-09-24,
+      NIESPRAWDZONE NA ŻYWO.** Decyzja usera: Delay Mirror to trening
+      techniczny, nie sesja z wynikiem.
+      - Ekran startowy Delay Mirror, lewa kolumna: przycisk z ptaszkiem
+        „Trening techniczny" + strzałka rozwijająca panel (liczba strzał
+        w serii 1–6, tematy treningowe, notatki — jak w treningu technicznym,
+        bez Pfeilzählera).
+      - Liczenie: każda „Pauza" / „Koniec serii" (i wyjście w trakcie
+        strzelania) dodaje N strzał, o ile lustro weszło na żywo. Strzały
+        wbite na tarczy w analizie serii zastępują N faktyczną liczbą.
+      - Wyjście z narzędzia z policzonymi strzałami → podsumowanie
+        (korekta ±1, tematy, notatka) → Zapisz / Odrzuć. Zapis to zwykła
+        sesja `type: 'TECHNICAL'` z `source: 'DELAY_MIRROR'`, karta
+        w statystykach pokazuje znaczek Delay Mirror.
+      - Wspólny zapis: `src/utils/techSession.ts` (używa go też SessionSetup).
+      - Szkic (`grotX_dmTech_{uid}`) przeżywa systemowe „wstecz", ale tylko
+        do końca dnia.
+      **Do sprawdzenia na telefonie:** liczenie w trybie samego lustra
+      i z nagraniem, korekta z analizy serii, zapis i widok w statystykach.
 - [x] **C29. ✅ NAPRAWIONE 2026-09-11 — dmuchawka po 3 strzałach dawała
       same M.** Przyczyna: `addScoreFromTarget` w `ScoringView.tsx:333-356`
       pilnuje zasady „jedna strzała na spot" (druga w tym samym spocie → M,

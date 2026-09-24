@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { collection, query, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, increment, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { query, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
-import { getSetupStamp, invalidateSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, sessionFocusSnapshot } from '../utils/focus';
+import { invalidateSetupStamp } from '../utils/setupStamp';
+import { useCurrentFocus } from '../utils/focus';
+import { saveTechnicalSession } from '../utils/techSession';
 import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
@@ -259,42 +260,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setIsSavingTech(true);
     const count = techArrows ? parseInt(techArrows) : 0;
     try {
-      // [ZESTAWY] Trening techniczny też stemplujemy — te strzały liczą się
-      // do zużycia cięciwy i strzał danego zestawu.
-      const setupStamp = await getSetupStamp(userId);
-      // [FOKUS] Migawka na stałe — widać ją później w statystykach.
-      const focusSnap = sessionFocusSnapshot(focusState, selectedTopics);
-
-      await addDoc(collection(db, `users/${userId}/sessions`), {
-        ...setupStamp,
-        ...(focusSnap ? { focus: focusSnap } : {}),
-        userId,
-        distance: 'TECH',
-        targetType: 'TECHNICAL',
-        arrows: count,
-        totalArrows: count,
-        note: techNote,
-        topics: selectedTopics,
-        createdAt: serverTimestamp(),
-        type: 'TECHNICAL',
-        timestamp: Timestamp.fromDate(new Date()),
-        date: new Date().toLocaleDateString('pl-PL'),
-      });
-      // Denormalizacja jak w ScoringView — bez tego trener nie widział
-      // treningu technicznego w „Nowe treningi" (user 2026-09-18).
-      await updateDoc(doc(db, 'users', userId), {
-        lastSessionTimestamp: Timestamp.now(),
-        lastSessionType: 'TECHNICAL',
-        lastSessionScore: 0,
-        lastSessionArrows: count,
-        lastSessionDistance: '',
-      }).catch(e => console.error('Tech: błąd aktualizacji profilu', e));
+      await saveTechnicalSession(userId, { arrows: count, note: techNote, topics: selectedTopics, focusState });
       setShowTechModal(false);
       setTechArrows('0');
       setTechNote('');
       setSelectedTopics([]);
       localStorage.removeItem(`grotX_techCounter_${userId}`);
-      invalidateStatsCache();
       if (onNavigate) onNavigate('STATS');
     } catch (e) {
       console.error("Error saving technical session:", e);

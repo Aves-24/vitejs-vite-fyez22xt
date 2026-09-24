@@ -7,6 +7,10 @@ import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 import { drawBrandOnCanvas } from './DelayMirrorBrand';
 import { getFullCodec } from '../utils/mediaCodecs';
 import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
+import TopicPicker from '../components/TopicPicker';
+import { FocusStrip } from '../components/tagebuch/FocusCard';
+import { useCurrentFocus } from '../utils/focus';
+import { saveTechnicalSession } from '../utils/techSession';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -25,6 +29,43 @@ type PausePhase = 'none' | 'draining' | 'frozen';
 interface Props {
   onBack: () => void;
   onUpgrade?: () => void;
+  onOpenStats?: () => void;
+}
+
+const TECH_NOTE_MAX = 400;
+
+interface TechDraft {
+  on: boolean;
+  size: number;
+  arrows: number;
+  topics: string[];
+  note: string;
+  day: string;
+}
+
+const todayKey = () => new Date().toDateString();
+
+// Szkic przezywa wyjscie systemowym "wstecz" (omija podsumowanie), ale tylko
+// do konca dnia — wczorajsze strzaly nie moga wpasc do dzisiejszego treningu.
+function loadTechDraft(uid: string): TechDraft {
+  const empty: TechDraft = { on: false, size: 6, arrows: 0, topics: [], note: '', day: todayKey() };
+  try {
+    const raw = localStorage.getItem(`grotX_dmTech_${uid}`);
+    if (!raw) return empty;
+    const d = JSON.parse(raw) as Partial<TechDraft>;
+    const size = typeof d.size === 'number' && d.size >= 1 && d.size <= 6 ? d.size : 6;
+    if (d.day !== todayKey()) return { ...empty, on: !!d.on, size };
+    return {
+      on: !!d.on,
+      size,
+      arrows: typeof d.arrows === 'number' && d.arrows > 0 ? d.arrows : 0,
+      topics: Array.isArray(d.topics) ? d.topics : [],
+      note: typeof d.note === 'string' ? d.note.slice(0, TECH_NOTE_MAX) : '',
+      day: todayKey(),
+    };
+  } catch {
+    return empty;
+  }
 }
 
 
@@ -64,8 +105,65 @@ function bitrateForResolution(w: number, h: number): number {
   return 8_000_000; // 4K i wyzej
 }
 
-export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
+export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Props) {
   const { t } = useTranslation();
+  const uid = auth.currentUser?.uid || '';
+
+  // ─── Trening techniczny ────────────────────────────────────────────────
+  // Strzaly licza sie seriami: kazda pauza / koniec serii dodaje `size`,
+  // a strzaly wbite w analizie serii zastepuja te liczbe faktyczna.
+  const [techDraft] = useState(() => loadTechDraft(uid));
+  const [techOn, setTechOn] = useState(techDraft.on);
+  const [techSize, setTechSize] = useState(techDraft.size);
+  const [techArrows, setTechArrows] = useState(techDraft.arrows);
+  const [techTopics, setTechTopics] = useState<string[]>(techDraft.topics);
+  const [techNote, setTechNote] = useState(techDraft.note);
+  const [showTechPanel, setShowTechPanel] = useState(false);
+  const [showTechSummary, setShowTechSummary] = useState(false);
+  const [isSavingTech, setIsSavingTech] = useState(false);
+  const [techSaveError, setTechSaveError] = useState(false);
+  const focusState = useCurrentFocus(uid);
+  const activeFocus = focusState?.focus ?? null;
+  const focusTopic = activeFocus?.topic || '';
+  const techOnRef = useRef(techOn);
+  useEffect(() => { techOnRef.current = techOn; }, [techOn]);
+  const techSizeRef = useRef(techSize);
+  useEffect(() => { techSizeRef.current = techSize; }, [techSize]);
+  // Ile dodala ostatnia seria — analiza serii koryguje o roznice.
+  const lastSeriesAddRef = useRef(0);
+  // Seria liczy sie dopiero, gdy lustro choc raz weszlo na zywo od startu
+  // albo wznowienia — pauza w trakcie buforowania to nie oddana seria.
+  const liveReachedRef = useRef(false);
+
+  useEffect(() => {
+    if (!uid) return;
+    try {
+      const d: TechDraft = { on: techOn, size: techSize, arrows: techArrows, topics: techTopics, note: techNote, day: todayKey() };
+      localStorage.setItem(`grotX_dmTech_${uid}`, JSON.stringify(d));
+    } catch { /* ignore */ }
+  }, [uid, techOn, techSize, techArrows, techTopics, techNote]);
+
+  const countSeries = useCallback(() => {
+    if (!techOnRef.current || !liveReachedRef.current) return;
+    liveReachedRef.current = false;
+    const n = techSizeRef.current;
+    lastSeriesAddRef.current = n;
+    setTechArrows(a => a + n);
+  }, []);
+
+  const toggleTech = () => {
+    const next = !techOn;
+    if (next && focusTopic) setTechTopics(prev => prev.length ? prev : [focusTopic]);
+    setTechOn(next);
+  };
+
+  const resetTech = () => {
+    setTechArrows(0);
+    setTechTopics([]);
+    setTechNote('');
+    lastSeriesAddRef.current = 0;
+  };
+
   const [isPremium, setIsPremium] = useState(false);
   const [delaySeconds, setDelaySeconds] = useState<number>(() => {
     try {
@@ -428,6 +526,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
           const p = vid.play();
           if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
           switchedToLive = true;
+          liveReachedRef.current = true;
           setMirrorState('live');
         }
         return;
@@ -669,6 +768,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
     if (clipMode) startClipPipeline();
 
+    liveReachedRef.current = false;
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
@@ -690,6 +790,8 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
   // Konczy sesje: zatrzymuje kamere, MSE i klip. Nazwa celowo bez slowa
   // "pause" — chwilowa pauza to osobne `toggleRecordingPause`.
   const finishRecording = useCallback(() => {
+    // Wyjscie w trakcie strzelania konczy tez biezaca serie.
+    if (!recordingPausedRef.current) countSeries();
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
@@ -737,7 +839,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     setRecordingPaused(false);
     // Bez klipu nie ma czego ogladac — wracamy prosto do menu startowego.
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
-  }, []);
+  }, [countSeries]);
 
   // Zamyka klip biezacej passy jako KOMPLETNY plik. Recorder jedzie bez
   // timeslice (patrz startClipPipeline), wiec dane wychodza dopiero na
@@ -776,6 +878,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     const vid = delayedVideoRef.current;
 
     if (!recordingPaused) {
+      countSeries();
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       // Odetnij doplyw do MSE — bufor przestaje rosnac, wiec konczy sie
       // dokladnie na momencie wcisniecia pauzy.
@@ -867,6 +970,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
 
     setRecordingPaused(false);
     setBufferMs(0);
+    liveReachedRef.current = false;
     // Kazde wznowienie z klipem startuje NOWA passe (closePassClip zawsze
     // zamyka poprzedni plik i zeruje fullRecorderRef PRZED tym momentem —
     // patrz komentarz wyzej), wiec licznik tez musi wrocic do zera. Bez
@@ -881,7 +985,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     const stream = streamRef.current;
     const codec = getStreamCodec();
     if (stream && codec) runMSE(stream, codec);
-  }, [recordingPaused, clipActive, runMSE, closePassClip, startClipPipeline]);
+  }, [recordingPaused, clipActive, runMSE, closePassClip, startClipPipeline, countSeries]);
 
   // Zapis analizy serii. Celowo localStorage, nie Firestore: nowa kolekcja
   // wymagalaby wdrozenia regul, a bez nich zapis cicho odbija. Ksztalt jest
@@ -929,10 +1033,44 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     startRecording();
   }, [startRecording]);
 
-  const stopMirror = useCallback(() => {
+  // Kazde wyjscie z narzedzia idzie tedy: z policzonymi strzalami najpierw
+  // podsumowanie treningu technicznego, zeby nic nie zapisalo sie przypadkiem.
+  const requestExit = useCallback(() => {
     cleanup();
+    if (techOn && techArrows > 0) {
+      setMirrorState('idle');
+      setShowTechPanel(false);
+      setTechSaveError(false);
+      setShowTechSummary(true);
+      return;
+    }
     onBack();
-  }, [cleanup, onBack]);
+  }, [cleanup, onBack, techOn, techArrows]);
+
+  const stopMirror = requestExit;
+
+  const saveTech = async () => {
+    if (!uid) return;
+    setIsSavingTech(true);
+    setTechSaveError(false);
+    try {
+      await saveTechnicalSession(uid, { arrows: techArrows, note: techNote.trim(), topics: techTopics, focusState, source: 'DELAY_MIRROR' });
+      resetTech();
+      setShowTechSummary(false);
+      (onOpenStats ?? onBack)();
+    } catch (e) {
+      console.error('Delay Mirror: zapis treningu technicznego', e);
+      setTechSaveError(true);
+    } finally {
+      setIsSavingTech(false);
+    }
+  };
+
+  const discardTech = () => {
+    resetTech();
+    setShowTechSummary(false);
+    onBack();
+  };
 
   // End session — zostan w DelayMirror, wroc do menu idle (zachowaj
   // wybrana orientacje, zeby user nie musial znow klikac).
@@ -1007,7 +1145,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       <>
       {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
+        <button onClick={requestExit} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
         <span className="material-symbols-outlined text-amber-400 text-5xl mb-4">warning</span>
@@ -1015,7 +1153,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
         <p className="text-gray-400 text-center text-sm leading-relaxed">
           {t('delayMirror.unsupportedDesc')}
         </p>
-        <button onClick={onBack} className="mt-8 px-8 py-3 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all">
+        <button onClick={requestExit} className="mt-8 px-8 py-3 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all">
           {t('delayMirror.back')}
         </button>
       </div>
@@ -1028,13 +1166,13 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       <>
       {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
-        <button onClick={onBack} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
+        <button onClick={requestExit} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
         <span className="material-symbols-outlined text-red-400 text-5xl mb-4">error</span>
         <h2 className="text-xl font-black text-white text-center mb-2">{t('delayMirror.errorTitle')}</h2>
         <p className="text-gray-400 text-center text-sm leading-relaxed mb-6">{errorMsg}</p>
-        <button onClick={onBack} className="px-8 py-3 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all">
+        <button onClick={requestExit} className="px-8 py-3 bg-white/10 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all">
           {t('delayMirror.back')}
         </button>
       </div>
@@ -1218,6 +1356,179 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
     </div>
   );
 
+  // ─── Trening techniczny: przycisk + panel + podsumowanie ─────────────────
+  const techCheckbox = (
+    <span className={`w-5 h-5 shrink-0 rounded-md border-2 flex items-center justify-center ${techOn ? 'bg-sky-400 border-sky-400' : 'border-white/40'}`}>
+      {techOn && <span className="material-symbols-outlined text-[16px] text-[#050f0a] font-black">check</span>}
+    </span>
+  );
+
+  const techRow = (
+    <div className={`w-full flex gap-1.5 ${_compactExpert ? 'mb-1' : 'mb-3'}`}>
+      <button
+        onClick={toggleTech}
+        aria-pressed={techOn}
+        className={`flex-1 min-w-0 flex items-center gap-2 rounded-xl px-2.5 py-2 border active:scale-95 transition-all ${
+          techOn ? 'bg-sky-500/15 border-sky-400/50 text-sky-100' : 'bg-white/5 border-white/15 text-white/60'
+        }`}
+      >
+        {techCheckbox}
+        <span className="text-[10px] font-black uppercase tracking-wider truncate">{t('delayMirror.techToggle')}</span>
+        {techOn && techArrows > 0 && (
+          <span className="ml-auto shrink-0 text-xs font-black tabular-nums text-white bg-sky-500/40 rounded-md px-1.5">{techArrows}</span>
+        )}
+      </button>
+      <button
+        onClick={() => setShowTechPanel(true)}
+        aria-label={t('delayMirror.techToggle')}
+        className={`shrink-0 w-10 rounded-xl border flex items-center justify-center active:scale-95 transition-all ${
+          techOn ? 'bg-sky-500/15 border-sky-400/50 text-sky-100' : 'bg-white/5 border-white/15 text-white/60'
+        }`}
+      >
+        <span className="material-symbols-outlined text-xl">expand_more</span>
+      </button>
+    </div>
+  );
+
+  const techTopicsAndNotes = (
+    <>
+      {activeFocus && focusState && (
+        <div className="mb-3">
+          <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} variant="glass" />
+        </div>
+      )}
+      <div className="mb-3">
+        <TopicPicker selectedTopics={techTopics} onChange={setTechTopics} markedTopic={focusTopic} onDark />
+      </div>
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-1.5">
+          <span className="text-[9px] font-black text-white/50 uppercase tracking-widest">{t('sessionSetup.techNotes')}</span>
+          <span className={`text-[9px] font-bold ${techNote.length >= TECH_NOTE_MAX ? 'text-red-400' : 'text-white/30'}`}>{techNote.length}/{TECH_NOTE_MAX}</span>
+        </div>
+        <textarea
+          value={techNote}
+          onChange={e => setTechNote(e.target.value)}
+          maxLength={TECH_NOTE_MAX}
+          placeholder={t('sessionSetup.notePlaceholder')}
+          className="w-full bg-white/10 border border-white/20 p-3 rounded-xl font-bold text-sm text-white placeholder:text-white/40 focus:border-sky-400 outline-none transition-all h-24 resize-none"
+        />
+      </div>
+    </>
+  );
+
+  const techSheet = (content: React.ReactNode, onClose: () => void) => (
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[80] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+16px)] overflow-y-auto" onClick={onClose}>
+      <div className="bg-[#0a0a0a] border border-white/15 border-t-4 border-t-sky-500 rounded-[28px] p-5 w-full max-w-md" onClick={e => e.stopPropagation()}>
+        {content}
+      </div>
+    </div>
+  );
+
+  const techSheetHeader = (title: string, onClose: () => void) => (
+    <div className="flex justify-between items-center mb-4 gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="material-symbols-outlined text-sky-400 text-lg">psychology</span>
+        <h2 className="text-base font-black text-white uppercase truncate">{title}</h2>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <span className="text-[10px] font-black text-sky-200 bg-sky-500/20 px-2 py-1 rounded-lg uppercase tracking-widest">{t('delayMirror.title')}</span>
+        <button onClick={onClose} className="text-white/50 p-1 active:scale-90 transition-all"><span className="material-symbols-outlined text-lg">close</span></button>
+      </div>
+    </div>
+  );
+
+  const sizeBtn = (n: number, big: boolean) => (
+    <button
+      key={n}
+      onClick={() => setTechSize(n)}
+      className={`flex-1 rounded-xl font-black active:scale-95 transition-all border ${big ? 'py-2 text-lg' : 'py-1.5 text-xs'} ${
+        techSize === n ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/60 border-white/10'
+      }`}
+    >
+      {n}
+    </button>
+  );
+
+  const techPanelModal = showTechPanel ? techSheet(
+    <>
+      {techSheetHeader(t('stats.techSessionTitle'), () => setShowTechPanel(false))}
+
+      <button
+        onClick={toggleTech}
+        aria-pressed={techOn}
+        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 mb-3 active:scale-95 transition-all ${
+          techOn ? 'bg-sky-500/15 border-sky-400/60 text-sky-100' : 'bg-white/5 border-white/15 text-white/60'
+        }`}
+      >
+        {techCheckbox}
+        <span className="text-xs font-black uppercase tracking-wider">{t('delayMirror.techToggle')}</span>
+      </button>
+
+      <div className="bg-white/5 rounded-[20px] border border-white/10 px-3 py-2.5 mb-3">
+        <p className="text-[10px] font-black text-white/70 uppercase tracking-widest text-center mb-1.5">{t('delayMirror.seriesArrowsTitle')}</p>
+        <div className="flex gap-2">{[3, 6].map(n => sizeBtn(n, true))}</div>
+        <div className="flex gap-1.5 mt-1.5">{[1, 2, 4, 5].map(n => sizeBtn(n, false))}</div>
+        <p className="text-white/40 text-[10px] leading-snug text-center mt-2">{t('delayMirror.techSeriesHint')}</p>
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
+          <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('delayMirror.techArrowsSoFar')}</span>
+          <span className="text-lg font-black text-white tabular-nums">{techArrows}</span>
+        </div>
+      </div>
+
+      {techTopicsAndNotes}
+
+      <button
+        onClick={() => setShowTechPanel(false)}
+        className="w-full py-3.5 rounded-2xl font-black uppercase tracking-widest bg-sky-600 text-white active:scale-95 transition-all"
+      >
+        {t('delayMirror.techDone')}
+      </button>
+    </>,
+    () => setShowTechPanel(false),
+  ) : null;
+
+  const techSummaryModal = showTechSummary ? techSheet(
+    <>
+      {techSheetHeader(t('delayMirror.techSummaryTitle'), () => setShowTechSummary(false))}
+
+      <div className="bg-white/5 rounded-[20px] border border-white/10 px-3 py-2 mb-3">
+        <span className="text-[10px] font-black text-white/70 uppercase tracking-widest block mb-1.5 text-center">{t('delayMirror.techArrowsSoFar')}</span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setTechArrows(a => Math.max(0, a - 1))}
+            className="flex-1 py-2 bg-red-500/15 text-red-300 rounded-xl font-black text-sm active:scale-95 transition-all border border-red-400/20"
+          >−1</button>
+          <div className="flex-1 py-2 bg-sky-600 text-white rounded-xl font-black text-xl flex items-center justify-center tabular-nums">{techArrows}</div>
+          <button
+            onClick={() => setTechArrows(a => a + 1)}
+            className="flex-1 py-2 bg-sky-500/20 text-sky-200 rounded-xl font-black text-sm active:scale-95 transition-all"
+          >+1</button>
+        </div>
+      </div>
+
+      {techTopicsAndNotes}
+
+      {techSaveError && (
+        <p className="text-red-400 text-xs font-bold text-center mb-2">{t('delayMirror.techSaveError')}</p>
+      )}
+      <button
+        onClick={saveTech}
+        disabled={isSavingTech || techArrows === 0}
+        className="w-full py-4 rounded-2xl font-black uppercase tracking-widest bg-sky-600 text-white active:scale-95 transition-all disabled:opacity-50 mb-2"
+      >
+        {isSavingTech ? t('common.saving') : t('sessionSetup.saveBtn')}
+      </button>
+      <button
+        onClick={discardTech}
+        disabled={isSavingTech}
+        className="w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-widest bg-white/5 text-white/60 border border-white/15 active:scale-95 transition-all"
+      >
+        {t('delayMirror.techDiscard')}
+      </button>
+    </>,
+    () => setShowTechSummary(false),
+  ) : null;
+
   if (mirrorState === 'positioning') {
     return (
       <>
@@ -1315,13 +1626,15 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
       <>
       {orientationToggle}
       {delayPickerModal}
+      {techPanelModal}
+      {techSummaryModal}
       <div style={screenStyle} className="bg-[#050f0a]">
         <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? `flex flex-row items-center justify-center ${_compactExpert ? 'gap-8 px-6 py-3' : 'gap-8 px-10 py-4'}` : 'flex flex-col items-center justify-center px-8 py-6'}`}>
         {/* Powrot musi uciec spod przycisku orientacji (fixed top-4 right-4,
             z-70). Przy wymuszonym obrocie UI ten fizyczny rog to LEWY GORNY
             rog obroconego ukladu, wiec powrot idzie wtedy w prawy; bez obrotu
             jest odwrotnie. */}
-        <button onClick={onBack} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? (_uiForceRotate ? 'top-6 right-5' : 'top-6 left-5') : 'top-6 left-5'}`}>
+        <button onClick={requestExit} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? (_uiForceRotate ? 'top-6 right-5' : 'top-6 left-5') : 'top-6 left-5'}`}>
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
 
@@ -1358,6 +1671,7 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
               <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
             </button>
           )}
+          {techRow}
           {_displayAsLandscape && <div className={`w-full ${_compactExpert ? "mt-1" : "mt-auto"}`}>{privacyNote}</div>}
         </div>
 
@@ -1448,7 +1762,14 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
            nagranie tej passy. Roznica jest tylko w tym, czy obok jest tarcza
            z wbitymi strzalami. */
         onWatchOnly={() => { setShowSeries(false); setPassDraft(null); setShowPassReview(true); }}
-        onReady={(draft) => { passDraftIdRef.current = saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
+        onReady={(draft) => {
+          // Faktyczna liczba z tarczy zastepuje N doliczone przy pauzie.
+          if (techOn && lastSeriesAddRef.current > 0) {
+            const diff = draft.shots.length - lastSeriesAddRef.current;
+            lastSeriesAddRef.current = draft.shots.length;
+            setTechArrows(a => Math.max(0, a + diff));
+          }
+          passDraftIdRef.current = saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
       />
     )}
 
@@ -1556,6 +1877,13 @@ export default function DelayMirrorView({ onBack, onUpgrade }: Props) {
                 jeden Blob najczesciej nie odtworzy sie poprawnie. Zamiast
                 tego: jesli wybrales nagranie, nagrywa sie cala passa, koniec
                 zdejmujesz przyciskiem "Koniec serii". */}
+
+                {techOn && (
+                  <div className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40">
+                    <span className="material-symbols-outlined text-white text-sm">psychology</span>
+                    <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
+                  </div>
+                )}
 
                 {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
                 <button

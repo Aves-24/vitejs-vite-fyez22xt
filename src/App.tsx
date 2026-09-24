@@ -630,7 +630,7 @@ export default function App() {
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
-        {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} />}
+        {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}
       </Suspense>

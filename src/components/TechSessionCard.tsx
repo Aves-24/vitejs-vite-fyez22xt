@@ -58,7 +58,15 @@ export default function TechSessionCard({ session, noteComponent, onDelete, canD
           <h2 className="text-xl font-black text-[#0a3a2a] leading-tight truncate max-w-[200px]">
             {t('stats.techSessionTitle')}
           </h2>
-          <p className="text-[10px] text-gray-300 font-bold uppercase">{session.date}</p>
+          <p className="text-[10px] text-gray-300 font-bold uppercase flex items-center gap-1.5">
+            {session.date}
+            {session.source === 'DELAY_MIRROR' && (
+              <span className="flex items-center gap-0.5 text-sky-600 normal-case">
+                <span className="material-symbols-outlined text-[12px]">slow_motion_video</span>
+                {t('delayMirror.title')}
+              </span>
+            )}
+          </p>
         </div>
 
         <div className="bg-sky-50 text-sky-700 px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1 border border-sky-100/50">

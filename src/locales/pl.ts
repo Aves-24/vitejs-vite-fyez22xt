@@ -1651,6 +1651,13 @@ export const views = {
     unknownHost: "Zawodnik",
   },
   delayMirror: {
+    techToggle: "Trening techniczny",
+    techSeriesHint: "Każda „Pauza” albo „Koniec serii” dodaje tyle strzał. Jeśli wbijesz strzały na tarczy w analizie serii, liczy się ich faktyczna liczba.",
+    techArrowsSoFar: "Strzały w tej sesji",
+    techDone: "Gotowe",
+    techSummaryTitle: "Zapisać trening techniczny?",
+    techDiscard: "Odrzuć i wyjdź",
+    techSaveError: "Nie udało się zapisać. Spróbuj ponownie.",
     title: "Delay Mirror",
     description: "Kamera na żywo z opóźnieniem {{seconds}}s — obserwuj własną technikę strzału zaraz po powrocie od tarczy.",
     proRequired: "Funkcja dostępna w GROT-X PRO",

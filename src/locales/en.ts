@@ -1619,6 +1619,13 @@ export const views = {
     unknownHost: "Archer",
   },
   delayMirror: {
+    techToggle: "Technical training",
+    techSeriesHint: "Every “Pause” or “End of end” adds this many arrows. If you plot the arrows on the target in the end analysis, their actual number counts.",
+    techArrowsSoFar: "Arrows this session",
+    techDone: "Done",
+    techSummaryTitle: "Save technical training?",
+    techDiscard: "Discard and exit",
+    techSaveError: "Saving failed. Please try again.",
     title: "Delay Mirror",
     description: "Live camera with {{seconds}}s delay — watch your own shot technique right after returning from the target.",
     proRequired: "Feature available in GROT-X PRO",

@@ -10,7 +10,7 @@ import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSerie
 import TopicPicker from '../components/TopicPicker';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { useCurrentFocus } from '../utils/focus';
-import { saveTechnicalSession } from '../utils/techSession';
+import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -36,7 +36,6 @@ const TECH_NOTE_MAX = 400;
 
 interface TechDraft {
   on: boolean;
-  size: number;
   arrows: number;
   topics: string[];
   note: string;
@@ -45,19 +44,23 @@ interface TechDraft {
 
 const todayKey = () => new Date().toDateString();
 
+function writeTechDraft(uid: string, d: Omit<TechDraft, 'day'>) {
+  try {
+    localStorage.setItem(`grotX_dmTech_${uid}`, JSON.stringify({ ...d, day: todayKey() }));
+  } catch { /* ignore */ }
+}
+
 // Szkic przezywa wyjscie systemowym "wstecz" (omija podsumowanie), ale tylko
 // do konca dnia — wczorajsze strzaly nie moga wpasc do dzisiejszego treningu.
 function loadTechDraft(uid: string): TechDraft {
-  const empty: TechDraft = { on: false, size: 6, arrows: 0, topics: [], note: '', day: todayKey() };
+  const empty: TechDraft = { on: false, arrows: 0, topics: [], note: '', day: todayKey() };
   try {
     const raw = localStorage.getItem(`grotX_dmTech_${uid}`);
     if (!raw) return empty;
     const d = JSON.parse(raw) as Partial<TechDraft>;
-    const size = typeof d.size === 'number' && d.size >= 1 && d.size <= 6 ? d.size : 6;
-    if (d.day !== todayKey()) return { ...empty, on: !!d.on, size };
+    if (d.day !== todayKey()) return { ...empty, on: !!d.on };
     return {
       on: !!d.on,
-      size,
       arrows: typeof d.arrows === 'number' && d.arrows > 0 ? d.arrows : 0,
       topics: Array.isArray(d.topics) ? d.topics : [],
       note: typeof d.note === 'string' ? d.note.slice(0, TECH_NOTE_MAX) : '',
@@ -105,16 +108,28 @@ function bitrateForResolution(w: number, h: number): number {
   return 8_000_000; // 4K i wyzej
 }
 
+// Strzala lucznicza (grot + lotki) — w subsecie fontu ikon takiej nie ma.
+function ArrowGlyph({ className = '' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <g transform="rotate(-45 12 12)">
+        <path d="M3 12 H18" strokeWidth={1.8} />
+        <path d="M17 8.5 L22.5 12 L17 15.5 Z" fill="currentColor" stroke="none" />
+        <path d="M1.5 8.5 L4.5 12 L1.5 15.5 M4.5 8.5 L7.5 12 L4.5 15.5" strokeWidth={1.6} />
+      </g>
+    </svg>
+  );
+}
+
 export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Props) {
   const { t } = useTranslation();
   const uid = auth.currentUser?.uid || '';
 
   // ─── Trening techniczny ────────────────────────────────────────────────
-  // Strzaly licza sie seriami: kazda pauza / koniec serii dodaje `size`,
-  // a strzaly wbite w analizie serii zastepuja te liczbe faktyczna.
+  // Strzaly dnia licza sie z tarczy w analizie serii: kazda wbita +1,
+  // cofnieta -1. Ptaszek decyduje tylko o tym, jak trafia do statystyk.
   const [techDraft] = useState(() => loadTechDraft(uid));
   const [techOn, setTechOn] = useState(techDraft.on);
-  const [techSize, setTechSize] = useState(techDraft.size);
   const [techArrows, setTechArrows] = useState(techDraft.arrows);
   const [techTopics, setTechTopics] = useState<string[]>(techDraft.topics);
   const [techNote, setTechNote] = useState(techDraft.note);
@@ -125,30 +140,13 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const focusState = useCurrentFocus(uid);
   const activeFocus = focusState?.focus ?? null;
   const focusTopic = activeFocus?.topic || '';
-  const techOnRef = useRef(techOn);
-  useEffect(() => { techOnRef.current = techOn; }, [techOn]);
-  const techSizeRef = useRef(techSize);
-  useEffect(() => { techSizeRef.current = techSize; }, [techSize]);
-  // Ile dodala ostatnia seria — analiza serii koryguje o roznice.
-  const lastSeriesAddRef = useRef(0);
-  // Seria liczy sie dopiero, gdy lustro choc raz weszlo na zywo od startu
-  // albo wznowienia — pauza w trakcie buforowania to nie oddana seria.
-  const liveReachedRef = useRef(false);
 
   useEffect(() => {
-    if (!uid) return;
-    try {
-      const d: TechDraft = { on: techOn, size: techSize, arrows: techArrows, topics: techTopics, note: techNote, day: todayKey() };
-      localStorage.setItem(`grotX_dmTech_${uid}`, JSON.stringify(d));
-    } catch { /* ignore */ }
-  }, [uid, techOn, techSize, techArrows, techTopics, techNote]);
+    if (uid) writeTechDraft(uid, { on: techOn, arrows: techArrows, topics: techTopics, note: techNote });
+  }, [uid, techOn, techArrows, techTopics, techNote]);
 
-  const countSeries = useCallback(() => {
-    if (!techOnRef.current || !liveReachedRef.current) return;
-    liveReachedRef.current = false;
-    const n = techSizeRef.current;
-    lastSeriesAddRef.current = n;
-    setTechArrows(a => a + n);
+  const onShotDelta = useCallback((delta: number) => {
+    setTechArrows(a => Math.max(0, a + delta));
   }, []);
 
   const toggleTech = () => {
@@ -157,11 +155,14 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     setTechOn(next);
   };
 
+  // Wolane tuz przed wyjsciem z widoku: po odmontowaniu efekt zapisu szkicu
+  // juz sie nie odpali, wiec szkic zerujemy wprost — inaczej te same strzaly
+  // wrocilyby przy nastepnym wejsciu.
   const resetTech = () => {
     setTechArrows(0);
     setTechTopics([]);
     setTechNote('');
-    lastSeriesAddRef.current = 0;
+    if (uid) writeTechDraft(uid, { on: techOn, arrows: 0, topics: [], note: '' });
   };
 
   const [isPremium, setIsPremium] = useState(false);
@@ -526,7 +527,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           const p = vid.play();
           if (p && typeof p.catch === 'function') p.catch(() => { /* ignore */ });
           switchedToLive = true;
-          liveReachedRef.current = true;
           setMirrorState('live');
         }
         return;
@@ -768,7 +768,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
     if (clipMode) startClipPipeline();
 
-    liveReachedRef.current = false;
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
 
@@ -790,8 +789,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   // Konczy sesje: zatrzymuje kamere, MSE i klip. Nazwa celowo bez slowa
   // "pause" — chwilowa pauza to osobne `toggleRecordingPause`.
   const finishRecording = useCallback(() => {
-    // Wyjscie w trakcie strzelania konczy tez biezaca serie.
-    if (!recordingPausedRef.current) countSeries();
     isPausedRef.current = true;
     if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (bufferTimerRef.current) { clearInterval(bufferTimerRef.current); bufferTimerRef.current = null; }
@@ -839,7 +836,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     setRecordingPaused(false);
     // Bez klipu nie ma czego ogladac — wracamy prosto do menu startowego.
     setMirrorState(hasClipRef.current ? 'review' : 'idle');
-  }, [countSeries]);
+  }, []);
 
   // Zamyka klip biezacej passy jako KOMPLETNY plik. Recorder jedzie bez
   // timeslice (patrz startClipPipeline), wiec dane wychodza dopiero na
@@ -878,7 +875,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     const vid = delayedVideoRef.current;
 
     if (!recordingPaused) {
-      countSeries();
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       // Odetnij doplyw do MSE — bufor przestaje rosnac, wiec konczy sie
       // dokladnie na momencie wcisniecia pauzy.
@@ -970,7 +966,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
     setRecordingPaused(false);
     setBufferMs(0);
-    liveReachedRef.current = false;
     // Kazde wznowienie z klipem startuje NOWA passe (closePassClip zawsze
     // zamyka poprzedni plik i zeruje fullRecorderRef PRZED tym momentem —
     // patrz komentarz wyzej), wiec licznik tez musi wrocic do zera. Bez
@@ -985,7 +980,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     const stream = streamRef.current;
     const codec = getStreamCodec();
     if (stream && codec) runMSE(stream, codec);
-  }, [recordingPaused, clipActive, runMSE, closePassClip, startClipPipeline, countSeries]);
+  }, [recordingPaused, clipActive, runMSE, closePassClip, startClipPipeline]);
 
   // Zapis analizy serii. Celowo localStorage, nie Firestore: nowa kolekcja
   // wymagalaby wdrozenia regul, a bez nich zapis cicho odbija. Ksztalt jest
@@ -1044,8 +1039,15 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       setShowTechSummary(true);
       return;
     }
+    // Bez treningu technicznego strzaly i tak ida do licznika dnia
+    // (ten sam co Pfeilzaehler) — strona glowna ma je widziec.
+    if (uid && techArrows > 0) {
+      writeTechDraft(uid, { on: techOn, arrows: 0, topics: techTopics, note: techNote });
+      addToDailyArrowCounter(uid, techArrows)
+        .catch(e => console.error('Delay Mirror: zapis licznika strzal', e));
+    }
     onBack();
-  }, [cleanup, onBack, techOn, techArrows]);
+  }, [cleanup, onBack, techOn, techArrows, techTopics, techNote, uid]);
 
   const stopMirror = requestExit;
 
@@ -1363,6 +1365,13 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     </span>
   );
 
+  const arrowBadge = (
+    <span className="ml-auto shrink-0 flex items-center gap-1 text-xs font-black tabular-nums text-white bg-sky-500/40 rounded-md px-1.5 py-0.5">
+      <ArrowGlyph className="w-3.5 h-3.5" />
+      {techArrows}
+    </span>
+  );
+
   const techRow = (
     <div className={`w-full flex gap-1.5 ${_compactExpert ? 'mb-1' : 'mb-3'}`}>
       <button
@@ -1374,9 +1383,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       >
         {techCheckbox}
         <span className="text-[10px] font-black uppercase tracking-wider truncate">{t('delayMirror.techToggle')}</span>
-        {techOn && techArrows > 0 && (
-          <span className="ml-auto shrink-0 text-xs font-black tabular-nums text-white bg-sky-500/40 rounded-md px-1.5">{techArrows}</span>
-        )}
+        {arrowBadge}
       </button>
       <button
         onClick={() => setShowTechPanel(true)}
@@ -1437,18 +1444,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     </div>
   );
 
-  const sizeBtn = (n: number, big: boolean) => (
-    <button
-      key={n}
-      onClick={() => setTechSize(n)}
-      className={`flex-1 rounded-xl font-black active:scale-95 transition-all border ${big ? 'py-2 text-lg' : 'py-1.5 text-xs'} ${
-        techSize === n ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/60 border-white/10'
-      }`}
-    >
-      {n}
-    </button>
-  );
-
   const techPanelModal = showTechPanel ? techSheet(
     <>
       {techSheetHeader(t('stats.techSessionTitle'), () => setShowTechPanel(false))}
@@ -1464,15 +1459,9 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
         <span className="text-xs font-black uppercase tracking-wider">{t('delayMirror.techToggle')}</span>
       </button>
 
-      <div className="bg-white/5 rounded-[20px] border border-white/10 px-3 py-2.5 mb-3">
-        <p className="text-[10px] font-black text-white/70 uppercase tracking-widest text-center mb-1.5">{t('delayMirror.seriesArrowsTitle')}</p>
-        <div className="flex gap-2">{[3, 6].map(n => sizeBtn(n, true))}</div>
-        <div className="flex gap-1.5 mt-1.5">{[1, 2, 4, 5].map(n => sizeBtn(n, false))}</div>
-        <p className="text-white/40 text-[10px] leading-snug text-center mt-2">{t('delayMirror.techSeriesHint')}</p>
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/10">
-          <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('delayMirror.techArrowsSoFar')}</span>
-          <span className="text-lg font-black text-white tabular-nums">{techArrows}</span>
-        </div>
+      <div className="flex items-center gap-3 bg-white/5 rounded-[20px] border border-white/10 px-4 py-3 mb-3">
+        <ArrowGlyph className="w-7 h-7 shrink-0 text-sky-300" />
+        <p className="text-sm font-bold text-white leading-snug">{t('delayMirror.techArrowsDone', { count: techArrows })}</p>
       </div>
 
       {techTopicsAndNotes}
@@ -1762,14 +1751,8 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
            nagranie tej passy. Roznica jest tylko w tym, czy obok jest tarcza
            z wbitymi strzalami. */
         onWatchOnly={() => { setShowSeries(false); setPassDraft(null); setShowPassReview(true); }}
-        onReady={(draft) => {
-          // Faktyczna liczba z tarczy zastepuje N doliczone przy pauzie.
-          if (techOn && lastSeriesAddRef.current > 0) {
-            const diff = draft.shots.length - lastSeriesAddRef.current;
-            lastSeriesAddRef.current = draft.shots.length;
-            setTechArrows(a => Math.max(0, a + diff));
-          }
-          passDraftIdRef.current = saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
+        onReady={(draft) => { passDraftIdRef.current = saveSeriesDraft(draft); setShowSeries(false); setPassDraft(draft); setShowPassReview(true); }}
+        onShotDelta={onShotDelta}
       />
     )}
 
@@ -1878,12 +1861,11 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                 tego: jesli wybrales nagranie, nagrywa sie cala passa, koniec
                 zdejmujesz przyciskiem "Koniec serii". */}
 
-                {techOn && (
-                  <div className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40">
-                    <span className="material-symbols-outlined text-white text-sm">psychology</span>
-                    <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
-                  </div>
-                )}
+                {/* Strzaly dnia z tarczy — widoczne zawsze, nie tylko w treningu technicznym */}
+                <div className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40">
+                  <ArrowGlyph className="w-4 h-4 text-white" />
+                  <span className="text-white text-xs font-bold tabular-nums">{techArrows}</span>
+                </div>
 
                 {/* Siatka — nakladka na obraz, nagrania nie dotyka */}
                 <button

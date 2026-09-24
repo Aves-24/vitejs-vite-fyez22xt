@@ -1,7 +1,21 @@
-import { addDoc, collection, doc, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, doc, increment, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
 import { sessionFocusSnapshot, FocusState } from './focus';
+
+function invalidateStatsCache(userId: string) {
+  localStorage.removeItem(`grotX_stats_v13_${userId}`);
+  localStorage.removeItem(`grotX_lastSession_${userId}`);
+  window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
+}
+
+/** Strzaly bez sesji — licznik dnia na profilu (Pfeilzaehler), liczony na stronie glownej. */
+export async function addToDailyArrowCounter(userId: string, count: number): Promise<void> {
+  const now = new Date();
+  const dayKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
+  await updateDoc(doc(db, 'users', userId), { [`pfeilzaehler.${dayKey}`]: increment(count) });
+  invalidateStatsCache(userId);
+}
 
 export type TechSessionSource = 'DELAY_MIRROR';
 
@@ -45,7 +59,5 @@ export async function saveTechnicalSession(userId: string, { arrows, note, topic
     lastSessionDistance: '',
   }).catch(e => console.error('Tech: błąd aktualizacji profilu', e));
 
-  localStorage.removeItem(`grotX_stats_v13_${userId}`);
-  localStorage.removeItem(`grotX_lastSession_${userId}`);
-  window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
+  invalidateStatsCache(userId);
 }

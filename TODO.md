@@ -1068,21 +1068,25 @@ Z ogona po C25 zostały: **jardy**.
       NIESPRAWDZONE NA ŻYWO.** Decyzja usera: Delay Mirror to trening
       techniczny, nie sesja z wynikiem.
       - Ekran startowy Delay Mirror, lewa kolumna: przycisk z ptaszkiem
-        „Trening techniczny" + strzałka rozwijająca panel (liczba strzał
-        w serii 1–6, tematy treningowe, notatki — jak w treningu technicznym,
-        bez Pfeilzählera).
-      - Liczenie: każda „Pauza" / „Koniec serii" (i wyjście w trakcie
-        strzelania) dodaje N strzał, o ile lustro weszło na żywo. Strzały
-        wbite na tarczy w analizie serii zastępują N faktyczną liczbą.
-      - Wyjście z narzędzia z policzonymi strzałami → podsumowanie
-        (korekta ±1, tematy, notatka) → Zapisz / Odrzuć. Zapis to zwykła
-        sesja `type: 'TECHNICAL'` z `source: 'DELAY_MIRROR'`, karta
-        w statystykach pokazuje znaczek Delay Mirror.
-      - Wspólny zapis: `src/utils/techSession.ts` (używa go też SessionSetup).
+        „Trening techniczny" + licznik strzał (ikona strzały) + strzałka
+        rozwijająca panel: „Oddałeś XX strzał podczas treningu z Delay
+        Mirror", tematy treningowe, notatki (bez Pfeilzählera).
+      - Liczenie (poprawka usera 2026-09-24, zamiast „N na serię"): każda
+        strzała zaznaczona na tarczy w analizie serii = +1, cofnięcie = −1.
+        Liczy się zawsze, niezależnie od ptaszka. Licznik widać cały czas
+        na ekranie lustra. W samym lustrze (bez tarczy) nic się nie liczy.
+      - Wyjście z narzędzia: z ptaszkiem → podsumowanie (korekta ±1, tematy,
+        notatka) → Zapisz jako sesja `type: 'TECHNICAL'`, `source:
+        'DELAY_MIRROR'` (znaczek w statystykach) / Odrzuć. Bez ptaszka →
+        strzały po cichu do `pfeilzaehler.{dzień}`. Obie drogi wliczają się
+        do licznika strzał na stronie głównej.
+      - Wspólne zapisy: `src/utils/techSession.ts` (`saveTechnicalSession`,
+        `addToDailyArrowCounter`, używane też przez SessionSetup).
       - Szkic (`grotX_dmTech_{uid}`) przeżywa systemowe „wstecz", ale tylko
-        do końca dnia.
-      **Do sprawdzenia na telefonie:** liczenie w trybie samego lustra
-      i z nagraniem, korekta z analizy serii, zapis i widok w statystykach.
+        do końca dnia; przy wyjściu zerowany wprost (widok znika, zanim
+        efekt zdąży go zapisać).
+      **Do sprawdzenia na telefonie:** licznik przy wbijaniu i cofaniu
+      strzał, zapis z ptaszkiem i bez, liczba na stronie głównej.
 - [x] **C29. ✅ NAPRAWIONE 2026-09-11 — dmuchawka po 3 strzałach dawała
       same M.** Przyczyna: `addScoreFromTarget` w `ScoringView.tsx:333-356`
       pilnuje zasady „jedna strzała na spot" (druga w tym samym spocie → M,

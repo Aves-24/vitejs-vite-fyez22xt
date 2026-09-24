@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { query, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, increment } from 'firebase/firestore';
+import { query, onSnapshot, doc, getDoc, getDocs, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus } from '../utils/focus';
-import { saveTechnicalSession } from '../utils/techSession';
+import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { FocusStrip } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
@@ -87,25 +87,14 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setTimeout(() => setCounterSaved(false), 1200);
   };
 
-  const invalidateStatsCache = () => {
-    localStorage.removeItem(`grotX_stats_v13_${userId}`);
-    localStorage.removeItem(`grotX_lastSession_${userId}`);
-    window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
-  };
-
   const handleSaveCounter = async () => {
     const count = parseInt(techArrows || '0');
     if (count <= 0) { updateCounter('0'); return; }
     setIsSavingCounter(true);
     try {
-      const now = new Date();
-      const dayKey = `${now.getFullYear()}_${String(now.getMonth() + 1).padStart(2, '0')}_${String(now.getDate()).padStart(2, '0')}`;
-      await updateDoc(doc(db, 'users', userId), {
-        [`pfeilzaehler.${dayKey}`]: increment(count),
-      });
+      await addToDailyArrowCounter(userId, count);
       setTechArrows('0');
       localStorage.removeItem(`grotX_techCounter_${userId}`);
-      invalidateStatsCache();
       setCounterSaved(true);
       setTimeout(() => setCounterSaved(false), 1800);
     } catch (e) {

@@ -1620,7 +1620,8 @@ export const views = {
   },
   delayMirror: {
     techToggle: "Technisches Training",
-    techSeriesHint: "Jede „Pause“ oder „Passe beenden“ zählt so viele Pfeile. Trägst du die Pfeile in der Passen-Analyse auf der Scheibe ein, zählt ihre tatsächliche Anzahl.",
+    techArrowsDone: "Du hast {{count}} Pfeile beim Training mit Delay Mirror geschossen",
+    techArrowsDone_one: "Du hast {{count}} Pfeil beim Training mit Delay Mirror geschossen",
     techArrowsSoFar: "Pfeile in dieser Sitzung",
     techDone: "Fertig",
     techSummaryTitle: "Technisches Training speichern?",

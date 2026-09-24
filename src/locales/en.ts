@@ -1620,7 +1620,8 @@ export const views = {
   },
   delayMirror: {
     techToggle: "Technical training",
-    techSeriesHint: "Every “Pause” or “End of end” adds this many arrows. If you plot the arrows on the target in the end analysis, their actual number counts.",
+    techArrowsDone: "You shot {{count}} arrows during Delay Mirror training",
+    techArrowsDone_one: "You shot {{count}} arrow during Delay Mirror training",
     techArrowsSoFar: "Arrows this session",
     techDone: "Done",
     techSummaryTitle: "Save technical training?",

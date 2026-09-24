@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TargetInput from '../components/targets/TargetInput';
 import { isSpotFace, DEFAULT_TARGET_FACE } from '../config/targetFaces';
@@ -41,6 +41,8 @@ interface Props {
   onReady: (draft: TechSeriesDraft) => void;
   /** Powrot do nagrywania bez analizy. */
   onBack: () => void;
+  /** Zmiana liczby wbitych strzal (+1 za strzale, -1 za cofniecie). */
+  onShotDelta?: (delta: number) => void;
 }
 
 // Okragla tarcza z ostatniego treningu zamiast jednej wbitej na sztywno.
@@ -58,7 +60,7 @@ function lastRoundFace(userId: string): string {
   return DEFAULT_TARGET_FACE.id;
 }
 
-export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack }: Props) {
+export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack, onShotDelta }: Props) {
   const { t } = useTranslation();
   const roundFace = useMemo(() => lastRoundFace(userId), [userId]);
 
@@ -78,6 +80,14 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ }
   };
   const [shots, setShots] = useState<TechShot[]>([]);
+  // Licznik dnia idzie za kazda wbita strzala — takze gdy user potem
+  // porzuci analize, bo te strzaly i tak zostaly oddane.
+  const reportedRef = useRef(0);
+  useEffect(() => {
+    const delta = shots.length - reportedRef.current;
+    reportedRef.current = shots.length;
+    if (delta !== 0) onShotDelta?.(delta);
+  }, [shots.length, onShotDelta]);
 
   // W poziomie tarcza musi skalowac sie do WYSOKOSCI, nie szerokosci —
   // TargetInput domyslnie robi odwrotnie (w-full + maxHeight 58vh), przez co

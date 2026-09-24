@@ -1652,7 +1652,9 @@ export const views = {
   },
   delayMirror: {
     techToggle: "Trening techniczny",
-    techSeriesHint: "Każda „Pauza” albo „Koniec serii” dodaje tyle strzał. Jeśli wbijesz strzały na tarczy w analizie serii, liczy się ich faktyczna liczba.",
+    techArrowsDone: "Oddałeś {{count}} strzał podczas treningu z Delay Mirror",
+    techArrowsDone_one: "Oddałeś {{count}} strzałę podczas treningu z Delay Mirror",
+    techArrowsDone_few: "Oddałeś {{count}} strzały podczas treningu z Delay Mirror",
     techArrowsSoFar: "Strzały w tej sesji",
     techDone: "Gotowe",
     techSummaryTitle: "Zapisać trening techniczny?",

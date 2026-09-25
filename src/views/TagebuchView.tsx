@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
@@ -11,11 +11,12 @@ import { notificationId, type NotificationType } from '../utils/notificationType
 import { TRAINING_TOPICS, CUSTOM_CATEGORY_ID, isCustomTopic, topicLabel } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
-import { FocusCard } from '../components/tagebuch/FocusCard';
+import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard';
 import FocusModal from '../components/tagebuch/FocusModal';
 import {
-  FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusFrom as focusStartOf, readEndedFocus, readFocusGoal, readOwnFocus, resolveActiveFocus,
-  type ActiveFocus, type OwnFocus,
+  FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusFrom as focusStartOf, focusMilestoneId, readEndedFocus,
+  readFocusGoal, readFocusMilestone, readOwnFocus, resolveActiveFocus,
+  type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
   NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
@@ -52,6 +53,7 @@ interface UpcomingEvent {
 type TimelineItem =
   | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[] }
   | { kind: 'private'; id: string; ts: number; note: TbPrivateNote }
+  | { kind: 'milestone'; id: string; ts: number; milestone: FocusMilestone }
   | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry };
 
 interface TagebuchViewProps {
@@ -303,6 +305,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             topics: data.topics || [],
             sessionId: data.sessionId || undefined,
             ts: toMs(data.createdAt) || Date.now(),
+            milestone: readFocusMilestone(data) || undefined,
           };
         }));
       } catch (e) {
@@ -390,6 +393,38 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   const endedFocus = useMemo(() => readEndedFocus(ownFocus, activeFocus), [ownFocus, activeFocus]);
 
+  // Kamień milowy na osi czasu: ukończony (komplet kropek) albo zakończony fokus
+  // dostaje stały wpis w privateNotes (id focus_<since>). Sprawdzamy na serwerze,
+  // czy już jest — reguły nie pozwalają nadpisać notatki; offline po prostu
+  // czekamy do następnego otwarcia dziennika.
+  const milestoneTried = useRef(new Set<string>());
+  useEffect(() => {
+    if (isLoading || !userId) return;
+    const candidates: FocusMilestone[] = [];
+    if (activeFocus && focusDots) {
+      const at = focusCompletedAt(sessions, activeFocus, focusGoal);
+      if (at) candidates.push({ ...endedFocusSnapshot(activeFocus, true, focusCount, focusGoal), endedAt: at, done: true });
+    }
+    if (endedFocus) {
+      const { endedAt, ...snap } = endedFocus;
+      candidates.push({ ...snap, endedAt, done: !!(snap.step && snap.goal && snap.step >= snap.goal) });
+    }
+    candidates.forEach(async m => {
+      const id = focusMilestoneId(m.since);
+      if (milestoneTried.current.has(id) || notes.some(n => n.id === id)) return;
+      milestoneTried.current.add(id);
+      try {
+        const ref = doc(db, `users/${userId}/privateNotes`, id);
+        if ((await getDocFromServer(ref)).exists()) return;
+        const topics = m.topic ? [m.topic] : [];
+        await setDoc(ref, { kind: 'focusMilestone', text: '', topics, focus: m, createdAt: Timestamp.fromMillis(m.endedAt) });
+        setNotes(prev => [{ id, text: '', topics, ts: m.endedAt, milestone: m }, ...prev]);
+      } catch {
+        milestoneTried.current.delete(id);   // offline / błąd — spróbujemy przy następnym otwarciu
+      }
+    });
+  }, [isLoading, userId, activeFocus, focusDots, focusGoal, focusCount, sessions, endedFocus, notes]);
+
   // Liczba lekcji obecnego fokusu (stepper w FocusModal) — sam fokus nietknięty,
   // więc cel od trenera nie staje się „własnym", a postęp zostaje.
   const saveFocusGoal = useCallback(async (dots: boolean, goal: number) => {
@@ -461,7 +496,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       notes.forEach(n => {
         if (n.ts < cutoff || (n.sessionId && sessionIds.has(n.sessionId))) return;
         if (!hit(n.topics)) return;
-        list.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
+        if (n.milestone) list.push({ kind: 'milestone', id: n.id, ts: n.ts, milestone: n.milestone });
+        else list.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
       });
     }
     if (filter !== 'mine') {
@@ -890,6 +926,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       onAddNote={addSessionNote}
                       onDeleteNote={deleteNote}
                     />
+                  ) : it.kind === 'milestone' ? (
+                    <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} />
                   ) : it.kind === 'private' ? (
                     <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
                   ) : (

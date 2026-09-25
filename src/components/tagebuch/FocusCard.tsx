@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readSessionFocus, type ActiveFocus, type SessionFocus } from '../../utils/focus';
+import { readSessionFocus, type ActiveFocus, type FocusMilestone, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
 // --- FOKUS ---
@@ -322,5 +322,32 @@ export function SessionFocusCard({ session }: { session: any }) {
       count={Math.min(snap.step || 0, snap.goal || 0)}
       label={t('stats.sessionFocus')}
     />
+  );
+}
+
+/** Wpis na osi czasu dziennika: fokus ukończony (komplet kropek) albo zakończony. */
+export function FocusMilestoneCard({ milestone, time }: { milestone: FocusMilestone; time: string }) {
+  const { t, i18n } = useTranslation();
+  const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+  const dots = milestone.step !== undefined && !!milestone.goal;
+  return (
+    <div className={`rounded-2xl border p-3 ${milestone.done ? 'bg-amber-50 border-amber-300' : 'bg-white border-amber-200'}`}>
+      <div className="flex items-center gap-1 text-[10px] font-black text-amber-800 mb-1">
+        <span className="material-symbols-outlined text-[14px]">{milestone.done ? 'emoji_events' : 'flag'}</span>
+        <span className="flex-1 truncate">
+          {t(milestone.done ? 'tagebuch.focusMilestoneDone' : 'tagebuch.focusMilestoneEnded')}
+          {milestone.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}`}
+        </span>
+        {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
+      </div>
+      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(milestone, t)}</p>
+      {milestone.text && milestone.topic && (
+        <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(milestone.topic, t)}</p>
+      )}
+      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+        {dots && <FocusDots count={milestone.step!} goal={milestone.goal!} small light />}
+        <span className="text-[10px] font-bold text-amber-700">{fmt(milestone.since)} – {fmt(milestone.endedAt)}</span>
+      </div>
+    </div>
   );
 }

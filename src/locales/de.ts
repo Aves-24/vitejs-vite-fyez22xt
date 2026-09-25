@@ -330,6 +330,8 @@ export const views = {
     focusLabel: "Dein Fokus",
     focusFromCoach: "vom Trainer",
     focusLastDone: "Dein zuletzt abgeschlossener Fokus",
+    focusMilestoneDone: "Fokus abgeschlossen",
+    focusMilestoneEnded: "Fokus beendet",
     coachSeen: "Dein Trainer hat deine Notiz gelesen",
     focusEmpty: "Setz dir einen Fokus: Woran arbeitest du gerade?",
     focusCount: "{{hit}} von {{goal}} Trainings",

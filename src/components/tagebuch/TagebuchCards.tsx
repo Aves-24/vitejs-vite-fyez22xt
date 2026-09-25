@@ -4,10 +4,12 @@ import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
 import { topicLabel } from '../../constants/trainingTopics';
+import type { FocusMilestone } from '../../utils/focus';
 
 // --- TYPY WPISÓW OSI CZASU ---
 // Read-model złożony z istniejących kolekcji — nic nie jest zapisywane w nowym
-// formacie poza opcjonalnym `sessionId` w privateNotes (notatka przypięta do sesji).
+// formacie poza opcjonalnym `sessionId` w privateNotes (notatka przypięta do sesji)
+// i wpisami `kind: 'focusMilestone'` (ukończony / zakończony fokus, utils/focus.ts).
 
 export interface TbPrivateNote {
   id: string;
@@ -15,6 +17,7 @@ export interface TbPrivateNote {
   topics: string[];
   sessionId?: string;
   ts: number;
+  milestone?: FocusMilestone;   // wpis „fokus ukończony / zakończony” (kind: 'focusMilestone')
 }
 
 export interface TbSession {

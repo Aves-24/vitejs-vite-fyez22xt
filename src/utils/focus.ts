@@ -131,6 +131,33 @@ export function readEndedFocus(own: OwnFocus | null, active: ActiveFocus | null)
   return e ? { ...e, endedAt: own.setAt } : null;
 }
 
+// --- KAMIEŃ MILOWY W DZIENNIKU ---
+// Ukończony (komplet kropek) albo zakończony („Fokus beenden”) fokus zostaje
+// na osi czasu jako wpis (user 2026-09-25: „powinno pokazać w Diese Woche”).
+// Zapis w users/{uid}/privateNotes/focus_<since> — stałe id = bez duplikatów,
+// wpis zostaje też po ustawieniu nowego fokusu. Trener nie pisze do
+// privateNotes, więc wpis po zakończeniu przez trenera dopisuje dziennik ucznia.
+export interface FocusMilestone extends SessionFocus {
+  endedAt: number;
+  done: boolean;        // komplet kropek; false = zakończony wcześniej
+}
+
+export const focusMilestoneId = (since: number) => `focus_${since}`;
+
+/** Data treningu, który zapełnił ostatnią kropkę — null, gdy jeszcze nie ma kompletu. */
+export function focusCompletedAt(sessions: { ts: number; topics: string[] }[], focus: ActiveFocus, goal: number): number | null {
+  const from = focusFrom(focus);
+  const hits = sessions.filter(s => s.ts >= from && countsForFocus(s.topics, focus)).map(s => s.ts).sort((a, b) => a - b);
+  return hits.length >= goal ? hits[goal - 1] : null;
+}
+
+export function readFocusMilestone(data: any): FocusMilestone | null {
+  const f = readSessionFocus({ focus: data?.focus });
+  return data?.kind === 'focusMilestone' && f && typeof data.focus.endedAt === 'number'
+    ? { ...f, endedAt: data.focus.endedAt, done: data.focus.done === true }
+    : null;
+}
+
 export function readSessionFocus(session: any): SessionFocus | null {
   const f = session?.focus;
   return f && typeof f.since === 'number' && (f.text || f.topic) ? f : null;

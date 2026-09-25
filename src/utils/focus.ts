@@ -23,11 +23,14 @@ export function readFocusGoal(userData: any): number {
 
 // users/{uid}.focus — własny fokus albo jego zakończenie (cleared). Zakończenie
 // też ma datę, żeby starszy cel trenera nie wrócił na górę sam z siebie.
+// `ended` — migawka zakończonego fokusu: dziennik pokazuje go dalej jako
+// „ostatni zakończony” (user 2026-09-25: „to jest dziennik, wpisy zostają”).
 export interface OwnFocus {
   topic?: string;
   text?: string;
   setAt: number;
   cleared?: boolean;
+  ended?: SessionFocus;
 }
 
 export interface CoachGoal {
@@ -106,6 +109,26 @@ export function sessionFocusSnapshot(state: FocusState | null, topics: string[])
     ...(focus.authorName ? { authorName: focus.authorName } : {}),
     ...(state.dots ? { step: state.count + 1, goal: state.goal } : {}),
   };
+}
+
+/** Migawka fokusu kończonego przyciskiem „Fokus beenden” (uczeń albo trener). */
+export function endedFocusSnapshot(focus: ActiveFocus, dots: boolean, count: number, goal: number): SessionFocus {
+  return {
+    // Cel trenera z dziennika bywa dłuższy — reguła Path L przyjmuje ≤ 120 znaków.
+    text: focus.text.slice(0, FOCUS_TEXT_MAX),
+    topic: focus.topic,
+    since: focus.since,
+    fromCoach: focus.fromCoach,
+    ...(focus.authorName ? { authorName: focus.authorName } : {}),
+    ...(dots ? { step: Math.min(count, goal), goal } : {}),
+  };
+}
+
+/** Zakończony fokus do pokazania w dzienniku — tylko gdy nic nowszego go nie zastąpiło. */
+export function readEndedFocus(own: OwnFocus | null, active: ActiveFocus | null): (SessionFocus & { endedAt: number }) | null {
+  if (active || !own?.cleared) return null;
+  const e = readSessionFocus({ focus: own.ended });
+  return e ? { ...e, endedAt: own.setAt } : null;
 }
 
 export function readSessionFocus(session: any): SessionFocus | null {

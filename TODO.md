@@ -965,9 +965,15 @@ konta testowego, otwarcie /legal/datenschutz.html.
 - C30 pasek „nowa wersja” — nadal niesprawdzony.
 
 ### Otwarte / pomysły
-- Fokus zakończony przyciskiem „Fokus beenden” (przed kompletem) znika całkiem — może
-  też ma zostać w dzienniku jako „ostatni zakończony”? (zapytać usera; wymaga zapisu
-  tekstu w znaczniku `cleared`, uwaga na regułę Path L trenera: tylko `cleared`+`setAt`).
+- ✅ 2026-09-25 (decyzja usera: „to jest dziennik, wpisy zostają”): fokus zakończony
+  „Fokus beenden” (uczeń albo trener) zostaje w dzienniku jako „Twój ostatni zakończony
+  fokus” z datami od–do i kropkami. Migawka w `users/{uid}.focus.ended`
+  (`endedFocusSnapshot`/`readEndedFocus` w utils/focus.ts). Path L przyjmuje teraz
+  opcjonalne `ended` (sprawdzany kształt, test Path L, 88/88).
+  **Kolejność: najpierw deploy reguł, potem push na main** (inaczej trener nie
+  zakończy fokusu). **Do sprawdzenia na żywo:** zakończyć fokus u siebie i u ucznia
+  z panelu trenera → karta w dzienniku; nowy fokus ją zastępuje. Fokusy zakończone
+  przed tą zmianą nie mają migawki — nie wrócą.
 - Migawka fokusu w karcie treningu w Dzienniku / filtr statystyk „treningi pod fokus”.
 - C31 przerwany trening, C36 prawne, C40 „Co nowego”, drobiazgi przedpublikacyjne.
 
@@ -1407,7 +1413,9 @@ Z ogona po C25 zostały: **jardy**.
       „Własne”, przypisać go uczniowi w fokusie, sprawdzić u ucznia (Home,
       dziennik, formularz treningu, kropki), usunąć z listy.
 
-- [ ] **C40. „Co nowego” przy nowej wersji.** Życzenie usera 2026-09-18:
+- [ ] **C40. „Co nowego” przy nowej wersji.** ⏸️ **ODŁOŻONE (decyzja usera
+      2026-09-25): wrócić, gdy będzie więcej użytkowników.**
+      Życzenie usera 2026-09-18:
       gdy wyskakuje baner nowej wersji (C30, `UpdateBanner.tsx` +
       `src/utils/swUpdate.ts`), użytkownik powinien w kilku słowach
       dowiedzieć się, co się zmieniło.
@@ -1483,6 +1491,28 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       nie ładuje się offline — zapisy z kolejki powinny dostać token po
       powrocie sieci, nie sprawdzone na żywo).
 - [ ] **C42. Hosting: z Vercel Hobby na Firebase Hosting PRZED płatnościami.**
+      🚚 **DECYZJA 2026-09-25: przenosimy się TERAZ na `grot-x.web.app`** (plan
+      Spark, Blaze dopiero przy płatnościach; C24 odpada). Kod gotowy:
+      `src/constants/appUrl.ts` (adres w jednym miejscu, link+QR w Ustawieniach),
+      `firebase.json` → `"site": "grot-x"` + Cache-Control jak na Vercelu
+      (Firebase domyślnie daje max-age=3600), `MoveNotice.tsx` — na starym
+      adresie karta „GROT-X ma nowy adres” (najpierw wysyła zapisy offline
+      przez `waitForPendingWrites`, „Później” = 24 h spokoju, ukryta w treningu).
+      **Checklista przeprowadzki (user, w tej kolejności):**
+      1. [x] Firebase Console → Hosting → witryna `grot-x` założona 2026-09-25
+             (`grotx` odrzucone: ID witryny min. 6 znaków).
+      2. [x] Authentication → Settings → Authorized domains → dodać `grot-x.web.app` (2026-09-25).
+      3. [x] (2026-09-25, klucz „V3 GROT-X App Check”) reCAPTCHA (klucz App Check, Google Cloud / reCAPTCHA admin) →
+             dodać domenę `grot-x.web.app`. Bez tego App Check odrzuci zapisy!
+      4. [x] `npm run build && npx firebase deploy --only hosting --project grotx-fb8f8`
+             (2026-09-25 pierwszy deploy na grot-x.web.app; reguły z fokusem też wdrożone)
+      5. [ ] Sprawdzić na `grot-x.web.app`: logowanie e-mail i Google, zapis
+             treningu, tryb samolotowy (aplikacja wstaje offline), instalacja
+             na ekran główny (Android + iPhone).
+      6. [ ] Dopiero potem push na `main` → Vercel pokazuje kartę przeprowadzki.
+      7. [ ] Po kilku tygodniach: na Vercelu twarde przekierowanie
+             (`vercel.json` → `redirects` na `https://grot-x.web.app/`).
+      8. [ ] Linki w politykach / sklepach / materiałach → nowy adres.
       Uwaga znajomego (2026-09-24), potwierdzona: plan Vercel Hobby jest
       tylko do użytku niekomercyjnego, a PRO/Stripe to użytek komercyjny.
       Opcje: Vercel Pro (~20 $/mies.) albo Firebase Hosting — ten jest już

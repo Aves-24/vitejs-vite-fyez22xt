@@ -318,13 +318,25 @@ service cloud.firestore {
       // TagebuchView endFocus) — never a fabricated topic/text pretending to
       // be the student's own choice, only this exact clear shape, so provenance
       // stays honest even though the UI doesn't show who ended it.
+      // Optional `ended` = snapshot of the focus being ended, so it stays in
+      // the student's journal as "last ended focus" (same as the student's
+      // own flow). Shape-checked only; the coach already sees this focus.
       allow update: if isSignedIn()
         && !isSelf(uid)
         && onlyAffects(['focus'])
         && request.auth.uid in resource.data.get('coaches', [])
-        && request.resource.data.focus.keys().hasOnly(['cleared', 'setAt'])
+        && request.resource.data.focus.keys().hasOnly(['cleared', 'setAt', 'ended'])
         && request.resource.data.focus.cleared == true
-        && request.resource.data.focus.setAt is number;
+        && request.resource.data.focus.setAt is number
+        && (!('ended' in request.resource.data.focus)
+            || (request.resource.data.focus.ended is map
+                && request.resource.data.focus.ended.keys().hasOnly(
+                     ['text', 'topic', 'since', 'fromCoach', 'authorName', 'step', 'goal'])
+                && request.resource.data.focus.ended.text is string
+                && request.resource.data.focus.ended.text.size() <= 120
+                && request.resource.data.focus.ended.topic is string
+                && request.resource.data.focus.ended.topic.size() <= 60
+                && request.resource.data.focus.ended.since is number));
 
       // Path J — any signed-in user can append their coach request ID to the
       //          admin's newCoachRequests notification array (write-only signal,

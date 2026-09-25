@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readSessionFocus, type ActiveFocus } from '../../utils/focus';
+import { readSessionFocus, type ActiveFocus, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
 // --- FOKUS ---
 // Karta „Twój fokus" na górze dziennika i pasek na Home (edycja: FocusModal). Logika
 // (który fokus obowiązuje, liczenie treningów) siedzi w utils/focus.ts.
 
-export function focusTitle(focus: ActiveFocus, t: (k: string) => string): string {
+export function focusTitle(focus: Pick<ActiveFocus, 'text' | 'topic'>, t: (k: string) => string): string {
   return focus.text || (focus.topic ? topicLabel(focus.topic, t) : '');
 }
 
@@ -126,14 +126,48 @@ export function SetFocusButton({ current, unfinished, disabled, saving, onConfir
 
 // W dzienniku pod nagłówkiem, na jasnym tle — ta sama jasnożółta karta co na
 // Home (user 2026-09-18: wyjęta z ciemnozielonego nagłówka).
-export function FocusCard({ focus, dots, goal, count, onEdit }: {
+export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
   focus: ActiveFocus | null;
+  ended?: (SessionFocus & { endedAt: number }) | null;  // zakończony „Fokus beenden” — zostaje w dzienniku
   dots: boolean;        // użytkownik włączył kropki
   goal: number;         // ile treningów do „zrobione"
   count: number;        // treningi z zaznaczonym fokusem od jego ustawienia
   onEdit: () => void;
 }) {
   const { t, i18n } = useTranslation();
+  const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+
+  if (!focus && ended) {
+    const endedDots = !!(ended.step !== undefined && ended.goal);
+    const endedTitle = focusTitle(ended, t);
+    return (
+      <button
+        onClick={onEdit}
+        className="w-full flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all"
+      >
+        <span className="w-9 h-9 rounded-full bg-amber-200 text-[#0a3a2a] flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[20px]">track_changes</span>
+        </span>
+        <div className="flex-1 min-w-0">
+          <div className="text-[9px] font-black uppercase tracking-widest text-amber-800 truncate">
+            {t('tagebuch.focusLastDone')}
+            {ended.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${ended.authorName ? ` ${ended.authorName}` : ''}`}
+          </div>
+          <p className="text-[14px] font-black text-[#0a3a2a]/80 leading-snug mt-0.5 break-words">{endedTitle}</p>
+          {ended.text && ended.topic && (
+            <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(ended.topic, t)}</p>
+          )}
+          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+            {endedDots && <FocusDots count={ended.step!} goal={ended.goal!} light />}
+            <span className="text-[10px] font-bold text-amber-700">{fmt(ended.since)} – {fmt(ended.endedAt)}</span>
+          </div>
+          <span className="inline-block mt-2 bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">
+            {t('tagebuch.focusPickNew')}
+          </span>
+        </div>
+      </button>
+    );
+  }
 
   if (!focus) {
     return (
@@ -179,7 +213,7 @@ export function FocusCard({ focus, dots, goal, count, onEdit }: {
             </>
           ) : (
             <span className="text-[10px] font-bold text-amber-700">
-              {t('tagebuch.focusSince', { date: new Date(focus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) })}
+              {t('tagebuch.focusSince', { date: fmt(focus.since) })}
             </span>
           )}
         </div>

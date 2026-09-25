@@ -7,7 +7,7 @@ import TopicPicker from './TopicPicker';
 import { focusTitle, FocusProgress, SetFocusButton } from './tagebuch/FocusCard';
 import FocusEditForm from './tagebuch/FocusEditForm';
 import { topicLabel } from '../constants/trainingTopics';
-import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, loadFocusSessionDates, type FocusState } from '../utils/focus';
+import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, endedFocusSnapshot, loadFocusSessionDates, type FocusState } from '../utils/focus';
 
 const MIN_GOAL = FOCUS_GOAL_OPTIONS[0];
 const MAX_GOAL = FOCUS_GOAL_OPTIONS[FOCUS_GOAL_OPTIONS.length - 1];
@@ -98,7 +98,9 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
   const handleEnd = async () => {
     setIsEnding(true);
     try {
-      await updateDoc(doc(db, 'users', studentId), { focus: { cleared: true, setAt: Date.now() } });
+      // Z migawką — uczeń widzi zakończony fokus dalej w dzienniku (jak po własnym „Fokus beenden”).
+      const ended = focus && focusState ? { ended: endedFocusSnapshot(focus, focusState.dots, focusState.count, focusState.goal) } : {};
+      await updateDoc(doc(db, 'users', studentId), { focus: { cleared: true, setAt: Date.now(), ...ended } });
       onChange();
       onClose();
     } catch (e) { console.error('Fokus: błąd zakończenia', e); }

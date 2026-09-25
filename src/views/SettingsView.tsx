@@ -35,6 +35,7 @@ import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
+import { APP_HOST, APP_URL } from '../constants/appUrl';
 import {
   EquipmentSetup, buildMigrationPayload, sanitizeSetups, asBowType, DEFAULT_SETUP_ID,
   isBlowgun, resolveSetupColors, setupColorHex,
@@ -797,7 +798,7 @@ export default function SettingsView({
             </p>
             <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
               <QRCodeCanvas
-                value="https://vitejs-vite-fyez22xt.vercel.app/"
+                value={APP_URL}
                 size={240}
                 bgColor="#ffffff"
                 fgColor="#0a3a2a"
@@ -806,12 +807,12 @@ export default function SettingsView({
               />
             </div>
             <a
-              href="https://vitejs-vite-fyez22xt.vercel.app/"
+              href={APP_URL}
               className="mt-5 text-xs text-gray-500 break-all text-center px-6"
               target="_blank"
               rel="noopener noreferrer"
             >
-              vitejs-vite-fyez22xt.vercel.app
+              {APP_HOST}
             </a>
           </div>
         )}

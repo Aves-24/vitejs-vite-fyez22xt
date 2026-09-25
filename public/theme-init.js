@@ -5,7 +5,8 @@
 (function () {
   try {
     var t = localStorage.getItem('grotx_theme');
-    var dark = t === 'dark' || ((t === null || t === 'system') &&
+    // Brak wyboru = jasny (user 2026-09-25), jak getThemePreference().
+    var dark = t === 'dark' || (t === 'system' &&
       window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
     if (dark) document.documentElement.classList.add('dark');
   } catch (e) { /* ignore */ }

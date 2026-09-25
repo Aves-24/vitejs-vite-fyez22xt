@@ -504,7 +504,13 @@ service cloud.firestore {
     //  Student-only private notes. Coaches have NO access (by design).
     match /users/{uid}/privateNotes/{noteId} {
       allow read, create, delete: if isSelf(uid) || isAdmin();
-      allow update: if false;
+      // Notatek nie edytujemy. Jedyny wyjątek: po rejestracji gościa
+      // (clearGuestExpiry) właściciel zdejmuje expiresAt/isGuest, żeby TTL
+      // nie skasował jego notatek — nic innego nie może się zmienić.
+      allow update: if isSelf(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt', 'isGuest'])
+        && !('expiresAt' in request.resource.data)
+        && !('isGuest' in request.resource.data);
     }
 
     // ─── /users/{uid}/notifications/{notifId} ───────────────────

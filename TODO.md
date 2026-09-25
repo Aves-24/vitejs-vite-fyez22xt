@@ -687,8 +687,7 @@ konta testowego, otwarcie /legal/datenschutz.html.
       (app shell + legal), fonty lazy CacheFirst, nawigacje network-first
       z offline fallback, sw.js z no-cache w vercel.json+firebase.json.
       Przy C16 (upgrade stacku) NIE wracać do pluginu — generator działa.
-      ⬜ POZOSTAJE: `icon-512.png` = rozmyty upscale z 192px — PODMIENIĆ
-      na oryginalną grafikę 512×512 przed publikacją w sklepach!
+      ✅ `icon-512.png` narysowana od nowa w pełnej rozdzielczości (2026-09-25).
 - [ ] **C24. Zmiana domeny Vercel na `grotx.vercel.app`** (ustalone 2026-09-04,
       odlozone na pozniej). Dzis produkcja stoi na `vitejs-vite-fyez22xt.vercel.app`
       — automatycznej nazwie ze szablonu Vite. Firebase juz nazywa sie `grotx-fb8f8`,
@@ -1650,7 +1649,8 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
 ### 🔑 Nadal otwarte blokery publikacji
 
 - [x] debug token App Check — skasowany 2026-09-25
-- [ ] `icon-512.png` — rozmyty upscale, podmienić na oryginał 512×512
+- [x] `icon-512.png` — narysowana od nowa 2026-09-25 (canvas, Montserrat Black 900,
+      tło #073a27, kropka #fed33e, ten sam układ co icon-192), ostra 512×512
 - [ ] klauzula o małoletnich w polityce prywatności (3 języki)
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
 - [ ] TTL trybu gościa — 6 polityk, wymaga Blaze

@@ -645,19 +645,12 @@ konta testowego, otwarcie /legal/datenschutz.html.
 
 ### 🔑 BLOKER PUBLIKACJI — skasować debug token App Check
 
-- [ ] **Usunąć debug token App Check przed publikacją.**
-      Firebase Console → App Check → Apps → GROT-X → Manage debug tokens.
-      Token `30e22889-798a-4c3a-8fe5-1f79d4e7e3c0` (nazwa `localhost-dev`,
-      dodany 2026-09-03) **omija App Check z dowolnego miejsca na świecie**.
-      Nie daje dostępu do danych — reguły Firestore i logowanie zostają ścianą —
-      ale rozbraja warstwę antybotową, czyli dokładnie to, co chroni przed
-      masowym zakładaniem kont gościa skryptem. Token jest wypisywany w konsoli
-      każdego dev builda, więc traktować go jak spalony.
-      Decyzja usera (2026-09-03): zostaje do końca prac nad Ustawieniami,
-      kasujemy przy ogłoszeniu gotowości aplikacji.
-      Sam kod (`src/firebase.ts`) zostaje bez zmian — przy następnym
-      `npm run dev` SDK wygeneruje nowy uuid do zarejestrowania.
-      Skasować też wtedy `.env.local` (i tak nie jest w repo).
+- [x] **✅ Debug tokeny App Check skasowane 2026-09-25** (3 sztuki, w tym
+      `localhost-dev` dodany 2026-09-03; pełny token był wpisany w to TODO,
+      więc i tak traktowany jako spalony). Produkcja używa samej reCAPTCHA v3.
+      **Lokalny `npm run dev`** nie połączy się teraz z bazą, dopóki nie
+      zarejestrujesz nowego tokenu (instrukcja w `src/firebase.ts`).
+      Nowego tokenu NIE wpisywać do repo — tylko `.env.local`.
 
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 
@@ -1656,7 +1649,7 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
 
 ### 🔑 Nadal otwarte blokery publikacji
 
-- [ ] debug token App Check `30e22889-...` (omija App Check z całego świata)
+- [x] debug token App Check — skasowany 2026-09-25
 - [ ] `icon-512.png` — rozmyty upscale, podmienić na oryginał 512×512
 - [ ] klauzula o małoletnich w polityce prywatności (3 języki)
 - [ ] stopka „nie zastępuje porady prawnej" do usunięcia z `public/legal/*.html`

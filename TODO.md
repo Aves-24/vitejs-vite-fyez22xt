@@ -1661,7 +1661,7 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
 - [x] debug token App Check — skasowany 2026-09-25
 - [x] `icon-512.png` — narysowana od nowa 2026-09-25 (canvas, Montserrat Black 900,
       tło #073a27, kropka #fed33e, ten sam układ co icon-192), ostra 512×512
-- [ ] klauzula o małoletnich w polityce prywatności (3 języki)
+- [x] klauzula o małoletnich — już jest: §6 „Osoby niepełnoletnie” w 3 politykach (16 lat, zgoda opiekuna + e-mail, DOB niewidoczna dla trenera, wycofanie przez usunięcie konta); sprawdzone z kodem 2026-09-25
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
 - [ ] TTL trybu gościa — 6 polityk, wymaga Blaze
 - [ ] dane testowe gościa w produkcyjnym Firestore (dystanse `10m/7m Blasrohr`)

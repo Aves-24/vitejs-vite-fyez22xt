@@ -1521,7 +1521,12 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       w GitHub (konto usługi z rolami Firebase Hosting Admin, API Keys Viewer,
       Cloud Run Viewer). Bez sekretu job tylko ostrzega i nic nie wgrywa.
       Reguły Firestore nadal ręcznie (`firebase deploy --only firestore:rules`).
+      6b. [x] 2026-09-25: Vercel odłączony od buildów z GitHuba
+             (`vercel.json` → `"git": {"deploymentEnabled": false}`). Stary adres
+             zostaje na ostatniej produkcji (z kartą przeprowadzki), PR-y bez
+             komentarzy/buildów Vercela. Właściwa aplikacja: Firebase (CI).
       7. [ ] Po kilku tygodniach: na Vercelu twarde przekierowanie
+             (wymaga jednorazowo włączyć deploymentEnabled albo ręcznego deployu)
              (`vercel.json` → `redirects` na `https://grot-x.web.app/`).
       8. [ ] Linki w politykach / sklepach / materiałach → nowy adres.
       Uwaga znajomego (2026-09-24), potwierdzona: plan Vercel Hobby jest

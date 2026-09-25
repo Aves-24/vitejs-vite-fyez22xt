@@ -1,5 +1,8 @@
 {
   "buildCommand": "npm run build",
+  "git": {
+    "deploymentEnabled": false
+  },
   "headers": [
     {
       "source": "/index.html",

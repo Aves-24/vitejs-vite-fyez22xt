@@ -1407,7 +1407,9 @@ Z ogona po C25 zostały: **jardy**.
       „Własne”, przypisać go uczniowi w fokusie, sprawdzić u ucznia (Home,
       dziennik, formularz treningu, kropki), usunąć z listy.
 
-- [ ] **C40. „Co nowego” przy nowej wersji.** Życzenie usera 2026-09-18:
+- [ ] **C40. „Co nowego” przy nowej wersji.** ⏸️ **ODŁOŻONE (decyzja usera
+      2026-09-25): wrócić, gdy będzie więcej użytkowników.**
+      Życzenie usera 2026-09-18:
       gdy wyskakuje baner nowej wersji (C30, `UpdateBanner.tsx` +
       `src/utils/swUpdate.ts`), użytkownik powinien w kilku słowach
       dowiedzieć się, co się zmieniło.

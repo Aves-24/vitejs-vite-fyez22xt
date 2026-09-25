@@ -12,7 +12,6 @@ import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend'; 
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
-import Weather from '../components/Weather';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
@@ -190,7 +189,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const focusState = useCurrentFocus(battleId ? null : userId);
   const focusTopic = focusState?.focus?.topic || '';
   const [focusOn, setFocusOn] = useState(true);
-  const [currentWeather, setCurrentWeather] = useState<any>(null);
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [activeBattle, setActiveBattle] = useState<any>(null);
@@ -565,7 +563,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         isNotePublic: isNotePublic,
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
         ...(focusSnap ? { focus: focusSnap } : {}),
-        weather: currentWeather,
         ends: submittedEnds,
         ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: PLANNED_ENDS } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
@@ -791,9 +788,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                    </span>
                  )}
               </div>
-            </div>
-            <div className="border-l border-gray-100 pl-3 flex flex-col justify-center h-full">
-               <Weather variant="compact-vertical" userId={userId} onUpdateData={setCurrentWeather} />
             </div>
           </div>
         </div>

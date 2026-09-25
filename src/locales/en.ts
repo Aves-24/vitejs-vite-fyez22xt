@@ -92,10 +92,6 @@ export const components = {
     durchgang1: "Round 1",
     durchgang2: "Round 2"
   },
-  weather: {
-    windUnit: "km/h",
-    error: "Weather fetch error:"
-  },
   rules: {
     bow_recurve: "Recurve",
     bow_compound: "Compound",

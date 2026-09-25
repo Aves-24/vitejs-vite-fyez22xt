@@ -1,5 +1,9 @@
 // Wersjonowanie polityki prywatności — przy istotnej zmianie treści podbij
 // wersję; appka poprosi użytkowników o ponowną akceptację (LEGAL_DATA_INVENTORY.md §5).
+// Wersja zgody (privacyConsent / parentalConsent). Dokumenty są w v1.2
+// (2026-09-25: usunięta pogoda/lokalizacja — mniej przetwarzania), ale zgoda
+// na v1.1 obejmuje v1.2, więc NIE podbijamy — inaczej opiekunowie niepełnoletnich
+// musieliby zatwierdzać ponownie (needsParentalConsent porównuje wersję).
 export const PRIVACY_POLICY_VERSION = '1.1';
 
 // Strony prawne to statyczne pliki w public/legal/ — serwowane przez Firebase

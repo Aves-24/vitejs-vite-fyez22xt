@@ -1675,9 +1675,10 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
       (`techSession.ts`), notatki dziennika i wpisy „Fokus abgeschlossen”
       (`TagebuchView`); `clearGuestExpiry` zdejmuje je też z `privateNotes`
       (nowa reguła: właściciel może zdjąć TYLKO expiresAt/isGuest, test 89/89).
-      **Przed włączeniem TTL: deploy reguł** (`npx firebase deploy --only
-      firestore:rules --project grotx-fb8f8`) — inaczej notatki gościa po
-      rejestracji zostałyby skasowane.
+      **Przed włączeniem TTL: reguły muszą być wdrożone** — od 2026-09-25
+      robi to CI (`deploy-hosting` → krok „Deploy Firestore rules”) po merge
+      do `main`; konto `github-deploy` potrzebuje ról Firebase Rules Admin
+      + Service Usage Consumer.
 - [ ] dane testowe gościa w produkcyjnym Firestore (dystanse `10m/7m Blasrohr`)
 
 ### ⚠️ Pułapka, na którą uważać przy kolejnych zmianach w CELOWNIKU

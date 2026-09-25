@@ -43,8 +43,8 @@ jobs:
           key: firebase-emulators-${{ runner.os }}
       - run: npm run test:rules
 
-  # [C42] Auto-deploy na Firebase Hosting (grot-x.web.app) po każdym merge do
-  # main — jak Vercel, bez terminala. Tylko gdy lint/build i testy reguł zielone.
+  # [C42] Auto-deploy reguł Firestore + Firebase Hosting (grot-x.web.app) po
+  # każdym merge do main — bez terminala. Tylko gdy lint/build i testy reguł zielone.
   # Wymaga sekretu FIREBASE_SERVICE_ACCOUNT (JSON konta usługi z rolą
   # Firebase Hosting Admin). Bez sekretu job kończy się ostrzeżeniem, nie błędem.
   deploy-hosting:
@@ -74,6 +74,17 @@ jobs:
         if: steps.secret.outputs.ok == 'true'
       - run: npm run build
         if: steps.secret.outputs.ok == 'true'
+      # Reguły Firestore przed hostingiem (nowy kod może ich wymagać).
+      # Konto usługi potrzebuje ról: Firebase Rules Admin + Service Usage Consumer.
+      - name: Deploy Firestore rules
+        if: steps.secret.outputs.ok == 'true'
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+          GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" \
+            npx firebase deploy --only firestore:rules --project grotx-fb8f8 --non-interactive
+          rm -f "$RUNNER_TEMP/sa.json"
       - uses: FirebaseExtended/action-hosting-deploy@v0
         if: steps.secret.outputs.ok == 'true'
         with:

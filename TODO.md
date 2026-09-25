@@ -965,9 +965,15 @@ konta testowego, otwarcie /legal/datenschutz.html.
 - C30 pasek „nowa wersja” — nadal niesprawdzony.
 
 ### Otwarte / pomysły
-- Fokus zakończony przyciskiem „Fokus beenden” (przed kompletem) znika całkiem — może
-  też ma zostać w dzienniku jako „ostatni zakończony”? (zapytać usera; wymaga zapisu
-  tekstu w znaczniku `cleared`, uwaga na regułę Path L trenera: tylko `cleared`+`setAt`).
+- ✅ 2026-09-25 (decyzja usera: „to jest dziennik, wpisy zostają”): fokus zakończony
+  „Fokus beenden” (uczeń albo trener) zostaje w dzienniku jako „Twój ostatni zakończony
+  fokus” z datami od–do i kropkami. Migawka w `users/{uid}.focus.ended`
+  (`endedFocusSnapshot`/`readEndedFocus` w utils/focus.ts). Path L przyjmuje teraz
+  opcjonalne `ended` (sprawdzany kształt, test Path L, 88/88).
+  **Kolejność: najpierw deploy reguł, potem push na main** (inaczej trener nie
+  zakończy fokusu). **Do sprawdzenia na żywo:** zakończyć fokus u siebie i u ucznia
+  z panelu trenera → karta w dzienniku; nowy fokus ją zastępuje. Fokusy zakończone
+  przed tą zmianą nie mają migawki — nie wrócą.
 - Migawka fokusu w karcie treningu w Dzienniku / filtr statystyk „treningi pod fokus”.
 - C31 przerwany trening, C36 prawne, C40 „Co nowego”, drobiazgi przedpublikacyjne.
 

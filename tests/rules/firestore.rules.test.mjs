@@ -789,3 +789,19 @@ test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
   await assertFails(updateDoc(a(), { focusGoal: 6, focusDots: true }));
   await assertFails(updateDoc(doc(bob(), 'users/alice'), { focusGoal: 1 }));
 });
+
+test('Path L: trener konczy fokus ucznia (sam znacznik albo z migawka ended)', async () => {
+  const a = () => doc(coach1(), 'users/alice');
+  const ended = { text: 'Luźny chwyt', topic: 'c:Chwyt', since: 1, fromCoach: true, authorName: 'Trener', step: 2, goal: 5 };
+  await assertSucceeds(updateDoc(a(), { focus: { cleared: true, setAt: 2 } }));
+  await assertSucceeds(updateDoc(a(), { focus: { cleared: true, setAt: 3, ended } }));
+  // Tylko znacznik zakończenia — żadnego „własnego” fokusu ucznia.
+  await assertFails(updateDoc(a(), { focus: { topic: 'anker', text: 'x', setAt: 4 } }));
+  await assertFails(updateDoc(a(), { focus: { cleared: true, setAt: 4, text: 'x' } }));
+  // Migawka tylko w znanym kształcie.
+  await assertFails(updateDoc(a(), { focus: { cleared: true, setAt: 4, ended: { ...ended, extra: 1 } } }));
+  await assertFails(updateDoc(a(), { focus: { cleared: true, setAt: 4, ended: { ...ended, text: 'x'.repeat(121) } } }));
+  await assertFails(updateDoc(a(), { focus: { cleared: true, setAt: 4, ended: 'x' } }));
+  // Obcy — nie.
+  await assertFails(updateDoc(doc(bob(), 'users/alice'), { focus: { cleared: true, setAt: 5 } }));
+});

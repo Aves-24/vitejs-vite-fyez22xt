@@ -14,7 +14,7 @@ import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard } from '../components/tagebuch/FocusCard';
 import FocusModal from '../components/tagebuch/FocusModal';
 import {
-  FOCUS_TEXT_MAX, countFocusSessions, focusFrom as focusStartOf, readFocusGoal, readOwnFocus, resolveActiveFocus,
+  FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusFrom as focusStartOf, readEndedFocus, readFocusGoal, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type OwnFocus,
 } from '../utils/focus';
 import {
@@ -377,11 +377,18 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     [sessions, activeFocus],
   );
 
+  // Zakończony fokus nie znika z dziennika — migawka zostaje w znaczniku `cleared`.
   const endFocus = useCallback(async () => {
-    const focus: OwnFocus = { cleared: true, setAt: Date.now() };
+    const focus: OwnFocus = {
+      cleared: true,
+      setAt: Date.now(),
+      ...(activeFocus ? { ended: endedFocusSnapshot(activeFocus, focusDots, focusCount, focusGoal) } : {}),
+    };
     await settleWrite(updateDoc(doc(db, 'users', userId), { focus }));
     setOwnFocus(focus);
-  }, [userId]);
+  }, [userId, activeFocus, focusDots, focusCount, focusGoal]);
+
+  const endedFocus = useMemo(() => readEndedFocus(ownFocus, activeFocus), [ownFocus, activeFocus]);
 
   // Liczba lekcji obecnego fokusu (stepper w FocusModal) — sam fokus nietknięty,
   // więc cel od trenera nie staje się „własnym", a postęp zostaje.
@@ -707,7 +714,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
         {/* FOKUS — pod nagłówkiem, jasnożółta karta jak na Home */}
         {!isLoading && (
-          <FocusCard focus={activeFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
+          <FocusCard focus={activeFocus} ended={endedFocus} dots={focusDots} goal={focusGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
         )}
 
         {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}

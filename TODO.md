@@ -1513,7 +1513,12 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
              (2026-09-25, PR #2 scalony; przetestowane na telefonie.)
       ⚠️ **Od teraz deploy w dwóch miejscach:** Vercel sam z `main`, Firebase
       ręcznie (`npm run build` + `npx firebase deploy --only hosting --project grotx-fb8f8`).
-      Pomysł: GitHub Action z auto-deployem na Firebase po merge do `main`.
+      ✅ 2026-09-25: job `deploy-hosting` w `.github/workflows/ci.yml` — po
+      merge do `main` i zielonym CI sam wgrywa na grot-x.web.app.
+      [ ] **Do zrobienia przez usera (raz):** sekret `FIREBASE_SERVICE_ACCOUNT`
+      w GitHub (konto usługi z rolami Firebase Hosting Admin, API Keys Viewer,
+      Cloud Run Viewer). Bez sekretu job tylko ostrzega i nic nie wgrywa.
+      Reguły Firestore nadal ręcznie (`firebase deploy --only firestore:rules`).
       7. [ ] Po kilku tygodniach: na Vercelu twarde przekierowanie
              (`vercel.json` → `redirects` na `https://grot-x.web.app/`).
       8. [ ] Linki w politykach / sklepach / materiałach → nowy adres.

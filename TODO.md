@@ -1509,7 +1509,11 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       5. [ ] Sprawdzić na `grot-x.web.app`: logowanie e-mail i Google, zapis
              treningu, tryb samolotowy (aplikacja wstaje offline), instalacja
              na ekran główny (Android + iPhone).
-      6. [ ] Dopiero potem push na `main` → Vercel pokazuje kartę przeprowadzki.
+      6. [x] Dopiero potem push na `main` → Vercel pokazuje kartę przeprowadzki.
+             (2026-09-25, PR #2 scalony; przetestowane na telefonie.)
+      ⚠️ **Od teraz deploy w dwóch miejscach:** Vercel sam z `main`, Firebase
+      ręcznie (`npm run build` + `npx firebase deploy --only hosting --project grotx-fb8f8`).
+      Pomysł: GitHub Action z auto-deployem na Firebase po merge do `main`.
       7. [ ] Po kilku tygodniach: na Vercelu twarde przekierowanie
              (`vercel.json` → `redirects` na `https://grot-x.web.app/`).
       8. [ ] Linki w politykach / sklepach / materiałach → nowy adres.

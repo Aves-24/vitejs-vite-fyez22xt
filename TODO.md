@@ -1501,8 +1501,8 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       **Checklista przeprowadzki (user, w tej kolejności):**
       1. [x] Firebase Console → Hosting → witryna `grot-x` założona 2026-09-25
              (`grotx` odrzucone: ID witryny min. 6 znaków).
-      2. [ ] Authentication → Settings → Authorized domains → dodać `grot-x.web.app`.
-      3. [ ] reCAPTCHA (klucz App Check, Google Cloud / reCAPTCHA admin) →
+      2. [x] Authentication → Settings → Authorized domains → dodać `grot-x.web.app` (2026-09-25).
+      3. [x] (2026-09-25, klucz „V3 GROT-X App Check”) reCAPTCHA (klucz App Check, Google Cloud / reCAPTCHA admin) →
              dodać domenę `grot-x.web.app`. Bez tego App Check odrzuci zapisy!
       4. [ ] `npm run build && npx firebase deploy --only hosting --project grotx-fb8f8`
       5. [ ] Sprawdzić na `grot-x.web.app`: logowanie e-mail i Google, zapis

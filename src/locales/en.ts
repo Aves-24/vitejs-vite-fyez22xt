@@ -364,6 +364,7 @@ export const views = {
     yours: "Yours",
     handicapTitle: "Archery Handicap",
     commander: "Command Centre",
+    coachTeaser: "Coach mode · 0/{{count}} students",
     nextGoal: "Next Goal",
     calendar: "Schedule",
     today: "Today!",

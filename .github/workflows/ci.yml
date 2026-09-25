@@ -42,3 +42,42 @@ jobs:
           path: ~/.cache/firebase/emulators
           key: firebase-emulators-${{ runner.os }}
       - run: npm run test:rules
+
+  # [C42] Auto-deploy na Firebase Hosting (grot-x.web.app) po każdym merge do
+  # main — jak Vercel, bez terminala. Tylko gdy lint/build i testy reguł zielone.
+  # Wymaga sekretu FIREBASE_SERVICE_ACCOUNT (JSON konta usługi z rolą
+  # Firebase Hosting Admin). Bez sekretu job kończy się ostrzeżeniem, nie błędem.
+  deploy-hosting:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint-build, rules-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check secret
+        id: secret
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::warning::Brak sekretu FIREBASE_SERVICE_ACCOUNT — pomijam deploy na Firebase Hosting."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.secret.outputs.ok == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: steps.secret.outputs.ok == 'true'
+      - run: npm run build
+        if: steps.secret.outputs.ok == 'true'
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        if: steps.secret.outputs.ok == 'true'
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: grotx-fb8f8
+          channelId: live

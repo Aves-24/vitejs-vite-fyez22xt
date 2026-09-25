@@ -8,7 +8,8 @@ import {
   signInAnonymously,
   GoogleAuthProvider,
   sendPasswordResetEmail,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  validatePassword
 } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -50,6 +51,25 @@ function authErrorMessage(code: string | undefined, t: (k: string) => string): s
     default:
       return code ? `${t('auth.errorGeneral')} (${code})` : t('auth.errorGeneral');
   }
+}
+
+// Firebase może mieć włączoną politykę haseł (Console → Authentication →
+// Settings → Password policy) — wtedy „min. 6 znaków” nie wystarcza. Pytamy
+// Firebase o aktualne wymagania i wypisujemy dokładnie to, czego brakuje.
+async function passwordRulesMessage(password: string, t: (k: string, o?: Record<string, unknown>) => string): Promise<string> {
+  try {
+    const st = await validatePassword(auth, password);
+    const min = st.passwordPolicy.customStrengthOptions.minPasswordLength ?? 6;
+    const missing = [
+      st.meetsMinPasswordLength === false && t('auth.pwMinLength', { count: min }),
+      st.containsUppercaseLetter === false && t('auth.pwUpper'),
+      st.containsLowercaseLetter === false && t('auth.pwLower'),
+      st.containsNumericCharacter === false && t('auth.pwNumber'),
+      st.containsNonAlphanumericCharacter === false && t('auth.pwSpecial'),
+    ].filter(Boolean) as string[];
+    if (missing.length) return t('auth.errorPasswordRules', { list: missing.join(', ') });
+  } catch { /* bez sieci / bez polityki — ogólny komunikat niżej */ }
+  return t('auth.errorWeakPassword');
 }
 
 export default function AuthView() {
@@ -116,7 +136,12 @@ export default function AuthView() {
       }
     } catch (err: any) {
       console.error(err);
-      safeSetError(authErrorMessage(err?.code, t));
+      const code = err?.code;
+      if (!isLogin && !isForgotPassword && (code === 'auth/weak-password' || code === 'auth/password-does-not-meet-requirements')) {
+        safeSetError(await passwordRulesMessage(password, t));
+      } else {
+        safeSetError(authErrorMessage(code, t));
+      }
     } finally {
       safeSetIsLoading(false);
     }

@@ -27,6 +27,31 @@ async function writePrivacyConsent(uid: string) {
   }
 }
 
+// Konkretny komunikat zamiast jednego ogólnego (user 2026-09-25: rejestracja
+// pokazywała tylko „Authentifizierungsfehler” i nie było wiadomo, co poprawić).
+// Nieznany kod dopisujemy w nawiasie — łatwiej zdiagnozować ze zrzutu ekranu.
+function authErrorMessage(code: string | undefined, t: (k: string) => string): string {
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return t('auth.errorInvalid');
+    case 'auth/email-already-in-use':
+      return t('auth.errorEmailInUse');
+    case 'auth/weak-password':
+    case 'auth/password-does-not-meet-requirements':
+      return t('auth.errorWeakPassword');
+    case 'auth/invalid-email':
+      return t('auth.errorInvalidEmail');
+    case 'auth/too-many-requests':
+      return t('auth.errorTooMany');
+    case 'auth/network-request-failed':
+      return t('auth.errorNetwork');
+    default:
+      return code ? `${t('auth.errorGeneral')} (${code})` : t('auth.errorGeneral');
+  }
+}
+
 export default function AuthView() {
   const { t, i18n } = useTranslation();
   const [isLogin, setIsLogin] = useState(true);
@@ -91,11 +116,7 @@ export default function AuthView() {
       }
     } catch (err: any) {
       console.error(err);
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        safeSetError(t('auth.errorInvalid'));
-      } else {
-        safeSetError(t('auth.errorGeneral'));
-      }
+      safeSetError(authErrorMessage(err?.code, t));
     } finally {
       safeSetIsLoading(false);
     }

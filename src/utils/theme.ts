@@ -11,7 +11,8 @@ export function getThemePreference(): ThemePreference {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === 'light' || v === 'dark' || v === 'system') return v;
   } catch { /* ignore */ }
-  return 'system';
+  // Domyślnie jasny (user 2026-09-25) — ciemny/systemowy tylko z wyboru w Ustawieniach.
+  return 'light';
 }
 
 function systemPrefersDark(): boolean {

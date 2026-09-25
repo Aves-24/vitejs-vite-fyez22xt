@@ -41,7 +41,7 @@ export function guestExpiryFields(): { expiresAt?: Timestamp; isGuest?: boolean 
 
 // Podkolekcje, w których gość realnie zostawia dane w ciągu 24h.
 // Musi być zgodne z politykami TTL w konsoli Firestore.
-const GUEST_SUBCOLLECTIONS = ['sessions', 'tournaments', 'dailyStats', 'private', 'scores'];
+const GUEST_SUBCOLLECTIONS = ['sessions', 'tournaments', 'dailyStats', 'private', 'scores', 'privateNotes'];
 
 // Po upgrade konta (gość → pełne): zdejmij expiresAt/isGuest ze
 // wszystkich dokumentów, żeby TTL ich nie skasował.

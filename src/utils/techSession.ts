@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
 import { settleWrite } from './offlineWrite';
 import { sessionFocusSnapshot, FocusState } from './focus';
+import { guestExpiryFields } from './guestMode';
 
 function invalidateStatsCache(userId: string) {
   localStorage.removeItem(`grotX_stats_v13_${userId}`);
@@ -64,6 +65,7 @@ export async function saveTechnicalSession(userId: string, { arrows, note, topic
     type: 'TECHNICAL',
     timestamp: Timestamp.fromDate(new Date()),
     date: new Date().toLocaleDateString('pl-PL'),
+    ...guestExpiryFields(), // [GOŚĆ] trening techniczny gościa też wygasa po 24h (TTL)
   });
   if (fromDailyCounter > 0) {
     batch.update(doc(db, 'users', userId), { [dayCounterField()]: increment(-fromDailyCounter) });

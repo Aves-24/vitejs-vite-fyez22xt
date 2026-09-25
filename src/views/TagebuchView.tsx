@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
+import { guestExpiryFields } from '../utils/guestMode';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
@@ -325,6 +326,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       topics,
       ...(sessionId ? { sessionId } : {}),
       createdAt: serverTimestamp(),
+      ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
     setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now() }, ...prev]);
   }, [userId]);
@@ -417,7 +419,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         const ref = doc(db, `users/${userId}/privateNotes`, id);
         if ((await getDocFromServer(ref)).exists()) return;
         const topics = m.topic ? [m.topic] : [];
-        await setDoc(ref, { kind: 'focusMilestone', text: '', topics, focus: m, createdAt: Timestamp.fromMillis(m.endedAt) });
+        await setDoc(ref, { kind: 'focusMilestone', text: '', topics, focus: m, createdAt: Timestamp.fromMillis(m.endedAt), ...guestExpiryFields() });
         setNotes(prev => [{ id, text: '', topics, ts: m.endedAt, milestone: m }, ...prev]);
       } catch {
         milestoneTried.current.delete(id);   // offline / błąd — spróbujemy przy następnym otwarciu

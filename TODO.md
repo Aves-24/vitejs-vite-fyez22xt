@@ -1668,7 +1668,16 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
       tło #073a27, kropka #fed33e, ten sam układ co icon-192), ostra 512×512
 - [x] klauzula o małoletnich — już jest: §6 „Osoby niepełnoletnie” w 3 politykach (16 lat, zgoda opiekuna + e-mail, DOB niewidoczna dla trenera, wycofanie przez usunięcie konta); sprawdzone z kodem 2026-09-25
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
-- [ ] TTL trybu gościa — 6 polityk, wymaga Blaze
+- [ ] TTL trybu gościa — **7 polityk** (Firestore → TTL, pole `expiresAt`,
+      grupy kolekcji): `users`, `sessions`, `tournaments`, `dailyStats`, `private`,
+      `scores`, `privateNotes`. Wg notatek wymaga Blaze — user sprawdza w konsoli.
+      ✅ 2026-09-25 załatane luki: `expiresAt` dostają też treningi techniczne
+      (`techSession.ts`), notatki dziennika i wpisy „Fokus abgeschlossen”
+      (`TagebuchView`); `clearGuestExpiry` zdejmuje je też z `privateNotes`
+      (nowa reguła: właściciel może zdjąć TYLKO expiresAt/isGuest, test 89/89).
+      **Przed włączeniem TTL: deploy reguł** (`npx firebase deploy --only
+      firestore:rules --project grotx-fb8f8`) — inaczej notatki gościa po
+      rejestracji zostałyby skasowane.
 - [ ] dane testowe gościa w produkcyjnym Firestore (dystanse `10m/7m Blasrohr`)
 
 ### ⚠️ Pułapka, na którą uważać przy kolejnych zmianach w CELOWNIKU

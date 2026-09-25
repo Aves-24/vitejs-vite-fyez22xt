@@ -805,3 +805,18 @@ test('Path L: trener konczy fokus ucznia (sam znacznik albo z migawka ended)', a
   // Obcy — nie.
   await assertFails(updateDoc(doc(bob(), 'users/alice'), { focus: { cleared: true, setAt: 5 } }));
 });
+
+test('privateNotes: po rejestracji gościa właściciel zdejmuje tylko expiresAt/isGuest', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/g1'), { text: 'notatka', expiresAt: 123, isGuest: true });
+  });
+  const n = () => doc(alice(), 'users/alice/privateNotes/g1');
+  // Nic poza zdjęciem pól wygaśnięcia.
+  await assertFails(updateDoc(n(), { text: 'zmiana' }));
+  await assertFails(updateDoc(n(), { expiresAt: deleteField(), text: 'zmiana' }));
+  await assertFails(updateDoc(n(), { expiresAt: 999 }));
+  // Obcy — nie.
+  await assertFails(updateDoc(doc(bob(), 'users/alice/privateNotes/g1'), { expiresAt: deleteField(), isGuest: deleteField() }));
+  // Właściciel — tak.
+  await assertSucceeds(updateDoc(n(), { expiresAt: deleteField(), isGuest: deleteField() }));
+});

@@ -1504,7 +1504,8 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       2. [x] Authentication → Settings → Authorized domains → dodać `grot-x.web.app` (2026-09-25).
       3. [x] (2026-09-25, klucz „V3 GROT-X App Check”) reCAPTCHA (klucz App Check, Google Cloud / reCAPTCHA admin) →
              dodać domenę `grot-x.web.app`. Bez tego App Check odrzuci zapisy!
-      4. [ ] `npm run build && npx firebase deploy --only hosting --project grotx-fb8f8`
+      4. [x] `npm run build && npx firebase deploy --only hosting --project grotx-fb8f8`
+             (2026-09-25 pierwszy deploy na grot-x.web.app; reguły z fokusem też wdrożone)
       5. [ ] Sprawdzić na `grot-x.web.app`: logowanie e-mail i Google, zapis
              treningu, tryb samolotowy (aplikacja wstaje offline), instalacja
              na ekran główny (Android + iPhone).

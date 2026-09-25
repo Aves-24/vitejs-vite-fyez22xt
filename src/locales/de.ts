@@ -364,6 +364,7 @@ export const views = {
     yours: "Dein",
     handicapTitle: "Bogensport-Handicap",
     commander: "CARPORT",
+    coachTeaser: "Trainermodus · 0/{{count}} Schüler",
     nextGoal: "Nächstes Ziel",
     calendar: "Kalender",
     today: "Heute!",

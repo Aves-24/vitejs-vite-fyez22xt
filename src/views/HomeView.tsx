@@ -17,6 +17,8 @@ import { useCurrentFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
+import { FREE_COACH_SLOTS } from '../utils/coachAccess';
+import { isGuestUser } from '../utils/guestMode';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -947,6 +949,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </button>
         </div>
       </div>
+
+      {/* Zajawka trybu trenera (user 2026-09-25: „nie tak ukryty”) — mała
+          pigułka, dopóki ktoś go nie włączy; prowadzi do Ustawień → Trener.
+          Gość nie może być trenerem (reguły coachInvites), więc bez zajawki. */}
+      {!isCoach && !isGuestUser() && (
+        <button
+          onClick={() => onNavigate?.('SETTINGS', 'TRENER')}
+          className="-mt-2 mb-3 self-start inline-flex items-center gap-1 bg-blue-50 border border-blue-100 text-blue-600 rounded-full pl-1.5 pr-2.5 py-0.5 active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-[14px]">sports</span>
+          <span className="text-[9px] font-black uppercase tracking-widest">{t('home.coachTeaser', { count: FREE_COACH_SLOTS })}</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-[#fed33e] animate-pulse" />
+        </button>
+      )}
 
       <div className="flex flex-col gap-2">
 

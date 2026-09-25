@@ -379,6 +379,7 @@ export const views = {
     yours: "Twoja",
     handicapTitle: "Handicap Łuczniczy",
     commander: "Panel Dowodzenia",
+    coachTeaser: "Tryb trenera · 0/{{count}} uczniów",
     nextGoal: "Następny Cel",
     calendar: "Terminarz",
     today: "Dziś!",

@@ -5,7 +5,7 @@ import { waitForPendingWrites } from 'firebase/firestore';
 import { db } from '../firebase';
 import { APP_HOST, APP_URL, isOldHost } from '../constants/appUrl';
 
-// [C42] Przeprowadzka z Vercela na grotx.web.app. Na starym adresie aplikacja
+// [C42] Przeprowadzka z Vercela na grot-x.web.app. Na starym adresie aplikacja
 // działa dalej, ale pokazuje tę kartę. Dane konta są w Firestore i nie zależą
 // od adresu; w telefonie (osobno dla każdego adresu) zostaje tylko logowanie,
 // ikona i zapisy offline — dlatego przed przejściem najpierw wysyłamy

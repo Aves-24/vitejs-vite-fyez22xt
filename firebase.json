@@ -9,7 +9,7 @@
     "singleProjectMode": true
   },
   "hosting": {
-    "site": "grotx",
+    "site": "grot-x",
     "public": "dist",
     "ignore": [
       "firebase.json",

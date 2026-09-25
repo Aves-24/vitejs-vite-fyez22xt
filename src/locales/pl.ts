@@ -92,10 +92,6 @@ export const components = {
     durchgang1: "Runda 1",
     durchgang2: "Runda 2"
   },
-  weather: {
-    windUnit: "km/h",
-    error: "Błąd pobierania pogody:"
-  },
   rules: {
     bow_recurve: "Klasyczny (Recurve)",
     bow_compound: "Bloczkowy (Compound)",

@@ -916,7 +916,17 @@ konta testowego, otwarcie /legal/datenschutz.html.
       w widokach), przełącznik Jasny/Ciemny/Systemowy w Ustawienia→Język,
       anty-flash public/theme-init.js (CSP blokuje inline), utils/theme.ts.
       Akcenty (emerald-50, amber-50 itp.) niezmapowane — poprawki po testach.
-- [ ] **C21. Pogoda: licencja komercyjna / proxy PRZED startem płatności premium**
+- [x] **C21. ✅ ROZWIĄZANE 2026-09-25 — pogoda usunięta (decyzja usera, opcja A).**
+      Usunięte: `Weather.tsx` (nagłówek ScoringView), prośba o lokalizację,
+      `api.open-meteo.com` z CSP, `geolocation=()` w Permissions-Policy,
+      §2.6 i wiersz Open-Meteo w politykach (v1.2, PL/DE/EN),
+      LEGAL_DATA_INVENTORY. Pogoda i tak nie zapisywała się przy treningach
+      (`onUpdateData` nigdy nie wołane). StatsView nadal pokazuje `weather`
+      ze starych sesji, jeśli jakieś ją mają.
+      **Na przyszłość (user: „przy dużej liczbie użytkowników wykupimy”):**
+      przywrócić z historii git + dostawca komercyjny (niżej) i z powrotem
+      §2.6 w politykach. Stary opis:
+      ~~Pogoda: licencja komercyjna / proxy PRZED startem płatności premium~~
       — darmowe API Open-Meteo jest tylko non-commercial (appki z subskrypcjami
       wprost wymienione jako komercyjne → ryzyko blokady IP bez ostrzeżenia).
       Dopóki nikt nie płaci — OK. Z chwilą podpięcia Stripe:

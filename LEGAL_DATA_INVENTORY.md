@@ -27,7 +27,6 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 12 | Dziennik trenerski | `users/{uid}/coachLog` | ciągłość szkolenia | art. 6(1)(a) | uczeń, wszyscy jego trenerzy, admin |
 | 13 | XP/level/handicap | `users/{uid}`, `world_stats` | gamifikacja, ranking | art. 6(1)(b) | leaderboard: wszyscy zalogowani |
 | 14 | Wyniki battles (live) | `battles/{id}` | pojedynki online | art. 6(1)(b) | wszyscy zalogowani (do zawężenia) |
-| 15 | Lokalizacja (współrzędne) | NIE zapisywana — tylko transmisja do Open-Meteo | pogoda | art. 6(1)(a) — permission systemowy | nikt; zapisywane tylko temp+wiatr |
 | 16 | Kamera: QR | przetwarzanie lokalne | połączenie z trenerem | permission systemowy | nikt — nie zapisywane |
 | 17 | Kamera: wideo (Delay Mirror) | TYLKO lokalnie na urządzeniu | analiza techniki | permission systemowy | nikt — brak uploadu |
 | 18 | IP, logi serwera | Firebase Hosting (Google) | dostarczanie, bezpieczeństwo | art. 6(1)(f) | Google (procesor) |
@@ -53,7 +52,6 @@ danych zdrowotnych, danych płatniczych (premium = przyszłość, wtedy aktualiz
 | Procesor | Usługa | Transfer poza EOG | Zabezpieczenie |
 |----------|--------|-------------------|----------------|
 | Google Ireland Ltd. | Firebase: Auth, Firestore, Hosting, App Check | możliwy (Google LLC, USA) | EU-US DPF + SCC; DPA: Google Cloud Data Processing Addendum (zaakceptować w konsoli!) |
-| Open-Meteo | API pogodowe | — | brak konta/cookies; tylko współrzędne+IP |
 
 ⚠️ **Do zrobienia ręcznie:** zaakceptować Data Processing Addendum w Google Cloud
 Console (Firebase) — wymóg art. 28 RODO.
@@ -62,9 +60,7 @@ Console (Firebase) — wymóg art. 28 RODO.
 
 - **Personal info:** Name ✔ (collected), Email ✔ (collected, app functionality, required)
 - **Personal info → Other:** data urodzenia, płeć, klub (app functionality)
-- **Location:** Approximate location ✔ (optional, app functionality, NOT shared*, ephemeral — not stored)
-  - *uwaga: transmisja do Open-Meteo może wymagać oznaczenia „shared" — zaznaczyć
-    „Data is processed ephemerally" i opisać w polityce
+- **Location:** NIE (2026-09-25: pogoda / Open-Meteo usunięta — lokalizacja nie jest pobierana)
 - **Messages:** In-app messages ✔ (coach↔student)
 - **App activity:** dane treningowe jako „Other user-generated content"
 - **Photos/Videos:** NIE (Delay Mirror nie opuszcza urządzenia → wg definicji

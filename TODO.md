@@ -1652,7 +1652,7 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
 - [x] debug token App Check — skasowany 2026-09-25
 - [ ] `icon-512.png` — rozmyty upscale, podmienić na oryginał 512×512
 - [ ] klauzula o małoletnich w polityce prywatności (3 języki)
-- [ ] stopka „nie zastępuje porady prawnej" do usunięcia z `public/legal/*.html`
+- [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
 - [ ] TTL trybu gościa — 6 polityk, wymaga Blaze
 - [ ] dane testowe gościa w produkcyjnym Firestore (dystanse `10m/7m Blasrohr`)
 

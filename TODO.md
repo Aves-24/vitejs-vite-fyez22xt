@@ -1491,6 +1491,26 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       nie ładuje się offline — zapisy z kolejki powinny dostać token po
       powrocie sieci, nie sprawdzone na żywo).
 - [ ] **C42. Hosting: z Vercel Hobby na Firebase Hosting PRZED płatnościami.**
+      🚚 **DECYZJA 2026-09-25: przenosimy się TERAZ na `grotx.web.app`** (plan
+      Spark, Blaze dopiero przy płatnościach; C24 odpada). Kod gotowy:
+      `src/constants/appUrl.ts` (adres w jednym miejscu, link+QR w Ustawieniach),
+      `firebase.json` → `"site": "grotx"` + Cache-Control jak na Vercelu
+      (Firebase domyślnie daje max-age=3600), `MoveNotice.tsx` — na starym
+      adresie karta „GROT-X ma nowy adres” (najpierw wysyła zapisy offline
+      przez `waitForPendingWrites`, „Później” = 24 h spokoju, ukryta w treningu).
+      **Checklista przeprowadzki (user, w tej kolejności):**
+      1. [ ] Firebase Console → Hosting → „Dodaj kolejną witrynę” → `grotx`.
+      2. [ ] Authentication → Settings → Authorized domains → dodać `grotx.web.app`.
+      3. [ ] reCAPTCHA (klucz App Check, Google Cloud / reCAPTCHA admin) →
+             dodać domenę `grotx.web.app`. Bez tego App Check odrzuci zapisy!
+      4. [ ] `npm run build && npx firebase deploy --only hosting --project grotx-fb8f8`
+      5. [ ] Sprawdzić na `grotx.web.app`: logowanie e-mail i Google, zapis
+             treningu, tryb samolotowy (aplikacja wstaje offline), instalacja
+             na ekran główny (Android + iPhone).
+      6. [ ] Dopiero potem push na `main` → Vercel pokazuje kartę przeprowadzki.
+      7. [ ] Po kilku tygodniach: na Vercelu twarde przekierowanie
+             (`vercel.json` → `redirects` na `https://grotx.web.app/`).
+      8. [ ] Linki w politykach / sklepach / materiałach → nowy adres.
       Uwaga znajomego (2026-09-24), potwierdzona: plan Vercel Hobby jest
       tylko do użytku niekomercyjnego, a PRO/Stripe to użytek komercyjny.
       Opcje: Vercel Pro (~20 $/mies.) albo Firebase Hosting — ten jest już

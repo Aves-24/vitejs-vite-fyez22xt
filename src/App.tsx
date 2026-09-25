@@ -16,6 +16,7 @@ import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import UpdateBanner from './components/UpdateBanner';
 import OfflineBanner from './components/OfflineBanner';
+import MoveNotice from './components/MoveNotice';
 import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
@@ -517,7 +518,7 @@ export default function App() {
     );
   };
 
-  if (!isAuthLoading && !user) return <AuthView />;
+  if (!isAuthLoading && !user) return <><AuthView /><MoveNotice hidden={false} /></>;
 
   return (
     <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-hidden max-w-md mx-auto shadow-2xl">
@@ -575,6 +576,7 @@ export default function App() {
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
       <UpdateBanner hidden={hasActiveSession || currentView === 'SCORING'} />
       <OfflineBanner hidden={currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
+      <MoveNotice hidden={hasActiveSession || currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
 
 

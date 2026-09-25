@@ -159,6 +159,15 @@ export const components = {
       errorGenerate: "Wystąpił błąd podczas generowania dokumentu."
     }
   },
+  appMove: {
+    title: "GROT-X ma nowy adres",
+    body: "Od teraz aplikacja działa pod adresem {{host}}. Twoje treningi, dziennik i ustawienia są bezpieczne na koncie.",
+    steps: "Otwórz nowy adres, zaloguj się raz i dodaj ikonę na ekran główny. Starą ikonę możesz usunąć.",
+    sending: "Wysyłam zapisy z telefonu…",
+    offline: "Najpierw połącz się z internetem — w telefonie czekają zapisy, które muszą trafić na konto.",
+    open: "Otwórz nowy adres",
+    later: "Później"
+  },
   appUpdate: {
     available: "Dostępna nowa wersja",
     reload: "Odśwież",

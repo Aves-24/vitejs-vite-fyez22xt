@@ -100,9 +100,14 @@ const PRECACHE = ${JSON.stringify(urls, null, 1)};
 const WARM = ${JSON.stringify(warm, null, 1)};
 const ICON_FONT = '/fonts/material-symbols-outlined.woff2';
 
-// cache: 'reload' — precache prosto z serwera, z pominięciem cache HTTP.
-// Zatruty wpis (np. 404 z nagłówkiem immutable) wywracałby addAll, a z nim
-// instalację nowej wersji.
+// Shell: pliki z /assets/ maja hash w nazwie — ta sama nazwa = ta sama tresc,
+// wiec jesli leza w starym cache'u, kopiujemy je lokalnie zamiast ciagnac przez
+// siec. Wczesniej addAll pobieral przy KAZDYM deployu caly shell (~1,1 MB,
+// glownie firebase-vendor i react-vendor, ktore prawie nigdy sie nie zmieniaja).
+// Pliki bez hasha (index.html, manifest, ikona, theme-init.js) zawsze z serwera
+// z cache: 'reload' — z pominieciem cache HTTP. Zatruty wpis (np. 404
+// z naglowkiem immutable) wywracalby instalacje nowej wersji, dlatego blad
+// dowolnego pliku shella nadal przerywa instalacje (jak addAll).
 //
 // [C41] Po shellu dogrzewamy WARM: po jednym pliku (nie konkuruje o pasmo
 // z dzialajaca aplikacja), najpierw ze starego cache'u — hash w nazwie =
@@ -111,7 +116,15 @@ const ICON_FONT = '/fonts/material-symbols-outlined.woff2';
 self.addEventListener('install', (e) => {
   e.waitUntil(
     caches.open(CACHE).then(async (c) => {
-      await c.addAll(PRECACHE.map((u) => new Request(u, { cache: 'reload' })));
+      await Promise.all(PRECACHE.map(async (u) => {
+        if (u.startsWith('/assets/')) {
+          const old = await caches.match(u, { ignoreVary: true });
+          if (old) return c.put(u, old);
+        }
+        const res = await fetch(new Request(u, { cache: 'reload' }));
+        if (!res.ok) throw new Error('precache ' + u + ': ' + res.status);
+        await c.put(u, res);
+      }));
       // [C41] Font ikon: przy pierwszej wizycie strona nie jest jeszcze pod SW,
       // wiec font z <link rel=preload> nie trafial do FONT_CACHE — offline
       // ikony renderowaly sie jako tekst ("cloud_off").

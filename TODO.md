@@ -652,6 +652,36 @@ konta testowego, otwarcie /legal/datenschutz.html.
       zarejestrujesz nowego tokenu (instrukcja w `src/firebase.ts`).
       Nowego tokenu NIE wpisywać do repo — tylko `.env.local`.
 
+### 💳 DZIEŃ BLAZE — wszystko, co czeka na plan Blaze, jednym podejściem
+
+**Decyzja usera 2026-09-28:** zostajemy na Spark do ostatniej chwili. Powód:
+promocja **300 $ kredytu na 90 dni** (Firebase/Google Cloud) — przy obecnym
+ruchu Blaze kosztuje ~0 €, więc kredyt włączony teraz by przepadł. Włączamy
+go, gdy pojawią się realne koszty. **Najpóźniej przed publicznym startem /
+publikacją w sklepach** — polityka prywatności obiecuje kasowanie danych
+gościa, a bez TTL nic ich nie kasuje. Czekanie niczego nie gubi: TTL po
+włączeniu kasuje też dokumenty z `expiresAt` z przeszłości.
+
+Kolejność w dniu przejścia:
+1. [ ] Upgrade na Blaze + **aktywacja kredytu 300 $** (sprawdzić warunki —
+       zwykle jednorazowy, dla nowego konta rozliczeniowego).
+2. [ ] **Budget alert** (Cloud Console → Billing → Budgets & alerts), np. 5 €/mies.,
+       progi 50/90/100 %.
+3. [ ] Kontrola przed TTL: zarejestrowane konta (w tym byli goście) NIE mogą
+       mieć `expiresAt` w `users`/`sessions` — inaczej TTL je skasuje.
+4. [ ] **7 polityk TTL** na `expiresAt` (collection group): `users`, `sessions`,
+       `tournaments`, `dailyStats`, `private`, `scores`, `privateNotes`.
+       Cloud Shell:
+       ```bash
+       for c in users sessions tournaments dailyStats private scores privateNotes; do
+         gcloud firestore fields ttls update expiresAt --collection-group=$c --enable-ttl --project=grotx-fb8f8 --async
+       done
+       ```
+       Kasowanie zwykle do 24 h po terminie. Test: gość → trening → po ~48 h
+       dokumenty zniknęły. (Konta anonimowe w Auth zostają — TTL to tylko Firestore.)
+5. [ ] **Point-in-Time Recovery** (C10.3).
+6. [ ] **Cloud Functions** (C43): webhook Stripe, admin przez custom claims.
+
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 
 - [ ] **C26. „GROT-X Trainer werden" — przemyśleć przed startem na dużą skalę**
@@ -1670,7 +1700,9 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
 - [ ] TTL trybu gościa — **7 polityk** (Firestore → TTL, pole `expiresAt`,
       grupy kolekcji): `users`, `sessions`, `tournaments`, `dailyStats`, `private`,
-      `scores`, `privateNotes`. Wg notatek wymaga Blaze — user sprawdza w konsoli.
+      `scores`, `privateNotes`. ✅ Sprawdzone 2026-09-28: **wymaga Blaze**
+      (cennik Firestore: „You must enable billing to use: TTL deletes"). Odłożone
+      na „💳 DZIEŃ BLAZE" (sekcja przy Priorytecie 2).
       ✅ 2026-09-25 załatane luki: `expiresAt` dostają też treningi techniczne
       (`techSession.ts`), notatki dziennika i wpisy „Fokus abgeschlossen”
       (`TagebuchView`); `clearGuestExpiry` zdejmuje je też z `privateNotes`

@@ -590,7 +590,12 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
         (zgoda, odwoływalna przez rozłączenie). Wymienia dostęp do
         Trainingsdaten (Einheiten, Statistiken, Turniere), notatek
         i wiadomości oraz prawo do odłączenia w Ustawieniach.
-      - ❌ NIE wymienia wprost, że trener widzi dane identyfikacyjne:
+      - ✅ **2026-09-28 (v1.3):** §2.4 w 3 politykach wylicza, co widzi trener:
+        imię/nazwisko lub pseudonim, klub, sprzęt, kategoria wiekowa, sesje,
+        statystyki, zawody; NIE: data urodzenia, płeć jako osobne pole, e-mail,
+        notatki prywatne. Zgoda zostaje w wersji 1.1 (doprecyzowanie).
+        Poniżej stan sprzed poprawki:
+      - ~~NIE wymienia wprost, że trener widzi dane identyfikacyjne:~~
         imię, nazwisko, klub. Popup zgody od C35 już to mówi, więc teraz
         to POLITYKA jest węższa niż aplikacja. Dopisać w trzech wersjach
         (`datenschutz.html`, `polityka-prywatnosci.html`, `privacy-policy.html`)
@@ -1374,7 +1379,9 @@ Z ogona po C25 zostały: **jardy**.
       **Do sprawdzenia przez usera:** czy kod QR u ucznia znika sam, gdy
       trener zeskanuje, i czy okienko u trenera pokazuje właściwe imię.
 
-- [ ] **C35. Zgoda ucznia ma wprost mówić, że trener zobaczy imię
+- [x] **C35. ✅ ZROBIONE (tekst popupu) — potwierdzone 2026-09-28; tego dnia
+      dopisane też sprzęt, kategoria wiekowa, zawody i notatki prywatne (PL/DE/EN).
+      Zgoda ucznia ma wprost mówić, że trener zobaczy imię
       i nazwisko.** Zgłosił user 2026-09-16 („po zeskanowaniu powinno u ucznia
       wyskoczyć potwierdzenie, czy na pewno udostępnić trenerowi profil").
       **Stan faktyczny: sam mechanizm zgody JUŻ JEST** i działa poprawnie —

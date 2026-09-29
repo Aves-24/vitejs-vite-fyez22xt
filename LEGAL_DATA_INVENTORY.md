@@ -22,6 +22,8 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 7 | Sprzęt (łuk, celownik, strzały) | `users/{uid}` | personalizacja | art. 6(1)(b) | właściciel, admin, trenerzy |
 | 8 | Sesje treningowe (wyniki, trafienia, notatki) | `users/{uid}/sessions` | core feature | art. 6(1)(b) | właściciel, admin, trenerzy (po akceptacji zaproszenia) |
 | 9 | Notatki prywatne | `users/{uid}/privateNotes` | notatki | art. 6(1)(b) | TYLKO właściciel (+admin) — trener NIE |
+| 9a | Prywatne notatki treningowe (C36) | `users/{uid}/sessionNotes` | tekst notatki do sesji oznaczonej „Prywatna” | art. 6(1)(b) | TYLKO właściciel (+admin) — trener NIE |
+| 9b | Prośba o miejsca trenerskie (C36) | `coachRequests/{id}` | imię, e-mail, liczba uczniów, status | art. 6(1)(b) | TYLKO admin (+właściciel); max 6 mies. (`expiresAt`/TTL), kasowane z kontem |
 | 10 | Turnieje, kalendarz | `users/{uid}/tournaments` | planowanie | art. 6(1)(b) | właściciel, admin, trenerzy |
 | 11 | Wiadomości trener↔uczeń | `users/{coachId}/studentMessages` | komunikacja | art. 6(1)(a) — relacja za zgodą | obie strony relacji, admin |
 | 12 | Dziennik trenerski | `users/{uid}/coachLog` | ciągłość szkolenia | art. 6(1)(a) | uczeń, wszyscy jego trenerzy, admin |

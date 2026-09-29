@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
 import { guestExpiryFields } from '../utils/guestMode';
+import { readAllPrivateSessionNotes } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
@@ -270,9 +271,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     if (!userId) { setIsLoading(false); return; }
     (async () => {
       try {
-        const [sSnap, nSnap] = await Promise.all([
+        const [sSnap, nSnap, privNotes] = await Promise.all([
           getDocs(query(collection(db, `users/${userId}/sessions`), orderBy('timestamp', 'desc'), limit(pageSize))),
           getDocs(query(collection(db, `users/${userId}/privateNotes`), orderBy('createdAt', 'desc'), limit(pageSize))),
+          // [RODO C36] Tekst prywatnych notatek treningowych — poza sesją.
+          readAllPrivateSessionNotes(userId).catch(() => new Map<string, string>()),
         ]);
         setSessions(sSnap.docs.map(d => {
           const data = d.data();
@@ -289,7 +292,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             endSums: Array.isArray(data.ends)
               ? data.ends.map((e: any) => Number(e?.total_sum)).filter((n: number) => Number.isFinite(n))
               : [],
-            note: data.note || '',
+            note: data.note || (data.isNotePublic === false ? privNotes.get(d.id) || '' : ''),
             isNotePublic: data.isNotePublic !== false,
             editCount: data.editCount || 0,
             coachNote: data.coachNote || '',

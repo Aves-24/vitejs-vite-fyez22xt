@@ -418,6 +418,18 @@ service cloud.firestore {
         && request.resource.data.coachSeenAt == request.time;
     }
 
+    // ─── /users/{uid}/sessionNotes/{sessionId} ──────────────────
+    //  [RODO C36] Tekst notatki treningowej oznaczonej jako „Prywatna”.
+    //  Sesję czyta trener (całą), więc prywatny tekst NIE może w niej leżeć.
+    //  Trener nie ma tu dostępu. Id = id sesji. Patrz utils/privateSessionNote.ts
+    match /users/{uid}/sessionNotes/{sessionId} {
+      allow read, delete: if isSelf(uid) || isAdmin();
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['note', 'updatedAt', 'expiresAt', 'isGuest'])
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 2000;
+    }
+
     // ─── /users/{uid}/techShots/{shotId} ────────────────────────
     match /users/{uid}/techShots/{shotId} {
       allow read: if isSelf(uid)
@@ -710,13 +722,19 @@ service cloud.firestore {
     }
 
     // ─── /coachRequests/{id} ────────────────────────────────────
+    //  [RODO C36] Imię + e-mail — polityka §2.4: widzi tylko admin, max
+    //  6 miesięcy (expiresAt → TTL), właściciel kasuje przy usunięciu konta.
     match /coachRequests/{id} {
       allow read: if isAdmin()
         || (isSignedIn() && resource.data.userId == request.auth.uid);
       allow create: if isSignedIn()
         && request.resource.data.userId == request.auth.uid
-        && request.resource.data.status == 'pending';
-      allow update, delete: if isAdmin();
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(
+             ['userId', 'userName', 'userEmail', 'desiredStudents', 'status', 'timestamp', 'expiresAt']);
+      allow update: if isAdmin();
+      allow delete: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
     }
 
     // ─── /admin_stats_history/{id} ──────────────────────────────

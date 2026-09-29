@@ -1109,6 +1109,7 @@ export const views = {
       becomeSent: "Request sent!",
       becomeSentDesc: "The administrator will review your request shortly.",
       becomeAlreadySent: "Request already sent — waiting for admin response.",
+      becomeRequestPrivacy: "The administrator sees your name and email address in order to reply. The request is deleted after a decision, at the latest after 6 months.",
       becomeError: "Sending failed. Please try again."
     },
     tournament: {

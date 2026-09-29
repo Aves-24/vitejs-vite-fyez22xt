@@ -279,6 +279,80 @@ test('T6: privateNotes niedostępne dla trenera (by design)', async () => {
   await assertFails(getDoc(doc(coach1(), 'users/alice/privateNotes/p1')));
 });
 
+// [RODO C36] Prywatna notatka treningowa — poza sesją, której trener czyta całość.
+test('C36: sessionNotes — właściciel pisze i czyta, trener i obcy NIE', async () => {
+  const ref = (db) => doc(db, 'users/alice/sessionNotes/s1');
+  await assertSucceeds(setDoc(ref(alice()), { note: 'tylko dla mnie', updatedAt: serverTimestamp() }));
+  await assertSucceeds(getDoc(ref(alice())));
+  await assertFails(getDoc(ref(coach1())));
+  await assertFails(getDoc(ref(bob())));
+  await assertSucceeds(getDoc(ref(admin())));
+});
+
+test('C36: sessionNotes — trener nie zapisze ani nie skasuje notatki ucznia', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/sessionNotes/s1'), { note: 'sekret' });
+  });
+  await assertFails(setDoc(doc(coach1(), 'users/alice/sessionNotes/s1'), { note: 'x' }));
+  await assertFails(deleteDoc(doc(coach1(), 'users/alice/sessionNotes/s1')));
+  await assertSucceeds(deleteDoc(doc(alice(), 'users/alice/sessionNotes/s1')));
+});
+
+test('C36: sessionNotes — limit 2000 znaków i tylko dozwolone pola', async () => {
+  const ref = doc(alice(), 'users/alice/sessionNotes/s1');
+  await assertSucceeds(setDoc(ref, { note: 'a'.repeat(2000) }));
+  await assertFails(setDoc(ref, { note: 'a'.repeat(2001) }));
+  await assertFails(setDoc(ref, { note: 'ok', coachNote: 'x' }));
+  await assertFails(setDoc(ref, { note: 42 }));
+});
+
+test('C36: sessionNotes gościa — zdjęcie expiresAt po rejestracji przechodzi', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/sessionNotes/s1'), {
+      note: 'gość', expiresAt: new Date(Date.now() + DAY), isGuest: true,
+    });
+  });
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice/sessionNotes/s1'), {
+    expiresAt: deleteField(), isGuest: deleteField(),
+  }));
+});
+
+test('C36: migracja — właściciel czyści note w swojej sesji', async () => {
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice/sessions/s1'), { note: '', isNotePublic: false }));
+});
+
+// [RODO C36] Prośba o miejsca trenerskie — imię + e-mail, widzi tylko admin.
+const coachReq = (extra = {}) => ({
+  userId: 'alice', userName: 'Alice', userEmail: 'a@example.com',
+  desiredStudents: 5, status: 'pending', timestamp: new Date(),
+  expiresAt: new Date(Date.now() + 183 * DAY), ...extra,
+});
+
+test('C36: coachRequests — właściciel tworzy (z expiresAt), obce pola odrzucone', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'coachRequests/r1'), coachReq()));
+  await assertFails(setDoc(doc(alice(), 'coachRequests/r2'), coachReq({ isPremium: true })));
+  await assertFails(setDoc(doc(alice(), 'coachRequests/r3'), coachReq({ userId: 'bob' })));
+});
+
+test('C36: coachRequests — trener i obcy nie czytają cudzej prośby', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachRequests/r1'), coachReq());
+  });
+  await assertSucceeds(getDoc(doc(alice(), 'coachRequests/r1')));
+  await assertSucceeds(getDoc(doc(admin(), 'coachRequests/r1')));
+  await assertFails(getDoc(doc(coach1(), 'coachRequests/r1')));
+  await assertFails(getDoc(doc(bob(), 'coachRequests/r1')));
+});
+
+test('C36: coachRequests — właściciel kasuje swoją prośbę (usunięcie konta), obcy nie', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachRequests/r1'), coachReq());
+  });
+  await assertFails(deleteDoc(doc(bob(), 'coachRequests/r1')));
+  await assertFails(updateDoc(doc(alice(), 'coachRequests/r1'), { status: 'approved' }));
+  await assertSucceeds(deleteDoc(doc(alice(), 'coachRequests/r1')));
+});
+
 // ─── T7: Podszywanie się pod admina ──────────────────────────────
 
 test('T7: zwykły user nie opublikuje ogłoszenia globalnego', async () => {

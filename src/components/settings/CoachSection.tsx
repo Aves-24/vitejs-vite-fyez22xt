@@ -5,6 +5,9 @@ import { db, auth } from '../../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { createNotification } from '../../services/notificationService';
 import { buildCoachRequestNotification } from '../../utils/notificationTypes';
+
+// Prośba o miejsca trenerskie żyje najdłużej 6 miesięcy (polityka prywatności §2.4).
+const COACH_REQUEST_TTL_MS = 183 * 24 * 60 * 60 * 1000;
 import { FREE_COACH_SLOTS } from '../../utils/coachAccess';
 
 const ADMIN_UID = 'b55wNdZf17gH5wxziuzG9bkaQKo2';
@@ -84,6 +87,8 @@ const CoachSection: React.FC<CoachSectionProps> = ({
         desiredStudents: count,
         status: 'pending',
         timestamp: Timestamp.now(),
+        // [RODO C36] Polityka §2.4: najdłużej 6 miesięcy — kasuje TTL (Blaze).
+        expiresAt: Timestamp.fromMillis(Date.now() + COACH_REQUEST_TTL_MS),
       });
       await updateDoc(doc(db, 'users', ADMIN_UID), {
         newCoachRequests: arrayUnion(ref.id),
@@ -221,6 +226,9 @@ const CoachSection: React.FC<CoachSectionProps> = ({
               {status === 'error' && (
                 <p className="text-[10px] text-red-500 font-bold">{t('settings.coach.becomeError')}</p>
               )}
+              <p className="text-[10px] text-gray-400 font-medium leading-snug">
+                {t('settings.coach.becomeRequestPrivacy')}
+              </p>
               <button
                 onClick={handleSendRequest}
                 disabled={status === 'sending' || !desiredStudents}

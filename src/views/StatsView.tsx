@@ -3,6 +3,7 @@ import { distanceMeters, sessionDistanceLabel, distanceKey } from '../config/dis
 import { useDistanceColors } from '../hooks/useDistanceColors';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase/firestore';
+import { readPrivateSessionNote, sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
 import ViewHeader from '../components/ViewHeader';
@@ -343,22 +344,37 @@ const renderWithLinks = (text: string) => {
 function NoteModule({ session, userId, viewingStudentId }: any) {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
-  const [text, setText] = useState(session.note || '');
+  // [RODO C36] Tekst prywatnej notatki leży w sessionNotes (tylko właściciel).
+  // `session.note` przy prywatnej jest puste — chyba że sesja sprzed migracji.
+  const [privateText, setPrivateText] = useState('');
+  const isOwnPrivate = !viewingStudentId && session.isNotePublic === false;
+  const ownNote: string = session.note || (isOwnPrivate ? privateText : '');
+  const [text, setText] = useState(ownNote);
   const [isNotePublic, setIsNotePublic] = useState(session.isNotePublic ?? true);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setText(session.note || '');
+    setPrivateText('');
+    if (!isOwnPrivate || !userId) return;
+    let alive = true;
+    readPrivateSessionNote(userId, session.id)
+      .then(n => { if (alive) setPrivateText(n); })
+      .catch(e => console.error('Prywatna notatka:', e));
+    return () => { alive = false; };
+  }, [session.id, isOwnPrivate, userId]);
+
+  useEffect(() => {
+    setText(ownNote);
     setIsNotePublic(session.isNotePublic ?? true);
     setIsEditing(false);
-  }, [session.id, session.note, session.isNotePublic]);
+  }, [session.id, ownNote, session.isNotePublic]);
 
   const edits = session.editCount || 0;
   const canEdit = !viewingStudentId && edits < 2;
 
   const handleSave = async () => {
     const cleanText = text.trim().slice(0, 250); // Zwiększony limit znaków do 250!
-    if (!cleanText && !session.note && isNotePublic === session.isNotePublic) { 
+    if (!cleanText && !ownNote && isNotePublic === session.isNotePublic) { 
         setIsEditing(false); 
         return; 
     }
@@ -366,10 +382,12 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
     setIsSaving(true);
     try {
       await updateDoc(doc(db, `users/${userId}/sessions`, session.id), {
-        note: cleanText,
+        note: sessionNoteField(cleanText, isNotePublic),
         isNotePublic: isNotePublic,
         editCount: edits + 1
       });
+      await writePrivateSessionNote(userId, session.id, cleanText, isNotePublic);
+      setPrivateText(isNotePublic ? '' : cleanText);
       setIsEditing(false);
     } catch(e) { console.error(e); }
     setIsSaving(false);
@@ -386,7 +404,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
             <div className="flex justify-between items-center mb-2.5">
               <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-1">
                  {viewingStudentId ? t('stats.studentFindings') : t('stats.yourNotes')}
-                 {!viewingStudentId && session.note && (
+                 {!viewingStudentId && ownNote && (
                     <span className="material-symbols-outlined text-[12px] opacity-60" title={session.isNotePublic !== false ? t('stats.sharedWithCoach') : t('stats.private')}>
                         {session.isNotePublic !== false ? 'visibility' : 'visibility_off'}
                     </span>
@@ -429,7 +447,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
                 <div className="flex justify-between items-center mt-1">
                   <span className="text-[10px] font-bold text-gray-400">{text.length}/250</span>
                   <div className="flex gap-2">
-                     <button onClick={() => { setIsEditing(false); setText(session.note || ''); setIsNotePublic(session.isNotePublic ?? true); }} className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3 py-2 active:scale-95">{t('setup.warningCancel')}</button>
+                     <button onClick={() => { setIsEditing(false); setText(ownNote); setIsNotePublic(session.isNotePublic ?? true); }} className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3 py-2 active:scale-95">{t('setup.warningCancel')}</button>
                      <button onClick={handleSave} disabled={isSaving || (!text.trim() && isNotePublic === session.isNotePublic)} className="text-[10px] font-black bg-emerald-600 text-white px-5 py-2 rounded-xl shadow-sm uppercase tracking-widest disabled:opacity-50 active:scale-95 transition-all">{isSaving ? t('common.saving') : t('stats.saveNote')}</button>
                   </div>
                 </div>
@@ -437,8 +455,8 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
             ) : (
               // POWIĘKSZONA CZCIONKA, BRAK KROJU ITALIC, AKTYWNE LINKI
               <div className="text-[14px] text-[#0a3a2a] font-medium leading-relaxed">
-                {session.note ? (
-                  <>{renderWithLinks(session.note)}</>
+                {ownNote ? (
+                  <>{renderWithLinks(ownNote)}</>
                 ) : (
                   <span className="text-emerald-600/50 font-medium text-[12px] italic">{t('stats.noNote', 'Brak notatki. Pamiętaj, by zostawiać wnioski.')}</span>
                 )}

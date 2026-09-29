@@ -21,6 +21,7 @@ import BattleInvitePopup from './components/BattleInvitePopup';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
+import { migratePrivateSessionNotes } from './utils/privateSessionNote';
 import { syncPublicProfile } from './utils/publicProfile';
 import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
@@ -171,6 +172,8 @@ export default function App() {
       setIsAuthLoading(false);
       if (!currentUser) { setIsDataReady(true); setCurrentView('HOME'); }
       if (currentUser) migrateArrowModel(currentUser.uid).catch(() => {});
+      // [RODO C36] Stare prywatne notatki z sesji → sessionNotes (jednorazowo).
+      if (currentUser) migratePrivateSessionNotes(currentUser.uid).catch(() => {});
     });
     return () => unsubscribe();
   }, []);

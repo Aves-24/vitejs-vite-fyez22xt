@@ -22,7 +22,7 @@ interface PrivacySectionProps {
 // i dołączane do eksportu danych (RODO art. 17 i 20).
 const OWNED_SUBCOLLECTIONS = [
   'sessions', 'techShots', 'coachLog', 'dailyStats', 'scores',
-  'tournaments', 'privateNotes', 'notifications', 'studentMessages',
+  'tournaments', 'privateNotes', 'sessionNotes', 'notifications', 'studentMessages',
 ];
 
 const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
@@ -63,6 +63,12 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
         if (!snap.empty) {
           exportData[sub] = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         }
+      }
+
+      const reqSnap = await getDocs(query(collection(db, 'coachRequests'), where('userId', '==', userId)))
+        .catch(() => null);
+      if (reqSnap && !reqSnap.empty) {
+        exportData.coachRequests = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       }
 
       const worldStatsSnap = await getDoc(doc(db, 'world_stats', userId));
@@ -142,6 +148,13 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
         if (invSnap) {
           for (const d of invSnap.docs) await deleteDoc(d.ref).catch(() => {});
         }
+      }
+
+      // 3b. [C36] Prośby o miejsca trenerskie (imię + e-mail) — polityka §2.4
+      const reqSnap = await getDocs(query(collection(db, 'coachRequests'), where('userId', '==', userId)))
+        .catch(() => null);
+      if (reqSnap) {
+        for (const d of reqSnap.docs) await deleteDoc(d.ref).catch(() => {});
       }
 
       // 4. Subkolekcje, wpis matchmakingu i statystyki rankingowe

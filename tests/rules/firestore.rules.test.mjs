@@ -321,6 +321,38 @@ test('C36: migracja — właściciel czyści note w swojej sesji', async () => {
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice/sessions/s1'), { note: '', isNotePublic: false }));
 });
 
+// [RODO C36] Prośba o miejsca trenerskie — imię + e-mail, widzi tylko admin.
+const coachReq = (extra = {}) => ({
+  userId: 'alice', userName: 'Alice', userEmail: 'a@example.com',
+  desiredStudents: 5, status: 'pending', timestamp: new Date(),
+  expiresAt: new Date(Date.now() + 183 * DAY), ...extra,
+});
+
+test('C36: coachRequests — właściciel tworzy (z expiresAt), obce pola odrzucone', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'coachRequests/r1'), coachReq()));
+  await assertFails(setDoc(doc(alice(), 'coachRequests/r2'), coachReq({ isPremium: true })));
+  await assertFails(setDoc(doc(alice(), 'coachRequests/r3'), coachReq({ userId: 'bob' })));
+});
+
+test('C36: coachRequests — trener i obcy nie czytają cudzej prośby', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachRequests/r1'), coachReq());
+  });
+  await assertSucceeds(getDoc(doc(alice(), 'coachRequests/r1')));
+  await assertSucceeds(getDoc(doc(admin(), 'coachRequests/r1')));
+  await assertFails(getDoc(doc(coach1(), 'coachRequests/r1')));
+  await assertFails(getDoc(doc(bob(), 'coachRequests/r1')));
+});
+
+test('C36: coachRequests — właściciel kasuje swoją prośbę (usunięcie konta), obcy nie', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachRequests/r1'), coachReq());
+  });
+  await assertFails(deleteDoc(doc(bob(), 'coachRequests/r1')));
+  await assertFails(updateDoc(doc(alice(), 'coachRequests/r1'), { status: 'approved' }));
+  await assertSucceeds(deleteDoc(doc(alice(), 'coachRequests/r1')));
+});
+
 // ─── T7: Podszywanie się pod admina ──────────────────────────────
 
 test('T7: zwykły user nie opublikuje ogłoszenia globalnego', async () => {

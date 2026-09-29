@@ -1109,6 +1109,7 @@ export const views = {
       becomeSent: "Anfrage gesendet!",
       becomeSentDesc: "Der Administrator wird deine Anfrage in Kürze bearbeiten.",
       becomeAlreadySent: "Anfrage bereits gesendet — warte auf Antwort des Admins.",
+      becomeRequestPrivacy: "Der Administrator sieht deinen Namen und deine E-Mail-Adresse, um dir zu antworten. Die Anfrage wird nach der Entscheidung gelöscht, spätestens nach 6 Monaten.",
       becomeError: "Senden fehlgeschlagen. Bitte erneut versuchen."
     },
     tournament: {

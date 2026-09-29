@@ -1126,6 +1126,7 @@ export const views = {
       becomeSent: "Zgłoszenie wysłane!",
       becomeSentDesc: "Administrator rozpatrzy Twoje zgłoszenie wkrótce.",
       becomeAlreadySent: "Zgłoszenie już wysłane — czekaj na odpowiedź admina.",
+      becomeRequestPrivacy: "Administrator zobaczy Twoje imię i nazwisko oraz adres e-mail, żeby Ci odpowiedzieć. Prośba zostanie usunięta po decyzji, najpóźniej po 6 miesiącach.",
       becomeError: "Błąd wysyłania. Spróbuj ponownie."
     },
     tournament: {

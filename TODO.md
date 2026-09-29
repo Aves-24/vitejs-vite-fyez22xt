@@ -623,11 +623,17 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
             **Do sprawdzenia na żywo:** stara prywatna notatka nadal widoczna
             u siebie (Statystyki + Dziennik), u trenera jej nie ma;
             nowa prywatna → to samo; zmiana prywatna ↔ udostępniona w Statystykach.
-      - [ ] 🟠 `coachRequests` (imię, **e-mail**, liczba uczniów) — nieopisane
-            w politykach i NIE kasowane przy usuwaniu konta (reguła: delete
-            tylko admin). Do zrobienia: delete przez właściciela + kasowanie
-            w `PrivacySection` + akapit w 3 politykach (cel, art. 6 ust. 1
-            lit. b, okres przechowywania) → v1.4.
+      - [x] 🟠 `coachRequests` (imię, **e-mail**, liczba uczniów) — były
+            nieopisane w politykach i NIE kasowane przy usuwaniu konta.
+            Naprawione 2026-09-29: polityki **v1.4** (§2.4, PL/DE/EN: art. 6
+            ust. 1 lit. b, widzi tylko admin, do decyzji / max 6 miesięcy),
+            informacja pod przyciskiem prośby, `expiresAt` = +183 dni (TTL),
+            reguła: delete przez właściciela + whitelist pól, kasowanie
+            w `PrivacySection` i w eksporcie danych, testy (97/97).
+            Wersja zgody zostaje 1.1 (podstawa to umowa, nie zgoda).
+            **Obowiązek admina (ręcznie, do Cloud Functions):** po decyzji
+            skasować prośbę w konsoli Firestore — polityka obiecuje „do decyzji”.
+            Stare prośby sprzed zmiany nie mają `expiresAt` — skasować ręcznie.
 
       ### 📜 AGB / Nutzungsbedingungen / Regulamin — DECYZJA 2026-09-29
       **Piszemy na końcu, gdy zakres aplikacji będzie znany** (decyzja usera).
@@ -772,12 +778,12 @@ Kolejność w dniu przejścia:
        progi 50/90/100 %.
 3. [ ] Kontrola przed TTL: zarejestrowane konta (w tym byli goście) NIE mogą
        mieć `expiresAt` w `users`/`sessions` — inaczej TTL je skasuje.
-4. [ ] **8 polityk TTL** na `expiresAt` (collection group): `users`, `sessions`,
+4. [ ] **9 polityk TTL** na `expiresAt` (collection group): `users`, `sessions`,
        `tournaments`, `dailyStats`, `private`, `scores`, `privateNotes`,
-       `sessionNotes` (C36, 2026-09-29).
+       `sessionNotes`, `coachRequests` (oba C36, 2026-09-29).
        Cloud Shell:
        ```bash
-       for c in users sessions tournaments dailyStats private scores privateNotes sessionNotes; do
+       for c in users sessions tournaments dailyStats private scores privateNotes sessionNotes coachRequests; do
          gcloud firestore fields ttls update expiresAt --collection-group=$c --enable-ttl --project=grotx-fb8f8 --async
        done
        ```
@@ -808,9 +814,9 @@ Kolejność w dniu przejścia:
       3. Weryfikacja: trener widzi dane uczniów, w tym **małoletnich** (C22).
          Dziś chroni to tylko akceptacja zaproszenia przez ucznia. Czy wymagać
          czegoś więcej (klub, licencja trenerska)?
-      4. RODO: `coachRequests` trzyma e-mail (od C21 e-mail celowo NIE leży
-         w `users/{uid}`), prośby nigdy się nie kasują — retencja do ustalenia;
-         polityka prywatności musi to opisać.
+      4. ~~RODO: `coachRequests` trzyma e-mail, prośby nigdy się nie kasują~~
+         ✅ 2026-09-29 (C36): opisane w politykach v1.4, max 6 miesięcy (TTL),
+         kasowane z kontem.
       5. Technicznie: `newCoachRequests` rośnie bez końca na jednym dokumencie
          (limit 1 MB), a UID admina zaszyty w kodzie i regułach — jeden admin
          na sztywno.
@@ -1804,7 +1810,7 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
       tło #073a27, kropka #fed33e, ten sam układ co icon-192), ostra 512×512
 - [x] klauzula o małoletnich — już jest: §6 „Osoby niepełnoletnie” w 3 politykach (16 lat, zgoda opiekuna + e-mail, DOB niewidoczna dla trenera, wycofanie przez usunięcie konta); sprawdzone z kodem 2026-09-25
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
-- [ ] TTL trybu gościa — **8 polityk** (+`sessionNotes`, C36) (Firestore → TTL, pole `expiresAt`,
+- [ ] TTL trybu gościa — **9 polityk** (+`sessionNotes`, `coachRequests`, C36) (Firestore → TTL, pole `expiresAt`,
       grupy kolekcji): `users`, `sessions`, `tournaments`, `dailyStats`, `private`,
       `scores`, `privateNotes`. ✅ Sprawdzone 2026-09-28: **wymaga Blaze**
       (cennik Firestore: „You must enable billing to use: TTL deletes"). Odłożone

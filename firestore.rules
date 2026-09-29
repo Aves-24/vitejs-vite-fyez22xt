@@ -418,6 +418,18 @@ service cloud.firestore {
         && request.resource.data.coachSeenAt == request.time;
     }
 
+    // ─── /users/{uid}/sessionNotes/{sessionId} ──────────────────
+    //  [RODO C36] Tekst notatki treningowej oznaczonej jako „Prywatna”.
+    //  Sesję czyta trener (całą), więc prywatny tekst NIE może w niej leżeć.
+    //  Trener nie ma tu dostępu. Id = id sesji. Patrz utils/privateSessionNote.ts
+    match /users/{uid}/sessionNotes/{sessionId} {
+      allow read, delete: if isSelf(uid) || isAdmin();
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['note', 'updatedAt', 'expiresAt', 'isGuest'])
+        && request.resource.data.note is string
+        && request.resource.data.note.size() <= 2000;
+    }
+
     // ─── /users/{uid}/techShots/{shotId} ────────────────────────
     match /users/{uid}/techShots/{shotId} {
       allow read: if isSelf(uid)

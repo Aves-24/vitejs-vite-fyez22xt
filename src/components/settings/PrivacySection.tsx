@@ -22,7 +22,7 @@ interface PrivacySectionProps {
 // i dołączane do eksportu danych (RODO art. 17 i 20).
 const OWNED_SUBCOLLECTIONS = [
   'sessions', 'techShots', 'coachLog', 'dailyStats', 'scores',
-  'tournaments', 'privateNotes', 'notifications', 'studentMessages',
+  'tournaments', 'privateNotes', 'sessionNotes', 'notifications', 'studentMessages',
 ];
 
 const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {

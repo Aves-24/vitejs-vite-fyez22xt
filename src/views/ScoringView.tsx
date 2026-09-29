@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { invalidateRecentSessions } from '../lib/recentSessions';
 import { collection, doc, getDoc, getDocFromCache, setDoc, updateDoc, arrayUnion, Timestamp, onSnapshot } from 'firebase/firestore';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
+import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
@@ -559,7 +560,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         targetType: targetType,
         date: new Date().toLocaleDateString('pl-PL'),
         timestamp: sessionTimestamp,
-        note: sessionNote,
+        // [RODO C36] Prywatna notatka NIE trafia do sesji (czytelnej dla
+        // trenera) — tekst idzie do sessionNotes, patrz utils/privateSessionNote.ts
+        note: sessionNoteField(sessionNote, isNotePublic),
         isNotePublic: isNotePublic,
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
         ...(focusSnap ? { focus: focusSnap } : {}),
@@ -603,6 +606,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       // Odrzucenie sesji przez serwer rzuca tutaj — trening zostaje na ekranie,
       // a XP nie jest doliczane. Bez zasiegu: 'queued', profil idzie za sesja.
       await sessionWrite;
+
+      if (!isNotePublic && sessionNote) {
+        settleWrite(writePrivateSessionNote(userId, sessionRef.id, sessionNote, false))
+          .catch(e => console.error('Błąd zapisu prywatnej notatki:', e));
+      }
 
       // Profil osobno od sesji: jego odrzucenie nie moze zabrac zapisanego treningu.
       settleWrite(updateDoc(userRef, {

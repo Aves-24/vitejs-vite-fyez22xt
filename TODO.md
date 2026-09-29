@@ -609,6 +609,104 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
       **Uwaga:** to ustalenia z czytania plików, nie porada prawna — całość
       i tak idzie do weryfikacji przez prawnika (patrz C1, otwarty punkt).
 
+      **Przegląd kodu 2026-09-29 — polityka vs. rzeczywistość:**
+      - [x] 🔴 Notatka treningowa „Prywatna” (`isNotePublic: false`) była
+            ukryta tylko w UI — reguła sesji dawała trenerowi odczyt całego
+            dokumentu z polem `note`. Naprawione 2026-09-29: tekst prywatnej
+            notatki leży w `users/{uid}/sessionNotes/{sessionId}` (tylko
+            właściciel), migracja starych notatek przy logowaniu ucznia
+            (`utils/privateSessionNote.ts`). Test reguł C36 (94/94).
+            **KOLEJNOŚĆ WDROŻENIA: najpierw reguły**
+            (`npx firebase deploy --only firestore:rules --project grotx-fb8f8`),
+            potem aplikacja — inaczej zapis prywatnej notatki zostanie
+            odrzucony, a sesja zapisze się z pustą notatką.
+            **Do sprawdzenia na żywo:** stara prywatna notatka nadal widoczna
+            u siebie (Statystyki + Dziennik), u trenera jej nie ma;
+            nowa prywatna → to samo; zmiana prywatna ↔ udostępniona w Statystykach.
+      - [ ] 🟠 `coachRequests` (imię, **e-mail**, liczba uczniów) — nieopisane
+            w politykach i NIE kasowane przy usuwaniu konta (reguła: delete
+            tylko admin). Do zrobienia: delete przez właściciela + kasowanie
+            w `PrivacySection` + akapit w 3 politykach (cel, art. 6 ust. 1
+            lit. b, okres przechowywania) → v1.4.
+
+      ### 📜 AGB / Nutzungsbedingungen / Regulamin — DECYZJA 2026-09-29
+      **Piszemy na końcu, gdy zakres aplikacji będzie znany** (decyzja usera).
+      **Twardy termin: przed PIERWSZYM z: publikacja w sklepach, włączenie
+      płatności (Stripe/IAP), publiczny start.** Do tego czasu przy każdej
+      nowej funkcji dopisujemy tu linijkę „co to znaczy dla AGB”.
+      Trzy wersje językowe, każda pod swoje prawo (DE wiążąca, bo usługodawca
+      ma siedzibę w DE; PL i EN — tłumaczenia z uwzględnieniem ochrony
+      konsumenta w kraju zamieszkania, art. 6 ust. 2 Rzym I).
+      ⚠️ Poniższe to lista tematów do rozmowy z prawnikiem, nie porada prawna.
+
+      **Tematy wynikające z funkcji, które JUŻ są:**
+      - [ ] Zakres usługi: dziennik treningowy, statystyki, kalendarz, Delay
+            Mirror (nagranie zostaje w telefonie), tryb offline — bez gwarancji
+            dostępności, zmiany funkcji zastrzeżone (z granicami §327r BGB).
+      - [ ] Konto: rejestracja, prawdziwe dane, jedno konto na osobę,
+            bezpieczeństwo hasła, **konto gościa** (dane kasowane po terminie
+            — TTL, patrz DZIEŃ BLAZE), usunięcie konta w każdej chwili.
+      - [ ] **Trener↔uczeń:** relacja tylko za obustronną zgodą; trener
+            odpowiada za treść swoich notatek, planów i wiadomości; GROT-X
+            nie jest stroną umowy trener–uczeń (odpłatne lekcje poza aplikacją);
+            trener nie może używać danych ucznia poza aplikacją. „Trainer
+            werden” — brak roszczenia o przyznanie roli, limit uczniów.
+      - [ ] **Pojedynki / World / leaderboard:** wyniki wpisywane przez
+            użytkowników bez weryfikacji (C43.3), zakaz oszukiwania, prawo
+            do skasowania wyniku i wykluczenia; nazwa i klub widoczne
+            publicznie; zakaz obraźliwych nazw.
+      - [ ] Treści użytkowników (notatki, wiadomości, nazwy): zakaz treści
+            bezprawnych, zgłaszanie i usuwanie — **DSA (Rozp. 2022/2065)
+            art. 14**: regulamin musi opisać ograniczenia treści i moderację;
+            art. 11/12 punkt kontaktowy; art. 16 zgłaszanie treści.
+      - [ ] **Małoletni:** rejestracja od 16 lat samodzielnie, młodsi za zgodą
+            rodzica (spójnie z §6 polityk, art. 8 RODO — DE i PL: 16 lat).
+            Płatne PRO: DE §§106 ff. BGB (7–17 ograniczona zdolność, §110
+            „Taschengeld”), PL art. 17–22 KC (13–18 ograniczona zdolność,
+            art. 20 umowy drobne) → płatność tylko przez rodzica/pełnoletnich.
+      - [ ] AI coach (C18): jeśli zostanie — to wskazówki, nie porada
+            trenerska/medyczna; sport na własną odpowiedzialność.
+      - [ ] Odpowiedzialność: DE §309 Nr. 7 BGB — nie wolno wyłączyć za
+            życie/zdrowie ani rażące niedbalstwo; PL art. 385³ KC i rejestr
+            klauzul niedozwolonych UOKiK; UE dyrektywa 93/13 (nieuczciwe
+            warunki) — ogólne wyłączenia „nie odpowiadamy za nic” są nieważne.
+      - [ ] Prawo właściwe i sąd: prawo niemieckie, ale bez odbierania
+            konsumentowi ochrony z kraju zamieszkania (Rzym I art. 6 ust. 2);
+            klauzula o sądzie wobec konsumenta nieważna (Bruksela Ia art. 18).
+      - [ ] Zmiany AGB: zapowiedź z wyprzedzeniem + prawo wypowiedzenia;
+            ciche „akceptujesz przez dalsze używanie” w DE nieskuteczne
+            (BGH XI ZR 26/20). Wersjonowanie jak polityka (`legalLinks.ts`).
+      - [ ] Rozstrzyganie sporów: informacja wg §36 VSBG (DE; mikrofirma
+            ≤10 osób może tylko oświadczyć, że nie uczestniczy). Platforma ODR
+            UE zamknięta 20.07.2025 — link NIE jest już potrzebny.
+
+      **Tematy, które dojdą z płatnym PRO (Stripe / In-App Purchase):**
+      - [ ] Ceny brutto z VAT (DE PAngV, PL ustawa o informowaniu o cenach),
+            przycisk „zahlungspflichtig bestellen” (§312j BGB).
+      - [ ] **Prawo odstąpienia 14 dni**: DE §§355, 356 Abs. 5 BGB, PL art. 27,
+            38 ust. 1 pkt 13 ustawy o prawach konsumenta, dyr. 2011/83 —
+            wygasa przy treściach cyfrowych tylko po wyraźnej zgodzie
+            i potwierdzeniu utraty prawa (checkbox przy zakupie). Wzór
+            pouczenia (Muster-Widerrufsbelehrung) w 3 językach.
+      - [ ] Subskrypcja: DE §309 Nr. 9 BGB (po pierwszym okresie wypowiedzenie
+            co miesiąc), **§312k BGB przycisk „Verträge hier kündigen”** na
+            stronie; okres próbny 14 dni (`trialEndsAt`) — co po wygaśnięciu,
+            bez automatycznej płatności bez zgody.
+      - [ ] Treści cyfrowe: DE §§327 ff. BGB, PL art. 43a ff. ustawy o prawach
+            konsumenta, dyr. 2019/770 — obowiązek aktualizacji, reklamacja
+            (PL: tryb reklamacyjny w regulaminie).
+      - [ ] Sklepy: Apple — własne AGB albo Apple Standard EULA; w IAP zwroty
+            idą przez Apple/Google, AGB muszą to powiedzieć.
+      - [ ] Licencje trenerskie/klubowe (C26), jeśli będą — umowa B2B osobno.
+
+      **Ryzyko czekania (do rozmowy z prawnikiem):** w PL regulamin usług
+      elektronicznych jest obowiązkowy nawet dla darmowych usług (art. 8
+      UŚUDE); dla usługodawcy z siedzibą w DE zasada kraju pochodzenia
+      (dyr. 2000/31) raczej przesuwa to na prawo DE, ale umowy konsumenckie
+      są wyjątkiem. W DE darmowe konto to też umowa („płacenie danymi”,
+      §312 Abs. 1a BGB). Przy małej grupie testowej ryzyko niskie — przy
+      publicznym starcie już nie.
+
 ## 🟠 Priorytet 2 — Bezpieczeństwo (rules hardening, szybkie)
 
 - [x] **C7. Rules: walidacja `trialEndsAt`** ✅ (validTrialEndsAt — max now+31 dni,
@@ -674,11 +772,12 @@ Kolejność w dniu przejścia:
        progi 50/90/100 %.
 3. [ ] Kontrola przed TTL: zarejestrowane konta (w tym byli goście) NIE mogą
        mieć `expiresAt` w `users`/`sessions` — inaczej TTL je skasuje.
-4. [ ] **7 polityk TTL** na `expiresAt` (collection group): `users`, `sessions`,
-       `tournaments`, `dailyStats`, `private`, `scores`, `privateNotes`.
+4. [ ] **8 polityk TTL** na `expiresAt` (collection group): `users`, `sessions`,
+       `tournaments`, `dailyStats`, `private`, `scores`, `privateNotes`,
+       `sessionNotes` (C36, 2026-09-29).
        Cloud Shell:
        ```bash
-       for c in users sessions tournaments dailyStats private scores privateNotes; do
+       for c in users sessions tournaments dailyStats private scores privateNotes sessionNotes; do
          gcloud firestore fields ttls update expiresAt --collection-group=$c --enable-ttl --project=grotx-fb8f8 --async
        done
        ```
@@ -1705,7 +1804,7 @@ w `SessionSetup.tsx`, `SettingsView.tsx` i `StudentProfileView.tsx`.
       tło #073a27, kropka #fed33e, ten sam układ co icon-192), ostra 512×512
 - [x] klauzula o małoletnich — już jest: §6 „Osoby niepełnoletnie” w 3 politykach (16 lat, zgoda opiekuna + e-mail, DOB niewidoczna dla trenera, wycofanie przez usunięcie konta); sprawdzone z kodem 2026-09-25
 - [x] stopka „nie zastępuje porady prawnej" usunięta z `public/legal/*.html` (2026-09-25)
-- [ ] TTL trybu gościa — **7 polityk** (Firestore → TTL, pole `expiresAt`,
+- [ ] TTL trybu gościa — **8 polityk** (+`sessionNotes`, C36) (Firestore → TTL, pole `expiresAt`,
       grupy kolekcji): `users`, `sessions`, `tournaments`, `dailyStats`, `private`,
       `scores`, `privateNotes`. ✅ Sprawdzone 2026-09-28: **wymaga Blaze**
       (cennik Firestore: „You must enable billing to use: TTL deletes"). Odłożone

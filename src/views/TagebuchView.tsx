@@ -981,7 +981,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       {!composerOpen && !focusEditing && !openMessageCoach && createPortal(
         <button
           onClick={openComposer}
-          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] w-12 h-12 rounded-full bg-[#0a3a2a] text-[#fed33e] shadow-lg shadow-black/25 flex items-center justify-center active:scale-90 transition-all"
+          // Prawy brzeg KOLUMNY aplikacji (max-w-md = 28rem), nie okna — na
+          // komputerze `right-4` lądowało przy krawędzi ekranu (user 2026-10-14).
+          className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] w-12 h-12 rounded-full bg-[#0a3a2a] text-[#fed33e] shadow-lg shadow-black/25 flex items-center justify-center active:scale-90 transition-all"
           aria-label={t('tagebuch.newNote')}
         >
           <span className="material-symbols-outlined text-[26px]">add</span>

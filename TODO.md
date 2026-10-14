@@ -1744,6 +1744,14 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       treningu dosyłany wynik z niedokończoną serią. Goście już wcześniej
       szli raz na serię. Przejście na Realtime Database (sugestia
       znajomego) odłożone — przy tej liczbie zapisów koszty są groszowe.
+- [ ] **C47. Po deployu: powrót na ten sam ekran (51bc3af, 2026-10-14).** Zgłoszenie
+      usera: „Vollständiges Schülerprofil” tuż po deployu „wylogowało” i wrzuciło na Home.
+      Przyczyna: stara wersja prosiła o chunk, którego serwer już nie ma → goły reload.
+      Teraz `utils/reloadRestore.ts` (plansza „Aktualisiere GROT-X…”, widok + uczeń
+      w sessionStorage 60 s) + `swUpdate.reloadToLatest` (najpierw włącza nowy SW).
+      - [ ] **Do sprawdzenia na żywo:** mieć nową wersję → aplikacja otwarta → deploy
+            (np. pusty commit) → otworzyć widok nieużywany od startu (profil ucznia)
+            → plansza „Aktualisiere…” → ląduje na profilu tego ucznia, nie na Home.
 - [ ] **C46. Nowe rynki (CZ, FR, UK, USA) — plan z 2026-10-14.** ⚠️ Orientacja,
       nie porada prawna — przed startem w danym kraju sprawdzić z prawnikiem /
       pakietem prawnym (IT-Recht Kanzlei, Händlerbund, Trusted Shops — może

@@ -1686,7 +1686,7 @@ export const views = {
   coachInvite: {
     title: "Zaproszenie trenera",
     message: "{{name}} chce Cię obserwować jako trener.",
-    desc: "Akceptując, udostępniasz trenerowi swoje imię i nazwisko, klub, sprzęt, kategorię wiekową oraz wszystkie sesje strzeleckie, statystyki i zawody. Trener nie zobaczy Twojej daty urodzenia, adresu e-mail ani notatek prywatnych. Dostęp możesz cofnąć w każdej chwili w Ustawieniach.",
+    desc: "Po akceptacji trener zobaczy informacje o Tobie: imię i nazwisko, klub, sprzęt i kategorię wiekową oraz wszystkie treningi, statystyki i zawody. Możecie też kontaktować się w aplikacji – trener może zostawiać Ci wiadomości, notatki i fokus treningowy. Trener nie zobaczy Twojej daty urodzenia, adresu e-mail ani notatek prywatnych. Połączenie możesz zakończyć w każdej chwili w Ustawieniach.",
     accept: "Akceptuj",
     reject: "Odrzuć",
     unknownCoach: "Trener",

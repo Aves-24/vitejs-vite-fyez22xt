@@ -1654,7 +1654,7 @@ export const views = {
   coachInvite: {
     title: "Coach invitation",
     message: "{{name}} wants to follow you as a coach.",
-    desc: "By accepting, you share your first and last name, your club, your equipment, your age class and all your shooting sessions, statistics and tournaments with the coach. The coach cannot see your date of birth, e-mail address or private notes. You can revoke this access anytime in Settings.",
+    desc: "Once you accept, the coach can see this information about you: first and last name, club, equipment and age class, plus all your training sessions, statistics and tournaments. You can also communicate in the app – the coach can leave you messages, notes and a training focus. The coach cannot see your date of birth, e-mail address or private notes. You can end the connection anytime in Settings.",
     accept: "Accept",
     reject: "Reject",
     unknownCoach: "Coach",

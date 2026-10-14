@@ -299,6 +299,7 @@ export const views = {
     cancel: "Abbrechen",
     delete: "Löschen",
     deleteNoteTitle: "Notiz löschen?",
+    deleteEntryTitle: "Eintrag löschen?",
     saveError: "Notiz konnte nicht gespeichert werden. Versuch es noch einmal.",
     mic: "Mikrofon",
     recording: "Aufnahme…",

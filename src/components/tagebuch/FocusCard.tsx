@@ -331,8 +331,11 @@ export function SessionFocusCard({ session }: { session: any }) {
 }
 
 /** Wpis na osi czasu dziennika: fokus ukończony (komplet kropek) albo zakończony. */
-export function FocusMilestoneCard({ milestone, time }: { milestone: FocusMilestone; time: string }) {
+// onDelete (user 2026-10-14): wpisy z testów / błędnie zaliczone fokusy
+// dało się wcześniej usunąć tylko z konsoli.
+export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: FocusMilestone; time: string; onDelete?: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
+  const [confirm, setConfirm] = useState(false);
   const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
   const dots = milestone.step !== undefined && !!milestone.goal;
   return (
@@ -344,6 +347,15 @@ export function FocusMilestoneCard({ milestone, time }: { milestone: FocusMilest
           {milestone.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}`}
         </span>
         {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
+        {onDelete && (
+          <button
+            onClick={() => setConfirm(v => !v)}
+            className={`shrink-0 -mr-1 active:scale-90 transition-all ${confirm ? 'text-red-400' : 'text-amber-300 hover:text-red-400'}`}
+            aria-label={t('tagebuch.delete')}
+          >
+            <span className="material-symbols-outlined text-[16px]">delete</span>
+          </button>
+        )}
       </div>
       <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(milestone, t)}</p>
       {milestone.text && milestone.topic && (
@@ -353,6 +365,17 @@ export function FocusMilestoneCard({ milestone, time }: { milestone: FocusMilest
         {dots && <FocusDots count={milestone.step!} goal={milestone.goal!} small light />}
         <span className="text-[10px] font-bold text-amber-700">{fmt(milestone.since)} – {fmt(milestone.endedAt)}</span>
       </div>
+      {confirm && onDelete && (
+        <div className="flex items-center gap-2 mt-2">
+          <span className="text-[10px] font-black text-red-500 flex-1">{t('tagebuch.deleteEntryTitle')}</span>
+          <button onClick={() => setConfirm(false)} className="px-3 py-1 bg-gray-100 text-gray-500 rounded-lg font-black text-[9px] uppercase tracking-widest">
+            {t('tagebuch.cancel')}
+          </button>
+          <button onClick={() => onDelete()} className="px-3 py-1 bg-red-500 text-white rounded-lg font-black text-[9px] uppercase tracking-widest">
+            {t('tagebuch.delete')}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

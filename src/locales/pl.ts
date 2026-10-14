@@ -313,6 +313,7 @@ export const views = {
     cancel: "Anuluj",
     delete: "Usuń",
     deleteNoteTitle: "Usunąć notatkę?",
+    deleteEntryTitle: "Usunąć wpis?",
     saveError: "Nie udało się zapisać notatki. Spróbuj ponownie.",
     mic: "Mikrofon",
     recording: "Nagrywanie…",

@@ -445,14 +445,15 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
         <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
           <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
         </span>
-        <span className="min-w-0">
+        <span className="min-w-0 flex-1">
           <span className="flex items-center gap-1.5 min-w-0">
             <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
             <InsightBadge insight={insight} />
+            {/* Godzina po prawej, jak we wpisach fokusu (user 2026-10-14). */}
+            <span className="flex-1" />
+            {time && <span className="shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
           </span>
-          <span className="block text-[10px] font-bold text-gray-500 truncate">
-            {time ? `${time} · ` : ''}{stats}
-          </span>
+          <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
           {insight && !session.isTech && <InsightLine insight={insight} />}
         </span>
       </span>

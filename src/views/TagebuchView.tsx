@@ -35,6 +35,8 @@ import {
 // zostaje do końca tej wizyty — jeden system zamiast osobnego odhaczania.
 
 const PAGE = 50;
+// Znacznik usuniętego wpisu fokusu w privateNotes (patrz deleteMilestone).
+const MILESTONE_HIDDEN = 'focusMilestoneHidden';
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
 type Filter = 'all' | 'coach' | 'mine';
@@ -303,7 +305,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             coachTopics: data.coachTopics || [],
           };
         }));
-        setNotes(nSnap.docs.map(d => {
+        // Znacznik usuniętego wpisu fokusu (deleteMilestone) — nie pokazujemy.
+        setNotes(nSnap.docs.filter(d => d.data().kind !== MILESTONE_HIDDEN).map(d => {
           const data = d.data();
           return {
             id: d.id,
@@ -350,6 +353,21 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       ? { ...x, note: clean, isNotePublic: true, editCount: x.editCount + 1, topics: topics.length ? mergedTopics : x.topics }
       : x));
   }, [userId, addPrivateNote]);
+
+  // Usunięcie wpisu fokusu z osi czasu. Sam deleteDoc nie wystarczy: efekt
+  // kamieni milowych odtworzyłby wpis zakończonego fokusu przy następnym
+  // otwarciu (sprawdza tylko, czy dokument istnieje). Zostawiamy więc pod tym
+  // samym id znacznik MILESTONE_HIDDEN — reguły pozwalają create, nie update.
+  const deleteMilestone = useCallback(async (id: string) => {
+    try {
+      const ref = doc(db, `users/${userId}/privateNotes/${id}`);
+      await settleWrite(deleteDoc(ref));
+      await settleWrite(setDoc(ref, { kind: MILESTONE_HIDDEN, text: '', createdAt: serverTimestamp(), ...guestExpiryFields() }));
+      setNotes(prev => prev.filter(n => n.id !== id));
+    } catch (e) {
+      console.error('Tagebuch: błąd usuwania wpisu fokusu', e);
+    }
+  }, [userId]);
 
   const deleteNote = useCallback(async (id: string) => {
     try {
@@ -451,7 +469,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focusDots: true, focusGoal: goal } : { focusDots: false }));
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
-  }, [userId, ownFocus, activeFocus]);
+  }, [userId]);
 
   // Nowy fokus = nowa data startu, postęp od zera — także przy tym samym temacie.
   const setNewFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
@@ -463,7 +481,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     setOwnFocus(focus);
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
-  }, [userId]);
+    // ownFocus/activeFocus MUSZĄ być w zależnościach — bez nich newFocusCountFrom
+    // dostawał stan z pierwszego renderu (null) i liczył od początku dnia.
+  }, [userId, ownFocus, activeFocus]);
 
   // Edycja obecnego fokusu (tytuł + temat). Data startu zostaje, więc postęp
   // się nie resetuje. Fokus od trenera staje się przy tym własnym fokusem ucznia
@@ -952,7 +972,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       onDeleteNote={deleteNote}
                     />
                   ) : it.kind === 'milestone' ? (
-                    <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} />
+                    <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
                   ) : it.kind === 'private' ? (
                     <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
                   ) : (

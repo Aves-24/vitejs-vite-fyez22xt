@@ -299,6 +299,7 @@ export const views = {
     cancel: "Cancel",
     delete: "Delete",
     deleteNoteTitle: "Delete note?",
+    deleteEntryTitle: "Delete entry?",
     saveError: "Couldn't save the note. Try again.",
     mic: "Microphone",
     recording: "Recording…",

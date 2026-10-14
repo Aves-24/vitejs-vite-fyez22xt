@@ -14,6 +14,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import CoachStudentSheet from '../components/CoachStudentSheet';
+import GroupFocusPanel, { type GroupFocus } from '../components/GroupFocusPanel';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -271,6 +272,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Rozwinięta grupa w zakładce GRUPY; 'ALL' = żadna.
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
   const [isJournalOpen, setIsJournalOpen] = useState(false);
+  // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
+  // głównie wiadomości, fokus i statystyki).
+  const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  const [coachGroupFocus, setCoachGroupFocus] = useState<Record<string, GroupFocus>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
   const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
@@ -375,6 +380,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         setCoachGroups(data.coachGroups || []);
         setStudentGroupMap(data.studentGroupMap || {});
         setGroupNotes(data.groupNotes || {});
+        setCoachGroupFocus(data.coachGroupFocus || {});
         
         const studentIds = data.students || [];
         
@@ -819,6 +825,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     setIsMessageModalOpen(true);
   };
 
+  // Po zmianie fokusu grupy: świeży odczyt (bez userData — focusGoal się zmienił).
+  const handleGroupFocusChanged = (groupId: string, next: GroupFocus | null, refreshIds: string[]) => {
+    setCoachGroupFocus(prev => {
+      const copy = { ...prev };
+      if (next) copy[groupId] = next; else delete copy[groupId];
+      return copy;
+    });
+    Promise.all(refreshIds.map(async id => {
+      try { return [id, await loadFocusState(id, true)] as const; } catch { return null; }
+    })).then(list => setStudentFocus(prev => ({ ...prev, ...Object.fromEntries(list.filter(Boolean) as [string, FocusState][]) })));
+  };
+
   const closeMessageModal = () => {
     setIsMessageModalOpen(false);
     if (messageGroupName !== null) {
@@ -966,10 +984,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         coachGroups: updatedGroups,
         studentGroupMap: newMap,
         groupNotes: newNotes,
+        [`coachGroupFocus.${groupId}`]: deleteField(),
       });
       setCoachGroups(updatedGroups);
       setStudentGroupMap(newMap);
       setGroupNotes(newNotes);
+      setCoachGroupFocus(prev => { const next = { ...prev }; delete next[groupId]; return next; });
       setActiveGroup('ALL');
       setSelectedGroupId(null);
       setConfirmDeleteGroup(null);
@@ -1175,9 +1195,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const renderStudentList = (list: any[], title: string) => (
     <div>
       <div className="flex items-center justify-between mb-3 ml-2 pr-1">
-        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-          {title} ({list.length})
-        </h2>
+        {/* Bez tytułu w zwijanej liście grupy — nagłówek sekcji już go ma. */}
+        {title ? (
+          <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+            {title} ({list.length})
+          </h2>
+        ) : <span />}
         {list.length > 0 && (isSelecting ? (
           <div className="flex items-center gap-3">
             <button
@@ -1736,7 +1759,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   onClick={() => {
                     // W trybie wyboru klik zaznacza (jedna grupa naraz), poza nim rozwija.
                     if (isGroupSelecting) { setSelectedGroupId(isPicked ? null : group.id); return; }
-                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsJournalOpen(false);
+                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsJournalOpen(false); setIsGroupListOpen(false);
                   }}
                   className="px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
                 >
@@ -1805,7 +1828,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
                 {isOpen && (
                   <div className="px-3 pb-3 pt-2.5 border-t border-gray-100 space-y-3">
-                    {renderStudentList(members, t('coachDashboard.groupList'))}
+                    <GroupFocusPanel
+                      groupId={group.id}
+                      members={members}
+                      coachId={userId}
+                      groupFocus={coachGroupFocus[group.id]}
+                      studentFocus={studentFocus}
+                      onChanged={(next, ids) => handleGroupFocusChanged(group.id, next, ids)}
+                      showToast={showToast}
+                    />
+
+                    <CollapsibleSection
+                      label={t('coachDashboard.groupList')}
+                      open={isGroupListOpen}
+                      onToggle={() => setIsGroupListOpen(o => !o)}
+                      summary={t('coachDashboard.studentsCount', { count: members.length })}
+                    >
+                    {renderStudentList(members, '')}
 
                     {members.length < students.length && !isSelecting && (
                       <button
@@ -1818,6 +1857,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         <span className="material-symbols-outlined text-[20px]">person_add</span>
                       </button>
                     )}
+                    </CollapsibleSection>
 
                     {/* Dziennik grupy — tylko do czytania (i kasowania wpisu „×").
                         Nowy wpis dodaje się z paska „Wybierz". Bez wpisów sekcji nie ma. */}

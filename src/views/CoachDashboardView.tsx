@@ -253,6 +253,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isSelecting, setIsSelecting] = useState(false);
   const exitSelecting = () => { setIsSelecting(false); setSelectedStudents([]); };
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  // Wiadomość wysłana z karty grupy (✉) — nazwa w oknie; po zamknięciu
+  // bez wysyłki zaznaczenie wraca do pustego, bo trener niczego nie zaznaczał.
+  const [messageGroupName, setMessageGroupName] = useState<string | null>(null);
   const [msgTitle, setMsgTitle] = useState('');
   const [msgContent, setMsgContent] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
@@ -791,6 +794,33 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const studentsOfGroup = (groupId: string) =>
     students.filter(s => (studentGroupMap[s.id] || []).includes(groupId));
 
+  // Puls grupy na zwiniętej karcie: kto trenował w 7 dni, zmiana formy
+  // (ostatni trening vs poprzedni na tym samym dystansie), nieaktywni.
+  const groupPulse = (members: any[]) => {
+    const weekCutoff = Date.now() - 7 * DAY_MS;
+    return {
+      active: members.filter(s => (s.exactLastActivity || 0) >= weekCutoff).length,
+      up: members.filter(s => formCompare[s.id]?.dir === 'up').length,
+      down: members.filter(s => formCompare[s.id]?.dir === 'down').length,
+      inactive: members.filter(isInactive).length,
+    };
+  };
+
+  const openGroupMessage = (group: { name: string }, members: any[]) => {
+    exitSelecting();
+    setSelectedStudents(members.map(s => s.id));
+    setMessageGroupName(group.name);
+    setIsMessageModalOpen(true);
+  };
+
+  const closeMessageModal = () => {
+    setIsMessageModalOpen(false);
+    if (messageGroupName !== null) {
+      setSelectedStudents([]);
+      setMessageGroupName(null);
+    }
+  };
+
   // „Anna Kowalska, Jan Nowak +2" — kogo dotyczy akcja na zaznaczonych.
   const namesOf = (ids: string[]) => {
     const names = ids
@@ -852,6 +882,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       
       showToast(t('coachDashboard.toastMsgSent'));
       setIsMessageModalOpen(false);
+      setMessageGroupName(null);
       setSelectedStudents([]);
       setIsSelecting(false);
       setMsgTitle('');
@@ -1699,6 +1730,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             const latestNote = [...notes].sort((a, b) => b.timestamp - a.timestamp)[0];
             const isOpen = !isGroupSelecting && activeGroup === group.id;
             const isPicked = isGroupSelecting && selectedGroupId === group.id;
+            const pulse = groupPulse(members);
             return (
               <div
                 key={group.id}
@@ -1730,11 +1762,49 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
+                    {members.length > 0 && !isLoading && (
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span
+                          className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                            pulse.active === members.length ? 'bg-emerald-50 text-emerald-700'
+                              : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
+                          }`}
+                          title={t('coachDashboard.groupPulseActiveHint')}
+                        >
+                          {t('coachDashboard.groupPulseActive', { active: pulse.active, total: members.length })}
+                        </span>
+                        {pulse.up > 0 && (
+                          <span className="flex items-center text-[9px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
+                            <span className="material-symbols-outlined text-[13px]">trending_up</span>{pulse.up}
+                          </span>
+                        )}
+                        {pulse.down > 0 && (
+                          <span className="flex items-center text-[9px] font-black text-red-500" title={t('coachDashboard.groupPulseDown')} aria-label={`${t('coachDashboard.groupPulseDown')}: ${pulse.down}`}>
+                            <span className="material-symbols-outlined text-[13px]">trending_down</span>{pulse.down}
+                          </span>
+                        )}
+                        {pulse.inactive > 0 && (
+                          <span className="flex items-center gap-0.5 text-[9px] font-black text-amber-600" title={t('coachDashboard.groupPulseInactive')} aria-label={`${t('coachDashboard.groupPulseInactive')}: ${pulse.inactive}`}>
+                            <span className="material-symbols-outlined text-[13px]">person_off</span>{pulse.inactive}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     {!isOpen && latestNote && (
                       <p className="text-[9px] font-medium text-indigo-500 truncate mt-0.5">{latestNote.text}</p>
                     )}
                   </div>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: members.length })}</span>
+                  {!isGroupSelecting && members.length > 0 && (
+                    <button
+                      onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
+                      aria-label={t('coachDashboard.groupMessageBtn')}
+                      title={t('coachDashboard.groupMessageBtn')}
+                      className="w-8 h-8 shrink-0 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-90 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[17px]">mail</span>
+                    </button>
+                  )}
                   {!isGroupSelecting && (
                     <span className="material-symbols-outlined text-gray-400 text-[20px] shrink-0">{isOpen ? 'expand_less' : 'expand_more'}</span>
                   )}
@@ -2042,7 +2112,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       )}
 
       {isMessageModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setIsMessageModalOpen(false)}>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={closeMessageModal}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
              <div className="flex justify-between items-center mb-5">
                <div className="flex items-center gap-2">
@@ -2051,12 +2121,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                  </div>
                  <h2 className="text-lg font-black text-[#0a3a2a] leading-none">{t('coachDashboard.messageTitle')}</h2>
                </div>
-               <button onClick={() => setIsMessageModalOpen(false)} className="w-8 h-8 bg-gray-50 text-gray-500 rounded-full flex items-center justify-center active:scale-90 transition-all">
+               <button onClick={closeMessageModal} className="w-8 h-8 bg-gray-50 text-gray-500 rounded-full flex items-center justify-center active:scale-90 transition-all">
                   <span className="material-symbols-outlined text-sm">close</span>
                </button>
              </div>
 
-             <p className="text-[10px] font-bold text-gray-400 uppercase mb-4 pl-1">{t('coachDashboard.recipients')} <span className="text-[#0a3a2a] font-black">{t('coachDashboard.recipientsCount', { count: selectedStudents.length })}</span></p>
+             <p className="text-[10px] font-bold text-gray-400 uppercase mb-4 pl-1">{t('coachDashboard.recipients')} <span className="text-[#0a3a2a] font-black">{messageGroupName !== null && <>{messageGroupName} · </>}{t('coachDashboard.recipientsCount', { count: selectedStudents.length })}</span></p>
 
              <div className="space-y-3">
                <input 

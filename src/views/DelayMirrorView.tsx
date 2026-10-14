@@ -8,8 +8,8 @@ import { drawBrandOnCanvas } from './DelayMirrorBrand';
 import { getFullCodec } from '../utils/mediaCodecs';
 import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import TopicPicker from '../components/TopicPicker';
-import { FocusStrip } from '../components/tagebuch/FocusCard';
-import { useCurrentFocus } from '../utils/focus';
+import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
+import { useCurrentFocus, useFocusChoice, otherTrack, swapFocus } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 
 const DEFAULT_DELAY_S = 15;
@@ -143,6 +143,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const [techSaveError, setTechSaveError] = useState(false);
   const focusState = useCurrentFocus(uid);
   const activeFocus = focusState?.focus ?? null;
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
   const focusTopic = activeFocus?.topic || '';
 
   // Strzaly ida do licznika dnia na biezaco, nie dopiero przy wyjsciu —
@@ -1103,7 +1104,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     setTechSaveError(false);
     try {
       await saveTechnicalSession(uid, {
-        arrows: techArrows, note: techNote.trim(), topics: techTopics, focusState,
+        arrows: techArrows, note: techNote.trim(), topics: techTopics, focusState, focusChoice,
         source: 'DELAY_MIRROR', fromDailyCounter: syncedRef.current,
       });
       resetTech();
@@ -1469,8 +1470,10 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const techTopicsAndNotes = (
     <>
       {activeFocus && focusState && (
-        <div className="mb-3">
-          <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} variant="glass" />
+        <div className="mb-3 space-y-2">
+          <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} variant="glass"
+            other={otherTrack(focusState)?.focus} onSwap={() => swapFocus(uid, focusState)} />
+          <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} dark />
         </div>
       )}
       <div className="mb-3">

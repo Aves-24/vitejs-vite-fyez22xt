@@ -2,7 +2,7 @@ import { collection, doc, increment, serverTimestamp, Timestamp, updateDoc, writ
 import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
 import { settleWrite } from './offlineWrite';
-import { sessionFocusFields, FocusState } from './focus';
+import { sessionFocusFields, chosenFocusTopics, FocusState, type FocusChoice } from './focus';
 import { guestExpiryFields } from './guestMode';
 
 function invalidateStatsCache(userId: string) {
@@ -36,16 +36,20 @@ interface TechSessionInput {
   note: string;
   topics: string[];
   focusState: FocusState | null;
+  /** [DWA FOKUSY] Chipy przy zapisie — pod jakie fokusy idzie trening. */
+  focusChoice?: FocusChoice;
   source?: TechSessionSource;
   /** Strzaly juz zapisane w liczniku dnia — przechodza do sesji, zeby nie liczyc ich dwa razy. */
   fromDailyCounter?: number;
 }
 
 /** Zapis treningu technicznego — wspólny dla startu treningu i Delay Mirror. */
-export async function saveTechnicalSession(userId: string, { arrows, note, topics, focusState, source, fromDailyCounter = 0 }: TechSessionInput): Promise<void> {
+export async function saveTechnicalSession(userId: string, { arrows, note, topics: pickedTopics, focusState, focusChoice, source, fromDailyCounter = 0 }: TechSessionInput): Promise<void> {
+  // Temat zaznaczonego fokusu trafia do tematów treningu (jak dawny przełącznik).
+  const topics = focusChoice ? [...new Set([...pickedTopics, ...chosenFocusTopics(focusState, focusChoice)])] : pickedTopics;
   // [ZESTAWY] Te strzały liczą się do zużycia cięciwy i strzał zestawu.
   const setupStamp = await getSetupStamp(userId);
-  const focusFields = sessionFocusFields(focusState, topics);
+  const focusFields = sessionFocusFields(focusState, topics, focusChoice);
 
   // Jeden batch: sesja i zdjecie tych samych strzal z licznika dnia wchodza
   // razem albo wcale — inaczej strona glowna pokazalaby je podwojnie.

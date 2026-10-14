@@ -13,7 +13,7 @@ import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
-import { useCurrentFocus } from '../utils/focus';
+import { useCurrentFocus, otherTrack, swapFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
@@ -1312,6 +1312,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               goal={focusState.goal}
               count={focusState.count}
               onOpen={() => onNavigate?.('MY_COACH')}
+              other={otherTrack(focusState)?.focus}
+              onSwap={() => swapFocus(userId, focusState)}
             />
           </div>
         )}

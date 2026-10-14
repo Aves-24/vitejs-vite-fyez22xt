@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readSessionFocus, type ActiveFocus, type FocusMilestone, type SessionFocus } from '../../utils/focus';
+import { readSessionFocus, orderedTracks, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 
 // --- FOKUS ---
@@ -9,6 +9,86 @@ import { topicLabel } from '../../constants/trainingTopics';
 
 export function focusTitle(focus: Pick<ActiveFocus, 'text' | 'topic'>, t: (k: string) => string): string {
   return focus.text || (focus.topic ? topicLabel(focus.topic, t) : '');
+}
+
+/**
+ * [DWA FOKUSY] Kropka drugiego fokusu po prawej stronie paska (user 2026-10-14):
+ * niebieska z gwizdkiem = fokus trenera, żółta = własny. Tap zamienia fokusy
+ * miejscami. Leży NAD kartą (absolute), bo karta sama jest przyciskiem.
+ */
+export function OtherFocusDot({ focus, onSwap, small = false, className = '' }: {
+  focus: ActiveFocus;
+  onSwap: () => void;
+  small?: boolean;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const coach = focus.fromCoach;
+  const label = t(coach ? 'tagebuch.focusOtherCoach' : 'tagebuch.focusOtherOwn', { title: focusTitle(focus, t) });
+  return (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onSwap(); }}
+      aria-label={label}
+      title={label}
+      className={`${small ? 'w-6 h-6' : 'w-8 h-8'} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white shadow-md active:scale-90 transition-all ${
+        coach ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]'
+      } ${className}`}
+    >
+      <span className={`material-symbols-outlined ${small ? 'text-[13px]' : 'text-[17px]'}`}>{coach ? 'sports' : 'person'}</span>
+    </button>
+  );
+}
+
+/**
+ * [DWA FOKUSY] Pod jaki fokus idzie ten trening (user 2026-10-14): domyślnie
+ * ten z góry, oba = jeden trening pod oba. Przy jednym fokusie — jeden chip
+ * (zamiast dawnego przełącznika).
+ */
+export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
+  state: FocusState;
+  choice: FocusChoice;
+  onChange: (next: FocusChoice) => void;
+  dark?: boolean;
+}) {
+  const { t } = useTranslation();
+  const tracks = orderedTracks(state);
+  if (!tracks.length) return null;
+  const none = !tracks.some(tr => choice[tr.focus.fromCoach ? 'coach' : 'own']);
+  return (
+    <div>
+      <p className={`text-[9px] font-black uppercase tracking-widest mb-1.5 ${dark ? 'text-white/60' : 'text-gray-400'}`}>{t('tagebuch.focusChoiceLabel')}</p>
+      <div className="flex flex-wrap gap-1.5">
+        {tracks.map(tr => {
+          const side = tr.focus.fromCoach ? 'coach' : 'own';
+          const on = choice[side];
+          const onCls = side === 'coach' ? 'bg-sky-50 border-sky-400 text-[#0a3a2a]' : 'bg-amber-50 border-amber-400 text-[#0a3a2a]';
+          const offCls = dark ? 'bg-white/5 border-white/20 text-white/50' : 'bg-white border-gray-200 text-gray-400';
+          const icon = on ? 'check' : side === 'coach' ? 'sports' : 'person';
+          return (
+            <button
+              key={side}
+              type="button"
+              role="checkbox"
+              aria-checked={on}
+              onClick={() => onChange({ ...choice, [side]: !on })}
+              className={`max-w-full flex items-center gap-1.5 border rounded-full pl-1 pr-2.5 py-1 text-left active:scale-95 transition-all ${on ? onCls : offCls}`}
+            >
+              <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
+                on ? (side === 'coach' ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]') : (dark ? 'bg-white/10 text-white/40' : 'bg-gray-100 text-gray-300')
+              }`}>
+                <span className="material-symbols-outlined text-[13px]">{icon}</span>
+              </span>
+              <span className="text-[11px] font-black truncate">
+                {t(side === 'coach' ? 'tagebuch.focusChoiceCoach' : 'tagebuch.focusChoiceOwn')}: <span className="font-bold">{focusTitle(tr.focus, t)}</span>
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {none && <p className={`text-[10px] font-bold mt-1 ${dark ? 'text-white/50' : 'text-gray-400'}`}>{t('tagebuch.focusChoiceNone')}</p>}
+    </div>
+  );
 }
 
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
@@ -129,8 +209,10 @@ export function SetFocusButton({ current, unfinished, disabled, saving, onConfir
 
 // W dzienniku pod nagłówkiem, na jasnym tle — ta sama jasnożółta karta co na
 // Home (user 2026-09-18: wyjęta z ciemnozielonego nagłówka).
-export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
+export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSwap }: {
   focus: ActiveFocus | null;
+  other?: ActiveFocus | null;   // [DWA FOKUSY] drugi fokus — kropka po prawej
+  onSwap?: () => void;
   ended?: (SessionFocus & { endedAt: number }) | null;  // zakończony „Fokus beenden” — zostaje w dzienniku
   dots: boolean;        // użytkownik włączył kropki
   goal: number;         // ile treningów do „zrobione"
@@ -189,10 +271,10 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
   }
 
   const done = dots && count >= goal;
-  return (
+  const card = (
     <button
       onClick={onEdit}
-      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'} border rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all`}
+      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pr-14' : ''} text-left active:scale-[0.99] transition-all`}
     >
       <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : 'bg-[#fed33e] text-[#0a3a2a]'} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
@@ -204,7 +286,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />
-          <span className="material-symbols-outlined text-[14px] text-amber-500">edit</span>
+          {!(other && onSwap) && <span className="material-symbols-outlined text-[14px] text-amber-500">edit</span>}
         </div>
         <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
         {focus.text && focus.topic && (
@@ -231,6 +313,13 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
       </div>
     </button>
   );
+  if (!other || !onSwap) return card;
+  return (
+    <div className="relative">
+      {card}
+      <OtherFocusDot focus={other} onSwap={onSwap} className="absolute right-3 top-1/2 -translate-y-1/2" />
+    </div>
+  );
 }
 
 /**
@@ -241,8 +330,10 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
  * W profilu ucznia trener widzi go w nagłówku jako `glass` (zielone tło
  * nagłówka), bez klikania (user 2026-09-16).
  */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card' }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap }: {
   focus: ActiveFocus;
+  other?: ActiveFocus | null;   // [DWA FOKUSY] drugi fokus — kropka po prawej
+  onSwap?: () => void;
   dots: boolean;
   goal: number;
   count: number;
@@ -260,9 +351,23 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const title = focusTitle(focus, t);
   const topic = focus.text && focus.topic ? topicLabel(focus.topic, t) : '';
 
-  const wrap = (cls: string, content: React.ReactNode) => onOpen
+  const withDot = !!(other && onSwap);
+  const pill = variant === 'pill';
+  const inner = (cls: string, content: React.ReactNode) => onOpen
     ? <button onClick={onOpen} className={`w-full flex items-center text-left active:scale-[0.99] transition-all ${cls}`}>{content}</button>
     : <div className={`w-full flex items-center text-left ${cls}`}>{content}</div>;
+  // Kropka drugiego fokusu leży nad paskiem, przed strzałką.
+  const wrap = (cls: string, content: React.ReactNode) => !withDot ? inner(cls, content) : (
+    <div className="relative">
+      {inner(`${cls} ${pill ? (onOpen ? 'pr-12' : 'pr-9') : (onOpen ? 'pr-16' : 'pr-12')}`, content)}
+      <OtherFocusDot
+        focus={other!}
+        onSwap={onSwap!}
+        small={pill}
+        className={`absolute top-1/2 -translate-y-1/2 ${pill ? (onOpen ? 'right-7' : 'right-2') : (onOpen ? 'right-9' : 'right-3')}`}
+      />
+    </div>
+  );
 
   if (variant === 'pill') {
     return wrap('gap-2 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5', (

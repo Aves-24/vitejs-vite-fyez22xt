@@ -16,8 +16,8 @@ import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, sessionFocusFields } from '../utils/focus';
-import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
+import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics } from '../utils/focus';
+import { FocusDots, focusTitle, FocusChoiceChips } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
@@ -188,8 +188,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // Fokus bez tematu liczy każdy trening sam. W Arenie się nie pokazuje.
   // `true` = z liczbą treningów — miniatura fokusu w nagłówku pokazuje kropki.
   const focusState = useCurrentFocus(battleId ? null : userId);
-  const focusTopic = focusState?.focus?.topic || '';
-  const [focusOn, setFocusOn] = useState(true);
+  // [DWA FOKUSY] Chipy „pod jaki fokus” zamiast dawnego przełącznika tematu.
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [activeBattle, setActiveBattle] = useState<any>(null);
@@ -541,8 +541,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       const userSnap = await userDocCacheFirst(userId);
       const ud = userSnap.exists() ? userSnap.data() : {};
       // [FOKUS] Migawka na stałe — widać ją później w statystykach.
-      const sessionTopics = focusTopic && focusOn ? [focusTopic] : [];
-      const focusFields = sessionFocusFields(focusState, sessionTopics);
+      const sessionTopics = chosenFocusTopics(focusState, focusChoice);
+      const focusFields = sessionFocusFields(focusState, sessionTopics, focusChoice);
 
       const sessionWrite = settleWrite(setDoc(sessionRef, {
         ...setupStamp,
@@ -964,25 +964,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               </span>
             </label>
 
-            {focusTopic && (
-              <button
-                type="button"
-                role="switch"
-                aria-checked={focusOn}
-                onClick={() => setFocusOn(v => !v)}
-                className="mt-3 w-full flex items-center gap-3 bg-white border border-emerald-100 rounded-xl px-3 py-2 text-left active:scale-[0.99] transition-all"
-              >
-                <span className="material-symbols-outlined text-[20px] text-[#b8860b] shrink-0">track_changes</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-black text-[#0a3a2a] truncate">
-                    {t('scoringView.focusToggle', { topic: topicLabel(focusTopic, t) })}
-                  </p>
-                  <p className="text-[10px] font-bold text-gray-400">{t('scoringView.focusToggleHint')}</p>
-                </div>
-                <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${focusOn ? 'bg-emerald-500' : 'bg-gray-300'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-[#fff] transition-all ${focusOn ? 'left-[18px]' : 'left-0.5'}`} />
-                </span>
-              </button>
+            {focusState?.focus && (
+              <div className="mt-3 bg-white border border-emerald-100 rounded-xl px-3 py-2">
+                <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
+              </div>
             )}
           </div>
         </div>

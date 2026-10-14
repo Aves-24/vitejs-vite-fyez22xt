@@ -5,10 +5,10 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { invalidateSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus } from '../utils/focus';
+import { useCurrentFocus, useFocusChoice, otherTrack, swapFocus } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
-import { FocusStrip } from './tagebuch/FocusCard';
+import { FocusStrip, FocusChoiceChips } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -77,6 +77,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // jest zaznaczony z góry — dla każdego, kto ma fokus; można go odznaczyć.
   const focusState = useCurrentFocus(userId);
   const activeFocus = focusState?.focus ?? null;
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
   const focusTopic = activeFocus?.topic || '';
 
   const [isSavingCounter, setIsSavingCounter] = useState(false);
@@ -254,7 +255,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
     setIsSavingTech(true);
     const count = techArrows ? parseInt(techArrows) : 0;
     try {
-      await saveTechnicalSession(userId, { arrows: count, note: techNote, topics: selectedTopics, focusState });
+      await saveTechnicalSession(userId, { arrows: count, note: techNote, topics: selectedTopics, focusState, focusChoice });
       setShowTechModal(false);
       setTechArrows('0');
       setTechNote('');
@@ -310,6 +311,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             count={focusState.count}
             onOpen={() => onNavigate?.('MY_COACH')}
             variant="pill"
+            other={otherTrack(focusState)?.focus}
+            onSwap={() => swapFocus(userId, focusState)}
           />
         )}
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
@@ -577,8 +580,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
             {/* TWÓJ FOKUS — przypomnienie; temat już zaznaczony niżej */}
             {activeFocus && focusState && (
-              <div className="mb-3">
-                <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} />
+              <div className="mb-3 space-y-2">
+                <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count}
+                  other={otherTrack(focusState)?.focus} onSwap={() => swapFocus(userId, focusState)} />
+                <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
               </div>
             )}
 

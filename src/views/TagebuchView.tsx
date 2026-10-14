@@ -18,8 +18,9 @@ import FocusModal from '../components/tagebuch/FocusModal';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
   inFocusWindow, sessionFocusRef, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
-  readFocusGoal, readFocusMilestone, readOwnFocus, resolveActiveFocus,
+  readFocusGoal, readFocusMilestone, readOwnFocus,
   readCoachGoal, readCoachFocusCleared, readSessionFocuses, trackSettings,
+  resolveFocusPair, readFocusPrimary, saveFocusPrimary, type FocusSide,
   type CoachGoal, type CoachFocusCleared,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
@@ -130,6 +131,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // [DWA FOKUSY] cele trenera (z liczbą kropek i lekcjami trenera) + zakończenie celu przez ucznia
   const [coachGoals, setCoachGoals] = useState<CoachGoal[]>([]);
   const [coachCleared, setCoachCleared] = useState<CoachFocusCleared | null>(null);
+  const [focusPrimary, setFocusPrimary] = useState<FocusSide | undefined>(undefined);
   const [focusDots, setFocusDots] = useState(false);
   const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
   const [focusEditing, setFocusEditing] = useState(false);
@@ -198,6 +200,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         const userData = userDoc.exists() ? userDoc.data() : {};
         setOwnFocus(readOwnFocus(userData));
         setCoachCleared(readCoachFocusCleared(userData));
+        setFocusPrimary(readFocusPrimary(userData));
         setFocusDots(userData.focusDots === true);
         setFocusGoal(readFocusGoal(userData));
         const list: CoachInfo[] = [];
@@ -401,10 +404,19 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- FOKUS ---
   // Nowszy wygrywa: własny fokus (albo jego zakończenie) vs ostatni cel trenera.
   const latestGoal = useMemo(() => [...coachGoals].sort((a, b) => b.ts - a.ts)[0], [coachGoals]);
-  const activeFocus = useMemo<ActiveFocus | null>(
-    () => resolveActiveFocus(ownFocus, latestGoal, coachCleared),
-    [ownFocus, latestGoal, coachCleared],
+  const focusPair = useMemo(
+    () => resolveFocusPair(ownFocus, latestGoal, coachCleared, focusPrimary),
+    [ownFocus, latestGoal, coachCleared, focusPrimary],
   );
+  const activeFocus: ActiveFocus | null = focusPair.main;
+  // [DWA FOKUSY] Tap w kropkę drugiego fokusu — zamiana miejscami.
+  const swapFocus = useCallback(() => {
+    const other = focusPair.other;
+    if (!other) return;
+    const side: FocusSide = other.fromCoach ? 'coach' : 'own';
+    setFocusPrimary(side);
+    saveFocusPrimary(userId, side).catch(e => console.error('Fokus: błąd zamiany', e));
+  }, [focusPair, userId]);
   // [DWA FOKUSY] Fokus trenera z własną liczbą treningów (goal na wpisie) —
   // kropki tego toru nie zależą od ustawień własnego fokusu.
   const { dots: trackDots, goal: trackGoal } = activeFocus
@@ -502,8 +514,12 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     const countFrom = newFocusCountFrom(ownFocus, activeFocus && !activeFocus.fromCoach ? activeFocus : null, now);
     const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: now,
       ...(countFrom !== undefined ? { countFrom } : {}) };
-    await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false }));
+    await settleWrite(updateDoc(doc(db, 'users', userId), {
+      ...(dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false }),
+      focusPrimary: deleteField(),
+    }));
     setOwnFocus(focus);
+    setFocusPrimary(undefined);
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
     // ownFocus/activeFocus MUSZĄ być w zależnościach — bez nich newFocusCountFrom
@@ -839,7 +855,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
         {/* FOKUS — pod nagłówkiem, jasnożółta karta jak na Home */}
         {!isLoading && (
-          <FocusCard focus={activeFocus} ended={endedFocus} dots={trackDots} goal={trackGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
+          <FocusCard focus={activeFocus} other={focusPair.other} onSwap={swapFocus} ended={endedFocus} dots={trackDots} goal={trackGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
         )}
 
         {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}

@@ -1749,9 +1749,12 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       Przyczyna: stara wersja prosiła o chunk, którego serwer już nie ma → goły reload.
       Teraz `utils/reloadRestore.ts` (plansza „Aktualisiere GROT-X…”, widok + uczeń
       w sessionStorage 60 s) + `swUpdate.reloadToLatest` (najpierw włącza nowy SW).
-      - [ ] **Do sprawdzenia na żywo:** mieć nową wersję → aplikacja otwarta → deploy
-            (np. pusty commit) → otworzyć widok nieużywany od startu (profil ucznia)
-            → plansza „Aktualisiere…” → ląduje na profilu tego ucznia, nie na Home.
+      - [x] ✅ 2026-10-14 sprawdzone przez usera na telefonie: deploy ze zmienionym
+            chunkiem profilu (80b38ce) → „Vollständiges Schülerprofil” → plansza
+            „Aktualisiere GROT-X…” → profil ucznia. Uwaga: pusty commit NIE nadaje
+            się do testu — identyczny build = te same nazwy chunków.
+      - [x] Przy okazji (5637374): SW nie zapisuje już index.html (rewrite "**"
+            na Firebase) w cache pod adresem brakującego chunka.
 - [ ] **C46. Nowe rynki (CZ, FR, UK, USA) — plan z 2026-10-14.** ⚠️ Orientacja,
       nie porada prawna — przed startem w danym kraju sprawdzić z prawnikiem /
       pakietem prawnym (IT-Recht Kanzlei, Händlerbund, Trusted Shops — może

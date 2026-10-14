@@ -1510,6 +1510,9 @@ export const views = {
     groupPulseDown: "Form down",
     groupPulseInactive: "Inactive (14 days without training)",
     groupMessageBtn: "Message the whole group",
+    addToGroupBtn: "Add student",
+    addToGroupTitle: "Add to group",
+    addToGroupConfirm: "Add ({{count}})",
     newEntryBtn: "New entry",
     previousEntries: "Previous entries",
     journalLimitHint: "Max. 5 entries – a sixth replaces the oldest (we'll ask first).",
@@ -1527,8 +1530,6 @@ export const views = {
     trendDown: "Form declining",
     pauseBadge: "Paused",
     pauseReminder: "Paused for a month — check in",
-    pauseKeepShort: "Keep",
-    pauseHintShort: "Pause (e.g. illness): hidden here, back once after a month. Their first session ends it.",
   },
   coachSheet: {
     close: "Close",
@@ -1569,6 +1570,8 @@ export const views = {
     pauseReminderText: "Paused for a month now. Keep pausing?",
     pauseKeep: "Keep pausing",
     pauseEnd: "End pause",
+    pauseStart: "Pause",
+    pauseStartHint: "E.g. illness or travel: no “no training” alerts, reminder after a month. Their first session ends the pause.",
   },
   studentProfile: {
     focusLoadError: "Could not load: {{parts}}",

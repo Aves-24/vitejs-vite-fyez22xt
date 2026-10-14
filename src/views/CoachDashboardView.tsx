@@ -256,6 +256,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Wiadomość wysłana z karty grupy (✉) — nazwa w oknie; po zamknięciu
   // bez wysyłki zaznaczenie wraca do pustego, bo trener niczego nie zaznaczał.
   const [messageGroupName, setMessageGroupName] = useState<string | null>(null);
+  // „+ Dodaj ucznia" w rozwiniętej grupie: do której grupy i kogo zaznaczono.
+  const [addToGroupId, setAddToGroupId] = useState<string | null>(null);
+  const [addPicked, setAddPicked] = useState<string[]>([]);
   const [msgTitle, setMsgTitle] = useState('');
   const [msgContent, setMsgContent] = useState('');
   const [isSendingMsg, setIsSendingMsg] = useState(false);
@@ -933,6 +936,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
+  const addPickedToGroup = async () => {
+    if (!addToGroupId || addPicked.length === 0) return;
+    const newMap = { ...studentGroupMap };
+    for (const id of addPicked) {
+      newMap[id] = Array.from(new Set([...(newMap[id] || []), addToGroupId]));
+    }
+    try {
+      await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
+      setStudentGroupMap(newMap);
+      setAddToGroupId(null);
+      setAddPicked([]);
+    } catch (e) {
+      console.error(e);
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
   const handleDeleteGroup = async (groupId: string) => {
     const updatedGroups = coachGroups.filter(g => g.id !== groupId);
     const newMap = { ...studentGroupMap };
@@ -1501,39 +1521,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
                 : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
               'bg-amber-50 text-amber-800 border-amber-100',
-              pauseReminderDue(s) ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => { const p = pauseOf(s); if (p) setPause(s.id, { ...p, reminded: true }); }}
-                    className="h-7 px-2 rounded-lg bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-0.5 active:scale-95 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">pause</span>
-                    {t('coachDashboard.pauseKeepShort')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPause(s.id, null)}
-                    className="h-7 w-7 rounded-lg bg-[#0a3a2a] text-white flex items-center justify-center active:scale-95 transition-all"
-                    aria-label={t('coachSheet.pauseEnd')}
-                    title={t('coachSheet.pauseEnd')}
-                  >
-                    <span className="material-symbols-outlined text-[15px]">play_arrow</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setPause(s.id, { at: Date.now() })}
-                  className="h-7 px-2 rounded-lg bg-gray-100 text-gray-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-0.5 active:scale-95 transition-all"
-                  title={t('coachDashboard.pauseHintShort')}
-                >
-                  <span className="material-symbols-outlined text-[13px]">pause</span>
-                  {t('coachDashboard.pauseBadge')}
-                </button>
-              ),
             ))}
-            <p className="text-[9px] font-bold text-gray-400 px-1 leading-snug">{t('coachDashboard.pauseHintShort')}</p>
             <button
               type="button"
               onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}
@@ -1819,6 +1807,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <div className="px-3 pb-3 pt-2.5 border-t border-gray-100 space-y-3">
                     {renderStudentList(members, t('coachDashboard.groupList'))}
 
+                    {members.length < students.length && !isSelecting && (
+                      <button
+                        type="button"
+                        onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
+                        className="w-full py-2.5 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[16px]">person_add</span>
+                        {t('coachDashboard.addToGroupBtn')}
+                      </button>
+                    )}
+
                     {/* Dziennik grupy — tylko do czytania (i kasowania wpisu „×").
                         Nowy wpis dodaje się z paska „Wybierz". Bez wpisów sekcji nie ma. */}
                     {notes.length > 0 && (
@@ -1960,6 +1959,50 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
            </div>
          </div>,
          document.body
+      )}
+
+      {addToGroupId && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setAddToGroupId(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-1">{t('coachDashboard.addToGroupTitle')}</h2>
+            <p className="text-[10px] font-black text-indigo-600 mb-4 truncate">{coachGroups.find(g => g.id === addToGroupId)?.name}</p>
+            <div className="space-y-1.5 overflow-y-auto hide-scrollbar mb-5">
+              {students
+                .filter(s => !(studentGroupMap[s.id] || []).includes(addToGroupId))
+                .sort((a, b) => `${a.firstName || ''} ${a.lastName || ''}`.localeCompare(`${b.firstName || ''} ${b.lastName || ''}`))
+                .map(s => {
+                  const picked = addPicked.includes(s.id);
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={picked}
+                      onClick={() => setAddPicked(p => picked ? p.filter(id => id !== s.id) : [...p, s.id])}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left active:scale-[0.98] transition-all ${
+                        picked ? 'bg-indigo-50 border-indigo-300' : 'bg-white border-gray-100'
+                      }`}
+                    >
+                      <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
+                        picked ? 'bg-indigo-600 text-white' : 'border-2 border-gray-200 text-transparent'
+                      }`}>
+                        <span className="material-symbols-outlined text-[16px] font-black">check</span>
+                      </span>
+                      <span className="flex-1 min-w-0 font-black text-[12px] text-[#0a3a2a] truncate">
+                        {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
+                      </span>
+                    </button>
+                  );
+                })}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setAddToGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button onClick={addPickedToGroup} disabled={addPicked.length === 0} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">
+                {t('coachDashboard.addToGroupConfirm', { count: addPicked.length })}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {managingGroupsFor && typeof document !== 'undefined' && createPortal(
@@ -2324,6 +2367,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             focusState={studentFocus[st.id]}
             pause={pauseOf(st)}
             pauseReminder={pauseReminderDue(st)}
+            onStartPause={() => setPause(st.id, { at: Date.now() })}
             onEndPause={() => setPause(st.id, null)}
             onKeepPause={() => { const p = pauseOf(st); if (p) setPause(st.id, { ...p, reminded: true }); }}
             onClose={() => setSheetStudentId(null)}

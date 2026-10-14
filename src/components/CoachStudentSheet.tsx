@@ -29,7 +29,7 @@ function toMs(v: any): number {
 interface NextStart { title: string; date: string }
 
 export default function CoachStudentSheet({
-  student, coachId, subtitle, focusState, pause, pauseReminder, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
+  student, coachId, subtitle, focusState, pause, pauseReminder, onStartPause, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
 }: {
   student: any;
   coachId: string;
@@ -39,6 +39,7 @@ export default function CoachStudentSheet({
   pause: { at: number } | null;
   /** Minął miesiąc pauzy — jedno przypomnienie. */
   pauseReminder: boolean;
+  onStartPause: () => void;
   onEndPause: () => void;
   onKeepPause: () => void;
   onClose: () => void;
@@ -182,8 +183,8 @@ export default function CoachStudentSheet({
           </button>
         </div>
 
-        {/* [PAUZA] Włącza się w sekcji „bez treningu 14+ dni" (user 2026-09-18);
-            tu tylko stan i koniec pauzy. */}
+        {/* [PAUZA] Stan i koniec pauzy. Włącza się przyciskiem na dole karty
+            (user 2026-10-14: przycisk w sekcji „bez treningu" robił zamieszanie). */}
         {pause && (
           <div className={`mt-3 rounded-xl px-3 py-2 border ${pauseReminder ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
             <p className={`text-[11px] font-bold leading-snug ${pauseReminder ? 'text-amber-800' : 'text-gray-600'}`}>
@@ -417,6 +418,20 @@ export default function CoachStudentSheet({
                 {saveError && <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachSheet.saveError')}</p>}
               </>
             )}
+          </div>
+        )}
+
+        {/* PAUZA — np. choroba, kontuzja, wyjazd */}
+        {!pause && (
+          <div className="mt-5">
+            <button
+              onClick={onStartPause}
+              className="w-full py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-[15px]">pause_circle</span>
+              {t('coachSheet.pauseStart')}
+            </button>
+            <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1 px-1">{t('coachSheet.pauseStartHint')}</p>
           </div>
         )}
 

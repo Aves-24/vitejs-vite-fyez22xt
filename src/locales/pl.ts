@@ -1539,6 +1539,9 @@ export const views = {
     groupPulseDown: "Forma w dół",
     groupPulseInactive: "Nieaktywni (14 dni bez treningu)",
     groupMessageBtn: "Wiadomość do całej grupy",
+    addToGroupBtn: "Dodaj ucznia",
+    addToGroupTitle: "Dodaj do grupy",
+    addToGroupConfirm: "Dodaj ({{count}})",
     newEntryBtn: "Nowy wpis",
     previousEntries: "Wcześniejsze wpisy",
     journalLimitHint: "Maks. 5 wpisów – szósty zastąpi najstarszy (zapytamy przed zapisem).",
@@ -1556,8 +1559,6 @@ export const views = {
     trendDown: "Forma spada",
     pauseBadge: "Pauza",
     pauseReminder: "Pauza od miesiąca — sprawdź",
-    pauseKeepShort: "Nadal",
-    pauseHintShort: "Pauza (np. choroba): uczeń znika stąd, wróci raz po miesiącu. Pierwszy trening kończy pauzę.",
   },
   coachSheet: {
     close: "Zamknij",
@@ -1598,6 +1599,8 @@ export const views = {
     pauseReminderText: "Pauza trwa już miesiąc. Nadal pauza?",
     pauseKeep: "Nadal pauza",
     pauseEnd: "Zakończ pauzę",
+    pauseStart: "Pauza",
+    pauseStartHint: "Np. choroba lub wyjazd: bez alertów „bez treningu”, przypomnienie po miesiącu. Pierwszy trening kończy pauzę.",
   },
   studentProfile: {
     focusLoadError: "Nie udało się wczytać: {{parts}}",

@@ -46,7 +46,9 @@ const shellFromHtml = [
   ...indexHtml.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="(\/[^"]+)"/g),
 ].map((m) => m[1]);
 
-const EXTRA_SHELL = ['/index.html', '/manifest.json', '/icon-192.png'];
+// icon-512: ikona splasha w zainstalowanej PWA (index.html + App.tsx) — musi być
+// offline, inaczej start na strzelnicy pokaże pusty zielony ekran.
+const EXTRA_SHELL = ['/index.html', '/manifest.json', '/icon-192.png', '/icon-512.png'];
 
 const urls = [...new Set([...EXTRA_SHELL, ...shellFromHtml])]
   .filter((u) => allFiles.includes(u.slice(1)))

@@ -52,7 +52,13 @@
     <style>
       body { background: #0a3a2a; }
       #root:empty { min-height: 100vh; background: #0a3a2a; }
+      /* Zainstalowana PWA: ta sama ikona co splash systemowy i splash w
+         App.tsx (160 px, środek ekranu) — jeden ciągły ekran startowy. */
+      @media (display-mode: standalone) {
+        #root:empty { background: #0a3a2a url(/icon-512.png) center / 160px no-repeat; }
+      }
     </style>
+    <link rel="preload" href="/icon-512.png" as="image" media="(display-mode: standalone)" />
 
     <title>GROT-X</title>
     <link rel="manifest" href="/manifest.json" />

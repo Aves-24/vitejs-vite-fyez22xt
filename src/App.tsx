@@ -58,7 +58,14 @@ export default function App() {
   const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
-  const [showSplash, setShowSplash] = useState(true); 
+  // Zainstalowana PWA: Android rysuje własny splash (ikona z manifestu na
+  // #0a3a2a). Nasz splash pokazuje wtedy tę samą ikonę w tym samym miejscu,
+  // bez animacji napisu — systemowy przechodzi w nasz niezauważalnie.
+  const [isStandalone] = useState(() =>
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+  const [showSplash, setShowSplash] = useState(!isStandalone);
   const [isDataReady, setIsDataReady] = useState(false);
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
@@ -145,11 +152,13 @@ export default function App() {
     // .animate-*-train niżej), fade 500 -> 300 ms. Razem ~770 ms.
     // Chcesz starą, wolniejszą animację? Wróć do 650 tutaj, 0.45s/0.15s
     // w keyframes i duration-500 przy fade.
+    // W trybie standalone nie ma animacji, więc nie ma na co czekać.
+    if (isStandalone) return;
     const timer = setTimeout(() => {
       setShowSplash(false);
     }, 470);
     return () => clearTimeout(timer);
-  }, []);
+  }, [isStandalone]);
 
   // [C14] Historia przeglądarki: systemowy przycisk "wstecz" (Android/PWA)
   // cofa widok zamiast zamykać aplikację. handleNavigate/handleStartSession
@@ -528,6 +537,15 @@ export default function App() {
       
       {(!isDataReady || !fadeOutSplash) && (
         <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-300 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
+           {isStandalone ? (
+             // Rozmiar musi zgadzać się z #root:empty w index.html.
+             <img
+               src="/icon-512.png"
+               alt="GROT-X"
+               className="w-[160px] h-[160px]"
+               onError={(e) => { e.currentTarget.src = '/icon-192.png'; }}
+             />
+           ) : (
            <div className="flex items-baseline relative h-20">
               <div className="animate-grot-train flex items-baseline">
                 <span className="text-5xl font-black text-white tracking-tighter leading-none">GROT-</span>
@@ -540,6 +558,7 @@ export default function App() {
                 <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[11px] shadow-sm"></div>
               </div>
            </div>
+           )}
            <style>{`
               @keyframes trainMove {
                 0% { transform: translateX(-150vw); opacity: 0; }

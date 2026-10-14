@@ -1756,7 +1756,7 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       - realny błąd: `setNewFocus` miał deps `[userId]` (stale closure) — patrz commit de10e70;
       - kosz we wpisach fokusu (znacznik `focusMilestoneHidden`, żeby wpis nie wracał),
         szara karta zakończonego fokusu, godzina treningu po prawej, plusik w kolumnie aplikacji.
-- [ ] **C47. Po deployu: powrót na ten sam ekran (51bc3af, 2026-10-14).** Zgłoszenie
+- [x] **C47. ✅ Po deployu: powrót na ten sam ekran (51bc3af, 2026-10-14).** Zgłoszenie
       usera: „Vollständiges Schülerprofil” tuż po deployu „wylogowało” i wrzuciło na Home.
       Przyczyna: stara wersja prosiła o chunk, którego serwer już nie ma → goły reload.
       Teraz `utils/reloadRestore.ts` (plansza „Aktualisiere GROT-X…”, widok + uczeń

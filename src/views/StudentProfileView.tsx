@@ -652,7 +652,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const hasAnyPrivateNote = privateNotes.some(n => n.trim().length > 0);
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
+    // data-view: znacznik widoku (diagnostyka/testy; przy okazji C47 — zmiana
+    // hasha chunka do testu powrotu na ekran po deployu).
+    <div data-view="student-profile" className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
       
       <ViewHeader
         onBack={() => onNavigate('COACH')}

@@ -1811,10 +1811,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <button
                         type="button"
                         onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
-                        className="w-full py-2.5 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+                        aria-label={t('coachDashboard.addToGroupBtn')}
+                        title={t('coachDashboard.addToGroupBtn')}
+                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 flex items-center justify-center active:scale-90 transition-all"
                       >
-                        <span className="material-symbols-outlined text-[16px]">person_add</span>
-                        {t('coachDashboard.addToGroupBtn')}
+                        <span className="material-symbols-outlined text-[20px]">person_add</span>
                       </button>
                     )}
 

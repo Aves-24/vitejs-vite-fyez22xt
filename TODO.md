@@ -658,8 +658,9 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
             w DZIEŃ BLAZE razem z TTL (dziś dane gościa się nie kasują, więc
             nie wolno jeszcze obiecać 24 h w polityce).
       - [ ] Zmiana AGB = podbij `TERMS_VERSION`, zapowiedź 6 tygodni wcześniej (§ 15).
-      - [ ] Do sprawdzenia na żywo: istniejące konto dostaje okno „Nutzungsbedingungen”
-            → „Ich stimme zu” → znika i nie wraca; nowa rejestracja okna nie widzi.
+      - [x] ✅ 2026-10-14 sprawdzone przez usera na telefonie: istniejące konto dostaje
+            okno „Nutzungsbedingungen” → „Ich stimme zu” → działa. (Nowa rejestracja
+            bez okna — jeszcze niesprawdzone.)
 
       ### 📜 AGB / Nutzungsbedingungen / Regulamin — DECYZJA 2026-09-29 (historia)
       **Piszemy na końcu, gdy zakres aplikacji będzie znany** (decyzja usera).

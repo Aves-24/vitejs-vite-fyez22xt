@@ -1744,6 +1744,18 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       treningu dosyłany wynik z niedokończoną serią. Goście już wcześniej
       szli raz na serię. Przejście na Realtime Database (sugestia
       znajomego) odłożone — przy tej liczbie zapisów koszty są groszowe.
+- [x] **C48. ✅ Liczenie fokusu — 2026-10-14, sprawdzone przez usera na żywo.**
+      Zgłoszenie: nowy fokus od razu „wykonany” / z kropkami z dzisiejszych treningów,
+      a zmiana tematu zabierała kropkę. Poprawki (02a744d → fc54afc):
+      - okno: od początku dnia tylko dla pierwszego fokusu dnia; zastąpienie aktywnego
+        → od teraz, po zakończeniu dziś → od chwili zakończenia (`OwnFocus.countFrom`,
+        `newFocusCountFrom`); trening z migawką INNEGO fokusu się nie liczy;
+      - trening z migawką TEGO fokusu liczy się zawsze, mimo zmiany tematów
+        (`countsForFocusSession`); kropkę zabiera tylko odznaczenie w dzienniku
+        (zdejmuje temat + migawkę);
+      - realny błąd: `setNewFocus` miał deps `[userId]` (stale closure) — patrz commit de10e70;
+      - kosz we wpisach fokusu (znacznik `focusMilestoneHidden`, żeby wpis nie wracał),
+        szara karta zakończonego fokusu, godzina treningu po prawej, plusik w kolumnie aplikacji.
 - [ ] **C47. Po deployu: powrót na ten sam ekran (51bc3af, 2026-10-14).** Zgłoszenie
       usera: „Vollständiges Schülerprofil” tuż po deployu „wylogowało” i wrzuciło na Home.
       Przyczyna: stara wersja prosiła o chunk, którego serwer już nie ma → goły reload.

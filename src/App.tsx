@@ -14,6 +14,7 @@ import SmartSeasonUpdater from './components/SmartSeasonUpdater';
 import ParentalConsentGate from './components/ParentalConsentGate';
 import TermsGate from './components/TermsGate';
 import { TERMS_VERSION } from './utils/legalLinks';
+import { registerRestoreSource, takeRestorePoint, updatingText } from './utils/reloadRestore';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import UpdateBanner from './components/UpdateBanner';
@@ -57,6 +58,18 @@ const ViewFallback = () => (
 
 type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' | 'BATTLE_LOBBY' | 'BATTLE_HISTORY' | 'ANNOUNCEMENTS' | 'ADMIN' | 'COACH' | 'STUDENT_PROFILE' | 'WORLD_LEADERBOARD' | 'DELAY_MIRROR' | 'MY_COACH';
 
+// Widoki, na które wolno wrócić po samoczynnym przeładowaniu (utils/reloadRestore).
+// Bez SETUP/SCORING/BATTLE_LOBBY — zależą od stanu, którego reload nie przenosi
+// (trening wznawia się osobno z grotX_activeSession).
+const RESTORABLE_VIEWS: AppView[] = ['STATS', 'STUDENT_PROFILE', 'COACH', 'MY_COACH', 'CALENDAR',
+  'SETTINGS', 'ANNOUNCEMENTS', 'ADMIN', 'BATTLE_HISTORY', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
+
+// Czytane raz przy ładowaniu modułu — przed pierwszym renderem App.
+const restorePoint = (() => {
+  const p = takeRestorePoint();
+  return p && (RESTORABLE_VIEWS as string[]).includes(p.view) ? p : null;
+})();
+
 export default function App() {
   const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
@@ -68,12 +81,13 @@ export default function App() {
     window.matchMedia('(display-mode: standalone)').matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true
   );
-  const [showSplash, setShowSplash] = useState(!isStandalone);
+  const [showSplash, setShowSplash] = useState(!isStandalone && !restorePoint);
   const [isDataReady, setIsDataReady] = useState(false);
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
-  const [currentView, setCurrentView] = useState<AppView>('HOME');
-  const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>('PROFIL');
+  const [currentView, setCurrentView] = useState<AppView>((restorePoint?.view as AppView) || 'HOME');
+  const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>(
+    (restorePoint?.settingsTab as 'PROFIL') || 'PROFIL');
   const [sessionDistance, setSessionDistance] = useState<string>('70m');
   const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
   const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(0);
@@ -89,7 +103,13 @@ export default function App() {
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
   
-  const [viewingStudentId, setViewingStudentId] = useState<string | null>(null);
+  const [viewingStudentId, setViewingStudentId] = useState<string | null>(restorePoint?.studentId ?? null);
+
+  // Źródło dla reloadKeepingView — czytane dopiero w chwili przeładowania,
+  // więc ref zamiast zależności efektu.
+  const navStateRef = useRef({ view: currentView as string, studentId: viewingStudentId, settingsTab: settingsTab as string });
+  navStateRef.current = { view: currentView, studentId: viewingStudentId, settingsTab };
+  useEffect(() => { registerRestoreSource(() => navStateRef.current); }, []);
   
   const [userDistances, setUserDistances] = useState<UserDistance[]>([]);
   const [isCoach, setIsCoach] = useState<boolean>(false);
@@ -171,6 +191,9 @@ export default function App() {
   // TWA, w których back natychmiast zabija appkę.
   useEffect(() => {
     window.history.replaceState({ view: 'HOME' }, '');
+    // Po przeładowaniu z powrotem na widok: wpis w historii, żeby „wstecz”
+    // prowadziło na Home, a nie zamykało aplikację.
+    if (restorePoint) window.history.pushState({ view: restorePoint.view }, '');
     const onPopState = (e: PopStateEvent) => {
       const v: AppView = (e.state && e.state.view) || 'HOME';
       setCurrentView(v);
@@ -319,6 +342,8 @@ export default function App() {
               'STUDENT_PROFILE',
               'ANNOUNCEMENTS',
               'DELAY_MIRROR',
+              // Brakowało — każda zmiana profilu wyrzucała z rankingu na Home.
+              'WORLD_LEADERBOARD',
             ];
             if (protectedViews.includes(prev)) return prev;
             if (prev === 'SETTINGS') return prev;
@@ -543,7 +568,7 @@ export default function App() {
       
       {(!isDataReady || !fadeOutSplash) && (
         <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-300 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-           {isStandalone ? (
+           {isStandalone || restorePoint ? (
              // Rozmiar musi zgadzać się z #root:empty w index.html.
              <img
                src="/icon-512.png"
@@ -564,6 +589,13 @@ export default function App() {
                 <div className="w-3 h-3 bg-[#fed33e] rounded-full ml-1.5 relative bottom-[11px] shadow-sm"></div>
               </div>
            </div>
+           )}
+           {/* Po samoczynnym przeładowaniu (nowa wersja) — ta sama plansza
+               co w reloadRestore, tekst pod ikoną bez przesuwania jej. */}
+           {restorePoint && (
+             <div className="absolute inset-x-0 top-[calc(50%+100px)] text-center text-white/75 text-[11px] font-black uppercase tracking-[0.2em]">
+               {updatingText()}
+             </div>
            )}
            <style>{`
               @keyframes trainMove {

@@ -117,6 +117,7 @@ export const components = {
     genderF: "w",
   },
   common: {
+    updating: "Aktualisiere GROT-X…",
     comingSoon: "In Kürze verfügbar",
     noClubsFound: "Kein passender Verein gefunden",
     clubNameWarning: "Dieser Name ist nicht in der Datenbank. Bitte gib den Vereinsnamen so genau wie möglich ein, damit er korrekt hinzugefügt werden kann und andere Mitglieder ihn nicht unter einem anderen Namen eintragen.",

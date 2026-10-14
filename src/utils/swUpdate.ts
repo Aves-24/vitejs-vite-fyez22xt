@@ -74,6 +74,34 @@ export function registerServiceWorker() {
   });
 }
 
+/**
+ * Przeładowanie na NAJNOWSZĄ wersję — dla lazyWithRetry, gdy chunk starej
+ * wersji zniknął z serwera po deployu. Zwykły reload by nie wystarczył:
+ * stary SW nadal kontroluje stronę i podałby ten sam stary index.html z tymi
+ * samymi (nieistniejącymi) chunkami. Więc: sprawdź aktualizację, poczekaj
+ * (max ~8 s) aż nowy SW się zainstaluje, przełącz go (SKIP_WAITING) i dopiero
+ * przeładuj. Bez SW (dev, stara przeglądarka) — zwykły reload.
+ */
+export async function reloadToLatest() {
+  const reg = registration;
+  if (reg && !reg.waiting) {
+    try {
+      await Promise.race([reg.update(), new Promise(r => setTimeout(r, 3000))]);
+      const installing = reg.installing;
+      if (installing) {
+        await new Promise<void>((resolve) => {
+          const done = () => resolve();
+          setTimeout(done, 8000);
+          installing.addEventListener('statechange', () => {
+            if (installing.state === 'installed' || installing.state === 'redundant') done();
+          });
+        });
+      }
+    } catch { /* offline — zwykły reload niżej */ }
+  }
+  applyUpdate();
+}
+
 export function applyUpdate() {
   const waiting = registration?.waiting;
   if (!waiting) { window.location.reload(); return; }

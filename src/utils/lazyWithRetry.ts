@@ -1,4 +1,5 @@
 import React from 'react';
+import { reloadKeepingView } from './reloadRestore';
 
 /**
  * lazyWithRetry — opakowanie React.lazy z automatycznym recovery przy nieudanym
@@ -13,6 +14,9 @@ import React from 'react';
  * uruchamia się od nowa z aktualnymi hashami i nawigacja działa. Flaga w
  * sessionStorage zabezpiecza przed pętlą reloadów (jeśli reload nie pomoże,
  * błąd propaguje do ErrorBoundary).
+ *
+ * Reload idzie przez reloadKeepingView: plansza „Aktualisiere…” zamiast
+ * mignięcia logowania i powrót na widok, który user właśnie otwierał.
  */
 
 const RETRY_FLAG = 'grotX_chunkRetry';
@@ -34,7 +38,7 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
       if (!alreadyRetried) {
         try { window.sessionStorage.setItem(RETRY_FLAG, '1'); } catch { /* ignore */ }
         // Hard reload — nigdy nie resolvujemy promise, appka się przeładuje
-        window.location.reload();
+        reloadKeepingView();
         return new Promise<{ default: T }>(() => { /* never resolves */ });
       }
 

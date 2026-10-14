@@ -117,6 +117,7 @@ export const components = {
     genderF: "W",
   },
   common: {
+    updating: "Updating GROT-X…",
     comingSoon: "Coming soon",
     noClubsFound: "No matching clubs found",
     clubNameWarning: "This name is not in the database. Please enter the club name as accurately as possible so it can be added correctly and prevent other members from registering the same club under a different name.",

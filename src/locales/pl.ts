@@ -131,6 +131,7 @@ export const components = {
     master: "Master (50+)",
   },
   common: {
+    updating: "Aktualizuję GROT-X…",
     comingSoon: "Wkrótce dostępne",
     noClubsFound: "Brak pasujących klubów",
     clubNameWarning: "Tej nazwy nie ma w bazie. Podaj nazwę klubu jak najdokładniej, aby mogła zostać poprawnie dodana i żeby inni członkowie nie wpisali tego samego klubu pod inną nazwą.",

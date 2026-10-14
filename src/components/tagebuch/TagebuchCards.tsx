@@ -38,6 +38,7 @@ export interface TbSession {
   coachSeen: boolean;    // trener odhaczył notatkę bez odpowiedzi
   topics: string[];
   coachTopics: string[];
+  focusSince?: number;   // since z migawki session.focus — pod jaki fokus był trening
 }
 
 export interface TbCoachEntry {

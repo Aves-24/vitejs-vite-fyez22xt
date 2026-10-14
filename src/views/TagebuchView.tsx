@@ -16,7 +16,8 @@ import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard';
 import FocusModal from '../components/tagebuch/FocusModal';
 import {
-  FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusFrom as focusStartOf, focusMilestoneId, readEndedFocus,
+  FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
+  inFocusWindow, sessionFocusSince,
   readFocusGoal, readFocusMilestone, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
@@ -297,6 +298,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             editCount: data.editCount || 0,
             coachNote: data.coachNote || '',
             coachSeen: !!data.coachSeenAt,
+            focusSince: sessionFocusSince(data),
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
           };
@@ -376,8 +378,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return resolveActiveFocus(ownFocus, goal);
   }, [ownFocus, coachEntries]);
 
-  const focusFrom = activeFocus ? focusStartOf(activeFocus) : 0;
-
   // Liczone z wczytanej strony osi czasu (50 treningów) — przy starszym
   // fokusie i bardzo częstych treningach może zaniżyć, ale wtedy dawno jest 5.
   const focusCount = useMemo(
@@ -429,6 +429,21 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       }
     });
   }, [isLoading, userId, activeFocus, focusDots, focusGoal, focusCount, sessions, endedFocus, notes]);
+
+  // Sprzątanie po błędzie z 2026-10-14: nowy fokus ustawiony w dniu treningu pod
+  // poprzedni od razu liczył się jako ukończony i dostał wpis „ukończony”.
+  // Ślad błędu: wpis done dla AKTYWNEGO fokusu z datą ukończenia sprzed jego
+  // ustawienia, a po poprawce (inFocusWindow) kompletu nie ma. Tylko taki
+  // wpis kasujemy — prawdziwe ukończenia mają datę po ustawieniu fokusu.
+  useEffect(() => {
+    if (isLoading || !userId || !activeFocus || !focusDots) return;
+    const id = focusMilestoneId(activeFocus.since);
+    const bogus = notes.find(n => n.id === id && n.milestone?.done && n.milestone.endedAt < activeFocus.since);
+    if (!bogus || focusCompletedAt(sessions, activeFocus, focusGoal)) return;
+    deleteDoc(doc(db, `users/${userId}/privateNotes`, id))
+      .then(() => setNotes(prev => prev.filter(n => n.id !== id)))
+      .catch(e => console.error('Fokus: nie udało się usunąć błędnego wpisu', e));
+  }, [isLoading, userId, activeFocus, focusDots, focusGoal, sessions, notes]);
 
   // Liczba lekcji obecnego fokusu (stepper w FocusModal) — sam fokus nietknięty,
   // więc cel od trenera nie staje się „własnym", a postęp zostaje.
@@ -913,7 +928,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       session={it.session}
                       time={timeOf(it.ts)}
                       insight={insights.get(it.session.id)}
-                      focus={focusDots && activeFocus?.topic && it.session.ts >= focusFrom
+                      focus={focusDots && activeFocus?.topic && inFocusWindow(it.session, activeFocus)
                         // Ukończony fokus: nowe treningi już się nie dopisują,
                         // zaliczone można jeszcze odznaczyć.
                         && (focusCount < focusGoal || it.session.topics.includes(activeFocus.topic))

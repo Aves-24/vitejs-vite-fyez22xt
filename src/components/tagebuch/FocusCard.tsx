@@ -12,10 +12,13 @@ export function focusTitle(focus: Pick<ActiveFocus, 'text' | 'topic'>, t: (k: st
 }
 
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
-export function FocusDots({ count, goal, small = false, light = false }: { count: number; goal: number; small?: boolean; light?: boolean }) {
+export function FocusDots({ count, goal, small = false, light = false, muted = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean }) {
   const done = count >= goal;
   const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
-  const [doneCls, onCls, offCls] = light
+  // muted: szara karta zakończonego fokusu (user 2026-10-14).
+  const [doneCls, onCls, offCls] = muted
+    ? ['bg-gray-400', 'bg-gray-500', 'bg-gray-200']
+    : light
     ? ['bg-amber-400', 'bg-[#1f6e53]', 'bg-amber-200']
     : ['bg-[#fed33e]', 'bg-emerald-400', 'bg-white/25'];
   return (
@@ -143,23 +146,25 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
     return (
       <button
         onClick={onEdit}
-        className="w-full flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all"
+        className="w-full flex items-start gap-3 bg-gray-50 border border-gray-200 rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all"
       >
-        <span className="w-9 h-9 rounded-full bg-amber-200 text-[#0a3a2a] flex items-center justify-center shrink-0">
+        {/* Zakończony fokus na szaro (user 2026-10-14) — żółty zostaje dla
+            fokusu, nad którym się teraz pracuje. Przycisk dalej żółty. */}
+        <span className="w-9 h-9 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-[20px]">track_changes</span>
         </span>
         <div className="flex-1 min-w-0">
-          <div className="text-[9px] font-black uppercase tracking-widest text-amber-800 truncate">
+          <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 truncate">
             {t('tagebuch.focusLastDone')}
             {ended.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${ended.authorName ? ` ${ended.authorName}` : ''}`}
           </div>
-          <p className="text-[14px] font-black text-[#0a3a2a]/80 leading-snug mt-0.5 break-words">{endedTitle}</p>
+          <p className="text-[14px] font-black text-gray-600 leading-snug mt-0.5 break-words">{endedTitle}</p>
           {ended.text && ended.topic && (
-            <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(ended.topic, t)}</p>
+            <p className="text-[10px] font-bold text-gray-500 mt-0.5">{topicLabel(ended.topic, t)}</p>
           )}
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            {endedDots && <FocusDots count={ended.step!} goal={ended.goal!} light />}
-            <span className="text-[10px] font-bold text-amber-700">{fmt(ended.since)} – {fmt(ended.endedAt)}</span>
+            {endedDots && <FocusDots count={ended.step!} goal={ended.goal!} muted />}
+            <span className="text-[10px] font-bold text-gray-500">{fmt(ended.since)} – {fmt(ended.endedAt)}</span>
           </div>
           <span className="inline-block mt-2 bg-[#fed33e] text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">
             {t('tagebuch.focusPickNew')}
@@ -187,13 +192,13 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
   return (
     <button
       onClick={onEdit}
-      className="w-full flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all"
+      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'} border rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all`}
     >
-      <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
+      <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : 'bg-[#fed33e] text-[#0a3a2a]'} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-800">
+        <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${done ? 'text-gray-500' : 'text-amber-800'}`}>
           <span className="truncate">
             {t(done ? 'tagebuch.focusLastDone' : 'tagebuch.focusLabel')}
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
@@ -208,7 +213,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit }: {
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {dots ? (
             <>
-              <FocusDots count={count} goal={goal} light />
+              <FocusDots count={count} goal={goal} light muted={done} />
               <FocusProgressText count={count} goal={goal} light />
             </>
           ) : (

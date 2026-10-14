@@ -17,7 +17,7 @@ import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard'
 import FocusModal from '../components/tagebuch/FocusModal';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
-  inFocusWindow, sessionFocusSince,
+  inFocusWindow, sessionFocusSince, newFocusCountFrom,
   readFocusGoal, readFocusMilestone, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
@@ -451,11 +451,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focusDots: true, focusGoal: goal } : { focusDots: false }));
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
-  }, [userId]);
+  }, [userId, ownFocus, activeFocus]);
 
   // Nowy fokus = nowa data startu, postęp od zera — także przy tym samym temacie.
   const setNewFocus = useCallback(async (topic: string, text: string, dots: boolean, goal: number) => {
-    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: Date.now() };
+    const now = Date.now();
+    const countFrom = newFocusCountFrom(ownFocus, activeFocus, now);
+    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: now,
+      ...(countFrom !== undefined ? { countFrom } : {}) };
     await settleWrite(updateDoc(doc(db, 'users', userId), dots ? { focus, focusDots: true, focusGoal: goal } : { focus, focusDots: false }));
     setOwnFocus(focus);
     setFocusDots(dots);
@@ -468,7 +471,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // w coachLog uczeń nie zmienia, więc nie podpisuje się pod nim cudzym tekstem.
   const editFocus = useCallback(async (text: string, topic: string) => {
     if (!activeFocus) return;
-    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: activeFocus.since };
+    // Edycja treści nie zmienia okna liczenia.
+    const focus: OwnFocus = { topic, text: text.slice(0, FOCUS_TEXT_MAX), setAt: activeFocus.since,
+      ...(activeFocus.countFrom !== undefined ? { countFrom: activeFocus.countFrom } : {}) };
     await settleWrite(updateDoc(doc(db, 'users', userId), { focus }));
     setOwnFocus(focus);
   }, [userId, activeFocus]);

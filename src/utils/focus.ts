@@ -31,6 +31,8 @@ export interface OwnFocus {
   setAt: number;
   cleared?: boolean;
   ended?: SessionFocus;
+  // Od kiedy liczyć treningi, gdy NIE od początku dnia (newFocusCountFrom).
+  countFrom?: number;
 }
 
 export interface CoachGoal {
@@ -50,6 +52,7 @@ export interface ActiveFocus {
   authorName?: string;
   goalId?: string;       // tylko fokus trenera — wpis w coachLog
   authorId?: string;
+  countFrom?: number;    // tylko własny fokus — patrz newFocusCountFrom
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -61,7 +64,8 @@ export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undef
   if (own && (!goal || own.setAt >= goal.ts)) {
     // Sam tekst bez tematu też jest fokusem (jak u trenera).
     if (own.cleared || (!own.topic && !own.text)) return null;
-    return { topic: own.topic || '', text: own.text || '', since: own.setAt, fromCoach: false };
+    return { topic: own.topic || '', text: own.text || '', since: own.setAt, fromCoach: false,
+      ...(typeof own.countFrom === 'number' ? { countFrom: own.countFrom } : {}) };
   }
   if (!goal) return null;
   return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName, goalId: goal.id, authorId: goal.authorId };
@@ -70,7 +74,23 @@ export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undef
 // Liczą się treningi od początku dnia ustawienia fokusu — ktoś trenuje rano,
 // a fokus wpisuje wieczorem, i ten poranny trening też chce zaznaczyć.
 export function focusFrom(focus: ActiveFocus): number {
-  return new Date(focus.since).setHours(0, 0, 0, 0);
+  return focus.countFrom ?? new Date(focus.since).setHours(0, 0, 0, 0);
+}
+
+const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString();
+
+/**
+ * Początek liczenia dla NOWEGO własnego fokusu (user 2026-10-14: nowy fokus
+ * od razu „wykonany”). „Od początku dnia” ma sens tylko dla pierwszego fokusu
+ * dnia (rano trening, wieczorem fokus). Jeśli tego dnia był już fokus:
+ * - zastępujemy aktywny → liczymy od teraz (dzisiejsze treningi należą do niego),
+ * - poprzedni zakończony dziś → od chwili zakończenia.
+ * undefined = domyślnie od początku dnia.
+ */
+export function newFocusCountFrom(own: OwnFocus | null, active: ActiveFocus | null, now: number): number | undefined {
+  if (active) return now;
+  if (own?.cleared && sameDay(own.setAt, now)) return own.setAt;
+  return undefined;
 }
 
 // Fokus bez tematu (user 2026-09-18: temat nieobowiązkowy) — każdy trening

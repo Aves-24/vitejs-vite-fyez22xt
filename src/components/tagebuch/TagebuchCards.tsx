@@ -413,7 +413,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   session: TbSession;
   time: string;
   insight?: SessionInsight;
-  focus?: { topic: string; onToggle: () => Promise<void> };
+  focus?: { topic: string; marked: boolean; onToggle: () => Promise<void> };
   expanded: boolean;
   onToggle: () => void;
   linkedNotes: TbPrivateNote[];
@@ -486,7 +486,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
     <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${expanded ? 'p-3' : 'px-3 py-2.5'}`}>
       {header}
       {focus && (
-        <FocusToggle topic={focus.topic} marked={session.topics.includes(focus.topic)} onToggle={focus.onToggle} />
+        <FocusToggle topic={focus.topic} marked={focus.marked} onToggle={focus.onToggle} />
       )}
 
       {expanded && <>

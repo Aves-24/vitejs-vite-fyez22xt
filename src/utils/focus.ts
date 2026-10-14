@@ -117,8 +117,30 @@ export function inFocusWindow(s: FocusSessionRef, focus: ActiveFocus): boolean {
   return s.focusSince === undefined || s.focusSince === focus.since;
 }
 
+// Czy trening liczy się do fokusu (poza oknem czasu). User 2026-10-14: trening
+// zrobiony POD ten fokus (migawka session.focus z tym samym since) liczy się
+// zawsze — późniejsza zmiana tematu treningu albo fokusu nie zabiera kropki
+// („można zapomnieć”). Trening bez migawki (np. poranny, sprzed ustawienia)
+// — jak dotąd po temacie. Kropkę zabiera tylko świadome odznaczenie w dzienniku
+// (usuwa migawkę i temat — toggleSessionFocus).
+export function countsForFocusSession(s: FocusSessionRef, focus: ActiveFocus): boolean {
+  if (s.focusSince === focus.since) return true;
+  return s.focusSince === undefined && countsForFocus(s.topics, focus);
+}
+
 export function countFocusSessions(sessions: FocusSessionRef[], focus: ActiveFocus): number {
-  return sessions.filter(s => inFocusWindow(s, focus) && countsForFocus(s.topics, focus)).length;
+  return sessions.filter(s => inFocusWindow(s, focus) && countsForFocusSession(s, focus)).length;
+}
+
+/** Migawka do zaznaczenia treningu przełącznikiem w dzienniku (bez step/goal). */
+export function manualSessionFocus(focus: ActiveFocus): SessionFocus {
+  return {
+    text: focus.text.slice(0, FOCUS_TEXT_MAX),
+    topic: focus.topic,
+    since: focus.since,
+    fromCoach: focus.fromCoach,
+    ...(focus.authorName ? { authorName: focus.authorName } : {}),
+  };
 }
 
 // Migawka fokusu zapisywana w sesji (`session.focus`) — po zmianie albo
@@ -183,7 +205,7 @@ export const focusMilestoneId = (since: number) => `focus_${since}`;
 
 /** Data treningu, który zapełnił ostatnią kropkę — null, gdy jeszcze nie ma kompletu. */
 export function focusCompletedAt(sessions: FocusSessionRef[], focus: ActiveFocus, goal: number): number | null {
-  const hits = sessions.filter(s => inFocusWindow(s, focus) && countsForFocus(s.topics, focus)).map(s => s.ts).sort((a, b) => a - b);
+  const hits = sessions.filter(s => inFocusWindow(s, focus) && countsForFocusSession(s, focus)).map(s => s.ts).sort((a, b) => a - b);
   return hits.length >= goal ? hits[goal - 1] : null;
 }
 
@@ -229,7 +251,7 @@ export async function loadFocusSessionDates(userId: string, focus: ActiveFocus):
   ));
   return snap.docs
     .map(d => ({ ts: toMs(d.data().timestamp), topics: d.data().topics || [], focusSince: sessionFocusSince(d.data()) }))
-    .filter(s => inFocusWindow(s, focus) && countsForFocus(s.topics, focus))
+    .filter(s => inFocusWindow(s, focus) && countsForFocusSession(s, focus))
     .map(s => s.ts)
     .sort((a, b) => a - b);
 }

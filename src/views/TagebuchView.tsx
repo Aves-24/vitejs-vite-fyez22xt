@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
 import { guestExpiryFields } from '../utils/guestMode';
 import { readAllPrivateSessionNotes } from '../utils/privateSessionNote';
@@ -17,7 +17,7 @@ import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard'
 import FocusModal from '../components/tagebuch/FocusModal';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
-  inFocusWindow, sessionFocusSince, newFocusCountFrom,
+  inFocusWindow, sessionFocusSince, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
   readFocusGoal, readFocusMilestone, readOwnFocus, resolveActiveFocus,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
@@ -498,10 +498,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     setOwnFocus(focus);
   }, [userId, activeFocus]);
 
-  const toggleSessionFocus = useCallback(async (s: TbSession, topic: string) => {
-    const topics = s.topics.includes(topic) ? s.topics.filter(x => x !== topic) : [...s.topics, topic];
-    await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, s.id), { topics }));
-    setSessions(prev => prev.map(x => x.id === s.id ? { ...x, topics } : x));
+  // Zaznaczenie = temat fokusu + migawka fokusu w sesji (wtedy kropka zostaje
+  // mimo późniejszej zmiany tematów); odznaczenie zdejmuje oba.
+  const toggleSessionFocus = useCallback(async (s: TbSession, focus: ActiveFocus) => {
+    const marked = countsForFocusSession(s, focus);
+    const topics = marked
+      ? s.topics.filter(x => x !== focus.topic)
+      : (s.topics.includes(focus.topic) ? s.topics : [...s.topics, focus.topic]);
+    await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, s.id),
+      marked ? { topics, focus: deleteField() } : { topics, focus: manualSessionFocus(focus) }));
+    setSessions(prev => prev.map(x => x.id === s.id ? { ...x, topics, focusSince: marked ? undefined : focus.since } : x));
   }, [userId]);
 
   const openComposer = () => {
@@ -956,8 +962,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       focus={focusDots && activeFocus?.topic && inFocusWindow(it.session, activeFocus)
                         // Ukończony fokus: nowe treningi już się nie dopisują,
                         // zaliczone można jeszcze odznaczyć.
-                        && (focusCount < focusGoal || it.session.topics.includes(activeFocus.topic))
-                        ? { topic: activeFocus.topic, onToggle: () => toggleSessionFocus(it.session, activeFocus.topic) }
+                        && (focusCount < focusGoal || countsForFocusSession(it.session, activeFocus))
+                        ? { topic: activeFocus.topic, marked: countsForFocusSession(it.session, activeFocus), onToggle: () => toggleSessionFocus(it.session, activeFocus) }
                         : undefined}
                       linkedNotes={it.linked}
                       hasCoach={hasCoach}

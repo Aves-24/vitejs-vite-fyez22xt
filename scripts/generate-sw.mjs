@@ -251,7 +251,13 @@ self.addEventListener('fetch', (e) => {
             res.ok || !url.pathname.startsWith('/assets/') ? res : fetch(req, { cache: 'reload' })
           )
           .then((res) => {
-            if (res.ok) {
+            // [C47] Brakujący chunk po deployu: Firebase Hosting (rewrite "**"
+            // → /index.html) odpowiada 200 + HTML zamiast 404. Taki wpis w cache'u
+            // psułby import tego chunka do końca życia starej wersji — nie
+            // zapisujemy HTML-a pod adresem z /assets/.
+            const htmlInsteadOfAsset = url.pathname.startsWith('/assets/')
+              && (res.headers.get('content-type') || '').includes('text/html');
+            if (res.ok && !htmlInsteadOfAsset) {
               const copy = res.clone();
               caches.open(CACHE).then((c) => c.put(req, copy));
             }

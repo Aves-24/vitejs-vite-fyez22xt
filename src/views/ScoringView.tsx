@@ -16,7 +16,7 @@ import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, sessionFocusSnapshot } from '../utils/focus';
+import { useCurrentFocus, sessionFocusFields } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
@@ -542,7 +542,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       const ud = userSnap.exists() ? userSnap.data() : {};
       // [FOKUS] Migawka na stałe — widać ją później w statystykach.
       const sessionTopics = focusTopic && focusOn ? [focusTopic] : [];
-      const focusSnap = sessionFocusSnapshot(focusState, sessionTopics);
+      const focusFields = sessionFocusFields(focusState, sessionTopics);
 
       const sessionWrite = settleWrite(setDoc(sessionRef, {
         ...setupStamp,
@@ -565,7 +565,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         note: sessionNoteField(sessionNote, isNotePublic),
         isNotePublic: isNotePublic,
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
-        ...(focusSnap ? { focus: focusSnap } : {}),
+        ...focusFields,
         ends: submittedEnds,
         ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: PLANNED_ENDS } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),

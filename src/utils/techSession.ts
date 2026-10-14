@@ -2,7 +2,7 @@ import { collection, doc, increment, serverTimestamp, Timestamp, updateDoc, writ
 import { db } from '../firebase';
 import { getSetupStamp } from './setupStamp';
 import { settleWrite } from './offlineWrite';
-import { sessionFocusSnapshot, FocusState } from './focus';
+import { sessionFocusFields, FocusState } from './focus';
 import { guestExpiryFields } from './guestMode';
 
 function invalidateStatsCache(userId: string) {
@@ -45,14 +45,14 @@ interface TechSessionInput {
 export async function saveTechnicalSession(userId: string, { arrows, note, topics, focusState, source, fromDailyCounter = 0 }: TechSessionInput): Promise<void> {
   // [ZESTAWY] Te strzały liczą się do zużycia cięciwy i strzał zestawu.
   const setupStamp = await getSetupStamp(userId);
-  const focusSnap = sessionFocusSnapshot(focusState, topics);
+  const focusFields = sessionFocusFields(focusState, topics);
 
   // Jeden batch: sesja i zdjecie tych samych strzal z licznika dnia wchodza
   // razem albo wcale — inaczej strona glowna pokazalaby je podwojnie.
   const batch = writeBatch(db);
   batch.set(doc(collection(db, `users/${userId}/sessions`)), {
     ...setupStamp,
-    ...(focusSnap ? { focus: focusSnap } : {}),
+    ...focusFields,
     ...(source ? { source } : {}),
     userId,
     distance: 'TECH',

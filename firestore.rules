@@ -458,22 +458,32 @@ service cloud.firestore {
         && request.resource.data.get('text', '') is string
         && request.resource.data.get('text', '').size() >= 1
         && request.resource.data.get('text', '').size() <= 300
-        && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag'];
+        && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag']
+        // [DWA FOKUSY] liczba treningów fokusu trenera — na wpisie
+        && request.resource.data.get('goal', 1) in [1, 2, 3, 4, 5];
 
       // [C39] Autor fokusu (wpis 'goal') edytuje jego tytuł i temat — autor,
       // typ i data startu (createdAt = początek liczenia kropek) zostają,
       // więc postęp się nie resetuje. Autor musi nadal być trenerem ucznia.
+      // [DWA FOKUSY 2026-10-14] Do tego: liczba treningów (goal), lekcje
+      // zaznaczone przez trenera (marks — znaczniki czasu) i zakończenie
+      // (endedAt + migawka ended) — bez ruszania własnego fokusu ucznia.
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'goal'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'goal', 'marks', 'endedAt', 'ended'])
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 300
         && request.resource.data.topics is list
         && request.resource.data.topics.size() <= 10
-        && request.resource.data.get('editedAt', 0) is number;
+        && request.resource.data.get('editedAt', 0) is number
+        && request.resource.data.get('goal', 1) in [1, 2, 3, 4, 5]
+        && request.resource.data.get('marks', []) is list
+        && request.resource.data.get('marks', []).size() <= 50
+        && request.resource.data.get('endedAt', 0) is number
+        && request.resource.data.get('ended', {}) is map;
 
       allow delete: if isSelf(uid)
         || (isSignedIn() && resource.data.authorId == request.auth.uid)

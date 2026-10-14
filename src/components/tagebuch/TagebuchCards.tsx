@@ -4,7 +4,7 @@ import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
 import { topicLabel } from '../../constants/trainingTopics';
-import type { FocusMilestone } from '../../utils/focus';
+import type { FocusMilestone, FocusSnapRef, SessionFocus } from '../../utils/focus';
 
 // --- TYPY WPISÓW OSI CZASU ---
 // Read-model złożony z istniejących kolekcji — nic nie jest zapisywane w nowym
@@ -38,7 +38,10 @@ export interface TbSession {
   coachSeen: boolean;    // trener odhaczył notatkę bez odpowiedzi
   topics: string[];
   coachTopics: string[];
-  focusSince?: number;   // since z migawki session.focus — pod jaki fokus był trening
+  // [DWA FOKUSY] Pod jakie fokusy był trening (FocusSessionRef — liczenie kropek)
+  snaps: FocusSnapRef[];
+  decided?: boolean;
+  focuses: SessionFocus[]; // pełne migawki — przełącznik w dzienniku zapisuje listę z powrotem
 }
 
 export interface TbCoachEntry {

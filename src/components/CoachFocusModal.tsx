@@ -81,12 +81,20 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
     setLiveGoal(g => Math.min(MAX_GOAL, Math.max(MIN_GOAL, g + delta)));
   };
 
+  // [DWA FOKUSY] Fokus trenera ma liczbę na wpisie; cudzego wpisu nie zmieniamy.
+  const goalOnEntry = !!focus?.entryGoal;
+  const canChangeGoal = !goalOnEntry || canEdit;
+
   const handleSaveGoal = async () => {
     const next = liveGoal;
-    if (!goalChanged) return;
+    if (!goalChanged || !canChangeGoal) return;
     setIsBumping(true);
     try {
-      await updateDoc(doc(db, 'users', studentId), { focusGoal: next, focusDots: true });
+      if (goalOnEntry && focus?.goalId) {
+        await updateDoc(doc(db, `users/${studentId}/coachLog`, focus.goalId), { goal: next });
+      } else {
+        await updateDoc(doc(db, 'users', studentId), { focusGoal: next, focusDots: true });
+      }
       onChange();
     } catch (e) {
       console.error('Fokus: błąd zmiany liczby lekcji', e);
@@ -100,7 +108,11 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
     try {
       // Z migawką — uczeń widzi zakończony fokus dalej w dzienniku (jak po własnym „Fokus beenden”).
       const ended = focus && focusState ? { ended: endedFocusSnapshot(focus, focusState.dots, focusState.count, focusState.goal) } : {};
-      await updateDoc(doc(db, 'users', studentId), { focus: { cleared: true, setAt: Date.now(), ...ended } });
+      if (focus?.fromCoach && focus.goalId && canEdit) {
+        await updateDoc(doc(db, `users/${studentId}/coachLog`, focus.goalId), { endedAt: Date.now(), ...ended });
+      } else {
+        await updateDoc(doc(db, 'users', studentId), { focus: { cleared: true, setAt: Date.now(), ...ended } });
+      }
       onChange();
       onClose();
     } catch (e) { console.error('Fokus: błąd zakończenia', e); }
@@ -126,9 +138,9 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
         text: cleanText,
         type: 'goal',
         topics: newTopics,
+        goal: newGoal,
         createdAt: serverTimestamp(),
       });
-      await updateDoc(doc(db, 'users', studentId), { focusGoal: newGoal, focusDots: true });
       onChange();
       onClose();
     } catch (e) { console.error('Fokus: błąd ustawiania nowego fokusu', e); }
@@ -202,7 +214,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => handleBumpDelta(-1)}
-                      disabled={isBumping || liveGoal <= MIN_GOAL}
+                      disabled={isBumping || !canChangeGoal || liveGoal <= MIN_GOAL}
                       className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[16px]">remove</span>
@@ -210,7 +222,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                     <span className="text-[15px] font-black text-[#0a3a2a] min-w-[1.5ch] text-center">{liveGoal}</span>
                     <button
                       onClick={() => handleBumpDelta(1)}
-                      disabled={isBumping || liveGoal >= MAX_GOAL}
+                      disabled={isBumping || !canChangeGoal || liveGoal >= MAX_GOAL}
                       className="w-8 h-8 rounded-lg bg-white border border-emerald-200 text-emerald-700 flex items-center justify-center disabled:opacity-30 active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[16px]">add</span>
@@ -233,7 +245,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
                 </div>
               </div>
 
-              {!confirmEnd ? (
+              {focus.fromCoach && !canEdit ? null : !confirmEnd ? (
                 <button
                   onClick={() => setConfirmEnd(true)}
                   className="w-full py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-red-50 text-red-600 border border-red-100 active:scale-95 transition-all"

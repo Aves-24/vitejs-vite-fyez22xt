@@ -855,6 +855,32 @@ test('[C39] autor fokusu zmienia tytul i temat wpisu goal', async () => {
   await assertFails(updateDoc(g1(), { topics: ['anker'] }));
 });
 
+test('[DWA FOKUSY] autor fokusu: liczba treningow, lekcje trenera, zakonczenie', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/coachLog/g2'), {
+      authorId: 'coach1', authorName: 'Coach', text: 'Zwolnienie', type: 'goal', topics: [], createdAt: 1, goal: 2,
+    });
+  });
+  const g2 = () => doc(coach1(), 'users/alice/coachLog/g2');
+
+  // Nowy wpis z liczbą 1-5 — wolno; spoza zakresu — nie.
+  await assertSucceeds(setDoc(doc(coach1(), 'users/alice/coachLog/g3'),
+    { authorId: 'coach1', text: 'Kotwica', type: 'goal', topics: [], goal: 3 }));
+  await assertFails(setDoc(doc(coach1(), 'users/alice/coachLog/g4'),
+    { authorId: 'coach1', text: 'Kotwica', type: 'goal', topics: [], goal: 9 }));
+
+  await assertSucceeds(updateDoc(g2(), { goal: 4 }));
+  await assertFails(updateDoc(g2(), { goal: 0 }));
+  await assertSucceeds(updateDoc(g2(), { marks: [Date.now()] }));
+  await assertFails(updateDoc(g2(), { marks: 'x' }));
+  await assertFails(updateDoc(g2(), { marks: Array.from({ length: 51 }, (_, i) => i) }));
+  await assertSucceeds(updateDoc(g2(), { endedAt: Date.now(), ended: { text: 'Zwolnienie', topic: '', since: 1, fromCoach: true } }));
+  await assertFails(updateDoc(g2(), { endedAt: 'teraz' }));
+  // Uczeń i obcy — nie.
+  await assertFails(updateDoc(doc(alice(), 'users/alice/coachLog/g2'), { marks: [1] }));
+  await assertFails(updateDoc(doc(bob(), 'users/alice/coachLog/g2'), { endedAt: 1 }));
+});
+
 test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
   const a = () => doc(coach1(), 'users/alice');
   await assertSucceeds(updateDoc(a(), { focusGoal: 1, focusDots: true }));

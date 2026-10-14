@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { collection, query, orderBy, getDocs, addDoc, deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { FOCUS_GOAL_DEFAULT } from '../utils/focus';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { useVoiceInput } from '../hooks/useVoiceInput';
@@ -127,6 +128,8 @@ export default function CoachLogPanel({ studentId, currentUserId, onChange }: Co
         text: cleanText,
         type,
         topics: logTopics,
+        // [DWA FOKUSY] fokus trenera ma własną liczbę treningów (zmiana w panelu fokusu)
+        ...(type === 'goal' ? { goal: FOCUS_GOAL_DEFAULT } : {}),
         createdAt: serverTimestamp(),
       });
       setEntries(prev => [{

@@ -1519,7 +1519,7 @@ export const views = {
     groupFocusEnd: "End",
     groupFocusEndConfirm: "End the focus for everyone still working on it?",
     groupFocusDone: "{{done}}/{{total}} done",
-    groupFocusOwn: "own focus",
+    groupFocusOwn: "other coach focus",
     groupFocusEnded: "ended",
     groupFocusAssign: "Assign",
     groupFocusModalTitle: "Group focus",

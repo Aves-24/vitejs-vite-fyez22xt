@@ -1519,7 +1519,7 @@ export const views = {
     groupFocusEnd: "Beenden",
     groupFocusEndConfirm: "Fokus bei allen beenden, die noch daran arbeiten?",
     groupFocusDone: "{{done}}/{{total}} erledigt",
-    groupFocusOwn: "eigener Fokus",
+    groupFocusOwn: "anderer Trainer-Fokus",
     groupFocusEnded: "beendet",
     groupFocusAssign: "Zuweisen",
     groupFocusModalTitle: "Fokus für die Gruppe",

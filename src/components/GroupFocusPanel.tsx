@@ -9,9 +9,9 @@ import { topicLabel } from '../constants/trainingTopics';
 import { FOCUS_GOAL_DEFAULT, FOCUS_GOAL_OPTIONS, FOCUS_TEXT_MAX, endedFocusSnapshot, type FocusState } from '../utils/focus';
 
 // [FOKUS GRUPY] (user 2026-10-14) Trener daje całej grupie jeden fokus.
-// Technicznie to zwykły fokus trenera (wpis 'goal' w coachLog) u każdego
-// członka — kropki, dziennik ucznia i liczenie działają bez zmian; nowszy
-// własny fokus ucznia wygrywa, jak przy fokusie ustawionym pojedynczo.
+// Technicznie to zwykły fokus trenera (wpis 'goal' w coachLog, z liczbą
+// treningów na wpisie) u każdego członka — tor trenera obok własnego fokusu
+// ucznia (DWA FOKUSY), kropki i dziennik działają bez zmian.
 // Na dokumencie trenera (coachGroupFocus.<groupId>) zostaje tylko, który
 // wpis u którego ucznia należy do grupy — stąd postęp w karcie grupy.
 
@@ -61,10 +61,10 @@ export default function GroupFocusPanel({ groupId, members, coachId, groupFocus,
           text: focus.text,
           type: 'goal',
           topics: focus.topic ? [focus.topic] : [],
+          goal: focus.goal,
           groupId,
           createdAt: serverTimestamp(),
         });
-        await updateDoc(doc(db, 'users', s.id), { focusGoal: focus.goal, focusDots: true });
         return [s.id, ref.id] as const;
       } catch (e) {
         console.error('Fokus grupy: błąd zapisu u ucznia', s.id, e);
@@ -109,17 +109,17 @@ export default function GroupFocusPanel({ groupId, members, coachId, groupFocus,
     setSaving(false);
   };
 
-  // Kończy fokus tylko u tych, którzy nadal nad nim pracują — kto ma już
-  // własny nowszy fokus, zostaje nietknięty.
+  // Kończy fokus grupy na wpisach trenera — własny fokus ucznia zostaje.
   const handleEnd = async () => {
     if (!groupFocus) return;
     setSaving(true);
     const working = members.filter(s => isGroupFocus(s));
     await Promise.all(working.map(async s => {
-      const fs = studentFocus[s.id];
+      const tr = studentFocus[s.id].coach!;
       try {
-        await updateDoc(doc(db, 'users', s.id), {
-          focus: { cleared: true, setAt: Date.now(), ended: endedFocusSnapshot(fs.focus!, fs.dots, fs.count, fs.goal) },
+        await updateDoc(doc(db, `users/${s.id}/coachLog`, groupFocus.goalIds[s.id]), {
+          endedAt: Date.now(),
+          ended: endedFocusSnapshot(tr.focus, tr.dots, tr.count, tr.goal),
         });
       } catch (e) { console.error('Fokus grupy: błąd zakończenia u ucznia', s.id, e); }
     }));
@@ -136,11 +136,11 @@ export default function GroupFocusPanel({ groupId, members, coachId, groupFocus,
 
   const isGroupFocus = (s: any) => {
     const gid = groupFocus?.goalIds[s.id];
-    return !!gid && studentFocus[s.id]?.focus?.goalId === gid;
+    return !!gid && studentFocus[s.id]?.coach?.focus.goalId === gid;
   };
   const isDone = (s: any) => {
-    const fs = studentFocus[s.id];
-    return isGroupFocus(s) && !!fs?.dots && fs.count >= fs.goal;
+    const tr = studentFocus[s.id]?.coach;
+    return isGroupFocus(s) && !!tr?.dots && tr.count >= tr.goal;
   };
 
   const openModal = () => {
@@ -182,7 +182,7 @@ export default function GroupFocusPanel({ groupId, members, coachId, groupFocus,
 
           <div className="mt-2 space-y-1">
             {members.map(s => {
-              const fs = studentFocus[s.id];
+              const tr = studentFocus[s.id]?.coach;
               const name = `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim();
               return (
                 <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
@@ -197,10 +197,10 @@ export default function GroupFocusPanel({ groupId, members, coachId, groupFocus,
                       {t('coachDashboard.groupFocusAssign')}
                     </button>
                   ) : isGroupFocus(s) ? (
-                    <FocusDots count={fs.count} goal={fs.goal} small light />
+                    <FocusDots count={tr!.count} goal={tr!.goal} small light />
                   ) : (
                     <span className="text-[9px] font-bold text-gray-400">
-                      {fs?.focus ? t('coachDashboard.groupFocusOwn') : t('coachDashboard.groupFocusEnded')}
+                      {tr ? t('coachDashboard.groupFocusOwn') : t('coachDashboard.groupFocusEnded')}
                     </span>
                   )}
                 </div>

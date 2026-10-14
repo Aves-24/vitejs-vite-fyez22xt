@@ -1744,6 +1744,32 @@ Sekcja „DO SPRAWDZENIA NA ŻYWO" niżej (2026-09-08) jest przez to nieaktualna
       treningu dosyłany wynik z niedokończoną serią. Goście już wcześniej
       szli raz na serię. Przejście na Realtime Database (sugestia
       znajomego) odłożone — przy tej liczbie zapisów koszty są groszowe.
+- [ ] **C46. Nowe rynki (CZ, FR, UK, USA) — plan z 2026-10-14.** ⚠️ Orientacja,
+      nie porada prawna — przed startem w danym kraju sprawdzić z prawnikiem /
+      pakietem prawnym (IT-Recht Kanzlei, Händlerbund, Trusted Shops — może
+      user ma już taki dla sklepu).
+      **Model wieku — DECYZJA USERA 2026-10-14:** zostaje obecny (UE: samodzielnie
+      od 16, młodsi za zgodą rodzica — ParentalConsentGate). **USA: tylko od 13 lat**
+      (omija COPPA: nasza zgoda e-mailem opiekuna nie jest „verifiable”); 13–15
+      w USA dalej za zgodą rodzica. Twarde 16+ dla wszystkich ODRZUCONE (młodzież =
+      rdzeń łucznictwa klubowego i trybu trenera). UK: decyzja przy starcie.
+      1. [ ] **CZ, FR:** tłumaczenie 3 dokumentów (RODO to samo; § 18 AGB już daje
+             ochronę konsumencką kraju klienta). Dopiski: FR — médiateur de la
+             consommation (sprawdzić, czy obowiązuje firmy spoza FR), Loi Toubon
+             (francuski obowiązkowy); CZ — informacja o ČOI jako ADR.
+      2. [ ] **UK:** sekcja UK w terms/privacy-policy (UK GDPR, ewentualny
+             przedstawiciel art. 27 UK GDPR), DMCC Act — nowe zasady subskrypcji,
+             🔴 Online Safety Act (wiadomości trener–uczeń, nazwy w rankingu =
+             user-to-user → ocena ryzyka, także dla dzieci).
+      3. [ ] **USA:** blokada < 13 lat przy rejestracji dla USA (kraj z profilu/
+             sklepu), sekcja US w terms (auto-renewal: jasna informacja + łatwe
+             anulowanie), sales tax przez sklepy.
+      4. [ ] **Firma (pytanie usera 2026-10-14):** zostajemy przy Aves-24
+             (Einzelunternehmen — „prywatnie” nie daje ochrony). Gewerbe-Ummeldung:
+             dopisać „Entwicklung und Vertrieb von Software/Apps”; Steuerberater:
+             OSS dla usług cyfrowych (próg 10 000 € liczony razem z wysyłką
+             towarów ze sklepu). Google Play: konto firmowe (D-U-N-S) omija
+             14-dniowy zamknięty test kont prywatnych. UG dopiero przy większej skali.
 ---
 
 ## STAN NA 2026-09-08

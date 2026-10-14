@@ -4,6 +4,7 @@ import { collection, query, orderBy, limit, getDocs, getDoc, doc } from 'firebas
 import { useTranslation } from 'react-i18next';
 import ViewHeader from '../components/ViewHeader';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
+import { TRIAL_DAYS } from '../utils/proAccess';
 
 interface AnnouncementsViewProps {
   userId: string;
@@ -63,10 +64,10 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
                 lang: i18n.language,
                 isSystemGenerated: true,
               });
-            } else if (daysLeft >= 28 && !proGiftedAt) {
+            } else if (daysLeft >= TRIAL_DAYS - 2 && !proGiftedAt) {
               myAnnouncements.unshift({
                 id: 'sys_trial_welcome',
-                title: t('home.trialWelcomeTitle'),
+                title: t('home.trialWelcomeTitle', { days: TRIAL_DAYS }),
                 content: t('home.trialWelcomeContent'),
                 target: 'USER',
                 lang: i18n.language,

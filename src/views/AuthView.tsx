@@ -14,14 +14,17 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { switchLanguage } from '../i18n';
-import { PRIVACY_POLICY_VERSION, privacyPolicyUrl } from '../utils/legalLinks';
+import { PRIVACY_POLICY_VERSION, privacyPolicyUrl, termsAcceptedField, termsUrl } from '../utils/legalLinks';
+import LegalAcceptText from '../components/LegalAcceptText';
 
 // [RODO] Zapis zgody na politykę prywatności w profilu — rozliczalność (art. 7 ust. 1).
+// [C36] Razem z akceptacją regulaminu (jeden checkbox na oba dokumenty).
 // Merge: dokument users/{uid} może jeszcze nie istnieć (tworzy go App.tsx) lub już istnieć.
 async function writePrivacyConsent(uid: string) {
   try {
     await setDoc(doc(db, 'users', uid), {
-      privacyConsent: { version: PRIVACY_POLICY_VERSION, acceptedAt: Date.now() }
+      privacyConsent: { version: PRIVACY_POLICY_VERSION, acceptedAt: Date.now() },
+      ...termsAcceptedField(),
     }, { merge: true });
   } catch (e) {
     console.error('Zapis privacyConsent nieudany:', e);
@@ -155,7 +158,10 @@ export default function AuthView() {
     safeSetError('');
     safeSetIsLoading(true);
     try {
-      await signInAnonymously(auth);
+      const cred = await signInAnonymously(auth);
+      // [C36] Gość też zawiera umowę — informacja pod przyciskiem.
+      setDoc(doc(db, 'users', cred.user.uid), termsAcceptedField(), { merge: true })
+        .catch(e => console.error('Zapis termsAccepted (gość) nieudany:', e));
     } catch (err: any) {
       console.error(err);
       safeSetError(t('auth.errorGeneral'));
@@ -300,16 +306,7 @@ export default function AuthView() {
                 className="mt-0.5 w-4 h-4 accent-[#0a3a2a] shrink-0"
               />
               <span className="text-[11px] font-bold text-gray-500 leading-snug">
-                {t('auth.privacyAccept')}{' '}
-                <a
-                  href={privacyPolicyUrl(i18n.language)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                  className="text-emerald-600 font-black underline decoration-emerald-200 underline-offset-2"
-                >
-                  {t('auth.privacyPolicy')}
-                </a>
+                <LegalAcceptText />
               </span>
             </label>
           )}
@@ -366,12 +363,21 @@ export default function AuthView() {
             <p className="text-center text-[9px] font-bold text-gray-400 leading-snug px-6">
               {t('auth.privacyGoogleNote')}{' '}
               <a
+                href={termsUrl(i18n.language)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 underline decoration-emerald-200 underline-offset-2"
+              >
+                {t('auth.terms')} ↗
+              </a>
+              {' · '}
+              <a
                 href={privacyPolicyUrl(i18n.language)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-emerald-600 underline decoration-emerald-200 underline-offset-2"
               >
-                ↗
+                {t('auth.privacyPolicy')} ↗
               </a>
             </p>
 
@@ -389,6 +395,17 @@ export default function AuthView() {
                 {t('auth.guestNote')}
               </span>
             </button>
+            <p className="text-center text-[9px] font-bold text-gray-400 leading-snug px-6">
+              {t('auth.guestTermsNote')}{' '}
+              <a
+                href={termsUrl(i18n.language)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 underline decoration-emerald-200 underline-offset-2"
+              >
+                {t('auth.terms')} ↗
+              </a>
+            </p>
           </div>
         )}
       </div>

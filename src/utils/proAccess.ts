@@ -16,3 +16,11 @@ export function hasActivePro(
   if (d.isPremium === true || d.isPremiumPromo === true) return true;
   return typeof d.trialEndsAt === 'number' && d.trialEndsAt > now;
 }
+
+/**
+ * Długość darmowego okresu próbnego PRO dla nowego konta (decyzja usera
+ * 2026-10-14: 40 dni zamiast 30). Po terminie PRO po prostu wygasa — bez
+ * automatycznej płatności. LUSTRO: `validTrialEndsAt` w firestore.rules
+ * przepuszcza max 41 dni; regulamin (public/legal) podaje tę samą liczbę.
+ */
+export const TRIAL_DAYS = 40;

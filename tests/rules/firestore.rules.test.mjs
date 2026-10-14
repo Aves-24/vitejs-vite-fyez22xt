@@ -83,10 +83,10 @@ test('T1: create konta z polem chronionym (coachLimit) odrzucone', async () => {
   await assertFails(setDoc(doc(bob(), 'users/newbie'), { coachLimit: 99 }));
 });
 
-test('T1: trialEndsAt do 31 dni przechodzi przy create', async () => {
+test('T1: trialEndsAt do 41 dni (trial 40 dni) przechodzi przy create', async () => {
   await env.clearFirestore();
   await assertSucceeds(setDoc(doc(alice(), 'users/alice'), {
-    displayName: 'Alice', trialEndsAt: Date.now() + 7 * DAY,
+    displayName: 'Alice', trialEndsAt: Date.now() + 40 * DAY,
   }));
 });
 

@@ -19,3 +19,22 @@ export function privacyPolicyUrl(lang: string): string {
 }
 
 export const IMPRESSUM_URL = '/legal/impressum.html';
+
+// Regulamin / Nutzungsbedingungen / Terms of Use (C36, 2026-10-14). Wiążąca
+// wersja DE (siedziba usługodawcy), PL i EN to tłumaczenia. Akceptacja jest
+// zapisywana w profilu jako `termsAccepted: { version, acceptedAt }`.
+// Zmiana treści = podbij wersję: TermsGate poprosi każde konto o ponowną,
+// wyraźną akceptację (w DE ciche „dalsze używanie = zgoda” nie działa,
+// regulamin § 15) i trzeba ją zapowiedzieć 6 tygodni wcześniej.
+export const TERMS_VERSION = '1.0';
+
+export function termsUrl(lang: string): string {
+  if (lang.startsWith('de')) return '/legal/agb.html';
+  if (lang.startsWith('pl')) return '/legal/regulamin.html';
+  return '/legal/terms.html';
+}
+
+/** Pole do zapisania w users/{uid} (setDoc merge / updateDoc). */
+export function termsAcceptedField() {
+  return { termsAccepted: { version: TERMS_VERSION, acceptedAt: Date.now() } };
+}

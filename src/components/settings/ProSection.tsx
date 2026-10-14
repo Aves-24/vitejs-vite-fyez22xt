@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { TRIAL_DAYS } from '../../utils/proAccess';
 
 interface ProSectionProps {
   isPremium: boolean;
@@ -14,10 +15,10 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt, proGift
   const trialTimestamp = trialEndsAt ? new Date(trialEndsAt).getTime() : null;
   const daysLeft = trialTimestamp ? Math.ceil((trialTimestamp - Date.now()) / (1000 * 3600 * 24)) : null;
   const isTrialActive = !isPremium && daysLeft !== null && daysLeft > 0;
-  // Prezent przesuwa trialEndsAt, więc bez tej flagi udawałby 30-dniowy trial.
+  // Prezent przesuwa trialEndsAt, więc bez tej flagi udawałby zwykły trial.
   const isGift = isTrialActive && !!proGiftedAt;
-  // Progress bar: 30-day baseline
-  const trialProgress = daysLeft !== null ? Math.max(0, Math.min(100, (daysLeft / 30) * 100)) : 0;
+  // Progress bar: baseline = długość trialu (TRIAL_DAYS)
+  const trialProgress = daysLeft !== null ? Math.max(0, Math.min(100, (daysLeft / TRIAL_DAYS) * 100)) : 0;
   const giftEndLabel = trialTimestamp
     ? new Date(trialTimestamp).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '';

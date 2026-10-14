@@ -248,9 +248,13 @@ export const views = {
     backToLogin: "Wróć do logowania",
     resetSuccess: "Link do resetowania hasła został wysłany na Twój e-mail! 📧",
     privacyAccept: "Akceptuję",
+    terms: "Regulamin",
+    and: "i",
+    guestTermsNote: "Tryb gościa też podlega zasadom:",
     privacyPolicy: "Politykę prywatności",
-    privacyRequired: "Aby utworzyć konto, zaakceptuj Politykę prywatności.",
-    privacyGoogleNote: "Kontynuując przez Google akceptujesz Politykę prywatności.",
+    privacyPolicySuffix: "",
+    privacyRequired: "Aby utworzyć konto, zaakceptuj Regulamin i Politykę prywatności.",
+    privacyGoogleNote: "Kontynuując przez Google akceptujesz:",
     guestBtn: "Wypróbuj bez konta",
     guestNote: "Dane trybu gościa są automatycznie usuwane po 24 godzinach."
   },
@@ -264,6 +268,15 @@ export const views = {
     upgradeGoogle: "Kontynuuj z Google",
     emailInUse: "Ten e-mail ma już konto. Wyloguj się z trybu gościa i zaloguj na nie.",
     weakPassword: "Hasło musi mieć co najmniej 6 znaków."
+  },
+  termsGate: {
+    title: "Nasz regulamin",
+    intro: "GROT-X ma teraz regulamin. Określa m.in. zasady konta, funkcji trenera, rankingów i przyszłej subskrypcji PRO. Przeczytaj go i zaakceptuj, aby dalej korzystać z aplikacji.",
+    read: "Przeczytaj regulamin",
+    acceptBtn: "Akceptuję",
+    logout: "Wyloguj",
+    note: "Jeśli się nie zgadzasz, możesz w każdej chwili usunąć konto w Ustawieniach.",
+    errorSave: "Nie udało się zapisać. Sprawdź połączenie i spróbuj ponownie.",
   },
   parentalConsent: {
     title: "Potrzebna zgoda rodzica",
@@ -488,7 +501,7 @@ export const views = {
     trialWarningDay: "dzień",
     trialWarningDays: "dni",
     trialWarningContent: "Po tym czasie Twoje konto wróci do wersji FREE. Jeśli podoba Ci się Grot-X, zachowaj dostęp do wszystkich funkcji wykupując PRO.",
-    trialWelcomeTitle: "Otrzymałeś 30 dni GROT-X Pro za darmo! 🎉",
+    trialWelcomeTitle: "Otrzymałeś {{days}} dni GROT-X Pro za darmo! 🎉",
     trialWelcomeContent: "Odkryj wszystkie funkcje PRO bez ograniczeń. Ciesz się darmowym okresem próbnym!",
     proGiftTitle: "Dostałeś GROT-X PRO w prezencie! 🎁",
     proGiftContent: "Twój dostęp PRO jest teraz aktywny do {{date}}. Dziękujemy za wsparcie!"
@@ -921,6 +934,7 @@ export const views = {
     privacyData: "Prywatność i dane (RODO)",
     privacyPolicyLink: "Polityka prywatności",
     impressumLink: "Impressum",
+    termsLink: "Regulamin",
     exportData: "Eksportuj moje dane (JSON)",
     exportRunning: "Przygotowuję eksport...",
     exportDone: "Dane wyeksportowane — sprawdź pobrane pliki.",

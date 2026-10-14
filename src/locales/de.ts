@@ -234,9 +234,13 @@ export const views = {
     backToLogin: "Zurück zum Login",
     resetSuccess: "Ein Link zum Zurücksetzen des Passworts wurde an deine E-Mail gesendet! 📧",
     privacyAccept: "Ich akzeptiere die",
+    terms: "Nutzungsbedingungen",
+    and: "und habe die",
+    guestTermsNote: "Auch als Gast gelten die",
     privacyPolicy: "Datenschutzerklärung",
-    privacyRequired: "Bitte akzeptiere die Datenschutzerklärung, um ein Konto zu erstellen.",
-    privacyGoogleNote: "Mit der Anmeldung über Google akzeptierst du die Datenschutzerklärung.",
+    privacyPolicySuffix: "gelesen",
+    privacyRequired: "Bitte akzeptiere die Nutzungsbedingungen und die Datenschutzerklärung, um ein Konto zu erstellen.",
+    privacyGoogleNote: "Mit der Anmeldung über Google akzeptierst du:",
     guestBtn: "Ohne Konto ausprobieren",
     guestNote: "Gast-Daten werden nach 24 Stunden automatisch gelöscht."
   },
@@ -250,6 +254,15 @@ export const views = {
     upgradeGoogle: "Weiter mit Google",
     emailInUse: "Diese E-Mail hat bereits ein Konto. Melde dich vom Gastmodus ab und logge dich dort ein.",
     weakPassword: "Das Passwort muss mindestens 6 Zeichen haben."
+  },
+  termsGate: {
+    title: "Unsere Nutzungsbedingungen",
+    intro: "GROT-X hat jetzt Nutzungsbedingungen. Sie regeln u. a. Konto, Trainerfunktion, Ranglisten und das künftige PRO-Abonnement. Bitte lies sie und stimme zu, um die App weiter zu nutzen.",
+    read: "Nutzungsbedingungen lesen",
+    acceptBtn: "Ich stimme zu",
+    logout: "Abmelden",
+    note: "Ohne Zustimmung kannst du dein Konto jederzeit in den Einstellungen löschen.",
+    errorSave: "Speichern fehlgeschlagen. Bitte prüfe die Verbindung und versuche es erneut.",
   },
   parentalConsent: {
     title: "Einwilligung der Eltern erforderlich",
@@ -472,7 +485,7 @@ export const views = {
     trialWarningDay: "Tag",
     trialWarningDays: "Tagen",
     trialWarningContent: "Danach kehrt dein Konto zur FREE-Version zurück. Wenn dir GROT-X gefällt, behalte den Zugang zu allen Funktionen mit PRO.",
-    trialWelcomeTitle: "Du hast 30 Tage GROT-X Pro kostenlos erhalten! 🎉",
+    trialWelcomeTitle: "Du hast {{days}} Tage GROT-X Pro kostenlos erhalten! 🎉",
     trialWelcomeContent: "Entdecke alle PRO-Funktionen ohne Einschränkungen. Genieße deinen kostenlosen Testzeitraum!",
     proGiftTitle: "Du hast GROT-X PRO geschenkt bekommen! 🎁",
     proGiftContent: "Dein PRO-Zugang ist jetzt aktiv bis {{date}}. Danke für deine Unterstützung!"
@@ -904,6 +917,7 @@ export const views = {
     privacyData: "Datenschutz & Daten (DSGVO)",
     privacyPolicyLink: "Datenschutzerklärung",
     impressumLink: "Impressum",
+    termsLink: "AGB",
     exportData: "Meine Daten exportieren (JSON)",
     exportRunning: "Export wird vorbereitet...",
     exportDone: "Daten exportiert — siehe Downloads.",

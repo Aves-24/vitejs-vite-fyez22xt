@@ -35,6 +35,7 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 19 | Sygnały reCAPTCHA v3 | Google (App Check) | anty-abuse | art. 6(1)(f) | Google (procesor) |
 | 20 | Local Storage (aktywna sesja, język, cache Firestore) | urządzenie użytkownika | działanie offline | technicznie niezbędne (§25(2) TDDDG) | nikt |
 | 21 | Zgoda na politykę (`privacyConsent`) | `users/{uid}` | rozliczalność (art. 7(1)) | art. 6(1)(c) | właściciel, admin |
+| 21a | Akceptacja regulaminu (`termsAccepted {version, acceptedAt}`, C36 2026-10-14) | `users/{uid}` | dowód zawarcia umowy / zgody na zmianę AGB | art. 6(1)(b) | właściciel, admin |
 | 22 | Zgoda opiekuna dla <16 lat (`parentalConsent`: wersja, timestamp, data ur. w chwili zgody) | `users/{uid}/private/profile` | rozliczalność zgody dla małoletnich (art. 8) | art. 6(1)(c) + art. 8 | właściciel, admin |
 | 23 | E-mail rodzica/opiekuna (dowód zgody <16) | `users/{uid}/private/profile` | weryfikacja zgody opiekuna (art. 8(2) — „reasonable efforts") | art. 6(1)(c) + art. 8 | właściciel, admin |
 

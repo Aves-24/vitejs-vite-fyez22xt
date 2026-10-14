@@ -19,6 +19,7 @@ import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
+import { TRIAL_DAYS } from '../utils/proAccess';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -835,10 +836,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             lang: i18n.language,
             isSystemGenerated: true
           });
-        } else if (daysLeft >= 28 && !proGiftedAt) {
+        } else if (daysLeft >= TRIAL_DAYS - 2 && !proGiftedAt) {
           myAnnouncements.unshift({
             id: 'sys_trial_welcome',
-            title: t('home.trialWelcomeTitle'),
+            title: t('home.trialWelcomeTitle', { days: TRIAL_DAYS }),
             content: t('home.trialWelcomeContent'),
             target: 'USER',
             lang: i18n.language,

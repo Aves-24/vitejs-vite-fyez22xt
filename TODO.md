@@ -635,7 +635,33 @@ b7d1158  Docs: aktualizacja JOURNAL + TODO po Fix A/B
             skasować prośbę w konsoli Firestore — polityka obiecuje „do decyzji”.
             Stare prośby sprzed zmiany nie mają `expiresAt` — skasować ręcznie.
 
-      ### 📜 AGB / Nutzungsbedingungen / Regulamin — DECYZJA 2026-09-29
+      ### 📜 AGB — ✅ NAPISANE 2026-10-14 (v1.0, decyzja usera: teraz, z abonamentem)
+      Pliki: `public/legal/agb.html` (DE, wiążąca), `regulamin.html` (PL),
+      `terms.html` (EN). Akceptacja: jeden checkbox „Regulamin + Polityka”
+      przy rejestracji i upgrade gościa (`LegalAcceptText`), notka przy Google
+      i przy trybie gościa, `TermsGate` dla kont bez `termsAccepted.version ===
+      TERMS_VERSION` (`src/utils/legalLinks.ts`). Link „AGB” w Ustawieniach →
+      Prywatność. Impressum: usunięty link do platformy ODR (zamknięta 20.07.2025).
+      **Decyzje usera 2026-10-14:** tylko abonamenty (mies./rocznie);
+      ostrzeżenie → blokada; checkbox + okno dla kont; **trial 40 dni** (było 30
+      w kodzie), bez automatycznej płatności — `TRIAL_DAYS` w
+      `src/utils/proAccess.ts`, reguła `validTrialEndsAt` max 41 dni.
+      **Zostaje otwarte:**
+      - [ ] Ceny w § 10 ust. 2 (żółte `[Preis]` w 3 plikach) — przy decyzji o cenie.
+      - [ ] Przy włączaniu płatności w aplikacji: przycisk „zahlungspflichtig
+            abonnieren”, checkbox wygaśnięcia prawa odstąpienia (§ 356 Abs. 5
+            BGB), e-mail z potwierdzeniem (trwały nośnik), przycisk „Verträge
+            hier kündigen” (§ 312k BGB) w Ustawieniach — AGB już to obiecują.
+      - [ ] Przegląd przez prawnika przed startem (zwłaszcza § 10–14).
+      - [ ] 🔴 **Polityki prywatności NIE opisują trybu gościa** (konto
+            anonimowe, kasowanie po 24 h) — dopisać § 2.x w 3 językach, najlepiej
+            w DZIEŃ BLAZE razem z TTL (dziś dane gościa się nie kasują, więc
+            nie wolno jeszcze obiecać 24 h w polityce).
+      - [ ] Zmiana AGB = podbij `TERMS_VERSION`, zapowiedź 6 tygodni wcześniej (§ 15).
+      - [ ] Do sprawdzenia na żywo: istniejące konto dostaje okno „Nutzungsbedingungen”
+            → „Ich stimme zu” → znika i nie wraca; nowa rejestracja okna nie widzi.
+
+      ### 📜 AGB / Nutzungsbedingungen / Regulamin — DECYZJA 2026-09-29 (historia)
       **Piszemy na końcu, gdy zakres aplikacji będzie znany** (decyzja usera).
       **Twardy termin: przed PIERWSZYM z: publikacja w sklepach, włączenie
       płatności (Stripe/IAP), publiczny start.** Do tego czasu przy każdej

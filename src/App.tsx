@@ -12,6 +12,8 @@ import HomeView from './views/HomeView';
 import SessionSetup from './components/SessionSetup';
 import SmartSeasonUpdater from './components/SmartSeasonUpdater';
 import ParentalConsentGate from './components/ParentalConsentGate';
+import TermsGate from './components/TermsGate';
+import { TERMS_VERSION } from './utils/legalLinks';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import UpdateBanner from './components/UpdateBanner';
@@ -25,6 +27,7 @@ import { migratePrivateSessionNotes } from './utils/privateSessionNote';
 import { syncPublicProfile } from './utils/publicProfile';
 import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
+import { TRIAL_DAYS } from './utils/proAccess';
 import GuestBanner from './components/GuestBanner';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
@@ -91,6 +94,8 @@ export default function App() {
   const [userDistances, setUserDistances] = useState<UserDistance[]>([]);
   const [isCoach, setIsCoach] = useState<boolean>(false);
   const [hasCoach, setHasCoach] = useState<boolean>(false);
+  // [C36] Profil bez akceptacji aktualnej wersji regulaminu → TermsGate.
+  const [needsTerms, setNeedsTerms] = useState(false);
   const [userLevel, setUserLevel] = useState<number>(1);
 
   // NOWE: trzymamy userClub w App.tsx żeby przekazać do AnnouncementsView
@@ -261,6 +266,7 @@ export default function App() {
           }
         }
         
+        setNeedsTerms(data.termsAccepted?.version !== TERMS_VERSION);
         setIsCoach(!!data.isCoach);
         setHasCoach(Array.isArray(data.coaches) && data.coaches.length > 0);
         setUserLevel(data.level || 1);
@@ -279,7 +285,7 @@ export default function App() {
         if (!data.trialEndsAt && !trialFallbackAttemptedRef.current) {
           trialFallbackAttemptedRef.current = true;
           setDoc(doc(db, 'users', user.uid), {
-            trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+            trialEndsAt: Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
           }, { merge: true }).catch(e => console.error('trialEndsAt fallback failed:', e));
         }
 
@@ -327,7 +333,7 @@ export default function App() {
         setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           createdAt: serverTimestamp(),
-          trialEndsAt: Date.now() + 30 * 24 * 60 * 60 * 1000,
+          trialEndsAt: Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
           ...guestExpiryFields(),
         }, { merge: true }).catch(e => console.error('Błąd tworzenia profilu:', e));
 
@@ -579,6 +585,10 @@ export default function App() {
       {/* [RODO art. 8] Bramka zgody opiekuna dla użytkowników < 16 lat.
           Blokuje aplikację małoletniemu bez potwierdzonej zgody rodzica. */}
       {user?.uid && <ParentalConsentGate userId={user.uid} />}
+
+      {/* [C36] Wyraźna akceptacja regulaminu — konta sprzed jego wprowadzenia
+          i po każdej zmianie wersji (TERMS_VERSION). */}
+      {user?.uid && needsTerms && <TermsGate userId={user.uid} />}
 
       {/* [GOŚĆ] Stały baner na Home: odliczanie do wygaśnięcia danych +
           upgrade konta (linkWithCredential zachowuje uid i dorobek). */}

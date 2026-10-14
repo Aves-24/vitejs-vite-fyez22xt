@@ -52,7 +52,7 @@ service cloud.firestore {
     // od teraz. Bez tego limitu można sobie ustawić trial "na zawsze".
     function validTrialEndsAt(data) {
       return data.trialEndsAt is number
-        && data.trialEndsAt <= request.time.toMillis() + 31 * 24 * 60 * 60 * 1000;
+        && data.trialEndsAt <= request.time.toMillis() + 41 * 24 * 60 * 60 * 1000;
     }
     // [ZESTAWY] Limit zestawow sprzetowych: 1 FREE / 4 PRO.
     //
@@ -216,7 +216,7 @@ service cloud.firestore {
 
       // Path B — self-edit profile (no protected fields, no relations)
       // trialEndsAt may be written once on first-time init (when not previously set)
-      // and only with a bounded value (max now + 31 days, see validTrialEndsAt);
+      // and only with a bounded value (max now + 41 days: 40-day trial + margin, see validTrialEndsAt);
       // once present it is locked — client cannot change it (matches code comment).
       allow update: if isSelf(uid)
         && noneAffected(['isPremium', 'isPremiumPromo',

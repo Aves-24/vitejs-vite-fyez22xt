@@ -234,9 +234,13 @@ export const views = {
     backToLogin: "Back to login",
     resetSuccess: "Password reset link has been sent to your email! 📧",
     privacyAccept: "I accept the",
+    terms: "Terms of Use",
+    and: "and the",
+    guestTermsNote: "Guest use is also subject to the",
     privacyPolicy: "Privacy Policy",
-    privacyRequired: "Please accept the Privacy Policy to create an account.",
-    privacyGoogleNote: "By continuing with Google you accept the Privacy Policy.",
+    privacyPolicySuffix: "",
+    privacyRequired: "Please accept the Terms of Use and the Privacy Policy to create an account.",
+    privacyGoogleNote: "By continuing with Google you accept:",
     guestBtn: "Try without an account",
     guestNote: "Guest data is automatically deleted after 24 hours."
   },
@@ -250,6 +254,15 @@ export const views = {
     upgradeGoogle: "Continue with Google",
     emailInUse: "This e-mail already has an account. Sign out of guest mode and log into it.",
     weakPassword: "Password must be at least 6 characters."
+  },
+  termsGate: {
+    title: "Our Terms of Use",
+    intro: "GROT-X now has Terms of Use. They cover your account, the coach feature, leaderboards and the upcoming PRO subscription. Please read and accept them to keep using the app.",
+    read: "Read the Terms of Use",
+    acceptBtn: "I accept",
+    logout: "Log out",
+    note: "If you do not agree, you can delete your account at any time in Settings.",
+    errorSave: "Saving failed. Please check your connection and try again.",
   },
   parentalConsent: {
     title: "Parental consent required",
@@ -472,7 +485,7 @@ export const views = {
     trialWarningDay: "day",
     trialWarningDays: "days",
     trialWarningContent: "After this time your account will return to FREE version. If you enjoy GROT-X, keep access to all features by upgrading to PRO.",
-    trialWelcomeTitle: "You have received 30 days of GROT-X Pro for free! 🎉",
+    trialWelcomeTitle: "You have received {{days}} days of GROT-X Pro for free! 🎉",
     trialWelcomeContent: "Explore all PRO features without any restrictions. Enjoy your free trial!",
     proGiftTitle: "You've been gifted GROT-X PRO! 🎁",
     proGiftContent: "Your PRO access is now active until {{date}}. Thank you for your support!"
@@ -904,6 +917,7 @@ export const views = {
     privacyData: "Privacy & data (GDPR)",
     privacyPolicyLink: "Privacy Policy",
     impressumLink: "Impressum",
+    termsLink: "Terms",
     exportData: "Export my data (JSON)",
     exportRunning: "Preparing export...",
     exportDone: "Data exported — check your downloads.",

@@ -8,7 +8,8 @@ import {
 import { doc, setDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { guestExpiresAtMs, clearGuestExpiry } from '../utils/guestMode';
-import { PRIVACY_POLICY_VERSION, privacyPolicyUrl } from '../utils/legalLinks';
+import { PRIVACY_POLICY_VERSION, termsAcceptedField } from '../utils/legalLinks';
+import LegalAcceptText from './LegalAcceptText';
 
 // ═══════════════════════════════════════════════════════════════════
 //  [GOŚĆ] Stały baner trybu gościa (Home) — wymóg produktowy: widoczny
@@ -25,7 +26,7 @@ interface GuestBannerProps {
 }
 
 export default function GuestBanner({ userId }: GuestBannerProps) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [now, setNow] = useState(Date.now());
   const [upgraded, setUpgraded] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -63,7 +64,8 @@ export default function GuestBanner({ userId }: GuestBannerProps) {
   const finalizeUpgrade = async () => {
     try {
       await setDoc(doc(db, 'users', userId), {
-        privacyConsent: { version: PRIVACY_POLICY_VERSION, acceptedAt: Date.now() }
+        privacyConsent: { version: PRIVACY_POLICY_VERSION, acceptedAt: Date.now() },
+        ...termsAcceptedField(),
       }, { merge: true });
     } catch (e) { console.error('Zapis privacyConsent nieudany:', e); }
     await clearGuestExpiry(userId);
@@ -167,14 +169,7 @@ export default function GuestBanner({ userId }: GuestBannerProps) {
                   className="mt-0.5 w-4 h-4 accent-[#0a3a2a] shrink-0"
                 />
                 <span className="text-[11px] font-bold text-gray-500 leading-snug">
-                  {t('auth.privacyAccept')}{' '}
-                  <a
-                    href={privacyPolicyUrl(i18n.language)} target="_blank" rel="noopener noreferrer"
-                    onClick={e => e.stopPropagation()}
-                    className="text-emerald-600 font-black underline decoration-emerald-200 underline-offset-2"
-                  >
-                    {t('auth.privacyPolicy')}
-                  </a>
+                  <LegalAcceptText />
                 </span>
               </label>
               <button

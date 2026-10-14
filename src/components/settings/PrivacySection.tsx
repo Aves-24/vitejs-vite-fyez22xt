@@ -12,7 +12,7 @@ import {
   deleteDoc, updateDoc, arrayRemove,
 } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
-import { privacyPolicyUrl, IMPRESSUM_URL } from '../../utils/legalLinks';
+import { privacyPolicyUrl, termsUrl, IMPRESSUM_URL } from '../../utils/legalLinks';
 
 interface PrivacySectionProps {
   userId: string;
@@ -192,6 +192,14 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
       {/* Linki prawne */}
       <div className="flex gap-2">
         <a
+          href={termsUrl(i18n.language)}
+          target="_blank" rel="noopener noreferrer"
+          className="flex-1 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black text-gray-600 uppercase tracking-wide text-center active:scale-95 transition-all flex items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-sm">gavel</span>
+          {t('settings.termsLink')}
+        </a>
+        <a
           href={privacyPolicyUrl(i18n.language)}
           target="_blank" rel="noopener noreferrer"
           className="flex-1 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black text-gray-600 uppercase tracking-wide text-center active:scale-95 transition-all flex items-center justify-center gap-1.5"
@@ -204,7 +212,7 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
           target="_blank" rel="noopener noreferrer"
           className="flex-1 py-3 bg-gray-50 border border-gray-100 rounded-xl text-[10px] font-black text-gray-600 uppercase tracking-wide text-center active:scale-95 transition-all flex items-center justify-center gap-1.5"
         >
-          <span className="material-symbols-outlined text-sm">gavel</span>
+          <span className="material-symbols-outlined text-sm">info</span>
           {t('settings.impressumLink')}
         </a>
       </div>

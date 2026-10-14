@@ -796,10 +796,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // Puls grupy na zwiniętej karcie: kto trenował w 7 dni, zmiana formy
   // (ostatni trening vs poprzedni na tym samym dystansie), nieaktywni.
+  // Uczeń na pauzie nie wlicza się do „x/y trenowało” — chory nie zaniża grupy.
   const groupPulse = (members: any[]) => {
     const weekCutoff = Date.now() - 7 * DAY_MS;
+    const counted = members.filter(s => !pauseOf(s));
     return {
-      active: members.filter(s => (s.exactLastActivity || 0) >= weekCutoff).length,
+      total: counted.length,
+      active: counted.filter(s => (s.exactLastActivity || 0) >= weekCutoff).length,
       up: members.filter(s => formCompare[s.id]?.dir === 'up').length,
       down: members.filter(s => formCompare[s.id]?.dir === 'down').length,
       inactive: members.filter(isInactive).length,
@@ -1764,15 +1767,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
                     {members.length > 0 && !isLoading && (
                       <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                        <span
-                          className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
-                            pulse.active === members.length ? 'bg-emerald-50 text-emerald-700'
-                              : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
-                          }`}
-                          title={t('coachDashboard.groupPulseActiveHint')}
-                        >
-                          {t('coachDashboard.groupPulseActive', { active: pulse.active, total: members.length })}
-                        </span>
+                        {pulse.total > 0 && (
+                          <span
+                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                              pulse.active === pulse.total ? 'bg-emerald-50 text-emerald-700'
+                                : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
+                            }`}
+                            title={t('coachDashboard.groupPulseActiveHint')}
+                          >
+                            {t('coachDashboard.groupPulseActive', { active: pulse.active, total: pulse.total })}
+                          </span>
+                        )}
                         {pulse.up > 0 && (
                           <span className="flex items-center text-[9px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
                             <span className="material-symbols-outlined text-[13px]">trending_up</span>{pulse.up}

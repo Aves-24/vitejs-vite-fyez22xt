@@ -196,6 +196,13 @@
    Na końcu pliku celowo: .dark .border-gray-200 (0,2,0) ustawia kolor
    wszystkich krawędzi, więc paski w ciemnym motywie muszą przyjść po nim.
    ═══════════════════════════════════════════════════════════════════════ */
+/* SŁOWNIK KOLORÓW (user 2026-10-15) — ten sam w całej aplikacji (Home,
+   kalendarz, dziennik, panel trenera):
+   ciemnozielony #0a3a2a = zawody · zielony = trening z tarczą · jasnoniebieski
+   (sky) = trening techniczny · granat (blue-900) = „Inne”, mój termin ·
+   róż (rose) = ja jako trener · fiolet (violet) = od mojego trenera (temat,
+   terminy) · pomarańczowy (amber) = wpis trenera · indygo = prywatna notatka ·
+   żółty #fed33e = fokus i marka · niebieski (sky-500) = fokus od trenera. */
 .tb-card { border-left-width: 5px; border-left-style: solid; }
 .tb-icon { background-color: rgba(255, 255, 255, 0.75); }
 .tb-dist { background-color: #ecfdf5; border-top-color: #d1fae5; border-right-color: #d1fae5; border-bottom-color: #d1fae5; }

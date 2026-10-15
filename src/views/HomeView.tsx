@@ -1002,56 +1002,56 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* KALENDARZ PRYWATNY / TO-DO */}
         {!isLoading && (todoItems.length > 0 || nextOtherEvent) && (
           todoItems.length > 0 ? (
-            <div className="relative bg-emerald-50 border border-emerald-200 rounded-[24px] shadow-sm mt-2 pt-3">
-              <span className="absolute -top-2.5 left-6 bg-emerald-200 text-emerald-800 px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
+            <div className="relative bg-blue-50 border border-blue-200 rounded-[24px] shadow-sm mt-2 pt-3">
+              <span className="absolute -top-2.5 left-6 bg-blue-900 text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
                 {t('calendar.todoSection')}
               </span>
               <div className="pt-1 px-3 pb-2 space-y-1.5">
                 {todoItems.map(item => (
                   <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="rounded-[18px] px-3 py-2.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer">
-                    <span className="material-symbols-outlined text-emerald-300 text-[20px] shrink-0">radio_button_unchecked</span>
+                    <span className="material-symbols-outlined text-blue-300 text-[20px] shrink-0">radio_button_unchecked</span>
                     <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
-                    <span className="material-symbols-outlined text-emerald-300 text-[18px] shrink-0">arrow_forward_ios</span>
+                    <span className="material-symbols-outlined text-blue-300 text-[18px] shrink-0">arrow_forward_ios</span>
                   </div>
                 ))}
               </div>
               {nextOtherEvent && (
                 <div
                   onClick={() => onGoToCalendar(nextOtherEvent.id)}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-emerald-200 cursor-pointer active:bg-emerald-100 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2 border-t border-blue-200 cursor-pointer active:bg-blue-100 transition-colors"
                 >
-                  <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">calendar_month</span>
-                  <span className="text-[9px] font-black text-emerald-600 shrink-0">
+                  <span className="material-symbols-outlined text-blue-400 text-[13px] shrink-0">calendar_month</span>
+                  <span className="text-[9px] font-black text-blue-600 shrink-0">
                     {new Date(nextOtherEvent.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
                   </span>
                   <span className="text-[9px] font-bold text-[#0a3a2a] truncate flex-1">{nextOtherEvent.title}</span>
-                  <span className="material-symbols-outlined text-emerald-400 text-[13px] shrink-0">arrow_forward</span>
+                  <span className="material-symbols-outlined text-blue-400 text-[13px] shrink-0">arrow_forward</span>
                 </div>
               )}
             </div>
           ) : (
-            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-emerald-50 border border-emerald-200 rounded-[22px] px-3.5 py-2 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
+            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-blue-50 border border-blue-200 rounded-[22px] px-3.5 py-2 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
               <div className="absolute inset-0 rounded-[22px] overflow-hidden pointer-events-none">
                 <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
                   <span className="material-symbols-outlined text-[110px]">calendar_month</span>
                 </div>
               </div>
-              <span className="absolute -top-2 left-5 bg-emerald-200 text-emerald-800 px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-emerald-800">
+              <span className="absolute -top-2 left-5 bg-blue-900 text-white px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
                 {t('home.calendar')}
               </span>
               <div className="flex items-center gap-2.5 relative z-10 w-full pt-0.5">
-                <div className="bg-[#fed33e]/80 text-[#0a3a2a] px-2 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0">
+                <div className="bg-blue-900 text-white px-2 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0">
                   <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
                   <span className="block text-lg font-black leading-none">{new Date(nextOtherEvent!.date).getDate()}</span>
                 </div>
                 <div className="flex-1 min-w-0 pr-1">
                   <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight mb-0.5">{nextOtherEvent!.title}</h4>
-                  <span className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest flex items-center gap-0.5">
+                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-0.5">
                     <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
                     <span className="truncate">{nextOtherEvent!.address || t('home.noLocation')}</span>
                   </span>
                 </div>
-                <span className="material-symbols-outlined text-emerald-700/30 font-bold text-[26px] shrink-0">arrow_circle_right</span>
+                <span className="material-symbols-outlined text-blue-700/30 font-bold text-[26px] shrink-0">arrow_circle_right</span>
               </div>
             </div>
           )
@@ -1062,8 +1062,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const both = !!(nextTrainerSent && nextTrainerReceived);
           const renderCard = (event: any, isMirrored: boolean, half: boolean) => {
             const palette = isMirrored
-              ? { bg: 'bg-sky-50', border: 'border-sky-200', label: 'text-sky-600', tag: 'bg-sky-200 text-sky-800 border-sky-800', accent: 'text-sky-700/40', dateBg: 'bg-sky-100' }
-              : { bg: 'bg-indigo-50', border: 'border-indigo-200', label: 'text-indigo-600', tag: 'bg-indigo-200 text-indigo-800 border-indigo-800', accent: 'text-indigo-700/40', dateBg: 'bg-indigo-100' };
+              ? { bg: 'bg-violet-50', border: 'border-violet-200', label: 'text-violet-600', tag: 'bg-violet-500 text-white border-violet-500', accent: 'text-violet-700/40', dateBg: 'bg-violet-100' }
+              : { bg: 'bg-rose-50', border: 'border-rose-200', label: 'text-rose-600', tag: 'bg-rose-500 text-white border-rose-500', accent: 'text-rose-700/40', dateBg: 'bg-rose-100' };
             const labelKey = isMirrored ? 'calendar.legendTrainerReceived' : 'calendar.legendTrainerSent';
             return (
               <div

@@ -116,7 +116,18 @@ interface UpcomingEvent {
   time: string;
   isCoach: boolean;
   isLed: boolean;      // własny termin trenera (nie kopia od mojego trenera) — różowy
+  kind: EventKind;
 }
+
+// Jeden słownik kolorów terminów (user 2026-10-15) — jak w kalendarzu i na Home:
+// zawody ciemnozielone, Inne granat, ja jako trener róż, od mojego trenera fiolet.
+type EventKind = 'tournament' | 'other' | 'led' | 'fromCoach';
+const EVENT_STYLE: Record<EventKind, { row: string; icon: string; iconName: string; text: string; sub: string }> = {
+  tournament: { row: 'bg-[#0a3a2a] border-[#0a3a2a] active:bg-[#0b4230]', icon: 'text-[#fed33e]', iconName: 'emoji_events', text: 'text-white', sub: 'text-white/60' },
+  other: { row: 'bg-blue-50 border-blue-100 active:bg-blue-100', icon: 'text-blue-900', iconName: 'event', text: 'text-blue-950', sub: 'text-blue-800' },
+  led: { row: 'bg-rose-50 border-rose-100 active:bg-rose-100', icon: 'text-rose-600', iconName: 'sports', text: 'text-rose-950', sub: 'text-rose-700' },
+  fromCoach: { row: 'bg-violet-50 border-violet-100 active:bg-violet-100', icon: 'text-violet-600', iconName: 'group', text: 'text-violet-950', sub: 'text-violet-700' },
+};
 
 type TimelineItem =
   | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[] }
@@ -337,6 +348,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             time: data.time || '',
             isCoach: data.category === 'Trener',
             isLed: data.category === 'Trener' && !data.isMirrored,
+            kind: (data.category === 'Trener' ? (data.isMirrored ? 'fromCoach' : 'led') : data.category === 'Inne' ? 'other' : 'tournament') as EventKind,
           };
         }).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)));
       } catch (e) {
@@ -972,44 +984,46 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </div>
         )}
 
-        {/* ALS NÄCHSTES — żółte tło: szare ginęło na jasnym tle strony
+        {/* ALS NÄCHSTES — każdy termin w kolorze swojego rodzaju (EVENT_STYLE, 2026-10-15);
+            wcześniej żółte tło: szare ginęło na jasnym tle strony
             (user, 2026-09-15). Kolory tekstu celowo spoza remapów ciemnego
             motywu, żeby na żółtym zostały ciemne w obu motywach. */}
         {nextEvents.length > 0 && (
-          <div className="rounded-2xl overflow-hidden shadow-sm">
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100">
             {/* Zwijane (user 2026-10-15) — stan zapamiętany w telefonie. */}
             <button
               onClick={toggleNextOpen}
-              className="w-full flex items-center gap-2 px-3 py-1.5 bg-[#fed33e] text-left active:bg-[#f5c92f] transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-1.5 bg-white text-left active:bg-gray-50 transition-colors"
               aria-expanded={nextOpen}
             >
-              <span className="material-symbols-outlined text-[16px] text-[#0b4230]">event</span>
-              <span className="flex-1 text-[9px] font-black text-[#7a6200] uppercase tracking-widest">
+              <span className="material-symbols-outlined text-[16px] text-[#0a3a2a]">event</span>
+              <span className="flex-1 text-[9px] font-black text-gray-500 uppercase tracking-widest">
                 {t('tagebuch.next')} · {nextEvents.length}
               </span>
               {!nextOpen && nextEvents.some(ev => ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id)) && <NewBadge />}
-              <span className={`material-symbols-outlined text-[18px] text-[#7a6200] transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
+              <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
             </button>
-            {nextOpen && nextEvents.map(ev => (
+            {nextOpen && nextEvents.map(ev => {
+              const st = EVENT_STYLE[ev.kind];
+              return (
               <button
                 key={ev.id}
                 onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                // Własny termin trenera — różowy jak cała rola trenera; reszta żółta.
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t transition-colors ${ev.isLed ? 'bg-rose-100 border-rose-200 active:bg-rose-200' : 'bg-[#fed33e] border-[#e5bd38] active:bg-[#f5c92f]'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t transition-colors ${st.row}`}
               >
-                <span className={`material-symbols-outlined text-[20px] shrink-0 ${ev.isLed ? 'text-rose-600' : 'text-[#0b4230]'}`}>{ev.isLed ? 'sports' : 'event'}</span>
+                <span className={`material-symbols-outlined text-[20px] shrink-0 ${st.icon}`}>{st.iconName}</span>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-[12px] font-bold truncate ${ev.isLed ? 'text-rose-900' : 'text-[#0b4230]'}`}>
+                  <p className={`text-[12px] font-bold truncate ${st.text}`}>
                     {eventDateLabel(ev.date)}{ev.time ? ` ${ev.time}` : ''} · {ev.title}
-                    {ev.isLed
-                      ? <span className="text-rose-700 font-medium"> · {t('tagebuch.filterLed')}</span>
-                      : ev.isCoach && <span className="text-[#7a6200] font-medium"> · {t('tagebuch.fromCoach')}</span>}
+                    {ev.kind === 'led' && <span className={`font-medium ${st.sub}`}> · {t('tagebuch.filterLed')}</span>}
+                    {ev.kind === 'fromCoach' && <span className={`font-medium ${st.sub}`}> · {t('tagebuch.fromCoach')}</span>}
                   </p>
                 </div>
-                {ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id) && <NewBadge />}
-                <span className={`material-symbols-outlined text-[18px] shrink-0 ${ev.isLed ? 'text-rose-500' : 'text-[#7a6200]'}`}>chevron_right</span>
+                {ev.kind === 'fromCoach' && isNew('coach_plan', ev.id) && <NewBadge />}
+                <span className={`material-symbols-outlined text-[18px] shrink-0 ${st.sub}`}>chevron_right</span>
               </button>
-            ))}
+              );
+            })}
           </div>
         )}
 

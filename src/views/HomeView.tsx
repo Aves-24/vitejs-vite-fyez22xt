@@ -65,6 +65,31 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
   const focusState = useCurrentFocus(userId);
   const focusPair = displayPair(focusState);
+  // Karty terminów zwijane tapnięciem w etykietę (user 2026-10-15) — pamięć telefonu.
+  const collapsedKey = `grotx_homeCollapsed_${userId}`;
+  const [collapsedCards, setCollapsedCards] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem(collapsedKey) || '[]'); } catch { return []; }
+  });
+  const isCollapsed = (id: string) => collapsedCards.includes(id);
+  const toggleCard = (id: string) => {
+    const next = collapsedCards.includes(id) ? collapsedCards.filter(x => x !== id) : [...collapsedCards, id];
+    setCollapsedCards(next);
+    try { localStorage.setItem(collapsedKey, JSON.stringify(next)); } catch { /* prywatny tryb */ }
+  };
+  const shortDate = (date: string) => new Date(date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
+  const collapsedBar = (id: string, label: string, info: string, cls: string) => (
+    <button
+      key={id}
+      onClick={() => toggleCard(id)}
+      className={`w-full mt-1 flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full shadow-sm border active:scale-[0.98] transition-all ${cls}`}
+    >
+      <span className="shrink-0 text-[8px] font-black uppercase tracking-widest">{label}</span>
+      <span className="flex-1 min-w-0 truncate text-left text-[11px] font-bold opacity-80">{info}</span>
+      <span className="material-symbols-outlined text-[16px] shrink-0">expand_more</span>
+    </button>
+  );
+  // Etykieta karty = przycisk zwijania (karta sama prowadzi do kalendarza).
+  const tagToggle = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); toggleCard(id); };
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
@@ -956,7 +981,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       <div className="flex flex-col gap-2">
 
         {/* NASTĘPNY CEL */}
-        {!isLoading && nextTournament && (
+        {!isLoading && nextTournament && isCollapsed('goal') && collapsedBar('goal', t('home.nextGoal'), `${shortDate(nextTournament.date)} · ${nextTournament.title}`, 'bg-[#0a3a2a] text-white border-[#0a3a2a]')}
+        {!isLoading && nextTournament && !isCollapsed('goal') && (
           <div onClick={() => onGoToCalendar(nextTournament.id)} className="relative bg-[#0a3a2a] rounded-[28px] p-4 mt-1 shadow-lg text-white active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-[#0a3a2a]">
             <div className="absolute inset-0 rounded-[28px] overflow-hidden pointer-events-none">
               <div className="absolute right-[-40px] top-1/2 -translate-y-1/2 opacity-5">
@@ -970,9 +996,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             </div>
             
-            <span className="absolute -top-2.5 left-6 bg-[#fed33e] text-[#0a3a2a] px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm z-20 border border-[#0a3a2a]">
+            <button onClick={tagToggle('goal')} className="absolute -top-2.5 left-6 flex items-center gap-0.5 bg-[#fed33e] text-[#0a3a2a] pl-3 pr-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm z-20 border border-[#0a3a2a]">
               {t('home.nextGoal')}
-            </span>
+              <span className="material-symbols-outlined text-[12px]">expand_less</span>
+            </button>
             <span className="absolute -top-2.5 right-6 bg-emerald-500 text-white px-3 py-0.5 rounded-full text-[9px] font-black uppercase shadow-sm z-20 border border-[#0a3a2a]">
               {getDaysUntil(nextTournament.date)}
             </span>
@@ -1000,12 +1027,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         )}
 
         {/* KALENDARZ PRYWATNY / TO-DO */}
-        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && (
+        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && isCollapsed('calendar') && collapsedBar(
+          'calendar',
+          todoItems.length > 0 ? t('calendar.todoSection') : t('home.calendar'),
+          todoItems.length > 0 ? todoItems.map(i => i.title).join(' · ') : `${shortDate(nextOtherEvent!.date)} · ${nextOtherEvent!.title}`,
+          'bg-blue-900 text-white border-blue-900',
+        )}
+        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && !isCollapsed('calendar') && (
           todoItems.length > 0 ? (
             <div className="relative bg-blue-50 border border-blue-200 rounded-[24px] shadow-sm mt-2 pt-3">
-              <span className="absolute -top-2.5 left-6 bg-blue-900 text-white px-3 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
+              <button onClick={tagToggle('calendar')} className="absolute -top-2.5 left-6 flex items-center gap-0.5 bg-blue-900 text-white pl-3 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
                 {t('calendar.todoSection')}
-              </span>
+                <span className="material-symbols-outlined text-[12px]">expand_less</span>
+              </button>
               <div className="pt-1 px-3 pb-2 space-y-1.5">
                 {todoItems.map(item => (
                   <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="rounded-[18px] px-3 py-2.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer">
@@ -1036,9 +1070,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   <span className="material-symbols-outlined text-[110px]">calendar_month</span>
                 </div>
               </div>
-              <span className="absolute -top-2 left-5 bg-blue-900 text-white px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
+              <button onClick={tagToggle('calendar')} className="absolute -top-2 left-5 flex items-center gap-0.5 bg-blue-900 text-white pl-2.5 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
                 {t('home.calendar')}
-              </span>
+                <span className="material-symbols-outlined text-[12px]">expand_less</span>
+              </button>
               <div className="flex items-center gap-2.5 relative z-10 w-full pt-0.5">
                 <div className="bg-blue-900 text-white px-2 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0">
                   <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
@@ -1065,15 +1100,21 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               ? { bg: 'bg-violet-50', border: 'border-violet-200', label: 'text-violet-600', tag: 'bg-violet-500 text-white border-violet-500', accent: 'text-violet-700/40', dateBg: 'bg-violet-100' }
               : { bg: 'bg-rose-50', border: 'border-rose-200', label: 'text-rose-600', tag: 'bg-rose-500 text-white border-rose-500', accent: 'text-rose-700/40', dateBg: 'bg-rose-100' };
             const labelKey = isMirrored ? 'calendar.legendTrainerReceived' : 'calendar.legendTrainerSent';
+            const cardId = isMirrored ? 'trainerReceived' : 'trainerSent';
+            if (isCollapsed(cardId)) {
+              return collapsedBar(cardId, t(labelKey), `${shortDate(event.date)} · ${event.title}`,
+                isMirrored ? 'bg-violet-500 text-white border-violet-500' : 'bg-rose-500 text-white border-rose-500');
+            }
             return (
               <div
                 key={event.id}
                 onClick={() => onGoToCalendar(event.id)}
                 className={`relative ${palette.bg} border ${palette.border} rounded-[20px] ${half ? 'px-2.5 py-2' : 'px-3.5 py-2'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
               >
-                <span className={`absolute -top-2 left-4 ${palette.tag} px-2.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
+                <button onClick={tagToggle(cardId)} className={`absolute -top-2 left-4 flex items-center gap-0.5 ${palette.tag} pl-2.5 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
                   {t(labelKey)}
-                </span>
+                  <span className="material-symbols-outlined text-[12px]">expand_less</span>
+                </button>
                 <div className="flex items-center gap-2.5 pt-0.5 w-full">
                   <div className={`${palette.dateBg} text-[#0a3a2a] px-2 py-1.5 rounded-xl text-center min-w-[43px] shadow-sm shrink-0`}>
                     <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>

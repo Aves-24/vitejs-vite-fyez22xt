@@ -51,6 +51,40 @@ export function OtherFocusDot({ focus, onSwap, small = false, className = '' }: 
 }
 
 /**
+ * [DWA FOKUSY] Drugi fokus jako chip w prawym dolnym rogu karty: ikonka +
+ * pierwsze 20 znaków (user 2026-10-15 — sama kropka nic nie mówiła). Tap
+ * zamienia fokusy miejscami. Jak kropka leży NAD kartą (absolute).
+ */
+export function OtherFocusChip({ focus, onSwap, className = '' }: {
+  focus: ActiveFocus;
+  onSwap: () => void;
+  className?: string;
+}) {
+  const { t } = useTranslation();
+  const coach = focus.fromCoach;
+  const full = focusTitle(focus, t);
+  const chars = Array.from(full);
+  const short = chars.length > 20 ? `${chars.slice(0, 20).join('').trimEnd()}…` : full;
+  const label = t(coach ? 'tagebuch.focusOtherCoach' : 'tagebuch.focusOtherOwn', { title: full });
+  return (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onSwap(); }}
+      aria-label={label}
+      title={label}
+      className={`max-w-[60%] flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all ${
+        coach ? 'bg-sky-100 border-sky-300 text-sky-900' : 'bg-amber-100 border-amber-300 text-amber-900'
+      } ${className}`}
+    >
+      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${coach ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]'}`}>
+        <span className="material-symbols-outlined text-[13px]">{coach ? 'sports' : 'person'}</span>
+      </span>
+      <span className="text-[10px] font-black truncate">{short}</span>
+    </button>
+  );
+}
+
+/**
  * [DWA FOKUSY] Pod jaki fokus idzie ten trening (user 2026-10-14): domyślnie
  * ten z góry, oba = jeden trening pod oba. Przy jednym fokusie — jeden chip
  * (zamiast dawnego przełącznika).
@@ -285,7 +319,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   const card = (
     <button
       onClick={onEdit}
-      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pr-14' : ''} text-left active:scale-[0.99] transition-all`}
+      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pb-10' : ''} text-left active:scale-[0.99] transition-all`}
     >
       <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
@@ -297,7 +331,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />
-          {!(other && onSwap) && <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>}
+          <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>
         </div>
         <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
         {focus.text && focus.topic && (
@@ -328,7 +362,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   return (
     <div className="relative">
       {card}
-      <OtherFocusDot focus={other} onSwap={onSwap} className="absolute right-3 top-1/2 -translate-y-1/2" />
+      <OtherFocusChip focus={other} onSwap={onSwap} className="absolute right-3 bottom-2.5" />
     </div>
   );
 }
@@ -367,8 +401,16 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const inner = (cls: string, content: React.ReactNode) => onOpen
     ? <button onClick={onOpen} className={`w-full flex items-center text-left active:scale-[0.99] transition-all ${cls}`}>{content}</button>
     : <div className={`w-full flex items-center text-left ${cls}`}>{content}</div>;
-  // Kropka drugiego fokusu leży nad paskiem, przed strzałką.
-  const wrap = (cls: string, content: React.ReactNode) => !withDot ? inner(cls, content) : (
+  // Karta (Home, trening techniczny): drugi fokus jako chip w prawym dolnym
+  // rogu (user 2026-10-15). Pigułka i nagłówek są za wąskie — tam kropka
+  // nad paskiem, przed strzałką.
+  const chip = withDot && variant === 'card';
+  const wrap = (cls: string, content: React.ReactNode) => !withDot ? inner(cls, content) : chip ? (
+    <div className="relative">
+      {inner(`${cls} pb-10`, content)}
+      <OtherFocusChip focus={other!} onSwap={onSwap!} className="absolute right-3 bottom-2.5" />
+    </div>
+  ) : (
     <div className="relative">
       {inner(`${cls} ${pill ? (onOpen ? 'pr-12' : 'pr-9') : (onOpen ? 'pr-16' : 'pr-12')}`, content)}
       <OtherFocusDot

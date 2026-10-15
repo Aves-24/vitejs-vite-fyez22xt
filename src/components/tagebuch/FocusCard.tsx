@@ -490,6 +490,10 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
             <FocusProgressText count={count} goal={goal} light={!glass} coach={coach} />
           </div>
         )}
+        {/* Temat treningu: „Heute im Training” jak w karcie dziennika (user 2026-10-15). */}
+        {!dots && focus.topicId && (
+          <p className={`text-[10px] font-bold mt-1 ${glass ? 'text-white/60' : pal.sub}`}>{t('tagebuch.topicToday')}</p>
+        )}
       </div>
       {onOpen && !chip && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
     </>

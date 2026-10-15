@@ -331,7 +331,8 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />
-          <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>
+          {/* Fokusu trenera uczeń nie edytuje — bez ołówka (user 2026-10-15). */}
+          {!focus.fromCoach && <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>}
         </div>
         <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
         {focus.text && focus.topic && (

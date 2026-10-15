@@ -1829,6 +1829,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <div className="px-3 pb-3 pt-2.5 border-t border-violet-100 bg-violet-50/40 rounded-b-2xl space-y-3">
                     <GroupTopicPanel
                       groupId={group.id}
+                      groupName={group.name}
                       members={members}
                       coachId={userId}
                       topics={coachGroupTopics[group.id] || {}}

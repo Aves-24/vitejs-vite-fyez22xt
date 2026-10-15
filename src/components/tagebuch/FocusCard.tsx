@@ -422,13 +422,14 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
 
   const withDot = !!(other && onSwap);
   const pill = variant === 'pill';
-  const inner = (cls: string, content: React.ReactNode) => onOpen
-    ? <button onClick={onOpen} className={`w-full flex items-center text-left active:scale-[0.99] transition-all ${cls}`}>{content}</button>
-    : <div className={`w-full flex items-center text-left ${cls}`}>{content}</div>;
-  // Karta (Home, trening techniczny): drugi fokus jako chip w prawym dolnym
-  // rogu (user 2026-10-15). Pigułka i nagłówek są za wąskie — tam kropka
-  // nad paskiem, przed strzałką.
+  // Karta (Home, trening techniczny): drugi element jako chip w prawym dolnym
+  // rogu (user 2026-10-15) i układ jak karta w dzienniku — ikona u góry, bez
+  // strzałki. Pigułka i nagłówek są za wąskie — tam kropka przed strzałką.
   const chip = withDot && variant === 'card';
+  const align = chip ? 'items-start' : 'items-center';
+  const inner = (cls: string, content: React.ReactNode) => onOpen
+    ? <button onClick={onOpen} className={`w-full flex ${align} text-left active:scale-[0.99] transition-all ${cls}`}>{content}</button>
+    : <div className={`w-full flex ${align} text-left ${cls}`}>{content}</div>;
   const wrap = (cls: string, content: React.ReactNode) => !withDot ? inner(cls, content) : chip ? (
     <div className="relative">
       {inner(cls, content)}
@@ -466,7 +467,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const glass = variant === 'glass';
   return wrap(glass
     ? 'gap-3 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
-    : `gap-3 border rounded-[20px] px-3.5 py-2.5 ${pal.bg}`, (
+    : `gap-3 border rounded-[20px] px-3.5 ${chip ? 'py-3' : 'py-2.5'} ${pal.bg}`, (
     <>
       {glass
         ? <span className={`material-symbols-outlined text-[22px] shrink-0 ${pal.glassIcon}`}>{icon}</span>
@@ -490,8 +491,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
       </div>
-      {/* Z chipem drugiego fokusu strzałka idzie do góry (user 2026-10-15). */}
-      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${chip ? 'self-start' : ''} ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
+      {onOpen && !chip && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
     </>
   ));
 }

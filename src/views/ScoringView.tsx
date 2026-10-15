@@ -802,6 +802,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           </div>
         </div>
 
+        {/* [TEMAT TRENINGU] Pod co idzie ten trening — u góry jak w treningu
+            technicznym (user 2026-10-15); domyślnie zaznaczone fokus i temat. */}
+        {focusState && (focusState.focus || focusState.trainingTopic) && (
+          <div className="mt-2 pt-2 border-t border-gray-100">
+            <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
+          </div>
+        )}
+
         {activeBattle && (
           <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between animate-fade-in-up">
             <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
@@ -966,11 +974,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               </span>
             </label>
 
-            {(focusState?.focus || focusState?.trainingTopic) && (
-              <div className="mt-3 bg-white border border-emerald-100 rounded-xl px-3 py-2">
-                <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
-              </div>
-            )}
           </div>
         </div>
       )}

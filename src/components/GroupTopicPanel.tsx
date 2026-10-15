@@ -14,6 +14,8 @@ import { FOCUS_TEXT_MAX, dayKeyOf, sessionTopicId } from '../utils/focus';
 // dopiero w jego dniu. Na dokumencie trenera coachGroupTopics.<groupId>.<day>
 // zostają tematy grupy z id wpisów — stąd status uczniów, edycja i „Powtórz”
 // (kopia na dziś). Fioletowy jak u ucznia. Zastąpił „fokus grupy”.
+// Każdy temat ma też termin w kalendarzu TRENERA (user 2026-10-15: wgląd
+// w plan) — bez kopii u uczniów, bo ci widzą temat dopiero w jego dniu.
 
 export interface GroupTopic {
   text: string;
@@ -23,14 +25,17 @@ export interface GroupTopic {
   /** studentId → id wpisu 'topic' w users/{studentId}/coachLog */
   entryIds: Record<string, string>;
   closedAt?: number;
+  /** Termin „Trener” w kalendarzu trenera (users/{coachId}/tournaments) — wgląd w plan. */
+  calendarEventId?: string;
 }
 
 export type GroupTopicsByDay = Record<string, GroupTopic>;
 
 type MemberStatus = 'trained' | 'acked' | 'none';
 
-export default function GroupTopicPanel({ groupId, members, coachId, topics: byDay, onChanged, showToast }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast }: {
   groupId: string;
+  groupName: string;
   members: any[];
   coachId: string;
   topics: GroupTopicsByDay;
@@ -117,6 +122,34 @@ export default function GroupTopicPanel({ groupId, members, coachId, topics: byD
       try { await fn(sid, eid); } catch (e) { console.error('Temat treningu: błąd u ucznia', sid, e); }
     }));
 
+  // Kalendarz trenera — błąd tu nie blokuje tematu (temat jest ważniejszy).
+  const calendarFields = (base: { text: string; topic: string }) => ({
+    title: `${groupName}: ${base.text}`.slice(0, 200),
+    topics: base.topic ? [base.topic] : [],
+  });
+  const addToCalendar = async (day: string, base: { text: string; topic: string }) => {
+    try {
+      const ref = await addDoc(collection(db, 'users', coachId, 'tournaments'), {
+        ...calendarFields(base),
+        category: 'Trener', type: 'Trener', date: day, time: '', address: '', note: '',
+        distance: null, todo: false, coachStudents: [], trainingTopicGroupId: groupId,
+      });
+      localStorage.removeItem(`grotX_tournaments_${coachId}`);
+      return { calendarEventId: ref.id };
+    } catch (e) {
+      console.error('Temat treningu: błąd zapisu w kalendarzu', e);
+      return {};
+    }
+  };
+  const syncCalendar = async (gt: GroupTopic, base: { text: string; topic: string } | null) => {
+    if (!gt.calendarEventId) return;
+    try {
+      const ref = doc(db, 'users', coachId, 'tournaments', gt.calendarEventId);
+      await (base ? updateDoc(ref, calendarFields(base)) : deleteDoc(ref));
+      localStorage.removeItem(`grotX_tournaments_${coachId}`);
+    } catch (e) { console.error('Temat treningu: błąd kalendarza', e); }
+  };
+
   const run = async (fn: () => Promise<void>) => {
     setSaving(true);
     try { await fn(); } catch (e) {
@@ -129,7 +162,8 @@ export default function GroupTopicPanel({ groupId, members, coachId, topics: byD
   const create = (day: string, base: { text: string; topic: string }) => run(async () => {
     if (!base.text || members.length === 0) return;
     const entryIds = await assignTo(members, { ...base, day });
-    await save(day, { ...base, day, setAt: Date.now(), entryIds });
+    const cal = await addToCalendar(day, base);
+    await save(day, { ...base, day, setAt: Date.now(), entryIds, ...cal });
     setModal(null);
   });
 
@@ -139,6 +173,7 @@ export default function GroupTopicPanel({ groupId, members, coachId, topics: byD
     await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), {
       text: base.text, topics: base.topic ? [base.topic] : [], editedAt: Date.now(),
     }));
+    await syncCalendar(gt, base);
     await save(gt.day, { ...gt, ...base });
     setModal(null);
   });
@@ -152,6 +187,7 @@ export default function GroupTopicPanel({ groupId, members, coachId, topics: byD
   // Zaplanowany temat można jeszcze odwołać — wpisy znikają też u uczniów.
   const remove = (gt: GroupTopic) => run(async () => {
     await forEntries(gt, (sid, eid) => deleteDoc(doc(db, `users/${sid}/coachLog`, eid)));
+    await syncCalendar(gt, null);
     await save(gt.day, null);
   });
 

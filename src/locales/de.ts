@@ -1551,6 +1551,7 @@ export const views = {
     groupTopicDay: "Trainingstag",
     groupTopicDayTaken: "Für diesen Tag gibt es schon ein Thema — bearbeite es in der Liste.",
     groupTopicSaveEdit: "Speichern",
+    groupTopicClosedToday: "Heutiges Training beendet — steht im Trainingsverlauf.",
     historyTitle: "Trainingsverlauf",
     historyCount_one: "{{count}} Eintrag",
     historyCount_other: "{{count}} Einträge",

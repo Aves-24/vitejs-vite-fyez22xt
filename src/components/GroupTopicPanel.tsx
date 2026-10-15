@@ -118,7 +118,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const lastDay = [...days].reverse().find(d => d < today);
   const last = lastDay ? byDay[lastDay] : undefined;
   // Karta główna: tylko dzisiejszy temat — minione są w historii treningów.
-  const shown = todayTopic;
+  // Zakończony dziś trening od razu idzie do historii treningów.
+  const shown = todayTopic && !todayTopic.closedAt ? todayTopic : undefined;
   const open = !!todayTopic && !todayTopic.closedAt;
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
@@ -263,6 +264,13 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   return (
     <div className="space-y-2">
       <p className={sectionLabel}>{t('coachDashboard.groupTopicLabel')}</p>
+
+      {todayTopic?.closedAt && (
+        <p className="flex items-center gap-1 text-[10px] font-bold text-violet-600 ml-2">
+          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+          {t('coachDashboard.groupTopicClosedToday')}
+        </p>
+      )}
 
       {!todayTopic && (
         <div className="flex gap-2">

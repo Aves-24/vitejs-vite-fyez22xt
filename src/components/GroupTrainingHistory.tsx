@@ -62,7 +62,10 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   const today = dayKeyOf(Date.now());
   const items = useMemo(() => {
     const list: { key: string; ts: number; day?: string; loose?: LooseNote }[] = [];
-    Object.keys(topics).filter(d => d < today).forEach(d => list.push({ key: d, ts: new Date(`${d}T12:00:00`).getTime(), day: d }));
+    // Minione dni i dzisiejszy, jeśli trener już zakończył trening.
+    Object.keys(topics)
+      .filter(d => d < today || (d === today && !!topics[d].closedAt))
+      .forEach(d => list.push({ key: d, ts: d === today ? topics[d].closedAt! : new Date(`${d}T12:00:00`).getTime(), day: d }));
     (data?.loose || legacyNotes).forEach(n => list.push({ key: n.id, ts: n.timestamp, loose: n }));
     return list.sort((a, b) => b.ts - a.ts);
   }, [topics, data, legacyNotes, today]);

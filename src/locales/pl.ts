@@ -1580,6 +1580,7 @@ export const views = {
     groupTopicDay: "Dzień treningu",
     groupTopicDayTaken: "Na ten dzień jest już temat — edytuj go na liście.",
     groupTopicSaveEdit: "Zapisz",
+    groupTopicClosedToday: "Dzisiejszy trening zakończony — jest w historii treningów.",
     historyTitle: "Historia treningów",
     historyCount_one: "{{count}} wpis",
     historyCount_few: "{{count}} wpisy",

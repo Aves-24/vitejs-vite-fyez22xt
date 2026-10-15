@@ -109,8 +109,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
       summary={t('coachDashboard.historyCount', { count: items.length })}
     >
       <div className="space-y-1.5">
-        <p className="flex items-center gap-1 text-[9px] font-bold text-rose-500 ml-1">
-          <span className="material-symbols-outlined text-[11px]">lock</span>{t('coachDashboard.historyPrivate')}
+        <p className="flex items-center gap-1 text-[9px] font-bold text-[#0a3a2a] ml-1">
+          <span className="material-symbols-outlined text-rose-500 text-[11px]">lock</span>{t('coachDashboard.historyPrivate')}
         </p>
         {items.slice(0, shown).map(it => {
           if (it.loose) {
@@ -136,9 +136,9 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               <button onClick={() => toggle(day)} className="w-full flex items-start gap-2 pl-3 pr-2 py-2 text-left active:opacity-70">
                 <span className="material-symbols-outlined text-[16px] text-rose-500 mt-px">sports</span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[9px] font-black text-rose-600">{dayLabel(day)}</span>
+                  <span className="block text-[9px] font-black text-[#0a3a2a]">{dayLabel(day)}</span>
                   <span className="block text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(gt, t)}</span>
-                  {gt.text && gt.topic && <span className="block text-[10px] font-bold text-rose-700">{topicLabel(gt.topic, t)}</span>}
+                  {gt.text && gt.topic && <span className="block text-[10px] font-bold text-[#0a3a2a]">{topicLabel(gt.topic, t)}</span>}
                   {note && !isOpen && <span className="block text-[10px] font-medium text-gray-500 truncate mt-0.5">„{note}”</span>}
                 </span>
                 {note && !isOpen && <span className="material-symbols-outlined text-[15px] text-gray-400 mt-px">edit_note</span>}
@@ -167,7 +167,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           );
         })}
         {items.length > shown && (
-          <button onClick={() => setShown(n => n + PAGE)} className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-600">
+          <button onClick={() => setShown(n => n + PAGE)} className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
             {t('coachDashboard.historyMore')}
           </button>
         )}

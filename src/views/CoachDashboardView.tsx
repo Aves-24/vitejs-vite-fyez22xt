@@ -1172,7 +1172,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <div className="flex items-center gap-3">
             <button
               onClick={() => toggleSelectAll(list)}
-              className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${allSelected(list) ? 'text-red-400' : 'text-rose-600'}`}
+              className={`text-[9px] font-black uppercase active:scale-95 transition-colors ${allSelected(list) ? 'text-red-400' : 'text-[#0a3a2a]'}`}
             >
               {allSelected(list) ? t('coachDashboard.deselectAll') : t('coachDashboard.selectAll')}
             </button>
@@ -1186,9 +1186,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         ) : (
           <button
             onClick={() => setIsSelecting(true)}
-            className="text-[9px] font-black uppercase text-rose-600 flex items-center gap-1 active:scale-95 transition-all"
+            className="text-[9px] font-black uppercase text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
           >
-            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+            <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
             {t('coachDashboard.selectMode')}
           </button>
         ))}
@@ -1355,12 +1355,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
                 >
                   <div className="bg-rose-50 rounded-lg text-center min-w-[40px] px-1.5 py-1 shrink-0">
-                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-rose-600">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-[#0a3a2a]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
                     <span className="block text-[15px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">{ev.title}</p>
-                    <p className="text-[9px] font-bold text-rose-500 uppercase tracking-widest mt-0.5 truncate">
+                    <p className="text-[9px] font-bold text-[#0a3a2a] uppercase tracking-widest mt-0.5 truncate">
                       {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {ev.time || t('calendar.wholeDay')}{recipients ? ` · ${recipients}` : ''}
                     </p>
                     {/* Tematy treningu z formularza terminu (TopicPicker) */}
@@ -1377,7 +1377,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             <button
               type="button"
               onClick={() => onNavigate('CALENDAR')}
-              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-600 active:scale-95 transition-all"
+              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all"
             >
               {t('coachDashboard.upcomingOpenCalendar')}
             </button>
@@ -1515,7 +1515,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             <button
               type="button"
               onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}
-              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-600 active:scale-95 transition-all"
+              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all"
             >
               {inactiveCount > INACTIVE_SHOWN
                 ? t('coachDashboard.inactiveShowAll', { count: inactiveCount })
@@ -1532,10 +1532,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
           aria-expanded={viewMode === 'groups'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-            viewMode === 'groups' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 border border-rose-200'
+            viewMode === 'groups' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-[#0a3a2a] border border-rose-200'
           }`}
         >
-          <span className="material-symbols-outlined text-sm">folder_shared</span>
+          <span className={`material-symbols-outlined text-sm ${viewMode === 'groups' ? '' : 'text-rose-500'}`}>folder_shared</span>
           {t('coachDashboard.viewGroups')}
         </button>
         <button
@@ -1658,9 +1658,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               ) : (
                 <button
                   onClick={() => { setIsGroupSelecting(true); setActiveGroup('ALL'); exitSelecting(); }}
-                  className="text-[9px] font-black uppercase text-rose-600 flex items-center gap-1 active:scale-95 transition-all"
+                  className="text-[9px] font-black uppercase text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
                 >
-                  <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                  <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
                   {t('coachDashboard.selectMode')}
                 </button>
               )}
@@ -1769,8 +1769,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       </div>
                     )}
                     {!isOpen && nextTopic && (
-                      <p className="flex items-center gap-1 text-[9px] font-black text-rose-600 truncate mt-0.5">
-                        <span className="material-symbols-outlined text-[12px]">sports</span>
+                      <p className="flex items-center gap-1 text-[9px] font-black text-[#0a3a2a] truncate mt-0.5">
+                        <span className="material-symbols-outlined text-rose-500 text-[12px]">sports</span>
                         <span className="truncate">
                           {nextTopicDay === todayKey
                             ? t('coachDashboard.groupTopicToday')
@@ -1861,9 +1861,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {coachGroups.length > 0 && coachGroups.length < 5 && (
             <button
               onClick={() => setIsCreatingGroup(true)}
-              className="w-full py-2.5 bg-rose-50 text-rose-600 rounded-2xl font-black text-[10px] uppercase tracking-widest border border-rose-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+              className="w-full py-2.5 bg-rose-50 text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-rose-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
             >
-              <span className="material-symbols-outlined text-sm">add</span>
+              <span className="material-symbols-outlined text-rose-500 text-sm">add</span>
               {t('coachDashboard.newGroupTitle')}
             </button>
           )}
@@ -1939,7 +1939,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setAddToGroupId(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
             <h2 className="text-lg font-black text-[#0a3a2a] mb-1">{t('coachDashboard.addToGroupTitle')}</h2>
-            <p className="text-[10px] font-black text-rose-600 mb-4 truncate">{coachGroups.find(g => g.id === addToGroupId)?.name}</p>
+            <p className="text-[10px] font-black text-[#0a3a2a] mb-4 truncate">{coachGroups.find(g => g.id === addToGroupId)?.name}</p>
             <div className="space-y-1.5 overflow-y-auto hide-scrollbar mb-5">
               {students
                 .filter(s => !(studentGroupMap[s.id] || []).includes(addToGroupId))
@@ -2000,9 +2000,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                        isAssigned || isPartial ? 'bg-rose-50 border-rose-200' : 'bg-white border-gray-200'
                      }`}
                    >
-                     <span className={`text-[12px] font-black ${isAssigned || isPartial ? 'text-rose-800' : 'text-gray-600'}`}>{g.name}</span>
+                     <span className={`text-[12px] font-black ${isAssigned || isPartial ? 'text-[#0a3a2a]' : 'text-gray-600'}`}>{g.name}</span>
                      <div className={`w-6 h-6 rounded flex items-center justify-center ${
-                       isAssigned ? 'bg-rose-600 text-white' : isPartial ? 'bg-rose-200 text-rose-700' : 'bg-gray-100 text-transparent'
+                       isAssigned ? 'bg-rose-600 text-white' : isPartial ? 'bg-rose-200 text-[#0a3a2a]' : 'bg-gray-100 text-transparent'
                      }`}>
                         {/* „–" jako tekst: ikony `remove` nie ma w subsecie fontu */}
                         {isPartial

@@ -316,11 +316,12 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
 
   const done = dots && count >= goal;
   const pal = focusPalette(focus.fromCoach);
-  const card = (
-    <button
-      onClick={onEdit}
-      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all`}
-    >
+  // Aktywny fokus trenera nie jest klikalny (user 2026-10-15) — uczeń go nie
+  // zmienia. Ukończony już tak (zachęta do nowego fokusu).
+  const locked = !!focus.fromCoach && !done;
+  const cardCls = `w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 text-left ${locked ? '' : 'active:scale-[0.99] transition-all'}`;
+  const body = (
+    <>
       <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
       </span>
@@ -357,9 +358,31 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
           </span>
         )}
       </div>
-    </button>
+    </>
   );
-  if (!other || !onSwap) return card;
+  const card = locked
+    ? <div className={cardCls}>{body}</div>
+    : <button onClick={onEdit} className={cardCls}>{body}</button>;
+  // Bez własnego fokusu przy zablokowanej karcie trenera: chip „+ Własny fokus”
+  // otwiera edytor — inaczej nie byłoby skąd go ustawić.
+  if (!other || !onSwap) {
+    if (!locked) return card;
+    return (
+      <div className="relative">
+        {card}
+        <button
+          type="button"
+          onClick={onEdit}
+          className="absolute right-3 bottom-2 flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all bg-amber-100 border-amber-300 text-amber-900"
+        >
+          <span className="w-5 h-5 rounded-full flex items-center justify-center shrink-0 bg-[#fed33e] text-[#0a3a2a]">
+            <span className="material-symbols-outlined text-[13px]">add</span>
+          </span>
+          <span className="text-[10px] font-black">{t('tagebuch.focusAddOwn')}</span>
+        </button>
+      </div>
+    );
+  }
   return (
     <div className="relative">
       {card}

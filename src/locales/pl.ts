@@ -371,6 +371,7 @@ export const views = {
     focusOtherOwn: "Twój fokus: {{title}} — dotknij, aby zamienić",
     focusChoiceLabel: "Ten trening liczy się do",
     focusChoiceOwn: "Mój",
+    focusAddOwn: "Własny fokus",
     focusChoiceCoach: "Trener",
     focusChoiceNone: "Ten trening nie liczy się do żadnego fokusu",
     focusNewPlaceholder: "Krótko opisz, nad czym teraz pracujesz…",

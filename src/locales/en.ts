@@ -356,6 +356,7 @@ export const views = {
     focusOtherOwn: "Your focus: {{title}} — tap to swap",
     focusChoiceLabel: "This session counts toward",
     focusChoiceOwn: "Mine",
+    focusAddOwn: "Own focus",
     focusChoiceCoach: "Coach",
     focusChoiceNone: "This session counts toward no focus",
     focusNewPlaceholder: "Briefly describe what you are working on…",

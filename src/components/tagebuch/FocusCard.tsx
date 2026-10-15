@@ -72,7 +72,7 @@ export function OtherFocusChip({ focus, onSwap, className = '' }: {
       onClick={e => { e.stopPropagation(); onSwap(); }}
       aria-label={label}
       title={label}
-      className={`max-w-[60%] flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all ${
+      className={`max-w-[45%] flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all ${
         coach ? 'bg-sky-100 border-sky-300 text-sky-900' : 'bg-amber-100 border-amber-300 text-amber-900'
       } ${className}`}
     >
@@ -319,7 +319,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   const card = (
     <button
       onClick={onEdit}
-      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pb-10' : ''} text-left active:scale-[0.99] transition-all`}
+      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 text-left active:scale-[0.99] transition-all`}
     >
       <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
@@ -362,7 +362,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   return (
     <div className="relative">
       {card}
-      <OtherFocusChip focus={other} onSwap={onSwap} className="absolute right-3 bottom-2.5" />
+      <OtherFocusChip focus={other} onSwap={onSwap} className="absolute right-3 bottom-2" />
     </div>
   );
 }
@@ -407,8 +407,8 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const chip = withDot && variant === 'card';
   const wrap = (cls: string, content: React.ReactNode) => !withDot ? inner(cls, content) : chip ? (
     <div className="relative">
-      {inner(`${cls} pb-10`, content)}
-      <OtherFocusChip focus={other!} onSwap={onSwap!} className="absolute right-3 bottom-2.5" />
+      {inner(cls, content)}
+      <OtherFocusChip focus={other!} onSwap={onSwap!} className="absolute right-3 bottom-2" />
     </div>
   ) : (
     <div className="relative">

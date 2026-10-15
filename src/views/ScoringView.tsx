@@ -16,8 +16,8 @@ import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics } from '../utils/focus';
-import { FocusDots, focusTitle, FocusChoiceChips } from '../components/tagebuch/FocusCard';
+import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
+import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
@@ -190,6 +190,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const focusState = useCurrentFocus(battleId ? null : userId);
   // [DWA FOKUSY] Chipy „pod jaki fokus” zamiast dawnego przełącznika tematu.
   const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
+  // [TEMAT TRENINGU] W nagłówku to, co jest na górze karty (fokus albo temat dnia).
+  const headerFocus = displayPair(focusState).main;
   
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [activeBattle, setActiveBattle] = useState<any>(null);
@@ -735,7 +737,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <div className="flex items-center justify-between h-10">
           {/* [FOKUS] Miniatura fokusu w miejscu logo (user 2026-09-18) — ta sama
               wysokość paska, więc klawiatura nie zjeżdża. Klik = pełny tytuł. */}
-          {focusState?.focus ? (
+          {headerFocus ? (
             <>
             {/* Mniejsze logo zostaje obok fokusu (user 2026-09-18). */}
             <div className="flex items-center shrink-0 pl-1 pr-2.5 border-r border-gray-100 h-full">
@@ -749,20 +751,20 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </div>
             <button
               onClick={() => {
-                const fc = focusState.focus!;
+                const fc = headerFocus;
                 showToast(fc.text && fc.topic ? `${focusTitle(fc, t)} · ${topicLabel(fc.topic, t)}` : focusTitle(fc, t));
               }}
               className="flex items-center gap-1.5 pl-2 pr-2.5 border-r border-gray-100 h-full min-w-0 max-w-[34%] text-left active:scale-95 transition-all"
               aria-label={t('tagebuch.focusLabel')}
             >
-              <span className="w-7 h-7 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[16px]">track_changes</span>
+              <span className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${focusPalette(headerFocus).icon}`}>
+                <span className="material-symbols-outlined text-[16px]">{focusIcon(headerFocus)}</span>
               </span>
               <span className="min-w-0 flex flex-col gap-1">
-                <span className="text-[11px] font-black text-[#0a3a2a] leading-none truncate">{focusTitle(focusState.focus, t)}</span>
-                {focusState.dots
+                <span className="text-[11px] font-black text-[#0a3a2a] leading-none truncate">{focusTitle(headerFocus, t)}</span>
+                {!headerFocus.topicId && focusState?.dots
                   ? <FocusDots count={focusState.count} goal={focusState.goal} small light />
-                  : <span className="text-[8px] font-black uppercase tracking-widest text-amber-700 leading-none truncate">{t('tagebuch.focusLabel')}</span>}
+                  : <span className={`text-[8px] font-black uppercase tracking-widest leading-none truncate ${focusPalette(headerFocus).sub}`}>{t(headerFocus.topicId ? 'tagebuch.topicLabel' : 'tagebuch.focusLabel')}</span>}
               </span>
             </button>
             </>

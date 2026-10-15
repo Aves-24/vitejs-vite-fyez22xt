@@ -1,19 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { addDoc, collection, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import TopicPicker from './TopicPicker';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
-import { FOCUS_TEXT_MAX, dayKeyOf, isTopicOpen, sessionTopicId } from '../utils/focus';
+import { FOCUS_TEXT_MAX, dayKeyOf, sessionTopicId } from '../utils/focus';
 
-// [TEMAT TRENINGU] (user 2026-10-15) Trener rano ustawia grupie temat
-// dzisiejszego treningu. Technicznie: wpis 'topic' w coachLog każdego członka
-// (utils/focus.ts, sekcja TEMAT TRENINGU). Na dokumencie trenera
-// (coachGroupTopic.<groupId>) zostaje ostatni temat grupy z id wpisów —
-// stąd status uczniów i „Powtórz” (kopia na dziś). Fioletowy jak u ucznia.
-// Zastępuje dawny „fokus grupy” (GroupFocusPanel).
+// [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
+// dziś albo planuje go na kolejne dni. Technicznie: wpis 'topic' w coachLog
+// każdego członka (utils/focus.ts, sekcja TEMAT TRENINGU) — uczeń widzi go
+// dopiero w jego dniu. Na dokumencie trenera coachGroupTopics.<groupId>.<day>
+// zostają tematy grupy z id wpisów — stąd status uczniów, edycja i „Powtórz”
+// (kopia na dziś). Fioletowy jak u ucznia. Zastąpił „fokus grupy”.
 
 export interface GroupTopic {
   text: string;
@@ -25,31 +25,41 @@ export interface GroupTopic {
   closedAt?: number;
 }
 
+export type GroupTopicsByDay = Record<string, GroupTopic>;
+
 type MemberStatus = 'trained' | 'acked' | 'none';
 
-export default function GroupTopicPanel({ groupId, members, coachId, groupTopic, onChanged, showToast }: {
+export default function GroupTopicPanel({ groupId, members, coachId, topics: byDay, onChanged, showToast }: {
   groupId: string;
   members: any[];
   coachId: string;
-  groupTopic: GroupTopic | undefined;
-  onChanged: (next: GroupTopic) => void;
+  topics: GroupTopicsByDay;
+  onChanged: (next: GroupTopicsByDay) => void;
   showToast: (msg: string) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
   const [text, setText] = useState('');
-  const [topics, setTopics] = useState<string[]>([]);
+  const [pickedTopics, setPickedTopics] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Record<string, MemberStatus>>({});
 
-  const open = !!groupTopic && isTopicOpen(groupTopic);
+  const today = dayKeyOf(Date.now());
+  const days = useMemo(() => Object.keys(byDay).sort(), [byDay]);
+  const todayTopic = byDay[today];
+  const upcoming = days.filter(d => d > today);
+  const lastDay = [...days].reverse().find(d => d < today);
+  const last = lastDay ? byDay[lastDay] : undefined;
+  // Karta główna: dzisiejszy temat, a bez niego ostatni (do „Powtórz”).
+  const shown = todayTopic ?? last;
+  const open = !!todayTopic && !todayTopic.closedAt;
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
   useEffect(() => {
-    if (!groupTopic) { setStatus({}); return; }
+    if (!shown) { setStatus({}); return; }
     let cancelled = false;
-    const from = new Date(`${groupTopic.day}T00:00:00`).getTime();
-    Promise.all(Object.entries(groupTopic.entryIds).map(async ([sid, eid]) => {
+    const from = new Date(`${shown.day}T00:00:00`).getTime();
+    Promise.all(Object.entries(shown.entryIds).map(async ([sid, eid]) => {
       try {
         const sSnap = await getDocs(query(collection(db, `users/${sid}/sessions`), where('timestamp', '>=', Timestamp.fromMillis(from))));
         if (sSnap.docs.some(d => sessionTopicId(d.data()) === eid)) return [sid, 'trained'] as const;
@@ -60,13 +70,20 @@ export default function GroupTopicPanel({ groupId, members, coachId, groupTopic,
       }
     })).then(list => { if (!cancelled) setStatus(Object.fromEntries(list)); });
     return () => { cancelled = true; };
-  }, [groupTopic]);
+  }, [shown]);
 
   const coachName = async () => {
     const cached = localStorage.getItem(`grotX_userName_${coachId}`);
     if (cached) return cached;
     const d = (await getDoc(doc(db, 'users', coachId))).data() || {};
     return `${d.firstName || ''} ${d.lastName || ''}`.trim() || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' });
+  };
+
+  const save = async (day: string, next: GroupTopic | null) => {
+    const copy = { ...byDay };
+    if (next) copy[day] = next; else delete copy[day];
+    await updateDoc(doc(db, 'users', coachId), { [`coachGroupTopics.${groupId}.${day}`]: next ?? deleteField() });
+    onChanged(copy);
   };
 
   // Wpis u każdego ucznia osobno — błąd u jednego nie blokuje reszty.
@@ -95,95 +112,121 @@ export default function GroupTopicPanel({ groupId, members, coachId, groupTopic,
     return Object.fromEntries(ok) as Record<string, string>;
   };
 
-  const create = async (base: { text: string; topic: string }) => {
-    if (!base.text || members.length === 0) return;
+  const forEntries = (gt: GroupTopic, fn: (sid: string, eid: string) => Promise<unknown>) =>
+    Promise.all(Object.entries(gt.entryIds).map(async ([sid, eid]) => {
+      try { await fn(sid, eid); } catch (e) { console.error('Temat treningu: błąd u ucznia', sid, e); }
+    }));
+
+  const run = async (fn: () => Promise<void>) => {
     setSaving(true);
-    try {
-      // Poprzedni otwarty temat (np. zmiana zdania rano) zamykamy — jeden temat = jeden trening.
-      if (open) await closeEntries(groupTopic!);
-      const day = dayKeyOf(Date.now());
-      const entryIds = await assignTo(members, { ...base, day });
-      const next: GroupTopic = { ...base, day, setAt: Date.now(), entryIds };
-      await updateDoc(doc(db, 'users', coachId), { [`coachGroupTopic.${groupId}`]: next });
-      onChanged(next);
-      setModalOpen(false);
-    } catch (e) {
+    try { await fn(); } catch (e) {
       console.error('Temat treningu: błąd zapisu', e);
       showToast(t('coachDashboard.toastGroupError'));
     }
     setSaving(false);
   };
 
-  const closeEntries = async (gt: GroupTopic) => {
-    const at = Date.now();
-    await Promise.all(Object.entries(gt.entryIds).map(async ([sid, eid]) => {
-      try { await updateDoc(doc(db, `users/${sid}/coachLog`, eid), { closedAt: at }); }
-      catch (e) { console.error('Temat treningu: błąd zamknięcia u ucznia', sid, e); }
-    }));
-    return at;
-  };
+  const create = (day: string, base: { text: string; topic: string }) => run(async () => {
+    if (!base.text || members.length === 0) return;
+    const entryIds = await assignTo(members, { ...base, day });
+    await save(day, { ...base, day, setAt: Date.now(), entryIds });
+    setModal(null);
+  });
 
-  const handleClose = async () => {
-    if (!groupTopic) return;
-    setSaving(true);
-    try {
-      const closedAt = await closeEntries(groupTopic);
-      const next = { ...groupTopic, closedAt };
-      await updateDoc(doc(db, 'users', coachId), { [`coachGroupTopic.${groupId}.closedAt`]: closedAt });
-      onChanged(next);
-    } catch (e) {
-      console.error('Temat treningu: błąd zamknięcia', e);
-      showToast(t('coachDashboard.toastGroupError'));
-    }
-    setSaving(false);
-  };
+  // Edycja: ten sam wpis u uczniów (data startu i id zostają — status się nie gubi).
+  const edit = (gt: GroupTopic, base: { text: string; topic: string }) => run(async () => {
+    if (!base.text) return;
+    await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), {
+      text: base.text, topics: base.topic ? [base.topic] : [], editedAt: Date.now(),
+    }));
+    await save(gt.day, { ...gt, ...base });
+    setModal(null);
+  });
+
+  const close = (gt: GroupTopic) => run(async () => {
+    const closedAt = Date.now();
+    await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), { closedAt }));
+    await save(gt.day, { ...gt, closedAt });
+  });
+
+  // Zaplanowany temat można jeszcze odwołać — wpisy znikają też u uczniów.
+  const remove = (gt: GroupTopic) => run(async () => {
+    await forEntries(gt, (sid, eid) => deleteDoc(doc(db, `users/${sid}/coachLog`, eid)));
+    await save(gt.day, null);
+  });
 
   // Uczeń dołączył do grupy po ustawieniu tematu.
-  const handleAssignOne = async (s: any) => {
-    if (!groupTopic || !open) return;
-    setSaving(true);
-    const ids = await assignTo([s], groupTopic);
-    if (ids[s.id]) {
-      try {
-        await updateDoc(doc(db, 'users', coachId), { [`coachGroupTopic.${groupId}.entryIds.${s.id}`]: ids[s.id] });
-        onChanged({ ...groupTopic, entryIds: { ...groupTopic.entryIds, ...ids } });
-      } catch (e) { console.error('Temat treningu: błąd zapisu', e); }
-    }
-    setSaving(false);
+  const assignOne = (gt: GroupTopic, s: any) => run(async () => {
+    const ids = await assignTo([s], gt);
+    if (ids[s.id]) await save(gt.day, { ...gt, entryIds: { ...gt.entryIds, ...ids } });
+  });
+
+  const openModal = (day: string, gt?: GroupTopic) => {
+    setText(gt?.text ?? '');
+    setPickedTopics(gt?.topic ? [gt.topic] : []);
+    setModal({ day, edit: !!gt });
   };
 
-  const openModal = () => { setText(''); setTopics([]); setModalOpen(true); };
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5 ml-2';
+  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-violet-500 mb-1.5 ml-2';
   const btn = 'flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border active:scale-95 transition-all disabled:opacity-40';
+  const modalBase = { text: text.trim().slice(0, FOCUS_TEXT_MAX), topic: pickedTopics[0] || '' };
 
   return (
-    <div>
+    <div className="space-y-2">
       <p className={sectionLabel}>{t('coachDashboard.groupTopicLabel')}</p>
 
-      {!groupTopic ? (
-        <button
-          type="button"
-          onClick={openModal}
-          disabled={members.length === 0}
-          className="w-full py-2.5 rounded-xl border-2 border-dashed border-violet-200 text-violet-700 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
-        >
-          <span className="material-symbols-outlined text-[16px]">sports</span>
-          {t('coachDashboard.groupTopicSet')}
-        </button>
-      ) : (
-        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-violet-50 border-violet-200' : 'bg-gray-50 border-gray-200'}`}>
+      {!todayTopic && (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => openModal(today)}
+            disabled={members.length === 0 || saving}
+            className="flex-1 py-2.5 rounded-xl border-2 border-dashed border-violet-300 bg-white text-violet-700 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[16px]">sports</span>
+            {t('coachDashboard.groupTopicSet')}
+          </button>
+          {last && (
+            <button
+              type="button"
+              onClick={() => create(today, { text: last.text, topic: last.topic })}
+              disabled={members.length === 0 || saving}
+              className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[16px]">replay</span>
+              {t('coachDashboard.groupTopicRepeat')}
+            </button>
+          )}
+        </div>
+      )}
+
+      {shown && (
+        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-200'}`}>
           <div className="flex items-start gap-2">
             <span className={`material-symbols-outlined text-[18px] shrink-0 mt-px ${open ? 'text-violet-600' : 'text-gray-400'}`}>sports</span>
             <div className="flex-1 min-w-0">
               <p className={`text-[9px] font-black uppercase tracking-widest ${open ? 'text-violet-700' : 'text-gray-500'}`}>
-                {open ? t('coachDashboard.groupTopicToday') : t('coachDashboard.groupTopicLast', { date: dayLabel(groupTopic.day) })}
+                {shown === todayTopic
+                  ? (open ? t('coachDashboard.groupTopicToday') : t('coachDashboard.groupTopicTodayClosed'))
+                  : t('coachDashboard.groupTopicLast', { date: dayLabel(shown.day) })}
               </p>
-              <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(groupTopic, t)}</p>
-              {groupTopic.text && groupTopic.topic && (
-                <p className={`text-[10px] font-bold ${open ? 'text-violet-700' : 'text-gray-500'}`}>{topicLabel(groupTopic.topic, t)}</p>
+              <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(shown, t)}</p>
+              {shown.text && shown.topic && (
+                <p className={`text-[10px] font-bold ${open ? 'text-violet-700' : 'text-gray-500'}`}>{topicLabel(shown.topic, t)}</p>
               )}
             </div>
+            {shown === todayTopic && (
+              <button
+                onClick={() => openModal(today, todayTopic)}
+                disabled={saving}
+                aria-label={t('coachDashboard.groupTopicEdit')}
+                title={t('coachDashboard.groupTopicEdit')}
+                className="w-7 h-7 shrink-0 rounded-lg bg-white border border-violet-200 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-[16px]">edit</span>
+              </button>
+            )}
           </div>
 
           <div className="mt-2 space-y-1">
@@ -193,11 +236,11 @@ export default function GroupTopicPanel({ groupId, members, coachId, groupTopic,
               return (
                 <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
                   <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
-                  {!groupTopic.entryIds[s.id] ? (
+                  {!shown.entryIds[s.id] ? (
                     open ? (
                       <button
                         type="button"
-                        onClick={() => handleAssignOne(s)}
+                        onClick={() => assignOne(shown, s)}
                         disabled={saving}
                         className="text-[9px] font-black uppercase tracking-wide text-violet-700 bg-white border border-violet-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
                       >
@@ -220,41 +263,91 @@ export default function GroupTopicPanel({ groupId, members, coachId, groupTopic,
             })}
           </div>
 
-          <div className={`flex gap-2 mt-2.5 pt-2 border-t ${open ? 'border-violet-200/70' : 'border-gray-200'}`}>
-            <button onClick={openModal} disabled={saving} className={`${btn} bg-white text-violet-800 border-violet-200`}>
-              {t('coachDashboard.groupTopicNew')}
-            </button>
-            {open ? (
-              <button onClick={handleClose} disabled={saving} className={`${btn} bg-white text-red-600 border-red-100`}>
+          {open && (
+            <div className="flex gap-2 mt-2.5 pt-2 border-t border-violet-200/70">
+              <button onClick={() => close(todayTopic!)} disabled={saving} className={`${btn} bg-white text-red-600 border-red-100`}>
                 {t('coachDashboard.groupTopicClose')}
               </button>
-            ) : (
-              <button
-                onClick={() => create({ text: groupTopic.text, topic: groupTopic.topic })}
-                disabled={saving || members.length === 0}
-                className={`${btn} bg-violet-500 text-white border-violet-500`}
-              >
-                {t('coachDashboard.groupTopicRepeat')}
-              </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      {modalOpen && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModalOpen(false)}>
+      {/* Zaplanowane na kolejne dni — uczniowie zobaczą je dopiero w ich dniu. */}
+      {upcoming.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-[9px] font-black uppercase tracking-widest text-violet-500 ml-2">{t('coachDashboard.groupTopicPlanned')}</p>
+          {upcoming.map(d => {
+            const gt = byDay[d];
+            return (
+              <div key={d} className="flex items-center gap-2 bg-white border border-violet-100 rounded-xl pl-3 pr-1.5 py-1.5">
+                <span className="text-[10px] font-black text-violet-700 shrink-0 w-20 truncate">{dayLabel(d)}</span>
+                <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{focusTitle(gt, t)}</span>
+                <button
+                  onClick={() => openModal(d, gt)}
+                  disabled={saving}
+                  aria-label={t('coachDashboard.groupTopicEdit')}
+                  className="w-7 h-7 shrink-0 rounded-lg text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                </button>
+                <button
+                  onClick={() => remove(gt)}
+                  disabled={saving}
+                  aria-label={t('coachDashboard.groupTopicDelete')}
+                  className="w-7 h-7 shrink-0 rounded-lg text-red-400 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => {
+          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+          openModal(dayKeyOf(tomorrow.getTime()));
+        }}
+        disabled={members.length === 0 || saving}
+        className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-violet-600 flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[14px]">event</span>
+        {t('coachDashboard.groupTopicPlan')}
+      </button>
+
+      {modal && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3 shrink-0">
               <div className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-white">sports</span>
               </div>
-              <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('coachDashboard.groupTopicModalTitle')}</h2>
+              <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
+                {t(modal.edit ? 'coachDashboard.groupTopicEdit' : 'coachDashboard.groupTopicModalTitle')}
+              </h2>
             </div>
             <div className="overflow-y-auto flex-1 space-y-3 pr-1 pb-2 hide-scrollbar">
-              <p className="text-[10px] font-bold text-gray-500 leading-snug">
-                {t('coachDashboard.groupTopicModalHint')}
-                {open && <> {t('coachDashboard.groupTopicReplaceHint')}</>}
-              </p>
+              {!modal.edit && <p className="text-[10px] font-bold text-gray-500 leading-snug">{t('coachDashboard.groupTopicModalHint')}</p>}
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDay')}</p>
+                {modal.edit ? (
+                  <p className="text-[12px] font-black text-violet-700">{dayLabel(modal.day)}</p>
+                ) : (
+                  <input
+                    type="date"
+                    value={modal.day}
+                    min={today}
+                    onChange={e => e.target.value && setModal({ ...modal, day: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-violet-500"
+                  />
+                )}
+                {!modal.edit && byDay[modal.day] && (
+                  <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachDashboard.groupTopicDayTaken')}</p>
+                )}
+              </div>
               <textarea
                 value={text}
                 onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
@@ -262,18 +355,18 @@ export default function GroupTopicPanel({ groupId, members, coachId, groupTopic,
                 placeholder={t('coachDashboard.groupTopicPlaceholder')}
                 className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-violet-500 resize-none h-16"
               />
-              <TopicPicker selectedTopics={topics} onChange={setTopics} />
+              <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
             </div>
             <div className="flex gap-2 mt-3 shrink-0">
-              <button onClick={() => setModalOpen(false)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
+              <button onClick={() => setModal(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
                 {t('coachDashboard.cancel')}
               </button>
               <button
-                onClick={() => create({ text: text.trim().slice(0, FOCUS_TEXT_MAX), topic: topics[0] || '' })}
-                disabled={saving || !text.trim()}
+                onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
+                disabled={saving || !text.trim() || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
                 className="flex-[2] py-3 bg-violet-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
               >
-                {saving ? t('coachDashboard.processing') : t('coachDashboard.groupTopicSave', { count: members.length })}
+                {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
               </button>
             </div>
           </div>

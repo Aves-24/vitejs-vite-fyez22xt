@@ -14,7 +14,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import CoachStudentSheet from '../components/CoachStudentSheet';
-import GroupTopicPanel, { type GroupTopic } from '../components/GroupTopicPanel';
+import GroupTopicPanel, { type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -275,7 +275,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
-  const [coachGroupTopic, setCoachGroupTopic] = useState<Record<string, GroupTopic>>({});
+  const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
   const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
@@ -380,7 +380,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         setCoachGroups(data.coachGroups || []);
         setStudentGroupMap(data.studentGroupMap || {});
         setGroupNotes(data.groupNotes || {});
-        setCoachGroupTopic(data.coachGroupTopic || {});
+        // [TEMAT TRENINGU] tematy grup po dniach; coachGroupTopic = pierwsza wersja (jeden temat na grupę, 2026-10-15)
+        const byGroup: Record<string, GroupTopicsByDay> = { ...(data.coachGroupTopics || {}) };
+        Object.entries((data.coachGroupTopic || {}) as Record<string, GroupTopic>).forEach(([gid, gt]) => {
+          if (gt?.day && !byGroup[gid]?.[gt.day]) byGroup[gid] = { ...(byGroup[gid] || {}), [gt.day]: gt };
+        });
+        setCoachGroupTopics(byGroup);
         
         const studentIds = data.students || [];
         
@@ -825,8 +830,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     setIsMessageModalOpen(true);
   };
 
-  const handleGroupTopicChanged = (groupId: string, next: GroupTopic) => {
-    setCoachGroupTopic(prev => ({ ...prev, [groupId]: next }));
+  const handleGroupTopicChanged = (groupId: string, next: GroupTopicsByDay) => {
+    setCoachGroupTopics(prev => ({ ...prev, [groupId]: next }));
   };
 
   const closeMessageModal = () => {
@@ -978,11 +983,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         groupNotes: newNotes,
         [`coachGroupFocus.${groupId}`]: deleteField(),
         [`coachGroupTopic.${groupId}`]: deleteField(),
+        [`coachGroupTopics.${groupId}`]: deleteField(),
       });
       setCoachGroups(updatedGroups);
       setStudentGroupMap(newMap);
       setGroupNotes(newNotes);
-      setCoachGroupTopic(prev => { const next = { ...prev }; delete next[groupId]; return next; });
+      setCoachGroupTopics(prev => { const next = { ...prev }; delete next[groupId]; return next; });
       setActiveGroup('ALL');
       setSelectedGroupId(null);
       setConfirmDeleteGroup(null);
@@ -1558,7 +1564,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
           aria-expanded={viewMode === 'groups'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-            viewMode === 'groups' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
+            viewMode === 'groups' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-700 border border-violet-200'
           }`}
         >
           <span className="material-symbols-outlined text-sm">folder_shared</span>
@@ -1671,7 +1677,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               2026-09-10); w rozwiniętej grupie tych przycisków już nie ma. */}
           {coachGroups.length > 0 && (
             <div className="flex items-center justify-between ml-2 pr-1 mb-1">
-              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <h2 className="text-[10px] font-black text-violet-500 uppercase tracking-widest">
                 {t('coachDashboard.viewGroups')} ({coachGroups.length})
               </h2>
               {isGroupSelecting ? (
@@ -1684,7 +1690,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               ) : (
                 <button
                   onClick={() => { setIsGroupSelecting(true); setActiveGroup('ALL'); exitSelecting(); }}
-                  className="text-[9px] font-black uppercase text-indigo-600 flex items-center gap-1 active:scale-95 transition-all"
+                  className="text-[9px] font-black uppercase text-violet-600 flex items-center gap-1 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[14px]">check_circle</span>
                   {t('coachDashboard.selectMode')}
@@ -1742,7 +1748,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <div
                 key={group.id}
                 className={`bg-white rounded-2xl shadow-sm border transition-all ${
-                  isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-indigo-200' : 'border-gray-100'
+                  isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-violet-300 ring-1 ring-violet-200' : 'border-violet-100'
                 }`}
               >
                 <div
@@ -1763,8 +1769,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <span className="material-symbols-outlined text-[18px] font-black">check</span>
                     </div>
                   ) : (
-                    <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-indigo-600 text-[18px]">folder_shared</span>
+                    <div className="w-9 h-9 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-violet-600 text-[18px]">folder_shared</span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1800,7 +1806,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       </div>
                     )}
                     {!isOpen && latestNote && (
-                      <p className="text-[9px] font-medium text-indigo-500 truncate mt-0.5">{latestNote.text}</p>
+                      <p className="text-[9px] font-medium text-violet-500 truncate mt-0.5">{latestNote.text}</p>
                     )}
                   </div>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: members.length })}</span>
@@ -1809,7 +1815,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
                       aria-label={t('coachDashboard.groupMessageBtn')}
                       title={t('coachDashboard.groupMessageBtn')}
-                      className="w-8 h-8 shrink-0 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center active:scale-90 transition-all"
+                      className="w-8 h-8 shrink-0 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[17px]">mail</span>
                     </button>
@@ -1820,12 +1826,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </div>
 
                 {isOpen && (
-                  <div className="px-3 pb-3 pt-2.5 border-t border-gray-100 space-y-3">
+                  <div className="px-3 pb-3 pt-2.5 border-t border-violet-100 bg-violet-50/40 rounded-b-2xl space-y-3">
                     <GroupTopicPanel
                       groupId={group.id}
                       members={members}
                       coachId={userId}
-                      groupTopic={coachGroupTopic[group.id]}
+                      topics={coachGroupTopics[group.id] || {}}
                       onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
                     />

@@ -20,7 +20,7 @@ import {
   inFocusWindow, sessionFocusRef, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
   readFocusGoal, readFocusMilestone, readOwnFocus,
   readCoachGoal, readCoachFocusCleared, readSessionFocuses, trackSettings,
-  resolveActiveFocus, readTrainingTopic, isTopicOpen, topicAsFocus, readTopicFirst, saveTopicFirst, sessionTopicId,
+  resolveActiveFocus, readTrainingTopic, isTopicOpen, topicAsFocus, readTopicFirst, saveTopicFirst, sessionTopicId, dayKeyOf,
   type TrainingTopic, type CoachGoal, type CoachFocusCleared,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
@@ -43,6 +43,13 @@ const MILESTONE_HIDDEN = 'focusMilestoneHidden';
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
 type Filter = 'all' | 'coach' | 'mine';
+
+// Temat zaplanowany wcześniej stoi na osi czasu w swoim dniu, nie w dniu zapisu.
+function topicTimelineFields(id: string, data: any): { trainingTopic?: TrainingTopic; ts?: number } {
+  const tt = readTrainingTopic(id, data);
+  if (!tt) return {};
+  return dayKeyOf(tt.ts) === tt.day ? { trainingTopic: tt } : { trainingTopic: tt, ts: new Date(`${tt.day}T07:00:00`).getTime() };
+}
 
 interface CoachInfo {
   id: string;
@@ -249,9 +256,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             authorName: data.authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
             topics: data.topics || [],
             ts: toMs(data.createdAt),
-            ...(data.type === 'topic' ? { trainingTopic: readTrainingTopic(d.id, data) ?? undefined } : {}),
+            ...(data.type === 'topic' ? topicTimelineFields(d.id, data) : {}),
           };
-        }).filter(e => e.type !== 'topic' || e.trainingTopic));
+        // [TEMAT TRENINGU] Zaplanowany na kolejne dni — uczeń zobaczy go w jego dniu.
+        }).filter(e => e.type !== 'topic' || (e.trainingTopic && e.trainingTopic.day <= dayKeyOf(Date.now()))));
       } catch (e) {
         console.error('Tagebuch: błąd pobierania wpisów trenera', e);
       }

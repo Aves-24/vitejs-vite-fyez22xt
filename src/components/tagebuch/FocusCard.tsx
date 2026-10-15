@@ -12,6 +12,16 @@ export function focusTitle(focus: Pick<ActiveFocus, 'text' | 'topic'>, t: (k: st
 }
 
 /**
+ * [DWA FOKUSY] Fokus trenera na niebieskim tle, własny na żółtym (user
+ * 2026-10-15) — od razu widać, czyj fokus jest na górze. Ukończony i tak szary.
+ */
+function focusPalette(coach: boolean | undefined) {
+  return coach
+    ? { bg: 'bg-sky-50 border-sky-200', icon: 'bg-sky-500 text-white', label: 'text-sky-800', sub: 'text-sky-700', accent: 'text-sky-500', pillIcon: 'text-sky-600', glassIcon: 'text-sky-300' }
+    : { bg: 'bg-amber-50 border-amber-200', icon: 'bg-[#fed33e] text-[#0a3a2a]', label: 'text-amber-800', sub: 'text-amber-700', accent: 'text-amber-500', pillIcon: 'text-amber-600', glassIcon: 'text-[#fed33e]' };
+}
+
+/**
  * [DWA FOKUSY] Kropka drugiego fokusu po prawej stronie paska (user 2026-10-14):
  * niebieska z gwizdkiem = fokus trenera, żółta = własny. Tap zamienia fokusy
  * miejscami. Leży NAD kartą (absolute), bo karta sama jest przyciskiem.
@@ -92,14 +102,14 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
 }
 
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
-export function FocusDots({ count, goal, small = false, light = false, muted = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean }) {
+export function FocusDots({ count, goal, small = false, light = false, muted = false, coach = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean; coach?: boolean }) {
   const done = count >= goal;
   const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
   // muted: szara karta zakończonego fokusu (user 2026-10-14).
   const [doneCls, onCls, offCls] = muted
     ? ['bg-gray-400', 'bg-gray-500', 'bg-gray-200']
     : light
-    ? ['bg-amber-400', 'bg-[#1f6e53]', 'bg-amber-200']
+    ? ['bg-amber-400', 'bg-[#1f6e53]', coach ? 'bg-sky-200' : 'bg-amber-200']
     : ['bg-[#fed33e]', 'bg-emerald-400', 'bg-white/25'];
   return (
     <span className="flex items-center gap-1">
@@ -113,10 +123,10 @@ export function FocusDots({ count, goal, small = false, light = false, muted = f
   );
 }
 
-export function FocusProgressText({ count, goal, light = false }: { count: number; goal: number; light?: boolean }) {
+export function FocusProgressText({ count, goal, light = false, coach = false }: { count: number; goal: number; light?: boolean; coach?: boolean }) {
   const { t } = useTranslation();
   return (
-    <span className={`text-[10px] font-bold ${light ? 'text-amber-800' : 'text-white/75'}`}>
+    <span className={`text-[10px] font-bold ${light ? (coach ? 'text-sky-800' : 'text-amber-800') : 'text-white/75'}`}>
       {count >= goal
         ? t('tagebuch.focusDone', { count, goal })
         : t(goal === 1 ? 'tagebuch.focusCountOne' : 'tagebuch.focusCount', { hit: count, goal })}
@@ -271,35 +281,36 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   }
 
   const done = dots && count >= goal;
+  const pal = focusPalette(focus.fromCoach);
   const card = (
     <button
       onClick={onEdit}
-      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : 'bg-amber-50 border-amber-200'} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pr-14' : ''} text-left active:scale-[0.99] transition-all`}
+      className={`w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 ${other && onSwap ? 'pr-14' : ''} text-left active:scale-[0.99] transition-all`}
     >
-      <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : 'bg-[#fed33e] text-[#0a3a2a]'} flex items-center justify-center shrink-0`}>
+      <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
         <span className="material-symbols-outlined text-[20px]">track_changes</span>
       </span>
       <div className="flex-1 min-w-0">
-        <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${done ? 'text-gray-500' : 'text-amber-800'}`}>
+        <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${done ? 'text-gray-500' : pal.label}`}>
           <span className="truncate">
             {t(done ? 'tagebuch.focusLastDone' : 'tagebuch.focusLabel')}
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />
-          {!(other && onSwap) && <span className="material-symbols-outlined text-[14px] text-amber-500">edit</span>}
+          {!(other && onSwap) && <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>}
         </div>
         <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
         {focus.text && focus.topic && (
-          <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(focus.topic, t)}</p>
+          <p className={`text-[10px] font-bold mt-0.5 ${pal.sub}`}>{topicLabel(focus.topic, t)}</p>
         )}
         <div className="flex items-center gap-2 mt-1.5 flex-wrap">
           {dots ? (
             <>
-              <FocusDots count={count} goal={goal} light muted={done} />
-              <FocusProgressText count={count} goal={goal} light />
+              <FocusDots count={count} goal={goal} light muted={done} coach={focus.fromCoach} />
+              <FocusProgressText count={count} goal={goal} light coach={focus.fromCoach} />
             </>
           ) : (
-            <span className="text-[10px] font-bold text-amber-700">
+            <span className={`text-[10px] font-bold ${pal.sub}`}>
               {t('tagebuch.focusSince', { date: fmt(focus.since) })}
             </span>
           )}
@@ -369,15 +380,18 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
     </div>
   );
 
+  const pal = focusPalette(focus.fromCoach);
+  const coach = !!focus.fromCoach;
+
   if (variant === 'pill') {
-    return wrap('gap-2 bg-amber-50 border border-amber-200 rounded-full px-3 py-1.5', (
+    return wrap(`gap-2 border rounded-full px-3 py-1.5 ${pal.bg}`, (
       <>
-        <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0">track_changes</span>
+        <span className={`material-symbols-outlined text-[18px] shrink-0 ${pal.pillIcon}`}>track_changes</span>
         <span className="flex-1 min-w-0 text-[12px] font-black text-[#0a3a2a] truncate">
-          {title}{topic && <span className="text-amber-700 font-bold"> · {topic}</span>}
+          {title}{topic && <span className={`font-bold ${pal.sub}`}> · {topic}</span>}
         </span>
-        {dots && <FocusDots count={count} goal={goal} small light />}
-        {onOpen && <span className="material-symbols-outlined text-[18px] text-amber-500 shrink-0">chevron_right</span>}
+        {dots && <FocusDots count={count} goal={goal} small light coach={coach} />}
+        {onOpen && <span className={`material-symbols-outlined text-[18px] shrink-0 ${pal.accent}`}>chevron_right</span>}
       </>
     ));
   }
@@ -385,31 +399,31 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const glass = variant === 'glass';
   return wrap(glass
     ? 'gap-3 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2'
-    : 'gap-3 bg-amber-50 border border-amber-200 rounded-[20px] px-3.5 py-2.5', (
+    : `gap-3 border rounded-[20px] px-3.5 py-2.5 ${pal.bg}`, (
     <>
       {glass
-        ? <span className="material-symbols-outlined text-[22px] text-[#fed33e] shrink-0">track_changes</span>
+        ? <span className={`material-symbols-outlined text-[22px] shrink-0 ${pal.glassIcon}`}>track_changes</span>
         : (
-          <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
+          <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${pal.icon}`}>
             <span className="material-symbols-outlined text-[20px]">track_changes</span>
           </span>
         )}
       <div className="flex-1 min-w-0">
-        <p className={`text-[9px] font-black uppercase tracking-widest truncate ${glass ? 'text-[#fed33e]' : 'text-amber-800'}`}>
+        <p className={`text-[9px] font-black uppercase tracking-widest truncate ${glass ? pal.glassIcon : pal.label}`}>
           {label ?? t('tagebuch.focusLabel')}
           {source && ` · ${source}`}
         </p>
         <p className={`text-[13px] font-black leading-snug truncate ${glass ? 'text-white' : 'text-[#0a3a2a]'}`}>{title}</p>
         {/* Temat pod tekstem (user 2026-09-18) — bez tekstu tytułem jest sam temat. */}
-        {topic && <p className={`text-[10px] font-bold truncate ${glass ? 'text-white/60' : 'text-amber-700'}`}>{topic}</p>}
+        {topic && <p className={`text-[10px] font-bold truncate ${glass ? 'text-white/60' : pal.sub}`}>{topic}</p>}
         {dots && (
           <div className="flex items-center gap-2 mt-1">
-            <FocusDots count={count} goal={goal} small light={!glass} />
-            <FocusProgressText count={count} goal={goal} light={!glass} />
+            <FocusDots count={count} goal={goal} small light={!glass} coach={coach} />
+            <FocusProgressText count={count} goal={goal} light={!glass} coach={coach} />
           </div>
         )}
       </div>
-      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : 'text-amber-500'}`}>chevron_right</span>}
+      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
     </>
   ));
 }

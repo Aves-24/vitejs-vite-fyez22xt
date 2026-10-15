@@ -78,7 +78,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const focusState = useCurrentFocus(userId);
   const activeFocus = focusState?.focus ?? null;
   const focusPair = displayPair(focusState);
-  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState, userId);
   const focusTopic = activeFocus?.topic || '';
 
   const [isSavingCounter, setIsSavingCounter] = useState(false);
@@ -304,15 +304,21 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       <div className="space-y-2">
         {/* [FOKUS] Przypomnienie przed treningiem (user 2026-09-18) — ten sam pasek
             co na Home; klik prowadzi do dziennika. Liczenie: przełącznik przy zapisie. */}
-        {focusPair.main && (
-          <FocusStrip
-            focus={focusPair.main}
-            {...displayProgress(focusState, focusPair.main)}
-            onOpen={() => onNavigate?.('MY_COACH')}
-            variant="pill"
-            other={focusPair.other}
-            onSwap={() => swapFocus(userId, focusState)}
-          />
+        {/* [TEMAT TRENINGU] Jak w treningu technicznym: karta + „Dieses Training
+            zählt für” (user 2026-10-15) — wybór przechodzi na ekran z tarczą. */}
+        {focusPair.main && focusState && (
+          <div className="space-y-2">
+            <FocusStrip
+              focus={focusPair.main}
+              {...displayProgress(focusState, focusPair.main)}
+              onOpen={() => onNavigate?.('MY_COACH')}
+              other={focusPair.other}
+              onSwap={() => swapFocus(userId, focusState)}
+            />
+            <div className="px-1">
+              <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
+            </div>
+          </div>
         )}
         <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
           {/* [KOLORY] Kropki zestawów — klik pokazuje dystanse tego zestawu

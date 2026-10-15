@@ -312,9 +312,26 @@ export function defaultFocusChoice(state: FocusState | null): FocusChoice {
  * Wybór chipów na ekranie zapisu. Dopóki nikt nie kliknął, podąża za fokusem
  * z góry (np. po zamianie miejsc); po kliknięciu zostaje wybór użytkownika.
  */
-export function useFocusChoice(state: FocusState | null): [FocusChoice, (next: FocusChoice) => void] {
-  const [picked, setPicked] = useState<FocusChoice | null>(null);
-  return [picked ?? defaultFocusChoice(state), setPicked];
+export function useFocusChoice(state: FocusState | null, userId?: string | null): [FocusChoice, (next: FocusChoice) => void] {
+  // Z userId wybór zostaje na resztę dnia w telefonie — zaznaczony w
+  // Vorbereitung przechodzi na ekran z tarczą (user 2026-10-15).
+  const key = userId ? `grotx_focusChoice_${userId}` : '';
+  const [picked, setPicked] = useState<FocusChoice | null>(() => {
+    if (!key) return null;
+    try {
+      const v = JSON.parse(localStorage.getItem(key) || 'null');
+      return v?.day === dayKeyOf(Date.now()) ? v.choice : null;
+    } catch { return null; }
+  });
+  const pick = (next: FocusChoice) => {
+    setPicked(next);
+    if (key) try { localStorage.setItem(key, JSON.stringify({ day: dayKeyOf(Date.now()), choice: next })); } catch { /* prywatny tryb */ }
+  };
+  const base = defaultFocusChoice(state);
+  if (!picked) return [base, pick];
+  // Jeden fokus: zaznaczony = ten, który jest (własny albo od trenera).
+  const focusOn = picked.own || picked.coach;
+  return [{ own: base.own && focusOn, coach: base.coach && focusOn, topic: base.topic && picked.topic !== false }, pick];
 }
 
 /** Tematy zaznaczonych fokusów — dokładane do tematów treningu. */

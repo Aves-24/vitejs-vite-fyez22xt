@@ -189,7 +189,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // `true` = z liczbą treningów — miniatura fokusu w nagłówku pokazuje kropki.
   const focusState = useCurrentFocus(battleId ? null : userId);
   // [DWA FOKUSY] Chipy „pod jaki fokus” zamiast dawnego przełącznika tematu.
-  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState, userId);
   // [TEMAT TRENINGU] W nagłówku to, co jest na górze karty (fokus albo temat dnia).
   const headerFocus = displayPair(focusState).main;
   

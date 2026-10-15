@@ -465,7 +465,8 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
       </div>
-      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
+      {/* Z chipem drugiego fokusu strzałka idzie do góry (user 2026-10-15). */}
+      {onOpen && <span className={`material-symbols-outlined text-[20px] shrink-0 ${chip ? 'self-start' : ''} ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}
     </>
   ));
 }

@@ -31,7 +31,69 @@ export interface GroupTopic {
 
 export type GroupTopicsByDay = Record<string, GroupTopic>;
 
-type MemberStatus = 'trained' | 'acked' | 'none';
+export type MemberStatus = 'trained' | 'acked' | 'none';
+
+/** Status uczniów przy temacie: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”. */
+export async function loadTopicStatus(gt: GroupTopic): Promise<Record<string, MemberStatus>> {
+  const from = new Date(`${gt.day}T00:00:00`).getTime();
+  const list = await Promise.all(Object.entries(gt.entryIds).map(async ([sid, eid]) => {
+    try {
+      const sSnap = await getDocs(query(collection(db, `users/${sid}/sessions`), where('timestamp', '>=', Timestamp.fromMillis(from))));
+      if (sSnap.docs.some(d => sessionTopicId(d.data()) === eid)) return [sid, 'trained'] as const;
+      const e = await getDoc(doc(db, `users/${sid}/coachLog`, eid));
+      return [sid, e.exists() && e.data().ackAt ? 'acked' : 'none'] as const;
+    } catch {
+      return [sid, 'none'] as const;
+    }
+  }));
+  return Object.fromEntries(list);
+}
+
+/** Lista uczniów ze statusem przy temacie (panel tematu i historia treningów). */
+export function TopicMemberList({ members, gt, status, onAssign, saving }: {
+  members: any[];
+  gt: GroupTopic;
+  status: Record<string, MemberStatus>;
+  onAssign?: (s: any) => void;   // tylko otwarty temat: dopisz ucznia, który doszedł później
+  saving?: boolean;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-1">
+      {members.map(s => {
+        const name = `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim();
+        const st = status[s.id];
+        return (
+          <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
+            <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
+            {!gt.entryIds[s.id] ? (
+              onAssign ? (
+                <button
+                  type="button"
+                  onClick={() => onAssign(s)}
+                  disabled={saving}
+                  className="text-[9px] font-black uppercase tracking-wide text-violet-700 bg-white border border-violet-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
+                >
+                  {t('coachDashboard.groupFocusAssign')}
+                </button>
+              ) : <span className="text-[9px] font-bold text-gray-300">—</span>
+            ) : st === 'trained' ? (
+              <span className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700">
+                <span className="material-symbols-outlined text-[13px]">check</span>{t('coachDashboard.groupTopicTrained')}
+              </span>
+            ) : st === 'acked' ? (
+              <span className="flex items-center gap-0.5 text-[9px] font-black text-violet-700">
+                <span className="material-symbols-outlined text-[13px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
+              </span>
+            ) : (
+              <span className="text-[9px] font-bold text-gray-400">{st ? '—' : '…'}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast }: {
   groupId: string;
@@ -55,25 +117,15 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const upcoming = days.filter(d => d > today);
   const lastDay = [...days].reverse().find(d => d < today);
   const last = lastDay ? byDay[lastDay] : undefined;
-  // Karta główna: dzisiejszy temat, a bez niego ostatni (do „Powtórz”).
-  const shown = todayTopic ?? last;
+  // Karta główna: tylko dzisiejszy temat — minione są w historii treningów.
+  const shown = todayTopic;
   const open = !!todayTopic && !todayTopic.closedAt;
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
   useEffect(() => {
     if (!shown) { setStatus({}); return; }
     let cancelled = false;
-    const from = new Date(`${shown.day}T00:00:00`).getTime();
-    Promise.all(Object.entries(shown.entryIds).map(async ([sid, eid]) => {
-      try {
-        const sSnap = await getDocs(query(collection(db, `users/${sid}/sessions`), where('timestamp', '>=', Timestamp.fromMillis(from))));
-        if (sSnap.docs.some(d => sessionTopicId(d.data()) === eid)) return [sid, 'trained'] as const;
-        const e = await getDoc(doc(db, `users/${sid}/coachLog`, eid));
-        return [sid, e.exists() && e.data().ackAt ? 'acked' : 'none'] as const;
-      } catch {
-        return [sid, 'none'] as const;
-      }
-    })).then(list => { if (!cancelled) setStatus(Object.fromEntries(list)); });
+    loadTopicStatus(shown).then(st => { if (!cancelled) setStatus(st); });
     return () => { cancelled = true; };
   }, [shown]);
 
@@ -265,38 +317,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
             )}
           </div>
 
-          <div className="mt-2 space-y-1">
-            {members.map(s => {
-              const name = `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim();
-              const st = status[s.id];
-              return (
-                <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
-                  <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
-                  {!shown.entryIds[s.id] ? (
-                    open ? (
-                      <button
-                        type="button"
-                        onClick={() => assignOne(shown, s)}
-                        disabled={saving}
-                        className="text-[9px] font-black uppercase tracking-wide text-violet-700 bg-white border border-violet-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
-                      >
-                        {t('coachDashboard.groupFocusAssign')}
-                      </button>
-                    ) : <span className="text-[9px] font-bold text-gray-300">—</span>
-                  ) : st === 'trained' ? (
-                    <span className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700">
-                      <span className="material-symbols-outlined text-[13px]">check</span>{t('coachDashboard.groupTopicTrained')}
-                    </span>
-                  ) : st === 'acked' ? (
-                    <span className="flex items-center gap-0.5 text-[9px] font-black text-violet-700">
-                      <span className="material-symbols-outlined text-[13px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
-                    </span>
-                  ) : (
-                    <span className="text-[9px] font-bold text-gray-400">{st ? '—' : '…'}</span>
-                  )}
-                </div>
-              );
-            })}
+          <div className="mt-2">
+            <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} />
           </div>
 
           {open && (

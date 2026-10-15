@@ -15,6 +15,10 @@ import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import CoachStudentSheet from '../components/CoachStudentSheet';
 import GroupTopicPanel, { type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
+import GroupTrainingHistory from '../components/GroupTrainingHistory';
+import { dayKeyOf } from '../utils/focus';
+
+const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -271,7 +275,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   
   // Rozwinięta grupa w zakładce GRUPY; 'ALL' = żadna.
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
-  const [isJournalOpen, setIsJournalOpen] = useState(false);
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
@@ -283,17 +286,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [newGroupName, setNewGroupName] = useState('');
   const [managingGroupsFor, setManagingGroupsFor] = useState<string[] | null>(null);
 
-  const [newNoteText, setNewNoteText] = useState('');
-  const [noteReplacementPrompt, setNoteReplacementPrompt] = useState<{ groupId: string, pendingNote: string, oldestNote: any } | null>(null);
   // Tryb wyboru grup (jak „Wybierz" u uczniów): jedna zaznaczona grupa,
   // pasek z Zmień nazwę / Nowy wpis / Usuń. Okno nowego wpisu dla grupy.
   const [isGroupSelecting, setIsGroupSelecting] = useState(false);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [noteModalGroupId, setNoteModalGroupId] = useState<string | null>(null);
   // Rozwinięte stare wpisy pod polem nowego wpisu (zwinięte = 30 znaków).
-  const [expandedNoteIds, setExpandedNoteIds] = useState<string[]>([]);
   const exitGroupSelecting = () => { setIsGroupSelecting(false); setSelectedGroupId(null); };
-  const [confirmDeleteNote, setConfirmDeleteNote] = useState<{ groupId: string; noteId: string } | null>(null);
 
   const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
   const [editGroupName, setEditGroupName] = useState('');
@@ -927,7 +925,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setNewGroupName('');
       // Nowa grupa od razu rozwinięta — trener zwykle chce dopisać uczniów.
       setActiveGroup(newGroup.id);
-      setIsJournalOpen(false);
+     
       setViewMode('groups');
       showToast(t('coachDashboard.toastGroupCreated'));
     } catch (error) {
@@ -1017,43 +1015,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     } catch(e) { showToast(t('coachDashboard.toastSaveError')); }
   };
 
-  // Grupa podawana wprost (2026-09-10): wpis dodaje się z paska trybu
-  // wyboru grup, nie z rozwiniętej grupy, więc `activeGroup` już nie pasuje.
-  const saveNote = async (groupId: string, text: string, replace: boolean = false) => {
-    // Kopia przed sortowaniem — sort() w miejscu psuł stan groupNotes.
-    let currentNotes = [...(groupNotes[groupId] || [])];
-
-    if (replace) {
-      currentNotes.sort((a, b) => a.timestamp - b.timestamp);
-      currentNotes = currentNotes.slice(1);
-    }
-
-    const newNote = { id: 'note_' + Date.now(), text, timestamp: Date.now() };
-    const newNotesArray = [...currentNotes, newNote];
-    const updatedNotesMap = { ...groupNotes, [groupId]: newNotesArray };
-
+  // [HISTORIA TRENINGÓW] Stary dziennik grupy przeniesiony do prywatnego
+  // dokumentu trenera — z profilu (czytanego też przez uczniów) znika.
+  const handleLegacyNotesMigrated = async (groupId: string) => {
     try {
-      await updateDoc(doc(db, 'users', userId), { groupNotes: updatedNotesMap });
-      setGroupNotes(updatedNotesMap);
-      setNewNoteText('');
-      setNoteReplacementPrompt(null);
-      setNoteModalGroupId(null);
-      showToast(t('coachDashboard.toastNoteAdded'));
-    } catch(e) {
-      showToast(t('coachDashboard.toastNoteError'));
-    }
-  };
-
-  const handleAddNoteClick = (groupId: string) => {
-    if (!newNoteText.trim()) return;
-    const currentNotes = groupNotes[groupId] || [];
-
-    if (currentNotes.length >= 5) {
-      const sorted = [...currentNotes].sort((a, b) => a.timestamp - b.timestamp);
-      setNoteReplacementPrompt({ groupId, pendingNote: newNoteText, oldestNote: sorted[0] });
-    } else {
-      saveNote(groupId, newNoteText, false);
-    }
+      await updateDoc(doc(db, 'users', userId), { [`groupNotes.${groupId}`]: deleteField() });
+      setGroupNotes(prev => { const next = { ...prev }; delete next[groupId]; return next; });
+    } catch (e) { console.error('Dziennik grupy: błąd sprzątania', e); }
   };
 
   const isLimitReached = coachLimit > 0 && students.length >= coachLimit;
@@ -1709,13 +1677,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <span className={`truncate ${sel ? '' : 'text-white/50'}`}>{sel ? sel.name : t('coachDashboard.pickGroupHint')}</span>
                 </span>
                 <button
-                  onClick={() => { if (sel) { setNewNoteText(''); setExpandedNoteIds([]); setNoteModalGroupId(sel.id); } }}
-                  disabled={!sel}
-                  className="bg-[#fed33e] text-[#0a3a2a] px-3 py-1.5 rounded-lg font-black text-[10px] uppercase active:scale-95 transition-all shrink-0 disabled:opacity-40"
-                >
-                  {t('coachDashboard.newEntryBtn')}
-                </button>
-                <button
                   onClick={() => { if (sel) { setEditingGroup(sel); setEditGroupName(sel.name); } }}
                   disabled={!sel}
                   aria-label={t('coachDashboard.editGroupBtn')}
@@ -1739,8 +1700,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
           {coachGroups.map(group => {
             const members = studentsOfGroup(group.id);
-            const notes = groupNotes[group.id] || [];
-            const latestNote = [...notes].sort((a, b) => b.timestamp - a.timestamp)[0];
+            // [TEMAT TRENINGU] Na zwiniętej karcie: dzisiejszy albo następny zaplanowany temat.
+            const todayKey = dayKeyOf(Date.now());
+            const nextTopicDay = Object.keys(coachGroupTopics[group.id] || {}).sort().find(d => d >= todayKey);
+            const nextTopic = nextTopicDay ? coachGroupTopics[group.id][nextTopicDay] : undefined;
             const isOpen = !isGroupSelecting && activeGroup === group.id;
             const isPicked = isGroupSelecting && selectedGroupId === group.id;
             const pulse = groupPulse(members);
@@ -1758,7 +1721,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   onClick={() => {
                     // W trybie wyboru klik zaznacza (jedna grupa naraz), poza nim rozwija.
                     if (isGroupSelecting) { setSelectedGroupId(isPicked ? null : group.id); return; }
-                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsJournalOpen(false); setIsGroupListOpen(false);
+                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false);
                   }}
                   className="px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
                 >
@@ -1805,8 +1768,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         )}
                       </div>
                     )}
-                    {!isOpen && latestNote && (
-                      <p className="text-[9px] font-medium text-violet-500 truncate mt-0.5">{latestNote.text}</p>
+                    {!isOpen && nextTopic && (
+                      <p className="flex items-center gap-1 text-[9px] font-black text-violet-600 truncate mt-0.5">
+                        <span className="material-symbols-outlined text-[12px]">sports</span>
+                        <span className="truncate">
+                          {nextTopicDay === todayKey
+                            ? t('coachDashboard.groupTopicToday')
+                            : new Date(`${nextTopicDay}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}
+                          : {nextTopic.text}
+                        </span>
+                      </p>
                     )}
                   </div>
                   <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: members.length })}</span>
@@ -1837,6 +1808,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       showToast={showToast}
                     />
 
+                    <GroupTrainingHistory
+                      groupId={group.id}
+                      coachId={userId}
+                      members={members}
+                      topics={coachGroupTopics[group.id] || {}}
+                      legacyNotes={groupNotes[group.id] || EMPTY_NOTES}
+                      onLegacyMigrated={() => handleLegacyNotesMigrated(group.id)}
+                    />
+
                     <CollapsibleSection
                       label={t('coachDashboard.groupList')}
                       open={isGroupListOpen}
@@ -1851,58 +1831,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
                         aria-label={t('coachDashboard.addToGroupBtn')}
                         title={t('coachDashboard.addToGroupBtn')}
-                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-indigo-200 text-indigo-600 flex items-center justify-center active:scale-90 transition-all"
+                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-violet-200 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
                       >
                         <span className="material-symbols-outlined text-[20px]">person_add</span>
                       </button>
                     )}
                     </CollapsibleSection>
-
-                    {/* Dziennik grupy — tylko do czytania (i kasowania wpisu „×").
-                        Nowy wpis dodaje się z paska „Wybierz". Bez wpisów sekcji nie ma. */}
-                    {notes.length > 0 && (
-                    <CollapsibleSection
-                      label={t('coachDashboard.journalTitle')}
-                      open={isJournalOpen}
-                      onToggle={() => setIsJournalOpen(o => !o)}
-                      summary={t('coachDashboard.journalCount', { count: notes.length })}
-                    >
-                      <div className="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100">
-                        <div className="flex items-center gap-1 mb-2">
-                          <span className="material-symbols-outlined text-[11px] text-indigo-400">lock</span>
-                          <span className="text-[9px] font-bold text-indigo-400">{t('coachDashboard.journalPrivate')}</span>
-                        </div>
-
-                        <div className="space-y-2">
-                          {[...notes].sort((a, b) => b.timestamp - a.timestamp).map((note, index) => {
-                            const isNewest = index === 0;
-                            return (
-                              <div key={note.id} className={`p-3 rounded-xl shadow-sm border relative pr-8 ${
-                                isNewest ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-gray-100'
-                              }`}>
-                                {isNewest && (
-                                  <div className="flex items-center gap-1 mb-1.5">
-                                    <span className="material-symbols-outlined text-[10px] text-indigo-200">new_releases</span>
-                                    <span className="text-[8px] font-black text-indigo-200 uppercase tracking-widest">{t('coachDashboard.newestEntry')}</span>
-                                  </div>
-                                )}
-                                <p className={`text-[11px] font-medium leading-relaxed break-words whitespace-pre-wrap ${isNewest ? 'text-white' : 'text-[#333]'}`}>{note.text}</p>
-                                <p className={`text-[8px] font-bold uppercase mt-2 ${isNewest ? 'text-indigo-300' : 'text-gray-400'}`}>
-                                  {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </p>
-                                <button
-                                  onClick={() => setConfirmDeleteNote({ groupId: group.id, noteId: note.id })}
-                                  className={`absolute top-2 right-2 transition-colors ${isNewest ? 'text-indigo-300 hover:text-white' : 'text-gray-300 hover:text-red-500'}`}
-                                >
-                                  <span className="material-symbols-outlined text-[16px]">close</span>
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </CollapsibleSection>
-                    )}
                   </div>
                 )}
               </div>
@@ -2085,120 +2019,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
          document.body
       )}
 
-      {/* Nowy wpis w dzienniku grupy — z paska „Wybierz" w zakładce GRUPY.
-          Przed oknem zastępowania, żeby tamto (limit 5 wpisów) było na wierzchu. */}
-      {noteModalGroupId && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => { setNoteModalGroupId(null); setNewNoteText(''); }}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] max-h-[90vh] overflow-y-auto shadow-2xl relative" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="material-symbols-outlined text-indigo-600 text-[20px]">menu_book</span>
-              <h2 className="text-lg font-black text-[#0a3a2a] leading-none">{t('coachDashboard.newEntryBtn')}</h2>
-            </div>
-            <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest mb-1 truncate">
-              {coachGroups.find(g => g.id === noteModalGroupId)?.name} · {t('coachDashboard.journalCount', { count: (groupNotes[noteModalGroupId] || []).length })}
-            </p>
-            <div className="flex items-center gap-1 mb-3">
-              <span className="material-symbols-outlined text-[11px] text-gray-400">lock</span>
-              <span className="text-[9px] font-bold text-gray-400">{t('coachDashboard.journalPrivate')}</span>
-            </div>
-            <div className="relative mb-1">
-              <textarea
-                autoFocus
-                value={newNoteText}
-                onChange={e => setNewNoteText(e.target.value)}
-                placeholder={t('coachDashboard.journalPlaceholder')}
-                maxLength={200}
-                className="w-full bg-gray-50 border border-gray-200 rounded-2xl p-3 text-[12px] font-medium h-28 resize-none outline-none focus:border-indigo-400 text-[#333]"
-              />
-              <span className={`absolute bottom-2 right-3 text-[8px] font-bold ${newNoteText.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>
-                {newNoteText.length}/200
-              </span>
-            </div>
-            {/* Limit dziennika — to samo, co robi handleAddNoteClick (pyta
-                o zastąpienie najstarszego przy pełnych 5 wpisach) */}
-            <p className="text-[9px] font-bold text-gray-400 leading-snug mb-4 px-1">{t('coachDashboard.journalLimitHint')}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setNoteModalGroupId(null); setNewNoteText(''); }}
-                className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95"
-              >
-                {t('coachDashboard.cancel')}
-              </button>
-              <button
-                onClick={() => handleAddNoteClick(noteModalGroupId)}
-                disabled={!newNoteText.trim()}
-                className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
-              >
-                {t('coachDashboard.journalAddBtn')}
-              </button>
-            </div>
-
-            {/* Wcześniejsze wpisy (życzenie usera 2026-09-10): zwinięte do 30
-                znaków, klik rozwija całość — żeby pisząc nowy, widzieć stare. */}
-            {(() => {
-              const notes = [...(groupNotes[noteModalGroupId] || [])].sort((a, b) => b.timestamp - a.timestamp);
-              if (notes.length === 0) return null;
-              return (
-                <div className="mt-4 pt-3 border-t border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('coachDashboard.previousEntries')}</p>
-                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
-                    {notes.map(note => {
-                      const chars = Array.from(note.text.replace(/\s+/g, ' ').trim()); // Array.from — emoji to jeden znak
-                      const isLong = chars.length > 30;
-                      const isOpen = expandedNoteIds.includes(note.id);
-                      return (
-                        <button
-                          key={note.id}
-                          type="button"
-                          onClick={() => isLong && setExpandedNoteIds(prev => isOpen ? prev.filter(id => id !== note.id) : [...prev, note.id])}
-                          aria-expanded={isLong ? isOpen : undefined}
-                          className={`w-full text-left bg-gray-50 border border-gray-100 rounded-xl px-3 py-2 transition-all ${isLong ? 'active:scale-[0.99]' : 'cursor-default'}`}
-                        >
-                          <div className="flex items-start gap-2">
-                            <p className="flex-1 min-w-0 text-[11px] font-medium text-[#333] leading-snug break-words whitespace-pre-wrap">
-                              {isOpen || !isLong ? note.text : `${chars.slice(0, 30).join('').trimEnd()}…`}
-                            </p>
-                            {isLong && (
-                              <span className="material-symbols-outlined text-[16px] text-gray-400 shrink-0">{isOpen ? 'expand_less' : 'expand_more'}</span>
-                            )}
-                          </div>
-                          <p className="text-[8px] font-bold text-gray-400 uppercase mt-1">
-                            {new Date(note.timestamp).toLocaleDateString()} {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {noteReplacementPrompt && typeof document !== 'undefined' && createPortal(
-         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in">
-           <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative">
-             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
-                <span className="material-symbols-outlined text-3xl">warning</span>
-             </div>
-             <h2 className="text-xl font-black text-center text-[#0a3a2a] mb-2">{t('coachDashboard.limitTitle')}</h2>
-             <p className="text-[11px] font-bold text-gray-500 mb-4 text-center leading-relaxed">
-               {t('coachDashboard.limitDesc')}
-             </p>
-             <div className="bg-gray-50 p-3 rounded-xl border border-gray-100 mb-6 max-h-24 overflow-y-auto">
-                <p className="text-[10px] text-gray-600 font-medium italic break-words">"{noteReplacementPrompt.oldestNote?.text}"</p>
-             </div>
-             <div className="flex gap-2">
-               <button onClick={() => setNoteReplacementPrompt(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-               <button onClick={() => saveNote(noteReplacementPrompt.groupId, noteReplacementPrompt.pendingNote, true)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md">{t('coachDashboard.replaceOld')}</button>
-             </div>
-           </div>
-         </div>,
-         document.body
-      )}
-
       {isMessageModalOpen && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={closeMessageModal}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
@@ -2366,29 +2186,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
         </div>,
         document.body
-      )}
-
-      {confirmDeleteNote && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center shadow-2xl">
-            <div className="w-14 h-14 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <span className="material-symbols-outlined text-orange-500 text-2xl">warning</span>
-            </div>
-            <h2 className="text-lg font-black text-[#0a3a2a] mb-2">{t('coachDashboard.deleteNoteTitle')}</h2>
-            <p className="text-sm font-bold text-gray-500 mb-6">{t('coachDashboard.deleteNoteDesc')}</p>
-            <div className="flex gap-2">
-              <button onClick={() => setConfirmDeleteNote(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px]">{t('coachDashboard.cancel')}</button>
-              <button onClick={async () => {
-                const { groupId, noteId } = confirmDeleteNote;
-                setConfirmDeleteNote(null);
-                const updatedNotes = groupNotes[groupId].filter(n => n.id !== noteId);
-                const newMap = { ...groupNotes, [groupId]: updatedNotes };
-                await updateDoc(doc(db, 'users', userId), { groupNotes: newMap });
-                setGroupNotes(newMap);
-              }} className="flex-1 py-3.5 bg-[#0a3a2a] text-white rounded-xl font-black uppercase text-[11px]">{t('coachDashboard.confirm')}</button>
-            </div>
-          </div>
-        </div>, document.body
       )}
 
       {sheetStudentId && (() => {

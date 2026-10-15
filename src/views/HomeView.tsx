@@ -13,7 +13,7 @@ import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
-import { useCurrentFocus, otherTrack, swapFocus } from '../utils/focus';
+import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
@@ -64,6 +64,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const { t, i18n } = useTranslation();
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
   const focusState = useCurrentFocus(userId);
+  const focusPair = displayPair(focusState);
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
@@ -1304,15 +1305,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         </div>
 
-        {focusState?.focus && (
+        {focusPair.main && (
           <div className="mt-2">
             <FocusStrip
-              focus={focusState.focus}
-              dots={focusState.dots}
-              goal={focusState.goal}
-              count={focusState.count}
+              focus={focusPair.main}
+              {...displayProgress(focusState, focusPair.main)}
               onOpen={() => onNavigate?.('MY_COACH')}
-              other={otherTrack(focusState)?.focus}
+              other={focusPair.other}
               onSwap={() => swapFocus(userId, focusState)}
             />
           </div>

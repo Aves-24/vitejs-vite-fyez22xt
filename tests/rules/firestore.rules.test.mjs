@@ -881,6 +881,31 @@ test('[DWA FOKUSY] autor fokusu: liczba treningow, lekcje trenera, zakonczenie',
   await assertFails(updateDoc(doc(bob(), 'users/alice/coachLog/g2'), { endedAt: 1 }));
 });
 
+test('[TEMAT TRENINGU] trener tworzy/zamyka temat, uczen potwierdza', async () => {
+  const t1 = (db) => doc(db, 'users/alice/coachLog/topic1');
+  // Tworzenie: dzień obowiązkowy, bez closedAt/ackAt.
+  await assertSucceeds(setDoc(t1(coach1()),
+    { authorId: 'coach1', text: 'Rotacja łokcia', type: 'topic', topics: [], day: '2026-10-15', groupId: 'g1' }));
+  await assertFails(setDoc(doc(coach1(), 'users/alice/coachLog/topic2'),
+    { authorId: 'coach1', text: 'X', type: 'topic', topics: [] }));
+  await assertFails(setDoc(doc(coach1(), 'users/alice/coachLog/topic3'),
+    { authorId: 'coach1', text: 'X', type: 'topic', topics: [], day: '2026-10-15', ackAt: 1 }));
+  await assertFails(setDoc(doc(bob(), 'users/alice/coachLog/topic4'),
+    { authorId: 'bob', text: 'X', type: 'topic', topics: [], day: '2026-10-15' }));
+
+  // Autor zamyka i zmienia tekst; nie dotyka ackAt.
+  await assertSucceeds(updateDoc(t1(coach1()), { closedAt: Date.now() }));
+  await assertSucceeds(updateDoc(t1(coach1()), { text: 'Rotacja', editedAt: Date.now() }));
+  await assertFails(updateDoc(t1(coach1()), { day: '2026-10-16' }));
+  await assertFails(updateDoc(t1(coach1()), { ackAt: serverTimestamp() }));
+
+  // Uczeń: tylko ackAt = czas serwera.
+  await assertSucceeds(updateDoc(t1(alice()), { ackAt: serverTimestamp() }));
+  await assertFails(updateDoc(t1(alice()), { ackAt: 1 }));
+  await assertFails(updateDoc(t1(alice()), { closedAt: 1 }));
+  await assertFails(updateDoc(t1(bob()), { ackAt: serverTimestamp() }));
+});
+
 test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
   const a = () => doc(coach1(), 'users/alice');
   await assertSucceeds(updateDoc(a(), { focusGoal: 1, focusDots: true }));

@@ -4,7 +4,7 @@ import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
 import { topicLabel } from '../../constants/trainingTopics';
-import type { FocusMilestone, FocusSnapRef, SessionFocus } from '../../utils/focus';
+import { isTopicOpen, type FocusMilestone, type FocusSnapRef, type SessionFocus, type TrainingTopic } from '../../utils/focus';
 
 // --- TYPY WPISÓW OSI CZASU ---
 // Read-model złożony z istniejących kolekcji — nic nie jest zapisywane w nowym
@@ -42,6 +42,7 @@ export interface TbSession {
   snaps: FocusSnapRef[];
   decided?: boolean;
   focuses: SessionFocus[]; // pełne migawki — przełącznik w dzienniku zapisuje listę z powrotem
+  topicId?: string;      // [TEMAT TRENINGU] trening pod ten temat (id wpisu 'topic')
 }
 
 export interface TbCoachEntry {
@@ -51,6 +52,7 @@ export interface TbCoachEntry {
   authorName: string;
   topics: string[];
   ts: number;
+  trainingTopic?: TrainingTopic;   // tylko type === 'topic'
 }
 
 export const SESSION_NOTE_MAX = 250;   // jak w StatsView/NoteModule
@@ -320,6 +322,63 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
       <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{entry.text}</p>
       <p className="text-[10px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
       <TopicChips topics={entry.topics} />
+    </div>
+  );
+}
+
+/**
+ * [TEMAT TRENINGU] Wpis „na treningu było…” (user 2026-10-15), fioletowy.
+ * Otwarty (dziś) — sam temat. Zamknięty: ✓ trenowane (trening pod ten temat),
+ * ✓ zapoznany (ackAt) albo przycisk „Zapoznałem się”.
+ */
+export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
+  entry: TbCoachEntry;
+  time: string;
+  isNew: boolean;
+  trained: boolean;
+  onAck: () => Promise<void>;
+}) {
+  const { t, i18n } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const tt = entry.trainingTopic!;
+  const open = isTopicOpen(tt);
+  const day = new Date(`${tt.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  return (
+    <div className={`${CARD_SHAPE} bg-violet-50 border-violet-200 p-3`}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="flex items-center gap-1 text-[10px] font-black text-violet-700 min-w-0">
+          <span className="material-symbols-outlined text-[14px]">sports</span>
+          <span className="truncate">{t('tagebuch.topicLabel')} · {day}</span>
+        </span>
+        <span className="flex items-center gap-1.5 shrink-0">
+          {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
+          {isNew && <NewBadge />}
+        </span>
+      </div>
+      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
+      <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
+      <TopicChips topics={entry.topics} />
+      {!open && (
+        <div className="mt-2">
+          {trained ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+              <span className="material-symbols-outlined text-[13px]">check</span>{t('tagebuch.topicTrained')}
+            </span>
+          ) : tt.ackAt ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-200 rounded-full px-2 py-0.5">
+              <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAcked')}
+            </span>
+          ) : (
+            <button
+              onClick={async () => { setBusy(true); try { await onAck(); } finally { setBusy(false); } }}
+              disabled={busy}
+              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white bg-violet-500 rounded-full px-3 py-1 active:scale-95 transition-all disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-[14px]">visibility</span>{t('tagebuch.topicAck')}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ import { getFullCodec } from '../utils/mediaCodecs';
 import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import TopicPicker from '../components/TopicPicker';
 import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
-import { useCurrentFocus, useFocusChoice, otherTrack, swapFocus } from '../utils/focus';
+import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 
 const DEFAULT_DELAY_S = 15;
@@ -143,6 +143,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const [techSaveError, setTechSaveError] = useState(false);
   const focusState = useCurrentFocus(uid);
   const activeFocus = focusState?.focus ?? null;
+  const focusPair = displayPair(focusState);
   const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
   const focusTopic = activeFocus?.topic || '';
 
@@ -1469,10 +1470,10 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   const techTopicsAndNotes = (
     <>
-      {activeFocus && focusState && (
+      {focusPair.main && focusState && (
         <div className="mb-3 space-y-2">
-          <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count} variant="glass"
-            other={otherTrack(focusState)?.focus} onSwap={() => swapFocus(uid, focusState)} />
+          <FocusStrip focus={focusPair.main} {...displayProgress(focusState, focusPair.main)} variant="glass"
+            other={focusPair.other} onSwap={() => swapFocus(uid, focusState)} />
           <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} dark />
         </div>
       )}

@@ -12,19 +12,25 @@ export function focusTitle(focus: Pick<ActiveFocus, 'text' | 'topic'>, t: (k: st
 }
 
 /**
- * [DWA FOKUSY] Fokus trenera na niebieskim tle, własny na żółtym (user
- * 2026-10-15) — od razu widać, czyj fokus jest na górze. Ukończony i tak szary.
+ * Kolory (user 2026-10-15): własny fokus żółty, fokus od trenera niebieski,
+ * temat treningu fioletowy — od razu widać, co jest na górze. Ukończony szary.
  */
-function focusPalette(coach: boolean | undefined) {
-  return coach
-    ? { bg: 'bg-sky-50 border-sky-200', icon: 'bg-sky-500 text-white', label: 'text-sky-800', sub: 'text-sky-700', accent: 'text-sky-500', pillIcon: 'text-sky-600', glassIcon: 'text-sky-300' }
-    : { bg: 'bg-amber-50 border-amber-200', icon: 'bg-[#fed33e] text-[#0a3a2a]', label: 'text-amber-800', sub: 'text-amber-700', accent: 'text-amber-500', pillIcon: 'text-amber-600', glassIcon: 'text-[#fed33e]' };
+export function focusPalette(f: Pick<ActiveFocus, 'fromCoach' | 'topicId'>) {
+  if (f.topicId) return { bg: 'bg-violet-50 border-violet-200', icon: 'bg-violet-500 text-white', label: 'text-violet-800', sub: 'text-violet-700', accent: 'text-violet-500', pillIcon: 'text-violet-600', glassIcon: 'text-violet-300', chip: 'bg-violet-100 border-violet-300 text-violet-900', choiceOn: 'bg-violet-50 border-violet-400 text-[#0a3a2a]' };
+  if (f.fromCoach) return { bg: 'bg-sky-50 border-sky-200', icon: 'bg-sky-500 text-white', label: 'text-sky-800', sub: 'text-sky-700', accent: 'text-sky-500', pillIcon: 'text-sky-600', glassIcon: 'text-sky-300', chip: 'bg-sky-100 border-sky-300 text-sky-900', choiceOn: 'bg-sky-50 border-sky-400 text-[#0a3a2a]' };
+  return { bg: 'bg-amber-50 border-amber-200', icon: 'bg-[#fed33e] text-[#0a3a2a]', label: 'text-amber-800', sub: 'text-amber-700', accent: 'text-amber-500', pillIcon: 'text-amber-600', glassIcon: 'text-[#fed33e]', chip: 'bg-amber-100 border-amber-300 text-amber-900', choiceOn: 'bg-amber-50 border-amber-400 text-[#0a3a2a]' };
 }
 
+/** Ikona: temat treningu = gwizdek, fokus = cel. */
+export const focusIcon = (f: Pick<ActiveFocus, 'topicId'>) => (f.topicId ? 'sports' : 'track_changes');
+
+const otherLabel = (f: ActiveFocus, t: (k: string, o?: any) => string) =>
+  t(f.topicId ? 'tagebuch.topicOther' : 'tagebuch.focusOtherOwn', { title: focusTitle(f, t) });
+
 /**
- * [DWA FOKUSY] Kropka drugiego fokusu po prawej stronie paska (user 2026-10-14):
- * niebieska z gwizdkiem = fokus trenera, żółta = własny. Tap zamienia fokusy
- * miejscami. Leży NAD kartą (absolute), bo karta sama jest przyciskiem.
+ * Drugi element karty (w dniu treningu: fokus ↔ temat treningu) jako kropka —
+ * w wąskich miejscach (pigułka, ciemny nagłówek). Tap zamienia miejscami.
+ * Leży NAD kartą (absolute), bo karta sama jest przyciskiem.
  */
 export function OtherFocusDot({ focus, onSwap, small = false, className = '' }: {
   focus: ActiveFocus;
@@ -33,27 +39,23 @@ export function OtherFocusDot({ focus, onSwap, small = false, className = '' }: 
   className?: string;
 }) {
   const { t } = useTranslation();
-  const coach = focus.fromCoach;
-  const label = t(coach ? 'tagebuch.focusOtherCoach' : 'tagebuch.focusOtherOwn', { title: focusTitle(focus, t) });
+  const label = otherLabel(focus, t);
   return (
     <button
       type="button"
       onClick={e => { e.stopPropagation(); onSwap(); }}
       aria-label={label}
       title={label}
-      className={`${small ? 'w-6 h-6' : 'w-8 h-8'} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white shadow-md active:scale-90 transition-all ${
-        coach ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]'
-      } ${className}`}
+      className={`${small ? 'w-6 h-6' : 'w-8 h-8'} rounded-full flex items-center justify-center shrink-0 ring-2 ring-white shadow-md active:scale-90 transition-all ${focusPalette(focus).icon} ${className}`}
     >
-      <span className={`material-symbols-outlined ${small ? 'text-[13px]' : 'text-[17px]'}`}>{coach ? 'sports' : 'person'}</span>
+      <span className={`material-symbols-outlined ${small ? 'text-[13px]' : 'text-[17px]'}`}>{focusIcon(focus)}</span>
     </button>
   );
 }
 
 /**
- * [DWA FOKUSY] Drugi fokus jako chip w prawym dolnym rogu karty: ikonka +
- * pierwsze 20 znaków (user 2026-10-15 — sama kropka nic nie mówiła). Tap
- * zamienia fokusy miejscami. Jak kropka leży NAD kartą (absolute).
+ * Drugi element jako chip w prawym dolnym rogu karty: ikonka + pierwsze 20
+ * znaków (user 2026-10-15 — sama kropka nic nie mówiła). Tap zamienia miejscami.
  */
 export function OtherFocusChip({ focus, onSwap, className = '' }: {
   focus: ActiveFocus;
@@ -61,23 +63,21 @@ export function OtherFocusChip({ focus, onSwap, className = '' }: {
   className?: string;
 }) {
   const { t } = useTranslation();
-  const coach = focus.fromCoach;
   const full = focusTitle(focus, t);
   const chars = Array.from(full);
   const short = chars.length > 20 ? `${chars.slice(0, 20).join('').trimEnd()}…` : full;
-  const label = t(coach ? 'tagebuch.focusOtherCoach' : 'tagebuch.focusOtherOwn', { title: full });
+  const label = otherLabel(focus, t);
+  const pal = focusPalette(focus);
   return (
     <button
       type="button"
       onClick={e => { e.stopPropagation(); onSwap(); }}
       aria-label={label}
       title={label}
-      className={`max-w-[45%] flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all ${
-        coach ? 'bg-sky-100 border-sky-300 text-sky-900' : 'bg-amber-100 border-amber-300 text-amber-900'
-      } ${className}`}
+      className={`max-w-[45%] flex items-center gap-1 rounded-full border pl-0.5 pr-2 py-0.5 shadow-sm active:scale-95 transition-all ${pal.chip} ${className}`}
     >
-      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${coach ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]'}`}>
-        <span className="material-symbols-outlined text-[13px]">{coach ? 'sports' : 'person'}</span>
+      <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${pal.icon}`}>
+        <span className="material-symbols-outlined text-[13px]">{focusIcon(focus)}</span>
       </span>
       <span className="text-[10px] font-black truncate">{short}</span>
     </button>
@@ -85,9 +85,8 @@ export function OtherFocusChip({ focus, onSwap, className = '' }: {
 }
 
 /**
- * [DWA FOKUSY] Pod jaki fokus idzie ten trening (user 2026-10-14): domyślnie
- * ten z góry, oba = jeden trening pod oba. Przy jednym fokusie — jeden chip
- * (zamiast dawnego przełącznika).
+ * Pod co idzie ten trening (chipy przy zapisie): fokus i/lub dzisiejszy temat
+ * treningu. Domyślnie oba zaznaczone (defaultFocusChoice).
  */
 export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
   state: FocusState;
@@ -96,35 +95,36 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
   dark?: boolean;
 }) {
   const { t } = useTranslation();
-  const tracks = orderedTracks(state);
-  if (!tracks.length) return null;
-  const none = !tracks.some(tr => choice[tr.focus.fromCoach ? 'coach' : 'own']);
+  const items: { key: 'own' | 'coach' | 'topic'; focus: ActiveFocus; label: string }[] = [
+    ...orderedTracks(state).map(tr => ({ key: (tr.focus.fromCoach ? 'coach' : 'own') as 'own' | 'coach', focus: tr.focus, label: t('tagebuch.focusChoiceFocus') })),
+    ...(state.trainingTopic ? [{ key: 'topic' as const, focus: state.trainingTopic, label: t('tagebuch.topicChoice') }] : []),
+  ];
+  if (!items.length) return null;
+  const none = !items.some(it => choice[it.key]);
   return (
     <div>
       <p className={`text-[9px] font-black uppercase tracking-widest mb-1.5 ${dark ? 'text-white/60' : 'text-gray-400'}`}>{t('tagebuch.focusChoiceLabel')}</p>
       <div className="flex flex-wrap gap-1.5">
-        {tracks.map(tr => {
-          const side = tr.focus.fromCoach ? 'coach' : 'own';
-          const on = choice[side];
-          const onCls = side === 'coach' ? 'bg-sky-50 border-sky-400 text-[#0a3a2a]' : 'bg-amber-50 border-amber-400 text-[#0a3a2a]';
+        {items.map(it => {
+          const on = choice[it.key];
+          const pal = focusPalette(it.focus);
           const offCls = dark ? 'bg-white/5 border-white/20 text-white/50' : 'bg-white border-gray-200 text-gray-400';
-          const icon = on ? 'check' : side === 'coach' ? 'sports' : 'person';
           return (
             <button
-              key={side}
+              key={it.key}
               type="button"
               role="checkbox"
               aria-checked={on}
-              onClick={() => onChange({ ...choice, [side]: !on })}
-              className={`max-w-full flex items-center gap-1.5 border rounded-full pl-1 pr-2.5 py-1 text-left active:scale-95 transition-all ${on ? onCls : offCls}`}
+              onClick={() => onChange({ ...choice, [it.key]: !on })}
+              className={`max-w-full flex items-center gap-1.5 border rounded-full pl-1 pr-2.5 py-1 text-left active:scale-95 transition-all ${on ? pal.choiceOn : offCls}`}
             >
               <span className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                on ? (side === 'coach' ? 'bg-sky-500 text-white' : 'bg-[#fed33e] text-[#0a3a2a]') : (dark ? 'bg-white/10 text-white/40' : 'bg-gray-100 text-gray-300')
+                on ? pal.icon : (dark ? 'bg-white/10 text-white/40' : 'bg-gray-100 text-gray-300')
               }`}>
-                <span className="material-symbols-outlined text-[13px]">{icon}</span>
+                <span className="material-symbols-outlined text-[13px]">{on ? 'check' : focusIcon(it.focus)}</span>
               </span>
               <span className="text-[11px] font-black truncate">
-                {t(side === 'coach' ? 'tagebuch.focusChoiceCoach' : 'tagebuch.focusChoiceOwn')}: <span className="font-bold">{focusTitle(tr.focus, t)}</span>
+                {it.label}: <span className="font-bold">{focusTitle(it.focus, t)}</span>
               </span>
             </button>
           );
@@ -315,25 +315,25 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   }
 
   const done = dots && count >= goal;
-  const pal = focusPalette(focus.fromCoach);
-  // Aktywny fokus trenera nie jest klikalny (user 2026-10-15) — uczeń go nie
-  // zmienia. Ukończony już tak (zachęta do nowego fokusu).
-  const locked = !!focus.fromCoach && !done;
+  const pal = focusPalette(focus);
+  // Temat treningu ustawia trener — karta nie otwiera edytora. Fokus (także
+  // od trenera) uczeń może zmienić i zakończyć (user 2026-10-15).
+  const isTopic = !!focus.topicId;
+  const locked = isTopic;
   const cardCls = `w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 text-left ${locked ? '' : 'active:scale-[0.99] transition-all'}`;
   const body = (
     <>
       <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
-        <span className="material-symbols-outlined text-[20px]">track_changes</span>
+        <span className="material-symbols-outlined text-[20px]">{focusIcon(focus)}</span>
       </span>
       <div className="flex-1 min-w-0">
         <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${done ? 'text-gray-500' : pal.label}`}>
           <span className="truncate">
-            {t(done ? 'tagebuch.focusLastDone' : 'tagebuch.focusLabel')}
+            {t(isTopic ? 'tagebuch.topicLabel' : done ? 'tagebuch.focusLastDone' : 'tagebuch.focusLabel')}
             {focus.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`}
           </span>
           <span className="flex-1" />
-          {/* Fokusu trenera uczeń nie edytuje — bez ołówka (user 2026-10-15). */}
-          {!focus.fromCoach && <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>}
+          {!isTopic && <span className={`material-symbols-outlined text-[14px] ${pal.accent}`}>edit</span>}
         </div>
         <p className="text-[14px] font-black text-[#0a3a2a] leading-snug mt-0.5 break-words">{focusTitle(focus, t)}</p>
         {focus.text && focus.topic && (
@@ -347,7 +347,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
             </>
           ) : (
             <span className={`text-[10px] font-bold ${pal.sub}`}>
-              {t('tagebuch.focusSince', { date: fmt(focus.since) })}
+              {isTopic ? t('tagebuch.topicToday') : t('tagebuch.focusSince', { date: fmt(focus.since) })}
             </span>
           )}
         </div>
@@ -363,8 +363,8 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   const card = locked
     ? <div className={cardCls}>{body}</div>
     : <button onClick={onEdit} className={cardCls}>{body}</button>;
-  // Bez własnego fokusu przy zablokowanej karcie trenera: chip „+ Własny fokus”
-  // otwiera edytor — inaczej nie byłoby skąd go ustawić.
+  // Sam temat treningu, bez fokusu: chip „+ Własny fokus” otwiera edytor —
+  // inaczej nie byłoby skąd go ustawić.
   if (!other || !onSwap) {
     if (!locked) return card;
     return (
@@ -446,13 +446,14 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
     </div>
   );
 
-  const pal = focusPalette(focus.fromCoach);
+  const pal = focusPalette(focus);
   const coach = !!focus.fromCoach;
+  const icon = focusIcon(focus);
 
   if (variant === 'pill') {
     return wrap(`gap-2 border rounded-full px-3 py-1.5 ${pal.bg}`, (
       <>
-        <span className={`material-symbols-outlined text-[18px] shrink-0 ${pal.pillIcon}`}>track_changes</span>
+        <span className={`material-symbols-outlined text-[18px] shrink-0 ${pal.pillIcon}`}>{icon}</span>
         <span className="flex-1 min-w-0 text-[12px] font-black text-[#0a3a2a] truncate">
           {title}{topic && <span className={`font-bold ${pal.sub}`}> · {topic}</span>}
         </span>
@@ -468,15 +469,15 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
     : `gap-3 border rounded-[20px] px-3.5 py-2.5 ${pal.bg}`, (
     <>
       {glass
-        ? <span className={`material-symbols-outlined text-[22px] shrink-0 ${pal.glassIcon}`}>track_changes</span>
+        ? <span className={`material-symbols-outlined text-[22px] shrink-0 ${pal.glassIcon}`}>{icon}</span>
         : (
           <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${pal.icon}`}>
-            <span className="material-symbols-outlined text-[20px]">track_changes</span>
+            <span className="material-symbols-outlined text-[20px]">{icon}</span>
           </span>
         )}
       <div className="flex-1 min-w-0">
         <p className={`text-[9px] font-black uppercase tracking-widest truncate ${glass ? pal.glassIcon : pal.label}`}>
-          {label ?? t('tagebuch.focusLabel')}
+          {label ?? t(focus.topicId ? 'tagebuch.topicLabel' : 'tagebuch.focusLabel')}
           {source && ` · ${source}`}
         </p>
         <p className={`text-[13px] font-black leading-snug truncate ${glass ? 'text-white' : 'text-[#0a3a2a]'}`}>{title}</p>

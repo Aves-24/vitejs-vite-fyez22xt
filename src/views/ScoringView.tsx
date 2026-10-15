@@ -964,7 +964,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               </span>
             </label>
 
-            {focusState?.focus && (
+            {(focusState?.focus || focusState?.trainingTopic) && (
               <div className="mt-3 bg-white border border-emerald-100 rounded-xl px-3 py-2">
                 <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
               </div>

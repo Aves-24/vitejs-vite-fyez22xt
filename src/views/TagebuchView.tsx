@@ -20,12 +20,12 @@ import {
   inFocusWindow, sessionFocusRef, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
   readFocusGoal, readFocusMilestone, readOwnFocus,
   readCoachGoal, readCoachFocusCleared, readSessionFocuses, trackSettings,
-  resolveFocusPair, readFocusPrimary, saveFocusPrimary, type FocusSide,
-  type CoachGoal, type CoachFocusCleared,
+  resolveActiveFocus, readTrainingTopic, isTopicOpen, topicAsFocus, readTopicFirst, saveTopicFirst, sessionTopicId,
+  type TrainingTopic, type CoachGoal, type CoachFocusCleared,
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
-  NoteComposer, SessionCard, CoachEntryCard, PrivateNoteCard, NewBadge,
+  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
   type TbSession, type TbPrivateNote, type TbCoachEntry,
 } from '../components/tagebuch/TagebuchCards';
@@ -131,7 +131,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // [DWA FOKUSY] cele trenera (z liczbą kropek i lekcjami trenera) + zakończenie celu przez ucznia
   const [coachGoals, setCoachGoals] = useState<CoachGoal[]>([]);
   const [coachCleared, setCoachCleared] = useState<CoachFocusCleared | null>(null);
-  const [focusPrimary, setFocusPrimary] = useState<FocusSide | undefined>(undefined);
+  // [TEMAT TRENINGU] w dniu treningu: temat na górze karty zamiast fokusu
+  const [topicFirst, setTopicFirst] = useState(() => (userId ? readTopicFirst(userId) : false));
   const [focusDots, setFocusDots] = useState(false);
   const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
   const [focusEditing, setFocusEditing] = useState(false);
@@ -200,7 +201,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         const userData = userDoc.exists() ? userDoc.data() : {};
         setOwnFocus(readOwnFocus(userData));
         setCoachCleared(readCoachFocusCleared(userData));
-        setFocusPrimary(readFocusPrimary(userData));
         setFocusDots(userData.focusDots === true);
         setFocusGoal(readFocusGoal(userData));
         const list: CoachInfo[] = [];
@@ -249,8 +249,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             authorName: data.authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
             topics: data.topics || [],
             ts: toMs(data.createdAt),
+            ...(data.type === 'topic' ? { trainingTopic: readTrainingTopic(d.id, data) ?? undefined } : {}),
           };
-        }));
+        }).filter(e => e.type !== 'topic' || e.trainingTopic));
       } catch (e) {
         console.error('Tagebuch: błąd pobierania wpisów trenera', e);
       }
@@ -313,6 +314,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             snaps: sessionFocusRef(data, 0).snaps,
             ...(data.focusChoice === true ? { decided: true } : {}),
             focuses: readSessionFocuses(data),
+            ...(sessionTopicId(data) ? { topicId: sessionTopicId(data) } : {}),
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
           };
@@ -402,21 +404,34 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   }, [sessions, isNew]);
 
   // --- FOKUS ---
-  // Nowszy wygrywa: własny fokus (albo jego zakończenie) vs ostatni cel trenera.
+  // Jeden fokus: nowszy z własnego (albo jego zakończenia) i ostatniego celu trenera.
   const latestGoal = useMemo(() => [...coachGoals].sort((a, b) => b.ts - a.ts)[0], [coachGoals]);
-  const focusPair = useMemo(
-    () => resolveFocusPair(ownFocus, latestGoal, coachCleared, focusPrimary),
-    [ownFocus, latestGoal, coachCleared, focusPrimary],
+  const activeFocus: ActiveFocus | null = useMemo(
+    () => resolveActiveFocus(ownFocus, latestGoal, coachCleared),
+    [ownFocus, latestGoal, coachCleared],
   );
-  const activeFocus: ActiveFocus | null = focusPair.main;
-  // [DWA FOKUSY] Tap w kropkę drugiego fokusu — zamiana miejscami.
+  // [TEMAT TRENINGU] Dzisiejszy otwarty temat — obok fokusu na karcie (chip).
+  const openTopic: ActiveFocus | null = useMemo(() => {
+    const tt = coachEntries
+      .map(e => e.trainingTopic)
+      .filter((x): x is TrainingTopic => !!x && isTopicOpen(x))
+      .sort((a, b) => b.ts - a.ts)[0];
+    return tt ? topicAsFocus(tt) : null;
+  }, [coachEntries]);
+  const cardMain = activeFocus && openTopic && topicFirst ? openTopic : (activeFocus || openTopic);
+  const cardOther = activeFocus && openTopic ? (cardMain === openTopic ? activeFocus : openTopic) : null;
   const swapFocus = useCallback(() => {
-    const other = focusPair.other;
-    if (!other) return;
-    const side: FocusSide = other.fromCoach ? 'coach' : 'own';
-    setFocusPrimary(side);
-    saveFocusPrimary(userId, side).catch(e => console.error('Fokus: błąd zamiany', e));
-  }, [focusPair, userId]);
+    const next = !topicFirst;
+    setTopicFirst(next);
+    saveTopicFirst(userId, next);
+  }, [topicFirst, userId]);
+  const ackTopic = useCallback(async (id: string) => {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/coachLog`, id), { ackAt: serverTimestamp() }));
+    setCoachEntries(prev => prev.map(e => e.id === id && e.trainingTopic
+      ? { ...e, trainingTopic: { ...e.trainingTopic, ackAt: Date.now() } }
+      : e));
+  }, [userId]);
+  const trainedTopicIds = useMemo(() => new Set(sessions.map(s => s.topicId).filter(Boolean) as string[]), [sessions]);
   // [DWA FOKUSY] Fokus trenera z własną liczbą treningów (goal na wpisie) —
   // kropki tego toru nie zależą od ustawień własnego fokusu.
   const { dots: trackDots, goal: trackGoal } = activeFocus
@@ -519,7 +534,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       focusPrimary: deleteField(),
     }));
     setOwnFocus(focus);
-    setFocusPrimary(undefined);
     setFocusDots(dots);
     if (dots) setFocusGoal(goal);
     // ownFocus/activeFocus MUSZĄ być w zależnościach — bez nich newFocusCountFrom
@@ -855,7 +869,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
         {/* FOKUS — pod nagłówkiem, jasnożółta karta jak na Home */}
         {!isLoading && (
-          <FocusCard focus={activeFocus} other={focusPair.other} onSwap={swapFocus} ended={endedFocus} dots={trackDots} goal={trackGoal} count={focusCount} onEdit={() => setFocusEditing(true)} />
+          <FocusCard
+            focus={cardMain}
+            other={cardOther}
+            onSwap={swapFocus}
+            ended={endedFocus}
+            dots={cardMain === activeFocus && trackDots}
+            goal={trackGoal}
+            count={focusCount}
+            onEdit={() => setFocusEditing(true)}
+          />
         )}
 
         {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}
@@ -1035,6 +1058,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
                   ) : it.kind === 'private' ? (
                     <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
+                  ) : it.entry.trainingTopic ? (
+                    <TrainingTopicCard
+                      entry={it.entry}
+                      time={timeOf(it.ts)}
+                      isNew={isNew('coach_log', it.entry.id)}
+                      trained={trainedTopicIds.has(it.entry.id)}
+                      onAck={() => ackTopic(it.entry.id)}
+                    />
                   ) : (
                     <CoachEntryCard entry={it.entry} time={timeOf(it.ts)} isNew={isNew('coach_log', it.entry.id)} />
                   )}

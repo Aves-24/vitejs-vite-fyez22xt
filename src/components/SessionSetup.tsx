@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { invalidateSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, useFocusChoice, otherTrack, swapFocus } from '../utils/focus';
+import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip, FocusChoiceChips } from './tagebuch/FocusCard';
@@ -77,6 +77,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // jest zaznaczony z góry — dla każdego, kto ma fokus; można go odznaczyć.
   const focusState = useCurrentFocus(userId);
   const activeFocus = focusState?.focus ?? null;
+  const focusPair = displayPair(focusState);
   const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
   const focusTopic = activeFocus?.topic || '';
 
@@ -303,15 +304,13 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       <div className="space-y-2">
         {/* [FOKUS] Przypomnienie przed treningiem (user 2026-09-18) — ten sam pasek
             co na Home; klik prowadzi do dziennika. Liczenie: przełącznik przy zapisie. */}
-        {activeFocus && focusState && (
+        {focusPair.main && (
           <FocusStrip
-            focus={activeFocus}
-            dots={focusState.dots}
-            goal={focusState.goal}
-            count={focusState.count}
+            focus={focusPair.main}
+            {...displayProgress(focusState, focusPair.main)}
             onOpen={() => onNavigate?.('MY_COACH')}
             variant="pill"
-            other={otherTrack(focusState)?.focus}
+            other={focusPair.other}
             onSwap={() => swapFocus(userId, focusState)}
           />
         )}
@@ -579,10 +578,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </div>
 
             {/* TWÓJ FOKUS — przypomnienie; temat już zaznaczony niżej */}
-            {activeFocus && focusState && (
+            {focusPair.main && focusState && (
               <div className="mb-3 space-y-2">
-                <FocusStrip focus={activeFocus} dots={focusState.dots} goal={focusState.goal} count={focusState.count}
-                  other={otherTrack(focusState)?.focus} onSwap={() => swapFocus(userId, focusState)} />
+                <FocusStrip focus={focusPair.main} {...displayProgress(focusState, focusPair.main)}
+                  other={focusPair.other} onSwap={() => swapFocus(userId, focusState)} />
                 <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
               </div>
             )}

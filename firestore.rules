@@ -458,9 +458,36 @@ service cloud.firestore {
         && request.resource.data.get('text', '') is string
         && request.resource.data.get('text', '').size() >= 1
         && request.resource.data.get('text', '').size() <= 300
-        && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag']
+        && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag', 'topic']
         // [DWA FOKUSY] liczba treningów fokusu trenera — na wpisie
-        && request.resource.data.get('goal', 1) in [1, 2, 3, 4, 5];
+        && request.resource.data.get('goal', 1) in [1, 2, 3, 4, 5]
+        // [TEMAT TRENINGU 2026-10-15] dzień treningu 'YYYY-MM-DD'; bez
+        // zamknięcia i potwierdzenia ucznia przy tworzeniu.
+        && (request.resource.data.get('type', '') != 'topic'
+            || (request.resource.data.get('day', '') is string
+                && request.resource.data.get('day', '').size() == 10
+                && !('closedAt' in request.resource.data)
+                && !('ackAt' in request.resource.data)));
+
+      // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
+      allow update: if isSignedIn()
+        && resource.data.authorId == request.auth.uid
+        && resource.data.get('type', '') == 'topic'
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 300
+        && request.resource.data.topics is list
+        && request.resource.data.topics.size() <= 10
+        && request.resource.data.get('editedAt', 0) is number
+        && request.resource.data.get('closedAt', 0) is number;
+
+      // [TEMAT TRENINGU] Uczeń potwierdza „Zapoznałem się” — tylko czas serwera.
+      allow update: if isSelf(uid)
+        && resource.data.get('type', '') == 'topic'
+        && onlyAffects(['ackAt'])
+        && request.resource.data.ackAt == request.time;
 
       // [C39] Autor fokusu (wpis 'goal') edytuje jego tytuł i temat — autor,
       // typ i data startu (createdAt = początek liczenia kropek) zostają,

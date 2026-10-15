@@ -4,9 +4,11 @@ import { db } from '../firebase';
 
 // --- FOKUS ---
 // „Nad czym teraz pracuję". Własny fokus siedzi w users/{uid}.focus; trener
-// ustawia fokus wpisem typu „Ziel" w coachLog. Od 2026-10-14 (DWA FOKUSY)
-// oba żyją równolegle — dwa tory, każdy z własnymi kropkami; ekran pokazuje
-// „główny” (na razie nowszy). Wcześniej obowiązywał tylko nowszy z nich.
+// ustawia fokus wpisem typu „Ziel" w coachLog. Od 2026-10-15 znowu JEDEN
+// fokus (user: dwa tory były zagmatwane) — obowiązuje nowszy z nich, żółty
+// od ucznia, niebieski od trenera; obaj mogą go zmienić i zakończyć.
+// Obok fokusu: TEMAT TRENINGU od trenera (wpis 'topic' w coachLog, jeden dzień)
+// — patrz sekcja „TEMAT TRENINGU” niżej.
 // Kropki (postęp) są opcjonalne — users/{uid}.focusDots. Kto je włączy,
 // zbiera kropkę za każdy trening z tematem fokusu (session.topics; fokus bez
 // tematu — za każdy trening); po
@@ -74,6 +76,7 @@ export interface ActiveFocus {
   countFrom?: number;    // tylko własny fokus — patrz newFocusCountFrom
   marks?: number[];      // tylko fokus trenera — lekcje zaznaczone przez trenera
   entryGoal?: number;    // tylko fokus trenera — liczba treningów zapisana na wpisie
+  topicId?: string;      // TEMAT TRENINGU (nie fokus) — id wpisu 'topic' w coachLog
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -114,18 +117,18 @@ export function readFocusPrimary(userData: any): FocusSide | undefined {
 
 const sideOf = (f: ActiveFocus): FocusSide => (f.fromCoach ? 'coach' : 'own');
 
-/** Główny i drugi fokus. */
-export function resolveFocusPair(own: OwnFocus | null, goal: CoachGoal | undefined, cleared: CoachFocusCleared | null = null, primary?: FocusSide): { main: ActiveFocus | null; other: ActiveFocus | null } {
-  const o = resolveOwnFocus(own);
-  const c = resolveCoachFocus(goal, own, cleared);
-  if (!o || !c) return { main: o || c, other: null };
-  const ownFirst = primary ? primary === 'own' : o.since >= c.since;
-  return ownFirst ? { main: o, other: c } : { main: c, other: o };
-}
-
-/** Główny fokus (ten na ekranie). */
-export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undefined, cleared: CoachFocusCleared | null = null, primary?: FocusSide): ActiveFocus | null {
-  return resolveFocusPair(own, goal, cleared, primary).main;
+/**
+ * Jeden fokus (user 2026-10-15): nowszy z własnego (albo jego zakończenia)
+ * i ostatniego celu trenera (albo jego zakończenia). Zakończony nowszy = brak
+ * fokusu — starszy nie wraca sam z siebie.
+ */
+export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undefined, cleared: CoachFocusCleared | null = null): ActiveFocus | null {
+  const ownTs = own?.setAt ?? -Infinity;
+  if (goal && goal.ts > ownTs) {
+    // Uczeń zakończył fokus trenera (coachFocusCleared) — po tej chwili nie ma fokusu.
+    return resolveCoachFocus(goal, null, cleared);
+  }
+  return resolveOwnFocus(own);
 }
 
 // Liczą się treningi od początku dnia ustawienia fokusu — ktoś trenuje rano,
@@ -280,7 +283,12 @@ export function sessionFocusSnapshots(state: FocusState | null, topics: string[]
 }
 
 /** Pola fokusu do zapisu sesji: `focuses[]` + `focus` (pierwsza migawka — dla starszych ekranów). */
-export function sessionFocusFields(state: FocusState | null, topics: string[], choice?: FocusChoice): { focus?: SessionFocus; focuses?: SessionFocus[]; focusChoice?: true } {
+export function sessionFocusFields(state: FocusState | null, topics: string[], choice?: FocusChoice): { focus?: SessionFocus; focuses?: SessionFocus[]; focusChoice?: true; trainingTopic?: SessionTrainingTopic } {
+  const tt = choice?.topic && state?.trainingTopic ? { trainingTopic: sessionTrainingTopic(state.trainingTopic) } : {};
+  return { ...focusOnlyFields(state, topics, choice), ...tt };
+}
+
+function focusOnlyFields(state: FocusState | null, topics: string[], choice?: FocusChoice): { focus?: SessionFocus; focuses?: SessionFocus[]; focusChoice?: true } {
   if (choice && state && orderedTracks(state).length) {
     // Świadomy wybór (chipy przy zapisie) — tylko zaznaczone tory, niezależnie
     // od tematów; brak migawki = „nie pod ten fokus” (focusChoice).
@@ -291,13 +299,13 @@ export function sessionFocusFields(state: FocusState | null, topics: string[], c
   return list.length ? { focus: list[0], focuses: list } : {};
 }
 
-/** Który fokus liczy ten trening (chipy przy zapisie). */
-export type FocusChoice = Record<FocusSide, boolean>;
+/** Pod co idzie ten trening (chipy przy zapisie): fokus i/lub temat treningu. */
+export type FocusChoice = Record<FocusSide | 'topic', boolean>;
 
-/** Domyślnie: tylko fokus z góry (user 2026-10-14). */
+/** Domyślnie: fokus i dzisiejszy temat treningu, jeśli są. */
 export function defaultFocusChoice(state: FocusState | null): FocusChoice {
   const main = state ? orderedTracks(state)[0] : undefined;
-  return { own: main ? !main.focus.fromCoach : false, coach: main ? main.focus.fromCoach : false };
+  return { own: main ? !main.focus.fromCoach : false, coach: main ? main.focus.fromCoach : false, topic: !!state?.trainingTopic };
 }
 
 /**
@@ -312,7 +320,9 @@ export function useFocusChoice(state: FocusState | null): [FocusChoice, (next: F
 /** Tematy zaznaczonych fokusów — dokładane do tematów treningu. */
 export function chosenFocusTopics(state: FocusState | null, choice: FocusChoice): string[] {
   if (!state) return [];
-  return orderedTracks(state).filter(tr => choice[sideOf(tr.focus)] && tr.focus.topic).map(tr => tr.focus.topic);
+  const list = orderedTracks(state).filter(tr => choice[sideOf(tr.focus)] && tr.focus.topic).map(tr => tr.focus.topic);
+  if (choice.topic && state.trainingTopic?.topic) list.push(state.trainingTopic.topic);
+  return [...new Set(list)];
 }
 
 /** Migawka fokusu kończonego przyciskiem „Fokus beenden” (uczeń albo trener). */
@@ -385,11 +395,18 @@ export function readCoachGoal(id: string, data: any): CoachGoal {
 
 // Sam filtr równości — bez orderBy, żeby nie potrzebować indeksu złożonego.
 // Celów trenera jest mało, najnowszy wybieramy na miejscu.
-async function loadLatestCoachGoal(userId: string): Promise<CoachGoal | undefined> {
-  const snap = await getDocs(query(collection(db, `users/${userId}/coachLog`), where('type', '==', 'goal')));
-  return snap.docs
+// Jedno zapytanie na cele trenera i tematy treningu.
+async function loadCoachFocusEntries(userId: string): Promise<{ goal: CoachGoal | undefined; topic: TrainingTopic | null }> {
+  const snap = await getDocs(query(collection(db, `users/${userId}/coachLog`), where('type', 'in', ['goal', 'topic'])));
+  const goal = snap.docs
+    .filter(d => d.data().type === 'goal')
     .map(d => readCoachGoal(d.id, d.data()))
     .sort((a, b) => b.ts - a.ts)[0];
+  const topic = snap.docs
+    .map(d => readTrainingTopic(d.id, d.data()))
+    .filter((x): x is TrainingTopic => !!x && isTopicOpen(x))
+    .sort((a, b) => b.ts - a.ts)[0] ?? null;
+  return { goal, topic };
 }
 
 // Daty kropek fokusu (do podglądu w panelu trenera i w FocusModal —
@@ -444,12 +461,43 @@ export async function saveFocusPrimary(userId: string, primary: FocusSide): Prom
   await updateDoc(doc(db, 'users', userId), { focusPrimary: primary });
 }
 
-/** Tap w kropkę drugiego fokusu: drugi tor idzie na górę. */
+/**
+ * Co jest na górze karty: fokus czy temat treningu (tap w chip). Tylko w dniu
+ * treningu, więc wystarczy pamięć telefonu z datą dnia — jutro wraca fokus.
+ */
+const TOPIC_FIRST_EVENT = 'grotx-topic-first';
+const topicFirstKey = (userId: string) => `grotx_topicFirst_${userId}`;
+
+export function readTopicFirst(userId: string): boolean {
+  try { return localStorage.getItem(topicFirstKey(userId)) === dayKeyOf(Date.now()); } catch { return false; }
+}
+
+/** Główny i drugi element karty fokusu: fokus i temat treningu. */
+export function displayPair(state: FocusState | null): { main: ActiveFocus | null; other: ActiveFocus | null } {
+  const f = state?.focus ?? null;
+  const tp = state?.trainingTopic ?? null;
+  if (!f || !tp) return { main: f || tp, other: null };
+  return state!.topicFirst ? { main: tp, other: f } : { main: f, other: tp };
+}
+
+/** Kropki tylko dla fokusu — temat treningu ich nie ma. */
+export function displayProgress(state: FocusState | null, item: ActiveFocus | null): { dots: boolean; goal: number; count: number } {
+  if (!state || !item || item.topicId) return { dots: false, goal: 0, count: 0 };
+  return { dots: state.dots, goal: state.goal, count: state.count };
+}
+
+/** Tap w chip: fokus i temat treningu zamieniają się miejscami. */
 export function swapFocus(userId: string | null | undefined, state: FocusState | null): void {
-  const other = otherTrack(state);
-  if (!userId || !other) return;
-  saveFocusPrimary(userId, other.focus.fromCoach ? 'coach' : 'own')
-    .catch(e => console.error('Fokus: błąd zamiany', e));
+  if (!userId || !state?.trainingTopic || !state.focus) return;
+  saveTopicFirst(userId, !state.topicFirst);
+}
+
+export function saveTopicFirst(userId: string, next: boolean): void {
+  try {
+    if (next) localStorage.setItem(topicFirstKey(userId), dayKeyOf(Date.now()));
+    else localStorage.removeItem(topicFirstKey(userId));
+  } catch { /* prywatny tryb */ }
+  window.dispatchEvent(new CustomEvent(TOPIC_FIRST_EVENT, { detail: { userId, topicFirst: next } }));
 }
 
 /** Kropki toru: własny — users.focusDots/focusGoal; trener — goal z wpisu (starsze cele: jak własny). */
@@ -466,7 +514,10 @@ export interface FocusState {
   count: number;         // liczone tylko przy włączonych kropkach
   own: FocusTrack | null;
   coach: FocusTrack | null;
-  primary?: FocusSide;   // wybór ucznia, który tor na górze (brak = nowszy)
+  primary?: FocusSide;   // [stare DWA FOKUSY] bez znaczenia przy jednym fokusie
+  // Dzisiejszy, otwarty temat treningu od trenera (ActiveFocus z topicId).
+  trainingTopic?: ActiveFocus | null;
+  topicFirst?: boolean;  // w dniu treningu temat na górze zamiast fokusu (tap w chip)
   // Które źródło się nie wczytało ('user' | 'goal' | 'sessions'). Pozostałe
   // i tak są użyte — błąd jednego nie kasuje całego fokusu. Trener w profilu
   // ucznia widzi to jako komunikat zamiast pustego miejsca.
@@ -500,7 +551,7 @@ export async function loadFocusState(userId: string, withCount: boolean, userDat
   // trenerski) wywracał Promise.all i fokus po cichu znikał w całości.
   const [userRes, goalRes] = await Promise.allSettled([
     userData !== undefined ? Promise.resolve(null) : getDoc(doc(db, 'users', userId)),
-    loadLatestCoachGoal(userId),
+    loadCoachFocusEntries(userId),
   ]);
   let data: any = userData ?? {};
   if (userData === undefined) {
@@ -512,15 +563,17 @@ export async function loadFocusState(userId: string, withCount: boolean, userDat
     }
   }
   let goal: CoachGoal | undefined;
+  let topic: TrainingTopic | null = null;
   if (goalRes.status === 'fulfilled') {
-    goal = goalRes.value;
+    goal = goalRes.value.goal;
+    topic = goalRes.value.topic;
   } else {
     failed.push('goal');
     console.error('Fokus: błąd odczytu celów trenera', goalRes.reason);
   }
   const own = readOwnFocus(data);
-  const focuses = [resolveOwnFocus(own), resolveCoachFocus(goal, own, readCoachFocusCleared(data))]
-    .filter(Boolean) as ActiveFocus[];
+  const main = resolveActiveFocus(own, goal, readCoachFocusCleared(data));
+  const focuses = main ? [main] : [];
   const tracks: FocusTrack[] = focuses.map(f => ({ focus: f, ...trackSettings(f, data), count: 0 }));
   const toCount = tracks.filter(tr => tr.dots);
   if (withCount && toCount.length) {
@@ -537,12 +590,13 @@ export async function loadFocusState(userId: string, withCount: boolean, userDat
       console.error('Fokus: błąd odczytu treningów', e);
     }
   }
-  return buildFocusState(
+  const st = buildFocusState(
     tracks.find(tr => !tr.focus.fromCoach) ?? null,
     tracks.find(tr => tr.focus.fromCoach) ?? null,
     data,
     failed,
   );
+  return { ...st, trainingTopic: topic ? topicAsFocus(topic) : null, topicFirst: readTopicFirst(userId) };
 }
 
 /**
@@ -568,8 +622,17 @@ export function useActiveFocus(
       const d = (e as CustomEvent).detail;
       if (d?.userId === userId) setState(st => (st ? withPrimary(st, d.primary) : st));
     };
+    const onTopicFirst = (e: Event) => {
+      const d = (e as CustomEvent).detail;
+      if (d?.userId === userId) setState(st => (st ? { ...st, topicFirst: d.topicFirst } : st));
+    };
     window.addEventListener(FOCUS_PRIMARY_EVENT, onPrimary);
-    return () => { cancelled = true; window.removeEventListener(FOCUS_PRIMARY_EVENT, onPrimary); };
+    window.addEventListener(TOPIC_FIRST_EVENT, onTopicFirst);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(FOCUS_PRIMARY_EVENT, onPrimary);
+      window.removeEventListener(TOPIC_FIRST_EVENT, onTopicFirst);
+    };
   }, [userId, withCount, refreshKey]);
 
   return state;
@@ -599,4 +662,65 @@ export function withoutDoneTracks(state: FocusState): FocusState {
 export function useCurrentFocus(userId: string | null | undefined): FocusState | null {
   const state = useActiveFocus(userId, true);
   return state ? withoutDoneTracks(state) : state;
+}
+
+// --- TEMAT TRENINGU ---
+// (user 2026-10-15) Trener rano ustawia grupie temat dzisiejszego treningu —
+// wpis 'topic' w users/{uid}/coachLog u każdego członka grupy (day =
+// 'YYYY-MM-DD'). Jeden temat = jeden trening. Otwarty tylko w swoim dniu:
+// trener zamyka go (closedAt), a jak zapomni — po północy liczy się jako
+// zamknięty (Spark: bez funkcji serwera, więc po dacie). Po zamknięciu w
+// dzienniku: trenował pod temat (sesja z trainingTopic.id) = ✓, reszta może
+// potwierdzić „Zapoznałem się” (ackAt). Fioletowy — inny niż oba kolory fokusu.
+
+export interface TrainingTopic {
+  id: string;
+  text: string;
+  topic: string;
+  day: string;
+  ts: number;
+  authorId?: string;
+  authorName?: string;
+  groupId?: string;
+  closedAt?: number;
+  ackAt?: number;
+}
+
+/** Migawka tematu w sesji — trening robiony pod ten temat. */
+export interface SessionTrainingTopic { id: string; text: string; topic: string; day: string }
+
+export function dayKeyOf(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function readTrainingTopic(id: string, data: any): TrainingTopic | null {
+  if (data?.type !== 'topic' || typeof data.day !== 'string') return null;
+  return {
+    id, text: data.text || '', topic: (data.topics || [])[0] || '', day: data.day, ts: toMs(data.createdAt) || Date.now(),
+    ...(data.authorId ? { authorId: data.authorId } : {}),
+    ...(data.authorName ? { authorName: data.authorName } : {}),
+    ...(data.groupId ? { groupId: data.groupId } : {}),
+    ...(typeof data.closedAt === 'number' ? { closedAt: data.closedAt } : {}),
+    ...(data.ackAt ? { ackAt: toMs(data.ackAt) } : {}),
+  };
+}
+
+/** Otwarty = dzisiejszy i niezamknięty przez trenera. */
+export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Date.now()): boolean {
+  return !t.closedAt && t.day === dayKeyOf(now);
+}
+
+export function topicAsFocus(t: TrainingTopic): ActiveFocus {
+  return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id,
+    ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}) };
+}
+
+export function sessionTrainingTopic(f: ActiveFocus): SessionTrainingTopic {
+  return { id: f.topicId!, text: f.text.slice(0, FOCUS_TEXT_MAX), topic: f.topic, day: dayKeyOf(f.since) };
+}
+
+/** Id tematu, pod który był trening (albo ''). */
+export function sessionTopicId(data: any): string {
+  return typeof data?.trainingTopic?.id === 'string' ? data.trainingTopic.id : '';
 }

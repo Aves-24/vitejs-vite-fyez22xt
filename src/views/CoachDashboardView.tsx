@@ -14,7 +14,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import CoachStudentSheet from '../components/CoachStudentSheet';
-import GroupFocusPanel, { type GroupFocus } from '../components/GroupFocusPanel';
+import GroupTopicPanel, { type GroupTopic } from '../components/GroupTopicPanel';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -275,7 +275,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
-  const [coachGroupFocus, setCoachGroupFocus] = useState<Record<string, GroupFocus>>({});
+  const [coachGroupTopic, setCoachGroupTopic] = useState<Record<string, GroupTopic>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
   const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
@@ -380,7 +380,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         setCoachGroups(data.coachGroups || []);
         setStudentGroupMap(data.studentGroupMap || {});
         setGroupNotes(data.groupNotes || {});
-        setCoachGroupFocus(data.coachGroupFocus || {});
+        setCoachGroupTopic(data.coachGroupTopic || {});
         
         const studentIds = data.students || [];
         
@@ -825,16 +825,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     setIsMessageModalOpen(true);
   };
 
-  // Po zmianie fokusu grupy: świeży odczyt (bez userData — focusGoal się zmienił).
-  const handleGroupFocusChanged = (groupId: string, next: GroupFocus | null, refreshIds: string[]) => {
-    setCoachGroupFocus(prev => {
-      const copy = { ...prev };
-      if (next) copy[groupId] = next; else delete copy[groupId];
-      return copy;
-    });
-    Promise.all(refreshIds.map(async id => {
-      try { return [id, await loadFocusState(id, true)] as const; } catch { return null; }
-    })).then(list => setStudentFocus(prev => ({ ...prev, ...Object.fromEntries(list.filter(Boolean) as [string, FocusState][]) })));
+  const handleGroupTopicChanged = (groupId: string, next: GroupTopic) => {
+    setCoachGroupTopic(prev => ({ ...prev, [groupId]: next }));
   };
 
   const closeMessageModal = () => {
@@ -985,11 +977,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         studentGroupMap: newMap,
         groupNotes: newNotes,
         [`coachGroupFocus.${groupId}`]: deleteField(),
+        [`coachGroupTopic.${groupId}`]: deleteField(),
       });
       setCoachGroups(updatedGroups);
       setStudentGroupMap(newMap);
       setGroupNotes(newNotes);
-      setCoachGroupFocus(prev => { const next = { ...prev }; delete next[groupId]; return next; });
+      setCoachGroupTopic(prev => { const next = { ...prev }; delete next[groupId]; return next; });
       setActiveGroup('ALL');
       setSelectedGroupId(null);
       setConfirmDeleteGroup(null);
@@ -1828,13 +1821,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
                 {isOpen && (
                   <div className="px-3 pb-3 pt-2.5 border-t border-gray-100 space-y-3">
-                    <GroupFocusPanel
+                    <GroupTopicPanel
                       groupId={group.id}
                       members={members}
                       coachId={userId}
-                      groupFocus={coachGroupFocus[group.id]}
-                      studentFocus={studentFocus}
-                      onChanged={(next, ids) => handleGroupFocusChanged(group.id, next, ids)}
+                      groupTopic={coachGroupTopic[group.id]}
+                      onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
                     />
 

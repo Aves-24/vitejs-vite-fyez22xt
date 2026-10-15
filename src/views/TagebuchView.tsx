@@ -42,7 +42,31 @@ const PAGE = 50;
 const MILESTONE_HIDDEN = 'focusMilestoneHidden';
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
-type Filter = 'all' | 'coach' | 'mine';
+// Filtry (user 2026-10-15): „Wszystko”, „Od trenera” i rodzaje wpisów —
+// każdy w kolorze swoich kart (pasek z lewej, tb-* w tailwind.css).
+type EntryKind = 'target' | 'tech' | 'coachEntry' | 'private' | 'topic' | 'focus' | 'coachFocus' | 'led';
+type Filter = 'all' | 'coach' | EntryKind;
+
+const KIND_FILTERS: { kind: EntryKind; labelKey: string; on: string; off: string }[] = [
+  { kind: 'target', labelKey: 'tagebuch.filterTarget', on: 'bg-emerald-600 text-white border-emerald-600', off: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  { kind: 'tech', labelKey: 'tagebuch.filterTech', on: 'bg-sky-400 text-white border-sky-400', off: 'bg-sky-50 text-sky-700 border-sky-200' },
+  { kind: 'coachEntry', labelKey: 'tagebuch.filterCoachEntry', on: 'bg-amber-500 text-white border-amber-500', off: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { kind: 'private', labelKey: 'tagebuch.filterPrivate', on: 'bg-indigo-400 text-white border-indigo-400', off: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  { kind: 'topic', labelKey: 'tagebuch.filterTopic', on: 'bg-violet-500 text-white border-violet-500', off: 'bg-violet-50 text-violet-700 border-violet-200' },
+  { kind: 'focus', labelKey: 'tagebuch.filterFocus', on: 'bg-amber-400 text-[#0a3a2a] border-amber-400', off: 'bg-yellow-50 text-amber-800 border-yellow-300' },
+  { kind: 'coachFocus', labelKey: 'tagebuch.filterCoachFocus', on: 'bg-sky-600 text-white border-sky-600', off: 'bg-sky-50 text-sky-800 border-sky-300' },
+  { kind: 'led', labelKey: 'tagebuch.filterLed', on: 'bg-rose-500 text-white border-rose-500', off: 'bg-rose-50 text-rose-700 border-rose-200' },
+];
+
+function entryKind(it: TimelineItem): EntryKind {
+  switch (it.kind) {
+    case 'session': return it.session.isTech ? 'tech' : 'target';
+    case 'private': return 'private';
+    case 'milestone': return it.milestone.fromCoach ? 'coachFocus' : 'focus';
+    case 'led': return 'led';
+    default: return it.entry.trainingTopic ? 'topic' : 'coachEntry';
+  }
+}
 
 // [PROWADZONY TRENING] Treningi, które użytkownik poprowadził jako trener:
 // zakończone albo minione tematy jego grup (users.coachGroupTopics) z jego
@@ -216,7 +240,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   useEffect(() => {
     if (!pendingInitialTab) return;
     if (pendingInitialTab === 'tips' || pendingInitialTab === 'diary') setFilter('coach');
-    else if (pendingInitialTab === 'notes') setFilter('mine');
+    else if (pendingInitialTab === 'notes') setFilter('private');
     onClearPendingTab?.();
   }, [pendingInitialTab]);
 
@@ -625,7 +649,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
-  const { items, hasMore, cutoff } = useMemo(() => {
+  const { items, hasMore, cutoff, kinds } = useMemo(() => {
     const sessionsFull = sessions.length >= pageSize;
     const notesFull = notes.length >= pageSize;
     let cutoff = 0;
@@ -642,34 +666,35 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     });
     const hit = (arr: string[]) => !topic || arr.includes(topic);
 
-    const list: TimelineItem[] = [];
+    const all: TimelineItem[] = [];
     sessions.forEach(s => {
       if (s.ts < cutoff) return;
       const linked = (bySession[s.id] || []).slice().sort((a, b) => a.ts - b.ts);
-      if (filter === 'coach' && !s.coachNote) return;
       if (topic && !(hit(s.topics) || hit(s.coachTopics) || linked.some(n => hit(n.topics)))) return;
-      list.push({ kind: 'session', id: s.id, ts: s.ts, session: s, linked });
+      all.push({ kind: 'session', id: s.id, ts: s.ts, session: s, linked });
     });
-    if (filter !== 'coach') {
-      notes.forEach(n => {
-        if (n.ts < cutoff || (n.sessionId && sessionIds.has(n.sessionId))) return;
-        if (!hit(n.topics)) return;
-        if (n.milestone) list.push({ kind: 'milestone', id: n.id, ts: n.ts, milestone: n.milestone });
-        else list.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
-      });
-      ledTrainings.forEach(e => {
-        if (e.ts < cutoff || !hit(e.topic ? [e.topic] : [])) return;
-        list.push({ kind: 'led', id: e.id, ts: e.ts, entry: e });
-      });
-    }
-    if (filter !== 'mine') {
-      coachEntries.forEach(e => {
-        if (e.ts < cutoff || !hit(e.topics)) return;
-        list.push({ kind: 'coach', id: e.id, ts: e.ts, entry: e });
-      });
-    }
+    notes.forEach(n => {
+      if (n.ts < cutoff || (n.sessionId && sessionIds.has(n.sessionId))) return;
+      if (!hit(n.topics)) return;
+      if (n.milestone) all.push({ kind: 'milestone', id: n.id, ts: n.ts, milestone: n.milestone });
+      else all.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
+    });
+    // [PROWADZONY TRENING] rola trenera
+    ledTrainings.forEach(e => {
+      if (e.ts < cutoff || !hit(e.topic ? [e.topic] : [])) return;
+      all.push({ kind: 'led', id: e.id, ts: e.ts, entry: e });
+    });
+    coachEntries.forEach(e => {
+      if (e.ts < cutoff || !hit(e.topics)) return;
+      all.push({ kind: 'coach', id: e.id, ts: e.ts, entry: e });
+    });
+    const kinds = new Set(all.map(entryKind));
+    // „Od trenera”: uwagi trenera do treningów, wpisy trenera i tematy od trenera.
+    const list = filter === 'all' ? all
+      : filter === 'coach' ? all.filter(it => (it.kind === 'session' && !!it.session.coachNote) || it.kind === 'coach')
+      : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
-    return { items: list, hasMore: sessionsFull || notesFull, cutoff };
+    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kinds };
   }, [sessions, notes, coachEntries, ledTrainings, filter, topic, pageSize]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
@@ -967,7 +992,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 pb-0.5" style={{ scrollbarWidth: 'none' }}>
           {chip('all', t('tagebuch.filterAll'))}
           {showCoachFilter && chip('coach', t('tagebuch.filterCoach'), coachNewCount)}
-          {chip('mine', t('tagebuch.filterMine'))}
+          {/* Rodzaje wpisów w kolorach ich kart — tylko te, które są na osi. */}
+          {KIND_FILTERS.filter(k => kinds.has(k.kind) || filter === k.kind).map(k => (
+            <button
+              key={k.kind}
+              onClick={() => setFilter(k.kind)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95 ${filter === k.kind ? k.on : k.off}`}
+            >
+              {t(k.labelKey)}
+            </button>
+          ))}
           <div className={`shrink-0 relative flex items-center rounded-full border text-[11px] font-black ${topic ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500'}`}>
             <span className="material-symbols-outlined text-[14px] pl-2.5">psychology</span>
             <select
@@ -1005,7 +1039,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         )}
 
         {/* ZAPROSZENIE DO TRENERA — da się ukryć na stałe (Ustawienia → Trener dalej działa) */}
-        {coachesLoaded && !hasCoach && !inviteHidden && filter !== 'mine' && (
+        {coachesLoaded && !hasCoach && !inviteHidden && filter === 'all' && (
           <div className="bg-white rounded-2xl border border-dashed border-emerald-300 p-3 flex items-start gap-3">
             <span className="material-symbols-outlined text-[22px] text-emerald-600 shrink-0">person_add</span>
             <button

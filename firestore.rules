@@ -547,9 +547,41 @@ service cloud.firestore {
         || (isSignedIn()
             && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []));
       allow write: if isSelf(uid) || isAdmin();
+
+      // Kopie terminów trenera (coachCalendarMirror.ts): trener ucznia
+      // tworzy/zmienia/usuwa WYŁĄCZNIE własne kopie (isMirrored + originCoachId).
+      allow create, update: if isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && (resource == null
+            || (resource.data.get('isMirrored', false) == true
+                && resource.data.get('originCoachId', '') == request.auth.uid))
+        && validCoachMirror(request.resource.data);
+      allow delete: if isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
+        && resource.data.get('isMirrored', false) == true
+        && resource.data.get('originCoachId', '') == request.auth.uid;
     }
 
-    // ─── /users/{uid}/privateNotes/{noteId} ─────────────────────
+    // Kształt kopii z buildMirrorPayload (coachCalendarMirror.ts).
+    function validCoachMirror(d) {
+      return d.keys().hasOnly(['title', 'date', 'time', 'address', 'note', 'category',
+                               'distance', 'type', 'originCoachId', 'originCoachName',
+                               'originEventId', 'isMirrored', 'createdAt'])
+        && d.isMirrored == true
+        && d.originCoachId == request.auth.uid
+        && d.category == 'Trener'
+        && d.title is string && d.title.size() <= 200
+        && d.date is string && d.date.size() <= 20
+        && d.get('time', '') is string
+        && d.get('address', '') is string && d.get('address', '').size() <= 500
+        && d.get('note', '') is string && d.get('note', '').size() <= 5000
+        && (d.get('distance', null) == null || d.distance is string)
+        && d.get('type', '') is string
+        && d.get('originCoachName', '') is string
+        && d.originEventId is string;
+    }
+
+    // ─── /users/{uid}/privateNotes/{noteId}─────────────────────
     //  Student-only private notes. Coaches have NO access (by design).
     match /users/{uid}/privateNotes/{noteId} {
       allow read, create, delete: if isSelf(uid) || isAdmin();

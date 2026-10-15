@@ -945,3 +945,45 @@ test('privateNotes: po rejestracji gościa właściciel zdejmuje tylko expiresAt
   // Właściciel — tak.
   await assertSucceeds(updateDoc(n(), { expiresAt: deleteField(), isGuest: deleteField() }));
 });
+
+// Kopie terminów trenera (coachCalendarMirror.ts) w kalendarzu ucznia.
+const mirrorDoc = (extra = {}) => ({
+  title: 'Trening', date: '2026-10-20', time: '17:00', address: '', note: '',
+  category: 'Trener', distance: null, type: 'Trener',
+  originCoachId: 'coach1', originCoachName: 'Coach', originEventId: 'ev1',
+  isMirrored: true, createdAt: serverTimestamp(), ...extra,
+});
+
+test('tournaments: trener tworzy/zmienia/usuwa kopie swoich terminow u ucznia', async () => {
+  const m = (db) => doc(db, 'users/alice/tournaments/m1');
+  await assertSucceeds(setDoc(m(coach1()), mirrorDoc()));
+  await assertSucceeds(getDoc(m(coach1())));
+  await assertSucceeds(updateDoc(m(coach1()), mirrorDoc({ title: 'Zmiana', time: '18:00' })));
+  await assertSucceeds(setDoc(m(coach1()), mirrorDoc({ note: 'nadpisanie batch.set' })));
+  await assertSucceeds(deleteDoc(m(coach1())));
+});
+
+test('tournaments: trener nie rusza innych wpisow ucznia ani obcych uczniow', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/alice/tournaments/own'), { title: 'Zawody', date: '2026-11-01', category: 'Turniej' });
+    await setDoc(doc(db, 'users/alice/tournaments/other'), { ...mirrorDoc(), originCoachId: 'coach2', createdAt: 1 });
+  });
+  const c = coach1();
+  // Kształt: tylko kopia z własnym originCoachId i isMirrored.
+  await assertFails(setDoc(doc(c, 'users/alice/tournaments/x1'), mirrorDoc({ isMirrored: false })));
+  await assertFails(setDoc(doc(c, 'users/alice/tournaments/x2'), mirrorDoc({ originCoachId: 'coach2' })));
+  await assertFails(setDoc(doc(c, 'users/alice/tournaments/x3'), mirrorDoc({ category: 'Turniej' })));
+  await assertFails(setDoc(doc(c, 'users/alice/tournaments/x4'), mirrorDoc({ extra: 1 })));
+  // Własne wpisy ucznia i kopie innego trenera — nie.
+  await assertFails(updateDoc(doc(c, 'users/alice/tournaments/own'), mirrorDoc()));
+  await assertFails(deleteDoc(doc(c, 'users/alice/tournaments/own')));
+  await assertFails(updateDoc(doc(c, 'users/alice/tournaments/other'), mirrorDoc()));
+  await assertFails(deleteDoc(doc(c, 'users/alice/tournaments/other')));
+  // Nie-uczeń (bob nie ma coach1 w coaches[]) — nie.
+  await assertFails(setDoc(doc(c, 'users/bob/tournaments/m1'), mirrorDoc()));
+  // Obcy podszywający się pod trenera — nie.
+  await assertFails(setDoc(doc(bob(), 'users/alice/tournaments/m2'), mirrorDoc({ originCoachId: 'bob' })));
+  // Uczeń dalej ma pełne prawa do swojego kalendarza (także do kopii).
+  await assertSucceeds(deleteDoc(doc(alice(), 'users/alice/tournaments/other')));
+});

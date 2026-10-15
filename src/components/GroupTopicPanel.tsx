@@ -13,7 +13,7 @@ import { FOCUS_TEXT_MAX, dayKeyOf, sessionTopicId } from '../utils/focus';
 // każdego członka (utils/focus.ts, sekcja TEMAT TRENINGU) — uczeń widzi go
 // dopiero w jego dniu. Na dokumencie trenera coachGroupTopics.<groupId>.<day>
 // zostają tematy grupy z id wpisów — stąd status uczniów, edycja i „Powtórz”
-// (kopia na dziś). Fioletowy jak u ucznia. Zastąpił „fokus grupy”.
+// (kopia na dziś). Różowy = rola trenera; fiolet zostaje dla ucznia (user 2026-10-15). Zastąpił „fokus grupy”.
 // Każdy temat ma też termin w kalendarzu TRENERA (user 2026-10-15: wgląd
 // w plan) — bez kopii u uczniów, bo ci widzą temat dopiero w jego dniu.
 
@@ -72,7 +72,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving }: {
                   type="button"
                   onClick={() => onAssign(s)}
                   disabled={saving}
-                  className="text-[9px] font-black uppercase tracking-wide text-violet-700 bg-white border border-violet-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
+                  className="text-[9px] font-black uppercase tracking-wide text-rose-700 bg-white border border-rose-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
                 >
                   {t('coachDashboard.groupFocusAssign')}
                 </button>
@@ -82,7 +82,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving }: {
                 <span className="material-symbols-outlined text-[13px]">check</span>{t('coachDashboard.groupTopicTrained')}
               </span>
             ) : st === 'acked' ? (
-              <span className="flex items-center gap-0.5 text-[9px] font-black text-violet-700">
+              <span className="flex items-center gap-0.5 text-[9px] font-black text-rose-700">
                 <span className="material-symbols-outlined text-[13px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
               </span>
             ) : (
@@ -257,7 +257,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-violet-500 mb-1.5 ml-2';
+  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1.5 ml-2';
   const btn = 'flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border active:scale-95 transition-all disabled:opacity-40';
   const modalBase = { text: text.trim().slice(0, FOCUS_TEXT_MAX), topic: pickedTopics[0] || '' };
 
@@ -266,7 +266,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       <p className={sectionLabel}>{t('coachDashboard.groupTopicLabel')}</p>
 
       {todayTopic?.closedAt && (
-        <p className="flex items-center gap-1 text-[10px] font-bold text-violet-600 ml-2">
+        <p className="flex items-center gap-1 text-[10px] font-bold text-rose-600 ml-2">
           <span className="material-symbols-outlined text-[14px]">check_circle</span>
           {t('coachDashboard.groupTopicClosedToday')}
         </p>
@@ -278,7 +278,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
             type="button"
             onClick={() => openModal(today)}
             disabled={members.length === 0 || saving}
-            className="flex-1 py-2.5 rounded-xl border-2 border-dashed border-violet-300 bg-white text-violet-700 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
+            className="flex-1 py-2.5 rounded-xl border-2 border-dashed border-rose-300 bg-white text-rose-700 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
           >
             <span className="material-symbols-outlined text-[16px]">sports</span>
             {t('coachDashboard.groupTopicSet')}
@@ -288,7 +288,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               type="button"
               onClick={() => create(today, { text: last.text, topic: last.topic })}
               disabled={members.length === 0 || saving}
-              className="flex-1 py-2.5 rounded-xl bg-violet-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
+              className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[16px]">replay</span>
               {t('coachDashboard.groupTopicRepeat')}
@@ -298,18 +298,18 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       )}
 
       {shown && (
-        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-violet-50 border-violet-200' : 'bg-white border-gray-200'}`}>
+        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-rose-50 border-rose-200' : 'bg-white border-gray-200'}`}>
           <div className="flex items-start gap-2">
-            <span className={`material-symbols-outlined text-[18px] shrink-0 mt-px ${open ? 'text-violet-600' : 'text-gray-400'}`}>sports</span>
+            <span className={`material-symbols-outlined text-[18px] shrink-0 mt-px ${open ? 'text-rose-600' : 'text-gray-400'}`}>sports</span>
             <div className="flex-1 min-w-0">
-              <p className={`text-[9px] font-black uppercase tracking-widest ${open ? 'text-violet-700' : 'text-gray-500'}`}>
+              <p className={`text-[9px] font-black uppercase tracking-widest ${open ? 'text-rose-700' : 'text-gray-500'}`}>
                 {shown === todayTopic
                   ? (open ? t('coachDashboard.groupTopicToday') : t('coachDashboard.groupTopicTodayClosed'))
                   : t('coachDashboard.groupTopicLast', { date: dayLabel(shown.day) })}
               </p>
               <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(shown, t)}</p>
               {shown.text && shown.topic && (
-                <p className={`text-[10px] font-bold ${open ? 'text-violet-700' : 'text-gray-500'}`}>{topicLabel(shown.topic, t)}</p>
+                <p className={`text-[10px] font-bold ${open ? 'text-rose-700' : 'text-gray-500'}`}>{topicLabel(shown.topic, t)}</p>
               )}
             </div>
             {shown === todayTopic && (
@@ -318,7 +318,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 disabled={saving}
                 aria-label={t('coachDashboard.groupTopicEdit')}
                 title={t('coachDashboard.groupTopicEdit')}
-                className="w-7 h-7 shrink-0 rounded-lg bg-white border border-violet-200 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+                className="w-7 h-7 shrink-0 rounded-lg bg-white border border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
               >
                 <span className="material-symbols-outlined text-[16px]">edit</span>
               </button>
@@ -330,7 +330,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           </div>
 
           {open && (
-            <div className="flex gap-2 mt-2.5 pt-2 border-t border-violet-200/70">
+            <div className="flex gap-2 mt-2.5 pt-2 border-t border-rose-200/70">
               <button onClick={() => close(todayTopic!)} disabled={saving} className={`${btn} bg-white text-red-600 border-red-100`}>
                 {t('coachDashboard.groupTopicClose')}
               </button>
@@ -342,18 +342,18 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       {/* Zaplanowane na kolejne dni — uczniowie zobaczą je dopiero w ich dniu. */}
       {upcoming.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-black uppercase tracking-widest text-violet-500 ml-2">{t('coachDashboard.groupTopicPlanned')}</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-2">{t('coachDashboard.groupTopicPlanned')}</p>
           {upcoming.map(d => {
             const gt = byDay[d];
             return (
-              <div key={d} className="flex items-center gap-2 bg-white border border-violet-100 rounded-xl pl-3 pr-1.5 py-1.5">
-                <span className="text-[10px] font-black text-violet-700 shrink-0 w-20 truncate">{dayLabel(d)}</span>
+              <div key={d} className="flex items-center gap-2 bg-white border border-rose-100 rounded-xl pl-3 pr-1.5 py-1.5">
+                <span className="text-[10px] font-black text-rose-700 shrink-0 w-20 truncate">{dayLabel(d)}</span>
                 <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{focusTitle(gt, t)}</span>
                 <button
                   onClick={() => openModal(d, gt)}
                   disabled={saving}
                   aria-label={t('coachDashboard.groupTopicEdit')}
-                  className="w-7 h-7 shrink-0 rounded-lg text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+                  className="w-7 h-7 shrink-0 rounded-lg text-rose-600 flex items-center justify-center active:scale-90 transition-all"
                 >
                   <span className="material-symbols-outlined text-[16px]">edit</span>
                 </button>
@@ -378,7 +378,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           openModal(dayKeyOf(tomorrow.getTime()));
         }}
         disabled={members.length === 0 || saving}
-        className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-violet-600 flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40"
+        className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-600 flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[14px]">event</span>
         {t('coachDashboard.groupTopicPlan')}
@@ -388,7 +388,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3 shrink-0">
-              <div className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-white">sports</span>
               </div>
               <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
@@ -400,14 +400,14 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               <div>
                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDay')}</p>
                 {modal.edit ? (
-                  <p className="text-[12px] font-black text-violet-700">{dayLabel(modal.day)}</p>
+                  <p className="text-[12px] font-black text-rose-700">{dayLabel(modal.day)}</p>
                 ) : (
                   <input
                     type="date"
                     value={modal.day}
                     min={today}
                     onChange={e => e.target.value && setModal({ ...modal, day: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-violet-500"
+                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-rose-500"
                   />
                 )}
                 {!modal.edit && byDay[modal.day] && (
@@ -419,7 +419,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
                 maxLength={FOCUS_TEXT_MAX}
                 placeholder={t('coachDashboard.groupTopicPlaceholder')}
-                className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-violet-500 resize-none h-16"
+                className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 resize-none h-16"
               />
               <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
             </div>
@@ -430,7 +430,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               <button
                 onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
                 disabled={saving || !text.trim() || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
-                className="flex-[2] py-3 bg-violet-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
+                className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
               >
                 {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
               </button>

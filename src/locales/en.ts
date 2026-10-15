@@ -365,6 +365,7 @@ export const views = {
     topicTrained: "Trained",
     topicAcked: "Read",
     topicAck: "Got it",
+    ledTraining: "Training led",
     focusChoiceCoach: "Coach",
     focusChoiceNone: "This session counts toward no focus",
     focusNewPlaceholder: "Briefly describe what you are working on…",

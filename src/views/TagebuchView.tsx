@@ -25,9 +25,9 @@ import {
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
-  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, PrivateNoteCard, NewBadge,
+  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
-  type TbSession, type TbPrivateNote, type TbCoachEntry,
+  type TbSession, type TbPrivateNote, type TbCoachEntry, type TbLedTraining,
 } from '../components/tagebuch/TagebuchCards';
 
 // --- TAGEBUCH ---
@@ -43,6 +43,34 @@ const MILESTONE_HIDDEN = 'focusMilestoneHidden';
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
 
 type Filter = 'all' | 'coach' | 'mine';
+
+// [PROWADZONY TRENING] Treningi, które użytkownik poprowadził jako trener:
+// zakończone albo minione tematy jego grup (users.coachGroupTopics) z jego
+// prywatną notatką z historii treningów. Tylko jego własne dane.
+async function loadLedTrainings(userId: string, userData: any): Promise<TbLedTraining[]> {
+  const byGroup: Record<string, Record<string, any>> = { ...(userData?.coachGroupTopics || {}) };
+  // Pierwsza wersja (jeden temat na grupę, coachGroupTopic) — jak w panelu trenera.
+  Object.entries(userData?.coachGroupTopic || {}).forEach(([gid, gt]: [string, any]) => {
+    if (gt?.day && !byGroup[gid]?.[gt.day]) byGroup[gid] = { ...(byGroup[gid] || {}), [gt.day]: gt };
+  });
+  const names: Record<string, string> = Object.fromEntries((userData?.coachGroups || []).map((g: any) => [g.id, g.name || '']));
+  const today = dayKeyOf(Date.now());
+  const out: TbLedTraining[] = [];
+  await Promise.all(Object.entries(byGroup).map(async ([gid, days]) => {
+    const done = Object.entries(days || {}).filter(([d, gt]) => d < today || (d === today && gt?.closedAt));
+    if (!done.length) return;
+    let notes: Record<string, string> = {};
+    try {
+      const snap = await getDoc(doc(db, 'users', userId, 'private', `groupTraining_${gid}`));
+      notes = (snap.exists() && snap.data().notes) || {};
+    } catch { /* bez notatek */ }
+    done.forEach(([d, gt]) => out.push({
+      id: `${gid}_${d}`, groupName: names[gid] || '', day: d, text: gt.text || '', topic: gt.topic || '',
+      note: notes[d] || '', ts: gt.closedAt || new Date(`${d}T20:00:00`).getTime(),
+    }));
+  }));
+  return out;
+}
 
 // Temat zaplanowany wcześniej stoi na osi czasu w swoim dniu, nie w dniu zapisu.
 function topicTimelineFields(id: string, data: any): { trainingTopic?: TrainingTopic; ts?: number } {
@@ -69,7 +97,8 @@ type TimelineItem =
   | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[] }
   | { kind: 'private'; id: string; ts: number; note: TbPrivateNote }
   | { kind: 'milestone'; id: string; ts: number; milestone: FocusMilestone }
-  | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry };
+  | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry }
+  | { kind: 'led'; id: string; ts: number; entry: TbLedTraining };
 
 interface TagebuchViewProps {
   userId: string;
@@ -139,6 +168,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [coachGoals, setCoachGoals] = useState<CoachGoal[]>([]);
   const [coachCleared, setCoachCleared] = useState<CoachFocusCleared | null>(null);
   // [TEMAT TRENINGU] w dniu treningu: temat na górze karty zamiast fokusu
+  const [ledTrainings, setLedTrainings] = useState<TbLedTraining[]>([]);
   const [topicFirst, setTopicFirst] = useState(() => (userId ? readTopicFirst(userId) : false));
   const [focusDots, setFocusDots] = useState(false);
   const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
@@ -210,6 +240,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         setCoachCleared(readCoachFocusCleared(userData));
         setFocusDots(userData.focusDots === true);
         setFocusGoal(readFocusGoal(userData));
+        loadLedTrainings(userId, userData).then(setLedTrainings).catch(e => console.error('Tagebuch: błąd prowadzonych treningów', e));
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
           try {
@@ -626,6 +657,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         if (n.milestone) list.push({ kind: 'milestone', id: n.id, ts: n.ts, milestone: n.milestone });
         else list.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
       });
+      ledTrainings.forEach(e => {
+        if (e.ts < cutoff || !hit(e.topic ? [e.topic] : [])) return;
+        list.push({ kind: 'led', id: e.id, ts: e.ts, entry: e });
+      });
     }
     if (filter !== 'mine') {
       coachEntries.forEach(e => {
@@ -635,7 +670,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     }
     list.sort((a, b) => b.ts - a.ts);
     return { items: list, hasMore: sessionsFull || notesFull, cutoff };
-  }, [sessions, notes, coachEntries, filter, topic, pageSize]);
+  }, [sessions, notes, coachEntries, ledTrainings, filter, topic, pageSize]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -1064,6 +1099,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     />
                   ) : it.kind === 'milestone' ? (
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
+                  ) : it.kind === 'led' ? (
+                    <LedTrainingCard entry={it.entry} time={timeOf(it.ts)} />
                   ) : it.kind === 'private' ? (
                     <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
                   ) : it.entry.trainingTopic ? (

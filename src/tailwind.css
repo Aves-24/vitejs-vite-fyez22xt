@@ -208,6 +208,7 @@
 .tb-coach { border-left-color: #f59e0b; }
 .tb-private { border-left-color: #818cf8; }
 .tb-topic { border-left-color: #8b5cf6; }
+.tb-led { border-left-color: #f43f5e; }
 .tb-focus { border-left-color: #fbbf24; }
 .tb-focus-coach { border-left-color: #0ea5e9; }
 
@@ -222,5 +223,6 @@
 .dark .tb-coach { border-left-color: #f59e0b; border-top-color: #4a3a14; border-right-color: #4a3a14; border-bottom-color: #4a3a14; }
 .dark .tb-private { border-left-color: #818cf8; }
 .dark .tb-topic { border-left-color: #a78bfa; }
+.dark .tb-led { border-left-color: #fb7185; }
 .dark .tb-focus { border-left-color: #fbbf24; }
 .dark .tb-focus-coach { border-left-color: #38bdf8; }

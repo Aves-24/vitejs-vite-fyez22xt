@@ -109,7 +109,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
       summary={t('coachDashboard.historyCount', { count: items.length })}
     >
       <div className="space-y-1.5">
-        <p className="flex items-center gap-1 text-[9px] font-bold text-violet-500 ml-1">
+        <p className="flex items-center gap-1 text-[9px] font-bold text-rose-500 ml-1">
           <span className="material-symbols-outlined text-[11px]">lock</span>{t('coachDashboard.historyPrivate')}
         </p>
         {items.slice(0, shown).map(it => {
@@ -132,32 +132,32 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           const note = data?.notes?.[day];
           const isOpen = expanded === day;
           return (
-            <div key={it.key} className={`bg-white border rounded-xl ${isOpen ? 'border-violet-300' : 'border-violet-100'}`}>
+            <div key={it.key} className={`bg-white border rounded-xl ${isOpen ? 'border-rose-300' : 'border-rose-100'}`}>
               <button onClick={() => toggle(day)} className="w-full flex items-start gap-2 pl-3 pr-2 py-2 text-left active:opacity-70">
-                <span className="material-symbols-outlined text-[16px] text-violet-500 mt-px">sports</span>
+                <span className="material-symbols-outlined text-[16px] text-rose-500 mt-px">sports</span>
                 <span className="flex-1 min-w-0">
-                  <span className="block text-[9px] font-black text-violet-600">{dayLabel(day)}</span>
+                  <span className="block text-[9px] font-black text-rose-600">{dayLabel(day)}</span>
                   <span className="block text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(gt, t)}</span>
-                  {gt.text && gt.topic && <span className="block text-[10px] font-bold text-violet-700">{topicLabel(gt.topic, t)}</span>}
+                  {gt.text && gt.topic && <span className="block text-[10px] font-bold text-rose-700">{topicLabel(gt.topic, t)}</span>}
                   {note && !isOpen && <span className="block text-[10px] font-medium text-gray-500 truncate mt-0.5">„{note}”</span>}
                 </span>
                 {note && !isOpen && <span className="material-symbols-outlined text-[15px] text-gray-400 mt-px">edit_note</span>}
                 <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </button>
               {isOpen && (
-                <div className="px-3 pb-2.5 space-y-2 border-t border-violet-100 pt-2">
+                <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
                   <TopicMemberList members={members} gt={gt} status={status[day] || {}} />
                   <textarea
                     value={draft}
                     onChange={e => setDraft(e.target.value.slice(0, NOTE_MAX))}
                     maxLength={NOTE_MAX}
                     placeholder={t('coachDashboard.historyNotePlaceholder')}
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-medium text-[#333] outline-none focus:border-violet-500 resize-none h-16"
+                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-16"
                   />
                   <button
                     onClick={() => saveNote(day)}
                     disabled={saving || draft.trim() === (note || '')}
-                    className="w-full py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-violet-600 text-white disabled:opacity-40 active:scale-95 transition-all"
+                    className="w-full py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white disabled:opacity-40 active:scale-95 transition-all"
                   >
                     {t('coachDashboard.groupTopicSaveEdit')}
                   </button>
@@ -167,7 +167,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           );
         })}
         {items.length > shown && (
-          <button onClick={() => setShown(n => n + PAGE)} className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-violet-600">
+          <button onClick={() => setShown(n => n + PAGE)} className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-rose-600">
             {t('coachDashboard.historyMore')}
           </button>
         )}

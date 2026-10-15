@@ -1532,7 +1532,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
           aria-expanded={viewMode === 'groups'}
           className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-            viewMode === 'groups' ? 'bg-violet-600 text-white' : 'bg-violet-50 text-violet-700 border border-violet-200'
+            viewMode === 'groups' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 border border-rose-200'
           }`}
         >
           <span className="material-symbols-outlined text-sm">folder_shared</span>
@@ -1645,7 +1645,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               2026-09-10); w rozwiniętej grupie tych przycisków już nie ma. */}
           {coachGroups.length > 0 && (
             <div className="flex items-center justify-between ml-2 pr-1 mb-1">
-              <h2 className="text-[10px] font-black text-violet-500 uppercase tracking-widest">
+              <h2 className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
                 {t('coachDashboard.viewGroups')} ({coachGroups.length})
               </h2>
               {isGroupSelecting ? (
@@ -1658,7 +1658,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               ) : (
                 <button
                   onClick={() => { setIsGroupSelecting(true); setActiveGroup('ALL'); exitSelecting(); }}
-                  className="text-[9px] font-black uppercase text-violet-600 flex items-center gap-1 active:scale-95 transition-all"
+                  className="text-[9px] font-black uppercase text-rose-600 flex items-center gap-1 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[14px]">check_circle</span>
                   {t('coachDashboard.selectMode')}
@@ -1711,7 +1711,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <div
                 key={group.id}
                 className={`bg-white rounded-2xl shadow-sm border transition-all ${
-                  isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-violet-300 ring-1 ring-violet-200' : 'border-violet-100'
+                  isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-rose-300 ring-1 ring-rose-200' : 'border-rose-100'
                 }`}
               >
                 <div
@@ -1732,8 +1732,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <span className="material-symbols-outlined text-[18px] font-black">check</span>
                     </div>
                   ) : (
-                    <div className="w-9 h-9 bg-violet-50 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-violet-600 text-[18px]">folder_shared</span>
+                    <div className="w-9 h-9 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-rose-600 text-[18px]">folder_shared</span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1769,7 +1769,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       </div>
                     )}
                     {!isOpen && nextTopic && (
-                      <p className="flex items-center gap-1 text-[9px] font-black text-violet-600 truncate mt-0.5">
+                      <p className="flex items-center gap-1 text-[9px] font-black text-rose-600 truncate mt-0.5">
                         <span className="material-symbols-outlined text-[12px]">sports</span>
                         <span className="truncate">
                           {nextTopicDay === todayKey
@@ -1786,7 +1786,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
                       aria-label={t('coachDashboard.groupMessageBtn')}
                       title={t('coachDashboard.groupMessageBtn')}
-                      className="w-8 h-8 shrink-0 rounded-lg bg-violet-50 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+                      className="w-8 h-8 shrink-0 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[17px]">mail</span>
                     </button>
@@ -1797,7 +1797,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </div>
 
                 {isOpen && (
-                  <div className="px-3 pb-3 pt-2.5 border-t border-violet-100 bg-violet-50/40 rounded-b-2xl space-y-3">
+                  <div className="px-3 pb-3 pt-2.5 border-t border-rose-100 bg-rose-50/40 rounded-b-2xl space-y-3">
                     <GroupTopicPanel
                       groupId={group.id}
                       groupName={group.name}
@@ -1831,7 +1831,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
                         aria-label={t('coachDashboard.addToGroupBtn')}
                         title={t('coachDashboard.addToGroupBtn')}
-                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-violet-200 text-violet-600 flex items-center justify-center active:scale-90 transition-all"
+                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
                       >
                         <span className="material-symbols-outlined text-[20px]">person_add</span>
                       </button>

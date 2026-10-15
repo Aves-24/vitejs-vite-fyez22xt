@@ -406,6 +406,40 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
   );
 }
 
+/** [PROWADZONY TRENING] Trening, który użytkownik poprowadził jako trener. */
+export interface TbLedTraining {
+  id: string;           // `<groupId>_<day>`
+  groupName: string;
+  day: string;
+  text: string;
+  topic: string;
+  note: string;         // prywatna notatka trenera z historii treningów
+  ts: number;
+}
+
+/**
+ * [PROWADZONY TRENING] (user 2026-10-15) Różowy = rola trenera (panel Gruppen
+ * też różowy); fiolet zostaje dla tematów, które dostaje się od swojego trenera.
+ */
+export function LedTrainingCard({ entry, time }: { entry: TbLedTraining; time: string }) {
+  const { t, i18n } = useTranslation();
+  const day = new Date(`${entry.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  return (
+    <div className={`${CARD_SHAPE} tb-led bg-rose-50 border-rose-200 ${CARD_PAD}`}>
+      <EntryRow icon="sports" iconCls="text-rose-600" label={`${t('tagebuch.ledTraining')} · ${entry.groupName} · ${day}`} labelCls="text-rose-700" time={time}>
+        <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
+        <TopicChips topics={entry.topic ? [entry.topic] : []} />
+        {entry.note && (
+          <p className="mt-1.5 flex items-start gap-1 text-[11px] font-medium text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
+            <span className="material-symbols-outlined text-[13px] text-rose-400 mt-0.5">lock</span>
+            <span>„{entry.note}”</span>
+          </p>
+        )}
+      </EntryRow>
+    </div>
+  );
+}
+
 // --- KARTA TRENINGU ---
 // Notatka ucznia, notatki prywatne przypięte do sesji i Anmerkung trenera
 // w jednym miejscu — uwaga trenera jest przyklejona do treningu, którego dotyczy.

@@ -115,6 +115,7 @@ interface UpcomingEvent {
   date: string;       // YYYY-MM-DD
   time: string;
   isCoach: boolean;
+  isLed: boolean;      // własny termin trenera (nie kopia od mojego trenera) — różowy
 }
 
 type TimelineItem =
@@ -335,6 +336,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             date: data.date || '',
             time: data.time || '',
             isCoach: data.category === 'Trener',
+            isLed: data.category === 'Trener' && !data.isMirrored,
           };
         }).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)));
       } catch (e) {
@@ -784,6 +786,15 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return shown.slice(0, 4);
   }, [upcoming, isNew]);
 
+  const nextOpenKey = `grotx_tbNextOpen_${userId}`;
+  const [nextOpen, setNextOpen] = useState(() => {
+    try { return localStorage.getItem(nextOpenKey) !== '0'; } catch { return true; }
+  });
+  const toggleNextOpen = () => setNextOpen(o => {
+    try { localStorage.setItem(nextOpenKey, o ? '0' : '1'); } catch { /* prywatny tryb */ }
+    return !o;
+  });
+
   const eventDateLabel = (dateStr: string) => {
     const now = new Date();
     if (dateStr === ymd(now)) return t('tagebuch.today');
@@ -965,23 +976,38 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             (user, 2026-09-15). Kolory tekstu celowo spoza remapów ciemnego
             motywu, żeby na żółtym zostały ciemne w obu motywach. */}
         {nextEvents.length > 0 && (
-          <div className="bg-[#fed33e] rounded-2xl divide-y divide-[#e5bd38] overflow-hidden shadow-sm">
-            {nextEvents.map(ev => (
+          <div className="rounded-2xl overflow-hidden shadow-sm">
+            {/* Zwijane (user 2026-10-15) — stan zapamiętany w telefonie. */}
+            <button
+              onClick={toggleNextOpen}
+              className="w-full flex items-center gap-2 px-3 py-1.5 bg-[#fed33e] text-left active:bg-[#f5c92f] transition-colors"
+              aria-expanded={nextOpen}
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#0b4230]">event</span>
+              <span className="flex-1 text-[9px] font-black text-[#7a6200] uppercase tracking-widest">
+                {t('tagebuch.next')} · {nextEvents.length}
+              </span>
+              {!nextOpen && nextEvents.some(ev => ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id)) && <NewBadge />}
+              <span className={`material-symbols-outlined text-[18px] text-[#7a6200] transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
+            </button>
+            {nextOpen && nextEvents.map(ev => (
               <button
                 key={ev.id}
                 onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-[#f5c92f] transition-colors"
+                // Własny termin trenera — różowy jak cała rola trenera; reszta żółta.
+                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t transition-colors ${ev.isLed ? 'bg-rose-100 border-rose-200 active:bg-rose-200' : 'bg-[#fed33e] border-[#e5bd38] active:bg-[#f5c92f]'}`}
               >
-                <span className="material-symbols-outlined text-[20px] text-[#0b4230] shrink-0">event</span>
+                <span className={`material-symbols-outlined text-[20px] shrink-0 ${ev.isLed ? 'text-rose-600' : 'text-[#0b4230]'}`}>{ev.isLed ? 'sports' : 'event'}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black text-[#7a6200] uppercase tracking-widest">{t('tagebuch.next')}</p>
-                  <p className="text-[12px] font-bold text-[#0b4230] truncate">
+                  <p className={`text-[12px] font-bold truncate ${ev.isLed ? 'text-rose-900' : 'text-[#0b4230]'}`}>
                     {eventDateLabel(ev.date)}{ev.time ? ` ${ev.time}` : ''} · {ev.title}
-                    {ev.isCoach && <span className="text-[#7a6200] font-medium"> · {t('tagebuch.fromCoach')}</span>}
+                    {ev.isLed
+                      ? <span className="text-rose-700 font-medium"> · {t('tagebuch.filterLed')}</span>
+                      : ev.isCoach && <span className="text-[#7a6200] font-medium"> · {t('tagebuch.fromCoach')}</span>}
                   </p>
                 </div>
-                {ev.isCoach && isNew('coach_plan', ev.id) && <NewBadge />}
-                <span className="material-symbols-outlined text-[18px] text-[#7a6200] shrink-0">chevron_right</span>
+                {ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id) && <NewBadge />}
+                <span className={`material-symbols-outlined text-[18px] shrink-0 ${ev.isLed ? 'text-rose-500' : 'text-[#7a6200]'}`}>chevron_right</span>
               </button>
             ))}
           </div>

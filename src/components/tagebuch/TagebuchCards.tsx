@@ -77,7 +77,37 @@ export function NewBadge() {
 
 // Kolory kart — klasy tb-* w src/tailwind.css (jasny i ciemny motyw).
 // Karta ma mniejsze lewe rogi, bo zaokrąglony gruby pasek wygląda jak nawias.
-const CARD_SHAPE = 'tb-card border rounded-l-md rounded-r-2xl shadow-sm';
+export const CARD_SHAPE = 'tb-card border rounded-l-md rounded-r-2xl shadow-sm';
+// Wspólny układ wszystkich wpisów (user 2026-10-15: „jak wpis treningu”):
+// mocny pasek z lewej, ikona blisko krawędzi, treść obok, godzina w prawym
+// górnym rogu. Ikona mniej odsunięta (pl-2) niż reszta krawędzi.
+export const CARD_PAD = 'pl-2 pr-3 py-2.5';
+
+export function EntryRow({ icon, iconCls, label, labelCls, time, extra, children }: {
+  icon: string;
+  iconCls: string;        // kolor ikony (tło: tb-icon)
+  label?: React.ReactNode;
+  labelCls?: string;
+  time?: string;
+  extra?: React.ReactNode; // przy godzinie: NEU, kosz
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5">
+      <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+        <span className={`material-symbols-outlined text-[18px] ${iconCls}`}>{icon}</span>
+      </span>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-h-[16px]">
+          <span className={`flex-1 min-w-0 truncate text-[10px] font-black ${labelCls || ''}`}>{label}</span>
+          {extra}
+          {time && <span className="shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 // Zieleń paska rośnie z dystansem: do 18 m, 20–30, 40–50, 60–70, 90 m.
 function distanceTier(meters: number): string {
@@ -290,13 +320,10 @@ function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (i
 export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
   const { t } = useTranslation();
   return (
-    <div className={`${CARD_SHAPE} tb-private bg-white border-gray-200 p-3`}>
-      <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-1">
-        <span className="material-symbols-outlined text-[14px]">lock</span>
-        <span className="flex-1">{t('tagebuch.onlyYou')}</span>
-        {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
-      </div>
-      <PrivateNoteBody note={note} onDelete={onDelete} />
+    <div className={`${CARD_SHAPE} tb-private bg-white border-gray-200 ${CARD_PAD}`}>
+      <EntryRow icon="lock" iconCls="text-indigo-500" label={t('tagebuch.onlyYou')} labelCls="text-indigo-600" time={time}>
+        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
+      </EntryRow>
     </div>
   );
 }
@@ -306,22 +333,19 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
-    <div className={`${CARD_SHAPE} tb-coach bg-white border-amber-200 p-3`}>
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="flex items-center gap-1 text-[10px] font-black text-amber-700 min-w-0">
-          <span className="material-symbols-outlined text-[14px]">menu_book</span>
-          <span className="truncate">
-            {t('tagebuch.coachEntry')} · {t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
-          </span>
-        </span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
-          {isNew && <NewBadge />}
-        </span>
-      </div>
-      <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{entry.text}</p>
-      <p className="text-[10px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
-      <TopicChips topics={entry.topics} />
+    <div className={`${CARD_SHAPE} tb-coach bg-white border-amber-200 ${CARD_PAD}`}>
+      <EntryRow
+        icon="menu_book"
+        iconCls="text-amber-600"
+        label={`${t('tagebuch.coachEntry')} · ${t(cfg.labelKey, { defaultValue: cfg.labelDefault })}`}
+        labelCls="text-amber-700"
+        time={time}
+        extra={isNew ? <NewBadge /> : undefined}
+      >
+        <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
+        <p className="text-[10px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+        <TopicChips topics={entry.topics} />
+      </EntryRow>
     </div>
   );
 }
@@ -344,18 +368,16 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
   const open = isTopicOpen(tt);
   const day = new Date(`${tt.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
-    <div className={`${CARD_SHAPE} bg-violet-50 border-violet-200 p-3`}>
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <span className="flex items-center gap-1 text-[10px] font-black text-violet-700 min-w-0">
-          <span className="material-symbols-outlined text-[14px]">sports</span>
-          <span className="truncate">{t('tagebuch.topicLabel')} · {day}</span>
-        </span>
-        <span className="flex items-center gap-1.5 shrink-0">
-          {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
-          {isNew && <NewBadge />}
-        </span>
-      </div>
-      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words">{entry.text}</p>
+    <div className={`${CARD_SHAPE} tb-topic bg-violet-50 border-violet-200 ${CARD_PAD}`}>
+      <EntryRow
+        icon="sports"
+        iconCls="text-violet-600"
+        label={`${t('tagebuch.topicLabel')} · ${day}`}
+        labelCls="text-violet-700"
+        time={time}
+        extra={isNew ? <NewBadge /> : undefined}
+      >
+      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
       <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
       <TopicChips topics={entry.topics} />
       {!open && (
@@ -379,6 +401,7 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
           )}
         </div>
       )}
+      </EntryRow>
     </div>
   );
 }
@@ -502,23 +525,22 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   const noteCount = (session.note ? 1 : 0) + linkedNotes.length;
 
   const header = (
-    <button onClick={onToggle} className="w-full flex items-center gap-2 text-left active:opacity-60" aria-expanded={expanded}>
-      <span className="flex-1 min-w-0 flex items-center gap-2.5">
-        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-          <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
-            <InsightBadge insight={insight} />
-            {/* Godzina po prawej, jak we wpisach fokusu (user 2026-10-14). */}
-            <span className="flex-1" />
-            {time && <span className="shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
-          </span>
-          <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
-          {insight && !session.isTech && <InsightLine insight={insight} />}
-        </span>
+    <button onClick={onToggle} className="w-full flex items-stretch gap-2.5 text-left active:opacity-60" aria-expanded={expanded}>
+      <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 self-start">
+        <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
       </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
+          <InsightBadge insight={insight} />
+        </span>
+        <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
+        {insight && !session.isTech && <InsightLine insight={insight} />}
+      </span>
+      {/* Godzina w prawym górnym rogu, strzałka w prawym dolnym (user 2026-10-15). */}
+      <span className="shrink-0 flex flex-col items-end justify-between gap-1">
+        {time ? <span className="text-[10px] font-bold text-gray-400 leading-none mt-0.5">{time}</span> : <span />}
+        <span className="flex items-center gap-1">
       {/* Zwinięta: znaczki, że w środku coś jest (trener, notatki). */}
       {!expanded && (session.coachNote || noteCount > 0 || session.coachSeen) && (
         <span className="shrink-0 flex items-center gap-1">
@@ -540,12 +562,14 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           )}
         </span>
       )}
-      <span className={`material-symbols-outlined text-[20px] text-gray-400 shrink-0 transition-transform ${expanded ? 'rotate-180' : ''}`}>expand_more</span>
+      <span className={`material-symbols-outlined text-[20px] text-gray-400 shrink-0 -mr-1 transition-transform ${expanded ? 'rotate-180' : ''}`}>expand_more</span>
+        </span>
+      </span>
     </button>
   );
 
   return (
-    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${expanded ? 'p-3' : 'px-3 py-2.5'}`}>
+    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${CARD_PAD}`}>
       {header}
       {focus && (
         <FocusToggle topic={focus.topic} marked={focus.marked} onToggle={focus.onToggle} />

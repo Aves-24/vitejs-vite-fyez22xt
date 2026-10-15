@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { readSessionFocus, orderedTracks, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
+import { CARD_SHAPE, CARD_PAD, EntryRow } from './TagebuchCards';
 
 // --- FOKUS ---
 // Karta „Twój fokus" na górze dziennika i pasek na Home (edycja: FocusModal). Logika
@@ -530,25 +531,24 @@ export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: F
   const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
   const dots = milestone.step !== undefined && !!milestone.goal;
   return (
-    <div className={`rounded-2xl border p-3 ${milestone.done ? 'bg-amber-50 border-amber-300' : 'bg-white border-amber-200'}`}>
-      <div className="flex items-center gap-1 text-[10px] font-black text-amber-800 mb-1">
-        <span className="material-symbols-outlined text-[14px]">{milestone.done ? 'emoji_events' : 'flag'}</span>
-        <span className="flex-1 truncate">
-          {t(milestone.done ? 'tagebuch.focusMilestoneDone' : 'tagebuch.focusMilestoneEnded')}
-          {milestone.fromCoach && ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}`}
-        </span>
-        {time && <span className="text-[10px] font-bold text-gray-400">{time}</span>}
-        {onDelete && (
+    <div className={`${CARD_SHAPE} ${milestone.fromCoach ? 'tb-focus-coach' : 'tb-focus'} ${CARD_PAD} ${milestone.done ? 'bg-amber-50 border-amber-300' : 'bg-white border-amber-200'}`}>
+      <EntryRow
+        icon={milestone.done ? 'emoji_events' : 'flag'}
+        iconCls="text-amber-600"
+        label={`${t(milestone.done ? 'tagebuch.focusMilestoneDone' : 'tagebuch.focusMilestoneEnded')}${milestone.fromCoach ? ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}` : ''}`}
+        labelCls="text-amber-800"
+        time={time}
+        extra={onDelete && (
           <button
             onClick={() => setConfirm(v => !v)}
-            className={`shrink-0 -mr-1 active:scale-90 transition-all ${confirm ? 'text-red-400' : 'text-amber-300 hover:text-red-400'}`}
+            className={`shrink-0 order-last -mr-1 active:scale-90 transition-all ${confirm ? 'text-red-400' : 'text-amber-300 hover:text-red-400'}`}
             aria-label={t('tagebuch.delete')}
           >
             <span className="material-symbols-outlined text-[16px]">delete</span>
           </button>
         )}
-      </div>
-      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(milestone, t)}</p>
+      >
+      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(milestone, t)}</p>
       {milestone.text && milestone.topic && (
         <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(milestone.topic, t)}</p>
       )}
@@ -567,6 +567,7 @@ export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: F
           </button>
         </div>
       )}
+      </EntryRow>
     </div>
   );
 }

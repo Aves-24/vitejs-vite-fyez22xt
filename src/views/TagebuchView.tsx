@@ -716,8 +716,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
   const { items, hasMore, cutoff, kinds } = useMemo(() => {
-    const sessionsFull = !sessionsDone;
-    const notesFull = !notesDone;
+    // Puste źródło (przed wczytaniem albo bez wpisów) niczego nie ucina.
+    const sessionsFull = !sessionsDone && sessions.length > 0;
+    const notesFull = !notesDone && notes.length > 0;
     let cutoff = 0;
     if (sessionsFull) cutoff = Math.max(cutoff, sessions[sessions.length - 1].ts);
     if (notesFull) cutoff = Math.max(cutoff, notes[notes.length - 1].ts);

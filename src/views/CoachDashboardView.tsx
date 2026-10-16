@@ -828,7 +828,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const newTrends = newTrainingStudents.map(newTrend).filter((c): c is FormCompare => !!c);
   const formUpCount = newTrends.filter(c => c.dir === 'up').length;
   const formDownCount = newTrends.length - formUpCount;
-  const formPct = (c: FormCompare) => `${c.pct > 0 ? '+' : '−'}${Math.round(Math.abs(c.pct) * 100)}%`;
+  // „poprzednio 298” — wynik poprzedniego treningu na tym samym dystansie;
+  // przy innej liczbie strzał z liczbą strzał (598/72), żeby było z czym porównać.
+  const formPrev = (c: FormCompare) => t('coachDashboard.formPrev', { prev: c.nowArrows === c.prevArrows ? c.prev : `${c.prev}/${c.prevArrows}` });
 
   // Zakładka UCZNIOWIE: zawsze wszyscy (grupy żyją w zakładce GRUPY),
   // ewentualnie zawężeni do nieaktywnych z sekcji u góry.
@@ -1497,7 +1499,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
                       {' · '}
                       <span className="material-symbols-outlined text-[12px] align-[-2px]">{TREND_ICON[trend.dir]}</span>
-                      {formPct(trend)}
+                      {formPrev(trend)}
                     </span>
                   )}
                 </span>,

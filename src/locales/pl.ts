@@ -1475,7 +1475,7 @@ export const views = {
     journalPlaceholder: "Plan treningowy, uwagi lub link do YouTube...",
     journalAddBtn: "Dodaj Wpis",
     allStudents: "Wszyscy Uczniowie",
-    groupList: "Lista Grupy",
+    groupList: "Członkowie",
     noStudents: "Brak uczniów w tym widoku",
     newTraining: "Nowy trening",
     manageGroups: "Zarządzaj Grupami",

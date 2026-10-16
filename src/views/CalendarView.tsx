@@ -20,6 +20,7 @@ import {
 } from '../config/distances';
 import { EquipmentSetup } from '../config/equipmentSetups';
 import { topicLabel } from '../constants/trainingTopics';
+import { groupIcon } from '../constants/groupIcons';
 
 interface Event {
   id: string;
@@ -86,7 +87,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string}[]>([]);
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string}[]>([]);
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>([]);
 
@@ -1243,7 +1244,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                            }}
                            className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${allInGroup ? 'bg-rose-100 border-rose-400 text-rose-700' : someInGroup ? 'bg-rose-50 border-rose-200 text-rose-500' : 'bg-gray-50 border-transparent text-gray-400'}`}
                          >
-                           <span className="material-symbols-outlined text-[12px]">folder_shared</span>
+                           <span className="material-symbols-outlined text-[12px]">{groupIcon(group)}</span>
                            {group.name}
                          </button>
                        );

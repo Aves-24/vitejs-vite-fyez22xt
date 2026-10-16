@@ -1452,7 +1452,7 @@ export const views = {
     journalPlaceholder: "Training plan, notes or YouTube link...",
     journalAddBtn: "Add Entry",
     allStudents: "All Students",
-    groupList: "Group List",
+    groupList: "Members",
     noStudents: "No students in this view",
     newTraining: "New training",
     manageGroups: "Manage Groups",

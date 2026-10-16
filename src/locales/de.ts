@@ -1452,7 +1452,7 @@ export const views = {
     journalPlaceholder: "Trainingsplan, Notizen oder YouTube-Link...",
     journalAddBtn: "Eintrag hinzufügen",
     allStudents: "Alle Schüler",
-    groupList: "Gruppenliste",
+    groupList: "Mitglieder",
     noStudents: "Keine Schüler in dieser Ansicht",
     newTraining: "Neues Training",
     manageGroups: "Gruppen verwalten",

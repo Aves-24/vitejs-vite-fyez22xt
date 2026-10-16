@@ -14,7 +14,9 @@ import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import CoachStudentSheet from '../components/CoachStudentSheet';
-import GroupTopicPanel, { type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
+import GroupIconPicker from '../components/GroupIconPicker';
+import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
+import GroupTopicPanel,{ type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { dayKeyOf } from '../utils/focus';
 
@@ -269,7 +271,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // Zarządzanie Grupami i Dziennikiem
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string}[]>([]);
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string}[]>([]);
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
@@ -284,6 +286,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupIcon, setNewGroupIcon] = useState(DEFAULT_GROUP_ICON);
   const [managingGroupsFor, setManagingGroupsFor] = useState<string[] | null>(null);
 
   // Tryb wyboru grup (jak „Wybierz" u uczniów): jedna zaznaczona grupa,
@@ -295,6 +298,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
   const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupIcon, setEditGroupIcon] = useState(DEFAULT_GROUP_ICON);
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState<string | null>(null);
 
   // Ostatni wpis CoachLog per uczeń
@@ -915,7 +919,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || coachGroups.length >= 5) return;
-    const newGroup = { id: 'group_' + Date.now(), name: newGroupName.trim() };
+    const newGroup = { id: 'group_' + Date.now(), name: newGroupName.trim(), icon: newGroupIcon };
     const updatedGroups = [...coachGroups, newGroup];
     
     try {
@@ -923,6 +927,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setCoachGroups(updatedGroups);
       setIsCreatingGroup(false);
       setNewGroupName('');
+      setNewGroupIcon(DEFAULT_GROUP_ICON);
       // Nowa grupa od razu rozwinięta — trener zwykle chce dopisać uczniów.
       setActiveGroup(newGroup.id);
      
@@ -936,7 +941,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const handleEditGroup = async () => {
     if (!editingGroup || !editGroupName.trim()) return;
     const updatedGroups = coachGroups.map(g =>
-      g.id === editingGroup.id ? { ...g, name: editGroupName.trim() } : g
+      g.id === editingGroup.id ? { ...g, name: editGroupName.trim(), icon: editGroupIcon } : g
     );
     try {
       await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
@@ -1673,11 +1678,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             return (
               <div className="bg-[#0a3a2a] pl-3 pr-1.5 py-1.5 rounded-xl flex items-center gap-1.5 animate-fade-in">
                 <span className="flex-1 min-w-0 flex items-center gap-1 text-[11px] font-black text-white">
-                  <span className="material-symbols-outlined text-[16px] text-[#fed33e] shrink-0">folder_shared</span>
+                  <span className="material-symbols-outlined text-[16px] text-[#fed33e] shrink-0">{sel ? groupIcon(sel) : DEFAULT_GROUP_ICON}</span>
                   <span className={`truncate ${sel ? '' : 'text-white/50'}`}>{sel ? sel.name : t('coachDashboard.pickGroupHint')}</span>
                 </span>
                 <button
-                  onClick={() => { if (sel) { setEditingGroup(sel); setEditGroupName(sel.name); } }}
+                  onClick={() => { if (sel) { setEditingGroup(sel); setEditGroupName(sel.name); setEditGroupIcon(groupIcon(sel)); } }}
                   disabled={!sel}
                   aria-label={t('coachDashboard.editGroupBtn')}
                   title={t('coachDashboard.editGroupBtn')}
@@ -1733,7 +1738,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     </div>
                   ) : (
                     <div className="w-9 h-9 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-rose-600 text-[18px]">folder_shared</span>
+                      <span className="material-symbols-outlined text-rose-600 text-[18px]">{groupIcon(group)}</span>
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
@@ -1927,8 +1932,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                value={newGroupName}
                onChange={e => setNewGroupName(e.target.value)}
                maxLength={15}
-               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-6 text-[#333]"
+               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-4 text-[#333]"
              />
+             <GroupIconPicker value={newGroupIcon} onChange={setNewGroupIcon} />
              <div className="flex gap-2">
                <button onClick={() => setIsCreatingGroup(false)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
                <button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.save')}</button>
@@ -2132,8 +2138,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               value={editGroupName}
               onChange={e => setEditGroupName(e.target.value)}
               maxLength={15}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-6 text-[#333]"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-4 text-[#333]"
             />
+            <GroupIconPicker value={editGroupIcon} onChange={setEditGroupIcon} />
             <div className="flex gap-2">
               <button onClick={() => setEditingGroup(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
               <button onClick={handleEditGroup} disabled={!editGroupName.trim()} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.editGroupBtn')}</button>

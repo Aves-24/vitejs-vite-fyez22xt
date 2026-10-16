@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, updateDoc, arrayUnion, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, updateDoc, arrayUnion, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
@@ -518,16 +518,32 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const sessionsRef = collection(db, `users/${userId}/sessions`);
 
       try {
-        // Jedno zapytanie — cache 30 min, działa też offline. Pobieramy od
-        // wcześniejszej z dwóch granic: początek roku (liczniki) lub 12 tyg.
-        // wstecz (słupki QuickStats), by w styczniu nie zgubić grudnia.
+        // Cache 2h (czyszczony po nowym treningu). 12 tyg. wstecz pokrywa też
+        // grudzień w styczniu (słupki QuickStats).
         const startOfYearMs = startOfYear.getTime();
         const twelveWeeksAgoMs = now.getTime() - 84 * 24 * 60 * 60 * 1000;
-        const fetchFromMs = Math.min(startOfYearMs, twelveWeeksAgoMs);
-        const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromDate(new Date(fetchFromMs)))));
+        // Dokumenty czytamy tylko z okna 12 tyg. (słupki, dzień, miesiąc,
+        // poprzedni miesiąc, 14 dni). Reszta roku do licznika Jahr idzie sumą
+        // po stronie serwera — 1 odczyt zamiast każdej sesji od stycznia.
+        const snapYear = await getDocs(query(sessionsRef, where('timestamp', '>=', Timestamp.fromMillis(twelveWeeksAgoMs))));
         if (cancelled) return;
+        let yearBeforeWindow = 0;
+        let yearComplete = true;
+        if (startOfYearMs < twelveWeeksAgoMs) {
+          try {
+            const agg = await getAggregateFromServer(query(sessionsRef,
+              where('timestamp', '>=', Timestamp.fromMillis(startOfYearMs)),
+              where('timestamp', '<', Timestamp.fromMillis(twelveWeeksAgoMs)),
+            ), { arrows: sum('arrows') });
+            yearBeforeWindow = agg.data().arrows || 0;
+          } catch {
+            // Offline — licznik roczny będzie niepełny, więc nie zapisujemy cache.
+            yearComplete = false;
+          }
+          if (cancelled) return;
+        }
 
-        let d = 0, m = 0, pm = 0, y = 0, s14 = 0, a14 = 0;
+        let d = 0, m = 0, pm = 0, y = yearBeforeWindow, s14 = 0, a14 = 0;
         // Miesiąc — sumy na sesję (tylko sesje z wynikiem, bez technicznych)
         let monthCount = 0, monthArrows = 0, monthScore = 0;
 
@@ -690,6 +706,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           streak++;
           checkWeek -= 7 * 24 * 60 * 60 * 1000;
         }
+        // Seria sięga za okno 12 tyg. — starsze tygodnie sprawdzamy licznikiem
+        // (1 odczyt na tydzień, po 8 naraz) zamiast czytać same sesje.
+        const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+        try {
+          while (checkWeek < twelveWeeksAgoMs && streak < 260 && !cancelled) {
+            const weeks = Array.from({ length: 8 }, (_, i) => checkWeek - i * WEEK_MS);
+            const counts = await Promise.all(weeks.map(w => getCountFromServer(query(sessionsRef,
+              where('timestamp', '>=', Timestamp.fromMillis(w)),
+              where('timestamp', '<', Timestamp.fromMillis(w + WEEK_MS)),
+            ))));
+            const firstEmpty = counts.findIndex(c => c.data().count === 0);
+            streak += firstEmpty === -1 ? weeks.length : firstEmpty;
+            if (firstEmpty !== -1) break;
+            checkWeek -= weeks.length * WEEK_MS;
+          }
+        } catch {
+          yearComplete = false; // offline — seria może być za krótka
+        }
+        if (cancelled) return;
 
         setDailyTotal(d);
         setMonthlyTotal(m);
@@ -710,7 +745,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setWeeklySessionAvgByDist(weekSessionAvgByDist);
         setWeekStreak(streak);
 
-        cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
+        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }

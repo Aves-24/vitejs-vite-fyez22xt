@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, getDocs, setDoc, deleteDoc, deleteField, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, startAfter, getDocs, setDoc, deleteDoc, deleteField, serverTimestamp, Timestamp, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
 import { guestExpiryFields } from '../utils/guestMode';
-import { readAllPrivateSessionNotes } from '../utils/privateSessionNote';
+import { readPrivateSessionNotes } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
@@ -37,7 +37,9 @@ import {
 // o tym samym refId. Otwarcie dziennika oznacza je jako przeczytane, a etykieta
 // zostaje do końca tej wizyty — jeden system zamiast osobnego odhaczania.
 
-const PAGE = 50;
+// Strona osi czasu. Kolejne strony doczytujemy kursorem przy przewijaniu,
+// a nie od nowa całą listą — koszt otwarcia nie rośnie z historią.
+const PAGE = 20;
 // Znacznik usuniętego wpisu fokusu w privateNotes (patrz deleteMilestone).
 const MILESTONE_HIDDEN = 'focusMilestoneHidden';
 const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
@@ -190,7 +192,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [notes, setNotes] = useState<TbPrivateNote[]>([]);
   const [coachEntries, setCoachEntries] = useState<TbCoachEntry[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingEvent[]>([]);
-  const [pageSize, setPageSize] = useState(PAGE);
+  // Źródło wyczerpane = ostatnia strona przyszła niepełna.
+  const [sessionsDone, setSessionsDone] = useState(false);
+  const [notesDone, setNotesDone] = useState(false);
+  const sessionsCursor = useRef<QueryDocumentSnapshot | null>(null);
+  const notesCursor = useRef<QueryDocumentSnapshot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -357,18 +363,32 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     })();
   }, [userId]);
 
-  // --- TRENINGI + NOTATKI (stronicowane) ---
-  useEffect(() => {
-    if (!userId) { setIsLoading(false); return; }
-    (async () => {
-      try {
-        const [sSnap, nSnap, privNotes] = await Promise.all([
-          getDocs(query(collection(db, `users/${userId}/sessions`), orderBy('timestamp', 'desc'), limit(pageSize))),
-          getDocs(query(collection(db, `users/${userId}/privateNotes`), orderBy('createdAt', 'desc'), limit(pageSize))),
-          // [RODO C36] Tekst prywatnych notatek treningowych — poza sesją.
-          readAllPrivateSessionNotes(userId).catch(() => new Map<string, string>()),
-        ]);
-        setSessions(sSnap.docs.map(d => {
+  // --- TRENINGI + NOTATKI (stronicowane kursorem) ---
+  // first = od nowa (otwarcie), inaczej następna strona dopisywana na koniec.
+  // Wyczerpane źródło nie jest już pytane.
+  const loadPage = useCallback(async (first: boolean) => {
+    if (!userId) return;
+    const sessionsCol = collection(db, `users/${userId}/sessions`);
+    const notesCol = collection(db, `users/${userId}/privateNotes`);
+    const sCur = first ? null : sessionsCursor.current;
+    const nCur = first ? null : notesCursor.current;
+    const [sSnap, nSnap] = await Promise.all([
+      !first && sessionsDone ? null : getDocs(sCur
+        ? query(sessionsCol, orderBy('timestamp', 'desc'), startAfter(sCur), limit(PAGE))
+        : query(sessionsCol, orderBy('timestamp', 'desc'), limit(PAGE))),
+      !first && notesDone ? null : getDocs(nCur
+        ? query(notesCol, orderBy('createdAt', 'desc'), startAfter(nCur), limit(PAGE))
+        : query(notesCol, orderBy('createdAt', 'desc'), limit(PAGE))),
+    ]);
+    // [RODO C36] Tekst prywatnych notatek treningowych — poza sesją; czytamy
+    // tylko te, których sesje są na tej stronie.
+    const privIds = sSnap ? sSnap.docs.filter(d => d.data().isNotePublic === false).map(d => d.id) : [];
+    const privNotes = await readPrivateSessionNotes(userId, privIds).catch(() => new Map<string, string>());
+
+    if (sSnap) {
+      if (sSnap.docs.length) sessionsCursor.current = sSnap.docs[sSnap.docs.length - 1];
+      setSessionsDone(sSnap.docs.length < PAGE);
+      const page: TbSession[] = sSnap.docs.map(d => {
           const data = d.data();
           return {
             id: d.id,
@@ -395,9 +415,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
           };
-        }));
-        // Znacznik usuniętego wpisu fokusu (deleteMilestone) — nie pokazujemy.
-        setNotes(nSnap.docs.filter(d => d.data().kind !== MILESTONE_HIDDEN).map(d => {
+      });
+      setSessions(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
+    }
+    if (nSnap) {
+      if (nSnap.docs.length) notesCursor.current = nSnap.docs[nSnap.docs.length - 1];
+      setNotesDone(nSnap.docs.length < PAGE);
+      // Znacznik usuniętego wpisu fokusu (deleteMilestone) — nie pokazujemy.
+      const page: TbPrivateNote[] = nSnap.docs.filter(d => d.data().kind !== MILESTONE_HIDDEN).map(d => {
           const data = d.data();
           return {
             id: d.id,
@@ -407,14 +432,41 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ts: toMs(data.createdAt) || Date.now(),
             milestone: readFocusMilestone(data) || undefined,
           };
-        }));
-      } catch (e) {
-        console.error('Tagebuch: błąd pobierania osi czasu', e);
-      }
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    })();
-  }, [userId, pageSize]);
+      });
+      setNotes(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
+    }
+  }, [userId, sessionsDone, notesDone]);
+
+  const loadPageRef = useRef(loadPage);
+  loadPageRef.current = loadPage;
+
+  useEffect(() => {
+    if (!userId) { setIsLoading(false); return; }
+    loadPageRef.current(true)
+      .catch(e => console.error('Tagebuch: błąd pobierania osi czasu', e))
+      .finally(() => setIsLoading(false));
+  }, [userId]);
+
+  const loadMore = useCallback(() => {
+    if (isLoadingMore) return;
+    setIsLoadingMore(true);
+    loadPageRef.current(false)
+      .catch(e => console.error('Tagebuch: błąd doczytywania osi czasu', e))
+      .finally(() => setIsLoadingMore(false));
+  }, [isLoadingMore]);
+
+  // Doczytywanie przy przewijaniu: przycisk „więcej” zbliża się do ekranu →
+  // kolejna strona. Kliknięcie zostaje jako zapas.
+  const loadMoreRef = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el || isLoading || isLoadingMore || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(entries => {
+      if (entries.some(e => e.isIntersecting)) loadMore();
+    }, { rootMargin: '300px' });
+    io.observe(el);
+    return () => io.disconnect();
+  });
 
   // --- ZAPIS / USUWANIE ---
   const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string) => {
@@ -664,8 +716,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
   const { items, hasMore, cutoff, kinds } = useMemo(() => {
-    const sessionsFull = sessions.length >= pageSize;
-    const notesFull = notes.length >= pageSize;
+    const sessionsFull = !sessionsDone;
+    const notesFull = !notesDone;
     let cutoff = 0;
     if (sessionsFull) cutoff = Math.max(cutoff, sessions[sessions.length - 1].ts);
     if (notesFull) cutoff = Math.max(cutoff, notes[notes.length - 1].ts);
@@ -709,7 +761,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
     return { items: list, hasMore: sessionsFull || notesFull, cutoff, kinds };
-  }, [sessions, notes, coachEntries, ledTrainings, filter, topic, pageSize]);
+  }, [sessions, notes, coachEntries, ledTrainings, filter, topic, sessionsDone, notesDone]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -726,8 +778,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Rekord można ogłosić tylko, gdy wczytana jest cała historia treningów —
   // inaczej odznaka mówi uczciwie „najlepszy z ostatnich N".
   const insights = useMemo(
-    () => computeInsights(sessions, sessions.length < pageSize),
-    [sessions, pageSize],
+    () => computeInsights(sessions, sessionsDone),
+    [sessions, sessionsDone],
   );
 
   // Tygodnie (od poniedziałku). Podsumowanie liczy wszystkie treningi tygodnia,
@@ -1197,7 +1249,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
         {!isLoading && hasMore && (
           <button
-            onClick={() => { setIsLoadingMore(true); setPageSize(p => p + PAGE); }}
+            ref={loadMoreRef}
+            onClick={loadMore}
             disabled={isLoadingMore}
             className="w-full py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest bg-white border border-gray-200 rounded-2xl active:scale-[0.99] transition-all disabled:opacity-50"
           >

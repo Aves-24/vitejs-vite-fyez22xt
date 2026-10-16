@@ -73,7 +73,14 @@ interface CalendarViewProps {
 
 export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate }: CalendarViewProps) {
   const { t, i18n: i18nCore } = useTranslation(); 
-  const [events, setEvents] = useState<Event[]>([]);
+  // Nasłuch trzyma tylko ostatnie 60 dni i przyszłość. PRO widzi do 730 dni
+  // wstecz — starsze miesiące dociągamy dopiero, gdy kalendarz tam zajdzie.
+  const [liveEvents, setEvents] = useState<Event[]>([]);
+  const [olderEvents, setOlderEvents] = useState<Event[]>([]);
+  const events = useMemo(() => {
+    const liveIds = new Set(liveEvents.map(e => e.id));
+    return [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
+  }, [liveEvents, olderEvents]);
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
@@ -171,6 +178,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const todayObj = new Date();
   const todayStr = todayObj.toISOString().split('T')[0];
+  const LIVE_CUTOFF = new Date(todayObj.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   useEffect(() => {
     if (!userId) return; 
@@ -179,13 +187,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     let isMounted = true; // <--- DODANE: Zabezpieczenie przed asynchronicznym duchem
 
     const setupCalendarData = async () => {
-      let userIsPremium = false;
       try {
         const profileSnap = await getDoc(doc(db, 'users', userId));
         if (profileSnap.exists() && isMounted) {
           const data = profileSnap.data();
           // Trial i prezent PRO też otwierają dłuższą historię (utils/proAccess).
-          userIsPremium = hasActivePro(data);
+          const userIsPremium = hasActivePro(data);
           setUserSightMarks(data.userDistances || []);
           setUserSetups(Array.isArray(data.setups) ? data.setups : []);
           setUserBowType(data.bowType ?? null);
@@ -223,13 +230,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       // Jeśli użytkownik wyszedł w trakcie ładowania profilu, przerywamy i nie stawiamy podsłuchu!
       if (!isMounted) return; 
 
-      const cutoffDateObj = new Date(todayObj);
-      if (userIsPremium) {
-        cutoffDateObj.setDate(cutoffDateObj.getDate() - 730); 
-      } else {
-        cutoffDateObj.setDate(cutoffDateObj.getDate() - 60); 
-      }
-      const cutoffStr = cutoffDateObj.toISOString().split('T')[0];
+      const cutoffStr = LIVE_CUTOFF;
 
       const q = query(
         collection(db, 'users', userId, 'tournaments'), 
@@ -262,6 +263,31 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       if (unsubscribeTodo) unsubscribeTodo();
     };
   }, [userId]);
+
+  // [PRO] Starsze miesiące (61–730 dni) — jednorazowy odczyt przy przewinięciu
+  // kalendarza wstecz, dopisywany do `olderEvents`.
+  const olderFromRef = useRef(LIVE_CUTOFF);
+  useEffect(() => {
+    if (!userId || !isPremium) return;
+    const monthStart = formatDateStr(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
+    const proLimitObj = new Date();
+    proLimitObj.setDate(proLimitObj.getDate() - 730);
+    const from = [monthStart, proLimitObj.toISOString().split('T')[0]].sort()[1];
+    const to = olderFromRef.current;
+    if (from >= to) return;
+    olderFromRef.current = from;
+    getDocs(query(
+      collection(db, 'users', userId, 'tournaments'),
+      where('date', '>=', from),
+      where('date', '<', to),
+      orderBy('date', 'asc'),
+    ))
+      .then(snap => {
+        const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Event[];
+        setOlderEvents(prev => [...loaded, ...prev]);
+      })
+      .catch(() => { olderFromRef.current = to; });
+  }, [userId, isPremium, calendarDate]);
 
   // Lista dotychczasowych imprez pod podpowiedzi — dociągana raz, dopiero gdy
   // otworzysz formularz zawodów. Sięga 5 lat wstecz, bo `events` trzyma tylko
@@ -483,6 +509,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     try {
       if (editingEventId) {
         await updateDoc(doc(db, 'users', userId, 'tournaments', editingEventId), eventData as any);
+        // Starszy wpis nie siedzi w nasłuchu — poprawiamy kopię lokalną.
+        setOlderEvents(prev => prev.map(e => e.id === editingEventId ? { ...e, ...(eventData as any) } : e));
         // Mirror update do uczniów
         if (newCategory === 'Trener') {
           await updateMirroredEvent(editingEventId, eventData as any, resolvedStudentIds, userId);
@@ -522,6 +550,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           await deleteMirroredEvent(showDeleteConfirm, studentIds);
         }
         await deleteDoc(doc(db, 'users', userId, 'tournaments', showDeleteConfirm));
+        setOlderEvents(prev => prev.filter(e => e.id !== showDeleteConfirm));
         localStorage.removeItem(`grotX_tournaments_${userId}`);
         localStorage.removeItem(`grotX_todos_${userId}`);
         setShowDeleteConfirm(null);

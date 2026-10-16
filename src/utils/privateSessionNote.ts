@@ -1,7 +1,7 @@
 import { db } from '../firebase';
 import {
   collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc,
-  where, serverTimestamp,
+  where, serverTimestamp, documentId,
 } from 'firebase/firestore';
 import { guestExpiryFields } from './guestMode';
 
@@ -43,10 +43,17 @@ export async function readPrivateSessionNote(uid: string, sessionId: string): Pr
   return snap.exists() ? (snap.data().note || '') : '';
 }
 
-// Wszystkie prywatne notatki właściciela: sessionId → tekst.
-export async function readAllPrivateSessionNotes(uid: string): Promise<Map<string, string>> {
-  const snap = await getDocs(collection(db, `users/${uid}/${SESSION_NOTES_COL}`));
-  return new Map(snap.docs.map(d => [d.id, (d.data().note as string) || '']));
+// Prywatne notatki do podanych sesji: sessionId → tekst. Tylko wskazane id
+// (zapytanie 'in' przyjmuje do 30 wartości), żeby dziennik nie czytał całej
+// historii przy każdym otwarciu.
+export async function readPrivateSessionNotes(uid: string, sessionIds: string[]): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const col = collection(db, `users/${uid}/${SESSION_NOTES_COL}`);
+  const chunks: string[][] = [];
+  for (let i = 0; i < sessionIds.length; i += 30) chunks.push(sessionIds.slice(i, i + 30));
+  const snaps = await Promise.all(chunks.map(ids => getDocs(query(col, where(documentId(), 'in', ids)))));
+  snaps.forEach(snap => snap.docs.forEach(d => out.set(d.id, (d.data().note as string) || '')));
+  return out;
 }
 
 // Jednorazowo przenosi stare prywatne notatki z `sessions.note`.

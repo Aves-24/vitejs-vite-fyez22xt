@@ -691,6 +691,8 @@ export const views = {
     trainerAllStudents: "All",
     trainerNobody: "Nobody",
     trainerSelectedCount: "{{n}} selected",
+    openGroupTopicLabel: "Group training topic",
+    openGroupTopic: "Open group {{name}} in the coach panel",
     formTrainerName: "Description or topic",
     collapseTrainer: "Collapse coach list",
     noEvents: "No upcoming events",

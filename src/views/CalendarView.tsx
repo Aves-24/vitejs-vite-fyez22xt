@@ -43,6 +43,8 @@ interface Event {
   todo?: boolean;
   wasATodo?: boolean;
   isMirrored?: boolean;
+  /** [TEMAT TRENINGU] Termin założony z panelu grupy — id grupy trenera. */
+  trainingTopicGroupId?: string;
 }
 
 interface CoachStudent {
@@ -1491,6 +1493,26 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       </button>
                   </div>
                 );
+             })()}
+
+             {/* Termin tematu treningu grupy → prosto do tej grupy w panelu trenera (user 2026-10-16). */}
+             {viewingEvent.trainingTopicGroupId && !viewingEvent.isMirrored && (() => {
+               const g = coachGroups.find(x => x.id === viewingEvent.trainingTopicGroupId);
+               return g ? (
+                 <button
+                   onClick={() => { closeViewingModal(); onNavigate?.('COACH', 'GROUP', g.id); }}
+                   className="w-full mb-3 flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-3 text-left active:scale-[0.98] transition-all"
+                 >
+                   <span className="w-8 h-8 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0">
+                     <span className="material-symbols-outlined text-[17px]">{groupIcon(g)}</span>
+                   </span>
+                   <span className="flex-1 min-w-0">
+                     <span className="block text-[9px] font-black uppercase tracking-widest text-rose-500">{t('calendar.openGroupTopicLabel')}</span>
+                     <span className="block text-[12px] font-black text-[#0a3a2a] truncate">{t('calendar.openGroupTopic', { name: g.name })}</span>
+                   </span>
+                   <span className="material-symbols-outlined text-rose-500 text-[20px] shrink-0">chevron_right</span>
+                 </button>
+               ) : null;
              })()}
 
              <div className="bg-gray-50 border border-gray-100 rounded-[20px] p-4 mb-5">

@@ -123,6 +123,8 @@ export default function App() {
 
   const [activeBattleId, setActiveBattleId] = useState<string | null>(null);
   const [pendingMessageSenderId, setPendingMessageSenderId] = useState<string | null>(null);
+  // Termin tematu treningu w kalendarzu → panel trenera z rozwiniętą grupą.
+  const [pendingOpenGroupId, setPendingOpenGroupId] = useState<string | null>(null);
   const [pendingMyCoachTab, setPendingMyCoachTab] = useState<string | null>(null);
   const [autoStartWizard, setAutoStartWizard] = useState<boolean>(false);
   const [hasActiveSession, setHasActiveSession] = useState<boolean>(false);
@@ -410,6 +412,8 @@ export default function App() {
     } else if (view === 'CALENDAR') {
       setFocusedEventId(extraData || null);
       setOpenNewTrainerEvent(tab === 'NEW_TRAINER_EVENT');
+    } else if (view === 'COACH' && tab === 'GROUP') {
+      setPendingOpenGroupId(extraData || null);
     } else if (view === 'MY_COACH' || view === 'COACH') {
       setPendingMessageSenderId(extraData || null);
       if (view === 'MY_COACH') {
@@ -699,7 +703,7 @@ export default function App() {
         {currentView === 'ADMIN' && ['info@aves-24.de', 'rafal.woropaj@googlemail.com'].includes(user?.email || '') && (
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
-        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} />}
+        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}

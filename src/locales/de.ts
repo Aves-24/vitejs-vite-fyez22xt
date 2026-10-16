@@ -691,6 +691,8 @@ export const views = {
     trainerAllStudents: "Alle",
     trainerNobody: "Niemand",
     trainerSelectedCount: "{{n}} ausgewählt",
+    openGroupTopicLabel: "Trainingsthema der Gruppe",
+    openGroupTopic: "Gruppe {{name}} im Trainerbereich öffnen",
     formTrainerName: "Beschreibung oder Thema",
     collapseTrainer: "Trainerliste einklappen",
     noEvents: "Keine kommenden Termine",

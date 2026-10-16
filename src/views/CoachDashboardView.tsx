@@ -225,9 +225,12 @@ interface CoachDashboardViewProps {
   onNavigate: (view: string, tab?: string, extraData?: string, studentId?: string) => void;
   pendingOpenStudentId?: string | null;
   onClearPending?: () => void;
+  /** Z terminu tematu w kalendarzu: zakładka Grupy z tą grupą rozwiniętą. */
+  pendingOpenGroupId?: string | null;
+  onClearPendingGroup?: () => void;
 }
 
-export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending }: CoachDashboardViewProps) {
+export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup }: CoachDashboardViewProps) {
   const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
@@ -362,6 +365,20 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       onClearPending?.();
     }
   }, [pendingOpenStudentId, students]);
+
+  // Z kalendarza (termin tematu treningu): Grupy + ta grupa rozwinięta, przewinięta do widoku.
+  useEffect(() => {
+    if (!pendingOpenGroupId || coachGroups.length === 0) return;
+    if (coachGroups.some(g => g.id === pendingOpenGroupId)) {
+      setViewMode('groups');
+      setActiveGroup(pendingOpenGroupId);
+      setIsGroupListOpen(false);
+      const id = pendingOpenGroupId;
+      setTimeout(() => document.getElementById(`coach-group-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+    }
+    onClearPendingGroup?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOpenGroupId, coachGroups]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1715,7 +1732,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             return (
               <div
                 key={group.id}
-                className={`bg-white rounded-2xl shadow-sm border transition-all ${
+                id={`coach-group-${group.id}`}
+                className={`bg-white rounded-2xl shadow-sm border transition-all scroll-mt-4 ${
                   isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-rose-300 ring-1 ring-rose-200' : 'border-rose-100'
                 }`}
               >

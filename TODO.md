@@ -5,6 +5,73 @@
 
 ---
 
+## KRYTYCZNA OCENA + BADANIE UX — 2026-10-16 (do omówienia, NIC jeszcze nie zrobione)
+
+User chce najpierw ROZMAWIAĆ, nie kodować. Na start następnej sesji: przejść
+te punkty razem z userem i ustalić kolejność.
+
+### Ustalenia z rozmowy
+- **AI (C18):** wyłączyć wszędzie jedną flagą (`AI_ENABLED=false`), wrócić na
+  samym końcu. Panel `CoachAIPanel` jest w ScoringView i StatsView — to mock
+  (setTimeout 2,5 s + szablon `coach.mockAdvice`).
+- **Battle / World / Ranking:** pomysł usera — PRZYCIEMNIĆ z kłódką „wkrótce”
+  zamiast ukrywać; klik nie otwiera pustego widoku.
+- **Cel:** od otwarcia appki do pierwszej strzały max 3 s.
+- **Pusty start:** user OK z tym, że appka zapełnia się stopniowo; uwaga Claude:
+  pierwsza zapisana sesja powinna od razu coś pokazać (nagroda pierwszego dnia).
+- **Panel trenera:** do przemyślenia układ i czytelność. Zacząć od pytania
+  „co trener chce wiedzieć w hali w 5 s?” — user ma spisać swoje 3 pytania.
+- **Płatności:** po Blaze. **RODO:** jeszcze raz sprawdzić, co trener widzi
+  u ucznia <16 vs polityka prywatności.
+- **Brak testów z prawdziwym trenerem i grupą** — zaplanować 2 tygodnie z grupą.
+- Napis pod logo („CARPORT” DE / „Command Centre” EN / „Panel Dowodzenia” PL,
+  klucz `commander`) — user: USUNĄĆ we wszystkich językach.
+
+### Ryzyka techniczne — plan „na 100%” (user: najważniejsze)
+Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
+1. Vitest + testy czystej logiki: punktacja, sumy, statystyki, tarcze
+   (dmuchawka X=10), forma, liczniki roczne — na start 50–100 testów.
+2. CI jako BRAMKA (lint + build + testy logiki + testy reguł), nie tylko info.
+3. Firebase Hosting preview channel przed prod — zmienia tryb „od razu main”,
+   decyzja usera.
+4. Kilka E2E (Playwright, tryb gościa): start → trening → 6 strzał → zapis →
+   dziennik.
+5. Monitoring błędów (np. Sentry, darmowy plan) + wpis w polityce prywatności.
+
+### Badanie UX w trybie gościa (prod, ekran 375×812)
+Droga do strzały: nowy gość 3 kliknięcia + imię; powracający 2 kliknięcia. ✅
+Błędy:
+1. StatsView: panel AI podpisany **„KI-GEMINI-ANALYSE”** (fałszywe AI z cudzą
+   marką); placeholder notatki „Der KI-Trainer berücksichtigt das!”;
+   w Ustawieniach „KI-Profil-Assistent” (to zwykły kreator).
+2. Polskie napisy w DE w eksporcie statystyk: „Plik PDF”, „Dane CSV”,
+   „EKSPORTUJ”.
+3. Logowanie: „Gast-Daten werden nach 24 Stunden automatisch gelöscht” +
+   pasek „23 h 58 min” — nieprawda bez TTL (Blaze). RODO.
+4. Domyślnie 18 m + tarcza 122 cm (na 18 m zwykle 40 cm); karta sesji
+   w statystykach pokazuje „3-SPOT” mimo wybranej 122 cm — sprawdzić zapis.
+5. „Du hast 1 von 12 Passen geschossen” — 12 serii założone bez wyboru usera.
+Czytelność:
+6. Home: „6 MONAT”, „8.8 x̄₁₄”, „WHITE I · 94 XP” bez podpisów.
+7. Home: duży niebieski kafel „Multiplayer Arena – Keine aktiven” (pusty pokój).
+8. Przycisk „Statistiken aktualisieren” z licznikiem — ręczne odświeżanie.
+9. Dolny pasek: podpisane tylko Startseite i Training.
+10. Scoring: puste P2–P6 pokazują sumę „53”; liczby zdublowane w 2 pudełkach;
+    „Notiz mit Trainer teilen” zaznaczone u gościa bez trenera;
+    „Abbrechen” tak duży jak „Speichern”.
+11. Przygotowanie: licznik strzał (+6/+1/−1/Speichern) przed treningiem
+    niezrozumiały.
+12. Ustawienia: 8 zakładek w 2 rzędach, długi formularz profilu na start.
+Wydajność:
+13. StatsView: pasek dni renderuje >1000 dni (1107 przycisków na stronie).
+Dobre: dziennik (najlepszy ekran), szybki start bez konta, przyciski punktów.
+
+Propozycja kolejności: 1–3 → usunąć `commander` + podpisy Home (6–7) →
+4–5 → wydajność paska dni. Panel trenera NIEzbadany (wymaga konta usera).
+Na prod zostało konto gościa „UX Test” z 1 treningiem (bez TTL nie zniknie).
+
+---
+
 ## 🎯 Completed Tasks (Priorytet: WYSOKI)
 
 ### ✅ 1. Firebase Deploy Rules

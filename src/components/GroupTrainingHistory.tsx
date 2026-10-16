@@ -22,13 +22,14 @@ const PAGE = 5;
 interface LooseNote { id: string; text: string; timestamp: number }
 interface HistoryDoc { notes?: Record<string, string>; loose?: LooseNote[] }
 
-export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated }: {
+export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent }: {
   groupId: string;
   coachId: string;
   members: any[];
   topics: GroupTopicsByDay;
   legacyNotes: LooseNote[];
   onLegacyMigrated: () => void;
+  onOpenStudent?: (studentId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -151,7 +152,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               {isOpen && (
                 <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
                   <TopicLinks links={gt.links} tone="coach" small />
-                  <TopicMemberList members={members} gt={gt} status={status[day] || {}} />
+                  <TopicMemberList members={members} gt={gt} status={status[day] || {}} onOpenStudent={onOpenStudent} />
                   <textarea
                     value={draft}
                     onChange={e => setDraft(e.target.value.slice(0, NOTE_MAX))}

@@ -55,12 +55,13 @@ export async function loadTopicStatus(gt: GroupTopic): Promise<Record<string, Me
 }
 
 /** Lista uczniów ze statusem przy temacie (panel tematu i historia treningów). */
-export function TopicMemberList({ members, gt, status, onAssign, saving }: {
+export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenStudent }: {
   members: any[];
   gt: GroupTopic;
   status: Record<string, MemberStatus>;
   onAssign?: (s: any) => void;   // tylko otwarty temat: dopisz ucznia, który doszedł później
   saving?: boolean;
+  onOpenStudent?: (studentId: string) => void; // klik w imię → karta ucznia (jak w liście uczniów)
 }) {
   const { t } = useTranslation();
   return (
@@ -70,7 +71,18 @@ export function TopicMemberList({ members, gt, status, onAssign, saving }: {
         const st = status[s.id];
         return (
           <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
-            <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
+            {onOpenStudent ? (
+              <button
+                type="button"
+                onClick={() => onOpenStudent(s.id)}
+                className="flex-1 min-w-0 flex items-center gap-0.5 text-left text-[11px] font-bold text-[#0a3a2a] active:opacity-60 transition-opacity"
+              >
+                <span className="truncate">{name}</span>
+                <span className="material-symbols-outlined text-gray-300 text-[14px] shrink-0">chevron_right</span>
+              </button>
+            ) : (
+              <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
+            )}
             {!gt.entryIds[s.id] ? (
               onAssign ? (
                 <button

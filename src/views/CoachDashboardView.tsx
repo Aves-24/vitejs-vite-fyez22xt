@@ -1832,6 +1832,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       topics={coachGroupTopics[group.id] || {}}
                       legacyNotes={groupNotes[group.id] || EMPTY_NOTES}
                       onLegacyMigrated={() => handleLegacyNotesMigrated(group.id)}
+                      onOpenStudent={setSheetStudentId}
                     />
 
                     <CollapsibleSection

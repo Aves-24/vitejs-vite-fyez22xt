@@ -107,6 +107,9 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
       open={open}
       onToggle={() => setOpen(o => !o)}
       summary={t('coachDashboard.historyCount', { count: items.length })}
+      className="bg-rose-200 rounded-xl p-1.5"
+      headerClassName="bg-transparent"
+      labelClassName="text-rose-800"
     >
       <div className="space-y-1.5">
         <p className="flex items-center gap-1 text-[9px] font-bold text-[#0a3a2a] ml-1">

@@ -257,16 +257,18 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1.5 ml-2';
+  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1.5 ml-1';
   const btn = 'flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border active:scale-95 transition-all disabled:opacity-40';
   const modalBase = { text: text.trim().slice(0, FOCUS_TEXT_MAX), topic: pickedTopics[0] || '' };
 
   return (
     <div className="space-y-2">
+      {/* Odcienie różu od jasnego (temat) do ciemnego (lista grupy) — user 2026-10-16. */}
+      <div className="space-y-2 bg-rose-50 border border-rose-100 rounded-xl p-2.5">
       <p className={sectionLabel}>{t('coachDashboard.groupTopicLabel')}</p>
 
       {todayTopic?.closedAt && (
-        <p className="flex items-center gap-1 text-[10px] font-bold text-[#0a3a2a] ml-2">
+        <p className="flex items-center gap-1 text-[10px] font-bold text-[#0a3a2a] ml-1">
           <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
           {t('coachDashboard.groupTopicClosedToday')}
         </p>
@@ -297,8 +299,16 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         </div>
       )}
 
+      {/* Przypomnienie, co „Powtórz” skopiuje — bez wchodzenia w historię. */}
+      {!todayTopic && last && (
+        <p className="text-[10px] font-bold text-[#0a3a2a] leading-snug ml-1 line-clamp-2 break-words">
+          <span className="text-[9px] font-black uppercase tracking-wide text-rose-500">{t('coachDashboard.groupTopicLast', { date: dayLabel(last.day) })}: </span>
+          {focusTitle(last, t)}
+        </p>
+      )}
+
       {shown && (
-        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-rose-50 border-rose-200' : 'bg-white border-gray-200'}`}>
+        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-white border-rose-200' : 'bg-white border-gray-200'}`}>
           <div className="flex items-start gap-2">
             <span className={`material-symbols-outlined text-[18px] shrink-0 mt-px ${open ? 'text-rose-600' : 'text-gray-400'}`}>sports</span>
             <div className="flex-1 min-w-0">
@@ -338,15 +348,17 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           )}
         </div>
       )}
+      </div>
 
       {/* Zaplanowane na kolejne dni — uczniowie zobaczą je dopiero w ich dniu. */}
+      <div className="space-y-1 bg-rose-100 border border-rose-200 rounded-xl p-2.5">
       {upcoming.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-2">{t('coachDashboard.groupTopicPlanned')}</p>
+          <p className="text-[9px] font-black uppercase tracking-widest text-rose-600 ml-1">{t('coachDashboard.groupTopicPlanned')}</p>
           {upcoming.map(d => {
             const gt = byDay[d];
             return (
-              <div key={d} className="flex items-center gap-2 bg-white border border-rose-100 rounded-xl pl-3 pr-1.5 py-1.5">
+              <div key={d} className="flex items-center gap-2 bg-white border border-rose-200 rounded-xl pl-3 pr-1.5 py-1.5">
                 <span className="text-[10px] font-black text-[#0a3a2a] shrink-0 w-20 truncate">{dayLabel(d)}</span>
                 <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{focusTitle(gt, t)}</span>
                 <button
@@ -383,6 +395,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         <span className="material-symbols-outlined text-rose-500 text-[14px]">event</span>
         {t('coachDashboard.groupTopicPlan')}
       </button>
+      </div>
 
       {modal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>

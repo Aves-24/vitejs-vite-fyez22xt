@@ -1797,7 +1797,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </div>
 
                 {isOpen && (
-                  <div className="px-3 pb-3 pt-2.5 border-t border-rose-100 bg-rose-50/40 rounded-b-2xl space-y-3">
+                  <div className="px-3 pb-3 pt-2.5 border-t border-rose-100 rounded-b-2xl space-y-2">
                     <GroupTopicPanel
                       groupId={group.id}
                       groupName={group.name}
@@ -1822,6 +1822,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       open={isGroupListOpen}
                       onToggle={() => setIsGroupListOpen(o => !o)}
                       summary={t('coachDashboard.studentsCount', { count: members.length })}
+                      className="bg-rose-300 rounded-xl p-1.5"
+                      headerClassName="bg-transparent"
+                      labelClassName="text-rose-900"
                     >
                     {renderStudentList(members, '')}
 

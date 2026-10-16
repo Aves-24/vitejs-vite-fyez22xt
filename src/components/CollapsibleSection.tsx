@@ -12,22 +12,26 @@ import React from 'react';
  * dostawałby nową tożsamość przy każdym renderze i React montowałby jego
  * zawartość od nowa.
  */
-export default function CollapsibleSection({ label, summary, open, onToggle, children }: {
+export default function CollapsibleSection({ label, summary, open, onToggle, children, className = '', headerClassName = 'bg-gray-50 border border-gray-100', labelClassName = 'text-gray-400' }: {
   label: string;
   summary?: React.ReactNode;
   open: boolean;
   onToggle: () => void;
   children: React.ReactNode;
+  /** Tło całej sekcji (panel trenera: kolejne odcienie różu). */
+  className?: string;
+  headerClassName?: string;
+  labelClassName?: string;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div className={`space-y-1.5 ${className}`}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-2 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all"
+        className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all ${headerClassName}`}
       >
-        <span className="text-[10px] font-black text-gray-400 uppercase shrink-0">{label}</span>
+        <span className={`text-[10px] font-black uppercase shrink-0 ${labelClassName}`}>{label}</span>
         <span className="flex items-center gap-1 min-w-0 text-[10px] font-black text-[#0a3a2a]">
           <span className="truncate">{summary}</span>
           <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>

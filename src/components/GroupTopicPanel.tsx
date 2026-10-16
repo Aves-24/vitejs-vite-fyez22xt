@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import TopicPicker from './TopicPicker';
+import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
 import { FOCUS_TEXT_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
@@ -353,6 +354,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
             )}
           </div>
 
+          <TopicLinks links={shown.links} tone="coach" small className="mt-2" />
+
           <div className="mt-2">
             <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} />
           </div>
@@ -379,6 +382,11 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               <div key={d} className="flex items-center gap-2 bg-white border border-rose-200 rounded-xl pl-3 pr-1.5 py-1.5">
                 <span className="text-[10px] font-black text-[#0a3a2a] shrink-0 w-20 truncate">{dayLabel(d)}</span>
                 <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{focusTitle(gt, t)}</span>
+                {!!gt.links?.length && (
+                  <span className="flex items-center text-[10px] font-black text-rose-500 shrink-0" aria-label={String(gt.links.length)}>
+                    <span className="material-symbols-outlined text-[14px]">link</span>{gt.links.length}
+                  </span>
+                )}
                 <button
                   onClick={() => openModal(d, gt)}
                   disabled={saving}
@@ -459,7 +467,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   {linkInputs.map((v, i) => (
                     <div key={i}>
                       <div className="flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-rose-500 text-[16px] shrink-0">link</span>
+                        {/* Poprawny link = ikona do otwarcia (z potwierdzeniem), inaczej sama ikona pola. */}
+                        {linkChecks[i]
+                          ? <TopicLinks links={[linkChecks[i] as string]} tone="coach" small />
+                          : <span className="material-symbols-outlined text-rose-300 text-[16px] shrink-0 w-7 text-center">link</span>}
                         <input
                           type="url"
                           inputMode="url"
@@ -472,7 +483,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
                         />
                       </div>
-                      {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-6">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
+                      {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-9">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
                     </div>
                   ))}
                 </div>

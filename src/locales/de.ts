@@ -374,6 +374,8 @@ export const views = {
     topicAcked: "Gelesen",
     topicAck: "Zur Kenntnis genommen",
     linkLabel: "Link {{n}} vom Trainer",
+    linkLabelCoach: "Link {{n}} öffnen",
+    linkOpenDescCoach: "Du verlässt GROT-X und öffnest eine externe Seite mit eigenen Datenschutzregeln.",
     linkOpenTitle: "Link öffnen?",
     linkOpenDesc: "Du verlässt GROT-X. Den Link hat dein Trainer hinzugefügt — die externe Seite hat eigene Datenschutzregeln, und GROT-X ist für ihren Inhalt nicht verantwortlich.",
     linkOpen: "Öffnen",

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import CollapsibleSection from './CollapsibleSection';
+import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
 import { dayKeyOf } from '../utils/focus';
@@ -149,6 +150,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               </button>
               {isOpen && (
                 <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
+                  <TopicLinks links={gt.links} tone="coach" small />
                   <TopicMemberList members={members} gt={gt} status={status[day] || {}} />
                   <textarea
                     value={draft}

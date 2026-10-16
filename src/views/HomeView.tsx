@@ -530,15 +530,23 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         let yearBeforeWindow = 0;
         let yearComplete = true;
         if (startOfYearMs < twelveWeeksAgoMs) {
+          const beforeWindow = query(sessionsRef,
+            where('timestamp', '>=', Timestamp.fromMillis(startOfYearMs)),
+            where('timestamp', '<', Timestamp.fromMillis(twelveWeeksAgoMs)),
+          );
           try {
-            const agg = await getAggregateFromServer(query(sessionsRef,
-              where('timestamp', '>=', Timestamp.fromMillis(startOfYearMs)),
-              where('timestamp', '<', Timestamp.fromMillis(twelveWeeksAgoMs)),
-            ), { arrows: sum('arrows') });
+            // Wymaga indeksu złożonego sessions: timestamp ASC + arrows ASC.
+            const agg = await getAggregateFromServer(beforeWindow, { arrows: sum('arrows') });
             yearBeforeWindow = agg.data().arrows || 0;
           } catch {
-            // Offline — licznik roczny będzie niepełny, więc nie zapisujemy cache.
-            yearComplete = false;
+            // Brak indeksu albo offline — liczymy po staremu z dokumentów
+            // (getDocs offline bierze je z cache telefonu).
+            try {
+              const snapBefore = await getDocs(beforeWindow);
+              snapBefore.forEach(ds => { const dd = ds.data(); yearBeforeWindow += dd.arrows || dd.totalArrows || 0; });
+            } catch {
+              yearComplete = false; // licznik niepełny — nie zapisujemy cache
+            }
           }
           if (cancelled) return;
         }

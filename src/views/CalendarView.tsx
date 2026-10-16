@@ -145,6 +145,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [openPastTournaments, setOpenPastTournaments] = useState(false);
   const [openDistance, setOpenDistance] = useState(false);
   const [openStudents, setOpenStudents] = useState(false);
+  const [openGroupList, setOpenGroupList] = useState(true);
+  const [openStudentList, setOpenStudentList] = useState(false);
   const collapseCollapsibleSections = () => {
     setOpenPastTournaments(false);
     setOpenDistance(false);
@@ -1217,6 +1219,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                      open={openStudents}
                      onToggle={() => setOpenStudents(o => !o)}
                    >
+                   {/* Grupy i uczniowie w osobnych zwijanych listach (user 2026-10-16). */}
+                   <div className="space-y-1.5">
                    <div className="flex flex-wrap gap-1.5">
                      <button
                        onClick={() => setNewCoachStudents(newCoachStudents === 'all' ? [] : 'all')}
@@ -1224,6 +1228,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                      >
                        {t('calendar.trainerAllStudents')}
                      </button>
+                   </div>
+                   {coachGroups.length > 0 && (
+                   <CollapsibleSection
+                     label={t('calendar.trainerGroupsList')}
+                     summary={String(coachGroups.length)}
+                     open={openGroupList}
+                     onToggle={() => setOpenGroupList(o => !o)}
+                   >
+                   <div className="flex flex-wrap gap-1.5">
                      {coachGroups.map(group => {
                        const groupStudentIds = Object.entries(studentGroupMap)
                          .filter(([, groups]) => groups.includes(group.id))
@@ -1249,7 +1262,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                          </button>
                        );
                      })}
-                     {coachGroups.length > 0 && <div className="w-full h-px bg-gray-100 my-0.5" />}
+                   </div>
+                   </CollapsibleSection>
+                   )}
+                   <CollapsibleSection
+                     label={t('calendar.trainerStudentsList')}
+                     summary={String(coachStudentsList.length)}
+                     open={openStudentList}
+                     onToggle={() => setOpenStudentList(o => !o)}
+                   >
+                   <div className="flex flex-wrap gap-1.5">
                      {coachStudentsList.map(s => {
                        const isSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.includes(s.id));
                        return (
@@ -1270,6 +1292,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                          </button>
                        );
                      })}
+                   </div>
+                   </CollapsibleSection>
                    </div>
                    </CollapsibleSection>
                    {(() => {

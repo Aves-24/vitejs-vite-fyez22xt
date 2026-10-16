@@ -112,7 +112,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -120,6 +120,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   topics: GroupTopicsByDay;
   onChanged: (next: GroupTopicsByDay) => void;
   showToast: (msg: string) => void;
+  onOpenStudent?: (studentId: string) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -369,7 +370,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           <TopicLinks links={shown.links} tone="coach" small className="mt-2" />
 
           <div className="mt-2">
-            <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} />
+            <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} onOpenStudent={onOpenStudent} />
           </div>
 
           {open && (

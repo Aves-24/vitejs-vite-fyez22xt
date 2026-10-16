@@ -1823,6 +1823,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       topics={coachGroupTopics[group.id] || {}}
                       onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
+                      onOpenStudent={setSheetStudentId}
                     />
 
                     <GroupTrainingHistory

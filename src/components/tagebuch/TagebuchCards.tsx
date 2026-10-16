@@ -4,6 +4,7 @@ import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
 import { topicLabel } from '../../constants/trainingTopics';
+import TopicLinks from '../TopicLinks';
 import { isTopicOpen, type FocusMilestone, type FocusSnapRef, type SessionFocus, type TrainingTopic } from '../../utils/focus';
 
 // --- TYPY WPISÓW OSI CZASU ---
@@ -381,6 +382,7 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
       <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
       <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
       <TopicChips topics={entry.topics} />
+      <TopicLinks links={tt.links} className="mt-2" />
       {!open && (
         <div className="mt-2">
           {trained ? (

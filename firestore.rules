@@ -446,6 +446,19 @@ service cloud.firestore {
     //  czytać (przyszły MyCoachView). Edycja zablokowana, kasować może
     //  autor wpisu, admin lub uczeń-właściciel (RODO art. 17 — wpisy dotyczą
     //  ucznia i muszą zniknąć przy usuwaniu jego konta).
+    // [LINKI W TEMACIE 2026-10-16] do 3 linków http(s), każdy ≤ 500 znaków.
+    function okTopicLink(u) {
+      return u is string && u.size() <= 500 && u.matches('https?://[^\\s]+');
+    }
+    function okTopicLinks(d) {
+      return !('links' in d)
+        || (d.links is list
+            && d.links.size() <= 3
+            && (d.links.size() < 1 || okTopicLink(d.links[0]))
+            && (d.links.size() < 2 || okTopicLink(d.links[1]))
+            && (d.links.size() < 3 || okTopicLink(d.links[2])));
+    }
+
     match /users/{uid}/coachLog/{entryId} {
       allow read: if isSelf(uid)
         || isAdmin()
@@ -467,14 +480,16 @@ service cloud.firestore {
             || (request.resource.data.get('day', '') is string
                 && request.resource.data.get('day', '').size() == 10
                 && !('closedAt' in request.resource.data)
-                && !('ackAt' in request.resource.data)));
+                && !('ackAt' in request.resource.data)))
+        && okTopicLinks(request.resource.data);
 
       // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'topic'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links'])
+        && okTopicLinks(request.resource.data)
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 300

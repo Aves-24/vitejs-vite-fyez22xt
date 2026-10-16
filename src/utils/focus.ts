@@ -72,6 +72,7 @@ export interface ActiveFocus {
   marks?: number[];      // tylko fokus trenera — lekcje zaznaczone przez trenera
   entryGoal?: number;    // tylko fokus trenera — liczba treningów zapisana na wpisie
   topicId?: string;      // TEMAT TRENINGU (nie fokus) — id wpisu 'topic' w coachLog
+  links?: string[];      // TEMAT TRENINGU — linki od trenera
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -655,6 +656,34 @@ export interface TrainingTopic {
   groupId?: string;
   closedAt?: number;
   ackAt?: number;
+  links?: string[];     // do TOPIC_LINKS_MAX linków http(s) od trenera
+}
+
+// [LINKI W TEMACIE] (user 2026-10-16) Trener dokłada do tematu do 3 linków
+// (YouTube, strona). Tylko zwykły link — bez osadzania i miniatur, więc nic
+// nie leci do Google/YouTube, dopóki uczeń sam nie potwierdzi otwarcia (RODO).
+export const TOPIC_LINKS_MAX = 3;
+export const TOPIC_LINK_MAX_LEN = 500;
+
+/** Link wpisany przez trenera → pełny adres http(s) albo null (zły / inny protokół). */
+export function normalizeTopicLink(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  try {
+    const u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    if (!u.hostname.includes('.')) return null;
+    const href = u.href;
+    return href.length <= TOPIC_LINK_MAX_LEN ? href : null;
+  } catch {
+    return null;
+  }
+}
+
+export function readTopicLinks(data: any): string[] {
+  return Array.isArray(data?.links)
+    ? data.links.filter((l: unknown): l is string => typeof l === 'string' && normalizeTopicLink(l) === l).slice(0, TOPIC_LINKS_MAX)
+    : [];
 }
 
 /** Migawka tematu w sesji — trening robiony pod ten temat. */
@@ -674,6 +703,7 @@ export function readTrainingTopic(id: string, data: any): TrainingTopic | null {
     ...(data.groupId ? { groupId: data.groupId } : {}),
     ...(typeof data.closedAt === 'number' ? { closedAt: data.closedAt } : {}),
     ...(data.ackAt ? { ackAt: toMs(data.ackAt) } : {}),
+    ...(readTopicLinks(data).length ? { links: readTopicLinks(data) } : {}),
   };
 }
 
@@ -684,7 +714,8 @@ export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Da
 
 export function topicAsFocus(t: TrainingTopic): ActiveFocus {
   return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id,
-    ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}) };
+    ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}),
+    ...(t.links?.length ? { links: t.links } : {}) };
 }
 
 export function sessionTrainingTopic(f: ActiveFocus): SessionTrainingTopic {

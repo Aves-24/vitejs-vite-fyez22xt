@@ -14,6 +14,7 @@ import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
+import TopicLinks from '../components/TopicLinks';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
@@ -1355,6 +1356,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               other={focusPair.other}
               onSwap={() => swapFocus(userId, focusState)}
             />
+            {/* Linki od trenera przy dzisiejszym temacie (poza przyciskiem paska). */}
+            <TopicLinks links={focusState?.trainingTopic?.links} className="mt-1.5 justify-end" />
           </div>
         )}
 

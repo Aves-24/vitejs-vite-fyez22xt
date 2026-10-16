@@ -906,6 +906,22 @@ test('[TEMAT TRENINGU] trener tworzy/zamyka temat, uczen potwierdza', async () =
   await assertFails(updateDoc(t1(bob()), { ackAt: serverTimestamp() }));
 });
 
+test('[LINKI W TEMACIE] do 3 linkow http(s), autor je edytuje', async () => {
+  const base = { authorId: 'coach1', text: 'Temat', type: 'topic', topics: [], day: '2026-10-16', groupId: 'g1' };
+  const l = (db, id) => doc(db, `users/alice/coachLog/${id}`);
+  await assertSucceeds(setDoc(l(coach1(), 'lk1'), { ...base, links: ['https://youtu.be/abc', 'http://example.com/x'] }));
+  await assertFails(setDoc(l(coach1(), 'lk2'), { ...base, links: ['javascript:alert(1)'] }));
+  await assertFails(setDoc(l(coach1(), 'lk3'), { ...base, links: ['https://a.pl', 'https://b.pl', 'https://c.pl', 'https://d.pl'] }));
+  await assertFails(setDoc(l(coach1(), 'lk4'), { ...base, links: ['https://a.pl/' + 'x'.repeat(500)] }));
+  await assertFails(setDoc(l(coach1(), 'lk5'), { ...base, links: 'https://a.pl' }));
+  // Edycja przez autora: zmiana i wyczyszczenie linków.
+  await assertSucceeds(updateDoc(l(coach1(), 'lk1'), { text: 'Temat', topics: [], links: ['https://example.org'], editedAt: Date.now() }));
+  await assertSucceeds(updateDoc(l(coach1(), 'lk1'), { text: 'Temat', topics: [], links: [], editedAt: Date.now() }));
+  await assertFails(updateDoc(l(coach1(), 'lk1'), { text: 'Temat', topics: [], links: ['ftp://x.pl'], editedAt: Date.now() }));
+  // Uczeń linków nie zmienia.
+  await assertFails(updateDoc(l(alice(), 'lk1'), { links: ['https://evil.example'] }));
+});
+
 test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
   const a = () => doc(coach1(), 'users/alice');
   await assertSucceeds(updateDoc(a(), { focusGoal: 1, focusDots: true }));

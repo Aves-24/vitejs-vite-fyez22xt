@@ -1275,8 +1275,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    {(() => {
                      const hasSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.length > 0);
                      return (
-                       <p className={`text-[10px] ml-1 mt-1 flex items-center gap-1 ${hasSelected ? 'text-blue-500' : 'text-gray-400'}`}>
-                         <span className="material-symbols-outlined text-[12px]">{hasSelected ? 'visibility' : 'visibility_off'}</span>
+                       <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-2 rounded-xl border px-3 py-2 ${hasSelected ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
+                         <span className="material-symbols-outlined text-[18px] shrink-0">{hasSelected ? 'visibility' : 'visibility_off'}</span>
                          {hasSelected ? t('calendar.trainerPlanHint') : t('calendar.trainerPlanHintNone')}
                        </p>
                      );

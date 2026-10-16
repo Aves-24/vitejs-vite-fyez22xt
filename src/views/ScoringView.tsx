@@ -806,7 +806,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             technicznym (user 2026-10-15); domyślnie zaznaczone fokus i temat. */}
         {focusState && (focusState.focus || focusState.trainingTopic) && (
           <div className="mt-2 pt-2 border-t border-gray-100">
-            <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
+            <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} showLabel={false} />
           </div>
         )}
 

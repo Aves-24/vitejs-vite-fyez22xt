@@ -43,6 +43,7 @@ export interface TbSession {
   decided?: boolean;
   focuses: SessionFocus[]; // pełne migawki — przełącznik w dzienniku zapisuje listę z powrotem
   topicId?: string;      // [TEMAT TRENINGU] trening pod ten temat (id wpisu 'topic')
+  trainingTopic?: { text: string; topic: string };
 }
 
 export interface TbCoachEntry {
@@ -555,7 +556,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   // Notatkę „dla trenera" da się dopisać tylko raz do pustej sesji w limicie
   // edycji — resztę zawsze można dopisać jako prywatną.
   const canShare = hasCoach && !session.note && session.editCount < SESSION_NOTE_EDITS;
-  const visibleTopics = focus ? session.topics.filter(x => x !== focus.topic) : session.topics;
+  const visibleTopics = session.topics.filter(x => x !== focus?.topic && x !== session.trainingTopic?.topic);
   const noteCount = (session.note ? 1 : 0) + linkedNotes.length;
 
   const header = (
@@ -570,6 +571,13 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
         </span>
         <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
         {insight && !session.isTech && <InsightLine insight={insight} />}
+        {/* Temat od trenera, pod który był trening — fiolet = od trenera. */}
+        {session.trainingTopic && (session.trainingTopic.text || session.trainingTopic.topic) && (
+          <span className="flex items-center gap-1 mt-0.5 min-w-0 text-[10px] font-bold text-violet-700">
+            <span className="material-symbols-outlined text-[13px] shrink-0">sports</span>
+            <span className="truncate">{session.trainingTopic.text || topicLabel(session.trainingTopic.topic, t)}</span>
+          </span>
+        )}
       </span>
       {/* Godzina w prawym górnym rogu, strzałka w prawym dolnym (user 2026-10-15). */}
       <span className="shrink-0 flex flex-col items-end justify-between gap-1">

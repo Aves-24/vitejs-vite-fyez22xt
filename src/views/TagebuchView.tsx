@@ -391,7 +391,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             snaps: sessionFocusRef(data, 0).snaps,
             ...(data.focusChoice === true ? { decided: true } : {}),
             focuses: readSessionFocuses(data),
-            ...(sessionTopicId(data) ? { topicId: sessionTopicId(data) } : {}),
+            ...(sessionTopicId(data) ? { topicId: sessionTopicId(data), trainingTopic: { text: String(data.trainingTopic.text || ''), topic: String(data.trainingTopic.topic || '') } } : {}),
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
           };

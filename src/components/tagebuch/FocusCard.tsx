@@ -89,7 +89,8 @@ export function OtherFocusChip({ focus, onSwap, className = '' }: {
  * Pod co idzie ten trening (chipy przy zapisie): fokus i/lub dzisiejszy temat
  * treningu. Domyślnie oba zaznaczone (defaultFocusChoice).
  */
-export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
+export function FocusChoiceChips({ state, choice, onChange, dark = false, showLabel = true }: {
+  showLabel?: boolean;   // ekran z tarczą: brak miejsca na napis, wystarczą same chipy
   state: FocusState;
   choice: FocusChoice;
   onChange: (next: FocusChoice) => void;
@@ -104,7 +105,7 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false }: {
   const none = !items.some(it => choice[it.key]);
   return (
     <div>
-      <p className={`text-[9px] font-black uppercase tracking-widest mb-1.5 ${dark ? 'text-white/60' : 'text-gray-400'}`}>{t('tagebuch.focusChoiceLabel')}</p>
+      {showLabel && <p className={`text-[9px] font-black uppercase tracking-widest mb-1.5 ${dark ? 'text-white/60' : 'text-gray-400'}`}>{t('tagebuch.focusChoiceLabel')}</p>}
       <div className="flex flex-wrap gap-1.5">
         {items.map(it => {
           const on = choice[it.key];
@@ -400,7 +401,8 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
  * W profilu ucznia trener widzi go w nagłówku jako `glass` (zielone tło
  * nagłówka), bez klikania (user 2026-09-16).
  */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false }: {
+  past?: boolean;   // minione sesje (statystyki): bez „Heute im Training” przy temacie
   focus: ActiveFocus;
   other?: ActiveFocus | null;   // [DWA FOKUSY] drugi fokus — kropka po prawej
   onSwap?: () => void;
@@ -492,7 +494,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
         {/* Temat treningu: „Heute im Training” jak w karcie dziennika (user 2026-10-15). */}
-        {!dots && focus.topicId && (
+        {!dots && focus.topicId && !past && (
           <p className={`text-[10px] font-bold mt-1 ${glass ? 'text-white/60' : pal.sub}`}>{t('tagebuch.topicToday')}</p>
         )}
       </div>
@@ -508,17 +510,27 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
 export function SessionFocusCard({ session }: { session: any }) {
   const { t } = useTranslation();
   const snap = readSessionFocus(session);
-  if (!snap) return null;
-  const focus: ActiveFocus = { text: snap.text, topic: snap.topic, since: snap.since, fromCoach: snap.fromCoach, authorName: snap.authorName };
-  const dots = !!(snap.step && snap.goal);
+  // Temat treningu od trenera, pod który był ten trening (user 2026-10-16).
+  const tt = session?.trainingTopic;
+  const topicFocus: ActiveFocus | null = tt && typeof tt.id === 'string' && tt.text
+    ? { text: String(tt.text), topic: String(tt.topic || ''), since: new Date(`${tt.day}T12:00:00`).getTime() || Date.now(), fromCoach: true, topicId: tt.id }
+    : null;
+  if (!snap && !topicFocus) return null;
+  const focus: ActiveFocus | null = snap ? { text: snap.text, topic: snap.topic, since: snap.since, fromCoach: snap.fromCoach, authorName: snap.authorName } : null;
+  const dots = !!(snap?.step && snap?.goal);
   return (
-    <FocusStrip
-      focus={focus}
-      dots={dots}
-      goal={snap.goal || 0}
-      count={Math.min(snap.step || 0, snap.goal || 0)}
-      label={t('stats.sessionFocus')}
-    />
+    <div className="space-y-2">
+      {topicFocus && <FocusStrip focus={topicFocus} dots={false} goal={0} count={0} label={t('tagebuch.topicLabel')} sourceLabel="" past />}
+      {focus && snap && (
+        <FocusStrip
+          focus={focus}
+          dots={dots}
+          goal={snap.goal || 0}
+          count={Math.min(snap.step || 0, snap.goal || 0)}
+          label={t('stats.sessionFocus')}
+        />
+      )}
+    </div>
   );
 }
 

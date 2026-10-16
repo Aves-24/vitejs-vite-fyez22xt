@@ -54,7 +54,9 @@ export interface StudentPause { at: number; reminded?: boolean }
  */
 const FORM_MIN_CHANGE = 0.05;
 const FORM_SESSIONS_READ = 10;
-const FORM_TTL = 30 * 60 * 1000;
+// Wynik ucznia zmienia się tylko po jego nowym treningu (wtedy liczymy od
+// razu), doba to zapas na edycję lub usunięcie starszej sesji.
+const FORM_TTL = 24 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 interface FormCompare {
@@ -84,8 +86,7 @@ const sameKind = (a: any, b: any) =>
 /**
  * Porównanie formy dla uczniów aktywnych w ostatnich INACTIVE_DAYS (reszta
  * i tak siedzi w „bez treningu"). Zapytanie na ucznia (10 ostatnich sesji),
- * więc wynik leży w pamięci — unieważniany, gdy którykolwiek uczeń zapisze
- * nowy trening (podpis z `exactLastActivity`).
+ * wynik w pamięci per uczeń — liczony na nowo po jego nowym treningu.
  */
 /**
  * [C37] Zielona kropka przy „Uczniowie" (życzenie usera 2026-09-16): trener
@@ -111,19 +112,27 @@ async function saveSeenStudents(coachId: string, ids: string[]) {
   }
 }
 
+type FormCacheEntry = { act: number; cmp: FormCompare | null; exp: number };
+
 async function loadFormCompare(coachId: string, students: any[]): Promise<Record<string, FormCompare>> {
   const active = students.filter(s => s.exactLastActivity && Date.now() - s.exactLastActivity < INACTIVE_DAYS * DAY_MS);
-  const key = `grotX_formCompare2_${coachId}`;
-  const sig = active.map(s => `${s.id}:${s.exactLastActivity}`).sort().join(',');
+  // Pamięć per uczeń: liczymy na nowo tylko tych, którzy od ostatniego razu
+  // potrenowali (inny `exactLastActivity`). Dawniej jeden trening dowolnego
+  // ucznia kasował cały wynik i panel czytał po 10 sesji od każdego.
+  const key = `grotX_formCompare3_${coachId}`;
+  let cache: Record<string, FormCacheEntry> = {};
   try {
     const raw = localStorage.getItem(key);
-    if (raw) {
-      const cached = JSON.parse(raw);
-      if (cached.sig === sig && Date.now() <= cached.expiresAt) return cached.data;
-    }
+    if (raw) cache = JSON.parse(raw) || {};
   } catch { /* uszkodzony wpis — czytamy z bazy */ }
+  const now = Date.now();
+  const fresh = (s: any) => {
+    const c = cache[s.id];
+    return !!c && c.act === s.exactLastActivity && now <= c.exp;
+  };
 
   const entries = await Promise.all(active.map(async s => {
+    if (fresh(s)) return [s.id, cache[s.id].cmp, true] as const;
     try {
       const snap = await getDocs(query(
         collection(db, `users/${s.id}/sessions`),
@@ -134,11 +143,11 @@ async function loadFormCompare(coachId: string, students: any[]): Promise<Record
       const sessions = snap.docs.map(d => d.data()).filter(x => x.score > 0 && scoredArrows(x) > 0);
       const [last, ...rest] = sessions;
       const prev = last && rest.find(x => sameKind(last, x));
-      if (!last || !prev) return null;
+      if (!last || !prev) return [s.id, null, false] as const;
       const avgNow = last.score / scoredArrows(last);
       const avgPrev = prev.score / scoredArrows(prev);
       const pct = (avgNow - avgPrev) / avgPrev;
-      if (Math.abs(pct) < FORM_MIN_CHANGE) return null;
+      if (Math.abs(pct) < FORM_MIN_CHANGE) return [s.id, null, false] as const;
       const cmp: FormCompare = {
         dir: pct > 0 ? 'up' : 'down',
         distance: String(last.distanceLabel || last.distance || ''),
@@ -147,14 +156,21 @@ async function loadFormCompare(coachId: string, students: any[]): Promise<Record
         pct,
         at: last.timestamp?.toMillis ? last.timestamp.toMillis() : (last.timestamp?.seconds || 0) * 1000,
       };
-      return [s.id, cmp] as const;
+      return [s.id, cmp, false] as const;
     } catch { return null; }
   }));
 
   const data: Record<string, FormCompare> = {};
-  for (const e of entries) if (e) data[e[0]] = e[1];
+  const nextCache: Record<string, FormCacheEntry> = {};
+  for (const e of entries) {
+    if (!e) continue; // błąd odczytu — bez wpisu w pamięci, następnym razem od nowa
+    const [sid, cmp, wasCached] = e;
+    if (cmp) data[sid] = cmp;
+    const s = active.find(x => x.id === sid);
+    nextCache[sid] = wasCached ? cache[sid] : { act: s.exactLastActivity, cmp, exp: now + FORM_TTL };
+  }
   try {
-    localStorage.setItem(key, JSON.stringify({ sig, data, expiresAt: Date.now() + FORM_TTL }));
+    localStorage.setItem(key, JSON.stringify(nextCache));
   } catch { /* ignore */ }
   return data;
 }
@@ -327,7 +343,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [inactiveOnly, setInactiveOnly] = useState(false);
   const [isInactiveOpen, setIsInactiveOpen] = useState(false);
   const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [formCompare, setFormCompare] = useState<Record<string, FormCompare>>({});
 
   useEffect(() => {
@@ -804,22 +819,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     .filter(s => (s.exactLastActivity || 0) > (studentLastChecked[s.id] || 0))
     .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
 
-  // Zmiana formy (loadFormCompare): najpierw lepsi, potem słabsi, każdy od
-  // największej zmiany.
-  const formStudents = students
-    .filter(s => formCompare[s.id] && (formCompare[s.id].at || 0) > (studentLastChecked[s.id] || 0))
-    .map(s => ({ s, trend: formCompare[s.id] }))
-    .sort((a, b) =>
-      (a.trend.dir === b.trend.dir ? 0 : a.trend.dir === 'up' ? -1 : 1)
-      || Math.abs(b.trend.pct) - Math.abs(a.trend.pct));
-  const formUpCount = formStudents.filter(x => x.trend.dir === 'up').length;
-
-  // „teraz 312 · poprzednio 298"; przy różnej liczbie strzał z liczbą strzał,
-  // żeby 312 z 36 nie wyglądało na gorsze od 598 z 72.
-  const formScores = (c: FormCompare) => c.nowArrows === c.prevArrows
-    ? t('coachDashboard.formNowPrev', { now: c.now, prev: c.prev })
-    : t('coachDashboard.formNowPrev', { now: `${c.now}/${c.nowArrows}`, prev: `${c.prev}/${c.prevArrows}` });
-  const formDownCount = formStudents.length - formUpCount;
+  // Zmiana formy (loadFormCompare) przy uczniach z nowym treningiem — liczona
+  // dla treningu, którego trener jeszcze nie widział.
+  const newTrend = (s: any): FormCompare | null => {
+    const c = formCompare[s.id];
+    return c && (c.at || 0) > (studentLastChecked[s.id] || 0) ? c : null;
+  };
+  const newTrends = newTrainingStudents.map(newTrend).filter((c): c is FormCompare => !!c);
+  const formUpCount = newTrends.filter(c => c.dir === 'up').length;
+  const formDownCount = newTrends.length - formUpCount;
+  const formPct = (c: FormCompare) => `${c.pct > 0 ? '+' : '−'}${Math.round(Math.abs(c.pct) * 100)}%`;
 
   // Zakładka UCZNIOWIE: zawsze wszyscy (grupy żyją w zakładce GRUPY),
   // ewentualnie zawężeni do nieaktywnych z sekcji u góry.
@@ -1458,32 +1467,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           label={t('coachDashboard.newTrainingsTitle')}
           open={isNewTrainingsOpen}
           onToggle={() => setIsNewTrainingsOpen(o => !o)}
-          summary={<span className="text-emerald-600">{t('coachDashboard.studentsCount', { count: newTrainingStudents.length })}</span>}
-        >
-          <div className="space-y-1.5">
-            {newTrainingStudents.map(s => {
-              const details = lastSessionDetails(s);
-              return renderMiniStudentRow(
-                s,
-                <span className="text-emerald-600">
-                  {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
-                </span>,
-                'bg-emerald-50 text-emerald-700 border-emerald-100',
-              );
-            })}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Forma — ostatni trening kontra poprzedni na tym samym dystansie
-          (loadFormCompare), lepsi na górze */}
-      {!isLoading && formStudents.length > 0 && (
-        <CollapsibleSection
-          label={t('coachDashboard.formTitle')}
-          open={isFormOpen}
-          onToggle={() => setIsFormOpen(o => !o)}
           summary={
             <span className="inline-flex items-center gap-2">
+              <span className="text-emerald-600">{t('coachDashboard.studentsCount', { count: newTrainingStudents.length })}</span>
               {formUpCount > 0 && (
                 <span className="inline-flex items-center gap-0.5 text-emerald-600">
                   <span className="material-symbols-outlined text-[14px]">trending_up</span>{formUpCount}
@@ -1498,18 +1484,24 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           }
         >
           <div className="space-y-1.5">
-            {formStudents.map(({ s, trend }) => {
-              // „↑ 70m · teraz 312 · poprzednio 298" — prawdziwe punkty,
-              // ten sam dystans.
+            {newTrainingStudents.map(s => {
+              const details = lastSessionDetails(s);
+              const trend = newTrend(s);
+              // Zmiana formy w tym samym wierszu: ↑/↓ i % względem poprzedniego
+              // treningu na tym samym dystansie (dawna osobna sekcja „Forma”).
               return renderMiniStudentRow(
                 s,
-                <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
-                  <span className="material-symbols-outlined text-[12px] align-[-2px] mr-0.5">{TREND_ICON[trend.dir]}</span>
-                  {trend.distance && `${trend.distance} · `}{formScores(trend)}
+                <span className="text-emerald-600">
+                  {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
+                  {trend && (
+                    <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
+                      {' · '}
+                      <span className="material-symbols-outlined text-[12px] align-[-2px]">{TREND_ICON[trend.dir]}</span>
+                      {formPct(trend)}
+                    </span>
+                  )}
                 </span>,
-                trend.dir === 'up'
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                  : 'bg-orange-50 text-orange-600 border-amber-100',
+                'bg-emerald-50 text-emerald-700 border-emerald-100',
               );
             })}
           </div>

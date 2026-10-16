@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { doc, getDoc, getDocs, collection, query, where, Timestamp, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getDocs, collection, query, where, orderBy, limit, Timestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // --- FOKUS ---
@@ -399,16 +399,18 @@ export function readCoachGoal(id: string, data: any): CoachGoal {
   };
 }
 
-// Sam filtr równości — bez orderBy, żeby nie potrzebować indeksu złożonego.
-// Celów trenera jest mało, najnowszy wybieramy na miejscu.
-// Jedno zapytanie na cele trenera i tematy treningu.
+// Dawniej jedno zapytanie o WSZYSTKIE cele i tematy — tematy grupy dochodzą
+// co trening, więc panel trenera czytał po roku ~100 wpisów na ucznia.
+// Teraz: najnowszy cel (indeks coachLog: type + createdAt DESC) i tylko
+// dzisiejsze tematy — otwarty temat to z definicji dzisiejszy (isTopicOpen).
 async function loadCoachFocusEntries(userId: string): Promise<{ goal: CoachGoal | undefined; topic: TrainingTopic | null }> {
-  const snap = await getDocs(query(collection(db, `users/${userId}/coachLog`), where('type', 'in', ['goal', 'topic'])));
-  const goal = snap.docs
-    .filter(d => d.data().type === 'goal')
-    .map(d => readCoachGoal(d.id, d.data()))
-    .sort((a, b) => b.ts - a.ts)[0];
-  const topic = snap.docs
+  const col = collection(db, `users/${userId}/coachLog`);
+  const [goalSnap, topicSnap] = await Promise.all([
+    getDocs(query(col, where('type', '==', 'goal'), orderBy('createdAt', 'desc'), limit(1))),
+    getDocs(query(col, where('type', '==', 'topic'), where('day', '==', dayKeyOf(Date.now())))),
+  ]);
+  const goal = goalSnap.docs.map(d => readCoachGoal(d.id, d.data()))[0];
+  const topic = topicSnap.docs
     .map(d => readTrainingTopic(d.id, d.data()))
     .filter((x): x is TrainingTopic => !!x && isTopicOpen(x))
     .sort((a, b) => b.ts - a.ts)[0] ?? null;

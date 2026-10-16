@@ -56,14 +56,9 @@ export interface CoachGoal {
   endedAt?: number;      // trener zakończył fokus
 }
 
-// [DWA FOKUSY] users/{uid}.coachFocusCleared — uczeń zakończył (albo przejął
-// edycją) fokus od trenera; wpisu trenera sam zmienić nie może.
+// users/{uid}.coachFocusCleared — uczeń zakończył (albo przejął edycją) fokus
+// od trenera; wpisu trenera sam zmienić nie może.
 export interface CoachFocusCleared { since: number; setAt: number; ended?: SessionFocus }
-
-// Cele trenera sprzed dwóch fokusów: wtedy nowszy własny fokus (albo jego
-// zakończenie, także przez trenera — Path L) zastępował cel trenera. Takie
-// cele nie wracają teraz jako drugi, równoległy fokus.
-export const TWO_FOCUS_SINCE = Date.parse('2026-10-14T16:00:00Z');
 
 export interface ActiveFocus {
   topic: string;         // '' = bez tematu — kropki liczą wtedy każdy trening
@@ -97,23 +92,16 @@ export function resolveOwnFocus(own: OwnFocus | null): ActiveFocus | null {
 }
 
 /** Tor trenera: ostatni cel, o ile nikt go nie zakończył. */
-export function resolveCoachFocus(goal: CoachGoal | undefined, own: OwnFocus | null, cleared: CoachFocusCleared | null): ActiveFocus | null {
+export function resolveCoachFocus(goal: CoachGoal | undefined, cleared: CoachFocusCleared | null): ActiveFocus | null {
   if (!goal || goal.endedAt) return null;
   if (cleared && cleared.since === goal.ts) return null;
-  if (goal.ts < TWO_FOCUS_SINCE && own && own.setAt >= goal.ts) return null;
   return { topic: goal.topics[0] || '', text: goal.text, since: goal.ts, fromCoach: true, authorName: goal.authorName, goalId: goal.id, authorId: goal.authorId,
     ...(goal.marks?.length ? { marks: goal.marks } : {}),
     ...(goal.goal ? { entryGoal: goal.goal } : {}) };
 }
 
-// [DWA FOKUSY, etap 2] Który tor jest na górze — wybór ucznia (tap w kropkę
-// drugiego fokusu), users/{uid}.focusPrimary. Bez wyboru: nowszy.
+// Skąd fokus: własny ucznia albo od trenera (chipy wyboru przy zapisie).
 export type FocusSide = 'own' | 'coach';
-
-export function readFocusPrimary(userData: any): FocusSide | undefined {
-  const p = userData?.focusPrimary;
-  return p === 'own' || p === 'coach' ? p : undefined;
-}
 
 const sideOf = (f: ActiveFocus): FocusSide => (f.fromCoach ? 'coach' : 'own');
 
@@ -126,7 +114,7 @@ export function resolveActiveFocus(own: OwnFocus | null, goal: CoachGoal | undef
   const ownTs = own?.setAt ?? -Infinity;
   if (goal && goal.ts > ownTs) {
     // Uczeń zakończył fokus trenera (coachFocusCleared) — po tej chwili nie ma fokusu.
-    return resolveCoachFocus(goal, null, cleared);
+    return resolveCoachFocus(goal, cleared);
   }
   return resolveOwnFocus(own);
 }
@@ -448,34 +436,9 @@ export function isTrackDone(tr: FocusTrack | null | undefined): boolean {
   return !!tr && tr.dots && tr.count >= tr.goal;
 }
 
-/** Tory: główny pierwszy (na razie nowszy). */
-export function orderedTracks(state: { own: FocusTrack | null; coach: FocusTrack | null; primary?: FocusSide }): FocusTrack[] {
-  const list = [state.own, state.coach].filter(Boolean) as FocusTrack[];
-  if (state.primary && list.length === 2) return state.primary === 'own' ? [state.own!, state.coach!] : [state.coach!, state.own!];
-  return list.sort((a, b) => b.focus.since - a.focus.since);
-}
-
-/** Drugi tor (kropka po prawej na pasku fokusu) — null, gdy jest tylko jeden. */
-export function otherTrack(state: FocusState | null): FocusTrack | null {
-  return state ? orderedTracks(state)[1] ?? null : null;
-}
-
-/** Stan z innym torem na górze (bez ponownego wczytywania). */
-export function withPrimary(state: FocusState, primary: FocusSide): FocusState {
-  const next = { ...state, primary };
-  const main = orderedTracks(next)[0];
-  return main ? { ...next, focus: main.focus, dots: main.dots, goal: main.goal, count: main.count } : next;
-}
-
-const FOCUS_PRIMARY_EVENT = 'grotx-focus-primary';
-
-/**
- * Zamiana fokusów miejscami — zapis w profilu + sygnał dla wszystkich ekranów
- * z useActiveFocus (Home, Vorbereitung, trening), żeby od razu pokazały to samo.
- */
-export async function saveFocusPrimary(userId: string, primary: FocusSide): Promise<void> {
-  window.dispatchEvent(new CustomEvent(FOCUS_PRIMARY_EVENT, { detail: { userId, primary } }));
-  await updateDoc(doc(db, 'users', userId), { focusPrimary: primary });
+/** Tor fokusu jako lista (jeden fokus — 0 albo 1 element). */
+export function orderedTracks(state: { own: FocusTrack | null; coach: FocusTrack | null }): FocusTrack[] {
+  return [state.own, state.coach].filter(Boolean) as FocusTrack[];
 }
 
 /**
@@ -531,7 +494,6 @@ export interface FocusState {
   count: number;         // liczone tylko przy włączonych kropkach
   own: FocusTrack | null;
   coach: FocusTrack | null;
-  primary?: FocusSide;   // [stare DWA FOKUSY] bez znaczenia przy jednym fokusie
   // Dzisiejszy, otwarty temat treningu od trenera (ActiveFocus z topicId).
   trainingTopic?: ActiveFocus | null;
   topicFirst?: boolean;  // w dniu treningu temat na górze zamiast fokusu (tap w chip)
@@ -543,15 +505,13 @@ export interface FocusState {
 
 /** Stan z torów; główny = pierwszy z orderedTracks (bez fokusu — ustawienia kropek ucznia). */
 export function buildFocusState(own: FocusTrack | null, coach: FocusTrack | null, userData: any, failed: string[] = []): FocusState {
-  const primary = readFocusPrimary(userData);
-  const main = orderedTracks({ own, coach, primary })[0];
+  const main = orderedTracks({ own, coach })[0];
   return {
     focus: main?.focus ?? null,
     dots: main ? main.dots : userData?.focusDots === true,
     goal: main ? main.goal : readFocusGoal(userData),
     count: main?.count ?? 0,
     own, coach,
-    ...(primary ? { primary } : {}),
     ...(failed.length ? { failed } : {}),
   };
 }
@@ -634,20 +594,14 @@ export function useActiveFocus(
     if (!userId) return;
     let cancelled = false;
     loadFocusState(userId, withCount).then(st => { if (!cancelled) setState(st); });
-    // Zamiana fokusów na innym ekranie — od razu tutaj, bez ponownego wczytania.
-    const onPrimary = (e: Event) => {
-      const d = (e as CustomEvent).detail;
-      if (d?.userId === userId) setState(st => (st ? withPrimary(st, d.primary) : st));
-    };
+    // Zamiana fokus ↔ temat na innym ekranie — od razu tutaj, bez ponownego wczytania.
     const onTopicFirst = (e: Event) => {
       const d = (e as CustomEvent).detail;
       if (d?.userId === userId) setState(st => (st ? { ...st, topicFirst: d.topicFirst } : st));
     };
-    window.addEventListener(FOCUS_PRIMARY_EVENT, onPrimary);
     window.addEventListener(TOPIC_FIRST_EVENT, onTopicFirst);
     return () => {
       cancelled = true;
-      window.removeEventListener(FOCUS_PRIMARY_EVENT, onPrimary);
       window.removeEventListener(TOPIC_FIRST_EVENT, onTopicFirst);
     };
   }, [userId, withCount, refreshKey]);
@@ -665,7 +619,7 @@ export function withoutDoneTracks(state: FocusState): FocusState {
   const own = isTrackDone(state.own) ? null : state.own;
   const coach = isTrackDone(state.coach) ? null : state.coach;
   if (own === state.own && coach === state.coach) return state;
-  const main = orderedTracks({ own, coach, primary: state.primary })[0];
+  const main = orderedTracks({ own, coach })[0];
   return main
     ? { ...state, own, coach, focus: main.focus, dots: main.dots, goal: main.goal, count: main.count }
     : { ...state, own, coach, focus: null };

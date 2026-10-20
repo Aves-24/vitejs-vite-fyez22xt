@@ -1002,7 +1002,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 12,5px nad baseline; kropka 10px -> dolna krawędź na 7,5px. */}
             <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[7.5px]"></div>
           </div>
-          <p className="text-sm font-bold text-gray-400 uppercase tracking-[0.2em] mt-1">{t('home.commander')}</p>
         </div>
         <div className="flex items-center gap-2">
 
@@ -1199,7 +1198,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             onClick={() => { setQuickStatsInitialTab('ARROWS'); setIsQuickStatsOpen(true); }}
           >
             <p className="text-[28px] font-black text-[#0a3a2a] leading-none">{monthlyTotal}</p>
-            <span className="text-[11px] font-bold text-gray-500 uppercase mt-1 tracking-wide whitespace-nowrap">{t('home.month')}</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase mt-1 tracking-wide whitespace-nowrap">{t('home.arrowsPerMonth')}</span>
           </button>
 
           <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
@@ -1210,7 +1209,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             onClick={() => { setQuickStatsInitialTab('POINTS'); setIsQuickStatsOpen(true); }}
           >
             <p className="text-[22px] font-black text-[#725b00] leading-none">{avg14Days}</p>
-            <span className="text-[10px] font-bold text-[#725b00]/70 mt-1 tracking-wide">x̄₁₄</span>
+            <span className="text-[10px] font-bold text-[#725b00]/70 mt-1 tracking-wide whitespace-nowrap">{t('home.avg14Short')}</span>
           </button>
 
           <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
@@ -1294,6 +1293,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             }
           }}
         >
+          <span className="text-[9px] font-black text-[#725b00]/70 uppercase tracking-widest leading-none mb-1 whitespace-nowrap">{t('home.lastShort')}</span>
           <p className="text-[28px] font-black text-[#725b00] leading-none">{realLastSession ? realLastSession.score : '--'}</p>
           <span className="text-[9px] font-bold text-[#725b00]/70 leading-none mt-1 whitespace-nowrap block">{realLastSession ? `${realLastSession.distance || ''}${isPartialSession(realLastSession) ? ` · ${partialLabel(realLastSession)}` : ''}` : '--'}</span>
           <span className="text-[9px] font-bold text-[#725b00]/60 leading-none mt-0.5 whitespace-nowrap block">

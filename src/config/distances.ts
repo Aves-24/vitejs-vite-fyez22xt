@@ -270,6 +270,19 @@ export function ensureMasterDistances(list: UserDistance[]): { list: UserDistanc
   return { list: [...(list || []), ...missing].sort(compareDistances), changed: true };
 }
 
+/**
+ * Tarcza, gdy nie znamy klasy usera (brak daty urodzenia, np. gość).
+ * Gdy data urodzenia jest, tarczę wybiera `getRecommendation` (archeryRules.ts).
+ * Hala 18 m to pełna 40 cm — dozwolona we wszystkich klasach; wcześniej
+ * każdy dystans dostawał 122 cm, także 18 m.
+ */
+export const fallbackTargetFor = (m: string): string => {
+  const meters = distanceMeters(m);
+  if (meters <= 18) return '40cm';
+  if (meters <= 30) return '80cm';
+  return '122cm';
+};
+
 /** Wpis dla dystansu z listy standardowej, z zachowaniem tego, co user już miał. */
 export function buildDistanceEntry(m: string, existing?: Partial<UserDistance>): UserDistance {
   return {
@@ -280,7 +293,7 @@ export function buildDistanceEntry(m: string, existing?: Partial<UserDistance>):
     // kreator, zmiana roku) — tak jak etykieta i nastawy.
     ...(existing?.setupId ? { setupId: existing.setupId } : {}),
     active: !!existing?.active,
-    targetType: existing?.targetType || '122cm',
+    targetType: existing?.targetType || fallbackTargetFor(m),
     sightExtension: existing?.sightExtension || '',
     sightHeight: existing?.sightHeight || '',
     sightSide: existing?.sightSide || '',

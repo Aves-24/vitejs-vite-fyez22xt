@@ -768,9 +768,12 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   // [C25] Bylo `distance.includes('18')` — kruche: wlasny dystans z etykieta
   // zawierajaca "18" (np. "7m seria18") wpadal w ten warunek. Teraz porownujemy
   // METRY, a nie fragment napisu.
-  const displayTargetType = distanceMeters(selectedSession?.distance) === 18
-      ? '3-Spot' 
-      : (selectedSession?.targetType && selectedSession.targetType !== 'Full' ? selectedSession.targetType : 'Full');
+  // Tarcza z sesji. Wcześniej każda sesja 18 m była pokazywana jako 3-Spot,
+  // nawet gdy strzelano na pełną 40 cm albo 122 cm. 3-Spot zostaje tylko dla
+  // starych sesji 18 m bez zapisanej tarczy.
+  const displayTargetType = selectedSession?.targetType && selectedSession.targetType !== 'Full'
+      ? selectedSession.targetType
+      : distanceMeters(selectedSession?.distance) === 18 ? '3-Spot' : 'Full';
 
   const r1Hits = calculateHits(r1Ends);
   const r2Hits = calculateHits(r2Ends);

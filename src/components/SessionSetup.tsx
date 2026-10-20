@@ -12,7 +12,7 @@ import { FocusStrip, FocusChoiceChips } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
-import { UserDistance, displayDistance, distancesForSetup } from '../config/distances';
+import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
 import ViewHeader from './ViewHeader';
 
 interface SessionSetupProps {
@@ -217,7 +217,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // cache Firestore, więc bez tego świeższe dane z serwera nie dochodziły do ekranu.
   useEffect(() => {
     if (!selectedEntry) return;
-    setSelectedTarget(selectedEntry.targetType || '122cm');
+    setSelectedTarget(selectedEntry.targetType || fallbackTargetFor(selectedEntry.m));
     setSightExtension(selectedEntry.sightExtension || '');
     setSightHeight(selectedEntry.sightHeight || '');
     setSightSide(selectedEntry.sightSide || '');

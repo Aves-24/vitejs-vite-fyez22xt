@@ -293,6 +293,8 @@ export default function SettingsView({
   // stronę (input → birthDate) — zapobiega pętli wynikającej z różnicy
   // formatów ('1' vs '01' po padStart).
   const didInitBirthDateRef = useRef(false);
+  // Klasa (data urodzenia|łuk|płeć) z bazy — patrz saveAllSettings.
+  const savedClassKeyRef = useRef('');
   useEffect(() => {
     if (!didInitBirthDateRef.current && birthDate) {
       const parts = birthDate.split('-');
@@ -345,6 +347,7 @@ export default function SettingsView({
           if (data.country) setCountry(data.country);
           if (data.height) setHeight(data.height);
           if (data.handedness) setHandedness(data.handedness || 'RH');
+          savedClassKeyRef.current = `${priv?.birthDate || data.birthDate || ''}|${data.bowType || ''}|${priv?.gender || data.gender || 'M'}`;
 
           // Wczytywanie danych sprzętowych
           if (data.bowType) setBowType(data.bowType as BowType);
@@ -407,12 +410,20 @@ export default function SettingsView({
         const birthYear = new Date(birthDate).getFullYear() || 1990;
         const recH = getRecommendation(bowType, birthYear, 'Hala (Indoor)', gender);
         const recT = getRecommendation(bowType, birthYear, 'Tory (Outdoor)', gender);
+        // Zmiana daty urodzenia / łuku / płci = nowa klasa, więc polecane
+        // dystanse dostają tarczę tej klasy. Bez zmiany klasy zostaje wybór
+        // usera (np. pełna 40 cm zamiast 3-Spot).
+        const classKey = `${birthDate}|${bowType}|${gender}`;
+        const classChanged = classKey !== savedClassKeyRef.current;
         // [C25] Wpisy własne usera przechodzą przez regenerację nietknięte.
         finalDistances = rebuildMasterList(distances as UserDistance[], (m, prev) =>
           buildDistanceEntry(m, {
             ...prev,
             active: (m === recH.distance || m === recT.distance || m === '30m' || prev?.active),
+            ...(classChanged && m === recH.distance ? { targetType: recH.targetType } : {}),
+            ...(classChanged && m === recT.distance ? { targetType: recT.targetType } : {}),
           }));
+        savedClassKeyRef.current = classKey;
         onUpdateAllDistances(finalDistances); 
       }
 
@@ -539,7 +550,7 @@ export default function SettingsView({
             buildDistanceEntry(m, {
               ...prev,
               active: m === recH.distance || m === recT.distance,
-              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : (prev?.targetType || '122cm'),
+              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : prev?.targetType,
             }));
         }} onSaveSettings={saveAllSettings} onNavigate={onNavigate} onLogout={() => setShowLogoutConfirm(true)}
       />

@@ -272,7 +272,7 @@ export default function App() {
             // od razu zakładał zestaw z rurą, trafiał na pustą listę.
             setUserDistances(rebuildMasterList([], m => buildDistanceEntry(m, {
               active: m === recH.distance || m === recT.distance,
-              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : '122cm',
+              targetType: m === recH.distance ? recH.targetType : m === recT.distance ? recT.targetType : undefined,
             })));
           };
           const applyMinimal = () => {

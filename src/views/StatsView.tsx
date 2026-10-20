@@ -20,7 +20,7 @@ import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
-import { isPartialSession, partialLabel } from '../utils/partialSession';
+import { isPartialSession, partialLabel, isShortPlanned } from '../utils/partialSession';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
@@ -943,7 +943,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       {isPartialSession(selectedSession) && (
                         <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
                           <span className="material-symbols-outlined text-[12px]">hourglass_top</span>
-                          {t('stats.partialBadge', { label: partialLabel(selectedSession) })}
+                          {isShortPlanned(selectedSession)
+                            ? t('stats.shortBadge', { count: selectedSession.endsPlanned })
+                            : t('stats.partialBadge', { label: partialLabel(selectedSession) })}
                         </span>
                       )}
                     </div>

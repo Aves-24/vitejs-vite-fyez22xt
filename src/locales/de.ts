@@ -1184,6 +1184,7 @@ export const views = {
     }
   },
   sessionSetup: {
+    endsChip: "{{count}} Passen",
     arrowCount: "Wie viele Pfeile wurden geschossen?",
     techNotes: "Technische Notizen",
     techSubtitle: "Ohne Auflage",
@@ -1237,6 +1238,7 @@ export const views = {
     topic_nockpunkt: "Nockpunkt"
   },
   stats: {
+    shortBadge: "Kurzes Training · {{count}} Passen",
     partialBadge: "Unvollständig · {{label}} Passen",
     title: "Statistiken",
     tabDaily: "Täglich",

@@ -155,7 +155,7 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
@@ -216,8 +216,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // wie, ze jest juz w telefonie — zamiast drugiej kopii w statystykach.
   const saveIdRef = useRef<string | null>(null);
 
-  const isRestingBetweenRounds = submittedEnds.length === 6 && inputArrows.length === 0;
-  const isTrainingFinished = submittedEnds.length === 12;
+  // Ile serii ma ten trening. Standard 12 (2 rundy po 6); krotszy wybiera sie
+  // w Vorbereitung. Pojedynek zawsze 12. Wznowiony trening bierze wartosc
+  // z grotX_activeSession (efekt nizej), nie z propsa.
+  const [plannedEnds, setPlannedEnds] = useState<number>(
+    !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < PLANNED_ENDS ? plannedEndsProp : PLANNED_ENDS
+  );
+  const isShortTraining = plannedEnds < PLANNED_ENDS;
+
+  const isRestingBetweenRounds = submittedEnds.length === 6 && plannedEnds > 6 && inputArrows.length === 0;
+  const isTrainingFinished = submittedEnds.length === plannedEnds;
   const showStats = isRestingBetweenRounds || isTrainingFinished;
 
   const showToast = (msg: string, type: 'INFO' | 'ERROR' = 'INFO') => {
@@ -237,6 +245,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
           if (data.activeRoundTab) setActiveRoundTab(data.activeRoundTab);
           if (data.saveId) saveIdRef.current = data.saveId;
+          if (!battleId && typeof data.plannedEnds === 'number' && data.plannedEnds > 0 && data.plannedEnds <= PLANNED_ENDS) setPlannedEnds(data.plannedEnds);
         }
       } catch (e) {
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
@@ -254,6 +263,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         inputCoordinates,
         submittedEnds,
         activeRoundTab,
+        plannedEnds,
         ...(saveIdRef.current ? { saveId: saveIdRef.current } : {}),
       }));
       window.dispatchEvent(new Event('session_state_changed'));
@@ -261,7 +271,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       localStorage.removeItem('grotX_activeSession');
       window.dispatchEvent(new Event('session_state_changed'));
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, targetType, activeRoundTab]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, targetType, activeRoundTab, plannedEnds]);
 
   useEffect(() => {
     if (showStats) setIsStatsExpanded(true);
@@ -422,14 +432,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         setInputArrows([]); 
         setInputCoordinates([]);
         
-        if (submittedEnds.length === 5) {
+        if (submittedEnds.length === 5 && plannedEnds > 6) {
           onRoundTwoStart?.();
           setActiveRoundTab(2);
         }
       }, 600); 
     }
     return () => clearTimeout(timeoutId);
-  }, [inputArrows, submittedEnds.length, onRoundTwoStart]); 
+  }, [inputArrows, submittedEnds.length, onRoundTwoStart, plannedEnds]); 
 
   const getStats = (ends: any[], active: string[] = []) => {
     let x=0, t=0, n=0, score=0, count=0;
@@ -471,11 +481,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // [C31] Przed 12. seria pytamy, czy wynik ma trafic do sum i krzywych.
   // W Arenie/Battle nie pytamy — tam liczy sie wynik, jaki padl.
   const requestSave = () => {
-    if (!battleId && submittedEnds.length > 0 && submittedEnds.length < PLANNED_ENDS) {
+    if (!battleId && submittedEnds.length > 0 && submittedEnds.length < plannedEnds) {
       setShowPartialModal(true);
       return;
     }
-    saveTrainingSession(false);
+    saveTrainingSession(isShortTraining);
   };
 
   const finishSave = () => {
@@ -570,7 +580,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
         ...focusFields,
         ends: submittedEnds,
-        ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: PLANNED_ENDS } : {}),
+        // Przerwany ALBO z gory krotszy trening: suma nieporownywalna z 12 seriami.
+        // Krotszy ukonczony ma endsShot === endsPlanned (patrz isShortPlanned).
+        ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: plannedEnds } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
         ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       }));
@@ -722,7 +734,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   return (
     <div className="space-y-2 pb-40 relative w-full pt-[env(safe-area-inset-top)] max-w-md mx-auto min-h-screen flex flex-col bg-[#fcfdfe]">
       
-      {isTargetFullscreen && activeInputTab === 1 && submittedEnds.length < 12 && (
+      {isTargetFullscreen && activeInputTab === 1 && submittedEnds.length < plannedEnds && (
         <TargetInput 
           onShot={addScoreFromTarget} 
           isFullscreen={true} 
@@ -849,7 +861,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
       <Timer isExpanded={isTimerExpanded} onClose={() => setIsTimerExpanded(false)} playBeep={playBeep} currentEnd={submittedEnds.length} externalSeconds={timerSeconds} setExternalSeconds={setTimerSeconds} externalMode={timerMode} setExternalMode={setTimerMode} />
 
-      {submittedEnds.length < 12 && (
+      {submittedEnds.length < plannedEnds && (
         <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-[240px] shrink-0 ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
           <div className={`flex-1 ${activeInputTab === 0 ? 'p-2' : 'p-1'} h-full flex items-center justify-center`}>
             {activeInputTab === 0 ? (
@@ -1067,7 +1079,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </div>
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2 uppercase tracking-tighter">{t('scoringView.partialTitle')}</h2>
             <p className="text-sm text-gray-500 font-bold mb-6 leading-relaxed">
-              {t('scoringView.partialDesc', { shot: submittedEnds.length, planned: PLANNED_ENDS })}
+              {t('scoringView.partialDesc', { shot: submittedEnds.length, planned: plannedEnds })}
             </p>
             <div className="space-y-2.5">
               <button

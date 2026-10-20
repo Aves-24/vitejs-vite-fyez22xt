@@ -1201,6 +1201,7 @@ export const views = {
     }
   },
   sessionSetup: {
+    endsChip: "{{count}} serii",
     arrowCount: "Ile strzał oddano?",
     techNotes: "Notatki techniczne",
     techSubtitle: "Bez tarczy",
@@ -1254,6 +1255,7 @@ export const views = {
     topic_nockpunkt: "Punkt nałożenia strzały"
   },
   stats: {
+    shortBadge: "Krótszy trening · {{count}} serii",
     partialBadge: "Niepełny · {{label}} serii",
     title: "Statystyki",
     tabDaily: "Dzienne",

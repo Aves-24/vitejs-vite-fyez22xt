@@ -13,12 +13,13 @@ import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
+import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
 
 interface SessionSetupProps {
   userId: string;
   activeDistances: UserDistance[];
-  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number, distanceId?: string, distanceLabel?: string) => void;
+  onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number, distanceId?: string, distanceLabel?: string, plannedEnds?: number) => void;
   onUpdateDistances?: (newDistances: UserDistance[]) => void;
   onNavigate?: (view: string, tab?: string) => void;
   onGoToBattle?: (distance: string, targetType: string, distanceId?: string, distanceLabel?: string) => void;
@@ -37,6 +38,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [selectedDistance, setSelectedDistance] = useState<string>('');
   const selectedEntry = activeDistances.find(d => d.id === selectedId);
   const [selectedTarget, setSelectedTarget] = useState<string>('122cm');
+  // Liczba serii: standard 12, krotszy trening to mala opcja przy starcie.
+  const [plannedEnds, setPlannedEnds] = useState<number>(PLANNED_ENDS);
+  const [showEndsPicker, setShowEndsPicker] = useState(false);
   
   const [sightExtension, setSightExtension] = useState<string>('');
   const [sightHeight, setSightHeight] = useState<string>('');
@@ -238,8 +242,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   /** Stempel dystansu przekazywany dalej: id zawsze, etykieta tylko gdy jest. */
-  const startArgs = (): [string, string | undefined] =>
-    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined];
+  const startArgs = (): [string, string | undefined, number] =>
+    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, plannedEnds];
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
@@ -483,6 +487,29 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 </span>
               </p>
             )}
+            {selectedId && (
+              <div className="pointer-events-auto flex items-center gap-1">
+                {showEndsPicker ? (
+                  [...SHORT_END_OPTIONS, PLANNED_ENDS].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => { setPlannedEnds(n); setShowEndsPicker(false); }}
+                      className={`min-w-[32px] px-2 py-0.5 rounded-full text-[10px] font-black border shadow-sm active:scale-95 transition-all ${n === plannedEnds ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'}`}
+                    >
+                      {n}
+                    </button>
+                  ))
+                ) : (
+                  <button
+                    onClick={() => setShowEndsPicker(true)}
+                    className={`flex items-center gap-0.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide border shadow-sm active:scale-95 transition-all ${plannedEnds !== PLANNED_ENDS ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-white text-gray-400 border-gray-100'}`}
+                  >
+                    {t('sessionSetup.endsChip', { count: plannedEnds })}
+                    <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="relative h-20 w-full px-2">
@@ -526,7 +553,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 <button
                   onClick={() => {
                     if (onGoToBattle) {
-                      onGoToBattle(selectedDistance, selectedTarget, ...startArgs());
+                      onGoToBattle(selectedDistance, selectedTarget, selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined);
                     } else {
                       onNavigate?.('BATTLE_LOBBY');
                     }

@@ -1184,6 +1184,7 @@ export const views = {
     }
   },
   sessionSetup: {
+    endsChip: "{{count}} ends",
     arrowCount: "How many arrows were shot?",
     techNotes: "Technical notes",
     techSubtitle: "No target face",
@@ -1237,6 +1238,7 @@ export const views = {
     topic_nockpunkt: "Nocking point"
   },
   stats: {
+    shortBadge: "Short training · {{count}} ends",
     partialBadge: "Incomplete · {{label}} ends",
     title: "Stats",
     tabDaily: "Daily",

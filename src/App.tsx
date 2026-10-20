@@ -91,6 +91,7 @@ export default function App() {
   const [sessionDistance, setSessionDistance] = useState<string>('70m');
   const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
   const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(0);
+  const [sessionPlannedEnds, setSessionPlannedEnds] = useState<number | undefined>(undefined);
   // [C25] Tożsamość dystansu jedzie OBOK napisu z metrami. Napis zostaje
   // niezmieniony ("18m"), bo karmi handicap i historię; `id` decyduje o tym,
   // do którego kubełka statystyk trafi sesja, a etykieta o tym, co user widzi.
@@ -422,7 +423,7 @@ export default function App() {
     }
   };
 
-  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0, distanceId?: string, distanceLabel?: string) => {
+  const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0, distanceId?: string, distanceLabel?: string, plannedEnds?: number) => {
     if (!user) return;
     try {
       if (forceClear) {
@@ -442,6 +443,7 @@ export default function App() {
       setSessionDistanceId(distanceId);
       setSessionDistanceLabel(distanceLabel);
       setSessionPracticeArrows(practiceArrows);
+      setSessionPlannedEnds(plannedEnds);
       setActiveBattleId(battleId);
       // [C14] SCORING omija handleNavigate — wpis do historii ręcznie
       if (currentView !== 'SCORING') window.history.pushState({ view: 'SCORING' }, '');
@@ -655,7 +657,7 @@ export default function App() {
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         
-        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} distanceId={sessionDistanceId} distanceLabel={sessionDistanceLabel} targetType={sessionTargetType} battleId={activeBattleId} practiceArrows={sessionPracticeArrows} onNavigate={handleNavigate} />}
+        {currentView === 'SCORING' && <ScoringView userId={user?.uid || ''} distance={sessionDistance} distanceId={sessionDistanceId} distanceLabel={sessionDistanceLabel} targetType={sessionTargetType} battleId={activeBattleId} practiceArrows={sessionPracticeArrows} plannedEnds={sessionPlannedEnds} onNavigate={handleNavigate} />}
         {currentView === 'SETTINGS' && <SettingsView userId={user?.uid || ''} userEmail={user?.email || ''} distances={userDistances} initialTab={settingsTab} autoStartWizard={autoStartWizard} onToggleDistance={(idx: number) => {const n=[...userDistances]; n[idx].active=!n[idx].active; setUserDistances(n);}} onUpdateTargetType={(idx:number, t:string)=>{const n=[...userDistances]; n[idx].targetType=t; setUserDistances(n);}} onUpdateAllDistances={setUserDistances} onNavigate={handleNavigate as any} />}
         
         {currentView === 'BATTLE_LOBBY' && (

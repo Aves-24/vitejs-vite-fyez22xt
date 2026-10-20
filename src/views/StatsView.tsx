@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import SessionTrend from '../components/SessionTrend';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
+import { AI_ENABLED } from '../config/features';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
@@ -1025,7 +1026,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         <BiomechCard spread={spreadData} handedness={handedness} onNavigate={onNavigate} />
                       )}
 
-                      <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />
+                      {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
                       {!viewingStudentId && (
                         <div className="mt-6">
@@ -1039,7 +1040,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                               className="w-full py-4 bg-gradient-to-r from-yellow-400 to-[#fed33e] text-[#0a3a2a] rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
                             >
                               <span className="material-symbols-outlined text-[16px]">diamond</span>
-                              GROT-X PRO — Eksport Archiwum
+                              GROT-X PRO — {t('export.archivePro', 'Eksport archiwum')}
                             </button>
                           )}
                         </div>
@@ -1107,15 +1108,15 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-5">
               <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#fed33e]">smart_toy</span>
+                <span className="material-symbols-outlined text-[#fed33e]">delete</span>
               </div>
               <div>
-                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] block leading-tight">{t('stats.deleteAnalyzing', 'Trener AI analizuje Twoją decyzję...')}</span>
+                <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] block leading-tight">{t('stats.deleteAnalyzing', 'Na pewno usunąć?')}</span>
               </div>
             </div>
             
             <p className="text-[13px] text-gray-600 font-medium mb-6 leading-relaxed">
-              {t('stats.deleteWarning', 'Pamiętaj, że mistrzostwo buduje się na błędach. Każdy kiepski wynik to informacja, nie powód do wstydu. Trener AI potrzebuje tego zapisu, by wychwycić wzorce i pomóc Ci poprawić formę.')}
+              {t('stats.deleteWarning', 'Pamiętaj, że mistrzostwo buduje się na błędach. Każdy kiepski wynik to informacja, nie powód do wstydu. Z tych zapisów widać wzorce, które pomagają poprawić formę.')}
             </p>
 
             <div className="flex flex-col gap-2">

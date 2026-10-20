@@ -346,7 +346,7 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
             )}
           </div>
           <div className="text-left">
-            <span className="block text-[10px] font-black text-[#0a3a2a] leading-tight">Plik PDF</span>
+            <span className="block text-[10px] font-black text-[#0a3a2a] leading-tight">{t('export.pdfFile', 'Plik PDF')}</span>
             <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-0.5">{t('export.pdfScorecard', 'Karta Wyników')}</span>
           </div>
         </button>
@@ -371,11 +371,11 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
           
           <div className="text-left relative z-10">
             <span className={`block text-[10px] font-black leading-tight flex items-center gap-1 ${isPremium ? 'text-white' : 'text-[#0a3a2a]'}`}>
-              Dane CSV
+              {t('export.csvData', 'Dane CSV')}
               {!isPremium && <span className="material-symbols-outlined text-[10px] text-[#F2C94C] align-middle">diamond</span>}
             </span>
             <span className={`block text-[8px] font-bold uppercase tracking-widest mt-0.5 ${isPremium ? 'text-emerald-300' : 'text-[#B8860B]'}`}>
-              {isPremium ? 'Eksportuj' : 'GROT-X PRO'}
+              {isPremium ? t('export.exportBtn', 'Eksportuj') : 'GROT-X PRO'}
             </span>
           </div>
         </button>

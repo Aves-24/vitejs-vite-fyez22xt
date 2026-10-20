@@ -14,6 +14,7 @@ import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
+import { AI_ENABLED } from '../config/features';
 import TargetInput from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
@@ -951,7 +952,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 maxLength={100}
                 value={sessionNote}
                 onChange={(e) => setSessionNote(e.target.value)}
-                placeholder={t('scoringView.notePlaceholder', 'Opisz swoje odczucia: wiatr, zmęczenie, zmiany w sprzęcie... Trener AI to uwzględni!')}
+                placeholder={t('scoringView.notePlaceholder', 'Opisz swoje odczucia: wiatr, zmęczenie, zmiany w sprzęcie...')}
                 className="w-full bg-white/60 backdrop-blur-sm border border-emerald-200/50 rounded-xl p-3 text-sm font-bold text-[#0a3a2a] placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 h-20 resize-none transition-all"
               />
               <div className={`absolute bottom-2 right-3 text-[9px] font-black uppercase tracking-tighter transition-colors ${sessionNote.length >= 90 ? 'text-red-500' : 'text-emerald-600/50'}`}>
@@ -988,7 +989,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-emerald-600">analytics</span>
               <span className="text-[10px] font-black uppercase tracking-widest text-[#0a3a2a]">
-                {isStatsExpanded ? t('scoringView.collapse', 'Ukryj') : t('scoringView.showStats', 'Pokaż statystyki i AI')}
+                {isStatsExpanded ? t('scoringView.collapse', 'Ukryj') : t('scoringView.showStats', 'Pokaż statystyki')}
               </span>
             </div>
             <span className={`material-symbols-outlined transition-transform duration-300 ${isStatsExpanded ? 'rotate-180' : ''}`}>
@@ -1032,7 +1033,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:6})} /></div>}
               </div>
               
-              {submittedEnds.length >= 6 && (
+              {AI_ENABLED && submittedEnds.length >= 6 && (
                 <div className="animate-fade-in-up">
                   <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />
                 </div>

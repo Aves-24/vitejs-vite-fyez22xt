@@ -1,6 +1,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { TRIAL_DAYS } from '../../utils/proAccess';
+import { AI_ENABLED } from '../../config/features';
 
 interface ProSectionProps {
   isPremium: boolean;
@@ -77,6 +78,7 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt, proGift
               <span className="block text-[9px] text-gray-400 mt-0.5">{t('settings.pro.benefit2Desc')}</span>
             </div>
           </li>
+          {AI_ENABLED && (
           <li className="flex items-start gap-2">
             <span className="material-symbols-outlined text-[#F2C94C] text-base mt-0.5">psychology</span>
             <div>
@@ -84,6 +86,7 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt, proGift
               <span className="block text-[9px] text-gray-400 mt-0.5">{t('settings.pro.benefit3Desc')}</span>
             </div>
           </li>
+          )}
           <li className="flex items-start gap-2">
             <span className="material-symbols-outlined text-[#F2C94C] text-base mt-0.5">emoji_events</span>
             <div>

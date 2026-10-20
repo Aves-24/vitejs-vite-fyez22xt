@@ -506,6 +506,8 @@ export const views = {
     xpHighRankNote: "Ranks 7–10 (RED / GOLD) additionally require a minimum average from the last 10 sessions.",
     xpFormula: "XP = arrows × 1 + average × 10",
     noActiveBattles: "No active",
+    arenaEmptyTitle: "Start a duel",
+    arenaEmptyDesc: "Shoot with friends",
     handicap: {
       elite:           "Elite",
       eliteDesc:       "National team level. Arrows almost exclusively in 9–10.",

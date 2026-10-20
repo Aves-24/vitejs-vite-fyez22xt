@@ -522,6 +522,8 @@ export const views = {
     xpHighRankNote: "Rangi 7–10 (RED / GOLD) wymagają dodatkowo minimalnej średniej z ostatnich 10 sesji.",
     xpFormula: "XP = strzały × 1 + średnia × 10",
     noActiveBattles: "Brak aktywnych",
+    arenaEmptyTitle: "Rozpocznij pojedynek",
+    arenaEmptyDesc: "Strzelaj ze znajomymi",
     handicap: {
       elite:           "Elita",
       eliteDesc:       "Poziom reprezentacji. Strzały niemal wyłącznie w 9–10.",

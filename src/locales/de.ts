@@ -506,6 +506,8 @@ export const views = {
     xpHighRankNote: "Ränge 7–10 (RED / GOLD) erfordern zusätzlich einen Mindestschnitt aus den letzten 10 Sitzungen.",
     xpFormula: "XP = Pfeile × 1 + Schnitt × 10",
     noActiveBattles: "Keine aktiven",
+    arenaEmptyTitle: "Duell starten",
+    arenaEmptyDesc: "Mit Freunden schießen",
     handicap: {
       elite:           "Elite",
       eliteDesc:       "Nationalteam-Niveau. Pfeile fast ausschließlich in 9–10.",

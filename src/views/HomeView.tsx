@@ -1320,23 +1320,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             className={`rounded-[24px] border flex flex-col justify-between p-4 cursor-pointer active:scale-[0.98] transition-all relative overflow-hidden ${
               hasAnyBattle
                 ? 'bg-gradient-to-br from-fuchsia-700 to-fuchsia-900 border-fuchsia-500 min-h-[96px]'
-                : 'bg-gradient-to-br from-indigo-600 to-blue-700 border-indigo-500 min-h-[80px]'
+                : 'bg-indigo-50 border-indigo-100 min-h-[80px]'
             }`}
           >
             <div className="absolute right-0 bottom-0 opacity-[0.08] pointer-events-none">
-              <span className="material-symbols-outlined text-[60px] text-white">{hasAnyBattle ? 'shield' : 'public'}</span>
+              <span className={`material-symbols-outlined text-[60px] ${hasAnyBattle ? 'text-white' : 'text-indigo-900'}`}>{hasAnyBattle ? 'shield' : 'groups'}</span>
             </div>
-            <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${hasAnyBattle ? 'text-fuchsia-200' : 'text-indigo-200'}`}>
+            <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${hasAnyBattle ? 'text-fuchsia-200' : 'text-indigo-400'}`}>
               Multiplayer Arena
             </span>
             <div className="relative z-10 mt-2">
-              <p className="text-[15px] font-black text-white leading-tight">
+              <p className={`text-[15px] font-black leading-tight ${hasAnyBattle ? 'text-white' : 'text-indigo-900'}`}>
                 {hasAnyBattle
                   ? allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).length > 0
                       ? `${allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).length} ${t('home.active')}`
                       : t('home.done', 'Ukończono')
-                  : t('home.noActiveBattles')}
+                  : t('home.arenaEmptyTitle')}
               </p>
+              {!hasAnyBattle && (
+                <p className="text-[9px] font-bold text-indigo-500 leading-tight mt-0.5">{t('home.arenaEmptyDesc')}</p>
+              )}
               {hasAnyBattle && (
                 <div className="flex items-center gap-1 mt-1">
                   <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shrink-0"></span>

@@ -66,7 +66,9 @@ Wydajność:
 13. StatsView: pasek dni renderuje >1000 dni (1107 przycisków na stronie).
 Dobre: dziennik (najlepszy ekran), szybki start bez konta, przyciski punktów.
 
-Propozycja kolejności: 1–3 → usunąć `commander` + podpisy Home (6–7) →
+**1–3 ZROBIONE 2026-10-20 (35d873c)**: flaga AI_ENABLED=false (src/config/features.ts), eksport przez i18n, tekst gościa „dostęp kończy się po 24 h” zamiast „dane usuwane”. Otwarte: AGB/regulamin/terms §3 nadal obiecują usuwanie danych gościa.
+
+Propozycja kolejności: ~~1–3~~ → usunąć `commander` + podpisy Home (6–7) →
 4–5 → wydajność paska dni. Panel trenera NIEzbadany (wymaga konta usera).
 Na prod zostało konto gościa „UX Test” z 1 treningiem (bez TTL nie zniknie).
 

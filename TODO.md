@@ -70,7 +70,9 @@ Dobre: dziennik (najlepszy ekran), szybki start bez konta, przyciski punktów.
 
 **Napis commander usunięty + podpisy Home (pkt 6) ZROBIONE 2026-10-20 (a1b5e5b)**: „Pfeile / Monat”, „Ø 14 Tage”, „Zuletzt”; zweryfikowane na prod. Pkt 7 ZROBIONE: pusty kafel Multiplayer = jasne „Duell starten / Mit Freunden schießen”. Decyzja usera: LOCAL i CLUB (bitwy ze znajomymi) zostają, kłódka tylko WORLD (już była „Soon” w lobby, ranking światowy bez wejścia), Bogenschützen-Ranking zostaje. Do testów z grupą: CLUB na 2 telefonach.
 
-Propozycja kolejności: ~~1–3~~ → ~~commander + 6~~ → ~~7~~ → usunąć `commander` + podpisy Home (6–7) →
+**Pkt 4–5 ZROBIONE 2026-10-20**: tarcza wg klasy z daty urodzenia, bez daty 18 m→40 cm (238a9b0); statystyki pokazują tarczę z sesji zamiast wymuszonego 3-Spot. Krótszy trening 6/8/10 serii jako mały przełącznik „12 Passen” nad startem; zapis jako isPartial (endsShot===endsPlanned), więc sumy/krzywe czyste. DO SPRAWDZENIA na prawdziwym treningu: 6 i 8 serii do końca + zapis + znaczek w statystykach.
+
+Propozycja kolejności: ~~1–3~~ → ~~commander + 6~~ → ~~7~~ → ~~4–5~~ → usunąć `commander` + podpisy Home (6–7) →
 4–5 → wydajność paska dni. Panel trenera NIEzbadany (wymaga konta usera).
 Na prod zostało konto gościa „UX Test” z 1 treningiem (bez TTL nie zniknie).
 

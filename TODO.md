@@ -68,7 +68,9 @@ Dobre: dziennik (najlepszy ekran), szybki start bez konta, przyciski punktów.
 
 **1–3 ZROBIONE 2026-10-20 (35d873c)**: flaga AI_ENABLED=false (src/config/features.ts), eksport przez i18n, tekst gościa „dostęp kończy się po 24 h” zamiast „dane usuwane”. Otwarte: AGB/regulamin/terms §3 nadal obiecują usuwanie danych gościa.
 
-Propozycja kolejności: ~~1–3~~ → usunąć `commander` + podpisy Home (6–7) →
+**Napis commander usunięty + podpisy Home (pkt 6) ZROBIONE 2026-10-20 (a1b5e5b)**: „Pfeile / Monat”, „Ø 14 Tage”, „Zuletzt”; zweryfikowane na prod. Pkt 7 (kafel Multiplayer) czeka na przyciemnienie z kłódką.
+
+Propozycja kolejności: ~~1–3~~ → ~~commander + 6~~ → 7 → usunąć `commander` + podpisy Home (6–7) →
 4–5 → wydajność paska dni. Panel trenera NIEzbadany (wymaga konta usera).
 Na prod zostało konto gościa „UX Test” z 1 treningiem (bez TTL nie zniknie).
 

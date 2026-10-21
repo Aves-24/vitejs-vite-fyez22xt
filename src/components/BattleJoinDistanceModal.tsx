@@ -15,8 +15,8 @@ interface BattleJoinDistanceModalProps {
   initial?: UserDistance;
   /** Tarcza bitwy — wspólna, tu tylko do pokazania. */
   targetType: string;
-  /** Jeszcze nie w grze — okno jest potwierdzeniem dołączenia. */
-  needsJoin?: boolean;
+  /** Już strzelał w tej grze — „Wracasz do gry"; inaczej potwierdzenie dołączenia. */
+  resume?: boolean;
   hostName?: string;
   mode?: string;
   /** Może rzucić (odrzucone dopisanie) — wtedy okno pokazuje błąd. */
@@ -29,7 +29,7 @@ interface BattleJoinDistanceModalProps {
  * własny dystans (tarcza jest wspólna). Bez tego szło się z ostatnim dystansem
  * z przygotowania — np. 30 m na 122 cm. Lista jak w przygotowaniu: aktywny zestaw.
  */
-export default function BattleJoinDistanceModal({ userId, activeDistances, initial, targetType, needsJoin, hostName, mode, onConfirm, onCancel }: BattleJoinDistanceModalProps) {
+export default function BattleJoinDistanceModal({ userId, activeDistances, initial, targetType, resume, hostName, mode, onConfirm, onCancel }: BattleJoinDistanceModalProps) {
   const { t } = useTranslation();
   const [options, setOptions] = useState<UserDistance[]>(activeDistances);
   const [colors, setColors] = useState<Map<string, string>>(new Map());
@@ -66,7 +66,7 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
     <div className="fixed inset-0 z-[300000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={onCancel}>
       <div className="bg-white w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
         <h3 className="text-lg font-black text-[#0a3a2a] leading-tight">
-          {needsJoin ? t('battleJoin.title') : t('battleJoin.titleBack')}
+          {resume ? t('battleJoin.titleBack') : t('battleJoin.title')}
         </h3>
         <p className="text-[11px] font-bold text-gray-400 mb-4 truncate">
           {[mode === 'CLUB' ? t('battleLobby.club') : mode === 'WORLD' ? 'World' : null, hostName ? t('battleJoin.host', { name: hostName }) : null].filter(Boolean).join(' · ')}
@@ -97,7 +97,7 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
             disabled={!selected || busy}
             className="flex-1 py-3 bg-[#0a3a2a] text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-50"
           >
-            {needsJoin ? t('battleJoin.confirm') : t('battleLobby.joinStart')}
+            {resume ? t('battleLobby.joinStart') : t('battleJoin.confirm')}
           </button>
         </div>
       </div>

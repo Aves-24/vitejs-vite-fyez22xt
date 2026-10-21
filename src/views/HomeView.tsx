@@ -21,7 +21,7 @@ import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSes
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
-import { CLUB_MAX_PLAYERS } from '../utils/battleStage';
+import { CLUB_MAX_PLAYERS, arrowsShot } from '../utils/battleStage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -59,8 +59,9 @@ interface HomeViewProps {
   onGoToStats?: (date?: string) => void; 
   onGoToBattles?: () => void;
   onCreateArena?: () => void;
-  // `join` — dane do okna potwierdzenia; needsJoin = jeszcze nie jest w grze (dopisanie po „Dołącz").
-  onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; hostName?: string; mode?: string }) => void; 
+  // `join` — dane do okna potwierdzenia; needsJoin = jeszcze nie jest w grze (dopisanie po „Dołącz"),
+  // resume = już strzelał w tej grze (okno „Wracasz do gry").
+  onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; resume?: boolean; hostName?: string; mode?: string }) => void; 
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
@@ -806,6 +807,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let currentParticipants: string[];
     let freshTarget: string;
     let freshHost: string | undefined;
+    let resume: boolean;
     try {
       const fresh = await getDoc(doc(db, 'battles', battleId));
       if (!fresh.exists()) { showToast(t('home.arenaFinished')); return; }
@@ -819,6 +821,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       // Host mógł zmienić tarczę w lobby — w oknie potwierdzenia ma być aktualna.
       freshTarget = fd.targetType || targetType;
       freshHost = fd.hostName;
+      resume = arrowsShot(fd, userId) > 0;
     } catch (e) {
       console.error('Battle check failed:', e);
       showToast(t('auth.errorGeneral'));
@@ -844,6 +847,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     // BattleJoinDistanceModal) — sam klik w grę niczego nie zapisuje.
     onJoinBattle?.(battleId, distance, freshTarget, {
       needsJoin: !currentParticipants.includes(userId),
+      resume,
       hostName: freshHost,
       mode: battleMode,
     });

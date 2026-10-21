@@ -515,7 +515,7 @@ export default function App() {
   // (np. senior 60 m vs młodzik 70 m na 122 cm), więc sesja dołączającego
   // zapisuje się pod jego dystansem, a nie hosta.
   // Dołączenie kodem/z zaproszenia omija lobby — najpierw okno z wyborem dystansu.
-  type JoinInfo = { needsJoin: boolean; hostName?: string; mode?: string };
+  type JoinInfo = { needsJoin: boolean; resume?: boolean; hostName?: string; mode?: string };
   const [pendingJoin, setPendingJoin] = useState<({ battleId: string; distance: string; targetType: string } & Partial<JoinInfo>) | null>(null);
   const joinLabels = () => ({ archer: t('battleLobby.archer'), unaffiliated: t('battleLobby.unaffiliated') });
   const handleJoinBattle = (battleId: string, battleDistance: string, targetType: string, join?: JoinInfo) => {
@@ -700,7 +700,7 @@ export default function App() {
           activeDistances={userDistances.filter(d => d.active)}
           initial={lastActiveDistance()}
           targetType={pendingJoin.targetType}
-          needsJoin={!!pendingJoin.needsJoin}
+          resume={!!pendingJoin.resume}
           hostName={pendingJoin.hostName}
           mode={pendingJoin.mode}
           onConfirm={confirmJoinDistance}

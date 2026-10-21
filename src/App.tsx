@@ -488,9 +488,8 @@ export default function App() {
     handleNavigate('BATTLE_LOBBY');
   };
 
-  // „Utwórz nową arenę" z Home: prosto do lobby, z ostatnim dystansem z ekranu
-  // przygotowania (albo pierwszym aktywnym). Bez żadnego dystansu — do SETUP.
-  const handleCreateArena = () => {
+  // Ostatni dystans z ekranu przygotowania (albo pierwszy aktywny).
+  const lastActiveDistance = (): UserDistance | undefined => {
     const active = userDistances.filter(d => d.active);
     let entry: UserDistance | undefined;
     try {
@@ -500,9 +499,23 @@ export default function App() {
         entry = active.find(d => d.id === distanceId) || (!distanceId ? active.find(d => d.m === distance) : undefined);
       }
     } catch (_) { /* ignore malformed cache */ }
-    entry = entry || active[0];
+    return entry || active[0];
+  };
+
+  // „Utwórz nową arenę" z Home: prosto do lobby. Bez żadnego dystansu — do SETUP.
+  const handleCreateArena = () => {
+    const entry = lastActiveDistance();
     if (!entry) { handleNavigate('SETUP'); return; }
     handleGoToBattle(entry.m, entry.targetType || fallbackTargetFor(entry.m), entry.id, entry.label ? displayDistance(entry) : undefined);
+  };
+
+  // W bitwie wspólna jest tylko tarcza — każdy strzela ze swojego dystansu
+  // (np. senior 60 m vs młodzik 70 m na 122 cm), więc sesja dołączającego
+  // zapisuje się pod jego dystansem, a nie hosta.
+  const handleJoinBattle = (battleId: string, battleDistance: string, targetType: string) => {
+    const entry = lastActiveDistance();
+    if (!entry) { handleStartSession(battleDistance, targetType, true, battleId); return; }
+    handleStartSession(entry.m, targetType, true, battleId, 0, entry.id, entry.label ? displayDistance(entry) : undefined);
   };
 
   const renderBottomNav = () => {
@@ -664,7 +677,7 @@ export default function App() {
       <UpdateBanner hidden={hasActiveSession || currentView === 'SCORING'} />
       <OfflineBanner hidden={currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       <MoveNotice hidden={hasActiveSession || currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
-      {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} />}
+      {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={handleJoinBattle} />}
 
 
       <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>

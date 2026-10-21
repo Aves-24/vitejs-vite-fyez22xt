@@ -173,7 +173,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [clubBattlesReload, setClubBattlesReload] = useState(0);
   const [battleStats, setBattleStats] = useState<BattleStats | null>(null);
   // Ranking ukończonej gry otwierany nad oknem Arena (zamiast skoku do historii).
-  const [rankingBattle, setRankingBattle] = useState<any>(null); 
+  const [rankingBattle, setRankingBattle] = useState<any>(null);
+  const [showFairPlay, setShowFairPlay] = useState(false); 
   const [isClubBattlesModalOpen, setIsClubBattlesModalOpen] = useState(false); 
   
   const [manualBattleCode, setManualBattleCode] = useState('');
@@ -1730,9 +1731,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
               {/* ── STATYSTYKI ───────────────────────────────────── */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-1.5 mb-2">
                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('home.battleStats')}</span>
+                  {/* Fair play: wyniki wpisuje każdy sam — liczymy na uczciwość (user 2026-10-21). */}
+                  <button
+                    onClick={() => setShowFairPlay(v => !v)}
+                    aria-label={t('home.fairPlayTitle')}
+                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black italic transition-all ${showFairPlay ? 'bg-amber-300 text-[#0a0f1a]' : 'bg-white/10 text-gray-300'}`}
+                  >
+                    i
+                  </button>
                 </div>
+                {showFairPlay && (
+                  <div className="mb-2 p-3 rounded-2xl bg-amber-300/10 border border-amber-300/30">
+                    <p className="text-[10px] font-black text-amber-300 uppercase tracking-widest mb-1 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[13px]">verified_user</span>{t('home.fairPlayTitle')}
+                    </p>
+                    <p className="text-[11px] font-bold text-gray-300 leading-snug">{t('home.fairPlayText')}</p>
+                  </div>
+                )}
                 {/* Prawdziwe statystyki zamiast licznika otwartych gier klubu; klik → historia. */}
                 <button
                   onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}

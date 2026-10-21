@@ -928,6 +928,15 @@ Kolejność w dniu przejścia:
        dokumenty zniknęły. (Konta anonimowe w Auth zostają — TTL to tylko Firestore.)
 5. [ ] **Point-in-Time Recovery** (C10.3).
 6. [ ] **Cloud Functions** (C43): webhook Stripe, admin przez custom claims.
+7. [ ] **Bitwy po stronie serwera (decyzja usera 2026-10-21):**
+       - statystyki bitew (`users/{uid}.battleStats`: rozegrane/wygrane/podia/
+         najlepszy) liczy funkcja przy zamknięciu bitwy (status FINISHED),
+         a reguła blokuje zapis tego pola z klienta — dziś liczy telefon
+         (`src/utils/battleStats.ts`) i da się je podrobić devtoolsami;
+       - ranking na ślepo przez funkcję (callable „zatwierdź serię”: zapis +
+         walidacja wyniku + przycięty ranking), wyniki w prywatnym dokumencie
+         — patrz pamięć `project_blind_battle_ranking`;
+       - push „X założył grę klubową, dołącz!”.
 
 ## 🟡 Priorytet 3 — Gotowość sklepowa
 

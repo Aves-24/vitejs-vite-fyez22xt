@@ -476,6 +476,8 @@ export const views = {
     statWins: "Wygrane",
     statPodiums: "Podia",
     statBest: "Najlepszy",
+    fairPlayTitle: "Fair play",
+    fairPlayText: "Łucznictwo to szlachetny sport. W Arenie każdy sam wpisuje swoje strzały — często nikt inny nie może sprawdzić ich na tarczy. Dlatego liczymy na Twoją uczciwość: wpisuj każdą strzałę tak, jak siedzi w tarczy. Fair play jest warte więcej niż kilka punktów. 🏹",
     arenaFinished: "Ta Arena już się zakończyła.",
     connectTitle: "Dołączanie",
     connectSub: "Wybierz sposób połączenia",

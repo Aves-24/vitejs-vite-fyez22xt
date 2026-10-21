@@ -460,6 +460,8 @@ export const views = {
     statWins: "Siege",
     statPodiums: "Podium",
     statBest: "Bestwert",
+    fairPlayTitle: "Fair Play",
+    fairPlayText: "Bogenschießen ist ein edler Sport. In der Arena trägt jeder seine Pfeile selbst ein – oft kann niemand sonst sie an der Scheibe prüfen. Deshalb zählen wir auf deine Ehrlichkeit: Trag jeden Pfeil so ein, wie er steckt. Fair Play ist mehr wert als ein paar Ringe. 🏹",
     arenaFinished: "Diese Arena wurde bereits beendet.",
     connectTitle: "Verbindung",
     connectSub: "Verbindungsmethode wählen",

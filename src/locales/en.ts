@@ -460,6 +460,8 @@ export const views = {
     statWins: "Wins",
     statPodiums: "Podiums",
     statBest: "Best",
+    fairPlayTitle: "Fair play",
+    fairPlayText: "Archery is a noble sport. In the Arena everyone scores their own arrows – often nobody else can check them on the target. That's why we count on your honesty: score every arrow exactly as it sits. Fair play is worth more than a few points. 🏹",
     arenaFinished: "This Arena has already ended.",
     connectTitle: "Connection",
     connectSub: "Choose connection method",

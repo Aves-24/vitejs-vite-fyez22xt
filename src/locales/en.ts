@@ -450,6 +450,7 @@ export const views = {
     arenaJoinCode: "Or enter Arena PIN",
     arenaCodePlaceholder: "e.g. AB12CD",
     arenaJoinBtn: "JOIN",
+    arenaJoinWithCode: "Join with code / QR",
     arenaCreateBtn: "Create New Arena",
     arenaClubLabel: "Club",
     arenaNoClubGames: "No active club games",
@@ -651,6 +652,11 @@ export const views = {
     wins: "W",
     losses: "L",
     homeButton: "WORLD Ranking",
+  },
+  battleCard: {
+    live: "Live",
+    timeLeft: "Left",
+    players: "{{n}} archers",
   },
   battleJoin: {
     noFittingDistance: "The {{target}} face is shot from {{range}} — none of your active distances fits (Settings → distances).",

@@ -1658,66 +1658,31 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       );
                     }
 
+                    // Gra w toku — ta sama karta co ukończona, wariant „live” (user 2026-10-21).
                     return (
-                      <div
-                        key={battle.id}
-                        onClick={() => {
-                          setIsClubBattlesModalOpen(false);
-                          if (hasFinishedThis) {
-                            onGoToBattles?.();
-                          } else {
-                            handleSafeJoin(battle.id, battle.distance, battle.targetType, battle.participants || [], battle.mode, battle.hostLevel);
+                      <div key={battle.id} style={{ opacity }}>
+                        <BattleCard
+                          battle={battle}
+                          userId={userId}
+                          live={{ time: getRemainingTime(battle.expiresAt, battle.createdAt), players: (battle.participants || []).length }}
+                          chip={battle.mode === 'WORLD' && battle.hostLevel ? (() => {
+                            const ok = Math.abs(userLevel - (battle.hostLevel || 1)) <= 1;
+                            return <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${ok ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>Lvl {battle.hostLevel}</span>;
+                          })() : undefined}
+                          action={
+                            /* Usunąć można tylko grę, do której nikt poza hostem nie dołączył
+                               i której nikt nie ukończył — tak samo pilnują reguły. */
+                            isHost && !battle.finishedParticipants?.length && (battle.status !== 'ACTIVE' || (battle.participants?.length || 0) <= 1) ? (
+                              <button onClick={(e) => initiateDeleteBattle(e, battle.id)} className="w-8 h-8 bg-red-500/15 rounded-xl flex items-center justify-center text-red-300 z-20 active:scale-90">
+                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            ) : undefined
                           }
-                        }}
-                        style={{ opacity }}
-                        className={`border p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden ${
-                          hasFinishedThis
-                            ? isLastDone ? 'bg-emerald-500/10 border-emerald-400/40' : 'bg-white/5 border-white/10'
-                            : 'bg-fuchsia-600/15 border-fuchsia-400/40'
-                        }`}
-                      >
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 mb-1.5">
-                            {hasFinishedThis ? (
-                              <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest ${isLastDone ? 'bg-emerald-500 text-white' : 'bg-white/10 text-gray-400'}`}>
-                                {isLastDone ? '✓ ' + t('home.done', 'Ukończono') : t('home.arenaFinished')}
-                              </span>
-                            ) : (
-                              <span className="text-[8px] font-black bg-fuchsia-600 text-white px-2 py-0.5 rounded-md uppercase tracking-widest">
-                                {battle.mode === 'CLUB' ? `🏛 ${t('battleLobby.club')}` : '🌐 World'}
-                              </span>
-                            )}
-                            {battle.mode === 'WORLD' && battle.hostLevel && (() => {
-                              const ok = Math.abs(userLevel - (battle.hostLevel || 1)) <= 1;
-                              return <span className={`text-[8px] font-black px-1.5 py-0.5 rounded-md ${ok ? 'bg-emerald-500/20 text-emerald-300' : 'bg-red-500/20 text-red-300'}`}>Lvl {battle.hostLevel}</span>;
-                            })()}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className={`material-symbols-outlined text-lg ${hasFinishedThis ? (isLastDone ? 'text-emerald-400' : 'text-gray-500') : 'text-fuchsia-400'}`}>target</span>
-                            <p className={`font-black text-sm ${hasFinishedThis ? (isLastDone ? 'text-emerald-300' : 'text-gray-400') : 'text-white'}`}>
-                              {getFriendlyTargetName(battle.targetType)} · {battle.distance}
-                            </p>
-                          </div>
-                          {battle.expiresAt && !hasFinishedThis && (
-                            <span className="text-[9px] font-bold text-fuchsia-300 flex items-center gap-0.5 mt-1">
-                              <span className="material-symbols-outlined text-[11px]">schedule</span>
-                              {getRemainingTime(battle.expiresAt, battle.createdAt)}
-                            </span>
-                          )}
-                          <p className="text-[9px] font-bold text-gray-500 mt-0.5 truncate italic">{battle.hostName}</p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0 ml-2">
-                          {/* Usunąć można tylko grę, do której nikt poza hostem nie dołączył
-                              i której nikt nie ukończył — tak samo pilnują reguły. */}
-                          {isHost && !battle.finishedParticipants?.length && (battle.status !== 'ACTIVE' || (battle.participants?.length || 0) <= 1) && (
-                            <button onClick={(e) => initiateDeleteBattle(e, battle.id)} className="w-8 h-8 bg-red-500/15 rounded-xl flex items-center justify-center text-red-300 z-20 active:scale-90">
-                              <span className="material-symbols-outlined text-[16px]">delete</span>
-                            </button>
-                          )}
-                          <span className={`material-symbols-outlined text-2xl ${hasFinishedThis ? (isLastDone ? 'text-emerald-400' : 'text-gray-600') : 'text-fuchsia-400'}`}>
-                            {hasFinishedThis ? 'trophy' : 'chevron_right'}
-                          </span>
-                        </div>
+                          onClick={() => {
+                            setIsClubBattlesModalOpen(false);
+                            handleSafeJoin(battle.id, battle.distance, battle.targetType, battle.participants || [], battle.mode, battle.hostLevel);
+                          }}
+                        />
                       </div>
                     );
                   }) : (
@@ -1811,6 +1776,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {/* FOOTER — utwórz arenę */}
             <div className="px-6 pt-3 pb-8 border-t border-white/10 shrink-0 space-y-2">
               <button
+                onClick={() => { setIsClubBattlesModalOpen(false); setShowQR(true); }}
+                className="w-full py-3 bg-white/10 border border-white/10 text-gray-200 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
+                {t('home.arenaJoinWithCode')}
+              </button>
+              <button
                 onClick={() => { setIsClubBattlesModalOpen(false); (onCreateArena ?? onNewSession)(); }}
                 className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
               >
@@ -1831,25 +1803,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       {showQR && (
         <div className="fixed inset-0 z-[10000] flex items-start justify-center p-6 pt-20">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowQR(false)}></div>
-          <div className="bg-white w-full max-w-sm rounded-[40px] p-6 relative z-10 shadow-2xl text-center animate-fade-in-up">
-            
-            <h2 className="text-2xl font-black text-[#0a3a2a] mb-2 tracking-tighter">{t('home.connectTitle')}</h2>
+          {/* Ciemny styl Battle Arena — QR skanuje gospodarz w lobby, niżej kod gry (user 2026-10-21). */}
+          <div className="bg-[#111827] border border-white/10 text-white w-full max-w-sm rounded-[40px] p-6 relative z-10 shadow-2xl text-center animate-fade-in-up">
+
+            <h2 className="text-2xl font-black text-white mb-2 tracking-tighter">{t('home.connectTitle')}</h2>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">{t('home.connectSub')}</p>
-            
-            <div className="bg-gray-50 p-4 rounded-[24px] inline-block border-4 border-indigo-50 mb-3">
+
+            <div className="bg-white p-4 rounded-[24px] inline-block border-4 border-indigo-400/40 mb-3">
               <QRCodeCanvas value={userId} size={150} />
             </div>
             
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('home.yourStudentId')}</p>
-            <div className="bg-gray-100 rounded-xl p-3 mb-6 flex items-center justify-between border border-gray-200">
-              <code className="text-[11px] font-black text-[#0a3a2a] tracking-wider truncate select-all w-full text-left">{userId}</code>
-              <button onClick={() => { navigator.clipboard.writeText(userId); showToast(t('home.copiedId')); }} className="ml-3 text-indigo-600 active:scale-90 transition-transform flex-shrink-0">
+            <p className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-1">{t('home.yourStudentId')}</p>
+            <div className="bg-white/5 rounded-xl p-3 mb-6 flex items-center justify-between border border-white/10">
+              <code className="text-[11px] font-black text-gray-200 tracking-wider truncate select-all w-full text-left">{userId}</code>
+              <button onClick={() => { navigator.clipboard.writeText(userId); showToast(t('home.copiedId')); }} className="ml-3 text-indigo-300 active:scale-90 transition-transform flex-shrink-0">
                 <span className="material-symbols-outlined text-lg">content_copy</span>
               </button>
             </div>
             
-            <div className="mb-6 p-4 bg-indigo-50/50 rounded-[20px] border border-indigo-100 text-left">
-              <label className="text-[10px] font-black text-indigo-800 uppercase tracking-widest block mb-2 text-center">{t('home.arenaJoinCode')}</label>
+            <div className="mb-6 p-4 bg-indigo-600/15 rounded-[20px] border border-indigo-400/40 text-left">
+              <label className="text-[10px] font-black text-indigo-300 uppercase tracking-widest block mb-2 text-center">{t('home.arenaJoinCode')}</label>
               <div className="flex gap-2 w-full">
                 <input
                   type="text"
@@ -1857,7 +1830,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   maxLength={6}
                   value={manualBattleCode}
                   onChange={(e) => setManualBattleCode(e.target.value.toUpperCase())}
-                  className="flex-1 min-w-0 bg-white border border-indigo-200 rounded-xl p-3 text-sm font-black text-center tracking-[0.2em] uppercase focus:outline-none focus:border-indigo-500"
+                  className="flex-1 min-w-0 bg-[#0a0f1a] border border-white/15 text-white placeholder:text-gray-600 rounded-xl p-3 text-sm font-black text-center tracking-[0.2em] uppercase focus:outline-none focus:border-indigo-400"
                 />
                 <button
                   onClick={handleJoinByCode}
@@ -1869,7 +1842,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             </div>
 
-            <button onClick={() => setShowQR(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-[20px] font-black uppercase tracking-widest active:scale-95 transition-all">{t('home.close')}</button>
+            <button onClick={() => setShowQR(false)} className="w-full py-4 bg-white/10 text-gray-300 rounded-[20px] font-black uppercase tracking-widest active:scale-95 transition-all">{t('home.close')}</button>
           </div>
         </div>
       )}

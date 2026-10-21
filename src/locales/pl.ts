@@ -466,6 +466,7 @@ export const views = {
     arenaJoinCode: "Lub wpisz PIN Areny",
     arenaCodePlaceholder: "np. AB12CD",
     arenaJoinBtn: "DOŁĄCZ",
+    arenaJoinWithCode: "Dołącz kodem / QR",
     arenaCreateBtn: "Utwórz Nową Arenę",
     arenaClubLabel: "Klubowe",
     arenaNoClubGames: "Brak aktywnych gier w klubie",
@@ -668,6 +669,11 @@ export const views = {
     wins: "W",
     losses: "L",
     homeButton: "Ranking WORLD",
+  },
+  battleCard: {
+    live: "Trwa",
+    timeLeft: "Jeszcze",
+    players: "strzelców: {{n}}",
   },
   battleJoin: {
     noFittingDistance: "Na tarczę {{target}} strzela się z {{range}} — żaden z Twoich aktywnych dystansów nie pasuje (Ustawienia → dystanse).",

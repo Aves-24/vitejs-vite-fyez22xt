@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, updateDoc, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
@@ -449,17 +449,35 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         .filter((b: any) => {
           if (b.mode !== 'CLUB') return false;
           
-          const isExpired = b.expiresAt 
+          const isExpired = b.expiresAt
             ? getSafeTime(b.expiresAt) < now
             : (now - getSafeTime(b.createdAt)) > 3 * 60 * 60 * 1000;
-            
+
+          // [ZAMYKANIE] Gra po terminie dostaje status FINISHED — przestaje
+          // wracać w tym zapytaniu i nie rośnie lista „aktywnych” w bazie.
+          // Reguła: po expiresAtMs może każdy; starsze gry bez tego pola — host.
+          if (isExpired && (b.expiresAtMs || b.hostId === userId)) {
+            updateDoc(doc(db, 'battles', b.id), { status: 'FINISHED' }).catch(() => {});
+          }
           return !isExpired;
         });
       
       setActiveClubBattles(clubBattles);
     }).catch(e => console.error('Club battles fetch failed:', e));
     return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userClub, clubBattlesReload]);
+
+  // [VEREIN] Lista gier klubu nie jest nasłuchiwana — odświeżamy ją, gdy
+  // aplikacja wraca na wierzch (telefon wyjęty z kieszeni) i co 3 min, ale
+  // tylko przy widocznym ekranie. 1 odczyt na odświeżenie (user 2026-10-21).
+  useEffect(() => {
+    if (!userClub) return;
+    const refresh = () => { if (document.visibilityState === 'visible') setClubBattlesReload(n => n + 1); };
+    document.addEventListener('visibilitychange', refresh);
+    const timer = window.setInterval(refresh, 3 * 60 * 1000);
+    return () => { document.removeEventListener('visibilitychange', refresh); window.clearInterval(timer); };
+  }, [userClub]);
 
   // [ARENA] Statystyki bitew — liczone z własnych bitew, pobieranych raz przy
   // otwarciu okna Arena (jedno zapytanie, bez nasłuchu). utils/battleStats.ts
@@ -1760,17 +1778,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         </div>
       )}
 
-      {/* Modal potwierdzenia usunięcia Areny */}
+      {/* Modal potwierdzenia usunięcia Areny — ciemny styl Battle Arena */}
       {battleToDelete && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl text-center">
-            <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+          <div className="bg-[#111827] border border-white/10 rounded-[32px] p-6 w-full max-w-sm shadow-2xl text-center">
+            <div className="w-16 h-16 bg-red-500/15 text-red-400 rounded-full flex items-center justify-center mx-auto mb-4">
               <span className="material-symbols-outlined text-3xl">warning</span>
             </div>
-            <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('calendar.modalDelete')}</h2>
-            <p className="text-sm font-bold text-gray-500 mb-6">{t('home.arenaDeleteConfirm', 'Na pewno chcesz usunąć tę Arenę? Zniknie ona u wszystkich graczy z Twojego klubu.')}</p>
+            <h2 className="text-xl font-black text-white mb-2">{t('calendar.modalDelete')}</h2>
+            <p className="text-sm font-bold text-gray-400 mb-6">{t('home.arenaDeleteConfirm', 'Na pewno chcesz usunąć tę Arenę? Zniknie ona u wszystkich graczy z Twojego klubu.')}</p>
             <div className="flex gap-2">
-              <button onClick={() => setBattleToDelete(null)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">{t('setup.warningCancel')}</button>
+              <button onClick={() => setBattleToDelete(null)} className="flex-1 py-4 bg-white/10 text-gray-300 rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">{t('setup.warningCancel')}</button>
               <button onClick={confirmDeleteBattle} className="flex-1 py-4 bg-red-500 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all shadow-md shadow-red-500/30">{t('calendar.modalDelete')}</button>
             </div>
           </div>

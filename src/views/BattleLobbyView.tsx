@@ -272,6 +272,9 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
       mode: battleMode,
       isPublic: battleMode === 'WORLD',
       expiresAt: expiresAt,
+      // [ZAMYKANIE] Termin jako liczba — reguła Firestore nie odczyta daty z tekstu,
+      // a po nim każdy może oznaczyć grę jako FINISHED.
+      expiresAtMs: expiresAt ? Date.parse(expiresAt) : null,
       distance: myDistanceM,
       targetType: target,
       participants: [userId],
@@ -461,6 +464,7 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
           mode: newMode,
           isPublic: newMode === 'WORLD',
           expiresAt: expiresAt,
+          expiresAtMs: expiresAt ? Date.parse(expiresAt) : null,
           status: newMode === 'LOCAL' ? 'LOBBY' : 'ACTIVE'
       });
     }
@@ -598,7 +602,7 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
                 </div>
                 <div>
                   <p className="font-black text-sm leading-none mb-0.5">{name.trim()}</p>
-                  <p className="text-[9px] font-bold text-violet-400 uppercase tracking-tight">👤 GOŚĆ</p>
+                  <p className="text-[9px] font-bold text-violet-400 uppercase tracking-tight">👤 {t('battleLobby.guestBadge')}</p>
                 </div>
               </div>
             </div>

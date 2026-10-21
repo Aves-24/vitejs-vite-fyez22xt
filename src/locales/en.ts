@@ -654,6 +654,7 @@ export const views = {
     arenaCode: "ARENA CODE",
     scan: "Scan",
     myDistance: "My distance",
+    guestBadge: "Guest",
     joinStart: "Start shooting",
     ownDistanceHint: "Everyone shoots their own distance, the target face is shared.",
     local: "Local",

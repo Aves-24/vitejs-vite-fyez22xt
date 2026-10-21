@@ -742,6 +742,25 @@ service cloud.firestore {
         && request.resource.data.finishedParticipants
              == resource.data.get('finishedParticipants', []).concat([request.auth.uid]);
 
+      // [ZAMYKANIE] Gra kończy się statusem FINISHED — wcześniej zostawała
+      // „aktywna” na zawsze i lista bitew rosła bez końca. Tylko sam status:
+      //  - pojedynek/World: uczestnik, gdy WSZYSCY uczestnicy skończyli,
+      //  - po terminie gry (expiresAtMs, liczba): każdy zalogowany.
+      // Gra klubowa nie zamyka się przed terminem, bo dochodzą do niej nowi.
+      allow update: if isSignedIn()
+        && onlyAffects(['status'])
+        && request.resource.data.status == 'FINISHED'
+        && resource.data.status in ['LOBBY', 'ACTIVE', 'START']
+        && (
+          (request.auth.uid in resource.data.get('participants', [])
+            && resource.data.get('mode', 'LOCAL') != 'CLUB'
+            && resource.data.get('finishedParticipants', []).toSet()
+                 .hasAll(resource.data.get('participants', [])))
+          || (resource.data.get('expiresAtMs', 0) is int
+            && resource.data.get('expiresAtMs', 0) > 0
+            && request.time.toMillis() > resource.data.get('expiresAtMs', 0))
+        );
+
       // Participant — ONLY own distance (w bitwie wspólna jest tarcza, dystans
       // każdy ma swój, np. senior 60 m vs młodzik 70 m na 122 cm)
       allow update: if isSignedIn()

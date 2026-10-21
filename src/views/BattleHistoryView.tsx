@@ -29,7 +29,8 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
     const q = query(
       collection(db, 'battles'),
       where('participants', 'array-contains', userId),
-      where('status', 'in', ['START', 'ACTIVE'])
+      // FINISHED — gry zamknięte (wszyscy skończyli albo minął termin) zostają w historii.
+      where('status', 'in', ['START', 'ACTIVE', 'FINISHED'])
     );
 
     const unsub = onSnapshot(q, (snap) => {

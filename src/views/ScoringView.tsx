@@ -709,9 +709,20 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       })).catch(e => console.error('Błąd aktualizacji profilu po treningu:', e));
 
       if (activeBattle) {
-        updateDoc(doc(db, 'battles', activeBattle.id), {
+        const battleRef = doc(db, 'battles', activeBattle.id);
+        updateDoc(battleRef, {
           finishedParticipants: arrayUnion(userId)
-        }).catch(() => console.warn("Zignorowano błąd uprawnień przy aktualizacji statusu Areny."));
+        })
+          // [ZAMYKANIE] Ostatni gracz pojedynku/World zamyka grę (status FINISHED).
+          // Gra klubowa zamyka się dopiero po terminie — dochodzą do niej nowi.
+          .then(() => {
+            const done = new Set([...(activeBattle.finishedParticipants || []), userId]);
+            const everyone = (activeBattle.participants || []).every((p: string) => done.has(p));
+            if (activeBattle.mode !== 'CLUB' && everyone) {
+              return updateDoc(battleRef, { status: 'FINISHED' });
+            }
+          })
+          .catch(() => console.warn("Zignorowano błąd uprawnień przy aktualizacji statusu Areny."));
       }
 
       if (isWorldBattle) {
@@ -1407,7 +1418,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                             : flagEmoji && <span className="text-[12px] leading-none">{flagEmoji}</span>
                           }
                           <span className="font-black text-white text-sm leading-none">{finalDisplayName}</span>
-                          {isGuest && <span className="text-[8px] bg-violet-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">👤 GOŚĆ</span>}
+                          {isGuest && <span className="text-[8px] bg-violet-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">👤 {t('battleLobby.guestBadge')}</span>}
                           {!isGuest && isMe && <span className="text-[8px] bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">{t('battleHistory.me', 'Ty')}</span>}
                         </div>
                         <div className="flex items-center gap-1 mt-1">

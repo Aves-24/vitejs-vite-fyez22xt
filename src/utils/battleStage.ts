@@ -43,6 +43,7 @@ export function arrowsShot(battle: any, uid: string): number {
  */
 export function seesFullScores(battle: any, uid: string): boolean {
   if (battle?.mode !== 'CLUB') return true;
+  if (battle.status === 'FINISHED') return true; // gra zamknięta — nic już nie zdradzamy
   if (battle.finishedParticipants?.includes(uid)) return true;
   return battle.hostId === uid && arrowsShot(battle, uid) === 0;
 }

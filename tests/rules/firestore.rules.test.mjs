@@ -298,6 +298,27 @@ test('T5: host nie usunie gry, w której ktoś już jest albo skończył', async
   await assertFails(deleteDoc(doc(alice(), 'battles/b7')));
 });
 
+test('T5: pojedynek zamyka uczestnik dopiero, gdy wszyscy skończyli', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/c1'), { hostId: 'alice', mode: 'LOCAL', participants: ['alice', 'bob'], finishedParticipants: ['bob'], status: 'ACTIVE', liveScores: {} });
+    await setDoc(doc(ctx.firestore(), 'battles/c2'), { hostId: 'alice', mode: 'LOCAL', participants: ['alice', 'bob'], finishedParticipants: ['alice', 'bob'], status: 'ACTIVE', liveScores: {} });
+  });
+  await assertFails(updateDoc(doc(bob(), 'battles/c1'), { status: 'FINISHED' }));
+  await assertFails(updateDoc(doc(bob(), 'battles/c2'), { status: 'ABANDONED' }));
+  await assertSucceeds(updateDoc(doc(bob(), 'battles/c2'), { status: 'FINISHED' }));
+});
+
+test('T5: gra klubowa zamyka się dopiero po terminie — wtedy może każdy', async () => {
+  const past = Date.now() - 60 * 1000, future = Date.now() + 3 * 3600 * 1000;
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/c3'), { hostId: 'alice', mode: 'CLUB', participants: ['alice', 'bob'], finishedParticipants: ['alice', 'bob'], status: 'ACTIVE', expiresAtMs: future, liveScores: {} });
+    await setDoc(doc(ctx.firestore(), 'battles/c4'), { hostId: 'alice', mode: 'CLUB', participants: ['alice'], status: 'ACTIVE', expiresAtMs: past, liveScores: {} });
+  });
+  await assertFails(updateDoc(doc(bob(), 'battles/c3'), { status: 'FINISHED' }));
+  await assertFails(updateDoc(doc(coach1(), 'battles/c4'), { status: 'FINISHED', 'liveScores.alice': 999 }));
+  await assertSucceeds(updateDoc(doc(coach1(), 'battles/c4'), { status: 'FINISHED' }));
+});
+
 test('T5: nie-host nie zmieni statusu battle', async () => {
   await assertFails(updateDoc(doc(bob(), 'battles/b1'), { status: 'FINISHED' }));
 });

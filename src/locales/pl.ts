@@ -530,6 +530,7 @@ export const views = {
     noActiveBattles: "Brak aktywnych",
     arenaEmptyTitle: "Rozpocznij pojedynek",
     tilePlace: "Miejsce {{place}}/{{of}} · {{score}}",
+    tilePlaceOnly: "Miejsce {{place}}/{{of}}",
     tileEndsIn: "koniec za {{time}}",
     tileClubRunning: "Gra klubowa trwa",
     tileGameRunning: "Gra trwa",

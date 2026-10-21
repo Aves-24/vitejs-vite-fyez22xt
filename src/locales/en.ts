@@ -514,6 +514,7 @@ export const views = {
     noActiveBattles: "No active",
     arenaEmptyTitle: "Start a duel",
     tilePlace: "Place {{place}}/{{of}} · {{score}}",
+    tilePlaceOnly: "Place {{place}}/{{of}}",
     tileEndsIn: "ends in {{time}}",
     tileClubRunning: "Club game running",
     tileGameRunning: "Game running",

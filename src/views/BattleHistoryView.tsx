@@ -185,19 +185,20 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
       {/* [ZMIANA]: MODAL RANKINGU - Pozycjonowany od góry (items-start, pt-20) */}
       {selectedBattleId && selectedBattleData && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-[#0a0f1a]/95 backdrop-blur-md z-[100000] flex items-start justify-center p-6 pt-20 animate-fade-in-up">
-          <div className="bg-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col border border-indigo-100 max-h-[85vh]">
-            <button onClick={() => setSelectedBattleId(null)} className="absolute top-4 right-4 p-2 bg-indigo-50 text-indigo-600 rounded-full active:scale-90 transition-all z-10">
+          {/* Ciemny styl Battle Arena (jak lista i lobby); akcent w kolorze trybu. */}
+          <div className="bg-[#111827] rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col border border-white/10 max-h-[85vh]">
+            <button onClick={() => setSelectedBattleId(null)} className="absolute top-4 right-4 p-2 bg-white/10 text-white rounded-full active:scale-90 transition-all z-10">
               <span className="material-symbols-outlined font-bold">close</span>
             </button>
-            
-            <div className="bg-indigo-600 p-6 text-center text-white">
-              <span className="material-symbols-outlined text-4xl mb-2 text-indigo-300">trophy</span>
+
+            <div className={`p-6 text-center text-white border-b border-white/10 bg-gradient-to-b ${selectedBattleData.mode === 'CLUB' ? 'from-fuchsia-600/30' : selectedBattleData.mode === 'WORLD' ? 'from-emerald-600/30' : 'from-indigo-600/30'} to-transparent`}>
+              <span className={`material-symbols-outlined text-4xl mb-2 ${selectedBattleData.mode === 'CLUB' ? 'text-fuchsia-400' : selectedBattleData.mode === 'WORLD' ? 'text-emerald-400' : 'text-indigo-400'}`}>trophy</span>
               <h2 className="text-2xl font-black tracking-tighter">{t('battleHistory.modalRanking')}</h2>
-              <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mt-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
                  {selectedBattleData.mode === 'CLUB' ? t('battleHistory.modalClub') : selectedBattleData.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate')}{battleDistanceLabel(selectedBattleData) ? ` • ${battleDistanceLabel(selectedBattleData)}` : ''}
               </p>
               {!seeAll && (
-                <p className="text-[9px] font-bold text-indigo-100 mt-2">
+                <p className="text-[9px] font-bold text-indigo-300 mt-2">
                   {myArrows > 0 ? t('scoringView.blindRankingHint', { n: myArrows }) : t('battleHistory.blindNotStarted')}
                 </p>
               )}
@@ -217,14 +218,14 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                 const isMe = p.id === userId;
 
                 return (
-                  <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isMe ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-gray-50 border-gray-100'}`}>
+                  <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isMe ? 'bg-indigo-600/20 border-indigo-400/60' : 'bg-white/5 border-white/10'}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${idx === 0 && score > 0 ? 'bg-[#F2C94C] text-[#8B6508]' : idx === 1 && score > 0 ? 'bg-gray-300 text-gray-700' : idx === 2 && score > 0 ? 'bg-[#CD7F32] text-white' : 'bg-white text-gray-400 border'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${idx === 0 && score > 0 ? 'bg-[#F2C94C] text-[#8B6508]' : idx === 1 && score > 0 ? 'bg-gray-300 text-gray-700' : idx === 2 && score > 0 ? 'bg-[#CD7F32] text-white' : 'bg-white/10 text-gray-400'}`}>
                         {idx + 1}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-black text-[#0a3a2a] text-sm leading-none">{p.name}</span>
+                          <span className="font-black text-white text-sm leading-none">{p.name}</span>
                           {isMe && <span className="text-[8px] bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">{t('battleHistory.me')}</span>}
                         </div>
                         <div className="flex items-center gap-1 mt-1">
@@ -235,7 +236,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                           )}
                           <span className="text-[9px] font-bold text-gray-400 uppercase leading-none">{p.countryCode}</span>
                           {selectedBattleData.distances?.[p.id] && (
-                            <span className="text-[9px] font-black text-indigo-500 leading-none ml-1">{selectedBattleData.distances[p.id]}</span>
+                            <span className="text-[9px] font-black text-indigo-300 leading-none ml-1">{selectedBattleData.distances[p.id]}</span>
                           )}
                         </div>
                       </div>
@@ -243,12 +244,12 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                     
                     <div className="flex flex-col items-end justify-center">
                       {seen ? (
-                        <span className="text-2xl font-black text-indigo-600 leading-none">{score}</span>
+                        <span className="text-2xl font-black text-white leading-none">{score}</span>
                       ) : (
-                        <span className="text-2xl font-black text-gray-300 leading-none">—</span>
+                        <span className="text-2xl font-black text-gray-600 leading-none">—</span>
                       )}
                       {seen && typeof pData === 'object' && (
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">
                           {behind ? t('scoringView.afterArrows', { n: seen.arrows }) : `X:${xCount} 10:${tCount} 9:${nCount}`}
                         </span>
                       )}
@@ -258,8 +259,8 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
               })}
             </div>
             
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <button onClick={() => setSelectedBattleId(null)} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
+            <div className="p-4 border-t border-white/10">
+              <button onClick={() => setSelectedBattleId(null)} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
                 {t('battleHistory.closeBtn')}
               </button>
             </div>

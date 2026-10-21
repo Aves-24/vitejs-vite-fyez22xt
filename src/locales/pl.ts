@@ -653,6 +653,7 @@ export const views = {
     arenaCode: "KOD ARENY",
     scan: "Skanuj",
     myDistance: "Mój dystans",
+    joinStart: "Strzelam",
     ownDistanceHint: "Każdy strzela ze swojego dystansu, tarcza jest wspólna.",
     local: "Lokalny",
     club: "Klub",

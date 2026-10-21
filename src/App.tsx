@@ -21,6 +21,7 @@ import UpdateBanner from './components/UpdateBanner';
 import OfflineBanner from './components/OfflineBanner';
 import MoveNotice from './components/MoveNotice';
 import BattleInvitePopup from './components/BattleInvitePopup';
+import BattleJoinDistanceModal from './components/BattleJoinDistanceModal';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
@@ -512,9 +513,16 @@ export default function App() {
   // W bitwie wspólna jest tylko tarcza — każdy strzela ze swojego dystansu
   // (np. senior 60 m vs młodzik 70 m na 122 cm), więc sesja dołączającego
   // zapisuje się pod jego dystansem, a nie hosta.
+  // Dołączenie kodem/z zaproszenia omija lobby — najpierw okno z wyborem dystansu.
+  const [pendingJoin, setPendingJoin] = useState<{ battleId: string; distance: string; targetType: string } | null>(null);
   const handleJoinBattle = (battleId: string, battleDistance: string, targetType: string) => {
-    const entry = lastActiveDistance();
-    if (!entry) { handleStartSession(battleDistance, targetType, true, battleId); return; }
+    if (userDistances.some(d => d.active)) { setPendingJoin({ battleId, distance: battleDistance, targetType }); return; }
+    handleStartSession(battleDistance, targetType, true, battleId);
+  };
+  const confirmJoinDistance = (entry: UserDistance) => {
+    if (!pendingJoin) return;
+    const { battleId, targetType } = pendingJoin;
+    setPendingJoin(null);
     handleStartSession(entry.m, targetType, true, battleId, 0, entry.id, entry.label ? displayDistance(entry) : undefined);
   };
 
@@ -678,6 +686,16 @@ export default function App() {
       <OfflineBanner hidden={currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       <MoveNotice hidden={hasActiveSession || currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       {user?.uid && <BattleInvitePopup userId={user.uid} onJoinBattle={handleJoinBattle} />}
+      {user?.uid && pendingJoin && (
+        <BattleJoinDistanceModal
+          userId={user.uid}
+          activeDistances={userDistances.filter(d => d.active)}
+          initial={lastActiveDistance()}
+          targetType={pendingJoin.targetType}
+          onConfirm={confirmJoinDistance}
+          onCancel={() => setPendingJoin(null)}
+        />
+      )}
 
 
       <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>

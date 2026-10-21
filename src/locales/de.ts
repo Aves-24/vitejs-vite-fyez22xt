@@ -636,6 +636,7 @@ export const views = {
     arenaCode: "ARENA CODE",
     scan: "Scannen",
     myDistance: "Meine Distanz",
+    joinStart: "Los geht's",
     ownDistanceHint: "Jeder schießt seine eigene Distanz, die Scheibe ist für alle gleich.",
     local: "Lokal",
     club: "Verein",

@@ -20,7 +20,7 @@ import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
-import { isPartialSession, partialLabel, isShortPlanned } from '../utils/partialSession';
+import { isPartialSession, partialLabel, isShortPlanned, roundSizeFor } from '../utils/partialSession';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
@@ -762,8 +762,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const hasFullAccess = isPremium || selectedDate === todayISO;
   
   const currentEnds = selectedSession?.ends || [];
-  const r1Ends = currentEnds.slice(0, 6);
-  const r2Ends = currentEnds.slice(6, 12);
+  const roundSize = roundSizeFor(selectedSession);
+  const r1Ends = currentEnds.slice(0, roundSize);
+  const r2Ends = currentEnds.slice(roundSize, roundSize * 2);
 
   // [C25] Bylo `distance.includes('18')` — kruche: wlasny dystans z etykieta
   // zawierajaca "18" (np. "7m seria18") wpadal w ten warunek. Teraz porownujemy
@@ -1019,7 +1020,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                           </div>
                         </div>
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>

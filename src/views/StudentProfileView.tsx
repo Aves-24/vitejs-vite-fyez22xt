@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { isPartialSession, partialLabel } from '../utils/partialSession';
+import { isPartialSession, partialLabel, roundSizeFor } from '../utils/partialSession';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
@@ -635,8 +635,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const sessionHits = currentSession ? calculateHits(currentSession.ends) : { x: 0, ten: 0, nine: 0 };
   const sessionAvg = currentSession && currentSession.arrows > 0 ? (currentSession.score / currentSession.arrows).toFixed(2) : '0.00';
   const sessionEnds: any[] = currentSession?.ends || [];
-  const r1Ends = sessionEnds.slice(0, 6);
-  const r2Ends = sessionEnds.slice(6, 12);
+  const roundSize = roundSizeFor(currentSession);
+  const r1Ends = sessionEnds.slice(0, roundSize);
+  const r2Ends = sessionEnds.slice(roundSize, roundSize * 2);
   const isDetailedShown = !!(currentSession && expandedSessionIds.has(currentSession.id));
   const toggleDetailedStats = () => {
     if (!currentSession) return;
@@ -931,7 +932,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                           )}
                           {r2Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={currentSession.targetType} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} />
                             </div>
                           )}
                         </div>

@@ -223,8 +223,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < PLANNED_ENDS ? plannedEndsProp : PLANNED_ENDS
   );
   const isShortTraining = plannedEnds < PLANNED_ENDS;
+  // Seria dzieli sie po rowno na 2 Durchgange: 12 = 6+6, 8 = 4+4, 6 = 3+3.
+  const roundSize = Math.ceil(plannedEnds / 2);
 
-  const isRestingBetweenRounds = submittedEnds.length === 6 && plannedEnds > 6 && inputArrows.length === 0;
+  const isRestingBetweenRounds = submittedEnds.length === roundSize && inputArrows.length === 0;
   const isTrainingFinished = submittedEnds.length === plannedEnds;
   const showStats = isRestingBetweenRounds || isTrainingFinished;
 
@@ -432,14 +434,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         setInputArrows([]); 
         setInputCoordinates([]);
         
-        if (submittedEnds.length === 5 && plannedEnds > 6) {
+        if (submittedEnds.length === roundSize - 1) {
           onRoundTwoStart?.();
           setActiveRoundTab(2);
         }
       }, 600); 
     }
     return () => clearTimeout(timeoutId);
-  }, [inputArrows, submittedEnds.length, onRoundTwoStart, plannedEnds]); 
+  }, [inputArrows, submittedEnds.length, onRoundTwoStart, roundSize]); 
 
   const getStats = (ends: any[], active: string[] = []) => {
     let x=0, t=0, n=0, score=0, count=0;
@@ -449,12 +451,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     return { x, t, n, score, count, avg };
   };
 
-  const r1Ends = submittedEnds.slice(0, 6);
-  const r2Ends = submittedEnds.slice(6, 12);
+  const r1Ends = submittedEnds.slice(0, roundSize);
+  const r2Ends = submittedEnds.slice(roundSize, plannedEnds);
   const globalStats = getStats(submittedEnds, inputArrows);
-  const currentRoundStats = activeRoundTab === 1 ? getStats(r1Ends, submittedEnds.length < 6 ? inputArrows : []) : getStats(r2Ends, submittedEnds.length >= 6 ? inputArrows : []);
+  const currentRoundStats = activeRoundTab === 1 ? getStats(r1Ends, submittedEnds.length < roundSize ? inputArrows : []) : getStats(r2Ends, submittedEnds.length >= roundSize ? inputArrows : []);
   const r1TotalScore = r1Ends.reduce((sum, end) => sum + (end.total_sum || 0), 0);
-  const isRound1Finished = submittedEnds.length >= 6;
+  const isRound1Finished = submittedEnds.length >= roundSize;
 
   // Wynik na zywo idzie do pojedynku raz na serie (z zatwierdzonych serii),
   // nie przy kazdej strzale — 6x mniej zapisow i odczytow u przeciwnikow.
@@ -910,13 +912,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
         </div>
         <div className="p-2 space-y-1">
-          {[0, 1, 2, 3, 4, 5].map(i => {
-            const idx = activeRoundTab === 1 ? i : 6 + i;
+          {Array.from({ length: roundSize }, (_, i) => i).map(i => {
+            const idx = activeRoundTab === 1 ? i : roundSize + i;
             const end = submittedEnds[idx];
             const isCur = idx === submittedEnds.length;
             const currentPassArrows = isCur ? inputArrows : (end?.arrows || []); 
             const passSum = isCur ? inputArrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0) : (end?.total_sum || 0);
-            const prevSum = submittedEnds.slice(activeRoundTab === 1 ? 0 : 6, idx).reduce((s, e) => s + (e.total_sum || 0), 0);
+            const prevSum = submittedEnds.slice(activeRoundTab === 1 ? 0 : roundSize, idx).reduce((s, e) => s + (e.total_sum || 0), 0);
             const runSum = prevSum + passSum;
             return (
               <div key={idx} className={`flex items-center text-center p-1 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
@@ -1042,7 +1044,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
               <div className="flex gap-2 w-full animate-fade-in-up">
                 {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
-                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={6} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:6})} /></div>}
+                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
               </div>
               
               {AI_ENABLED && submittedEnds.length >= 6 && (

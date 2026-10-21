@@ -25,6 +25,10 @@ export const SHORT_END_OPTIONS = [6, 8, 10] as const;
 export const isShortPlanned = (s: PartialInfo | null | undefined): boolean =>
   isPartialSession(s) && !!s?.endsPlanned && s.endsPlanned < PLANNED_ENDS && s.endsShot === s.endsPlanned;
 
+/** Serii na Durchgang: po polowie zaplanowanych (8 = 4+4), standard 6. */
+export const roundSizeFor = (s: PartialInfo | null | undefined): number =>
+  isShortPlanned(s) ? Math.ceil((s!.endsPlanned as number) / 2) : PLANNED_ENDS / 2;
+
 /** "7/12" do znaczka na liscie sesji. */
 export const partialLabel = (s: PartialInfo): string =>
   `${s.endsShot ?? '?'}/${s.endsPlanned ?? PLANNED_ENDS}`;

@@ -1737,7 +1737,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   <button
                     onClick={() => setShowFairPlay(v => !v)}
                     aria-label={t('home.fairPlayTitle')}
-                    className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black italic transition-all ${showFairPlay ? 'bg-amber-300 text-[#0a0f1a]' : 'bg-white/10 text-gray-300'}`}
+                    // Zawsze żółte kółko (GROT-X), żeby było widać, że jest tu informacja.
+                    className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-black italic bg-[#fed33e] text-[#0a0f1a] shadow-sm shadow-amber-400/30 active:scale-90 transition-all ${showFairPlay ? 'ring-2 ring-amber-200/60' : ''}`}
                   >
                     i
                   </button>

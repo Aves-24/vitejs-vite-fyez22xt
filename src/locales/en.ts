@@ -1185,6 +1185,10 @@ export const views = {
   },
   sessionSetup: {
     endsChip: "{{count}} ends",
+    shortInfoAria: "What does a shorter training mean?",
+    shortInfoTitle: "Shorter training · {{count}} ends ({{half}} + {{half}})",
+    shortInfoCounts: "Counts as usual: arrows, XP, rank, average per arrow and handicap.",
+    shortInfoSkips: "The total score is left out of the score curve and total comparisons – it isn't comparable with 12 ends.",
     arrowCount: "How many arrows were shot?",
     techNotes: "Technical notes",
     techSubtitle: "No target face",

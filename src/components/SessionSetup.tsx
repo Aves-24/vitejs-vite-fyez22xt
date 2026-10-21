@@ -41,6 +41,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // Liczba serii: standard 12, krotszy trening to mala opcja przy starcie.
   const [plannedEnds, setPlannedEnds] = useState<number>(PLANNED_ENDS);
   const [showEndsPicker, setShowEndsPicker] = useState(false);
+  const [showEndsInfo, setShowEndsInfo] = useState(false);
   
   const [sightExtension, setSightExtension] = useState<string>('');
   const [sightHeight, setSightHeight] = useState<string>('');
@@ -487,13 +488,20 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 </span>
               </p>
             )}
+            {selectedId && showEndsInfo && plannedEnds !== PLANNED_ENDS && !showEndsPicker && (
+              <div className="pointer-events-auto w-full max-w-xs bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 shadow-sm text-[11px] leading-snug text-blue-900">
+                <p className="font-black mb-1">{t('sessionSetup.shortInfoTitle', { count: plannedEnds, half: Math.ceil(plannedEnds / 2) })}</p>
+                <p className="mb-1">{t('sessionSetup.shortInfoCounts')}</p>
+                <p>{t('sessionSetup.shortInfoSkips')}</p>
+              </div>
+            )}
             {selectedId && (
               <div className="pointer-events-auto flex items-center gap-1">
                 {showEndsPicker ? (
                   [...SHORT_END_OPTIONS, PLANNED_ENDS].map(n => (
                     <button
                       key={n}
-                      onClick={() => { setPlannedEnds(n); setShowEndsPicker(false); }}
+                      onClick={() => { setPlannedEnds(n); setShowEndsPicker(false); if (n === PLANNED_ENDS) setShowEndsInfo(false); }}
                       className={`min-w-[32px] px-2 py-0.5 rounded-full text-[10px] font-black border shadow-sm active:scale-95 transition-all ${n === plannedEnds ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'}`}
                     >
                       {n}
@@ -506,6 +514,15 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                   >
                     {t('sessionSetup.endsChip', { count: plannedEnds })}
                     <span className="material-symbols-outlined text-[14px]">expand_more</span>
+                  </button>
+                )}
+                {!showEndsPicker && plannedEnds !== PLANNED_ENDS && (
+                  <button
+                    onClick={() => setShowEndsInfo(v => !v)}
+                    aria-label={t('sessionSetup.shortInfoAria')}
+                    className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">info</span>
                   </button>
                 )}
               </div>

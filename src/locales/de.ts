@@ -1185,6 +1185,10 @@ export const views = {
   },
   sessionSetup: {
     endsChip: "{{count}} Passen",
+    shortInfoAria: "Was bedeutet ein kürzeres Training?",
+    shortInfoTitle: "Kürzeres Training · {{count}} Passen ({{half}} + {{half}})",
+    shortInfoCounts: "Zählt normal: Pfeile, XP, Rang, Schnitt pro Pfeil und Handicap.",
+    shortInfoSkips: "Die Gesamtsumme landet nicht in der Ergebniskurve und den Summen-Vergleichen – sie ist mit 12 Passen nicht vergleichbar.",
     arrowCount: "Wie viele Pfeile wurden geschossen?",
     techNotes: "Technische Notizen",
     techSubtitle: "Ohne Auflage",

@@ -1202,6 +1202,10 @@ export const views = {
   },
   sessionSetup: {
     endsChip: "{{count}} serii",
+    shortInfoAria: "Co oznacza krótszy trening?",
+    shortInfoTitle: "Krótszy trening · {{count}} serii ({{half}} + {{half}})",
+    shortInfoCounts: "Liczy się normalnie: strzały, XP, ranga, średnia na strzałę i handicap.",
+    shortInfoSkips: "Suma punktów nie trafia na krzywą wyników ani do porównań sum – nie da się jej porównać z 12 seriami.",
     arrowCount: "Ile strzał oddano?",
     techNotes: "Notatki techniczne",
     techSubtitle: "Bez tarczy",

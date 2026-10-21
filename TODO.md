@@ -61,7 +61,11 @@ te punkty razem z userem i ustalić kolejność.
   pierwsza zapisana sesja powinna od razu coś pokazać (nagroda pierwszego dnia).
 - **Panel trenera:** do przemyślenia układ i czytelność. Zacząć od pytania
   „co trener chce wiedzieć w hali w 5 s?” — user ma spisać swoje 3 pytania.
-- **Płatności:** po Blaze. **RODO:** jeszcze raz sprawdzić, co trener widzi
+- **Płatności:** po Blaze. **CENNIK (decyzja 2026-10-21):** pakiet trenera
+  15 €/mies. za 10 uczniów z PRO dla trenera w cenie, każde kolejne 10
+  uczniów +10 €/mies., bez ceny promocyjnej na start. Otwarte: plan roczny,
+  darmowe 1 miejsce obok pakietu, cena pojedynczego PRO.
+  **RODO:** jeszcze raz sprawdzić, co trener widzi
   u ucznia <16 vs polityka prywatności.
 - **Brak testów z prawdziwym trenerem i grupą** — zaplanować 2 tygodnie z grupą.
 - Napis pod logo („CARPORT” DE / „Command Centre” EN / „Panel Dowodzenia” PL,

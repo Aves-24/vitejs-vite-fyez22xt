@@ -1388,11 +1388,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           {/* Lewa — Multiplayer Arena (styl battle: fiolet = gra czeka, zieleń = skończyłeś) */}
           <div
-            onClick={() => {
-              // Po własnym końcu kafel prowadzi prosto do historii z rankingiem.
-              if (doneBattle) { onGoToBattles?.(); return; }
-              setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1);
-            }}
+            // Zawsze okno Arena — z niego i historia (karta gry), i nowa gra (user 2026-10-21).
+            onClick={() => { setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1); }}
             className={`rounded-[24px] border flex flex-col justify-between p-4 cursor-pointer active:scale-[0.98] transition-all relative overflow-hidden ${
               !hasAnyBattle
                 ? 'bg-indigo-50 border-indigo-100 min-h-[80px]'

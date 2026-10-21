@@ -21,6 +21,8 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run lint
+      # Testy czystej logiki (Vitest, src/**/*.test.ts) — bitwy, statystyki, tarcze.
+      - run: npm test
       - run: npm run build
 
   rules-tests:

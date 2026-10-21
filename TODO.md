@@ -68,6 +68,9 @@ te punkty razem z userem i ustalić kolejność.
 Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
 1. Vitest + testy czystej logiki: punktacja, sumy, statystyki, tarcze
    (dmuchawka X=10), forma, liczniki roczne — na start 50–100 testów.
+   **2026-10-21 START:** Vitest 3 + `npm test` w CI; 30 testów bitew
+   (`battleStage`, `battleStats`, `targetDistanceRanges`). Dalej: punktacja,
+   sumy, forma, liczniki.
 2. CI jako BRAMKA (lint + build + testy logiki + testy reguł), nie tylko info.
 3. Firebase Hosting preview channel przed prod — zmienia tryb „od razu main”,
    decyzja usera.

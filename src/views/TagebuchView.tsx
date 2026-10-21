@@ -15,6 +15,7 @@ import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard';
 import FocusModal from '../components/tagebuch/FocusModal';
+import { resolveBattleResult } from '../utils/battleResult';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
   inFocusWindow, sessionFocusRef, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
@@ -414,9 +415,23 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ...(sessionTopicId(data) ? { topicId: sessionTopicId(data), trainingTopic: { text: String(data.trainingTopic.text || ''), topic: String(data.trainingTopic.topic || '') } } : {}),
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],
+            ...(data.battleId ? { battle: {
+              id: String(data.battleId), mode: String(data.battleMode || 'LOCAL'),
+              ...(data.battlePlace ? { place: Number(data.battlePlace), players: Number(data.battlePlayers || 0) } : {}),
+            } } : {}),
           };
       });
       setSessions(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
+      // [ARENA] Miejsce w bitwie: gdy sesja go jeszcze nie ma, sprawdzamy bitwę
+      // (raz) — po zakończeniu gry zapisuje się w sesji na stałe.
+      page.filter(p => p.battle && !p.battle.place).forEach(p => {
+        resolveBattleResult(userId, p.id, p.battle!.id).then(res => {
+          if (!res) return;
+          setSessions(prev => prev.map(x => x.id === p.id && x.battle
+            ? { ...x, battle: { ...x.battle, ...('live' in res ? { live: true } : { place: res.place, players: res.players }) } }
+            : x));
+        });
+      });
     }
     if (nSnap) {
       if (nSnap.docs.length) notesCursor.current = nSnap.docs[nSnap.docs.length - 1];

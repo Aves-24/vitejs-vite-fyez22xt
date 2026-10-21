@@ -30,7 +30,7 @@ vi.mock('firebase/firestore', () => ({
   updateDoc: async (_ref: unknown, data: unknown) => { fake.updates.push(data); },
 }));
 
-import { computeBattleStats, isFinalBattle, loadBattleStats, splitFinal } from './battleStats';
+import { computeBattleStats, isFinalBattle, loadBattleStats, placeInBattle, splitFinal } from './battleStats';
 
 const NOW = Date.parse('2026-10-21T12:00:00.000Z');
 const H = 3600e3;
@@ -67,7 +67,24 @@ describe('computeBattleStats — zasady liczenia', () => {
   });
 });
 
+describe('placeInBattle — miejsce w dzienniku i na kaflu', () => {
+  it('miejsce i liczba graczy', () => {
+    const b = battle('p', 5, 'FINISHED', { a: 500, me: 450, c: 300 });
+    expect(placeInBattle(b, 'me')).toEqual({ place: 2, players: 3, score: 450 });
+  });
+  it('nie grał — miejsce 0', () => {
+    expect(placeInBattle(battle('p', 5, 'FINISHED', { a: 1 }), 'me').place).toBe(0);
+  });
+});
+
 describe('isFinalBattle / splitFinal — co wolno zapisać na stałe', () => {
+  it('po terminie i gdy wszyscy skończyli — ostateczna od razu (dziennik nie czeka doby)', () => {
+    const b: any = battle('e', 4, 'ACTIVE', { me: 1, a: 2 });
+    b.expiresAtMs = NOW - 60e3;
+    expect(isFinalBattle(b, NOW)).toBe(true);
+    b.finishedParticipants = ['me'];
+    expect(isFinalBattle(b, NOW)).toBe(false);
+  });
   it('zamknięta albo starsza niż doba = ostateczna', () => {
     expect(isFinalBattle(battle('f', 1, 'FINISHED', { me: 1 }), NOW)).toBe(true);
     expect(isFinalBattle(battle('o', 25, 'ACTIVE', { me: 1 }), NOW)).toBe(true);

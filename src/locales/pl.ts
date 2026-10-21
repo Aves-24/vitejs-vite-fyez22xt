@@ -308,6 +308,10 @@ export const views = {
     inProgress: "W TOKU"
   },
   tagebuch: {
+    clubGame: "Gra klubowa",
+    duel: "Pojedynek",
+    battlePlace: "Miejsce {{place}}/{{players}}",
+    battleLive: "gra jeszcze trwa",
     title: "Dziennik",
     notePlaceholder: "Dodaj notatkę…",
     onlyYou: "Tylko dla Ciebie",

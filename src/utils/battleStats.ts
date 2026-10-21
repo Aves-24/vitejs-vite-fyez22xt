@@ -25,19 +25,27 @@ const EMPTY: BattleStats = { played: 0, wins: 0, podiums: 0, best: 0 };
 const FINAL_AFTER_MS = 24 * 60 * 60 * 1000;
 const PAGE = 200;
 
-/** Dolicza jedną bitwę do statystyk (bez mutowania wejścia). */
-function addBattle(acc: BattleStats, b: any, uid: string): BattleStats {
-  if (!b?.finishedParticipants?.includes(uid)) return acc;
-  const players: string[] = Array.isArray(b.participants) ? b.participants : [];
+/**
+ * Miejsce gracza w bitwie według pełnych wyników (punkty, potem X, 10, 9).
+ * Wspólne dla statystyk, kafla na Home i dziennika. place = 0 → nie grał.
+ */
+export function placeInBattle(b: any, uid: string): { place: number; players: number; score: number } {
+  const players: string[] = Array.isArray(b?.participants) ? b.participants : [];
   const ranked = players
     .map(id => ({ id, sc: scoreSeenBy(b, id, uid, 0, true) }))
     .sort((p, q) => compareStage(p.sc, q.sc));
-  const place = ranked.findIndex(p => p.id === uid) + 1;
-  const mine = ranked.find(p => p.id === uid)?.sc?.score ?? 0;
+  const idx = ranked.findIndex(p => p.id === uid);
+  return { place: idx + 1, players: players.length, score: idx < 0 ? 0 : ranked[idx].sc?.score ?? 0 };
+}
+
+/** Dolicza jedną bitwę do statystyk (bez mutowania wejścia). */
+function addBattle(acc: BattleStats, b: any, uid: string): BattleStats {
+  if (!b?.finishedParticipants?.includes(uid)) return acc;
+  const { place, players, score: mine } = placeInBattle(b, uid);
   return {
     played: acc.played + 1,
-    wins: acc.wins + (players.length >= 2 && place === 1 ? 1 : 0),
-    podiums: acc.podiums + (players.length >= 3 && place >= 1 && place <= 3 ? 1 : 0),
+    wins: acc.wins + (players >= 2 && place === 1 ? 1 : 0),
+    podiums: acc.podiums + (players >= 3 && place >= 1 && place <= 3 ? 1 : 0),
     best: Math.max(acc.best, mine),
     // createdAt gry z najlepszym wynikiem — „Bestwert” otwiera STATS tego dnia.
     bestAt: mine > acc.best ? b.createdAt : acc.bestAt,
@@ -51,6 +59,11 @@ export function computeBattleStats(battles: any[], uid: string): BattleStats {
 /** Gra już się nie zmieni: zamknięta albo starsza niż doba. */
 export function isFinalBattle(b: any, now = Date.now()): boolean {
   if (b?.status === 'FINISHED') return true;
+  // Po terminie gry i gdy wszyscy skończyli — nikt już nic nie zmieni.
+  const expires = typeof b?.expiresAtMs === 'number' ? b.expiresAtMs : Date.parse(b?.expiresAt || '');
+  const players: string[] = Array.isArray(b?.participants) ? b.participants : [];
+  if (Number.isFinite(expires) && expires < now && players.length > 0
+    && players.every(p => b.finishedParticipants?.includes(p))) return true;
   const created = Date.parse(b?.createdAt || '');
   return Number.isFinite(created) && now - created > FINAL_AFTER_MS;
 }

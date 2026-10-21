@@ -45,6 +45,8 @@ export interface TbSession {
   focuses: SessionFocus[]; // pełne migawki — przełącznik w dzienniku zapisuje listę z powrotem
   topicId?: string;      // [TEMAT TRENINGU] trening pod ten temat (id wpisu 'topic')
   trainingTopic?: { text: string; topic: string };
+  // [ARENA] Trening z bitwy: tryb i wynik (place po zakończeniu gry, live = trwa).
+  battle?: { id: string; mode: string; place?: number; players?: number; live?: boolean };
 }
 
 export interface TbCoachEntry {
@@ -548,9 +550,13 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   const { t } = useTranslation();
   const [composing, setComposing] = useState(false);
 
+  // [ARENA] Trening z bitwy podpisany jej trybem zamiast ogólnego „Training”.
+  const kind = session.battle
+    ? (session.battle.mode === 'CLUB' ? t('tagebuch.clubGame') : session.battle.mode === 'WORLD' ? 'World' : t('tagebuch.duel'))
+    : t('tagebuch.training');
   const title = session.isTech
     ? t('tagebuch.techTraining')
-    : session.label ? `${t('tagebuch.training')} · ${session.label}` : t('tagebuch.training');
+    : session.label ? `${kind} · ${session.label}` : kind;
   const stats = session.isTech
     ? `${session.arrows} ${t('common.arrows')}`
     : `${session.score} ${t('tagebuch.rings')} · ${session.arrows} ${t('common.arrows')}`;
@@ -564,7 +570,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   const header = (
     <button onClick={onToggle} className="w-full flex items-stretch gap-2.5 text-left active:opacity-60" aria-expanded={expanded}>
       <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 self-start">
-        <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : 'target'}</span>
+        <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : session.battle ? 'text-fuchsia-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : session.battle ? 'shield' : 'target'}</span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 min-w-0">
@@ -572,6 +578,17 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           <InsightBadge insight={insight} />
         </span>
         <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
+        {/* [ARENA] Miejsce po zakończeniu gry, wcześniej „gra trwa”. */}
+        {session.battle?.place ? (
+          <span className="flex items-center gap-1 mt-0.5 text-[10px] font-black text-fuchsia-700">
+            <span className="material-symbols-outlined text-[13px]">emoji_events</span>
+            {t('tagebuch.battlePlace', { place: session.battle.place, players: session.battle.players })}
+          </span>
+        ) : session.battle?.live ? (
+          <span className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-gray-400">
+            <span className="material-symbols-outlined text-[13px]">schedule</span>{t('tagebuch.battleLive')}
+          </span>
+        ) : null}
         {insight && !session.isTech && <InsightLine insight={insight} />}
         {/* Temat od trenera, pod który był trening — fiolet = od trenera. */}
         {session.trainingTopic && (session.trainingTopic.text || session.trainingTopic.topic) && (

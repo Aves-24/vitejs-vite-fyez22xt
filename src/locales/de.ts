@@ -294,6 +294,10 @@ export const views = {
     inProgress: "LÄUFT"
   },
   tagebuch: {
+    clubGame: "Vereinsspiel",
+    duel: "Duell",
+    battlePlace: "Platz {{place}}/{{players}}",
+    battleLive: "Spiel läuft noch",
     title: "Tagebuch",
     notePlaceholder: "Notiz hinzufügen…",
     onlyYou: "Nur für dich",

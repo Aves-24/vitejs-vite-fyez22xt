@@ -710,6 +710,25 @@ service cloud.firestore {
         && request.resource.data.liveScores.diff(resource.data.get('liveScores', {}))
              .affectedKeys().hasOnly([request.auth.uid]);
 
+      // JOIN — dołączenie samego siebie (kafel Verein/World na Home, kod gry).
+      // Wcześniej mógł to zrobić tylko host albo zaproszony, więc klik w cudzą
+      // grę klubową po cichu nic nie robił. Dopisać można wyłącznie siebie:
+      // na koniec listy, z własnym wpisem w liveScores/participantsData/distances.
+      allow update: if isSignedIn()
+        && !isAnon()
+        && resource.data.status in ['LOBBY', 'ACTIVE', 'START']
+        && !(request.auth.uid in resource.data.get('participants', []))
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['participants', 'liveScores', 'participantsData', 'distances'])
+        && request.resource.data.participants == resource.data.get('participants', []).concat([request.auth.uid])
+        && request.resource.data.participants.size() <= 50
+        && request.resource.data.get('liveScores', {}).diff(resource.data.get('liveScores', {}))
+             .affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('participantsData', {}).diff(resource.data.get('participantsData', {}))
+             .affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.get('distances', {}).diff(resource.data.get('distances', {}))
+             .affectedKeys().hasOnly([request.auth.uid]);
+
       // Participant — ONLY own distance (w bitwie wspólna jest tarcza, dystans
       // każdy ma swój, np. senior 60 m vs młodzik 70 m na 122 cm)
       allow update: if isSignedIn()

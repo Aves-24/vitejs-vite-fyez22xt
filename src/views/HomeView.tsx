@@ -818,15 +818,22 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       if (ud.showClub !== false && cName) clubParts.push(cName);
       if (ud.showRegion !== false && cCity) clubParts.push(cCity);
 
-      await updateDoc(doc(db, 'battles', battleId), {
-        participants: arrayUnion(userId),
-        [`liveScores.${userId}`]: 0,
-        [`participantsData.${userId}`]: {
-          name: displayName,
-          club: clubParts.join(' - ') || t('battleLobby.unaffiliated'),
-          country: ud.countryCode || 'PL'
-        }
-      });
+      try {
+        await updateDoc(doc(db, 'battles', battleId), {
+          participants: arrayUnion(userId),
+          [`liveScores.${userId}`]: 0,
+          [`participantsData.${userId}`]: {
+            name: displayName,
+            club: clubParts.join(' - ') || t('battleLobby.unaffiliated'),
+            country: ud.countryCode || 'PL'
+          }
+        });
+      } catch (e) {
+        // Bez tego odrzucony zapis wyglądał jak „wróciło mnie na Home".
+        console.error('Join battle failed:', e);
+        showToast(t('auth.errorGeneral'));
+        return;
+      }
     }
     onJoinBattle?.(battleId, distance, targetType);
   };

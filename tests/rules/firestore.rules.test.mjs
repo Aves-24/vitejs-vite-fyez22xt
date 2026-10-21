@@ -225,6 +225,38 @@ test('T5: obcy nie dopisze dystansu do cudzej bitwy', async () => {
   await assertFails(updateDoc(doc(coach1(), 'battles/b1'), { 'distances.coach1': '70m' }));
 });
 
+test('T5: obcy dołącza SAM SIEBIE do aktywnej bitwy', async () => {
+  await assertSucceeds(updateDoc(doc(coach1(), 'battles/b1'), {
+    participants: ['alice', 'bob', 'coach1'],
+    'liveScores.coach1': 0,
+    'participantsData.coach1': { name: 'C', club: '', country: 'DE' },
+  }));
+});
+
+test('T5: dołączając nie dopisze kogoś innego ani nie ruszy cudzych danych', async () => {
+  await assertFails(updateDoc(doc(coach1(), 'battles/b1'), {
+    participants: ['alice', 'bob', 'coach1', 'mallory'],
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'battles/b1'), {
+    participants: ['alice', 'coach1'],
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'battles/b1'), {
+    participants: ['alice', 'bob', 'coach1'],
+    'liveScores.alice': 999,
+  }));
+  await assertFails(updateDoc(doc(coach1(), 'battles/b1'), {
+    participants: ['alice', 'bob', 'coach1'],
+    status: 'FINISHED',
+  }));
+});
+
+test('T5: do zakończonej bitwy nie da się dołączyć', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/b2'), { hostId: 'alice', participants: ['alice'], status: 'FINISHED', liveScores: {} });
+  });
+  await assertFails(updateDoc(doc(coach1(), 'battles/b2'), { participants: ['alice', 'coach1'] }));
+});
+
 test('T5: nie-host nie zmieni statusu battle', async () => {
   await assertFails(updateDoc(doc(bob(), 'battles/b1'), { status: 'FINISHED' }));
 });

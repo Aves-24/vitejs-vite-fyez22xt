@@ -274,6 +274,30 @@ test('T5: uczestnik zapisuje własne wyniki po seriach (ends)', async () => {
   }));
 });
 
+test('T5: gracz oznacza SIEBIE jako ukończonego, potem jego wynik jest zamrożony', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/b4'), { hostId: 'alice', participants: ['alice', 'bob'], status: 'ACTIVE', liveScores: { bob: { score: 300 } } });
+  });
+  await assertFails(updateDoc(doc(bob(), 'battles/b4'), { finishedParticipants: ['alice'] }));
+  await assertSucceeds(updateDoc(doc(bob(), 'battles/b4'), { finishedParticipants: ['bob'] }));
+  await assertFails(updateDoc(doc(bob(), 'battles/b4'), { 'liveScores.bob': { score: 0 } }));
+});
+
+test('T5: obcy nie oznaczy się jako ukończony', async () => {
+  await assertFails(updateDoc(doc(coach1(), 'battles/b4'), { finishedParticipants: ['bob', 'coach1'] }));
+});
+
+test('T5: host nie usunie gry, w której ktoś już jest albo skończył', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/b5'), { hostId: 'alice', participants: ['alice'], status: 'ACTIVE', liveScores: {} });
+    await setDoc(doc(ctx.firestore(), 'battles/b6'), { hostId: 'alice', participants: ['alice', 'bob'], status: 'ACTIVE', liveScores: {} });
+    await setDoc(doc(ctx.firestore(), 'battles/b7'), { hostId: 'alice', participants: ['alice'], status: 'LOBBY', finishedParticipants: ['alice'], liveScores: {} });
+  });
+  await assertSucceeds(deleteDoc(doc(alice(), 'battles/b5')));
+  await assertFails(deleteDoc(doc(alice(), 'battles/b6')));
+  await assertFails(deleteDoc(doc(alice(), 'battles/b7')));
+});
+
 test('T5: nie-host nie zmieni statusu battle', async () => {
   await assertFails(updateDoc(doc(bob(), 'battles/b1'), { status: 'FINISHED' }));
 });

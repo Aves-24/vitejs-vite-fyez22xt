@@ -455,6 +455,7 @@ export const views = {
     arenaNoClubGames: "Keine aktiven Vereinsspiele",
     arenaInvalidCode: "Keine Arena mit diesem Code gefunden.",
     arenaFull: "Das Spiel ist voll (max. {{n}} Personen).",
+    arenaAlreadyDone: "Dieses Spiel hast du schon beendet — dein Ergebnis steht in der Historie.",
     arenaFinished: "Diese Arena wurde bereits beendet.",
     connectTitle: "Verbindung",
     connectSub: "Verbindungsmethode wählen",

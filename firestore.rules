@@ -703,9 +703,11 @@ service cloud.firestore {
       allow update: if isSignedIn()
         && resource.data.hostId == request.auth.uid;
 
-      // Participant — ONLY own liveScore changes
+      // Participant — ONLY own liveScore changes; po ukończeniu wynik jest
+      // zamrożony (ponowne wejście w grę nadpisywało go zerem).
       allow update: if isSignedIn()
         && request.auth.uid in resource.data.get('participants', [])
+        && !(request.auth.uid in resource.data.get('finishedParticipants', []))
         && onlyAffects(['liveScores'])
         && request.resource.data.liveScores.diff(resource.data.get('liveScores', {}))
              .affectedKeys().hasOnly([request.auth.uid]);
@@ -729,6 +731,16 @@ service cloud.firestore {
              .affectedKeys().hasOnly([request.auth.uid])
         && request.resource.data.get('distances', {}).diff(resource.data.get('distances', {}))
              .affectedKeys().hasOnly([request.auth.uid]);
+
+      // Participant — oznacza SIEBIE jako ukończonego. Wcześniej mógł to tylko
+      // host, więc gracz nigdy nie był „ukończony": mógł wejść drugi raz
+      // (wynik → 0) i nie widział pełnego rankingu na ślepo.
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.get('participants', [])
+        && !(request.auth.uid in resource.data.get('finishedParticipants', []))
+        && onlyAffects(['finishedParticipants'])
+        && request.resource.data.finishedParticipants
+             == resource.data.get('finishedParticipants', []).concat([request.auth.uid]);
 
       // Participant — ONLY own distance (w bitwie wspólna jest tarcza, dystans
       // każdy ma swój, np. senior 60 m vs młodzik 70 m na 122 cm)
@@ -758,9 +770,13 @@ service cloud.firestore {
              .hasOnly(['pendingInvites', 'participantsData'])
         && !(request.auth.uid in request.resource.data.get('pendingInvites', []));
 
+      // Host usuwa grę, dopóki nikt poza nim nie dołączył i nikt jej nie
+      // ukończył — inaczej kasowałby wyniki innych.
       allow delete: if isSignedIn()
         && resource.data.hostId == request.auth.uid
-        && resource.data.status in ['LOBBY', 'START'];
+        && resource.data.get('finishedParticipants', []).size() == 0
+        && (resource.data.status in ['LOBBY', 'START']
+            || (resource.data.status == 'ACTIVE' && resource.data.get('participants', []).size() <= 1));
     }
 
     // ─── /world_queue/{userId} — private matchmaking entry ──────

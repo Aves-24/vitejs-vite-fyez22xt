@@ -798,7 +798,27 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     setTimeout(() => setIsRefreshing(false), 2500);
   };
 
-  const handleSafeJoin = async (battleId: string, distance: string, targetType: string, currentParticipants: string[], battleMode?: string, hostLevel?: number) => {
+  const handleSafeJoin = async (battleId: string, distance: string, targetType: string, _listedParticipants: string[], battleMode?: string, hostLevel?: number) => {
+    // Lista gier klubu nie jest nasłuchiwana — przed wejściem świeży stan bitwy
+    // (1 odczyt). Ukończona gra NIE otwiera się drugi raz: nowe liczenie
+    // nadpisywało wynik zerem (test usera 2026-10-21).
+    let currentParticipants: string[];
+    try {
+      const fresh = await getDoc(doc(db, 'battles', battleId));
+      if (!fresh.exists()) { showToast(t('home.arenaFinished')); return; }
+      const fd = fresh.data();
+      if (fd.finishedParticipants?.includes(userId)) {
+        showToast(t('home.arenaAlreadyDone'));
+        onGoToBattles?.();
+        return;
+      }
+      currentParticipants = fd.participants || [];
+    } catch (e) {
+      console.error('Battle check failed:', e);
+      showToast(t('auth.errorGeneral'));
+      return;
+    }
+
     // WORLD matchmaking — filtr rang: abs(userLevel - hostLevel) <= 1
     if (battleMode === 'WORLD' && !currentParticipants.includes(userId)) {
       const bHostLevel = hostLevel || 1;
@@ -1597,7 +1617,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                           <p className="text-[9px] font-bold text-gray-400 mt-0.5 truncate italic">{battle.hostName}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0 ml-2">
-                          {isHost && (
+                          {/* Usunąć można tylko grę, do której nikt poza hostem nie dołączył
+                              i której nikt nie ukończył — tak samo pilnują reguły. */}
+                          {isHost && !battle.finishedParticipants?.length && (battle.status !== 'ACTIVE' || (battle.participants?.length || 0) <= 1) && (
                             <button onClick={(e) => initiateDeleteBattle(e, battle.id)} className="w-8 h-8 bg-red-50 rounded-xl flex items-center justify-center text-red-400 z-20 active:scale-90">
                               <span className="material-symbols-outlined text-[16px]">delete</span>
                             </button>

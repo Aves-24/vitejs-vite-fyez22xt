@@ -170,6 +170,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState<'IDLE' | 'PREP' | 'SHOOT' | 'FINISHED'>('IDLE');
   const [isSaving, setIsSaving] = useState(false);
+  // Zapis w toku — wtedy własne „ukończono" w bitwie nie wyrzuca do historii.
+  const isSavingRef = useRef(false);
 
   // Ref śledzący czy komponent jest zamontowany.
   // Zapobiega setState po odmontowaniu (np. gdy finally w saveSession
@@ -314,6 +316,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     const apply = (snapshot: any) => {
       if (alive && snapshot.exists()) {
         const bData = snapshot.data();
+        // Ukończona gra: nowe liczenie nadpisałoby wynik zerem — do historii.
+        if (bData.finishedParticipants?.includes(userId) && !isSavingRef.current) {
+          showToast(t('home.arenaAlreadyDone'));
+          localStorage.removeItem('grotX_activeSession');
+          onNavigate?.('BATTLE_HISTORY');
+          return;
+        }
         // Każdy strzela ze swojego dystansu — zapisujemy własny, żeby ranking go pokazał.
         const myDistance = distanceLabel || distance;
         if (myDistance && bData.participants?.includes(userId) && bData.distances?.[userId] !== myDistance) {
@@ -507,6 +516,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   };
   const pushLiveScore = (st: { score: number; x: number; t: number; n: number }, active: string[] = []) => {
     if (!activeBattle?.id || !userId || !activeBattle?.participants?.includes(userId)) return Promise.resolve();
+    // Wynik ukończonej gry jest zamrożony (pilnuje też reguła).
+    if (activeBattle.finishedParticipants?.includes(userId)) return Promise.resolve();
     return updateDoc(doc(db, 'battles', activeBattle.id), {
       [`liveScores.${userId}`]: { score: st.score, x: st.x, t: st.t, n: st.n, ends: stageProgress(active) }
     })
@@ -559,6 +570,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
 
     setIsSaving(true);
+    isSavingRef.current = true;
     try {
       // [C41] Zaden zapis ponizej nie czeka na serwer dluzej niz chwile —
       // bez zasiegu trafia do telefonu i wysle sie sam (utils/offlineWrite).
@@ -727,6 +739,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
     } catch (error) {
       console.error("Krytyczny błąd zapisu sesji:", error);
+      isSavingRef.current = false;
       if (isMountedRef.current) {
         showToast(t('auth.errorGeneral', 'Błąd zapisu! Sprawdź połączenie z siecią.'), 'ERROR');
       }

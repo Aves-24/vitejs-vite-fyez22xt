@@ -22,7 +22,7 @@ import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { BattleStats, computeBattleStats } from '../utils/battleStats';
+import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
 
@@ -483,14 +483,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return () => { document.removeEventListener('visibilitychange', refresh); window.clearInterval(timer); };
   }, [userClub]);
 
-  // [ARENA] Statystyki bitew — liczone z własnych bitew, pobieranych raz przy
-  // otwarciu okna Arena (jedno zapytanie, bez nasłuchu). utils/battleStats.ts
+  // [ARENA] Statystyki bitew przy otwarciu okna Arena — podsumowanie z profilu
+  // + tylko nowe bitwy (bez limitu przy latach użytkowania). utils/battleStats.ts
   useEffect(() => {
     if (!isClubBattlesModalOpen || !userId) return;
     let alive = true;
-    getDocs(query(collection(db, 'battles'), where('participants', 'array-contains', userId), limit(100)))
-      .then(snap => { if (alive) setBattleStats(computeBattleStats(snap.docs.map(d => d.data()), userId)); })
-      .catch(e => console.error('Battle stats fetch failed:', e));
+    loadBattleStats(userId)
+      .then(st => { if (alive) setBattleStats(st); })
+      .catch(e => {
+        // Zapas, gdy indeks participants+createdAt jeszcze się buduje: ostatnie 100 bitew.
+        console.warn('Battle stats (incremental) failed, fallback:', e);
+        getDocs(query(collection(db, 'battles'), where('participants', 'array-contains', userId), limit(100)))
+          .then(snap => { if (alive) setBattleStats(computeBattleStats(snap.docs.map(d => d.data()), userId)); })
+          .catch(err => console.error('Battle stats fetch failed:', err));
+      });
     return () => { alive = false; };
   }, [isClubBattlesModalOpen, userId]);
 

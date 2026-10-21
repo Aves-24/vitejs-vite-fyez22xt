@@ -576,9 +576,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     }
                   }}
                   disabled={!selectedDistance}
-                  className="h-12 w-full max-w-[128px] rounded-2xl bg-indigo-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
+                  // Wejście do ścieżki Arena — jej ciemny styl (user 2026-10-21).
+                  className="h-12 w-full max-w-[128px] rounded-2xl bg-[#0a0f1a] border border-indigo-400/50 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md shadow-indigo-500/20 transition-all disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-[20px] shrink-0">swords</span>
+                  <span className="material-symbols-outlined text-[20px] shrink-0 text-indigo-300">swords</span>
                   <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.battleBtn')}</span>
                 </button>
               </div>

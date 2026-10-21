@@ -3,7 +3,7 @@ import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
 import { getRecommendation, BowType } from './config/archeryRules';
-import { buildDistanceEntry, ensureDistanceIds, ensureMasterDistances, rebuildMasterList, UserDistance } from './config/distances';
+import { buildDistanceEntry, displayDistance, ensureDistanceIds, ensureMasterDistances, fallbackTargetFor, rebuildMasterList, UserDistance } from './config/distances';
 import { useTranslation } from 'react-i18next';
 
 // EAGER: widoki potrzebne przy pierwszym renderze (HOME / AUTH) oraz
@@ -488,6 +488,23 @@ export default function App() {
     handleNavigate('BATTLE_LOBBY');
   };
 
+  // „Utwórz nową arenę" z Home: prosto do lobby, z ostatnim dystansem z ekranu
+  // przygotowania (albo pierwszym aktywnym). Bez żadnego dystansu — do SETUP.
+  const handleCreateArena = () => {
+    const active = userDistances.filter(d => d.active);
+    let entry: UserDistance | undefined;
+    try {
+      const saved = localStorage.getItem(`grotX_lastSetup_${user?.uid}`);
+      if (saved) {
+        const { distanceId, distance } = JSON.parse(saved);
+        entry = active.find(d => d.id === distanceId) || (!distanceId ? active.find(d => d.m === distance) : undefined);
+      }
+    } catch (_) { /* ignore malformed cache */ }
+    entry = entry || active[0];
+    if (!entry) { handleNavigate('SETUP'); return; }
+    handleGoToBattle(entry.m, entry.targetType || fallbackTargetFor(entry.m), entry.id, entry.label ? displayDistance(entry) : undefined);
+  };
+
   const renderBottomNav = () => {
     const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
@@ -653,7 +670,7 @@ export default function App() {
       <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
       <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>
-        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
+        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onCreateArena={handleCreateArena} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         

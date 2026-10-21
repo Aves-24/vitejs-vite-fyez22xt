@@ -57,11 +57,12 @@ interface HomeViewProps {
   onGoToCalendar: (eventId?: string) => void; 
   onGoToStats?: (date?: string) => void; 
   onGoToBattles?: () => void;
+  onCreateArena?: () => void;
   onJoinBattle?: (battleId: string, distance: string, targetType: string) => void; 
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
-export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
+export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onCreateArena, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
   const { t, i18n } = useTranslation();
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
   const focusState = useCurrentFocus(userId);
@@ -1650,7 +1651,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {/* FOOTER — utwórz arenę */}
             <div className="px-6 pt-3 pb-8 border-t border-gray-100 shrink-0 space-y-2">
               <button
-                onClick={() => { setIsClubBattlesModalOpen(false); onNewSession(); }}
+                onClick={() => { setIsClubBattlesModalOpen(false); (onCreateArena ?? onNewSession)(); }}
                 className="w-full py-4 bg-[#0a3a2a] text-white rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg"
               >
                 <span className="material-symbols-outlined text-[16px]">add_circle</span>

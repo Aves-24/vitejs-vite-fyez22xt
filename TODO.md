@@ -69,8 +69,18 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
 1. Vitest + testy czystej logiki: punktacja, sumy, statystyki, tarcze
    (dmuchawka X=10), forma, liczniki roczne — na start 50–100 testów.
    **2026-10-21 START:** Vitest 3 + `npm test` w CI; 30 testów bitew
-   (`battleStage`, `battleStats`, `targetDistanceRanges`). Dalej: punktacja,
-   sumy, forma, liczniki.
+   (`battleStage`, `battleStats`, `targetDistanceRanges`).
+   **NASTĘPNE ZADANIE (ustalone z userem 2026-10-21), po kolei:**
+   1. Sumy/statystyki serii (X/10/9, średnia, M = strzała) — najpierw wydzielić
+      `getStats` z `ScoringView.tsx` do osobnego pliku BEZ zmiany działania.
+   2. Krótszy trening (`utils/partialSession.ts`: 6/8/10 serii, 2 rundy).
+   3. Tarcza wg wieku/łuku (`getRecommendation` w `config/archeryRules.ts`)
+      + `fallbackTargetFor` (`config/distances.ts`).
+   4. Ranga, XP, handicap (`rankEngine`, `xpEngine`, `handicapEngine`).
+   5. Punktacja tarcz (`config/targetFaces.ts`: pierścienie, 6-Ring,
+      dmuchawka X = 10).
+   Szacunek 50–70 testów. Znaleziony błąd → NAJPIERW pokazać userowi,
+   dopiero potem zmieniać działanie aplikacji.
 2. CI jako BRAMKA (lint + build + testy logiki + testy reguł), nie tylko info.
 3. Firebase Hosting preview channel przed prod — zmienia tryb „od razu main”,
    decyzja usera.

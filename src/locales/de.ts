@@ -635,6 +635,7 @@ export const views = {
     homeButton: "WORLD-Rangliste",
   },
   battleJoin: {
+    noFittingDistance: "Auf die {{target}} wird aus {{range}} geschossen — keine deiner aktiven Distanzen passt (Einstellungen → Distanzen).",
     title: "Diesem Spiel beitreten?",
     titleBack: "Zurück ins Spiel",
     host: "Gastgeber: {{name}}",

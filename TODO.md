@@ -7,7 +7,12 @@
 
 ## BITWY — OTWARTE 2026-10-21 (po teście usera na 2 kontach)
 
-### Tarcza ↔ dystans — usystematyzować (zgłoszone 2026-10-21)
+### ✅ Tarcza ↔ dystans — ZROBIONE 2026-10-21 w bitwach (122 cm: 30–90 m wg DSB, decyzja usera)
+Tabela: `src/config/targetDistanceRanges.ts`. Działa w lobby (host: tarcze pasujące do
+jego dystansu; gracz: dystanse pasujące do tarczy) i w oknie dołączania.
+NIE ruszone: zwykły trening (SessionSetup) — tam dalej dowolna tarcza.
+
+#### (opis problemu, dla historii)
 Problem: host ustawia tarczę bitwy (np. 122 cm), a dołączający może wybrać
 dowolny swój dystans — także 18 m na 122 cm, co w praktyce się nie zdarza.
 Dziś zasady są tylko „w jedną stronę” (osoba + dystans → polecana tarcza):

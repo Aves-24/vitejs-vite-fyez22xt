@@ -7,6 +7,7 @@ import { UserDistance, distanceColorMap, distancesForSetup } from '../config/dis
 import { friendlyTargetName } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import DistancePicker from './DistancePicker';
+import { formatRange, targetFitsDistance } from '../config/targetDistanceRanges';
 
 interface BattleJoinDistanceModalProps {
   userId: string;
@@ -33,9 +34,11 @@ interface BattleJoinDistanceModalProps {
  */
 export default function BattleJoinDistanceModal({ userId, activeDistances, initial, targetType, resume, hostName, hostClub, mode, onConfirm, onCancel }: BattleJoinDistanceModalProps) {
   const { t } = useTranslation();
-  const [options, setOptions] = useState<UserDistance[]>(activeDistances);
+  // Tylko dystanse, z których strzela się na tarczę bitwy (np. 122 cm: 30–90 m).
+  const fits = (d: UserDistance) => targetFitsDistance(targetType, d.m);
+  const [options, setOptions] = useState<UserDistance[]>(() => activeDistances.filter(fits));
   const [colors, setColors] = useState<Map<string, string>>(new Map());
-  const [selected, setSelected] = useState<UserDistance | undefined>(initial);
+  const [selected, setSelected] = useState<UserDistance | undefined>(() => (initial && fits(initial) ? initial : activeDistances.find(fits)));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
 
@@ -53,7 +56,7 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
         if (!alive) return;
         const data = snap.data() || {};
         const setups = Array.isArray(data.setups) ? data.setups : [];
-        const list = distancesForSetup(activeDistances, setups, data.activeSetupId ?? null, data.bowType ?? null);
+        const list = distancesForSetup(activeDistances, setups, data.activeSetupId ?? null, data.bowType ?? null).filter(fits);
         setOptions(list);
         setColors(distanceColorMap(activeDistances, setups));
         setSelected(prev => (prev && list.some(d => d.id === prev.id) ? prev : list[0]));
@@ -87,9 +90,11 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
           </div>
         </div>
 
-        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('battleLobby.myDistance')}</p>
+        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+          {t('battleLobby.myDistance')}{formatRange(targetType) ? ` · ${formatRange(targetType)}` : ''}
+        </p>
         {options.length === 0 ? (
-          <p className="text-[11px] font-bold text-gray-400 text-center py-3">{t('setup.noDistances')}</p>
+          <p className="text-[11px] font-bold text-gray-400 text-center py-3">{t('battleJoin.noFittingDistance', { target: friendlyTargetName(targetType, targetType), range: formatRange(targetType) })}</p>
         ) : (
           <DistancePicker options={options} colors={colors} selectedId={selected?.id} onPick={setSelected} />
         )}

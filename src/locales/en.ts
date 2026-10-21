@@ -635,6 +635,7 @@ export const views = {
     homeButton: "WORLD Ranking",
   },
   battleJoin: {
+    noFittingDistance: "The {{target}} face is shot from {{range}} — none of your active distances fits (Settings → distances).",
     title: "Join this game?",
     titleBack: "Back to the game",
     host: "host: {{name}}",

@@ -10,6 +10,7 @@ import { findTargetFace, friendlyTargetName, selectableTargetIdsFor } from '../c
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
+import { formatRange, targetFitsDistance } from '../config/targetDistanceRanges';
 
 interface BattleLobbyViewProps {
   userId: string;
@@ -470,14 +471,33 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
   // W utworzonej grze obowiązuje tarcza z bazy; zmieniać może tylko host, dopóki nikt nie strzela.
   const shownTarget = battleData?.targetType || target;
   const canChangeTarget = !isGameCreated || (battleData?.hostId === userId && battleData?.status === 'LOBBY');
-  const targetOptions = selectableTargetIdsFor(findTargetFace(shownTarget)?.discipline === 'blowgun' ? BLOWGUN_DISCIPLINE : 'archery');
+  // [TARCZA ↔ DYSTANS] Tarcze tej dyscypliny, a z nich tylko te, na które
+  // strzela się z dystansu hosta (config/targetDistanceRanges.ts).
+  const disciplineTargets = selectableTargetIdsFor(findTargetFace(shownTarget)?.discipline === 'blowgun' ? BLOWGUN_DISCIPLINE : 'archery');
+  const targetsFor = (m: string) => disciplineTargets.filter(o => targetFitsDistance(o, m));
+  const targetOptions = targetsFor(myDistanceM);
+  // Kto nie może zmienić tarczy (gracz, gra w toku), wybiera tylko dystanse pasujące do niej.
+  const shownDistanceOptions = canChangeTarget ? distanceOptions : distanceOptions.filter(d => targetFitsDistance(shownTarget, d.m));
 
   const pickDistance = (entry: UserDistance) => {
     setIsDistancePickerOpen(false);
     setMyDistance(entry);
     // Jak w przygotowaniu: dystans przynosi swoją tarczę, o ile host jeszcze może ją zmienić.
-    if (canChangeTarget) pickTarget(entry.targetType || fallbackTargetFor(entry.m));
+    // Zapisana przy dystansie tarcza spoza zakresu (np. 122 cm na 18 m) → pierwsza pasująca.
+    if (canChangeTarget) {
+      const own = entry.targetType || fallbackTargetFor(entry.m);
+      pickTarget(targetFitsDistance(own, entry.m) ? own : (targetsFor(entry.m)[0] ?? own));
+    }
   };
+
+  // Lobby startuje z tarczą z przygotowania — gdy nie pasuje do dystansu, host
+  // dostaje od razu pierwszą pasującą (tylko przed utworzeniem gry, bez zapisu).
+  useEffect(() => {
+    if (isGameCreated || targetFitsDistance(target, myDistanceM)) return;
+    const first = targetsFor(myDistanceM)[0];
+    if (first) setTarget(first);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myDistanceM, isGameCreated]);
 
   const pickTarget = async (next: string) => {
     setIsTargetPickerOpen(false);
@@ -948,12 +968,16 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
       {isDistancePickerOpen && createPortal(
         <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setIsDistancePickerOpen(false)}>
           <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">{t('battleLobby.myDistance')}</p>
-            {distanceOptions.length === 0 && (
-              <p className="text-[11px] font-bold text-gray-400 text-center py-3">{t('setup.noDistances')}</p>
+            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">
+              {t('battleLobby.myDistance')}{!canChangeTarget && formatRange(shownTarget) ? ` · ${getFriendlyTargetName(shownTarget)}: ${formatRange(shownTarget)}` : ''}
+            </p>
+            {shownDistanceOptions.length === 0 && (
+              <p className="text-[11px] font-bold text-gray-400 text-center py-3">
+                {canChangeTarget ? t('setup.noDistances') : t('battleJoin.noFittingDistance', { target: getFriendlyTargetName(shownTarget), range: formatRange(shownTarget) })}
+              </p>
             )}
             <div className="flex flex-wrap gap-1.5">
-              {distanceOptions.map(d => (
+              {shownDistanceOptions.map(d => (
                 <button
                   key={d.id}
                   onClick={() => pickDistance(d)}
@@ -973,7 +997,9 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
       {isTargetPickerOpen && createPortal(
         <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setIsTargetPickerOpen(false)}>
           <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">{t('setup.targetTitle')}</p>
+            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">
+              {t('setup.targetTitle')} · {myDistance ? displayDistance(myDistance) : myDistanceM}
+            </p>
             <div className="grid grid-cols-3 gap-2">
               {targetOptions.map(o => (
                 <button

@@ -652,6 +652,7 @@ export const views = {
     homeButton: "Ranking WORLD",
   },
   battleJoin: {
+    noFittingDistance: "Na tarczę {{target}} strzela się z {{range}} — żaden z Twoich aktywnych dystansów nie pasuje (Ustawienia → dystanse).",
     title: "Dołączyć do tej gry?",
     titleBack: "Wracasz do gry",
     host: "gospodarz: {{name}}",

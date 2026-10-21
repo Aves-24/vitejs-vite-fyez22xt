@@ -794,9 +794,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <div className="flex items-center justify-between h-10">
           {/* [FOKUS] Miniatura fokusu w miejscu logo (user 2026-09-18) — ta sama
               wysokość paska, więc klawiatura nie zjeżdża. Klik = pełny tytuł. */}
-          {headerFocus ? (
+          {headerFocus || activeBattle ? (
             <>
-            {/* Mniejsze logo zostaje obok fokusu (user 2026-09-18). */}
+            {/* Mniejsze logo zostaje obok fokusu i przycisku areny (user 2026-09-18 / 2026-10-21). */}
             <div className="flex items-center shrink-0 pl-1 pr-2.5 border-r border-gray-100 h-full">
               <div className="flex items-baseline whitespace-nowrap">
                 <span className="text-[15px] font-black text-[#0a3a2a] tracking-tighter leading-none">GROT-X</span>
@@ -806,6 +806,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 <div className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-0.5 relative bottom-[2.5px]"></div>
               </div>
             </div>
+            {headerFocus && (
             <button
               onClick={() => {
                 const fc = headerFocus;
@@ -824,6 +825,31 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   : <span className={`text-[8px] font-black uppercase tracking-widest leading-none truncate ${focusPalette(headerFocus).sub}`}>{t(headerFocus.topicId ? 'tagebuch.topicLabel' : 'tagebuch.focusLabel')}</span>}
               </span>
             </button>
+            )}
+            {/* [ARENA] Ranking w górnym pasku zamiast osobnego wiersza — ten wiersz
+                spychał wynik w dół na telefonie (user 2026-10-21). Kolor = tryb. */}
+            {activeBattle && (() => {
+              // Gra klubowa: ranking od 1. serii (pokazuje innych do Twojego etapu).
+              const rankingReady = isClubBattle ? submittedEnds.length >= 1 : submittedEnds.length >= 6;
+              const tone = !rankingReady ? 'text-gray-400'
+                : activeBattle.mode === 'CLUB' ? 'text-fuchsia-600'
+                : activeBattle.mode === 'WORLD' ? 'text-emerald-600' : 'text-indigo-600';
+              return (
+                <button
+                  onClick={() => {
+                    if (rankingReady) setShowLeaderboard(true);
+                    else showToast(isClubBattle ? t('scoringView.rankingAlertEnd') : t('scoringView.rankingAlert', "Ranking dostępny po 1. rundzie."));
+                  }}
+                  className={`flex flex-col items-center justify-center gap-0.5 px-2.5 border-r border-gray-100 h-full shrink-0 active:scale-90 transition-all ${tone}`}
+                  aria-label={t('scoringView.rankingClub')}
+                >
+                  <span className={`material-symbols-outlined text-[18px] leading-none ${rankingReady ? 'animate-pulse' : ''}`}>
+                    {activeBattle.mode === 'CLUB' ? 'shield' : activeBattle.mode === 'WORLD' ? 'public' : 'sensors'}
+                  </span>
+                  <span className="text-[7px] font-black uppercase tracking-widest leading-none">{t('scoringView.rankingClub')}</span>
+                </button>
+              );
+            })()}
             </>
           ) : (
           <div className="flex items-center pl-6 shrink-0 border-r border-gray-100 pr-4 h-full">
@@ -867,43 +893,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           </div>
         )}
 
-        {activeBattle && (
-          <div className="mt-2 pt-2 border-t border-gray-100 flex items-center justify-between animate-fade-in-up">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${
-              activeBattle.mode === 'CLUB' ? 'bg-fuchsia-50 text-fuchsia-600' : 
-              activeBattle.mode === 'WORLD' ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'
-            }`}>
-              <span className="material-symbols-outlined text-[12px] animate-pulse">
-                {activeBattle.mode === 'CLUB' ? 'shield' : activeBattle.mode === 'WORLD' ? 'public' : 'sensors'}
-              </span>
-              <span className="text-[8px] font-black uppercase tracking-widest">
-                Arena {activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub', 'Klubowa') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld', 'World') : t('scoringView.arenaLive', 'Pojedynek')}
-              </span>
-            </div>
-            
-            {(() => {
-              // Gra klubowa: ranking od 1. serii (pokazuje innych do Twojego etapu).
-              const rankingReady = isClubBattle ? submittedEnds.length >= 1 : submittedEnds.length >= 6;
-              return (
-                <button
-                  onClick={() => {
-                    if (rankingReady) setShowLeaderboard(true);
-                    else showToast(isClubBattle ? t('scoringView.rankingAlertEnd') : t('scoringView.rankingAlert', "Ranking dostępny po 1. rundzie."));
-                  }}
-                  className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md transition-all ${
-                    rankingReady
-                      ? 'bg-indigo-600 text-white shadow-md active:scale-95'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  {rankingReady
-                    ? (isClubBattle ? t('scoringView.rankingClub') : t('scoringView.liveRanking', 'Ranking Live'))
-                    : (isClubBattle ? t('scoringView.rankingAfterEnd') : t('scoringView.rankingAfterR1', 'Ranking po 1.R'))}
-                </button>
-              );
-            })()}
-          </div>
-        )}
       </div>
 
       <div className="flex gap-1 p-1 mx-auto w-5/6 bg-gray-50 rounded-2xl border border-gray-200">
@@ -1379,7 +1368,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </button>
             <div className={`p-6 text-center text-white ${activeBattle.mode === 'CLUB' ? 'bg-fuchsia-600' : activeBattle.mode === 'WORLD' ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
               <span className="material-symbols-outlined text-4xl mb-2 text-white/50">trophy</span>
-              <h2 className="text-2xl font-black tracking-tighter uppercase">Arena {activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub', 'Klubowa') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld', 'World') : t('scoringView.arenaLive', 'Live')}</h2>
+              <h2 className="text-2xl font-black tracking-tighter uppercase">{activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld') : t('scoringView.arenaLive')}</h2>
               <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">
                 {isClubBattle && !seeAllScores
                   ? t('scoringView.blindRankingHint', { n: endsStats.count })

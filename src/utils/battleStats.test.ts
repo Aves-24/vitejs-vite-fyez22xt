@@ -52,7 +52,13 @@ describe('computeBattleStats — zasady liczenia', () => {
       battle('solo', 5, 'FINISHED', { me: 999 }),                       // rozegrana, bez wygranej
       battle('open', 5, 'ACTIVE', { me: 700, a: 100 }, ['a']),          // nieukończona przez me
     ];
-    expect(computeBattleStats(list, 'me')).toEqual({ played: 4, wins: 1, podiums: 2, best: 999 });
+    expect(computeBattleStats(list, 'me')).toMatchObject({ played: 4, wins: 1, podiums: 2, best: 999 });
+  });
+  it('bestAt = data gry z najlepszym wynikiem (Bestwert → STATS tego dnia)', () => {
+    const a = battle('a', 30, 'FINISHED', { me: 500 });
+    const b = battle('b', 20, 'FINISHED', { me: 700 });
+    const c = battle('c', 10, 'FINISHED', { me: 600 });
+    expect(computeBattleStats([a, b, c], 'me').bestAt).toBe(b.createdAt);
   });
   it('remis punktów rozstrzyga X', () => {
     const b = battle('x', 5, 'FINISHED', { me: 500, a: 500 });
@@ -87,17 +93,26 @@ describe('loadBattleStats — przyrostowo, bez limitu', () => {
   it('pierwsze liczenie: wszystko, zapis podsumowania ze znacznikiem', async () => {
     fake.battles = [battle('a', 72, 'FINISHED', { me: 500, x: 400 }), battle('b', 48, 'FINISHED', { me: 300, x: 400 })];
     const st = await loadBattleStats('me');
-    expect(st).toEqual({ played: 2, wins: 1, podiums: 0, best: 500 });
+    expect(st).toMatchObject({ played: 2, wins: 1, podiums: 0, best: 500, bestAt: fake.battles[0].createdAt });
     expect(fake.updates[0].battleStats).toMatchObject({ played: 2, wins: 1, cursor: fake.battles[1].createdAt });
   });
 
   it('kolejne otwarcie: tylko bitwy nowsze od znacznika, doliczone do zapisanych', async () => {
     const old = battle('old', 72, 'FINISHED', { me: 999 });
-    fake.user = { battleStats: { played: 10, wins: 4, podiums: 6, best: 650, cursor: old.createdAt } };
+    fake.user = { battleStats: { played: 10, wins: 4, podiums: 6, best: 650, bestAt: '2026-01-01T10:00:00.000Z', cursor: old.createdAt } };
     fake.battles = [old, battle('new', 30, 'FINISHED', { me: 600, x: 500 })];
     const st = await loadBattleStats('me');
     // „old” (999) jest już w podsumowaniu — nie liczy się drugi raz.
-    expect(st).toEqual({ played: 11, wins: 5, podiums: 6, best: 650 });
+    expect(st).toMatchObject({ played: 11, wins: 5, podiums: 6, best: 650, bestAt: '2026-01-01T10:00:00.000Z' });
+  });
+
+  it('stare podsumowanie bez bestAt — przeliczone raz od nowa, bez dublowania', async () => {
+    const a = battle('a', 72, 'FINISHED', { me: 400 });
+    const b = battle('b', 48, 'FINISHED', { me: 450 });
+    fake.user = { battleStats: { played: 2, wins: 0, podiums: 0, best: 450, cursor: b.createdAt } };
+    fake.battles = [a, b];
+    const st = await loadBattleStats('me');
+    expect(st).toMatchObject({ played: 2, best: 450, bestAt: b.createdAt });
   });
 
   it('trwająca gra: widać ją od razu, ale nie trafia do zapisu', async () => {
@@ -110,7 +125,7 @@ describe('loadBattleStats — przyrostowo, bez limitu', () => {
 
   it('nic nowego — bez zapisu', async () => {
     const old = battle('old', 72, 'FINISHED', { me: 100 });
-    fake.user = { battleStats: { played: 1, wins: 0, podiums: 0, best: 100, cursor: old.createdAt } };
+    fake.user = { battleStats: { played: 1, wins: 0, podiums: 0, best: 100, bestAt: old.createdAt, cursor: old.createdAt } };
     fake.battles = [old];
     await loadBattleStats('me');
     expect(fake.updates).toHaveLength(0);

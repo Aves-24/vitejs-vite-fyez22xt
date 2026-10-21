@@ -18,7 +18,7 @@ import { compareStage, scoreSeenBy } from './battleStage';
  * Na stałe doliczamy tylko gry OSTATECZNE — zamknięte albo starsze niż 24 h;
  * wynik trwającej gry może się jeszcze zmienić, więc liczy się tylko do widoku.
  */
-export interface BattleStats { played: number; wins: number; podiums: number; best: number }
+export interface BattleStats { played: number; wins: number; podiums: number; best: number; bestAt?: string }
 interface StoredStats extends BattleStats { cursor: string }
 
 const EMPTY: BattleStats = { played: 0, wins: 0, podiums: 0, best: 0 };
@@ -39,6 +39,8 @@ function addBattle(acc: BattleStats, b: any, uid: string): BattleStats {
     wins: acc.wins + (players.length >= 2 && place === 1 ? 1 : 0),
     podiums: acc.podiums + (players.length >= 3 && place >= 1 && place <= 3 ? 1 : 0),
     best: Math.max(acc.best, mine),
+    // createdAt gry z najlepszym wynikiem — „Bestwert” otwiera STATS tego dnia.
+    bestAt: mine > acc.best ? b.createdAt : acc.bestAt,
   };
 }
 
@@ -71,8 +73,10 @@ export function splitFinal(sorted: any[], now = Date.now()): { final: any[]; pen
 export async function loadBattleStats(uid: string): Promise<BattleStats> {
   const userRef = doc(db, 'users', uid);
   const userSnap = await getDoc(userRef);
-  const stored = userSnap.data()?.battleStats as StoredStats | undefined;
-  let acc: BattleStats = stored ? { played: stored.played, wins: stored.wins, podiums: stored.podiums, best: stored.best } : EMPTY;
+  // Podsumowanie sprzed pola bestAt (gdy był już jakiś wynik) przeliczamy raz od nowa.
+  const raw = userSnap.data()?.battleStats as StoredStats | undefined;
+  const stored = raw && (raw.bestAt || !raw.best) ? raw : undefined;
+  let acc: BattleStats = stored ? { played: stored.played, wins: stored.wins, podiums: stored.podiums, best: stored.best, bestAt: stored.bestAt } : EMPTY;
   let cursor = stored?.cursor || '';
   let pendingAll: any[];
 

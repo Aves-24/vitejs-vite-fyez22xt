@@ -644,6 +644,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         // Krotszy ukonczony ma endsShot === endsPlanned (patrz isShortPlanned).
         ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: plannedEnds } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
+        // Bitwa: typ dla statystyk + powiązanie z grą (wcześniej „Solo-Training”).
+        ...(activeBattle && { type: isWorldBattle ? 'WORLD_BATTLE' : 'Arena', battleId: activeBattle.id, battleMode: activeBattle.mode || 'LOCAL' }),
         ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       }));
 
@@ -1381,6 +1383,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <div className={`p-6 text-center text-white border-b border-white/10 bg-gradient-to-b ${activeBattle.mode === 'CLUB' ? 'from-fuchsia-600/30' : activeBattle.mode === 'WORLD' ? 'from-emerald-600/30' : 'from-indigo-600/30'} to-transparent`}>
               <span className={`material-symbols-outlined text-4xl mb-2 ${activeBattle.mode === 'CLUB' ? 'text-fuchsia-400' : activeBattle.mode === 'WORLD' ? 'text-emerald-400' : 'text-indigo-400'}`}>trophy</span>
               <h2 className="text-2xl font-black tracking-tighter uppercase">{activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld') : t('scoringView.arenaLive')}</h2>
+              <p className="text-[9px] font-mono font-bold text-gray-500 tracking-widest mt-1">ID {activeBattle.id}</p>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
                 {isClubBattle && !seeAllScores
                   ? t('scoringView.blindRankingHint', { n: endsStats.count })
@@ -1453,13 +1456,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       )}
 
       {toastMessage && typeof document !== 'undefined' && createPortal(
-        <div className={`fixed top-14 left-1/2 -translate-x-1/2 z-[300000] px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl border animate-fade-in-up flex items-center gap-2 whitespace-nowrap transition-all ${
+        // Centruje kontener — animacja (transform) nadpisywała -translate-x-1/2.
+        <div className="fixed top-14 inset-x-0 z-[300000] flex justify-center px-4 pointer-events-none">
+        <div className={`max-w-full px-6 py-3.5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-2xl border animate-fade-in-up flex items-center gap-2 text-center transition-all ${
           toastType === 'ERROR' ? 'bg-red-600 text-white border-red-700' : 'bg-[#0a3a2a] text-white border-emerald-900'
         }`}>
-          <span className="material-symbols-outlined text-sm">
+          <span className="material-symbols-outlined text-sm shrink-0">
             {toastType === 'ERROR' ? 'error' : 'info'}
           </span>
           {toastMessage}
+        </div>
         </div>, document.body
       )}
     </div>

@@ -508,6 +508,8 @@ interface StatsViewProps {
 
 export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, viewingStudentId, isEmbedded = false }: StatsViewProps) {
   const { t, i18n } = useTranslation();
+  // Bitwa klubowa ma własną etykietę zamiast ogólnego „Arena Live”.
+  const arenaLabel = (s: any) => s?.battleMode === 'CLUB' ? t('stats.sessionInfo.arenaClub') : t('stats.sessionInfo.arena');
   
   const [activeTab, setActiveTab] = useState<'DAILY' | 'RECORDS' | 'PRO'>('DAILY');
 
@@ -901,7 +903,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                  return (
                    <button key={sess.id} onClick={() => setSelectedSessionId(sess.id)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border shadow-sm flex items-center gap-1 ${btnBg}`}>
                      {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
-                     {sess.type === 'Turniej' ? t('stats.sessionInfo.tournament') : sess.type === 'Arena' ? t('stats.sessionInfo.arena') : sess.type === 'TECHNICAL' ? 'TECH' : sess.type === 'WORLD_BATTLE' ? (sess.worldResult === 'WIN' ? t('stats.sessionInfo.worldTabWin') : t('stats.sessionInfo.worldTabLoss')) : t('stats.sessionInfo.solo')} {idx > 0 && `(#${idx+1})`}
+                     {sess.type === 'Turniej' ? t('stats.sessionInfo.tournament') : sess.type === 'Arena' ? arenaLabel(sess) : sess.type === 'TECHNICAL' ? 'TECH' : sess.type === 'WORLD_BATTLE' ? (sess.worldResult === 'WIN' ? t('stats.sessionInfo.worldTabWin') : t('stats.sessionInfo.worldTabLoss')) : t('stats.sessionInfo.solo')} {idx > 0 && `(#${idx+1})`}
                    </button>
                  );
               })}
@@ -926,11 +928,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       <div className="flex items-center gap-1.5 mb-0.5">
                          <div className={`w-2 h-2 rounded-full ${selectedSession.type === 'Turniej' ? 'bg-[#0a3a2a]' : selectedSession.type === 'Arena' ? 'bg-blue-500' : selectedSession.type === 'WORLD_BATTLE' ? 'bg-emerald-500' : 'bg-[#fed33e]'}`}></div>
                          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                           {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : t('stats.sessionInfo.typeSolo')}
+                           {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : t('stats.sessionInfo.typeSolo')}
                          </span>
                       </div>
                       <h2 className="text-xl font-black text-[#0a3a2a] leading-tight truncate max-w-[200px]">
-                        {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? t('stats.sessionInfo.arena') : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
+                        {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
                       </h2>
                       <p className="text-[10px] text-gray-300 font-bold uppercase flex items-center gap-1">
                         {selectedSession.date} •

@@ -82,8 +82,10 @@ export async function renderRankingImage(data: ShareRanking): Promise<Blob> {
   const lw = ctx.measureText(logo).width;
   const lx = (W - lw - 22) / 2;
   ctx.fillText(logo, lx, 130);
+  // Środek kropki na połowie wysokości wersalika „X” (pomiar czcionki).
+  const capH = ctx.measureText('X').actualBoundingBoxAscent || 46;
   ctx.fillStyle = '#fed33e';
-  ctx.beginPath(); ctx.arc(lx + lw + 14, 112, 9, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(lx + lw + 14, 130 - capH / 2, 9, 0, Math.PI * 2); ctx.fill();
 
   // Nagłówek.
   ctx.textAlign = 'center';

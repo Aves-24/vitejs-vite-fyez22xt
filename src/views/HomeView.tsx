@@ -174,7 +174,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [battleStats, setBattleStats] = useState<BattleStats | null>(null);
   // Ranking ukończonej gry otwierany nad oknem Arena (zamiast skoku do historii).
   const [rankingBattle, setRankingBattle] = useState<any>(null);
-  const [showFairPlay, setShowFairPlay] = useState(false); 
+  const [showFairPlay, setShowFairPlay] = useState(false);
+  // [ARENA] Twoje gry z ostatniej doby — zostają w oknie Arena także po
+  // terminie (gra klubowa trwa 3 h), przyciemnione pod nowymi (user 2026-10-21).
+  const [recentBattles, setRecentBattles] = useState<any[]>([]); 
   const [isClubBattlesModalOpen, setIsClubBattlesModalOpen] = useState(false); 
   
   const [manualBattleCode, setManualBattleCode] = useState('');
@@ -483,6 +486,16 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const timer = window.setInterval(refresh, 3 * 60 * 1000);
     return () => { document.removeEventListener('visibilitychange', refresh); window.clearInterval(timer); };
   }, [userClub]);
+
+  useEffect(() => {
+    if (!isClubBattlesModalOpen || !userId) return;
+    let alive = true;
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    getDocs(query(collection(db, 'battles'), where('participants', 'array-contains', userId), where('createdAt', '>', since), orderBy('createdAt'), limit(30)))
+      .then(snap => { if (alive) setRecentBattles(snap.docs.map(d => ({ id: d.id, ...d.data() }))); })
+      .catch(e => console.warn('Recent battles fetch failed:', e));
+    return () => { alive = false; };
+  }, [isClubBattlesModalOpen, userId, clubBattlesReload]);
 
   // [ARENA] Statystyki bitew przy otwarciu okna Arena — podsumowanie z profilu
   // + tylko nowe bitwy (bez limitu przy latach użytkowania). utils/battleStats.ts
@@ -1045,6 +1058,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   }
 
   const hasAnyBattle = allActiveBattles.length > 0;
+  const modalBattles = (() => {
+    const byNewest = (a: any, b: any) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt);
+    const active = allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).sort(byNewest);
+    const mineDone = [
+      ...allActiveBattles.filter(b => b.finishedParticipants?.includes(userId)),
+      ...recentBattles.filter(b => b.finishedParticipants?.includes(userId) && !allActiveBattles.some(a => a.id === b.id)),
+    ].sort(byNewest);
+    return [...active, ...mineDone];
+  })();
+  const isBattleOver = (b: any) => b.status === 'FINISHED'
+    || (b.expiresAt ? getSafeTime(b.expiresAt) < currentTime : (currentTime - getSafeTime(b.createdAt)) > 3 * 60 * 60 * 1000);
   // [ARENA] Kafel w stylu battle (user 2026-10-21): gra czeka na Ciebie (fiolet,
   // puls) albo już skończyłeś (zieleń, Twoje miejsce). Zamiast różowego „1kl”.
   const pendingBattles = allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId));
@@ -1433,19 +1457,21 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </>
             ) : doneBattle ? (
               <>
-                <span className="relative pl-1 inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest leading-none text-amber-300">
-                  <span className="material-symbols-outlined text-[12px]">bolt</span>{t('battleHistory.latest')}
-                </span>
-                <div className="relative z-10 pl-1 mt-2 flex items-end justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[15px] font-black leading-tight text-white truncate">
-                      {donePlace ? t('home.tilePlaceOnly', { place: donePlace.place, of: donePlace.of }) : t('home.done', 'Ukończono')}
-                    </p>
-                    <p className="text-[9px] font-bold text-gray-400 leading-tight mt-1 truncate">
-                      ✓ {t('home.tileEndsIn', { time: getRemainingTime(doneBattle.expiresAt, doneBattle.createdAt) })}
-                    </p>
-                  </div>
+                {/* Wynik obok „Letztes Spiel”, miejsce pod spodem — na wąskim telefonie
+                    „Platz 2/2” obok wyniku się ucinało (user 2026-10-21). */}
+                <div className="relative z-10 pl-1 flex items-start justify-between gap-2">
+                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest leading-none text-amber-300 mt-0.5">
+                    <span className="material-symbols-outlined text-[12px]">bolt</span>{t('battleHistory.latest')}
+                  </span>
                   {donePlace && <p className="text-2xl font-black text-white leading-none shrink-0">{donePlace.score}</p>}
+                </div>
+                <div className="relative z-10 pl-1 mt-1">
+                  <p className="text-[15px] font-black leading-tight text-white">
+                    {donePlace ? t('home.tilePlaceOnly', { place: donePlace.place, of: donePlace.of }) : t('home.done', 'Ukończono')}
+                  </p>
+                  <p className="text-[9px] font-bold text-gray-400 leading-tight mt-1 truncate">
+                    ✓ {t('home.tileEndsIn', { time: getRemainingTime(doneBattle.expiresAt, doneBattle.createdAt) })}
+                  </p>
                 </div>
               </>
             ) : (
@@ -1639,19 +1665,21 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 </div>
 
                 <div className="space-y-2">
-                  {allActiveBattles.length > 0 ? allActiveBattles.map(battle => {
+                  {modalBattles.length > 0 ? modalBattles.map((battle, idx) => {
                     const hasFinishedThis = battle.finishedParticipants?.includes(userId);
                     const isHost = battle.hostId === userId;
                     const opacity = getBattleOpacity(battle);
-                    const isLastDone = battle.id === lastFinishedId;
 
                     if (hasFinishedThis) {
+                      // Ukończone — przyciemnione pod nowymi; pierwsza z nich to „Letztes Spiel”.
+                      const firstDone = modalBattles.findIndex(b => b.finishedParticipants?.includes(userId)) === idx;
                       return (
-                        <div key={battle.id} style={{ opacity }}>
+                        <div key={battle.id} className="opacity-70">
                           <BattleCard
                             battle={battle}
                             userId={userId}
-                            highlight={isLastDone}
+                            highlight={firstDone}
+                            endsIn={isBattleOver(battle) ? t('battleCard.over') : t('home.tileEndsIn', { time: getRemainingTime(battle.expiresAt, battle.createdAt) })}
                             onClick={() => setRankingBattle(battle)}
                           />
                         </div>
@@ -1716,24 +1744,33 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     <p className="text-[11px] font-bold text-gray-300 leading-snug">{t('home.fairPlayText')}</p>
                   </div>
                 )}
-                {/* Prawdziwe statystyki zamiast licznika otwartych gier klubu; klik → historia. */}
-                <button
-                  onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
-                  className="w-full grid grid-cols-4 gap-1.5 active:scale-[0.98] transition-all"
-                >
+                {/* Prawdziwe statystyki; klikalny tylko „Bestwert” → STATS dnia tej gry (user 2026-10-21). */}
+                <div className="w-full grid grid-cols-4 gap-1.5">
                   {([
                     { icon: 'sports_score', label: t('home.statPlayed'), value: battleStats?.played, tone: 'text-indigo-300' },
                     { icon: 'emoji_events', label: t('home.statWins'), value: battleStats?.wins, tone: 'text-[#F2C94C]' },
                     { icon: 'military_tech', label: t('home.statPodiums'), value: battleStats?.podiums, tone: 'text-fuchsia-300' },
                     { icon: 'star', label: t('home.statBest'), value: battleStats?.best, tone: 'text-emerald-300' },
-                  ]).map(s => (
-                    <div key={s.label} className="bg-white/5 rounded-2xl border border-white/10 py-2.5 px-1 flex flex-col items-center min-w-0">
-                      <span className={`material-symbols-outlined text-[18px] ${s.tone}`}>{s.icon}</span>
-                      <span className="text-lg font-black text-white leading-tight">{s.value ?? '–'}</span>
-                      <span className="text-[7px] font-black text-gray-500 uppercase tracking-wider leading-tight text-center truncate w-full">{s.label}</span>
-                    </div>
-                  ))}
-                </button>
+                  ]).map((s, i) => {
+                    const bestDate = i === 3 && battleStats?.bestAt ? new Date(battleStats.bestAt) : null;
+                    const goBest = bestDate ? () => {
+                      const iso = `${bestDate.getFullYear()}-${String(bestDate.getMonth() + 1).padStart(2, '0')}-${String(bestDate.getDate()).padStart(2, '0')}`;
+                      setIsClubBattlesModalOpen(false);
+                      onNavigate?.('STATS', undefined, iso);
+                    } : undefined;
+                    return (
+                      <div
+                        key={s.label}
+                        onClick={goBest}
+                        className={`bg-white/5 rounded-2xl border py-2.5 px-1 flex flex-col items-center min-w-0 ${goBest ? 'border-emerald-400/40 cursor-pointer active:scale-95 transition-all' : 'border-white/10'}`}
+                      >
+                        <span className={`material-symbols-outlined text-[18px] ${s.tone}`}>{s.icon}</span>
+                        <span className="text-lg font-black text-white leading-tight">{s.value ?? '–'}</span>
+                        <span className="text-[7px] font-black text-gray-500 uppercase tracking-wider leading-tight text-center truncate w-full">{s.label}{goBest ? ' ›' : ''}</span>
+                      </div>
+                    );
+                  })}
+                </div>
                 <button
                   onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
                   className="w-full mt-2 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"
@@ -1866,9 +1903,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       {/* Toast */}
       {toastMessage && typeof document !== 'undefined' && createPortal(
-        <div className="fixed top-14 left-1/2 -translate-x-1/2 z-[300000] bg-[#0a3a2a] text-white px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl border border-emerald-900 animate-fade-in-up flex items-center gap-2 whitespace-nowrap">
-          <span className="material-symbols-outlined text-emerald-400 text-sm">info</span>
-          {toastMessage}
+        // Centruje kontener — animacja (transform) nadpisywała -translate-x-1/2,
+        // przez co dłuższy komunikat uciekał w prawo poza ekran.
+        <div className="fixed top-14 inset-x-0 z-[300000] flex justify-center px-4 pointer-events-none">
+          <div className="max-w-full bg-[#0a3a2a] text-white px-6 py-3.5 rounded-[24px] font-black text-[10px] uppercase tracking-widest shadow-2xl border border-emerald-900 animate-fade-in-up flex items-center gap-2 text-center">
+            <span className="material-symbols-outlined text-emerald-400 text-sm shrink-0">info</span>
+            {toastMessage}
+          </div>
         </div>, document.body
       )}
 

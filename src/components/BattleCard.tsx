@@ -24,6 +24,8 @@ interface BattleCardProps {
   chip?: React.ReactNode;
   /** Akcja po prawej (np. kosz gospodarza) — klik nie otwiera karty. */
   action?: React.ReactNode;
+  /** Ukończona przez Ciebie gra: ile jeszcze trwa dla innych albo „zakończona”. */
+  endsIn?: string;
   onClick: () => void;
 }
 
@@ -31,7 +33,7 @@ interface BattleCardProps {
  * [ARENA] Karta bitwy w ciemnym stylu — ta sama w historii bitew i w oknie
  * Multiplayer Arena (user 2026-10-21: „dokładnie to, co w Battle Scores”).
  */
-export default function BattleCard({ battle: b, userId, highlight, live, chip, action, onClick }: BattleCardProps) {
+export default function BattleCard({ battle: b, userId, highlight, live, chip, action, endsIn, onClick }: BattleCardProps) {
   const { t, i18n } = useTranslation();
   const isClub = b.mode === 'CLUB';
   const isWorld = b.mode === 'WORLD';
@@ -81,6 +83,11 @@ export default function BattleCard({ battle: b, userId, highlight, live, chip, a
           <span className="material-symbols-outlined text-[11px] text-gray-500">person</span>
           {t('battleHistory.host')} {b.hostName || t('battleHistory.unknown')}
         </p>
+        {endsIn && (
+          <p className="text-[10px] font-bold text-indigo-300 mt-1 flex items-center gap-1">
+            <span className="material-symbols-outlined text-[11px]">schedule</span>{endsIn}
+          </p>
+        )}
       </div>
 
       <div className="flex items-center gap-2 shrink-0 ml-2">

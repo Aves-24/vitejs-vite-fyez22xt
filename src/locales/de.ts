@@ -657,6 +657,7 @@ export const views = {
     live: "Läuft",
     timeLeft: "Noch",
     players: "{{n}} Schützen",
+    over: "Spiel beendet",
   },
   battleJoin: {
     noFittingDistance: "Auf die {{target}} wird aus {{range}} geschossen — keine deiner aktiven Distanzen passt (Einstellungen → Distanzen).",
@@ -1359,6 +1360,7 @@ export const views = {
       solo: "Trainingseinheit",
       tournament: "Turnier",
       arena: "Arena Live",
+      arenaClub: "Vereinsspiel",
       typeSolo: "Solo-Training",
       defaultTournament: "Wettkampf",
       dynamic: "Dynamisch",

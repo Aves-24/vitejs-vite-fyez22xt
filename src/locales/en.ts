@@ -657,6 +657,7 @@ export const views = {
     live: "Live",
     timeLeft: "Left",
     players: "{{n}} archers",
+    over: "Game over",
   },
   battleJoin: {
     noFittingDistance: "The {{target}} face is shot from {{range}} — none of your active distances fits (Settings → distances).",
@@ -1359,6 +1360,7 @@ export const views = {
       solo: "Training Session",
       tournament: "Tournament",
       arena: "Arena Live",
+      arenaClub: "Club game",
       typeSolo: "Solo Training",
       defaultTournament: "Competition",
       dynamic: "Dynamic",

@@ -123,6 +123,8 @@ export default function BattleRankingModal({ battle, userId, onClose }: BattleRa
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
             {battle.mode === 'CLUB' ? t('battleHistory.modalClub') : battle.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate')}{battleDistanceLabel(battle) ? ` • ${battleDistanceLabel(battle)}` : ''}
           </p>
+          {/* Numer kontrolny gry — do porównania między telefonami (user 2026-10-21). */}
+          {battle.id && <p className="text-[9px] font-mono font-bold text-gray-500 tracking-widest mt-1">ID {battle.id}</p>}
           {!seeAll && (
             <p className="text-[9px] font-bold text-indigo-300 mt-2">
               {myArrows > 0 ? t('scoringView.blindRankingHint', { n: myArrows }) : t('battleHistory.blindNotStarted')}

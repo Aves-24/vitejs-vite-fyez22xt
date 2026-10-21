@@ -22,6 +22,7 @@ import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot } from '../utils/battleStage';
+import { BattleStats, computeBattleStats } from '../utils/battleStats';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -167,7 +168,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   
   const [activeInvite, setActiveInvite] = useState<any | null>(null);
   const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]);
-  const [clubBattlesReload, setClubBattlesReload] = useState(0); 
+  const [clubBattlesReload, setClubBattlesReload] = useState(0);
+  const [battleStats, setBattleStats] = useState<BattleStats | null>(null); 
   const [isClubBattlesModalOpen, setIsClubBattlesModalOpen] = useState(false); 
   
   const [manualBattleCode, setManualBattleCode] = useState('');
@@ -458,6 +460,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     }).catch(e => console.error('Club battles fetch failed:', e));
     return () => { alive = false; };
   }, [userClub, clubBattlesReload]);
+
+  // [ARENA] Statystyki bitew — liczone z własnych bitew, pobieranych raz przy
+  // otwarciu okna Arena (jedno zapytanie, bez nasłuchu). utils/battleStats.ts
+  useEffect(() => {
+    if (!isClubBattlesModalOpen || !userId) return;
+    let alive = true;
+    getDocs(query(collection(db, 'battles'), where('participants', 'array-contains', userId), limit(100)))
+      .then(snap => { if (alive) setBattleStats(computeBattleStats(snap.docs.map(d => d.data()), userId)); })
+      .catch(e => console.error('Battle stats fetch failed:', e));
+    return () => { alive = false; };
+  }, [isClubBattlesModalOpen, userId]);
 
   useEffect(() => {
     if (!userId) return;
@@ -1628,14 +1641,24 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('home.battleStats')}</span>
                 </div>
-                <div className="grid grid-cols-1 gap-2">
-                  <div className="bg-white/5 rounded-2xl border border-white/10 p-3">
-                    <span className="material-symbols-outlined text-fuchsia-400 text-[20px] block mb-1">corporate_fare</span>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{t('home.arenaClubLabel')}</p>
-                    <p className="text-xl font-black text-white">{allActiveBattles.filter(b => b.mode === 'CLUB').length}</p>
-                    <span className="text-[8px] font-bold text-gray-500">{t('home.active')}</span>
-                  </div>
-                </div>
+                {/* Prawdziwe statystyki zamiast licznika otwartych gier klubu; klik → historia. */}
+                <button
+                  onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
+                  className="w-full grid grid-cols-4 gap-1.5 active:scale-[0.98] transition-all"
+                >
+                  {([
+                    { icon: 'sports_score', label: t('home.statPlayed'), value: battleStats?.played, tone: 'text-indigo-300' },
+                    { icon: 'emoji_events', label: t('home.statWins'), value: battleStats?.wins, tone: 'text-[#F2C94C]' },
+                    { icon: 'military_tech', label: t('home.statPodiums'), value: battleStats?.podiums, tone: 'text-fuchsia-300' },
+                    { icon: 'star', label: t('home.statBest'), value: battleStats?.best, tone: 'text-emerald-300' },
+                  ]).map(s => (
+                    <div key={s.label} className="bg-white/5 rounded-2xl border border-white/10 py-2.5 px-1 flex flex-col items-center min-w-0">
+                      <span className={`material-symbols-outlined text-[18px] ${s.tone}`}>{s.icon}</span>
+                      <span className="text-lg font-black text-white leading-tight">{s.value ?? '–'}</span>
+                      <span className="text-[7px] font-black text-gray-500 uppercase tracking-wider leading-tight text-center truncate w-full">{s.label}</span>
+                    </div>
+                  ))}
+                </button>
                 <button
                   onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
                   className="w-full mt-2 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"

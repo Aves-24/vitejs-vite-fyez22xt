@@ -5,6 +5,38 @@
 
 ---
 
+## BITWY — OTWARTE 2026-10-21 (po teście usera na 2 kontach)
+
+### Tarcza ↔ dystans — usystematyzować (zgłoszone 2026-10-21)
+Problem: host ustawia tarczę bitwy (np. 122 cm), a dołączający może wybrać
+dowolny swój dystans — także 18 m na 122 cm, co w praktyce się nie zdarza.
+Dziś zasady są tylko „w jedną stronę” (osoba + dystans → polecana tarcza):
+`getRecommendation` w `config/archeryRules.ts` (klasy DSB wg wieku/łuku) i
+`fallbackTargetFor` w `config/distances.ts` (bez daty urodzenia). Brakuje
+odwrotnej: „na tę tarczę dozwolone dystanse min–max”.
+
+Propozycja: zakres dystansów jako pole tarczy w `config/targetFaces.ts`
+(jedno źródło prawdy), np. z tabel DSB/WA już użytych w archeryRules:
+- 3-Spot 40 cm, 40 cm: 18 m
+- 60 cm: 18–25 m (Schüler B hala/tory)
+- 80 cm / 80 cm 6-Ring: 20–50 m
+- 122 cm: 30/35–90 m (user mówi 50–90 — DO USTALENIA z userem: DSB ma
+  122 cm też na 35 m barebow Jugend i 40 m Schüler A / Seniorinnen)
+Użycie: okno dołączania i lobby pokazują tylko dystanse pasujące do tarczy
+bitwy (reszta wyszarzona z podpowiedzią); wybór tarczy w lobby — tylko
+tarcze pasujące do dystansu hosta. Dmuchawka osobno (5–10 m, swoje tarcze).
+90 m JEST w `MASTER_DISTANCES` — user myślał, że brakuje; u niego pewnie
+nieaktywny (Ustawienia → dystanse).
+
+### Inne
+- Lista gier klubu na Home: odświeżać przy powrocie aplikacji
+  (visibilitychange) + co 3 min na widocznym Home — user nie zdecydował.
+- Na Blaze: push „X założył grę klubową, dołącz!”; ranking na ślepo przez
+  Cloud Function (patrz pamięć project_blind_battle_ranking).
+- Stara bitwa testowa usera: wynik B wyzerowany (błąd sprzed 398840b).
+
+---
+
 ## KRYTYCZNA OCENA + BADANIE UX — 2026-10-16 (do omówienia, NIC jeszcze nie zrobione)
 
 User chce najpierw ROZMAWIAĆ, nie kodować. Na start następnej sesji: przejść

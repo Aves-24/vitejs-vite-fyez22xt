@@ -712,7 +712,7 @@ export default function App() {
       <main className={`w-full min-h-screen pb-24 transition-all duration-300 ${fadeOutSplash ? 'blur-0 scale-100' : 'blur-md scale-95'}`}>
       <ViewErrorBoundary>
       <Suspense fallback={<ViewFallback />}>
-        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onCreateArena={handleCreateArena} onJoinBattle={(battleId, dist, target) => handleStartSession(dist, target, true, battleId)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
+        {currentView === 'HOME' && <HomeView userId={user?.uid || ''} isCoach={isCoach} onNewSession={() => handleNavigate('SETUP')} onGoToCalendar={(id?: string) => handleNavigate('CALENDAR', undefined, id)} onGoToStats={(date?: string) => handleNavigate('STATS', undefined, date)} onGoToBattles={() => handleNavigate('BATTLE_HISTORY')} onCreateArena={handleCreateArena} onJoinBattle={handleJoinBattle} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
         
         {currentView === 'SETUP' && <SessionSetup userId={user?.uid || ''} activeDistances={userDistances.filter(d => d.active)} onStartSession={handleStartSession} onNavigate={(view, tab) => handleNavigate(view as any, tab)} onGoToBattle={handleGoToBattle} hasActiveSession={hasActiveSession as any} />}
         

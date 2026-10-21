@@ -7,6 +7,8 @@ interface DistancePickerProps {
   colors: Map<string, string>;
   selectedId?: string;
   onPick: (d: UserDistance) => void;
+  /** Ciemny wariant — ekrany Battle Arena (okno dołączania). */
+  dark?: boolean;
 }
 
 /**
@@ -17,7 +19,7 @@ interface DistancePickerProps {
  * idą pierwszą linijką, etykieta drugą — jak na starcie treningu, bo
  * „18m barebow" w jednym wierszu nie mieści się w kafelku.
  */
-export default function DistancePicker({ options, colors, selectedId, onPick }: DistancePickerProps) {
+export default function DistancePicker({ options, colors, selectedId, onPick, dark }: DistancePickerProps) {
   return (
     <div className="grid grid-cols-4 gap-1">
       {options.map(d => {
@@ -29,7 +31,9 @@ export default function DistancePicker({ options, colors, selectedId, onPick }: 
             type="button"
             onClick={() => onPick(d)}
             aria-pressed={on}
-            className={`py-1.5 px-1 rounded-xl text-[10px] font-black border transition-all min-w-0 ${on ? 'bg-emerald-100 border-emerald-500 text-emerald-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+            className={`py-1.5 px-1 rounded-xl text-[10px] font-black border transition-all min-w-0 ${on
+              ? (dark ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-emerald-100 border-emerald-500 text-emerald-700')
+              : (dark ? 'bg-white/5 border-white/10 text-gray-300' : 'bg-gray-50 border-transparent text-gray-400')}`}
           >
             <span className="flex items-center justify-center gap-1 leading-none">
               {hex && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: hex }} />}

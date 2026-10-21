@@ -69,46 +69,47 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
 
   return createPortal(
     <div className="fixed inset-0 z-[300000] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={onCancel}>
-      <div className="bg-white w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-        <h3 className="text-lg font-black text-[#0a3a2a] leading-tight">
+      {/* Ciemny styl Battle Arena, jak lobby i historia (user 2026-10-21). */}
+      <div className="bg-[#111827] border border-white/10 text-white w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-black text-white leading-tight">
           {resume ? t('battleJoin.titleBack') : t('battleJoin.title')}
         </h3>
         {mode === 'CLUB' && (
-          <p className="text-[12px] font-black text-fuchsia-600 mt-1 flex items-start gap-1">
+          <p className="text-[12px] font-black text-fuchsia-400 mt-1 flex items-start gap-1">
             <span className="material-symbols-outlined text-[15px] leading-none shrink-0">shield</span>
             <span className="leading-tight">{hostClub || t('battleLobby.club')}</span>
           </p>
         )}
-        <p className="text-[11px] font-bold text-gray-400 mt-1 mb-4 truncate">
+        <p className="text-[11px] font-bold text-gray-500 mt-1 mb-4 truncate">
           {[mode === 'WORLD' ? 'World' : null, hostName ? t('battleJoin.host', { name: hostName }) : null].filter(Boolean).join(' · ')}
         </p>
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-4 bg-white/5 border border-white/10 rounded-2xl p-2.5">
           <TargetThumbnail targetType={targetType} className="w-10 h-10 shrink-0" />
           <div className="min-w-0">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{t('setup.targetTitle')}</p>
-            <p className="text-lg font-black text-[#0a3a2a] leading-none truncate">{friendlyTargetName(targetType, targetType)}</p>
+            <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest leading-none mb-1">{t('setup.targetTitle')}</p>
+            <p className="text-lg font-black text-white leading-none truncate">{friendlyTargetName(targetType, targetType)}</p>
           </div>
         </div>
 
-        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
+        <p className="text-[9px] font-black text-indigo-300 uppercase tracking-widest mb-1.5">
           {t('battleLobby.myDistance')}{formatRange(targetType) ? ` · ${formatRange(targetType)}` : ''}
         </p>
         {options.length === 0 ? (
           <p className="text-[11px] font-bold text-gray-400 text-center py-3">{t('battleJoin.noFittingDistance', { target: friendlyTargetName(targetType, targetType), range: formatRange(targetType) })}</p>
         ) : (
-          <DistancePicker options={options} colors={colors} selectedId={selected?.id} onPick={setSelected} />
+          <DistancePicker options={options} colors={colors} selectedId={selected?.id} onPick={setSelected} dark />
         )}
-        <p className="text-[9px] font-bold text-gray-400 text-center mt-3">{t('battleLobby.ownDistanceHint')}</p>
-        {error && <p className="text-[10px] font-black text-red-500 text-center mt-2">{t('auth.errorGeneral')}</p>}
+        <p className="text-[9px] font-bold text-gray-500 text-center mt-3">{t('battleLobby.ownDistanceHint')}</p>
+        {error && <p className="text-[10px] font-black text-red-400 text-center mt-2">{t('auth.errorGeneral')}</p>}
 
         <div className="flex gap-2 mt-5">
-          <button onClick={onCancel} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95">
+          <button onClick={onCancel} className="flex-1 py-3 bg-white/10 text-gray-300 rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95">
             {t('battleLobby.cancel')}
           </button>
           <button
             onClick={confirm}
             disabled={!selected || busy}
-            className="flex-1 py-3 bg-[#0a3a2a] text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-50"
+            className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-50"
           >
             {resume ? t('battleLobby.joinStart') : t('battleJoin.confirm')}
           </button>

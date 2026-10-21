@@ -1362,14 +1362,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
       {showLeaderboard && activeBattle && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-[#0a0f1a]/95 backdrop-blur-md z-[100000] flex items-center justify-center p-6 animate-fade-in-up">
-          <div className="bg-white rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col border border-indigo-100">
-            <button onClick={() => setShowLeaderboard(false)} className="absolute top-4 right-4 p-2 bg-indigo-50 text-indigo-600 rounded-full active:scale-90 transition-all z-10">
+          {/* Ciemny styl Battle Arena, jak ranking w historii (user 2026-10-21). */}
+          <div className="bg-[#111827] rounded-[32px] w-full max-w-sm overflow-hidden shadow-2xl relative flex flex-col border border-white/10">
+            <button onClick={() => setShowLeaderboard(false)} className="absolute top-4 right-4 p-2 bg-white/10 text-white rounded-full active:scale-90 transition-all z-10">
               <span className="material-symbols-outlined font-bold">close</span>
             </button>
-            <div className={`p-6 text-center text-white ${activeBattle.mode === 'CLUB' ? 'bg-fuchsia-600' : activeBattle.mode === 'WORLD' ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
-              <span className="material-symbols-outlined text-4xl mb-2 text-white/50">trophy</span>
+            <div className={`p-6 text-center text-white border-b border-white/10 bg-gradient-to-b ${activeBattle.mode === 'CLUB' ? 'from-fuchsia-600/30' : activeBattle.mode === 'WORLD' ? 'from-emerald-600/30' : 'from-indigo-600/30'} to-transparent`}>
+              <span className={`material-symbols-outlined text-4xl mb-2 ${activeBattle.mode === 'CLUB' ? 'text-fuchsia-400' : activeBattle.mode === 'WORLD' ? 'text-emerald-400' : 'text-indigo-400'}`}>trophy</span>
               <h2 className="text-2xl font-black tracking-tighter uppercase">{activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld') : t('scoringView.arenaLive')}</h2>
-              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">
                 {isClubBattle && !seeAllScores
                   ? t('scoringView.blindRankingHint', { n: endsStats.count })
                   : t('scoringView.liveRanking', 'Ranking na żywo')}
@@ -1394,35 +1395,35 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 const finalDisplayClub = p.club === 'Niezrzeszony' ? t('battleLobby.unaffiliated', 'Niezrzeszony') : p.club;
 
                 return (
-                  <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isGuest ? 'bg-violet-50 border-violet-200' : isMe ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'bg-gray-50 border-gray-100'}`}>
+                  <div key={p.id} className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${isGuest ? 'bg-violet-500/15 border-violet-400/40' : isMe ? 'bg-indigo-600/20 border-indigo-400/60' : 'bg-white/5 border-white/10'}`}>
                     <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${idx === 0 && score > 0 ? 'bg-[#F2C94C] text-[#8B6508]' : idx === 1 && score > 0 ? 'bg-gray-300 text-gray-700' : idx === 2 && score > 0 ? 'bg-[#CD7F32] text-white' : 'bg-white text-gray-400 border'}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${idx === 0 && score > 0 ? 'bg-[#F2C94C] text-[#8B6508]' : idx === 1 && score > 0 ? 'bg-gray-300 text-gray-700' : idx === 2 && score > 0 ? 'bg-[#CD7F32] text-white' : 'bg-white/10 text-gray-400'}`}>
                         {idx + 1}
                       </div>
                       <div>
                         <div className="flex items-center gap-1.5">
                           {isGuest
-                            ? <span className="material-symbols-outlined text-violet-500 text-[14px] leading-none">person</span>
+                            ? <span className="material-symbols-outlined text-violet-300 text-[14px] leading-none">person</span>
                             : flagEmoji && <span className="text-[12px] leading-none">{flagEmoji}</span>
                           }
-                          <span className="font-black text-[#0a3a2a] text-sm leading-none">{finalDisplayName}</span>
+                          <span className="font-black text-white text-sm leading-none">{finalDisplayName}</span>
                           {isGuest && <span className="text-[8px] bg-violet-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">👤 GOŚĆ</span>}
                           {!isGuest && isMe && <span className="text-[8px] bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">{t('battleHistory.me', 'Ty')}</span>}
                         </div>
                         <div className="flex items-center gap-1 mt-1">
-                          <span className="text-[9px] font-bold text-gray-400 uppercase leading-none">{finalDisplayClub}</span>
+                          <span className="text-[9px] font-bold text-gray-500 uppercase leading-none">{finalDisplayClub}</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end justify-center">
                       {seen || isGuest ? (
-                        <span className={`text-2xl font-black leading-none ${isGuest ? 'text-violet-600' : 'text-indigo-600'}`}>{score}</span>
+                        <span className={`text-2xl font-black leading-none ${isGuest ? 'text-violet-300' : 'text-white'}`}>{score}</span>
                       ) : (
-                        <span className="text-2xl font-black leading-none text-gray-300">—</span>
+                        <span className="text-2xl font-black leading-none text-gray-600">—</span>
                       )}
                       {!isGuest && seen && typeof pData === 'object' && (
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
+                        <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest mt-1">
                           {behind ? t('scoringView.afterArrows', { n: seen.arrows }) : `X:${xCount} 10:${tCount} 9:${nCount}`}
                         </span>
                       )}
@@ -1431,8 +1432,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 );
               })}
             </div>
-            <div className="p-4 border-t border-gray-100 bg-gray-50">
-              <button onClick={() => setShowLeaderboard(false)} className="w-full py-4 bg-[#0a3a2a] text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
+            <div className="p-4 border-t border-white/10">
+              <button onClick={() => setShowLeaderboard(false)} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
                 {t('scoringView.backToTarget', 'Wróć do tarczy')}
               </button>
             </div>

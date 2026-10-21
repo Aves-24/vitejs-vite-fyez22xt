@@ -454,6 +454,7 @@ export const views = {
     arenaClubLabel: "Vereinsspiele",
     arenaNoClubGames: "Keine aktiven Vereinsspiele",
     arenaInvalidCode: "Keine Arena mit diesem Code gefunden.",
+    arenaFull: "Das Spiel ist voll (max. {{n}} Personen).",
     arenaFinished: "Diese Arena wurde bereits beendet.",
     connectTitle: "Verbindung",
     connectSub: "Verbindungsmethode wählen",
@@ -589,6 +590,7 @@ export const views = {
     newCoachRequest: "Neue Trainer-Bewerbung"
   },
   battleHistory: {
+    blindNotStarted: "Ergebnisse siehst du nach deiner 1. Passe.",
     title: "BATTLE",
     titleGold: "SCORES",
     subtitle: "Deine letzten Herausforderungen",
@@ -815,6 +817,11 @@ export const views = {
     ranking: "Ranking",
     rankingAfterR1: "Rang nach R1",
     rankingAlert: "Ranking erst nach der 1. Runde (6 Passen) verfügbar.",
+    rankingClub: "Ranking",
+    rankingAfterEnd: "Rang nach 1. Passe",
+    rankingAlertEnd: "Das Ranking erscheint nach deiner 1. Passe.",
+    blindRankingHint: "Ergebnisse der anderen nach {{n}} Pfeilen — so viele wie du",
+    afterArrows: "nach {{n}} Pf.",
     liveRanking: "Live-Ranking",
     backToTarget: "Zurück zur Auflage",
     menuHome: "Startseite",

@@ -470,6 +470,7 @@ export const views = {
     arenaClubLabel: "Klubowe",
     arenaNoClubGames: "Brak aktywnych gier w klubie",
     arenaInvalidCode: "Nie znaleziono Areny o podanym kodzie.",
+    arenaFull: "Gra jest pełna (maks. {{n}} osób).",
     arenaFinished: "Ta Arena już się zakończyła.",
     connectTitle: "Dołączanie",
     connectSub: "Wybierz sposób połączenia",
@@ -606,6 +607,7 @@ export const views = {
     newCoachRequest: "Nowe zgłoszenie trenera"
   },
   battleHistory: {
+    blindNotStarted: "Wyniki zobaczysz po swojej 1. serii.",
     title: "BATTLE",
     titleGold: "SCORES",
     subtitle: "Twoje Ostatnie Wyzwania",
@@ -832,6 +834,11 @@ export const views = {
     ranking: "Ranking",
     rankingAfterR1: "Ranking po 1.R",
     rankingAlert: "Ranking dostępny po 1. rundzie (6 serii).",
+    rankingClub: "Ranking",
+    rankingAfterEnd: "Ranking po 1. serii",
+    rankingAlertEnd: "Ranking pojawi się po Twojej 1. serii.",
+    blindRankingHint: "Wyniki innych po {{n}} strzałach — tyle, ile Ty",
+    afterArrows: "po {{n}} strz.",
     liveRanking: "Ranking na żywo",
     backToTarget: "Wróć do tarczy",
     menuHome: "Ekran główny",

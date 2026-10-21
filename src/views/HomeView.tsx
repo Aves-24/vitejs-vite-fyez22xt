@@ -21,6 +21,7 @@ import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSes
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
+import { CLUB_MAX_PLAYERS } from '../utils/battleStage';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -163,7 +164,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     : MAX_DAILY_REFRESHES;
   
   const [activeInvite, setActiveInvite] = useState<any | null>(null);
-  const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]); 
+  const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]);
+  const [clubBattlesReload, setClubBattlesReload] = useState(0); 
   const [isClubBattlesModalOpen, setIsClubBattlesModalOpen] = useState(false); 
   
   const [manualBattleCode, setManualBattleCode] = useState('');
@@ -268,6 +270,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     if (!battleToDelete) return;
     try {
       await deleteDoc(doc(db, 'battles', battleToDelete));
+      setClubBattlesReload(n => n + 1); // lista klubu nie jest nasłuchiwana
       showToast(t('home.arenaDeleted', 'Arena została usunięta.'));
     } catch (error) {
       console.error("Błąd podczas usuwania areny:", error);
@@ -427,10 +430,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return () => unsubscribeBattle();
   }, [userId]);
 
+  // [VEREIN] Lista gier klubu pobierana przy wejściu na Home i przy każdym
+  // otwarciu kafla Arena — bez nasłuchu. Nasłuch kosztował każdego członka
+  // klubu z otwartą aplikacją 1 odczyt na KAŻDĄ serię każdego gracza.
   useEffect(() => {
     if (!userClub) return;
+    let alive = true;
     const qClub = query(collection(db, 'battles'), where('hostClub', '==', userClub), where('status', 'in', ['LOBBY', 'ACTIVE', 'START']));
-    const unsubscribeClub = onSnapshot(qClub, (snap) => {
+    getDocs(qClub).then((snap) => {
+      if (!alive) return;
       const now = Date.now();
       const clubBattles = snap.docs
         .map(d => ({ id: d.id, ...d.data() }))
@@ -445,9 +453,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         });
       
       setActiveClubBattles(clubBattles);
-    });
-    return () => unsubscribeClub();
-  }, [userClub]);
+    }).catch(e => console.error('Club battles fetch failed:', e));
+    return () => { alive = false; };
+  }, [userClub, clubBattlesReload]);
 
   useEffect(() => {
     if (!userId) return;
@@ -798,6 +806,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         showToast(t('home.rankTooFar', 'Ranga zbyt odległa (Ty: {{myLevel}}, Host: {{hostLevel}}). Różnica max ±1 poziom.', { myLevel: userLevel, hostLevel: bHostLevel }));
         return;
       }
+    }
+
+    // [VEREIN] Gra klubowa: maks. 12 graczy (pilnuje też reguła JOIN).
+    if (battleMode === 'CLUB' && !currentParticipants.includes(userId) && currentParticipants.length >= CLUB_MAX_PLAYERS) {
+      showToast(t('home.arenaFull', { n: CLUB_MAX_PLAYERS }));
+      return;
     }
 
     if (!currentParticipants.includes(userId)) {
@@ -1324,7 +1338,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           {/* Lewa — Multiplayer Arena */}
           <div
-            onClick={() => setIsClubBattlesModalOpen(true)}
+            onClick={() => { setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1); }}
             className={`rounded-[24px] border flex flex-col justify-between p-4 cursor-pointer active:scale-[0.98] transition-all relative overflow-hidden ${
               hasAnyBattle
                 ? 'bg-gradient-to-br from-fuchsia-700 to-fuchsia-900 border-fuchsia-500 min-h-[96px]'

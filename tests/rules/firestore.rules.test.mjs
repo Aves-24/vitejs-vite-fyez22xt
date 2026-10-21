@@ -257,6 +257,23 @@ test('T5: do zakończonej bitwy nie da się dołączyć', async () => {
   await assertFails(updateDoc(doc(coach1(), 'battles/b2'), { participants: ['alice', 'coach1'] }));
 });
 
+test('T5: do pełnej gry (12 graczy) nie da się dołączyć', async () => {
+  const full = Array.from({ length: 12 }, (_, i) => `p${i}`);
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'battles/b3'), { hostId: 'p0', participants: full, status: 'ACTIVE', liveScores: {} });
+  });
+  await assertFails(updateDoc(doc(coach1(), 'battles/b3'), {
+    participants: [...full, 'coach1'],
+    'liveScores.coach1': 0,
+  }));
+});
+
+test('T5: uczestnik zapisuje własne wyniki po seriach (ends)', async () => {
+  await assertSucceeds(updateDoc(doc(bob(), 'battles/b1'), {
+    'liveScores.bob': { score: 54, x: 1, t: 2, n: 3, ends: [{ a: 6, s: 54, x: 1, t: 2, n: 3 }] },
+  }));
+});
+
 test('T5: nie-host nie zmieni statusu battle', async () => {
   await assertFails(updateDoc(doc(bob(), 'battles/b1'), { status: 'FINISHED' }));
 });

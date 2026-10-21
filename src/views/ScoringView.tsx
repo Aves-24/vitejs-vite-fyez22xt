@@ -6,6 +6,7 @@ import { collection, doc, getDoc, getDocFromCache, setDoc, updateDoc, arrayUnion
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
+import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { calculateSessionHandicap, calculateCurrentHandicap } from '../utils/handicapEngine';
@@ -198,6 +199,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [activeBattle, setActiveBattle] = useState<any>(null);
   const [battleParticipants, setBattleParticipants] = useState<any[]>([]);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  // [VEREIN] Pobranie bitwy na żądanie (gra klubowa nie jest nasłuchiwana) i wizytówki raz na grę.
+  const refreshBattleRef = useRef<(() => Promise<void>) | null>(null);
+  const profileCacheRef = useRef(new Map<string, any>());
 
   const [showAbortModal, setShowAbortModal] = useState(false);
   const [showPartialModal, setShowPartialModal] = useState(false);
@@ -299,8 +303,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       setBattleParticipants([]);
       return;
     }
-    const unsub = onSnapshot(doc(db, 'battles', battleId), async (snapshot) => {
-      if (snapshot.exists()) {
+    // [VEREIN] Gra klubowa NIE jest nasłuchiwana na żywo — przy 12 graczach
+    // każda seria kogokolwiek szła na 12 telefonów (rośnie z kwadratem). Bitwę
+    // pobieramy przy wejściu i po każdej WŁASNEJ serii (refreshBattleRef);
+    // ranking i tak pokazuje innych tylko do etapu patrzącego. LOCAL/WORLD
+    // (2–4 osoby) zostają na żywo.
+    const battleRef = doc(db, 'battles', battleId);
+    let alive = true;
+    let unsub: (() => void) | undefined;
+    const apply = (snapshot: any) => {
+      if (alive && snapshot.exists()) {
         const bData = snapshot.data();
         // Każdy strzela ze swojego dystansu — zapisujemy własny, żeby ranking go pokazał.
         const myDistance = distanceLabel || distance;
@@ -317,27 +329,40 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           } else {
             setBattleGuests([]);
           }
-          // [RODO C6] Dane przeciwników z profiles_public — users/{uid}
-          // czytelny tylko w relacji trener↔uczeń. Własny wpis nadal
-          // formatowany lokalnie (fallback gdy lustro jeszcze nie istnieje).
-          const pDetails = await Promise.all(bData.participants.map(async (pId: string) => {
-            const pub = await getPublicProfile(pId);
+          // Nazwa, klub i kraj są w samej bitwie (participantsData, zapis przy
+          // dołączaniu). Wizytówkę z profiles_public [RODO C6] pobieramy tylko
+          // dla gracza bez tych danych i tylko raz — wcześniej szło to przy
+          // każdej zmianie bitwy dla wszystkich (~80% ruchu gry).
+          const details = () => bData.participants.map((pId: string) => {
+            const pd = bData.participantsData?.[pId];
+            const pub = profileCacheRef.current.get(pId);
             return {
               id: pId,
-              name: pub?.displayName || (bData.participantsData?.[pId]?.name ?? ''),
-              club: pub?.club || (bData.participantsData?.[pId]?.club ?? ''),
-              countryCode: pub?.country || (bData.participantsData?.[pId]?.country ?? 'DE')
+              name: pd?.name || pub?.displayName || '',
+              club: pd?.club || pub?.club || '',
+              countryCode: pd?.country || pub?.country || 'DE'
             };
-          }));
-          setBattleParticipants(pDetails);
+          });
+          setBattleParticipants(details());
+          const missing = bData.participants.filter((pId: string) => !bData.participantsData?.[pId] && !profileCacheRef.current.has(pId));
+          if (missing.length) {
+            Promise.all(missing.map(async (pId: string) => {
+              profileCacheRef.current.set(pId, await getPublicProfile(pId));
+            })).then(() => { if (alive) setBattleParticipants(details()); });
+          }
         } else {
           setActiveBattle(null);
           setBattleParticipants([]);
           setBattleGuests([]);
         }
       }
-    });
-    return () => unsub();
+    };
+    refreshBattleRef.current = () => getDoc(battleRef).then(apply).catch(() => {});
+    getDoc(battleRef).then(snap => {
+      apply(snap);
+      if (alive && snap.data()?.mode !== 'CLUB') unsub = onSnapshot(battleRef, apply);
+    }).catch(() => {});
+    return () => { alive = false; refreshBattleRef.current = null; unsub?.(); };
   }, [userId, battleId]);
 
   const playBeep = (f: number, d: number, delay = 0) => {
@@ -467,17 +492,33 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // nie przy kazdej strzale — 6x mniej zapisow i odczytow u przeciwnikow.
   // Wynik koncowy (z niedokonczona seria) dosyla saveTrainingSession.
   const endsStats = getStats(submittedEnds);
-  const pushLiveScore = (st: { score: number; x: number; t: number; n: number }) => {
+  // [VEREIN] Wynik narastający po każdej serii — z niego ranking „na ślepo"
+  // przycina innych do etapu patrzącego (utils/battleStage.ts).
+  const stageProgress = (active: string[] = []): StagePoint[] => {
+    const out: StagePoint[] = submittedEnds.map((_, i) => {
+      const s = getStats(submittedEnds.slice(0, i + 1));
+      return { a: s.count, s: s.score, x: s.x, t: s.t, n: s.n };
+    });
+    if (active.length) {
+      const s = getStats(submittedEnds, active);
+      out.push({ a: s.count, s: s.score, x: s.x, t: s.t, n: s.n });
+    }
+    return out;
+  };
+  const pushLiveScore = (st: { score: number; x: number; t: number; n: number }, active: string[] = []) => {
     if (!activeBattle?.id || !userId || !activeBattle?.participants?.includes(userId)) return Promise.resolve();
     return updateDoc(doc(db, 'battles', activeBattle.id), {
-      [`liveScores.${userId}`]: { score: st.score, x: st.x, t: st.t, n: st.n }
-    }).catch(e => console.error("Silent live update failed:", e));
+      [`liveScores.${userId}`]: { score: st.score, x: st.x, t: st.t, n: st.n, ends: stageProgress(active) }
+    })
+      // Gra klubowa: świeży ranking dopiero po własnej serii (1 odczyt zamiast nasłuchu).
+      .then(() => { if (activeBattle?.mode === 'CLUB') return refreshBattleRef.current?.(); })
+      .catch(e => console.error("Silent live update failed:", e));
   };
 
   useEffect(() => {
     pushLiveScore(endsStats);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endsStats.score, endsStats.x, endsStats.t, endsStats.n, activeBattle?.id, userId]);
+  }, [endsStats.score, endsStats.x, endsStats.t, endsStats.n, endsStats.count, activeBattle?.id, userId]);
 
   const discardSession = () => {
     localStorage.removeItem('grotX_activeSession');
@@ -538,7 +579,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       }
 
       // Ostatnia, niedokonczona seria nie poszla jeszcze do pojedynku.
-      if (inputArrows.length > 0) pushLiveScore(globalStats);
+      if (inputArrows.length > 0) pushLiveScore(globalStats, inputArrows);
       const sessionTimestamp = Timestamp.now();
 
       const isWorldBattle = !!activeBattle?.isWorldBattle;
@@ -698,28 +739,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
-  const rankedParticipants = [...battleParticipants].sort((a, b) => {
-    const dataA = activeBattle?.liveScores?.[a.id];
-    const dataB = activeBattle?.liveScores?.[b.id];
+  // [VEREIN] W grze klubowej innych widać tylko do Twojego etapu (tyle strzał,
+  // ile zatwierdziłeś); pełne wyniki po ostatniej serii. LOCAL/WORLD bez zmian.
+  const isClubBattle = activeBattle?.mode === 'CLUB';
+  const seeAllScores = !isClubBattle || submittedEnds.length >= plannedEnds;
+  const seenScore = (id: string): StageScore | null =>
+    scoreSeenBy(activeBattle, id, userId, endsStats.count, seeAllScores);
 
-    const scoreA = typeof dataA === 'object' ? (dataA?.score || 0) : (dataA || 0);
-    const scoreB = typeof dataB === 'object' ? (dataB?.score || 0) : (dataB || 0);
-
-    if (scoreB === scoreA) {
-      const xA = typeof dataA === 'object' ? (dataA?.x || 0) : 0;
-      const xB = typeof dataB === 'object' ? (dataB?.x || 0) : 0;
-      if (xB !== xA) return xB - xA;
-
-      const tA = typeof dataA === 'object' ? (dataA?.t || 0) : 0;
-      const tB = typeof dataB === 'object' ? (dataB?.t || 0) : 0;
-      if (tB !== tA) return tB - tA;
-
-      const nA = typeof dataA === 'object' ? (dataA?.n || 0) : 0;
-      const nB = typeof dataB === 'object' ? (dataB?.n || 0) : 0;
-      return nB - nA;
-    }
-    return scoreB - scoreA;
-  });
+  const rankedParticipants = [...battleParticipants].sort((a, b) => compareStage(seenScore(a.id), seenScore(b.id)));
 
   const guestParticipants = battleGuests.map((g) => ({
     id: g.guestId,
@@ -729,10 +756,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     isGuest: true
   }));
 
-  const getScoreForRank = (id: string) => {
-    const d = activeBattle?.liveScores?.[id];
-    return typeof d === 'object' ? (d?.score || 0) : (d || 0);
-  };
+  const getScoreForRank = (id: string) => seenScore(id)?.score ?? -1;
 
   const allRankedParticipants = [...rankedParticipants, ...guestParticipants].sort(
     (a, b) => getScoreForRank(b.id) - getScoreForRank(a.id)
@@ -844,19 +868,27 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               </span>
             </div>
             
-            <button 
-              onClick={() => {
-                if (submittedEnds.length >= 6) setShowLeaderboard(true);
-                else showToast(t('scoringView.rankingAlert', "Ranking dostępny po 1. rundzie.")); 
-              }}
-              className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md transition-all ${
-                submittedEnds.length >= 6 
-                  ? 'bg-indigo-600 text-white shadow-md active:scale-95' 
-                  : 'bg-gray-100 text-gray-400'
-              }`}
-            >
-              {submittedEnds.length >= 6 ? t('scoringView.liveRanking', 'Ranking Live') : t('scoringView.rankingAfterR1', 'Ranking po 1.R')}
-            </button>
+            {(() => {
+              // Gra klubowa: ranking od 1. serii (pokazuje innych do Twojego etapu).
+              const rankingReady = isClubBattle ? submittedEnds.length >= 1 : submittedEnds.length >= 6;
+              return (
+                <button
+                  onClick={() => {
+                    if (rankingReady) setShowLeaderboard(true);
+                    else showToast(isClubBattle ? t('scoringView.rankingAlertEnd') : t('scoringView.rankingAlert', "Ranking dostępny po 1. rundzie."));
+                  }}
+                  className={`text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-md transition-all ${
+                    rankingReady
+                      ? 'bg-indigo-600 text-white shadow-md active:scale-95'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {rankingReady
+                    ? (isClubBattle ? t('scoringView.rankingClub') : t('scoringView.liveRanking', 'Ranking Live'))
+                    : (isClubBattle ? t('scoringView.rankingAfterEnd') : t('scoringView.rankingAfterR1', 'Ranking po 1.R'))}
+                </button>
+              );
+            })()}
           </div>
         )}
       </div>
@@ -1335,15 +1367,22 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <div className={`p-6 text-center text-white ${activeBattle.mode === 'CLUB' ? 'bg-fuchsia-600' : activeBattle.mode === 'WORLD' ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
               <span className="material-symbols-outlined text-4xl mb-2 text-white/50">trophy</span>
               <h2 className="text-2xl font-black tracking-tighter uppercase">Arena {activeBattle.mode === 'CLUB' ? t('scoringView.arenaClub', 'Klubowa') : activeBattle.mode === 'WORLD' ? t('scoringView.arenaWorld', 'World') : t('scoringView.arenaLive', 'Live')}</h2>
-              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">{t('scoringView.liveRanking', 'Ranking na żywo')}</p>
+              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mt-1">
+                {isClubBattle && !seeAllScores
+                  ? t('scoringView.blindRankingHint', { n: endsStats.count })
+                  : t('scoringView.liveRanking', 'Ranking na żywo')}
+              </p>
             </div>
             <div className="p-4 space-y-2 flex-1 overflow-y-auto max-h-[50vh]">
               {allRankedParticipants.map((p: any, idx: number) => {
                 const pData = activeBattle.liveScores?.[p.id];
-                const score = typeof pData === 'object' ? (pData?.score || 0) : (pData || 0);
-                const xCount = typeof pData === 'object' ? (pData?.x || 0) : 0;
-                const tCount = typeof pData === 'object' ? (pData?.t || 0) : 0;
-                const nCount = typeof pData === 'object' ? (pData?.n || 0) : 0;
+                const seen = seenScore(p.id);
+                const score = seen?.score ?? 0;
+                const xCount = seen?.x ?? 0;
+                const tCount = seen?.t ?? 0;
+                const nCount = seen?.n ?? 0;
+                // Gra klubowa: ktoś jeszcze przed Twoim etapem — pokazujemy, po ilu strzałach.
+                const behind = isClubBattle && !seeAllScores && seen && p.id !== userId && seen.arrows < endsStats.count;
 
                 const isMe = p.id === userId;
                 const isGuest = p.isGuest === true;
@@ -1375,10 +1414,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                     </div>
 
                     <div className="flex flex-col items-end justify-center">
-                      <span className={`text-2xl font-black leading-none ${isGuest ? 'text-violet-600' : 'text-indigo-600'}`}>{score}</span>
-                      {!isGuest && typeof pData === 'object' && (
+                      {seen || isGuest ? (
+                        <span className={`text-2xl font-black leading-none ${isGuest ? 'text-violet-600' : 'text-indigo-600'}`}>{score}</span>
+                      ) : (
+                        <span className="text-2xl font-black leading-none text-gray-300">—</span>
+                      )}
+                      {!isGuest && seen && typeof pData === 'object' && (
                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                          X:{xCount} 10:{tCount} 9:{nCount}
+                          {behind ? t('scoringView.afterArrows', { n: seen.arrows }) : `X:${xCount} 10:${tCount} 9:${nCount}`}
                         </span>
                       )}
                     </div>

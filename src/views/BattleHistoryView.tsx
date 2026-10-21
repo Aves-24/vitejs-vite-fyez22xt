@@ -5,6 +5,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
 import { friendlyTargetName } from '../config/targetFaces';
+import { arrowsShot, compareStage, scoreSeenBy, seesFullScores } from '../utils/battleStage';
 
 interface BattleHistoryViewProps {
   userId: string;
@@ -94,28 +95,13 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
 
   const selectedBattleData = battles.find(b => b.id === selectedBattleId);
   
-  const rankedParticipants = [...battleParticipants].sort((a, b) => {
-    const dataA = selectedBattleData?.liveScores?.[a.id];
-    const dataB = selectedBattleData?.liveScores?.[b.id];
-    
-    const scoreA = typeof dataA === 'object' ? (dataA?.score || 0) : (dataA || 0);
-    const scoreB = typeof dataB === 'object' ? (dataB?.score || 0) : (dataB || 0);
-    
-    if (scoreB === scoreA) {
-      const xA = typeof dataA === 'object' ? (dataA?.x || 0) : 0;
-      const xB = typeof dataB === 'object' ? (dataB?.x || 0) : 0;
-      if (xB !== xA) return xB - xA;
-      
-      const tA = typeof dataA === 'object' ? (dataA?.t || 0) : 0;
-      const tB = typeof dataB === 'object' ? (dataB?.t || 0) : 0;
-      if (tB !== tA) return tB - tA;
-      
-      const nA = typeof dataA === 'object' ? (dataA?.n || 0) : 0;
-      const nB = typeof dataB === 'object' ? (dataB?.n || 0) : 0;
-      return nB - nA;
-    }
-    return scoreB - scoreA;
-  });
+  // [VEREIN] Kto jeszcze nie skończył gry klubowej, widzi innych tylko do
+  // swojego etapu — także tutaj, inaczej podejrzałby wynik bokiem.
+  const seeAll = seesFullScores(selectedBattleData, userId);
+  const myArrows = arrowsShot(selectedBattleData, userId);
+  const seenScore = (id: string) => scoreSeenBy(selectedBattleData, id, userId, myArrows, seeAll);
+
+  const rankedParticipants = [...battleParticipants].sort((a, b) => compareStage(seenScore(a.id), seenScore(b.id)));
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white p-6 pt-[calc(env(safe-area-inset-top)+1rem)] flex flex-col animate-fade-in overflow-y-auto pb-24">
@@ -199,15 +185,22 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
               <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mt-1">
                  {selectedBattleData.mode === 'CLUB' ? t('battleHistory.modalClub') : selectedBattleData.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate')}{battleDistanceLabel(selectedBattleData) ? ` • ${battleDistanceLabel(selectedBattleData)}` : ''}
               </p>
+              {!seeAll && (
+                <p className="text-[9px] font-bold text-indigo-100 mt-2">
+                  {myArrows > 0 ? t('scoringView.blindRankingHint', { n: myArrows }) : t('battleHistory.blindNotStarted')}
+                </p>
+              )}
             </div>
             
             <div className="p-4 space-y-2 flex-1 overflow-y-auto">
               {rankedParticipants.map((p, idx) => {
                 const pData = selectedBattleData.liveScores?.[p.id];
-                const score = typeof pData === 'object' ? (pData?.score || 0) : (pData || 0);
-                const xCount = typeof pData === 'object' ? (pData?.x || 0) : 0;
-                const tCount = typeof pData === 'object' ? (pData?.t || 0) : 0;
-                const nCount = typeof pData === 'object' ? (pData?.n || 0) : 0;
+                const seen = seenScore(p.id);
+                const score = seen?.score ?? 0;
+                const xCount = seen?.x ?? 0;
+                const tCount = seen?.t ?? 0;
+                const nCount = seen?.n ?? 0;
+                const behind = !seeAll && seen && p.id !== userId && seen.arrows < myArrows;
 
                 const iso = getCountryData(p.countryCode);
                 const isMe = p.id === userId;
@@ -238,10 +231,14 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                     </div>
                     
                     <div className="flex flex-col items-end justify-center">
-                      <span className="text-2xl font-black text-indigo-600 leading-none">{score}</span>
-                      {typeof pData === 'object' && (
+                      {seen ? (
+                        <span className="text-2xl font-black text-indigo-600 leading-none">{score}</span>
+                      ) : (
+                        <span className="text-2xl font-black text-gray-300 leading-none">—</span>
+                      )}
+                      {seen && typeof pData === 'object' && (
                         <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-1">
-                          X:{xCount} 10:{tCount} 9:{nCount}
+                          {behind ? t('scoringView.afterArrows', { n: seen.arrows }) : `X:${xCount} 10:${tCount} 9:${nCount}`}
                         </span>
                       )}
                     </div>

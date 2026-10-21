@@ -454,6 +454,7 @@ export const views = {
     arenaClubLabel: "Club",
     arenaNoClubGames: "No active club games",
     arenaInvalidCode: "No Arena found with this code.",
+    arenaFull: "The game is full (max. {{n}} players).",
     arenaFinished: "This Arena has already ended.",
     connectTitle: "Connection",
     connectSub: "Choose connection method",
@@ -589,6 +590,7 @@ export const views = {
     newCoachRequest: "New trainer application"
   },
   battleHistory: {
+    blindNotStarted: "You'll see scores after your 1st end.",
     title: "BATTLE",
     titleGold: "SCORES",
     subtitle: "Your Recent Challenges",
@@ -815,6 +817,11 @@ export const views = {
     ranking: "Leaderboard",
     rankingAfterR1: "Rank after R1",
     rankingAlert: "Leaderboard available after Round 1 (6 ends).",
+    rankingClub: "Ranking",
+    rankingAfterEnd: "Rank after end 1",
+    rankingAlertEnd: "The ranking appears after your 1st end.",
+    blindRankingHint: "Others' scores after {{n}} arrows — as many as you",
+    afterArrows: "after {{n}} arr.",
     liveRanking: "Live Ranking",
     backToTarget: "Back to target face",
     menuHome: "Home",

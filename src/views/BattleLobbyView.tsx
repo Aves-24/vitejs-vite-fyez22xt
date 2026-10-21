@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import WorldQueueView from './WorldQueueView';
@@ -9,19 +9,23 @@ import { getPublicProfile } from '../utils/publicProfile';
 import { findTargetFace, friendlyTargetName, selectableTargetIdsFor } from '../config/targetFaces';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
+import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
 
 interface BattleLobbyViewProps {
   userId: string;
   distance: string;
+  distanceId?: string;
   targetType: string;
-  // Tarcza z lobby (host mógł ją zmienić) — inaczej Scoring liczyłby na tę z przygotowania.
-  onStartBattle: (battleId: string, targetType?: string) => void;
+  // Aktywne dystanse usera — w lobby wybiera się je tak jak w przygotowaniu.
+  activeDistances?: UserDistance[];
+  // Tarcza i dystans z lobby — inaczej Scoring liczyłby na te z przygotowania.
+  onStartBattle: (battleId: string, targetType?: string, distance?: UserDistance) => void;
   onBack?: () => void;
 }
 
 type BattleMode = 'LOCAL' | 'CLUB' | 'WORLD';
 
-export default function BattleLobbyView({ userId, distance, targetType, onStartBattle, onBack }: BattleLobbyViewProps) {
+export default function BattleLobbyView({ userId, distance, distanceId, targetType, activeDistances = [], onStartBattle, onBack }: BattleLobbyViewProps) {
   const { t } = useTranslation();
   const [battleId, setBattleId] = useState<string>('');
   const [participants, setParticipants] = useState<any[]>([]);
@@ -34,6 +38,18 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
   // Tarcza startuje z ostatniego przygotowania, ale host zmienia ją kliknięciem w nagłówek.
   const [target, setTarget] = useState(targetType);
   const [isTargetPickerOpen, setIsTargetPickerOpen] = useState(false);
+
+  // Dystans każdy ma swój (wspólna jest tarcza) — startuje z przygotowania,
+  // zmienia się tak jak tam: wybór dystansu ustawia jego tarczę.
+  const [myDistance, setMyDistance] = useState<UserDistance | undefined>(
+    () => activeDistances.find(d => d.id === distanceId) || activeDistances.find(d => d.m === distance)
+  );
+  // Ref, bo start bitwy przychodzi z nasłuchu Firestore, który nie widzi świeżego stanu.
+  const myDistanceRef = useRef(myDistance);
+  myDistanceRef.current = myDistance;
+  const [distanceOptions, setDistanceOptions] = useState<UserDistance[]>(activeDistances);
+  const [isDistancePickerOpen, setIsDistancePickerOpen] = useState(false);
+  const myDistanceM = myDistance?.m || distance;
 
   const [isPremium, setIsPremium] = useState(false); 
   const [hostIsPremium, setHostIsPremium] = useState(false);
@@ -106,6 +122,8 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
       const ud = userSnap.exists() ? userSnap.data() : {};
       
       setCurrentUserData(ud);
+      // Te same dystanse co w przygotowaniu: tylko aktywnego zestawu.
+      setDistanceOptions(distancesForSetup(activeDistances, Array.isArray(ud.setups) ? ud.setups : [], ud.activeSetupId ?? null, ud.bowType ?? null));
       setShowFullName(ud.showFullName !== false);
       setShowClub(ud.showClub !== false);
       setShowRegion(ud.showRegion !== false);
@@ -210,7 +228,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
           setParticipants(memberDetails);
 
           if (data.status === 'START') {
-            onStartBattle(battleId, data.targetType);
+            onStartBattle(battleId, data.targetType, myDistanceRef.current);
           }
         }
       });
@@ -253,7 +271,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
       mode: battleMode,
       isPublic: battleMode === 'WORLD',
       expiresAt: expiresAt,
-      distance,
+      distance: myDistanceM,
       targetType: target,
       participants: [userId],
       liveScores: { [userId]: 0, ...guestLiveScores },
@@ -454,6 +472,13 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
   const canChangeTarget = !isGameCreated || (battleData?.hostId === userId && battleData?.status === 'LOBBY');
   const targetOptions = selectableTargetIdsFor(findTargetFace(shownTarget)?.discipline === 'blowgun' ? BLOWGUN_DISCIPLINE : 'archery');
 
+  const pickDistance = (entry: UserDistance) => {
+    setIsDistancePickerOpen(false);
+    setMyDistance(entry);
+    // Jak w przygotowaniu: dystans przynosi swoją tarczę, o ile host jeszcze może ją zmienić.
+    if (canChangeTarget) pickTarget(entry.targetType || fallbackTargetFor(entry.m));
+  };
+
   const pickTarget = async (next: string) => {
     setIsTargetPickerOpen(false);
     if (next === shownTarget) return;
@@ -598,25 +623,12 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white p-4 pt-10 flex flex-col animate-fade-in overflow-y-auto pb-24">
       {/* Header — back button + scheibenauflage + battle id + scan */}
-      <div className="flex items-stretch gap-2 mb-4">
+      <div className="flex items-stretch gap-2 mb-2">
         <button
           onClick={() => { if (onBack) onBack(); }}
           className="w-10 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center active:scale-90 flex-shrink-0"
         >
           <span className="material-symbols-outlined text-lg">arrow_back</span>
-        </button>
-
-        <button
-          onClick={() => { if (canChangeTarget) setIsTargetPickerOpen(true); }}
-          disabled={!canChangeTarget}
-          className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0 text-left active:scale-95 transition-all disabled:active:scale-100"
-        >
-          <TargetThumbnail targetType={shownTarget} className="w-7 h-7 flex-shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-[8px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-0.5">{t('setup.targetTitle')}</p>
-            <p className="text-sm font-black text-white leading-none truncate">{getFriendlyTargetName(shownTarget)}</p>
-          </div>
-          {canChangeTarget && <span className="material-symbols-outlined text-indigo-300 text-base flex-shrink-0">expand_more</span>}
         </button>
 
         <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-2.5 py-2 flex flex-col items-center justify-center min-w-0">
@@ -649,6 +661,34 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
             </span>
           </button>
         )}
+      </div>
+
+      {/* Dystans (każdy swój) + tarcza (wspólna) — osobny rząd, żeby nazwy się mieściły */}
+      <div className="flex items-stretch gap-2 mb-4">
+        <button
+          onClick={() => setIsDistancePickerOpen(true)}
+          className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0 text-left active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-indigo-400 text-2xl flex-shrink-0">distance</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[8px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-0.5">{t('battleLobby.myDistance')}</p>
+            <p className="text-sm font-black text-white leading-none truncate">{myDistance ? displayDistance(myDistance) : distance}</p>
+          </div>
+          <span className="material-symbols-outlined text-indigo-300 text-base flex-shrink-0">expand_more</span>
+        </button>
+
+        <button
+          onClick={() => { if (canChangeTarget) setIsTargetPickerOpen(true); }}
+          disabled={!canChangeTarget}
+          className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0 text-left active:scale-95 transition-all disabled:active:scale-100"
+        >
+          <TargetThumbnail targetType={shownTarget} className="w-7 h-7 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-[8px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-0.5">{t('setup.targetTitle')}</p>
+            <p className="text-sm font-black text-white leading-none truncate">{getFriendlyTargetName(shownTarget)}</p>
+          </div>
+          {canChangeTarget && <span className="material-symbols-outlined text-indigo-300 text-base flex-shrink-0">expand_more</span>}
+        </button>
       </div>
 
       {(!isGameCreated || userId === battleData?.hostId) && (
@@ -905,6 +945,31 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
         </div>
       )}
 
+      {isDistancePickerOpen && createPortal(
+        <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setIsDistancePickerOpen(false)}>
+          <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">{t('battleLobby.myDistance')}</p>
+            {distanceOptions.length === 0 && (
+              <p className="text-[11px] font-bold text-gray-400 text-center py-3">{t('setup.noDistances')}</p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {distanceOptions.map(d => (
+                <button
+                  key={d.id}
+                  onClick={() => pickDistance(d)}
+                  className={`flex-1 min-w-[30%] py-2 rounded-xl font-black border-2 active:scale-95 transition-all ${d.id === myDistance?.id ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-white/5 border-white/10 text-gray-300'}`}
+                >
+                  <span className="block text-sm leading-none">{d.m}</span>
+                  {d.label && <span className="block text-[9px] font-bold uppercase tracking-wide opacity-70 mt-0.5 truncate px-1">{d.label}</span>}
+                </button>
+              ))}
+            </div>
+            <p className="text-[9px] font-bold text-gray-500 text-center mt-3">{t('battleLobby.ownDistanceHint')}</p>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {isTargetPickerOpen && createPortal(
         <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setIsTargetPickerOpen(false)}>
           <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
@@ -987,11 +1052,11 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
           clubName={formatUserClub(currentUserData, showClub, showRegion)}
           country={currentUserData?.countryCode || 'PL'}
           userLevel={userLevel}
-          distance={distance}
+          distance={myDistanceM}
           targetType={shownTarget}
           onMatchFound={(foundBattleId) => {
             setShowWorldQueue(false);
-            onStartBattle(foundBattleId, shownTarget);
+            onStartBattle(foundBattleId, shownTarget, myDistance);
           }}
           onCancel={() => setShowWorldQueue(false)}
         />

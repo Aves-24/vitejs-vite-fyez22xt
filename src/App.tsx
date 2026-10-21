@@ -694,8 +694,12 @@ export default function App() {
           <BattleLobbyView
             userId={user?.uid || ''}
             distance={sessionDistance}
+            distanceId={sessionDistanceId}
             targetType={sessionTargetType}
-            onStartBattle={(battleId, targetType) => handleStartSession(sessionDistance, targetType || sessionTargetType, true, battleId, 0, sessionDistanceId, sessionDistanceLabel)}
+            activeDistances={userDistances.filter(d => d.active)}
+            onStartBattle={(battleId, targetType, d) => d
+              ? handleStartSession(d.m, targetType || sessionTargetType, true, battleId, 0, d.id, d.label ? displayDistance(d) : undefined)
+              : handleStartSession(sessionDistance, targetType || sessionTargetType, true, battleId, 0, sessionDistanceId, sessionDistanceLabel)}
             onBack={() => handleNavigate('HOME')}
           />
         )}

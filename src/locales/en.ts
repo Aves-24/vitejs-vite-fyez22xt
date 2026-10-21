@@ -635,6 +635,8 @@ export const views = {
     title: "Arena Lobby",
     arenaCode: "ARENA CODE",
     scan: "Scan",
+    myDistance: "My distance",
+    ownDistanceHint: "Everyone shoots their own distance, the target face is shared.",
     local: "Local",
     club: "Club",
     world: "World",

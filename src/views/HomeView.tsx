@@ -1650,7 +1650,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             </div>
 
-            <div className="overflow-y-auto flex-1 px-6 pb-4 space-y-5">
+            <div className="arena-scroll overflow-y-auto flex-1 px-6 pb-4 space-y-5">
 
               {/* ── AKTYWNE WYZWANIA ─────────────────────────────── */}
               <div>

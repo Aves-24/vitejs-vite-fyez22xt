@@ -36,7 +36,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
   const selectedBattleData = battles.find(b => b.id === selectedBattleId);
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] text-white p-6 pt-[calc(env(safe-area-inset-top)+1rem)] flex flex-col animate-fade-in overflow-y-auto pb-24">
+    <div className="min-h-screen bg-[#0a0f1a] text-white p-6 pt-[calc(env(safe-area-inset-top)+1rem)] flex flex-col animate-fade-in overflow-y-auto pb-24 arena-scroll">
       <button onClick={onBack} className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center active:scale-90 transition-all mb-6">
         <span className="material-symbols-outlined text-white">arrow_back</span>
       </button>

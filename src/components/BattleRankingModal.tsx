@@ -132,7 +132,7 @@ export default function BattleRankingModal({ battle, userId, onClose }: BattleRa
           )}
         </div>
 
-        <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+        <div className="arena-scroll p-4 space-y-2 flex-1 overflow-y-auto">
           {rankedParticipants.map((p, idx) => {
             const pData = battle.liveScores?.[p.id];
             const seen = seenScore(p.id);

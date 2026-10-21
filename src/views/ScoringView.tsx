@@ -1390,7 +1390,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   : t('scoringView.liveRanking', 'Ranking na żywo')}
               </p>
             </div>
-            <div className="p-4 space-y-2 flex-1 overflow-y-auto max-h-[50vh]">
+            <div className="arena-scroll p-4 space-y-2 flex-1 overflow-y-auto max-h-[50vh]">
               {allRankedParticipants.map((p: any, idx: number) => {
                 const pData = activeBattle.liveScores?.[p.id];
                 const seen = seenScore(p.id);

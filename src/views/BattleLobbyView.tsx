@@ -645,7 +645,7 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0f1a] text-white p-4 pt-10 flex flex-col animate-fade-in overflow-y-auto pb-24">
+    <div className="min-h-screen bg-[#0a0f1a] text-white p-4 pt-10 flex flex-col animate-fade-in overflow-y-auto pb-24 arena-scroll">
       {/* Header — back button + scheibenauflage + battle id + scan */}
       <div className="flex items-stretch gap-2 mb-2">
         <button

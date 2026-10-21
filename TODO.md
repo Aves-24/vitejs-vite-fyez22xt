@@ -11,6 +11,9 @@
 Tabela: `src/config/targetDistanceRanges.ts`. Działa w lobby (host: tarcze pasujące do
 jego dystansu; gracz: dystanse pasujące do tarczy) i w oknie dołączania.
 NIE ruszone: zwykły trening (SessionSetup) — tam dalej dowolna tarcza.
+**DECYZJA usera 2026-10-21:** tak zostaje — w treningu każdy ustala sam
+(np. bliski dystans na dużą tarczę do techniki). Zasada tylko w bitwach.
+Stare treningi z bitew (sprzed f8ef19b) NIE oznaczamy wstecz — nie warto.
 
 #### (opis problemu, dla historii)
 Problem: host ustawia tarczę bitwy (np. 122 cm), a dołączający może wybrać

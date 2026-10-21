@@ -513,6 +513,13 @@ export const views = {
     xpFormula: "XP = Pfeile × 1 + Schnitt × 10",
     noActiveBattles: "Keine aktiven",
     arenaEmptyTitle: "Duell starten",
+    tilePlace: "Platz {{place}}/{{of}} · {{score}}",
+    tileEndsIn: "Ende in {{time}}",
+    tileClubRunning: "Vereinsspiel läuft",
+    tileGameRunning: "Spiel läuft",
+    tileGamesRunning: "{{n}} Spiele laufen",
+    tileTimePlayers: "noch {{time}} · {{n}} Schützen",
+    tileTapToJoin: "tippen zum Mitmachen",
     arenaEmptyDesc: "Mit Freunden schießen",
     handicap: {
       elite:           "Elite",

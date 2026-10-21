@@ -513,6 +513,13 @@ export const views = {
     xpFormula: "XP = arrows × 1 + average × 10",
     noActiveBattles: "No active",
     arenaEmptyTitle: "Start a duel",
+    tilePlace: "Place {{place}}/{{of}} · {{score}}",
+    tileEndsIn: "ends in {{time}}",
+    tileClubRunning: "Club game running",
+    tileGameRunning: "Game running",
+    tileGamesRunning: "{{n}} games running",
+    tileTimePlayers: "{{time}} left · {{n}} archers",
+    tileTapToJoin: "tap to join",
     arenaEmptyDesc: "Shoot with friends",
     handicap: {
       elite:           "Elite",

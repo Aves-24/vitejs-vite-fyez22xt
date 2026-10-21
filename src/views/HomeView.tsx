@@ -21,7 +21,7 @@ import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSes
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
-import { CLUB_MAX_PLAYERS, arrowsShot } from '../utils/battleStage';
+import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { BattleStats, computeBattleStats } from '../utils/battleStats';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1034,6 +1034,21 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   }
 
   const hasAnyBattle = allActiveBattles.length > 0;
+  // [ARENA] Kafel w stylu battle (user 2026-10-21): gra czeka na Ciebie (fiolet,
+  // puls) albo już skończyłeś (zieleń, Twoje miejsce). Zamiast różowego „1kl”.
+  const pendingBattles = allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId));
+  const doneBattle = pendingBattles.length === 0
+    ? [...allActiveBattles].sort((a, b) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt))[0]
+    : null;
+  const donePlace = (() => {
+    if (!doneBattle) return null;
+    const players: string[] = doneBattle.participants || [];
+    const ranked = players
+      .map(id => ({ id, sc: scoreSeenBy(doneBattle, id, userId, 0, true) }))
+      .sort((p, q) => compareStage(p.sc, q.sc));
+    const idx = ranked.findIndex(p => p.id === userId);
+    return idx < 0 ? null : { place: idx + 1, of: players.length, score: ranked[idx].sc?.score ?? 0 };
+  })();
   const isSingleBattle = allActiveBattles.length === 1;
   const singleBattleToJoin = isSingleBattle ? allActiveBattles[0] : null;
   const hasFinishedSingleBattle = isSingleBattle && singleBattleToJoin?.finishedParticipants?.includes(userId);
@@ -1371,39 +1386,59 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* ─── MULTIPLAYER ARENA + RANKING — obok siebie ───────────────────── */}
         <div className="mt-2 grid grid-cols-2 gap-2">
 
-          {/* Lewa — Multiplayer Arena */}
+          {/* Lewa — Multiplayer Arena (styl battle: fiolet = gra czeka, zieleń = skończyłeś) */}
           <div
-            onClick={() => { setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1); }}
+            onClick={() => {
+              // Po własnym końcu kafel prowadzi prosto do historii z rankingiem.
+              if (doneBattle) { onGoToBattles?.(); return; }
+              setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1);
+            }}
             className={`rounded-[24px] border flex flex-col justify-between p-4 cursor-pointer active:scale-[0.98] transition-all relative overflow-hidden ${
-              hasAnyBattle
-                ? 'bg-gradient-to-br from-fuchsia-700 to-fuchsia-900 border-fuchsia-500 min-h-[96px]'
-                : 'bg-indigo-50 border-indigo-100 min-h-[80px]'
+              !hasAnyBattle
+                ? 'bg-indigo-50 border-indigo-100 min-h-[80px]'
+                : doneBattle
+                  ? 'bg-[#0a0f1a] border-emerald-400/40 min-h-[96px]'
+                  : 'bg-[#0a0f1a] border-fuchsia-400/50 shadow-lg shadow-fuchsia-500/20 min-h-[96px]'
             }`}
           >
+            {hasAnyBattle && (
+              <div className={`absolute inset-0 pointer-events-none bg-gradient-to-br ${doneBattle ? 'from-emerald-500/20' : 'from-fuchsia-600/30'} to-transparent`} />
+            )}
             <div className="absolute right-0 bottom-0 opacity-[0.08] pointer-events-none">
-              <span className={`material-symbols-outlined text-[60px] ${hasAnyBattle ? 'text-white' : 'text-indigo-900'}`}>{hasAnyBattle ? 'shield' : 'groups'}</span>
+              <span className={`material-symbols-outlined text-[60px] ${hasAnyBattle ? 'text-white' : 'text-indigo-900'}`}>{!hasAnyBattle ? 'groups' : doneBattle ? 'emoji_events' : 'shield'}</span>
             </div>
-            <span className={`text-[9px] font-black uppercase tracking-widest leading-none ${hasAnyBattle ? 'text-fuchsia-200' : 'text-indigo-400'}`}>
+            <span className={`relative text-[9px] font-black uppercase tracking-widest leading-none flex items-center gap-1 ${!hasAnyBattle ? 'text-indigo-400' : doneBattle ? 'text-emerald-300' : 'text-fuchsia-300'}`}>
               Multiplayer Arena
+              {hasAnyBattle && !doneBattle && <span className="w-1.5 h-1.5 bg-fuchsia-400 rounded-full animate-pulse"></span>}
             </span>
             <div className="relative z-10 mt-2">
-              <p className={`text-[15px] font-black leading-tight ${hasAnyBattle ? 'text-white' : 'text-indigo-900'}`}>
-                {hasAnyBattle
-                  ? allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).length > 0
-                      ? `${allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).length} ${t('home.active')}`
-                      : t('home.done', 'Ukończono')
-                  : t('home.arenaEmptyTitle')}
-              </p>
-              {!hasAnyBattle && (
-                <p className="text-[9px] font-bold text-indigo-500 leading-tight mt-0.5">{t('home.arenaEmptyDesc')}</p>
-              )}
-              {hasAnyBattle && (
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse shrink-0"></span>
-                  <span className="text-[9px] font-bold text-white/60 truncate">
-                    {allActiveBattles.filter(b => b.mode === 'CLUB').length > 0 && `${allActiveBattles.filter(b => b.mode === 'CLUB').length}kl`}
-                  </span>
-                </div>
+              {!hasAnyBattle ? (
+                <>
+                  <p className="text-[15px] font-black leading-tight text-indigo-900">{t('home.arenaEmptyTitle')}</p>
+                  <p className="text-[9px] font-bold text-indigo-500 leading-tight mt-0.5">{t('home.arenaEmptyDesc')}</p>
+                </>
+              ) : doneBattle ? (
+                <>
+                  <p className="text-[15px] font-black leading-tight text-white">
+                    {donePlace ? t('home.tilePlace', { place: donePlace.place, of: donePlace.of, score: donePlace.score }) : t('home.done', 'Ukończono')}
+                  </p>
+                  <p className="text-[9px] font-bold text-emerald-300/80 leading-tight mt-1 truncate">
+                    ✓ {t('home.done', 'Ukończono')} · {t('home.tileEndsIn', { time: getRemainingTime(doneBattle.expiresAt, doneBattle.createdAt) })}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-[15px] font-black leading-tight text-white">
+                    {pendingBattles.length === 1
+                      ? (pendingBattles[0].mode === 'CLUB' ? t('home.tileClubRunning') : t('home.tileGameRunning'))
+                      : t('home.tileGamesRunning', { n: pendingBattles.length })}
+                  </p>
+                  <p className="text-[9px] font-bold text-fuchsia-200/80 leading-tight mt-1 truncate">
+                    {pendingBattles.length === 1
+                      ? t('home.tileTimePlayers', { time: getRemainingTime(pendingBattles[0].expiresAt, pendingBattles[0].createdAt), n: (pendingBattles[0].participants || []).length })
+                      : t('home.tileTapToJoin')}
+                  </p>
+                </>
               )}
             </div>
           </div>

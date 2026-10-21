@@ -529,6 +529,13 @@ export const views = {
     xpFormula: "XP = strzały × 1 + średnia × 10",
     noActiveBattles: "Brak aktywnych",
     arenaEmptyTitle: "Rozpocznij pojedynek",
+    tilePlace: "Miejsce {{place}}/{{of}} · {{score}}",
+    tileEndsIn: "koniec za {{time}}",
+    tileClubRunning: "Gra klubowa trwa",
+    tileGameRunning: "Gra trwa",
+    tileGamesRunning: "{{n}} gry trwają",
+    tileTimePlayers: "jeszcze {{time}} · strzelców: {{n}}",
+    tileTapToJoin: "dotknij, by dołączyć",
     arenaEmptyDesc: "Strzelaj ze znajomymi",
     handicap: {
       elite:           "Elita",

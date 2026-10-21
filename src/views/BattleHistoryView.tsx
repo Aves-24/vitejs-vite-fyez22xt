@@ -125,7 +125,9 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
         </div>
       ) : (
         <div className="space-y-3">
-          {battles.map(b => {
+          {battles.map((b, i) => {
+            // Lista od najnowszej — pierwsza karta to ostatnia gra, wyróżniona.
+            const isLatest = i === 0;
             const dateObj = new Date(b.createdAt);
             const isClub = b.mode === 'CLUB';
             const isWorld = b.mode === 'WORLD';
@@ -137,11 +139,20 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
               <div 
                 key={b.id} 
                 onClick={() => setSelectedBattleId(b.id)}
-                className="bg-gradient-to-r from-white/5 to-white/10 border border-white/10 p-5 rounded-[24px] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden"
+                className={`p-5 rounded-[24px] flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer relative overflow-hidden ${
+                  isLatest
+                    ? 'bg-gradient-to-r from-indigo-600/40 to-fuchsia-600/30 border-2 border-indigo-400 shadow-lg shadow-indigo-500/20'
+                    : 'bg-gradient-to-r from-white/5 to-white/10 border border-white/10'
+                }`}
               >
                 <div className={`absolute top-0 left-0 w-2 h-full ${isClub ? 'bg-fuchsia-500' : isWorld ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
 
                 <div className="pl-2">
+                  {isLatest && (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-amber-300 mb-1.5">
+                      <span className="material-symbols-outlined text-[12px]">bolt</span>{t('battleHistory.latest')}
+                    </span>
+                  )}
                   <div className="flex items-center gap-2 mb-1">
                     <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${isClub ? 'bg-fuchsia-500/20 text-fuchsia-400' : isWorld ? 'bg-emerald-500/20 text-emerald-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
                       {isClub ? t('battleHistory.modeClub') : isWorld ? t('battleHistory.modeWorld') : t('battleHistory.modePrivate')}

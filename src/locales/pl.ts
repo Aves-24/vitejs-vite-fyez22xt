@@ -608,6 +608,7 @@ export const views = {
     newCoachRequest: "Nowe zgłoszenie trenera"
   },
   battleHistory: {
+    latest: "Ostatnia gra",
     blindNotStarted: "Wyniki zobaczysz po swojej 1. serii.",
     title: "BATTLE",
     titleGold: "SCORES",

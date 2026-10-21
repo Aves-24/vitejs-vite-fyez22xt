@@ -591,6 +591,7 @@ export const views = {
     newCoachRequest: "Neue Trainer-Bewerbung"
   },
   battleHistory: {
+    latest: "Letztes Spiel",
     blindNotStarted: "Ergebnisse siehst du nach deiner 1. Passe.",
     title: "BATTLE",
     titleGold: "SCORES",

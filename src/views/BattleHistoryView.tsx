@@ -229,8 +229,10 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                           {isMe && <span className="text-[8px] bg-indigo-600 text-white px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">{t('battleHistory.me')}</span>}
                         </div>
                         <div className="flex items-center gap-1 mt-1">
+                          {/* Flaga jako emoji, jak w rankingu liczenia — obrazki z flagcdn.com
+                              blokuje CSP (img-src 'self'), a każdy podgląd wysyłałby im IP gracza. */}
                           {iso !== 'globe' ? (
-                            <img src={`https://flagcdn.com/w20/${iso}.png`} alt="flag" className="w-3.5 h-2.5 object-cover rounded-[2px]" />
+                            <span className="text-[11px] leading-none">{String.fromCodePoint(...iso.toUpperCase().split('').map(ch => 127397 + ch.charCodeAt(0)))}</span>
                           ) : (
                             <span className="text-[8px] leading-none">🌍</span>
                           )}

@@ -24,6 +24,7 @@ import { TRIAL_DAYS } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { BattleStats, computeBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
+import BattleRankingModal from '../components/BattleRankingModal';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -170,7 +171,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [activeInvite, setActiveInvite] = useState<any | null>(null);
   const [activeClubBattles, setActiveClubBattles] = useState<any[]>([]);
   const [clubBattlesReload, setClubBattlesReload] = useState(0);
-  const [battleStats, setBattleStats] = useState<BattleStats | null>(null); 
+  const [battleStats, setBattleStats] = useState<BattleStats | null>(null);
+  // Ranking ukończonej gry otwierany nad oknem Arena (zamiast skoku do historii).
+  const [rankingBattle, setRankingBattle] = useState<any>(null); 
   const [isClubBattlesModalOpen, setIsClubBattlesModalOpen] = useState(false); 
   
   const [manualBattleCode, setManualBattleCode] = useState('');
@@ -1623,7 +1626,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                             battle={battle}
                             userId={userId}
                             highlight={isLastDone}
-                            onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
+                            onClick={() => setRankingBattle(battle)}
                           />
                         </div>
                       );
@@ -1775,6 +1778,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           </div>
         </div>
+      )}
+
+      {rankingBattle && (
+        <BattleRankingModal battle={rankingBattle} userId={userId} onClose={() => setRankingBattle(null)} />
       )}
 
       {/* Modal QR + PIN */}

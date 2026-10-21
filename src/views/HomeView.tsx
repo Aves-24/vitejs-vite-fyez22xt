@@ -61,7 +61,7 @@ interface HomeViewProps {
   onCreateArena?: () => void;
   // `join` — dane do okna potwierdzenia; needsJoin = jeszcze nie jest w grze (dopisanie po „Dołącz"),
   // resume = już strzelał w tej grze (okno „Wracasz do gry").
-  onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; resume?: boolean; hostName?: string; mode?: string }) => void; 
+  onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; resume?: boolean; hostName?: string; hostClub?: string; mode?: string }) => void; 
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
@@ -807,6 +807,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let currentParticipants: string[];
     let freshTarget: string;
     let freshHost: string | undefined;
+    let freshClub: string | undefined;
     let resume: boolean;
     try {
       const fresh = await getDoc(doc(db, 'battles', battleId));
@@ -821,6 +822,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       // Host mógł zmienić tarczę w lobby — w oknie potwierdzenia ma być aktualna.
       freshTarget = fd.targetType || targetType;
       freshHost = fd.hostName;
+      freshClub = fd.hostClub;
       resume = arrowsShot(fd, userId) > 0;
     } catch (e) {
       console.error('Battle check failed:', e);
@@ -849,6 +851,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       needsJoin: !currentParticipants.includes(userId),
       resume,
       hostName: freshHost,
+      hostClub: freshClub,
       mode: battleMode,
     });
   };

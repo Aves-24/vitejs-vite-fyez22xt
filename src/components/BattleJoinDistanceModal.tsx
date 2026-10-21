@@ -18,6 +18,8 @@ interface BattleJoinDistanceModalProps {
   /** Już strzelał w tej grze — „Wracasz do gry"; inaczej potwierdzenie dołączenia. */
   resume?: boolean;
   hostName?: string;
+  /** Klub gospodarza (gra klubowa) — wiadomo, do czyjej gry się dołącza. */
+  hostClub?: string;
   mode?: string;
   /** Może rzucić (odrzucone dopisanie) — wtedy okno pokazuje błąd. */
   onConfirm: (d: UserDistance) => void | Promise<void>;
@@ -29,7 +31,7 @@ interface BattleJoinDistanceModalProps {
  * własny dystans (tarcza jest wspólna). Bez tego szło się z ostatnim dystansem
  * z przygotowania — np. 30 m na 122 cm. Lista jak w przygotowaniu: aktywny zestaw.
  */
-export default function BattleJoinDistanceModal({ userId, activeDistances, initial, targetType, resume, hostName, mode, onConfirm, onCancel }: BattleJoinDistanceModalProps) {
+export default function BattleJoinDistanceModal({ userId, activeDistances, initial, targetType, resume, hostName, hostClub, mode, onConfirm, onCancel }: BattleJoinDistanceModalProps) {
   const { t } = useTranslation();
   const [options, setOptions] = useState<UserDistance[]>(activeDistances);
   const [colors, setColors] = useState<Map<string, string>>(new Map());
@@ -68,8 +70,14 @@ export default function BattleJoinDistanceModal({ userId, activeDistances, initi
         <h3 className="text-lg font-black text-[#0a3a2a] leading-tight">
           {resume ? t('battleJoin.titleBack') : t('battleJoin.title')}
         </h3>
-        <p className="text-[11px] font-bold text-gray-400 mb-4 truncate">
-          {[mode === 'CLUB' ? t('battleLobby.club') : mode === 'WORLD' ? 'World' : null, hostName ? t('battleJoin.host', { name: hostName }) : null].filter(Boolean).join(' · ')}
+        {mode === 'CLUB' && (
+          <p className="text-[12px] font-black text-fuchsia-600 mt-1 flex items-start gap-1">
+            <span className="material-symbols-outlined text-[15px] leading-none shrink-0">shield</span>
+            <span className="leading-tight">{hostClub || t('battleLobby.club')}</span>
+          </p>
+        )}
+        <p className="text-[11px] font-bold text-gray-400 mt-1 mb-4 truncate">
+          {[mode === 'WORLD' ? 'World' : null, hostName ? t('battleJoin.host', { name: hostName }) : null].filter(Boolean).join(' · ')}
         </p>
         <div className="flex items-center gap-3 mb-4">
           <TargetThumbnail targetType={targetType} className="w-10 h-10 shrink-0" />

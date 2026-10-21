@@ -6,13 +6,16 @@ import { doc, setDoc, onSnapshot, collection, query, where, getDocs, updateDoc, 
 import { Html5Qrcode } from 'html5-qrcode';
 import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
-import { friendlyTargetName } from '../config/targetFaces';
+import { findTargetFace, friendlyTargetName, selectableTargetIdsFor } from '../config/targetFaces';
+import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
+import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 
 interface BattleLobbyViewProps {
   userId: string;
   distance: string;
   targetType: string;
-  onStartBattle: (battleId: string) => void;
+  // Tarcza z lobby (host mógł ją zmienić) — inaczej Scoring liczyłby na tę z przygotowania.
+  onStartBattle: (battleId: string, targetType?: string) => void;
   onBack?: () => void;
 }
 
@@ -27,7 +30,11 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
   const [manualJoinId, setManualJoinId] = useState('');
   const [battleData, setBattleData] = useState<any>(null);
   const [battleMode, setBattleMode] = useState<BattleMode>('LOCAL');
-  
+
+  // Tarcza startuje z ostatniego przygotowania, ale host zmienia ją kliknięciem w nagłówek.
+  const [target, setTarget] = useState(targetType);
+  const [isTargetPickerOpen, setIsTargetPickerOpen] = useState(false);
+
   const [isPremium, setIsPremium] = useState(false); 
   const [hostIsPremium, setHostIsPremium] = useState(false);
 
@@ -203,7 +210,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
           setParticipants(memberDetails);
 
           if (data.status === 'START') {
-            onStartBattle(battleId);
+            onStartBattle(battleId, data.targetType);
           }
         }
       });
@@ -247,7 +254,7 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
       isPublic: battleMode === 'WORLD',
       expiresAt: expiresAt,
       distance,
-      targetType,
+      targetType: target,
       participants: [userId],
       liveScores: { [userId]: 0, ...guestLiveScores },
       guests: guestsPayload,
@@ -442,6 +449,21 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
 
   const getFriendlyTargetName = (type: string) => friendlyTargetName(type, type);
 
+  // W utworzonej grze obowiązuje tarcza z bazy; zmieniać może tylko host, dopóki nikt nie strzela.
+  const shownTarget = battleData?.targetType || target;
+  const canChangeTarget = !isGameCreated || (battleData?.hostId === userId && battleData?.status === 'LOBBY');
+  const targetOptions = selectableTargetIdsFor(findTargetFace(shownTarget)?.discipline === 'blowgun' ? BLOWGUN_DISCIPLINE : 'archery');
+
+  const pickTarget = async (next: string) => {
+    setIsTargetPickerOpen(false);
+    if (next === shownTarget) return;
+    setTarget(next);
+    if (isGameCreated && battleId) {
+      try { await updateDoc(doc(db, 'battles', battleId), { targetType: next }); }
+      catch (e) { console.error(e); setTarget(shownTarget); }
+    }
+  };
+
   const maxLocalParticipants = isPremium ? 4 : 2;
   const isLocalFull = battleMode === 'LOCAL' && participants.length >= maxLocalParticipants;
 
@@ -584,13 +606,18 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
           <span className="material-symbols-outlined text-lg">arrow_back</span>
         </button>
 
-        <div className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0">
-          <span className="material-symbols-outlined text-indigo-400 text-xl flex-shrink-0">target</span>
-          <div className="min-w-0">
+        <button
+          onClick={() => { if (canChangeTarget) setIsTargetPickerOpen(true); }}
+          disabled={!canChangeTarget}
+          className="flex-1 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl px-2.5 py-2 flex items-center gap-2 min-w-0 text-left active:scale-95 transition-all disabled:active:scale-100"
+        >
+          <TargetThumbnail targetType={shownTarget} className="w-7 h-7 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
             <p className="text-[8px] font-black uppercase text-indigo-300 tracking-widest leading-none mb-0.5">{t('setup.targetTitle')}</p>
-            <p className="text-sm font-black text-white leading-none truncate">{getFriendlyTargetName(targetType)}</p>
+            <p className="text-sm font-black text-white leading-none truncate">{getFriendlyTargetName(shownTarget)}</p>
           </div>
-        </div>
+          {canChangeTarget && <span className="material-symbols-outlined text-indigo-300 text-base flex-shrink-0">expand_more</span>}
+        </button>
 
         <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-2.5 py-2 flex flex-col items-center justify-center min-w-0">
           <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">{t('battleHistory.title')} ID</span>
@@ -878,6 +905,27 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
         </div>
       )}
 
+      {isTargetPickerOpen && createPortal(
+        <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in" onClick={() => setIsTargetPickerOpen(false)}>
+          <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <p className="text-[9px] font-black uppercase text-indigo-300 tracking-widest mb-3">{t('setup.targetTitle')}</p>
+            <div className="grid grid-cols-3 gap-2">
+              {targetOptions.map(o => (
+                <button
+                  key={o}
+                  onClick={() => pickTarget(o)}
+                  className={`rounded-xl border p-2 flex flex-col items-center gap-1.5 active:scale-95 transition-all ${o === shownTarget ? 'bg-indigo-600 border-indigo-400' : 'bg-white/5 border-white/10'}`}
+                >
+                  <TargetThumbnail targetType={o} className="w-10 h-10" />
+                  <span className="text-[10px] font-black uppercase tracking-tight text-white leading-none truncate w-full text-center">{getFriendlyTargetName(o)}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {confirmCancelGame && createPortal(
         <div className="fixed inset-0 z-[300000] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in">
           <div className="bg-gray-900 border border-white/10 w-full max-w-sm rounded-[28px] p-6 shadow-2xl">
@@ -940,10 +988,10 @@ export default function BattleLobbyView({ userId, distance, targetType, onStartB
           country={currentUserData?.countryCode || 'PL'}
           userLevel={userLevel}
           distance={distance}
-          targetType={targetType}
+          targetType={shownTarget}
           onMatchFound={(foundBattleId) => {
             setShowWorldQueue(false);
-            onStartBattle(foundBattleId);
+            onStartBattle(foundBattleId, shownTarget);
           }}
           onCancel={() => setShowWorldQueue(false)}
         />

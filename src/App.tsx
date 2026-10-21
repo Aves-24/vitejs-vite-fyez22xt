@@ -682,7 +682,7 @@ export default function App() {
             userId={user?.uid || ''}
             distance={sessionDistance}
             targetType={sessionTargetType}
-            onStartBattle={(battleId) => handleStartSession(sessionDistance, sessionTargetType, true, battleId, 0, sessionDistanceId, sessionDistanceLabel)}
+            onStartBattle={(battleId, targetType) => handleStartSession(sessionDistance, targetType || sessionTargetType, true, battleId, 0, sessionDistanceId, sessionDistanceLabel)}
             onBack={() => handleNavigate('HOME')}
           />
         )}

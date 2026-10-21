@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
 import { friendlyTargetName } from '../config/targetFaces';
 import { arrowsShot, compareStage, scoreSeenBy, seesFullScores } from '../utils/battleStage';
+import { renderRankingImage, shareOrDownloadImage } from '../utils/rankingShareImage';
 
 interface BattleHistoryViewProps {
   userId: string;
@@ -17,6 +18,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
   const [battles, setBattles] = useState<any[]>([]);
   const [selectedBattleId, setSelectedBattleId] = useState<string | null>(null);
   const [battleParticipants, setBattleParticipants] = useState<any[]>([]);
+  const [shareState, setShareState] = useState<'idle' | 'busy' | 'saved'>('idle');
 
   const getFriendlyTargetName = (type: string) =>
     friendlyTargetName(type, t('battleHistory.unknown'));
@@ -102,6 +104,43 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
   const seenScore = (id: string) => scoreSeenBy(selectedBattleData, id, userId, myArrows, seeAll);
 
   const rankedParticipants = [...battleParticipants].sort((a, b) => compareStage(seenScore(a.id), seenScore(b.id)));
+
+  // [ARENA] Grafika rankingu do udostępnienia (utils/rankingShareImage.ts).
+  // W grze klubowej dopiero przy pełnych wynikach — inaczej ranking na ślepo
+  // wyciekłby do tych, którzy jeszcze nie strzelali.
+  const shareRanking = async () => {
+    if (!selectedBattleData || !seeAll || shareState === 'busy') return;
+    setShareState('busy');
+    try {
+      const b = selectedBattleData;
+      const modeLabel = b.mode === 'CLUB' ? t('battleHistory.modalClub') : b.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate');
+      const dist = battleDistanceLabel(b);
+      const locale = i18n.language === 'pl' ? 'pl-PL' : i18n.language === 'de' ? 'de-DE' : 'en-GB';
+      const blob = await renderRankingImage({
+        title: t('battleHistory.modalRanking'),
+        subtitle: dist ? `${modeLabel} • ${dist}` : modeLabel,
+        club: b.mode === 'CLUB' ? b.hostClub : undefined,
+        meta: [new Date(b.createdAt).toLocaleDateString(locale), getFriendlyTargetName(b.targetType)].filter(Boolean).join(' • '),
+        accent: b.mode === 'CLUB' ? '#c026d3' : b.mode === 'WORLD' ? '#059669' : '#4f46e5',
+        meLabel: t('battleHistory.me'),
+        rows: rankedParticipants.map(p => {
+          const sc = seenScore(p.id);
+          return {
+            name: p.name, country: p.countryCode, distance: b.distances?.[p.id],
+            score: sc?.score ?? 0, x: sc?.x ?? 0, t: sc?.t ?? 0, n: sc?.n ?? 0,
+            isMe: p.id === userId,
+          };
+        }),
+      });
+      const day = new Date(b.createdAt).toISOString().slice(0, 10);
+      const res = await shareOrDownloadImage(blob, `GROTX_Ranking_${day}.jpg`, 'GROT-X Arena Ranking');
+      setShareState(res === 'saved' ? 'saved' : 'idle');
+      if (res === 'saved') setTimeout(() => setShareState('idle'), 2500);
+    } catch (e) {
+      console.error('Ranking share failed:', e);
+      setShareState('idle');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white p-6 pt-[calc(env(safe-area-inset-top)+1rem)] flex flex-col animate-fade-in overflow-y-auto pb-24">
@@ -262,9 +301,30 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
             </div>
             
             <div className="p-4 border-t border-white/10">
-              <button onClick={() => setSelectedBattleId(null)} className="w-full py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
-                {t('battleHistory.closeBtn')}
-              </button>
+              {/* Logo na każdym zrzucie ekranu (user 2026-10-21). */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <span className="flex items-baseline">
+                  <span className="text-[15px] font-black text-white tracking-tighter leading-none">GROT-X</span>
+                  <span className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-0.5 relative bottom-[2.5px]"></span>
+                </span>
+                <span className="text-[9px] font-bold text-gray-500 tracking-wide">grot-x.web.app</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={shareRanking}
+                  disabled={!seeAll || shareState === 'busy'}
+                  className="flex-1 py-4 bg-white/10 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-40"
+                >
+                  <span className="material-symbols-outlined text-[16px]">{shareState === 'saved' ? 'check' : 'share'}</span>
+                  {shareState === 'saved' ? t('battleHistory.shareSaved') : t('battleHistory.share')}
+                </button>
+                <button onClick={() => setSelectedBattleId(null)} className="flex-1 py-4 bg-indigo-600 text-white rounded-xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all">
+                  {t('battleHistory.closeBtn')}
+                </button>
+              </div>
+              {!seeAll && (
+                <p className="text-[9px] font-bold text-gray-500 text-center mt-2">{t('battleHistory.shareAfterFinish')}</p>
+              )}
             </div>
           </div>
         </div>,

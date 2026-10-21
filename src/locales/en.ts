@@ -591,6 +591,9 @@ export const views = {
     newCoachRequest: "New trainer application"
   },
   battleHistory: {
+    share: "Share",
+    shareSaved: "Saved",
+    shareAfterFinish: "You can share the ranking after finishing your own game.",
     latest: "Latest game",
     blindNotStarted: "You'll see scores after your 1st end.",
     title: "BATTLE",

@@ -591,6 +591,9 @@ export const views = {
     newCoachRequest: "Neue Trainer-Bewerbung"
   },
   battleHistory: {
+    share: "Teilen",
+    shareSaved: "Gespeichert",
+    shareAfterFinish: "Teilen kannst du das Ranking nach deinem eigenen Spielende.",
     latest: "Letztes Spiel",
     blindNotStarted: "Ergebnisse siehst du nach deiner 1. Passe.",
     title: "BATTLE",

@@ -23,6 +23,7 @@ import { isGuestUser } from '../utils/guestMode';
 import { TRIAL_DAYS } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { BattleStats, computeBattleStats } from '../utils/battleStats';
+import BattleCard from '../components/BattleCard';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -1614,6 +1615,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     const isHost = battle.hostId === userId;
                     const opacity = getBattleOpacity(battle);
                     const isLastDone = battle.id === lastFinishedId;
+
+                    if (hasFinishedThis) {
+                      return (
+                        <div key={battle.id} style={{ opacity }}>
+                          <BattleCard
+                            battle={battle}
+                            userId={userId}
+                            highlight={isLastDone}
+                            onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
+                          />
+                        </div>
+                      );
+                    }
 
                     return (
                       <div

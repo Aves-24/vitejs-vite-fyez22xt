@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
-import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, updateDoc, arrayUnion, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
 import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
@@ -59,7 +59,8 @@ interface HomeViewProps {
   onGoToStats?: (date?: string) => void; 
   onGoToBattles?: () => void;
   onCreateArena?: () => void;
-  onJoinBattle?: (battleId: string, distance: string, targetType: string) => void; 
+  // `join` — dane do okna potwierdzenia; needsJoin = jeszcze nie jest w grze (dopisanie po „Dołącz").
+  onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; hostName?: string; mode?: string }) => void; 
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
@@ -803,6 +804,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     // (1 odczyt). Ukończona gra NIE otwiera się drugi raz: nowe liczenie
     // nadpisywało wynik zerem (test usera 2026-10-21).
     let currentParticipants: string[];
+    let freshTarget: string;
+    let freshHost: string | undefined;
     try {
       const fresh = await getDoc(doc(db, 'battles', battleId));
       if (!fresh.exists()) { showToast(t('home.arenaFinished')); return; }
@@ -813,6 +816,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         return;
       }
       currentParticipants = fd.participants || [];
+      // Host mógł zmienić tarczę w lobby — w oknie potwierdzenia ma być aktualna.
+      freshTarget = fd.targetType || targetType;
+      freshHost = fd.hostName;
     } catch (e) {
       console.error('Battle check failed:', e);
       showToast(t('auth.errorGeneral'));
@@ -834,42 +840,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       return;
     }
 
-    if (!currentParticipants.includes(userId)) {
-      const userSnap = await getDoc(doc(db, 'users', userId));
-      const ud = userSnap.exists() ? userSnap.data() : {};
-      const fName = ud.firstName || '';
-      const lName = ud.lastName || '';
-      const nick = ud.nickname || '';
-      const showFull = ud.showFullName !== false;
-      const showNick = ud.showNickname !== false;
-      let displayName = showFull ? `${fName} ${lName}`.trim() : `${fName} ${lName ? lName.charAt(0) + '.' : ''}`.trim();
-      if (showNick && nick) displayName = fName ? `${fName} "${nick}" ${showFull ? lName : (lName ? lName.charAt(0) + '.' : '')}`.trim() : nick;
-      if (!displayName) displayName = nick || t('battleLobby.archer');
-
-      const cName = ud.clubName || '';
-      const cCity = ud.clubCity || '';
-      const clubParts: string[] = [];
-      if (ud.showClub !== false && cName) clubParts.push(cName);
-      if (ud.showRegion !== false && cCity) clubParts.push(cCity);
-
-      try {
-        await updateDoc(doc(db, 'battles', battleId), {
-          participants: arrayUnion(userId),
-          [`liveScores.${userId}`]: 0,
-          [`participantsData.${userId}`]: {
-            name: displayName,
-            club: clubParts.join(' - ') || t('battleLobby.unaffiliated'),
-            country: ud.countryCode || 'PL'
-          }
-        });
-      } catch (e) {
-        // Bez tego odrzucony zapis wyglądał jak „wróciło mnie na Home".
-        console.error('Join battle failed:', e);
-        showToast(t('auth.errorGeneral'));
-        return;
-      }
-    }
-    onJoinBattle?.(battleId, distance, targetType);
+    // Dopisanie do gry dopiero po „Dołącz" w oknie potwierdzenia (App →
+    // BattleJoinDistanceModal) — sam klik w grę niczego nie zapisuje.
+    onJoinBattle?.(battleId, distance, freshTarget, {
+      needsJoin: !currentParticipants.includes(userId),
+      hostName: freshHost,
+      mode: battleMode,
+    });
   };
 
   const handleJoinByCode = async () => {

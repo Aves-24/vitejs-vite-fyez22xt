@@ -634,6 +634,12 @@ export const views = {
     losses: "N",
     homeButton: "WORLD-Rangliste",
   },
+  battleJoin: {
+    title: "Diesem Spiel beitreten?",
+    titleBack: "Zurück ins Spiel",
+    host: "Gastgeber: {{name}}",
+    confirm: "Beitreten & schießen",
+  },
   battleLobby: {
     title: "Arena Lobby",
     arenaCode: "ARENA CODE",

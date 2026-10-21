@@ -22,6 +22,7 @@ import OfflineBanner from './components/OfflineBanner';
 import MoveNotice from './components/MoveNotice';
 import BattleInvitePopup from './components/BattleInvitePopup';
 import BattleJoinDistanceModal from './components/BattleJoinDistanceModal';
+import { joinBattleAsSelf } from './utils/battleJoin';
 import ViewErrorBoundary from './components/ViewErrorBoundary';
 import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
@@ -514,14 +515,21 @@ export default function App() {
   // (np. senior 60 m vs młodzik 70 m na 122 cm), więc sesja dołączającego
   // zapisuje się pod jego dystansem, a nie hosta.
   // Dołączenie kodem/z zaproszenia omija lobby — najpierw okno z wyborem dystansu.
-  const [pendingJoin, setPendingJoin] = useState<{ battleId: string; distance: string; targetType: string } | null>(null);
-  const handleJoinBattle = (battleId: string, battleDistance: string, targetType: string) => {
-    if (userDistances.some(d => d.active)) { setPendingJoin({ battleId, distance: battleDistance, targetType }); return; }
-    handleStartSession(battleDistance, targetType, true, battleId);
+  type JoinInfo = { needsJoin: boolean; hostName?: string; mode?: string };
+  const [pendingJoin, setPendingJoin] = useState<({ battleId: string; distance: string; targetType: string } & Partial<JoinInfo>) | null>(null);
+  const joinLabels = () => ({ archer: t('battleLobby.archer'), unaffiliated: t('battleLobby.unaffiliated') });
+  const handleJoinBattle = (battleId: string, battleDistance: string, targetType: string, join?: JoinInfo) => {
+    if (userDistances.some(d => d.active)) { setPendingJoin({ battleId, distance: battleDistance, targetType, ...join }); return; }
+    // Bez aktywnych dystansów nie ma czego wybierać — jak dawniej, od razu.
+    (join?.needsJoin ? joinBattleAsSelf(battleId, user!.uid, joinLabels()) : Promise.resolve())
+      .then(() => handleStartSession(battleDistance, targetType, true, battleId))
+      .catch(e => console.error('Join battle failed:', e));
   };
-  const confirmJoinDistance = (entry: UserDistance) => {
-    if (!pendingJoin) return;
-    const { battleId, targetType } = pendingJoin;
+  // Rzuca przy odrzuconym dopisaniu — okno pokazuje wtedy błąd i zostaje otwarte.
+  const confirmJoinDistance = async (entry: UserDistance) => {
+    if (!pendingJoin || !user) return;
+    const { battleId, targetType, needsJoin } = pendingJoin;
+    if (needsJoin) await joinBattleAsSelf(battleId, user.uid, joinLabels());
     setPendingJoin(null);
     handleStartSession(entry.m, targetType, true, battleId, 0, entry.id, entry.label ? displayDistance(entry) : undefined);
   };
@@ -692,6 +700,9 @@ export default function App() {
           activeDistances={userDistances.filter(d => d.active)}
           initial={lastActiveDistance()}
           targetType={pendingJoin.targetType}
+          needsJoin={!!pendingJoin.needsJoin}
+          hostName={pendingJoin.hostName}
+          mode={pendingJoin.mode}
           onConfirm={confirmJoinDistance}
           onCancel={() => setPendingJoin(null)}
         />

@@ -634,6 +634,12 @@ export const views = {
     losses: "L",
     homeButton: "WORLD Ranking",
   },
+  battleJoin: {
+    title: "Join this game?",
+    titleBack: "Back to the game",
+    host: "host: {{name}}",
+    confirm: "Join & shoot",
+  },
   battleLobby: {
     title: "Arena Lobby",
     arenaCode: "ARENA CODE",

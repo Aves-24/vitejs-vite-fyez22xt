@@ -37,6 +37,14 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
     return () => unsub();
   }, [userId]);
 
+  // Każdy strzela ze swojego dystansu (wspólna jest tarcza). Starsze bitwy
+  // bez `distances` pokazują dystans hosta jak dotąd.
+  const battleDistanceLabel = (b: any): string | null => {
+    const vals = Object.values(b.distances || {}) as string[];
+    if (vals.length === 0) return b.distance || null;
+    return new Set(vals).size === 1 ? vals[0] : null;
+  };
+
   useEffect(() => {
     const fetchParticipants = async () => {
       if (!selectedBattleId) {
@@ -158,7 +166,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                   </div>
                   
                   <p className="text-base font-black leading-none mt-2 text-white">
-                    {b.distance} • {getFriendlyTargetName(b.targetType)}
+                    {[battleDistanceLabel(b), getFriendlyTargetName(b.targetType)].filter(Boolean).join(' • ')}
                   </p>
                   
                   <p className="text-[10px] font-bold text-gray-400 mt-1.5 flex items-center gap-1">
@@ -189,7 +197,7 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
               <span className="material-symbols-outlined text-4xl mb-2 text-indigo-300">trophy</span>
               <h2 className="text-2xl font-black tracking-tighter">{t('battleHistory.modalRanking')}</h2>
               <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-widest mt-1">
-                 {selectedBattleData.mode === 'CLUB' ? t('battleHistory.modalClub') : selectedBattleData.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate')} • {selectedBattleData.distance}
+                 {selectedBattleData.mode === 'CLUB' ? t('battleHistory.modalClub') : selectedBattleData.mode === 'WORLD' ? t('battleHistory.modalWorld') : t('battleHistory.modalPrivate')}{battleDistanceLabel(selectedBattleData) ? ` • ${battleDistanceLabel(selectedBattleData)}` : ''}
               </p>
             </div>
             
@@ -222,6 +230,9 @@ export default function BattleHistoryView({ userId, onBack }: BattleHistoryViewP
                             <span className="text-[8px] leading-none">🌍</span>
                           )}
                           <span className="text-[9px] font-bold text-gray-400 uppercase leading-none">{p.countryCode}</span>
+                          {selectedBattleData.distances?.[p.id] && (
+                            <span className="text-[9px] font-black text-indigo-500 leading-none ml-1">{selectedBattleData.distances[p.id]}</span>
+                          )}
                         </div>
                       </div>
                     </div>

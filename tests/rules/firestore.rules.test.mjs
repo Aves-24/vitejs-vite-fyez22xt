@@ -215,6 +215,16 @@ test('T5: uczestnik nie nadpisze cudzego liveScore', async () => {
   }));
 });
 
+test('T5: uczestnik zapisuje WYŁĄCZNIE własny dystans', async () => {
+  await assertSucceeds(updateDoc(doc(bob(), 'battles/b1'), { 'distances.bob': '60m' }));
+  await assertFails(updateDoc(doc(bob(), 'battles/b1'), { 'distances.alice': '18m' }));
+  await assertFails(updateDoc(doc(bob(), 'battles/b1'), { 'distances.bob': 60 }));
+});
+
+test('T5: obcy nie dopisze dystansu do cudzej bitwy', async () => {
+  await assertFails(updateDoc(doc(coach1(), 'battles/b1'), { 'distances.coach1': '70m' }));
+});
+
 test('T5: nie-host nie zmieni statusu battle', async () => {
   await assertFails(updateDoc(doc(bob(), 'battles/b1'), { status: 'FINISHED' }));
 });

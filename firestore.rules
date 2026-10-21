@@ -710,6 +710,16 @@ service cloud.firestore {
         && request.resource.data.liveScores.diff(resource.data.get('liveScores', {}))
              .affectedKeys().hasOnly([request.auth.uid]);
 
+      // Participant — ONLY own distance (w bitwie wspólna jest tarcza, dystans
+      // każdy ma swój, np. senior 60 m vs młodzik 70 m na 122 cm)
+      allow update: if isSignedIn()
+        && request.auth.uid in resource.data.get('participants', [])
+        && onlyAffects(['distances'])
+        && request.resource.data.distances.diff(resource.data.get('distances', {}))
+             .affectedKeys().hasOnly([request.auth.uid])
+        && request.resource.data.distances[request.auth.uid] is string
+        && request.resource.data.distances[request.auth.uid].size() <= 60;
+
       // Invited — ACCEPT: diff keys ⊆ [participants, pendingInvites, liveScores];
       //                    self is in pendingInvites; self will be in participants; self not yet
       allow update: if isSignedIn()

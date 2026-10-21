@@ -302,6 +302,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     const unsub = onSnapshot(doc(db, 'battles', battleId), async (snapshot) => {
       if (snapshot.exists()) {
         const bData = snapshot.data();
+        // Każdy strzela ze swojego dystansu — zapisujemy własny, żeby ranking go pokazał.
+        const myDistance = distanceLabel || distance;
+        if (myDistance && bData.participants?.includes(userId) && bData.distances?.[userId] !== myDistance) {
+          updateDoc(doc(db, 'battles', battleId), { [`distances.${userId}`]: myDistance }).catch(() => {});
+        }
         const hasGuests = bData.guests && bData.guests.length > 0;
         const shouldShowArena = bData.mode === 'CLUB' || bData.mode === 'WORLD' || (bData.participants && bData.participants.length > 1) || hasGuests;
         if (shouldShowArena) {

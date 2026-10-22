@@ -282,7 +282,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-rose-500 mb-1.5 ml-1';
+  // Sekcja = biały środek, ramka i pasek nagłówka w odcieniu różu (user 2026-10-22).
+  const sectionHeader = 'text-[9px] font-black uppercase tracking-widest px-3 py-2';
   const btn = 'flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border active:scale-95 transition-all disabled:opacity-40';
   // Puste pole = brak linku; wpisane, ale złe = blokada zapisu z komunikatem.
   const linkChecks = linkInputs.map(v => (v.trim() ? normalizeTopicLink(v) : ''));
@@ -296,8 +297,9 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   return (
     <div className="space-y-2">
       {/* Odcienie różu od jasnego (temat) do ciemnego (lista grupy) — user 2026-10-16. */}
-      <div className="space-y-2 bg-rose-50 border border-rose-100 rounded-xl p-2.5">
-      <p className={sectionLabel}>{t('coachDashboard.groupTopicLabel')}</p>
+      <div className="bg-white border-2 border-rose-100 rounded-xl overflow-hidden">
+      <p className={`${sectionHeader} bg-rose-50 text-rose-500`}>{t('coachDashboard.groupTopicLabel')}</p>
+      <div className="space-y-2 p-2.5">
 
       {todayTopic?.closedAt && (
         <p className="flex items-center gap-1 text-[10px] font-bold text-[#0a3a2a] ml-1">
@@ -383,12 +385,14 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         </div>
       )}
       </div>
+      </div>
 
       {/* Zaplanowane na kolejne dni — uczniowie zobaczą je dopiero w ich dniu. */}
-      <div className="space-y-1 bg-rose-100 border border-rose-200 rounded-xl p-2.5">
+      <div className="bg-white border-2 border-rose-200 rounded-xl overflow-hidden">
+      <p className={`${sectionHeader} bg-rose-100 text-rose-600`}>{t('coachDashboard.groupTopicPlanned')}</p>
+      <div className="space-y-1 p-2.5">
       {upcoming.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[9px] font-black uppercase tracking-widest text-rose-600 ml-1">{t('coachDashboard.groupTopicPlanned')}</p>
           {upcoming.map(d => {
             const gt = byDay[d];
             return (
@@ -434,6 +438,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         <span className="material-symbols-outlined text-rose-500 text-[14px]">event</span>
         {t('coachDashboard.groupTopicPlan')}
       </button>
+      </div>
       </div>
 
       {modal && createPortal(

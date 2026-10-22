@@ -18,6 +18,7 @@ import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
 import GroupTopicPanel,{ type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
+import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
 
 const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
@@ -1075,6 +1076,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const lastChecked = studentLastChecked[student.id] || 0;
     const hasNewActivity = lastActivity > lastChecked;
     const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
+    // [RANGA] Mała odznaka rangi z handicapu przy inicjałach (user 2026-10-22).
+    const studentRank = rankFromStored(student);
     const isSelected = selectedStudents.includes(student.id);
     const trend = formCompare[student.id]?.dir;
     const isNewStudent = highlightStudentIds.includes(student.id);
@@ -1112,6 +1115,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
               {hasNewActivity && (
                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
+              )}
+              {studentRank.handicap !== null && (
+                <div
+                  className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-sm"
+                  style={{ background: studentRank.color, border: `1.5px solid ${studentRank.border}`, boxShadow: '0 0 0 1.5px #fff' }}
+                  title={studentRank.rankName}
+                >
+                  <span className="text-[9px] font-black leading-none" style={{ color: studentRank.textColor }}>{studentRank.level}</span>
+                </div>
               )}
             </div>
             )}
@@ -1841,8 +1853,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       open={isGroupListOpen}
                       onToggle={() => setIsGroupListOpen(o => !o)}
                       summary={t('coachDashboard.studentsCount', { count: members.length })}
-                      className="bg-rose-300 rounded-xl p-1.5"
-                      headerClassName="bg-transparent"
+                      className="bg-white border-2 border-rose-300 rounded-xl overflow-hidden"
+                      headerClassName="bg-rose-300"
+                      flush
                       labelClassName="text-rose-900"
                     >
                     {renderStudentList(members, '')}

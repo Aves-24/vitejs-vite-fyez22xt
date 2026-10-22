@@ -12,7 +12,7 @@ import React from 'react';
  * dostawałby nową tożsamość przy każdym renderze i React montowałby jego
  * zawartość od nowa.
  */
-export default function CollapsibleSection({ label, summary, open, onToggle, children, className = '', headerClassName = 'bg-gray-50 border border-gray-100', labelClassName = 'text-gray-400' }: {
+export default function CollapsibleSection({ label, summary, open, onToggle, children, className = '', headerClassName = 'bg-gray-50 border border-gray-100', labelClassName = 'text-gray-400', flush = false }: {
   label: string;
   summary?: React.ReactNode;
   open: boolean;
@@ -22,6 +22,8 @@ export default function CollapsibleSection({ label, summary, open, onToggle, chi
   className?: string;
   headerClassName?: string;
   labelClassName?: string;
+  /** Nagłówek jako pasek na całą szerokość ramki, treść z odstępem (grupy trenera). */
+  flush?: boolean;
 }) {
   return (
     <div className={`space-y-1.5 ${className}`}>
@@ -29,7 +31,7 @@ export default function CollapsibleSection({ label, summary, open, onToggle, chi
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className={`w-full flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 active:scale-[0.99] transition-all ${headerClassName}`}
+        className={`w-full flex items-center justify-between gap-2 px-3 py-2.5 active:scale-[0.99] transition-all ${flush ? '' : 'rounded-xl'} ${headerClassName}`}
       >
         <span className={`text-[10px] font-black uppercase shrink-0 ${labelClassName}`}>{label}</span>
         <span className="flex items-center gap-1 min-w-0 text-[10px] font-black text-[#0a3a2a]">
@@ -37,7 +39,7 @@ export default function CollapsibleSection({ label, summary, open, onToggle, chi
           <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
         </span>
       </button>
-      {open && children}
+      {open && (flush ? <div className="px-2 pb-2 space-y-1.5">{children}</div> : children)}
     </div>
   );
 }

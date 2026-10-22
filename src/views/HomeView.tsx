@@ -209,7 +209,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // Linia pod odznaką: w trakcie oceny „1/3”, potem handicap i cel następnej rangi.
   const rankLine = rankPending
     ? t('home.rankPending', { count: rank.sessions, total: MIN_SESSIONS_FOR_RANK })
-    : `HC ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
+    : `${t('home.hcShort')} ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
   // [RANGA] Awans zapisany przez ScoringView — pokazujemy raz po powrocie z treningu.
   const [rankUp, setRankUp] = useState<{ level: number; bow: RankBow | null; handicap: number; first: boolean } | null>(null);
@@ -1939,7 +1939,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 </div>
                 <p className="text-2xl font-black text-white tracking-tight mt-4 relative">{def.name}</p>
                 <p className="text-[10px] font-bold text-white/60 mt-1 relative">
-                  {rankUp.bow ? t(RANK_BOW_LABEL[rankUp.bow]) : ''} · HC {rankUp.handicap}
+                  {rankUp.bow ? t(RANK_BOW_LABEL[rankUp.bow]) : ''} · {t('home.hcShort')} {rankUp.handicap}
                 </p>
                 <p className="text-[11px] font-bold text-white/80 leading-snug mt-4 relative">{t('home.rankUpText')}</p>
                 <button
@@ -1971,7 +1971,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <div className="flex items-start justify-between relative z-10">
                 <div>
                   <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">{t('home.archerRanking')}</p>
-                  <h2 className="text-xl font-black text-white tracking-tighter leading-none">GROT-X Handicap</h2>
+                  <h2 className="text-xl font-black text-white tracking-tighter leading-none">{t('home.rankTableTitle')}</h2>
 
                 </div>
                 <button
@@ -2009,7 +2009,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-lg font-black text-[#fed33e] leading-none">{rank.handicap ?? '–'}</p>
-                  <p className="text-[8px] font-bold text-white/40 uppercase mt-0.5">HC</p>
+                  <p className="text-[8px] font-bold text-white/40 uppercase mt-0.5">{t('home.hcShort')}</p>
                 </div>
               </div>
             </div>
@@ -2060,7 +2060,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       <p className={`text-[11px] font-black leading-none ${isUnlocked ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
                         {limit === null ? 'Start' : `≤ ${limit}`}
                       </p>
-                      {limit !== null && <p className="text-[7px] font-bold text-gray-400 uppercase mt-0.5">HC</p>}
+                      {limit !== null && <p className="text-[7px] font-bold text-gray-400 uppercase mt-0.5">{t('home.hcShort')}</p>}
                     </div>
                   </div>
                 );

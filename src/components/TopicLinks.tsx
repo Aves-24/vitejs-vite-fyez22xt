@@ -13,6 +13,11 @@ export const isYouTube = (href: string) => {
   } catch { return false; }
 };
 
+/** Domena linku bez „www.” — widać, dokąd prowadzi, bez długiego adresu. */
+const hostOf = (href: string) => {
+  try { return new URL(href).hostname.replace(/^www\./, ''); } catch { return href; }
+};
+
 // tone 'coach' (user 2026-10-16): trener sam otwiera swoje linki ponownie —
 // różowy (rola trenera) i tekst bez „Twój trener dodał”.
 export default function TopicLinks({ links, titles, className = '', tone = 'student', small = false }: {
@@ -64,8 +69,15 @@ export default function TopicLinks({ links, titles, className = '', tone = 'stud
               </div>
               <h2 className="text-lg font-black text-[#0a3a2a] leading-tight">{t('tagebuch.linkOpenTitle')}</h2>
             </div>
-            {pending.title && <p className="text-[13px] font-black text-[#0a3a2a] leading-snug mb-2 break-words">{pending.title}</p>}
-            <p className="text-[12px] font-bold text-[#0a3a2a] bg-gray-50 border border-gray-200 rounded-xl p-3 break-all select-all">{pending.href}</p>
+            {/* Z tytułem: tytuł w ramce zamiast długiego adresu, pod nim sama domena (user 2026-10-22). */}
+            {pending.title ? (
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
+                <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{pending.title}</p>
+                <p className="text-[10px] font-bold text-gray-400 mt-1 truncate">{hostOf(pending.href)}</p>
+              </div>
+            ) : (
+              <p className="text-[12px] font-bold text-[#0a3a2a] bg-gray-50 border border-gray-200 rounded-xl p-3 break-all select-all">{pending.href}</p>
+            )}
             <p className="text-[10px] font-bold text-gray-500 leading-snug mt-2">{t(coach ? 'tagebuch.linkOpenDescCoach' : 'tagebuch.linkOpenDesc')}</p>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setPending(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">

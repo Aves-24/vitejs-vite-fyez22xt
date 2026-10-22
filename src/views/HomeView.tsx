@@ -1970,8 +1970,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             <div className="bg-[#0a3a2a] px-6 pt-6 pb-5 relative overflow-hidden shrink-0">
               <div className="flex items-start justify-between relative z-10">
                 <div>
-                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Grot-X</p>
-                  <h2 className="text-xl font-black text-white tracking-tighter leading-none">GROT-X System</h2>
+                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">{t('home.archerRanking')}</p>
+                  <h2 className="text-xl font-black text-white tracking-tighter leading-none">GROT-X Handicap</h2>
 
                 </div>
                 <button

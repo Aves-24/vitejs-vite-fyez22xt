@@ -7,9 +7,8 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { calculateSessionXp, calculateRank } from '../utils/rankEngine';
+import { applySessionsToRank, RANK_VERSION } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
-import { calculateSessionHandicap, calculateCurrentHandicap } from '../utils/handicapEngine';
 import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend'; 
 import RoundTargetSummary from '../components/RoundTargetSummary';
@@ -23,7 +22,6 @@ import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
-import { isBlowgunSession } from '../config/targets/blowgun';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
 
@@ -649,36 +647,22 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...guestExpiryFields(), // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
       }));
 
-      // Denormalizacja + aktualizacja XP i rangi
+      // Denormalizacja + ranga z handicapu (utils/rankEngine.ts)
       const userRef = doc(db, 'users', userId);
 
-      const sessionXp  = calculateSessionXp(globalStats.count, globalStats.score);
-      const newTotalXp = (ud.xp || 0) + sessionXp + worldXp;
-
-      // [DMUCHAWKA] Sesja z rury NIE karmi statystyk łuczniczych — ani średniej
-      // idącej w rangę, ani handicapu. To inna skala: dmuchawka punktuje 6-10
-      // (średnia ~8,5 zawyżyłaby rangę), a handicap liczy się z `średnica /
-      // dystans` odniesionego do 122 cm na 70 m — dla 20 cm na 5 m wychodzi
-      // 4,0 przy wzorcu 1,743. Handicap bierze ostatnie 10 sesji, więc trzy
-      // treningi z rury psułyby wynik łuczniczy na miesiąc.
-      // XP zostaje NIETKNIĘTE: nagradza to, że w ogóle trenowałeś, a nie
-      // celność w konkretnej skali.
-      const isBlowgun = isBlowgunSession({ bowClass: setupStamp.bowClass, targetType });
-
-      const sessionAvg = globalStats.count > 0 ? globalStats.score / globalStats.count : 0;
-      const prevLast10: number[] = ud.last10Avgs || [];
-      const newLast10 = isBlowgun ? prevLast10 : [sessionAvg, ...prevLast10].slice(0, 10);
-
-      const rankResult = calculateRank(newTotalXp, newLast10);
-
-      // HANDICAP ŁUCZNICZY
-      const distanceNum = parseInt(distance) || 18;
-      const prevLast10Handicaps: number[] = ud.last10Handicaps || [];
-      const newLast10Handicaps = isBlowgun
-        ? prevLast10Handicaps
-        : [calculateSessionHandicap(sessionAvg, distanceNum, targetType),
-           ...prevLast10Handicaps].slice(0, 10);
-      const currentHandicap = calculateCurrentHandicap(newLast10Handicaps);
+      // [RANGA] Handicap tej sesji idzie do listy jej łuku. Dmuchawka, Field
+      // i tarcze ze strefami nie liczą się (handicapOfSession → null) — inna
+      // skala punktów. Profil jeszcze w systemie XP przelicza Home z historii,
+      // tu dopisujemy tylko do profilu już przeliczonego.
+      const rankFields = ud.rankVersion === RANK_VERSION
+        ? applySessionsToRank(ud, [{
+            score: globalStats.score,
+            scoreArrows: globalStats.count,
+            distance,
+            targetType,
+            bowClass: setupStamp.bowClass ?? ud.bowType,
+          }])
+        : null;
 
       // Odrzucenie sesji przez serwer rzuca tutaj — trening zostaje na ekranie,
       // a XP nie jest doliczane. Bez zasiegu: 'queued', profil idzie za sesja.
@@ -696,18 +680,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         lastSessionArrows: globalStats.count,
         lastSessionDistance: distance,
         lastSessionType: 'SCORE', // 'TECHNICAL' pisze SessionSetup
-        // THE TARGET SERIES
-        xp: newTotalXp,
-        last10Avgs: newLast10,
-        level: rankResult.level,
-        rankName: rankResult.rankName,
-        rankColor: rankResult.color,
-        rankBorder: rankResult.border,
-        rankTextColor: rankResult.textColor,
-        rollingAvg: rankResult.rollingAvg,
-        // HANDICAP
-        last10Handicaps: newLast10Handicaps,
-        currentHandicap,
+        ...(rankFields || {}),
       })).catch(e => console.error('Błąd aktualizacji profilu po treningu:', e));
 
       if (activeBattle) {

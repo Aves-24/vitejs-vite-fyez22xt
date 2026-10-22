@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, collection, query, where, getDocs, deleteDoc, updateDoc, writeBatch, addDoc, serverTimestamp, setDoc, getDoc, orderBy, limit, startAfter, getCountFromServer } from 'firebase/firestore';
-import { recalcUserRank } from '../utils/rankEngine';
 import { useTranslation } from 'react-i18next';
 import ViewHeader from '../components/ViewHeader';
 import StatsView from './StatsView';
@@ -53,9 +52,6 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
   const [adminUserId, setAdminUserId] = useState<string>('');
 
   // Tygodniowa aktualizacja rang (THE TARGET SERIES)
-  const [isUpdatingRanks, setIsUpdatingRanks] = useState(false);
-  const [rankUpdateResult, setRankUpdateResult] = useState<{ updated: number; checked: number } | null>(null);
-  const [lastRankUpdateAt, setLastRankUpdateAt] = useState<string | null>(null);
 
   // Paginacja użytkowników
   const PAGE_SIZE = 50;
@@ -107,9 +103,6 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
 
   useEffect(() => {
     fetchAllData();
-    // Wczytaj datę ostatniej aktualizacji rang
-    const stored = localStorage.getItem('grotX_admin_lastRankUpdate');
-    if (stored) setLastRankUpdateAt(stored);
   }, []);
 
   const fetchAllData = async () => {
@@ -290,65 +283,6 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
     });
   };
 
-  const runWeeklyRankUpdate = () => {
-    setConfirmAction({
-      label: 'Przeliczyć rangi dla użytkowników na poziomach 7–10? Ta operacja czyta tylko użytkowników z level >= 7.',
-      onConfirm: async () => { await doRunWeeklyRankUpdate(); }
-    });
-  };
-
-  const doRunWeeklyRankUpdate = async () => {
-    setIsUpdatingRanks(true);
-    setRankUpdateResult(null);
-    try {
-      // OPTYMALIZACJA: Czytamy TYLKO użytkowników na poziomach 7–10.
-      // Poziomy 1–6 nie mają wymagań na rolling avg — ich ranga aktualizuje się
-      // automatycznie w ScoringView po każdej sesji, więc nie wymagają batcha.
-      // Firestore nie obsługuje where('level', 'in', [7,8,9,10]) razem z >=,
-      // więc używamy where('level', '>=', 7) — wystarczy bo max to 10.
-      const highLevelSnap = await getDocs(
-        query(collection(db, 'users'), where('level', '>=', 7))
-      );
-
-      const BATCH_SIZE = 500;
-      const docs = highLevelSnap.docs;
-      let updatedCount = 0;
-
-      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-        const chunk = docs.slice(i, i + BATCH_SIZE);
-        const batch = writeBatch(db);
-        let batchHasOps = false;
-
-        chunk.forEach((userDoc) => {
-          const data = { id: userDoc.id, ...userDoc.data() };
-          const result = recalcUserRank(data);
-          if (result !== null) {
-            batch.update(userDoc.ref, {
-              level: result.level,
-              rankName: result.rankName,
-              rankColor: result.color,
-              rankBorder: result.border,
-              rankTextColor: result.textColor,
-              rollingAvg: result.rollingAvg,
-            });
-            batchHasOps = true;
-            updatedCount++;
-          }
-        });
-
-        if (batchHasOps) await batch.commit();
-      }
-
-      const nowISO = new Date().toISOString();
-      localStorage.setItem('grotX_admin_lastRankUpdate', nowISO);
-      setLastRankUpdateAt(nowISO);
-      setRankUpdateResult({ updated: updatedCount, checked: docs.length });
-    } catch (e) {
-      console.error('Błąd aktualizacji rang:', e);
-      showToast('Błąd podczas aktualizacji rang.');
-    }
-    setIsUpdatingRanks(false);
-  };
 
   const toggleUserPremium = (userId: string, currentStatus: boolean) => {
     setConfirmAction({
@@ -794,46 +728,6 @@ export default function AdminDashboardView({ onNavigate }: AdminDashboardViewPro
                <p className="text-[9px] text-gray-400 font-medium">Logowanie statystyk (Snapshots) odbywa się automatycznie przy każdym wejściu admina do panelu, sprawdzając unikalność godziny.</p>
             </div>
 
-            {/* THE TARGET SERIES — Aktualizacja Rang */}
-            <div className="bg-[#0a0f1a] p-6 rounded-[32px] border border-white/10 shadow-sm">
-               <h3 className="text-xs font-black text-[#fed33e] uppercase tracking-widest mb-1 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm text-[#fed33e]">military_tech</span>
-                  The Target Series — Rankingi
-               </h3>
-               <p className="text-[9px] text-gray-400 font-medium mb-2 leading-relaxed">
-                  Przelicza rangi dla użytkowników na <span className="text-[#fed33e] font-black">poziomach 7–10</span> (RED / GOLD). Tylko te rangi wymagają cotygodniowej weryfikacji rolling avg.
-               </p>
-               <p className="text-[8px] text-emerald-400 font-bold mb-4 leading-relaxed">
-                  ✦ Poziomy 1–6 aktualizują się automatycznie po każdym treningu — bez dodatkowych odczytów.
-               </p>
-
-               {lastRankUpdateAt && (
-                 <div className="bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 mb-3 flex items-center gap-2">
-                   <span className="material-symbols-outlined text-emerald-400 text-[16px]">check_circle</span>
-                   <div>
-                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Ostatnia aktualizacja</p>
-                     <p className="text-[10px] font-black text-white">{new Date(lastRankUpdateAt).toLocaleString('pl-PL')}</p>
-                   </div>
-                 </div>
-               )}
-
-               {rankUpdateResult && (
-                 <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-2.5 mb-3">
-                   <p className="text-[10px] font-black text-emerald-400">
-                     ✓ Zaktualizowano {rankUpdateResult.updated} z {rankUpdateResult.checked} kont
-                   </p>
-                 </div>
-               )}
-
-               <button
-                 onClick={runWeeklyRankUpdate}
-                 disabled={isUpdatingRanks}
-                 className="w-full py-4 bg-gradient-to-r from-[#FFCC00] to-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-md active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-               >
-                 <span className="material-symbols-outlined text-[16px]">{isUpdatingRanks ? 'sync' : 'military_tech'}</span>
-                 {isUpdatingRanks ? 'Aktualizowanie...' : 'Aktualizuj Rankingi (Wszyscy)'}
-               </button>
-            </div>
           </div>
         )}
 

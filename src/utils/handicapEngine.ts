@@ -1,75 +1,88 @@
-import { getTargetDiameterCm } from '../config/targetFaces';
+import { resolveTargetFace } from '../config/targetFaces';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GROT-X — Kalkulator Handicapu Łuczniczego
-// Normalizacja kątowa do referencji olimpijskiej: 70m / 122cm (WA)
-// Skala: 0 (idealny) — 99 (początkujący)  ←  niższy = lepszy
+// GROT-X Handicap — model rozrzutu strzał (2026-10-22)
+//
+// Własna implementacja modelu J. Atkinsona (archeryutils, licencja MIT), na
+// bazie prac D. Lane'a: handicap opisuje KĄTOWY rozrzut strzał, a z rozrzutu
+// i średnic pierścieni wynika oczekiwana średnia na strzałę. Dzięki temu hala
+// i 70 m są porównywalne — poprzedni wzór skalował średnią liniowo i dawał
+// strzelcom z daleka za dobry handicap (8,0 na 70 m = 20 zamiast 34).
+//
+// Skala: niżej = lepiej, 0 ≈ poziom rekordu świata, typowo 0–150.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface HandicapBand {
-  max: number;
-  labelKey: string;
-  descKey: string;
-  color: string;      // kolor tekstu / akcentu
-  bg: string;         // kolor tła chipa
+const ANG_0 = 5.0e-4;  // kąt bazowy [rad]
+const STEP = 3.5;      // % przyrostu rozrzutu na 1 punkt handicapu
+const DATUM = 6.0;     // przesunięcie punktu zerowego
+const KD = 0.00365;    // dodatkowy rozrzut rosnący z dystansem (wiatr, lot)
+const ARROW_D_OUTDOOR = 5.5e-3; // [m]
+const ARROW_D_INDOOR = 9.3e-3;  // grube strzały halowe łatwiej łapią linię
+
+export const HANDICAP_MIN = 0;
+export const HANDICAP_MAX = 150;
+
+/** Odchylenie rozrzutu na tarczy [m] dla handicapu na danym dystansie. */
+export function sigmaR(handicap: number, distanceM: number): number {
+  return distanceM * ANG_0 * Math.pow(1 + STEP / 100, handicap + DATUM) * Math.exp(KD * distanceM);
 }
 
-/** Przedziały handicapu — od najlepszego do najsłabszego */
-export const HANDICAP_BANDS: HandicapBand[] = [
-  { max: 10,  labelKey: 'home.handicap.elite',         descKey: 'home.handicap.eliteDesc',    color: '#7a5c00', bg: '#FFCC00' },
-  { max: 20,  labelKey: 'home.handicap.advanced',      descKey: 'home.handicap.advancedDesc', color: '#ffffff', bg: '#FF3300' },
-  { max: 35,  labelKey: 'home.handicap.competitor',    descKey: 'home.handicap.competitorDesc',color: '#ffffff', bg: '#0099FF' },
-  { max: 50,  labelKey: 'home.handicap.intermediate',  descKey: 'home.handicap.intermediateDesc', color: '#ffffff', bg: '#444444' },
-  { max: 65,  labelKey: 'home.handicap.amateur',       descKey: 'home.handicap.amateurDesc',  color: '#333333', bg: '#cccccc' },
-  { max: 99,  labelKey: 'home.handicap.beginner',      descKey: 'home.handicap.beginnerDesc', color: '#333333', bg: '#eeeeee' },
-];
+/** Geometria tarczy potrzebna modelowi: średnica i najniższy punktowany pierścień. */
+export interface FaceSpec { diameterM: number; minRing: number }
 
-export function getHandicapBand(handicap: number): HandicapBand {
-  return HANDICAP_BANDS.find(b => handicap <= b.max) ?? HANDICAP_BANDS[HANDICAP_BANDS.length - 1];
+/**
+ * Tarcze z katalogu, które model umie policzyć: koncentryczne 10..1,
+ * 6-Ring (10..5) i spoty (10..6). Tarcze ze strefami (dmuchawka, Field 5-4-3)
+ * i trening techniczny → null — nie wchodzą do handicapu.
+ */
+export function faceSpecFor(targetType?: string | null): FaceSpec | null {
+  const face = resolveTargetFace(targetType);
+  if (!face.scorable || face.zones || face.discipline || face.diameterCm <= 0) return null;
+  const minRing = face.layout === 'spot3-double' || face.layout === 'spot3-single' ? 6 : face.minScoringRing;
+  return { diameterM: face.diameterCm / 100, minRing };
+}
+
+/** Oczekiwana średnia na strzałę przy danym handicapie. */
+export function expectedArrowScore(handicap: number, distanceM: number, spec: FaceSpec): number {
+  const arrowR = (distanceM <= 25 ? ARROW_D_INDOOR : ARROW_D_OUTDOOR) / 2;
+  const sig = sigmaR(handicap, distanceM);
+  const ringWidth = spec.diameterM / 20;
+  const lastK = 11 - spec.minRing;
+  let score = 10;
+  // Każdy pierścień od środka: szansa wyjścia poza niego odejmuje skok punktów.
+  for (let k = 1; k <= lastK; k++) {
+    const drop = k === lastK ? spec.minRing : 1;
+    score -= drop * Math.exp(-(((arrowR + k * ringWidth) / sig) ** 2));
+  }
+  return score;
 }
 
 /**
- * Oblicza handicap dla jednej sesji.
- *
- * Metoda: normalizacja kątowej wielkości tarczy do referencji olimpijskiej.
- *   angularSize     = diameterCm / distanceM
- *   reference       = 122 / 70  (≈ 1.743)
- *   diffFactor      = reference / angularSize   (<1 = łatwiej, >1 = trudniej)
- *   adjustedAvg     = min(10, rawAvg × diffFactor)
- *   handicap        = 100 − adjustedAvg × 10
- *
- * Przykłady:
- *   avg 9.0 @ 70m/122cm  → handicap 10  (elita)
- *   avg 9.0 @ 18m/40cm   → handicap 29  (zawodnik, bo warunki łatwiejsze)
- *   avg 7.5 @ 50m/122cm  → handicap 30
+ * Handicap jednej sesji ze średniej na strzałę. Zaokrąglenie w górę (gorzej),
+ * jak w oryginale. null = tarcza/dystans poza modelem.
  */
-export function calculateSessionHandicap(
-  avgScore: number,
-  distanceM: number,
-  targetType: string
-): number {
-  if (avgScore <= 0 || distanceM <= 0) return 99;
-
-  const diamCm        = getTargetDiameterCm(targetType);
-  const angularSize   = diamCm / distanceM;
-  const refAngular    = 122 / 70;
-  const diffFactor    = refAngular / angularSize;
-  const adjustedAvg   = Math.min(10, avgScore * diffFactor);
-  const handicap      = Math.round(100 - adjustedAvg * 10);
-
-  return Math.max(0, Math.min(99, handicap));
+export function sessionHandicap(avgScore: number, distanceM: number, targetType?: string | null): number | null {
+  const spec = faceSpecFor(targetType);
+  if (!spec || !(distanceM > 0) || !(avgScore >= 0)) return null;
+  if (avgScore >= expectedArrowScore(HANDICAP_MIN, distanceM, spec)) return HANDICAP_MIN;
+  if (avgScore <= expectedArrowScore(HANDICAP_MAX, distanceM, spec)) return HANDICAP_MAX;
+  let lo = HANDICAP_MIN;
+  let hi = HANDICAP_MAX;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (expectedArrowScore(mid, distanceM, spec) > avgScore) lo = mid; else hi = mid;
+  }
+  return Math.ceil(lo - 1e-9);
 }
 
 /**
- * Oblicza bieżący handicap użytkownika.
- * Bierze średnią najlepszych 60% z ostatnich sesji (wzorowane na systemie golfowym).
+ * Bieżący handicap: średnia najlepszych 60% z ostatnich sesji
+ * (jeden słaby dzień nie psuje wyniku).
  */
-export function calculateCurrentHandicap(last10Handicaps: number[]): number {
-  const valid = last10Handicaps.filter(h => h >= 0 && h <= 99);
-  if (valid.length === 0) return 99;
-
+export function calculateCurrentHandicap(recent: number[]): number | null {
+  const valid = recent.filter(h => Number.isFinite(h) && h >= HANDICAP_MIN && h <= HANDICAP_MAX);
+  if (valid.length === 0) return null;
   const sorted = [...valid].sort((a, b) => a - b);
-  const count  = Math.max(1, Math.round(sorted.length * 0.6));
-  const best   = sorted.slice(0, count);
+  const best = sorted.slice(0, Math.max(1, Math.round(sorted.length * 0.6)));
   return Math.round(best.reduce((s, h) => s + h, 0) / best.length);
 }

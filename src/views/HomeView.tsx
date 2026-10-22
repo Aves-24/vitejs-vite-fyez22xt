@@ -6,8 +6,8 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
 import NotificationBell from '../components/NotificationBell';
-import { calculateRank, TARGET_RANKS } from '../utils/rankEngine';
-import { getHandicapBand, HANDICAP_BANDS } from '../utils/handicapEngine';
+import { levelThreshold, MIN_SESSIONS_FOR_RANK, rankFromStored, RANK_VERSION, TARGET_RANKS, type RankBow, type RankResult } from '../utils/rankEngine';
+import { rebuildRankFromHistory } from '../utils/rankSync';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
@@ -194,20 +194,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
 
   // THE TARGET SERIES — ranga użytkownika
-  const [userLevel, setUserLevel] = useState(1);
-  const [userRankName, setUserRankName] = useState('WHITE I');
-  const [userRankColor, setUserRankColor] = useState('#F0F0F0');
-  const [userRankBorder, setUserRankBorder] = useState('#cccccc');
-  const [userRankTextColor, setUserRankTextColor] = useState('#555555');
-  const [userXp, setUserXp] = useState(0);
-  const [userRollingAvg, setUserRollingAvg] = useState(0);
-  const [userLast10Avgs, setUserLast10Avgs] = useState<number[]>([]);
-  const [rankProgress, setRankProgress] = useState(0);
-  const [xpToNext, setXpToNext] = useState(0);
-  const [nextRankName, setNextRankName] = useState<string | null>(null);
-  const [nextRankMinAvg, setNextRankMinAvg] = useState<number | null>(null);
+  // [RANGA] Ranga z handicapu (utils/rankEngine.ts) — jeden obiekt zamiast
+  // osobnych pól XP/średniej/handicapu (user 2026-10-22).
+  const [rank, setRank] = useState<RankResult>(() => rankFromStored(null));
+  const userLevel = rank.level;
+  const userRankName = rank.rankName;
+  const userRankColor = rank.color;
+  const userRankBorder = rank.border;
+  const userRankTextColor = rank.textColor;
+  const rankProgress = rank.progress;
+  const nextRankName = rank.nextRankName;
+  const rankPending = rank.handicap === null;
+  const RANK_BOW_LABEL: Record<RankBow, string> = {
+    RECURVE: 'rules.bow_recurve', COMPOUND: 'rules.bow_compound', BAREBOW: 'rules.bow_barebow', TRADITIONAL: 'rules.bow_trad',
+  };
+  const rankBow: RankBow = rank.bow ?? 'RECURVE';
+  // Linia pod odznaką: w trakcie oceny „1/3”, potem handicap i cel następnej rangi.
+  const rankLine = rankPending
+    ? t('home.rankPending', { count: rank.sessions, total: MIN_SESSIONS_FOR_RANK })
+    : `HC ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
-  const [userHandicap, setUserHandicap] = useState<number | null>(null);
 
   // [FIX] Ref do śledzenia mount state + timera toast, żeby nie robić setState
   // na odmontowanym komponencie (React 17 ostrzega, React 18 cicho ignoruje).
@@ -333,26 +339,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setRawIsPremium(boughtPro);
         setIsPremium(computedIsPremium);
 
-        // THE TARGET SERIES — wczytaj dane rangi
-        const storedXp = d.xp || 0;
-        const storedLast10: number[] = d.last10Avgs || [];
-        const rankResult = calculateRank(storedXp, storedLast10);
-        setUserXp(storedXp);
-        setUserLevel(rankResult.level);
-        setUserRankName(rankResult.rankName);
-        setUserRankColor(rankResult.color);
-        setUserRankBorder(rankResult.border);
-        setUserRankTextColor(rankResult.textColor);
-        setUserRollingAvg(rankResult.rollingAvg);
-        setUserLast10Avgs(storedLast10);
-        setRankProgress(rankResult.progress);
-        setXpToNext(rankResult.xpToNext);
-        setNextRankName(rankResult.nextRankName);
-        setNextRankMinAvg(rankResult.nextRankMinAvg);
-
-        // HANDICAP
-        if (typeof d.currentHandicap === 'number') {
-          setUserHandicap(d.currentHandicap);
+        // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
+        // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
+        setRank(rankFromStored(d));
+        if (d.rankVersion !== RANK_VERSION) {
+          rebuildRankFromHistory(userId, d)
+            .then(fields => { if (!cancelled) setRank(rankFromStored(fields as any)); })
+            .catch(e => console.warn('Przeliczenie rangi nie powiodło się:', e));
         }
 
         // Cachujemy TYLKO dane kosmetyczne (imię, klub, porada AI) — BEZ statusu PRO
@@ -1542,7 +1535,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             </div>
             <p className="text-[9px] font-bold text-gray-400 leading-none mt-1.5">
-              {userXp.toLocaleString()} XP{nextRankName ? ` → ${nextRankName}` : ' ✦ MAX'}
+              {rankLine}
             </p>
           </button>
 
@@ -1812,7 +1805,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       <div className="h-full rounded-full transition-all duration-700"
                         style={{ width: `${rankProgress}%`, background: userLevel >= 9 ? `linear-gradient(90deg, ${userRankColor}, #fff5a0)` : userRankColor }} />
                     </div>
-                    <p className="text-[7px] font-bold text-gray-500 leading-none">{userXp.toLocaleString()} XP{nextRankName ? ` → ${nextRankName}` : ' ✦ MAX'}</p>
+                    <p className="text-[7px] font-bold text-gray-500 leading-none">{rankLine}</p>
                   </div>
                   <span className="material-symbols-outlined text-gray-600 text-[18px] shrink-0">chevron_right</span>
                 </button>
@@ -1977,8 +1970,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="text-lg font-black text-[#fed33e] leading-none">{userXp.toLocaleString()}</p>
-                  <p className="text-[8px] font-bold text-white/40 uppercase mt-0.5">XP</p>
+                  <p className="text-lg font-black text-[#fed33e] leading-none">{rank.handicap ?? '–'}</p>
+                  <p className="text-[8px] font-bold text-white/40 uppercase mt-0.5">HC</p>
                 </div>
               </div>
             </div>
@@ -1986,15 +1979,22 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {/* Przewijalna treść — lista rang + sekcje + przycisk */}
             <div className="overflow-y-auto flex-1 overscroll-contain">
 
-            {/* Lista rang */}
-            <div className="px-4 py-3 space-y-1.5">
-              {TARGET_RANKS.map((rank) => {
-                const isCurrentRank = rank.level === userLevel;
-                const isUnlocked = userXp >= rank.xpThreshold;
+            {/* Lista rang — progi handicapu dla łuku, z którego jest ranga */}
+            <div className="px-4 pt-3 pb-1 flex items-center justify-between gap-2">
+              <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest truncate">{t('home.rankFor', { bow: t(RANK_BOW_LABEL[rankBow]) })}</span>
+              {rank.bestLevel > userLevel && (
+                <span className="text-[8px] font-black text-gray-400 shrink-0">{t('home.rankBest', { name: TARGET_RANKS[rank.bestLevel - 1].name })}</span>
+              )}
+            </div>
+            <div className="px-4 pb-3 space-y-1.5">
+              {TARGET_RANKS.map((def) => {
+                const isCurrentRank = !rankPending && def.level === userLevel;
+                const isUnlocked = !rankPending && def.level <= userLevel;
+                const limit = def.level >= 2 ? levelThreshold(def.level, rankBow) : null;
                 return (
                   <div
-                    key={rank.level}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border transition-all ${
+                    key={def.level}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-2xl border transition-all ${
                       isCurrentRank
                         ? 'border-[#0a3a2a] bg-[#0a3a2a]/5 shadow-sm'
                         : isUnlocked
@@ -2002,145 +2002,57 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                           : 'border-gray-100 bg-gray-50 opacity-50'
                     }`}
                   >
-                    {/* Odznaka */}
                     <div
                       className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow-sm"
-                      style={{ background: rank.color, border: `2px solid ${rank.border}` }}
+                      style={{ background: def.color, border: `2px solid ${def.border}` }}
                     >
-                      <span className="text-xs font-black" style={{ color: rank.textColor }}>{rank.level}</span>
+                      <span className="text-xs font-black" style={{ color: def.textColor }}>{def.level}</span>
                     </div>
-
-                    {/* Nazwa + warunki */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[12px] font-black text-[#0a3a2a] leading-none">{rank.name}</span>
-                        {isCurrentRank && (
-                          <span className="text-[7px] font-black bg-[#0a3a2a] text-[#fed33e] px-1.5 py-0.5 rounded-md uppercase tracking-wide">{t('home.yours')}</span>
-                        )}
-                        {isUnlocked && !isCurrentRank && (
-                          <span className="material-symbols-outlined text-emerald-500 text-[13px]">check_circle</span>
-                        )}
-                      </div>
-                      {rank.minAvg !== null && (
-                        <p className="text-[8px] font-bold text-orange-500 mt-0.5 leading-none">
-                          x̄ min. {rank.minAvg} · rolling avg (10 {t('stats.pro.sessions')})
-                        </p>
+                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
+                      <span className="text-[12px] font-black text-[#0a3a2a] leading-none">{def.name}</span>
+                      {isCurrentRank && (
+                        <span className="text-[7px] font-black bg-[#0a3a2a] text-[#fed33e] px-1.5 py-0.5 rounded-md uppercase tracking-wide">{t('home.yours')}</span>
+                      )}
+                      {isUnlocked && !isCurrentRank && (
+                        <span className="material-symbols-outlined text-emerald-500 text-[13px]">check_circle</span>
                       )}
                     </div>
-
-                    {/* XP */}
+                    {/* Najgorszy handicap, który jeszcze daje tę rangę */}
                     <div className="text-right shrink-0">
                       <p className={`text-[11px] font-black leading-none ${isUnlocked ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                        {rank.xpThreshold === 0 ? 'Start' : rank.xpThreshold.toLocaleString()}
+                        {limit === null ? 'Start' : `≤ ${limit}`}
                       </p>
-                      {rank.xpThreshold > 0 && (
-                        <p className="text-[7px] font-bold text-gray-400 uppercase mt-0.5">XP</p>
-                      )}
+                      {limit !== null && <p className="text-[7px] font-bold text-gray-400 uppercase mt-0.5">HC</p>}
                     </div>
                   </div>
                 );
               })}
-            </div>{/* koniec listy rang */}
-
-            {/* Handicap Łuczniczy */}
-            <div className="px-4 pt-2">
-              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm">
-                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">gps_fixed</span>
-                  {t('home.handicapTitle')}
-                </p>
-
-                {userHandicap !== null ? (() => {
-                  const band = getHandicapBand(userHandicap);
-                  return (
-                    <>
-                      <div className="flex items-center gap-3 mb-3">
-                        <div
-                          className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm"
-                          style={{ background: band.bg }}
-                        >
-                          <span className="text-2xl font-black" style={{ color: band.color }}>{userHandicap}</span>
-                        </div>
-                        <div>
-                          <p className="text-base font-black text-[#0a3a2a] leading-tight">{t(band.labelKey)}</p>
-                          <p className="text-[9px] font-bold text-gray-500 mt-0.5 leading-snug">{t(band.descKey)}</p>
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        {HANDICAP_BANDS.map((b, i) => {
-                          const isActive = userHandicap <= b.max && (i === 0 || userHandicap > HANDICAP_BANDS[i-1].max);
-                          return (
-                            <div key={b.labelKey} className={`flex items-center gap-2 px-2 py-1.5 rounded-xl transition-all ${isActive ? 'bg-gray-50 border border-gray-200' : 'opacity-40'}`}>
-                              <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.bg }} />
-                              <span className="text-[9px] font-black text-[#0a3a2a] w-6 shrink-0">{i === 0 ? '≤10' : `≤${b.max}`}</span>
-                              <span className="text-[9px] font-bold text-gray-500 flex-1">{t(b.labelKey)}</span>
-                              {isActive && <span className="material-symbols-outlined text-[12px] text-emerald-500">arrow_back</span>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <p className="text-[8px] font-bold text-gray-400 mt-3 leading-snug">
-                        {t('home.handicapDesc', 'Normalizacja do referencji olimpijskiej (70m / 122cm). Im niższy — tym lepiej.')}
-                      </p>
-                    </>
-                  );
-                })() : (
-                  <>
-                    <div className="space-y-1 mb-3">
-                      {HANDICAP_BANDS.map((b, i) => (
-                        <div key={b.labelKey} className="flex items-center gap-2 px-2 py-1.5 rounded-xl opacity-50">
-                          <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: b.bg }} />
-                          <span className="text-[9px] font-black text-[#0a3a2a] w-6 shrink-0">{i === 0 ? '≤10' : `≤${b.max}`}</span>
-                          <span className="text-[9px] font-bold text-gray-500 flex-1">{t(b.labelKey)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 rounded-xl px-3 py-2.5 flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[#0a3a2a] text-[16px] shrink-0">info</span>
-                      <p className="text-[9px] font-bold text-[#0a3a2a] leading-snug">
-                        {t('home.handicapEmpty', 'Twój handicap zostanie obliczony automatycznie po pierwszej zapisanej sesji treningowej.')}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
             </div>
 
-            {/* Jak zdobywać XP */}
-            <div className="px-4 pb-4 pt-2">
+            {/* Jak to działa */}
+            <div className="px-4 pb-4">
               <div className="bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 rounded-2xl p-4">
-                <p className="text-[9px] font-black text-[#0a3a2a] uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">bolt</span>
-                  {t('home.xpHowTitle', 'Jak zdobywać XP?')}
+                <p className="text-[9px] font-black text-[#0a3a2a] uppercase tracking-widest mb-2 flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[14px]">gps_fixed</span>
+                  {t('home.rankHowTitle')}
                 </p>
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 bg-[#0a3a2a] rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[9px] font-black text-[#fed33e]">1</span>
-                    </span>
-                    <div>
-                      <p className="text-[10px] font-black text-[#0a3a2a] leading-tight">{t('home.xpPerSession', 'Za każdą sesję treningową:')}</p>
-                      <p className="text-[9px] font-bold text-gray-500 mt-0.5 leading-snug">
-                        <span className="font-black text-[#0a3a2a]">{t('home.xpFormula')}</span>
-                      </p>
+                {rankPending && (
+                  <p className="text-[10px] font-black text-[#0a3a2a] leading-snug mb-2">
+                    {t('home.handicapEmpty', { total: MIN_SESSIONS_FOR_RANK })} {t('home.rankPending', { count: rank.sessions, total: MIN_SESSIONS_FOR_RANK })}
+                  </p>
+                )}
+                <div className="space-y-1.5">
+                  {['home.rankHow1', 'home.rankHow2', 'home.rankHow3'].map((k, i) => (
+                    <div key={k} className="flex items-start gap-2">
+                      <span className="w-4 h-4 bg-[#0a3a2a] rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-[8px] font-black text-[#fed33e]">{i + 1}</span>
+                      </span>
+                      <p className="text-[9px] font-bold text-gray-600 leading-snug">{t(k)}</p>
                     </div>
-                  </div>
-                  <div className="bg-white rounded-xl px-3 py-2 border border-gray-100">
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-wide mb-1">{t('home.xpExample', 'Przykład')}</p>
-                    <p className="text-[9px] font-bold text-gray-600 leading-snug">
-                      {t('home.xpExampleText', '60 strzałów, wynik 510 pkt → średnia 8,5')}<br/>
-                      <span className="font-black text-[#0a3a2a]">60 × 1 + 8,5 × 10 = <span className="text-emerald-600">145 XP</span></span>
-                    </p>
-                  </div>
-                  <div className="flex items-start gap-2 pt-1">
-                    <span className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[9px] font-black text-white">!</span>
-                    </span>
-                    <p className="text-[9px] font-bold text-gray-500 leading-snug">
-                      {t('home.xpHighRankNote', 'Rangi 7–10 (RED / GOLD) wymagają dodatkowo minimalnej średniej z ostatnich 10 sesji.')}
-                    </p>
-                  </div>
+                  ))}
                 </div>
+                <p className="text-[8px] font-bold text-gray-400 mt-3 leading-snug">{t('home.handicapDesc')}</p>
+                <p className="text-[7px] font-bold text-gray-400 mt-1 leading-snug">{t('home.rankCredit')}</p>
               </div>
 
               <button

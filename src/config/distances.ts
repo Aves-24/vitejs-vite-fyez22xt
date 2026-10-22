@@ -11,8 +11,8 @@ import { BLOWGUN_FACE_ID } from './targets/blowgun';
  *
  * ── Dlaczego dystans ma `id`, a nie wystarczy sama nazwa ────────────────────
  *
- * Statystyki grupują sesje po dystansie (`ProStatsView`, `TournamentRecordsView`,
- * `xpEngine`). Gdyby kluczem był napis, każda zmiana nazwy przecinałaby historię
+ * Statystyki grupują sesje po dystansie (`ProStatsView`, `TournamentRecordsView`).
+ * Gdyby kluczem był napis, każda zmiana nazwy przecinałaby historię
  * na pół: stare sesje zostają pod starym napisem, nowe idą pod nowy. Dlatego
  * tożsamością jest `id`, który nie zmienia się NIGDY, a nazwa (`label`) jest
  * dowolna i zmienna. To ten sam wzorzec, co `setupId` + `bowClass`

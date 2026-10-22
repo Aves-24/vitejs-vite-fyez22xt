@@ -6,7 +6,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
 import NotificationBell from '../components/NotificationBell';
-import { levelThreshold, MIN_SESSIONS_FOR_RANK, rankFromStored, RANK_VERSION, TARGET_RANKS, type RankBow, type RankResult } from '../utils/rankEngine';
+import { levelThreshold, MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, RANK_UP_KEY, rankFromStored, RANK_VERSION, TARGET_RANKS, type RankBow, type RankResult } from '../utils/rankEngine';
 import { rebuildRankFromHistory } from '../utils/rankSync';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
@@ -205,15 +205,20 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const rankProgress = rank.progress;
   const nextRankName = rank.nextRankName;
   const rankPending = rank.handicap === null;
-  const RANK_BOW_LABEL: Record<RankBow, string> = {
-    RECURVE: 'rules.bow_recurve', COMPOUND: 'rules.bow_compound', BAREBOW: 'rules.bow_barebow', TRADITIONAL: 'rules.bow_trad',
-  };
   const rankBow: RankBow = rank.bow ?? 'RECURVE';
   // Linia pod odznaką: w trakcie oceny „1/3”, potem handicap i cel następnej rangi.
   const rankLine = rankPending
     ? t('home.rankPending', { count: rank.sessions, total: MIN_SESSIONS_FOR_RANK })
     : `HC ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
+  // [RANGA] Awans zapisany przez ScoringView — pokazujemy raz po powrocie z treningu.
+  const [rankUp, setRankUp] = useState<{ level: number; bow: RankBow | null; handicap: number; first: boolean } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(RANK_UP_KEY);
+      if (raw) { localStorage.removeItem(RANK_UP_KEY); setRankUp(JSON.parse(raw)); }
+    } catch { /* uszkodzony wpis albo brak localStorage — bez okna */ }
+  }, []);
 
   // [FIX] Ref do śledzenia mount state + timera toast, żeby nie robić setState
   // na odmontowanym komponencie (React 17 ostrzega, React 18 cicho ignoruje).
@@ -1915,6 +1920,39 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {toastMessage}
           </div>
         </div>, document.body
+      )}
+
+      {/* ─── MODAL: awans rangi po treningu ─────────────────────────────── */}
+      {rankUp && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[200001] bg-black/70 backdrop-blur-sm flex items-center justify-center p-6 animate-fade-in-up" onClick={() => setRankUp(null)}>
+          {(() => {
+            const def = TARGET_RANKS[rankUp.level - 1];
+            return (
+              <div className="bg-[#0a3a2a] w-full max-w-xs rounded-[32px] shadow-2xl px-6 pt-8 pb-6 flex flex-col items-center text-center relative overflow-hidden" onClick={e => e.stopPropagation()}>
+                <span className="material-symbols-outlined absolute -right-4 -top-4 text-[120px] text-white opacity-[0.06]">military_tech</span>
+                <p className="text-[10px] font-black text-[#fed33e] uppercase tracking-[0.25em] relative">{rankUp.first ? t('home.rankUpFirst') : t('home.rankUpTitle')}</p>
+                <div
+                  className="w-24 h-24 rounded-full flex items-center justify-center shadow-xl mt-5 relative"
+                  style={{ background: def.color, border: `4px solid ${def.border}`, boxShadow: `0 0 40px ${def.color}66` }}
+                >
+                  <span className="text-4xl font-black" style={{ color: def.textColor }}>{def.level}</span>
+                </div>
+                <p className="text-2xl font-black text-white tracking-tight mt-4 relative">{def.name}</p>
+                <p className="text-[10px] font-bold text-white/60 mt-1 relative">
+                  {rankUp.bow ? t(RANK_BOW_LABEL[rankUp.bow]) : ''} · HC {rankUp.handicap}
+                </p>
+                <p className="text-[11px] font-bold text-white/80 leading-snug mt-4 relative">{t('home.rankUpText')}</p>
+                <button
+                  onClick={() => setRankUp(null)}
+                  className="w-full mt-6 py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all relative"
+                >
+                  {t('home.rankUpOk')}
+                </button>
+              </div>
+            );
+          })()}
+        </div>,
+        document.body
       )}
 
       {/* ─── MODAL: THE TARGET SERIES — Tabela Rang ────────────────────────── */}

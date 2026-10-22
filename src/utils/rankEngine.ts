@@ -35,6 +35,11 @@ export const TARGET_RANKS: RankDef[] = [
 
 export type RankBow = 'RECURVE' | 'COMPOUND' | 'BAREBOW' | 'TRADITIONAL';
 
+/** Klucze tłumaczeń nazw łuków (te same co w Ustawieniach). */
+export const RANK_BOW_LABEL: Record<RankBow, string> = {
+  RECURVE: 'rules.bow_recurve', COMPOUND: 'rules.bow_compound', BAREBOW: 'rules.bow_barebow', TRADITIONAL: 'rules.bow_trad',
+};
+
 /** Archery GB, klasyfikacje na torach: handicap klasy MB i krok między klasami. */
 const BOW_SCALE: Record<RankBow, { datum: number; step: number }> = {
   COMPOUND:    { datum: 15, step: 6 },
@@ -204,6 +209,36 @@ export function applySessionsToRank(prev: StoredRank | null | undefined, session
     currentHandicap: result.handicap,
     rankVersion: RANK_VERSION,
   };
+}
+
+/** localStorage: awans z ostatniego zapisu, czeka na pokazanie na Home. */
+export const RANK_UP_KEY = 'grotX_rankUp';
+
+/** Ile ostatnich sesji porównuje trend (dla trenera). */
+export const TREND_SESSIONS = 3;
+
+/**
+ * Kierunek formy: handicap teraz kontra handicap bez ostatnich TREND_SESSIONS
+ * sesji tego łuku. Słowa zamiast liczb — trener nie czytał „HC 34 → 30”
+ * (decyzja usera 2026-09-10). Zmiana < 2 HC to zwykły rozrzut.
+ */
+export function rankTrend(d: StoredRank | null | undefined): 'up' | 'down' | 'flat' | null {
+  const r = rankFromStored(d);
+  if (!r.bow || r.handicap === null) return null;
+  const older = (d?.hcByBow?.[r.bow] || []).slice(TREND_SESSIONS);
+  if (older.length < MIN_SESSIONS_FOR_RANK) return null;
+  const before = calculateCurrentHandicap(older);
+  if (before === null) return null;
+  const diff = before - r.handicap; // dodatni = handicap spadł = lepiej
+  return diff >= 2 ? 'up' : diff <= -2 ? 'down' : 'flat';
+}
+
+/** Awans po zapisie sesji: nowa ranga wyżej niż przed nią (albo pierwsza ranga). */
+export function rankUpBetween(before: StoredRank | null | undefined, after: StoredRank): RankResult | null {
+  const prev = rankFromStored(before);
+  const next = rankFromStored(after);
+  if (next.handicap === null) return null;
+  return prev.handicap === null || next.level > prev.level ? next : null;
 }
 
 /** Wersja pól rangi — stare profile (XP) przeliczamy raz z historii sesji. */

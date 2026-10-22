@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { expectedArrowScore, faceSpecFor, sessionHandicap, calculateCurrentHandicap } from './handicapEngine';
-import { applySessionsToRank, levelForHandicap, levelThreshold, rankBowOf, rankFromStored, type RankSession } from './rankEngine';
+import { applySessionsToRank, levelForHandicap, levelThreshold, rankBowOf, rankFromStored, rankTrend, rankUpBetween, type RankSession } from './rankEngine';
 
 const s = (avg: number, distance: string, targetType: string, bowClass = 'Klasyczny (Recurve)'): RankSession =>
   ({ score: Math.round(avg * 60), scoreArrows: 60, distance, targetType, bowClass });
@@ -62,6 +62,25 @@ describe('rankEngine (rangi z handicapu)', () => {
   it('dmuchawka i trening techniczny nie liczą się', () => {
     expect(applySessionsToRank(null, [s(9, '5m', '40cm', 'Dmuchawka (Blasrohr)')])).toBeNull();
     expect(applySessionsToRank(null, [s(9, '18m', 'TECHNICAL')])).toBeNull();
+  });
+
+  it('trend słowami: ostatnie 3 sesje kontra wcześniejsze', () => {
+    const old = [1, 2, 3].map(() => s(7.5, '70m', '122cm'));   // HC 39
+    const better = [1, 2, 3].map(() => s(8.5, '70m', '122cm')); // HC 28
+    expect(rankTrend(applySessionsToRank(null, [...old, ...better]))).toBe('up');
+    expect(rankTrend(applySessionsToRank(null, [...better, ...old]))).toBe('down');
+    expect(rankTrend(applySessionsToRank(null, [...old, ...old]))).toBe('flat');
+    expect(rankTrend(applySessionsToRank(null, old))).toBeNull(); // za mało historii
+  });
+
+  it('awans: pierwsza ranga i wyższy poziom, bez okna przy tym samym', () => {
+    const two = applySessionsToRank(null, [s(8, '70m', '122cm'), s(8, '70m', '122cm')])!;
+    const three = applySessionsToRank(two, [s(8, '70m', '122cm')])!;
+    expect(rankUpBetween(two, three)?.level).toBe(7); // pierwsza ranga
+    const same = applySessionsToRank(three, [s(8, '70m', '122cm')])!;
+    expect(rankUpBetween(three, same)).toBeNull();
+    const up = applySessionsToRank(same, [1, 2, 3, 4, 5].map(() => s(9.2, '70m', '122cm')))!;
+    expect(rankUpBetween(same, up)!.level).toBeGreaterThan(7);
   });
 
   it('pokazuje najwyższą rangę spośród łuków', () => {

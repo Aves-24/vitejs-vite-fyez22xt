@@ -7,7 +7,7 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { applySessionsToRank, RANK_VERSION } from '../utils/rankEngine';
+import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankFromStored, rankUpBetween } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend'; 
@@ -667,6 +667,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       // Odrzucenie sesji przez serwer rzuca tutaj — trening zostaje na ekranie,
       // a XP nie jest doliczane. Bez zasiegu: 'queued', profil idzie za sesja.
       await sessionWrite;
+
+      // [RANGA] Awans pokazuje Home po powrocie (ten ekran zaraz znika).
+      const rankUp = rankFields ? rankUpBetween(ud, rankFields) : null;
+      if (rankUp) {
+        try {
+          localStorage.setItem(RANK_UP_KEY, JSON.stringify({ level: rankUp.level, bow: rankUp.bow, handicap: rankUp.handicap, first: rankFromStored(ud).handicap === null }));
+        } catch { /* bez localStorage: awans i tak widać na kaflu */ }
+      }
 
       if (!isNotePublic && sessionNote) {
         settleWrite(writePrivateSessionNote(userId, sessionRef.id, sessionNote, false))

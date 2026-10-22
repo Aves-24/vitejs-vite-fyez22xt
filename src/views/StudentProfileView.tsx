@@ -21,6 +21,7 @@ import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
+import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -328,6 +329,9 @@ interface StudentProfileViewProps {
   studentId: string;
   onNavigate: (view: string, tab?: string, extraData?: string, sId?: string) => void;
 }
+
+// Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony.
+const RANK_TREND_ICON = { up: 'trending_up', down: 'trending_down', flat: 'trending_flat' } as const;
 
 export default function StudentProfileView({ coachId, studentId, onNavigate }: StudentProfileViewProps) {
   const { t, i18n } = useTranslation();
@@ -762,6 +766,38 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             )}
           </div>
         </button>
+
+        {/* [RANGA] Ranga ucznia z handicapu — odznaka w kolorze i forma słowami,
+            bez gołych liczb handicapu (trener ich nie czytał, user 2026-09-10). */}
+        {(() => {
+          const r = rankFromStored(student);
+          const trend = rankTrend(student);
+          return (
+            <div className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm"
+                style={{ background: r.color, border: `2.5px solid ${r.border}`, opacity: r.handicap === null ? 0.4 : 1 }}>
+                <span className="text-sm font-black" style={{ color: r.textColor }}>{r.level}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest block leading-none mb-1">{t('studentProfile.rankLabel')}</span>
+                {r.handicap === null ? (
+                  <p className="text-[11px] font-black text-white/60 leading-tight">{t('home.rankPending', { count: r.sessions, total: MIN_SESSIONS_FOR_RANK })}</p>
+                ) : (
+                  <p className="text-[13px] font-black text-white leading-tight truncate">
+                    {r.rankName}
+                    {r.bow && <span className="text-[9px] font-bold text-white/50 ml-1.5">{t(RANK_BOW_LABEL[r.bow])}</span>}
+                  </p>
+                )}
+              </div>
+              {trend && (
+                <span className={`flex items-center gap-1 text-[10px] font-black shrink-0 ${trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-red-400' : 'text-white/50'}`}>
+                  <span className="material-symbols-outlined text-[16px]">{RANK_TREND_ICON[trend]}</span>
+                  {t(`studentProfile.rankTrend_${trend}`)}
+                </span>
+              )}
+            </div>
+          );
+        })()}
         {/* STATYSTYKI — rząd 3: fokus ucznia (user 2026-09-16: pod
             Ergebniskurve, w nagłówku). Ten sam wynik co u ucznia na Home:
             własny fokus vs najnowszy „Cel" z dziennika trenerskiego. Bez

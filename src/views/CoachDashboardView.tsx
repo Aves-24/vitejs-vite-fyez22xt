@@ -1851,9 +1851,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
                       onOpenStudent={setSheetStudentId}
-                      renderHistory={repeatToday => (
+                      renderHistory={(repeatToday, editTopic) => (
                         <GroupTrainingHistory
                           onRepeat={repeatToday}
+                          onEdit={editTopic}
                           groupId={group.id}
                           coachId={userId}
                           members={members}

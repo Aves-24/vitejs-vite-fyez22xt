@@ -23,7 +23,7 @@ const PAGE = 5;
 interface LooseNote { id: string; text: string; timestamp: number }
 interface HistoryDoc { notes?: Record<string, string>; loose?: LooseNote[] }
 
-export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent, onRepeat }: {
+export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent, onRepeat, onEdit }: {
   groupId: string;
   coachId: string;
   members: any[];
@@ -33,6 +33,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   onOpenStudent?: (studentId: string) => void;
   /** „Powtórz na dziś” przy wpisie (user 2026-10-22); null = dziś już jest temat. */
   onRepeat?: ((gt: GroupTopic) => void) | null;
+  /** Edycja minionego tematu — to samo okno co przy zaplanowanych (user 2026-10-22). */
+  onEdit?: (gt: GroupTopic) => void;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -156,6 +158,17 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
                 {note && !isOpen && <span className="material-symbols-outlined text-[15px] text-gray-400 mt-px">edit_note</span>}
                 <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </button>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(gt)}
+                  aria-label={t('coachDashboard.groupTopicEdit')}
+                  title={t('coachDashboard.groupTopicEdit')}
+                  className="w-8 h-8 mt-1.5 mr-1 shrink-0 rounded-lg text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[17px]">edit</span>
+                </button>
+              )}
               {onRepeat && (
                 <button
                   type="button"

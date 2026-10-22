@@ -121,8 +121,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   onChanged: (next: GroupTopicsByDay) => void;
   showToast: (msg: string) => void;
   onOpenStudent?: (studentId: string) => void;
-  /** Historia treningów pod sekcją tematu — dostaje „Powtórz na dziś” (null, gdy dziś już jest temat). */
-  renderHistory?: (repeatToday: ((gt: GroupTopic) => void) | null) => ReactNode;
+  /** Historia treningów pod sekcją tematu — dostaje „Powtórz na dziś” (null, gdy dziś już jest temat) i edycję. */
+  renderHistory?: (repeatToday: ((gt: GroupTopic) => void) | null, editTopic: (gt: GroupTopic) => void) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -422,7 +422,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
 
       {renderHistory?.(!todayTopic && members.length > 0 && !saving
         ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [] })
-        : null)}
+        : null, gt => openModal(gt.day, gt))}
 
       {modal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>

@@ -490,14 +490,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               const snap = await getDocs(query(
                 collection(db, `users/${s.id}/coachLog`),
                 orderBy('createdAt', 'desc'),
-                limit(1)
+                limit(5)
               ));
-              if (!snap.empty) {
-                const d = snap.docs[0].data();
-                entries[s.id] = { text: d.text || '', type: d.type || 'observation' };
-              } else {
-                entries[s.id] = null;
-              }
+              // Temat zaplanowany na przyszły dzień uczeń jeszcze nie widzi —
+              // w wierszu tylko dzisiejszy lub ostatni wpis (user 2026-10-22).
+              const todayKey = dayKeyOf(Date.now());
+              const d = snap.docs.map(x => x.data()).find(x => !(x.type === 'topic' && x.day && x.day > todayKey));
+              entries[s.id] = d ? { text: d.text || '', type: d.type || 'observation' } : null;
             } catch { entries[s.id] = null; }
           }));
           setLastLogEntries(entries);

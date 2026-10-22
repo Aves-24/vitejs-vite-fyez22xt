@@ -7,7 +7,7 @@ import TopicPicker from './TopicPicker';
 import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
-import { FOCUS_TEXT_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
+import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
 
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
 // dziś albo planuje go na kolejne dni. Technicznie: wpis 'topic' w coachLog
@@ -30,9 +30,11 @@ export interface GroupTopic {
   calendarEventId?: string;
   /** Do 3 linków (YouTube, strona) — uczeń otwiera je po potwierdzeniu. */
   links?: string[];
+  /** Opis pod tytułem (jak treść maila). */
+  desc?: string;
 }
 
-type TopicBase = { text: string; topic: string; links: string[] };
+type TopicBase = { text: string; topic: string; links: string[]; desc: string };
 
 export type GroupTopicsByDay = Record<string, GroupTopic>;
 
@@ -129,6 +131,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const [text, setText] = useState('');
   const [pickedTopics, setPickedTopics] = useState<string[]>([]);
   const [linkInputs, setLinkInputs] = useState<string[]>(['', '', '']);
+  const [desc, setDesc] = useState('');
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Record<string, MemberStatus>>({});
 
@@ -164,7 +167,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   // Wpis u każdego ucznia osobno — błąd u jednego nie blokuje reszty.
-  const assignTo = async (list: any[], topic: { text: string; topic: string; day: string; links?: string[] }) => {
+  const assignTo = async (list: any[], topic: { text: string; topic: string; day: string; links?: string[]; desc?: string }) => {
     const authorName = await coachName();
     const results = await Promise.all(list.map(async s => {
       try {
@@ -177,6 +180,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           day: topic.day,
           groupId,
           ...(topic.links?.length ? { links: topic.links } : {}),
+          ...(topic.desc ? { desc: topic.desc } : {}),
           createdAt: serverTimestamp(),
         });
         return [s.id, ref.id] as const;
@@ -236,8 +240,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     if (!base.text || members.length === 0) return;
     const entryIds = await assignTo(members, { ...base, day });
     const cal = await addToCalendar(day, base);
-    const { links, ...rest } = base;
-    await save(day, { ...rest, ...(links.length ? { links } : {}), day, setAt: Date.now(), entryIds, ...cal });
+    const { links, desc, ...rest } = base;
+    await save(day, { ...rest, ...(links.length ? { links } : {}), ...(desc ? { desc } : {}), day, setAt: Date.now(), entryIds, ...cal });
     setModal(null);
   });
 
@@ -245,12 +249,13 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const edit = (gt: GroupTopic, base: TopicBase) => run(async () => {
     if (!base.text) return;
     await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), {
-      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, editedAt: Date.now(),
+      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, desc: base.desc, editedAt: Date.now(),
     }));
     await syncCalendar(gt, base);
-    const { links, ...rest } = base;
+    const { links, desc, ...rest } = base;
     const next: GroupTopic = { ...gt, ...rest };
     if (links.length) next.links = links; else delete next.links;
+    if (desc) next.desc = desc; else delete next.desc;
     await save(gt.day, next);
     setModal(null);
   });
@@ -278,6 +283,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     setText(gt?.text ?? '');
     setPickedTopics(gt?.topic ? [gt.topic] : []);
     setLinkInputs([0, 1, 2].map(i => gt?.links?.[i] ?? ''));
+    setDesc(gt?.desc ?? '');
     setModal({ day, edit: !!gt });
   };
 
@@ -298,6 +304,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     text: text.trim().slice(0, FOCUS_TEXT_MAX),
     topic: pickedTopics[0] || '',
     links: [...new Set(linkChecks.filter((v): v is string => !!v))].slice(0, TOPIC_LINKS_MAX),
+    desc: desc.trim().slice(0, TOPIC_DESC_MAX),
   };
 
   return (
@@ -342,6 +349,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   : t('coachDashboard.groupTopicLast', { date: dayLabel(shown.day) })}
               </p>
               <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(shown, t)}</p>
+              {shown.desc && <p className="text-[11px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-0.5">{shown.desc}</p>}
               {shown.text && shown.topic && (
                 <p className={`text-[10px] font-bold ${open ? 'text-[#0a3a2a]' : 'text-gray-500'}`}>{topicLabel(shown.topic, t)}</p>
               )}
@@ -421,7 +429,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       </div>
 
       {renderHistory?.(!todayTopic && members.length > 0 && !saving
-        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [] })
+        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '' })
         : null, gt => openModal(gt.day, gt))}
 
       {modal && createPortal(
@@ -454,13 +462,27 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachDashboard.groupTopicDayTaken')}</p>
                 )}
               </div>
-              <textarea
-                value={text}
-                onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
-                maxLength={FOCUS_TEXT_MAX}
-                placeholder={t('coachDashboard.groupTopicPlaceholder')}
-                className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 resize-none h-16"
-              />
+              {/* Jak w mailu: temat (tytuł) u góry, opis pod nim (user 2026-10-22). */}
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicTitleLabel')}</p>
+                <input
+                  value={text}
+                  onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
+                  maxLength={FOCUS_TEXT_MAX}
+                  placeholder={t('coachDashboard.groupTopicPlaceholder')}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-black text-[#333] outline-none focus:border-rose-500"
+                />
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDescLabel')}</p>
+                <textarea
+                  value={desc}
+                  onChange={e => setDesc(e.target.value.slice(0, TOPIC_DESC_MAX))}
+                  maxLength={TOPIC_DESC_MAX}
+                  placeholder={t('coachDashboard.groupTopicDescPlaceholder')}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-24"
+                />
+              </div>
               <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
               <div>
                 <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicLinks')}</p>

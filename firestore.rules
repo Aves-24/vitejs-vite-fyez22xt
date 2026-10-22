@@ -458,6 +458,11 @@ service cloud.firestore {
             && (d.links.size() < 2 || okTopicLink(d.links[1]))
             && (d.links.size() < 3 || okTopicLink(d.links[2])));
     }
+    // [TEMAT TRENINGU 2026-10-22] Opis pod tytułem (jak treść maila).
+    // LUSTRO: src/utils/focus.ts (TOPIC_DESC_MAX).
+    function okTopicDesc(d) {
+      return !('desc' in d) || (d.desc is string && d.desc.size() <= 1000);
+    }
 
     match /users/{uid}/coachLog/{entryId} {
       allow read: if isSelf(uid)
@@ -481,15 +486,17 @@ service cloud.firestore {
                 && request.resource.data.get('day', '').size() == 10
                 && !('closedAt' in request.resource.data)
                 && !('ackAt' in request.resource.data)))
-        && okTopicLinks(request.resource.data);
+        && okTopicLinks(request.resource.data)
+        && okTopicDesc(request.resource.data);
 
       // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'topic'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc'])
         && okTopicLinks(request.resource.data)
+        && okTopicDesc(request.resource.data)
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 300

@@ -1556,6 +1556,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               onSwap={() => swapFocus(userId, focusState)}
             />
             {/* Linki od trenera przy dzisiejszym temacie (poza przyciskiem paska). */}
+            {/* Opis tematu od trenera — skrót; całość w dzienniku. */}
+            {focusState?.trainingTopic?.desc && (
+              <p className="text-[10px] font-medium text-gray-500 leading-snug line-clamp-2 mt-1.5 px-1">{focusState.trainingTopic.desc}</p>
+            )}
             <TopicLinks links={focusState?.trainingTopic?.links} className="mt-1.5 justify-end" />
           </div>
         )}

@@ -382,6 +382,7 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
         extra={isNew ? <NewBadge /> : undefined}
       >
       <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
+      {tt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{tt.desc}</p>}
       <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
       <TopicChips topics={entry.topics} />
       <TopicLinks links={tt.links} className="mt-2" />

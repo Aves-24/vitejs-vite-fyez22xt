@@ -73,6 +73,7 @@ export interface ActiveFocus {
   entryGoal?: number;    // tylko fokus trenera — liczba treningów zapisana na wpisie
   topicId?: string;      // TEMAT TRENINGU (nie fokus) — id wpisu 'topic' w coachLog
   links?: string[];      // TEMAT TRENINGU — linki od trenera
+  desc?: string;         // TEMAT TRENINGU — opis pod tytułem (jak treść maila)
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -659,12 +660,15 @@ export interface TrainingTopic {
   closedAt?: number;
   ackAt?: number;
   links?: string[];     // do TOPIC_LINKS_MAX linków http(s) od trenera
+  desc?: string;        // opis pod tytułem, do TOPIC_DESC_MAX znaków
 }
 
 // [LINKI W TEMACIE] (user 2026-10-16) Trener dokłada do tematu do 3 linków
 // (YouTube, strona). Tylko zwykły link — bez osadzania i miniatur, więc nic
 // nie leci do Google/YouTube, dopóki uczeń sam nie potwierdzi otwarcia (RODO).
 export const TOPIC_LINKS_MAX = 3;
+/** Opis tematu pod tytułem — jak treść maila pod tematem (user 2026-10-22). LUSTRO: firestore.rules (coachLog). */
+export const TOPIC_DESC_MAX = 1000;
 export const TOPIC_LINK_MAX_LEN = 500;
 
 /** Link wpisany przez trenera → pełny adres http(s) albo null (zły / inny protokół). */
@@ -706,6 +710,7 @@ export function readTrainingTopic(id: string, data: any): TrainingTopic | null {
     ...(typeof data.closedAt === 'number' ? { closedAt: data.closedAt } : {}),
     ...(data.ackAt ? { ackAt: toMs(data.ackAt) } : {}),
     ...(readTopicLinks(data).length ? { links: readTopicLinks(data) } : {}),
+    ...(typeof data.desc === 'string' && data.desc ? { desc: data.desc } : {}),
   };
 }
 
@@ -717,7 +722,7 @@ export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Da
 export function topicAsFocus(t: TrainingTopic): ActiveFocus {
   return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id,
     ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}),
-    ...(t.links?.length ? { links: t.links } : {}) };
+    ...(t.links?.length ? { links: t.links } : {}), ...(t.desc ? { desc: t.desc } : {}) };
 }
 
 export function sessionTrainingTopic(f: ActiveFocus): SessionTrainingTopic {

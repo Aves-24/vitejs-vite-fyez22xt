@@ -1644,14 +1644,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setIsClubBattlesModalOpen(false)}></div>
 
           <style>{`.animate-slide-down { animation: slideDown 0.4s cubic-bezier(0.16,1,0.3,1) forwards; } @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
-          <div className="bg-[#0a0f1a] text-white border-b border-x border-white/10 w-full max-w-md rounded-b-[32px] relative z-10 shadow-2xl animate-slide-down flex flex-col max-h-[90vh]">
+          <div className="bg-[#0a0f1a] text-white border-b border-x border-white/10 w-full max-w-md rounded-b-[32px] relative z-10 shadow-2xl animate-slide-down flex flex-col max-h-[90vh] max-h-[90dvh]">
 
-            {/* HEADER */}
-            <div className="px-6 pt-5 pb-4 shrink-0">
-              <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-4"></div>
+            {/* HEADER — kompaktowy, żeby na małych telefonach zmieściła się lista (user 2026-10-22) */}
+            <div className="px-4 pt-3 pb-3 shrink-0">
+              <div className="w-10 h-1 bg-white/15 rounded-full mx-auto mb-3"></div>
               <div className="flex justify-between items-start">
                 <div>
-                  <h2 className="text-2xl font-black text-white tracking-tight leading-none flex items-baseline">Multiplayer Arena<span className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[3px]"></span></h2>
+                  <h2 className="text-xl font-black text-white tracking-tight leading-none flex items-baseline">Multiplayer Arena<span className="w-1.5 h-1.5 bg-[#fed33e] rounded-full ml-1 relative bottom-[3px]"></span></h2>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t('home.battleSubtitle')}</p>
                 </div>
                 <button onClick={() => setIsClubBattlesModalOpen(false)} className="w-9 h-9 bg-white/10 rounded-full flex items-center justify-center text-white active:scale-90 shrink-0">
@@ -1660,7 +1660,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               </div>
             </div>
 
-            <div className="arena-scroll overflow-y-auto flex-1 px-6 pb-4 space-y-5">
+            <div className="arena-scroll overflow-y-auto flex-1 px-4 pb-3 space-y-4">
 
               {/* ── AKTYWNE WYZWANIA ─────────────────────────────── */}
               <div>
@@ -1772,10 +1772,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       <div
                         key={s.label}
                         onClick={goBest}
-                        className={`bg-white/5 rounded-2xl border py-2.5 px-1 flex flex-col items-center min-w-0 ${goBest ? 'border-emerald-400/40 cursor-pointer active:scale-95 transition-all' : 'border-white/10'}`}
+                        className={`bg-white/5 rounded-2xl border py-1.5 px-1 flex flex-col items-center min-w-0 ${goBest ? 'border-emerald-400/40 cursor-pointer active:scale-95 transition-all' : 'border-white/10'}`}
                       >
-                        <span className={`material-symbols-outlined text-[18px] ${s.tone}`}>{s.icon}</span>
-                        <span className="text-lg font-black text-white leading-tight">{s.value ?? '–'}</span>
+                        <span className={`material-symbols-outlined text-[16px] ${s.tone}`}>{s.icon}</span>
+                        <span className="text-base font-black text-white leading-tight">{s.value ?? '–'}</span>
                         <span className="text-[7px] font-black text-gray-500 uppercase tracking-wider leading-tight text-center truncate w-full">{s.label}{goBest ? ' ›' : ''}</span>
                       </div>
                     );
@@ -1783,7 +1783,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 </div>
                 <button
                   onClick={() => { setIsClubBattlesModalOpen(false); onGoToBattles?.(); }}
-                  className="w-full mt-2 py-2.5 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+                  className="w-full mt-2 py-2 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black text-gray-300 uppercase tracking-widest flex items-center justify-center gap-1.5 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[14px]">history</span>
                   {t('home.battleHistory', 'Pełna historia bitew')}
@@ -1795,9 +1795,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-2">{t('home.yourRanking', 'Twój ranking')}</span>
                 <button
                   onClick={() => { setIsClubBattlesModalOpen(false); setIsRankInfoOpen(true); }}
-                  className="w-full bg-white/5 rounded-2xl border border-white/10 p-3 flex items-center gap-3 active:scale-[0.98] transition-all"
+                  className="w-full bg-white/5 rounded-2xl border border-white/10 p-2.5 flex items-center gap-3 active:scale-[0.98] transition-all"
                 >
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-sm"
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm"
                     style={{ background: userRankColor, border: `2.5px solid ${userRankBorder}` }}>
                     <span className="text-base font-black" style={{ color: userRankTextColor }}>{userLevel}</span>
                   </div>
@@ -1820,18 +1820,19 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
             </div>
 
-            {/* FOOTER — utwórz arenę */}
-            <div className="px-6 pt-3 pb-8 border-t border-white/10 shrink-0 space-y-2">
+            {/* FOOTER — dołącz kodem (kwadrat z QR) + utwórz arenę w jednym rzędzie */}
+            <div className="px-4 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-white/10 shrink-0 flex gap-2">
               <button
                 onClick={() => { setIsClubBattlesModalOpen(false); setShowQR(true); }}
-                className="w-full py-3 bg-white/10 border border-white/10 text-gray-200 rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                aria-label={t('home.arenaJoinWithCode')}
+                title={t('home.arenaJoinWithCode')}
+                className="w-[52px] shrink-0 bg-white/10 border border-white/10 text-gray-200 rounded-2xl active:scale-95 transition-all flex items-center justify-center"
               >
-                <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-                {t('home.arenaJoinWithCode')}
+                <span className="material-symbols-outlined text-[22px]">qr_code_2</span>
               </button>
               <button
                 onClick={() => { setIsClubBattlesModalOpen(false); (onCreateArena ?? onNewSession)(); }}
-                className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
+                className="flex-1 min-w-0 py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
               >
                 <span className="material-symbols-outlined text-[16px]">add_circle</span>
                 {t('home.arenaCreateBtn')}

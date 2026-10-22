@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -41,6 +42,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   const [status, setStatus] = useState<Record<string, Record<string, MemberStatus>>>({});
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
+  // Powtórka czeka na potwierdzenie (user 2026-10-22).
+  const [repeatAsk, setRepeatAsk] = useState<GroupTopic | null>(null);
   const ref = doc(db, 'users', coachId, 'private', `groupTraining_${groupId}`);
 
   useEffect(() => {
@@ -156,7 +159,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               {onRepeat && (
                 <button
                   type="button"
-                  onClick={() => onRepeat(gt)}
+                  onClick={() => setRepeatAsk(gt)}
                   aria-label={t('coachDashboard.groupTopicRepeat')}
                   title={t('coachDashboard.groupTopicRepeat')}
                   className="w-8 h-8 mt-1.5 mr-1.5 shrink-0 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
@@ -194,6 +197,32 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           </button>
         )}
       </div>
+
+      {repeatAsk && onRepeat && createPortal(
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[500000] flex items-center justify-center p-6 animate-fade-in" onClick={() => setRepeatAsk(null)}>
+          <div className="bg-white rounded-[28px] p-5 w-full max-w-[340px] shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-white text-[20px]">replay</span>
+              </div>
+              <p className="text-[14px] font-black text-[#0a3a2a] leading-tight">{t('coachDashboard.groupTopicRepeatConfirm')}</p>
+            </div>
+            <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{focusTitle(repeatAsk, t)}</p>
+            <div className="flex gap-2 mt-4">
+              <button onClick={() => setRepeatAsk(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
+                {t('coachDashboard.cancel')}
+              </button>
+              <button
+                onClick={() => { onRepeat(repeatAsk); setRepeatAsk(null); }}
+                className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md"
+              >
+                {t('coachDashboard.groupTopicRepeat')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </CollapsibleSection>
   );
 }

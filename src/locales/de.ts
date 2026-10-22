@@ -1641,6 +1641,7 @@ export const views = {
     groupTopicEdit: "Thema bearbeiten",
     groupTopicPlanned: "Geplant",
     groupTopicNone: "Kein Thema für heute — füge es mit dem Plus hinzu.",
+    groupTopicRepeatConfirm: "Dieses Thema für heute wiederholen?",
     groupTopicDelete: "Thema löschen",
     groupTopicPlan: "Thema für einen anderen Tag planen",
     groupTopicDay: "Trainingstag",

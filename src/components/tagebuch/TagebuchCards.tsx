@@ -377,18 +377,18 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
   const hasMore = !!tt.desc || linkCount > 0;
   // Status po zamknięciu tematu — mały, w stopce po prawej zamiast dużego przycisku.
   const status = open ? null : trained ? (
-    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+    <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
       <span className="material-symbols-outlined text-[13px]">check</span>{t('tagebuch.topicTrained')}
     </span>
   ) : tt.ackAt ? (
-    <span className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-200 rounded-full px-2 py-0.5">
+    <span className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-200 rounded-full px-2 py-0.5">
       <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAcked')}
     </span>
   ) : (
     <button
       onClick={async () => { setBusy(true); try { await onAck(); } finally { setBusy(false); } }}
       disabled={busy}
-      className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-300 rounded-full px-2.5 py-1 active:scale-95 transition-all disabled:opacity-50"
+      className="shrink-0 whitespace-nowrap inline-flex items-center gap-1 text-[10px] font-black text-white bg-violet-500 rounded-full px-2.5 py-1 active:scale-95 transition-all disabled:opacity-50"
     >
       <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAck')}
     </button>
@@ -419,16 +419,13 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
               type="button"
               onClick={() => setMore(m => !m)}
               aria-expanded={more}
-              className="inline-flex items-center gap-1.5 text-[10px] font-black text-violet-700 active:opacity-60"
+              aria-label={[tt.desc ? t('tagebuch.topicDesc') : '', linkCount ? t('tagebuch.topicLinks', { count: linkCount }) : ''].filter(Boolean).join(', ')}
+              className="shrink-0 whitespace-nowrap inline-flex items-center gap-2 text-[11px] font-black text-violet-600 active:opacity-60"
             >
-              {tt.desc && (
-                <span className="inline-flex items-center gap-0.5 bg-white border border-violet-200 rounded-full px-1.5 py-0.5">
-                  <span className="material-symbols-outlined text-[13px]">notes</span>{t('tagebuch.topicDesc')}
-                </span>
-              )}
+              {tt.desc && <span className="material-symbols-outlined text-[17px]">notes</span>}
               {linkCount > 0 && (
-                <span className="inline-flex items-center gap-0.5 bg-white border border-violet-200 rounded-full px-1.5 py-0.5">
-                  <span className="material-symbols-outlined text-[13px]">link</span>{t('tagebuch.topicLinks', { count: linkCount })}
+                <span className="inline-flex items-center">
+                  <span className="material-symbols-outlined text-[17px]">link</span>{linkCount > 1 ? linkCount : null}
                 </span>
               )}
               <span className={`material-symbols-outlined text-[16px] transition-transform ${more ? 'rotate-180' : ''}`}>expand_more</span>

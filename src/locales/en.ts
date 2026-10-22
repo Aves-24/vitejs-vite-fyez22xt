@@ -1640,6 +1640,7 @@ export const views = {
     groupTopicTodayClosed: "Today · training ended",
     groupTopicEdit: "Edit topic",
     groupTopicPlanned: "Planned",
+    groupTopicNone: "No topic for today — add one with the plus.",
     groupTopicDelete: "Delete topic",
     groupTopicPlan: "Plan a topic for another day",
     groupTopicDay: "Training day",

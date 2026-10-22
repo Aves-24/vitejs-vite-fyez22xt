@@ -281,6 +281,12 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     setModal({ day, edit: !!gt });
   };
 
+  // Pierwszy dzień bez tematu, od dziś.
+  const firstFreeDay = () => {
+    const d = new Date();
+    while (byDay[dayKeyOf(d.getTime())]) d.setDate(d.getDate() + 1);
+    return dayKeyOf(d.getTime());
+  };
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   // Sekcja = biały środek, ramka i pasek nagłówka w odcieniu różu (user 2026-10-22).
   const sectionHeader = 'text-[9px] font-black uppercase tracking-widest px-3 py-2';
@@ -298,16 +304,17 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     <div className="space-y-2">
       {/* Odcienie różu od jasnego (temat) do ciemnego (lista grupy) — user 2026-10-16. */}
       <div className="bg-white border-2 border-rose-100 rounded-xl overflow-hidden">
-      {/* „+” = temat na dziś (user 2026-10-22); „Powtórz” jest przy wpisach historii. */}
+      {/* „+” = nowy temat (user 2026-10-22): na dziś, a gdy dziś już jest —
+          na pierwszy wolny dzień; datę zmienia się w oknie. „Powtórz” jest przy wpisach historii. */}
       <div className={`${sectionHeader} bg-rose-50 text-rose-500 flex items-center justify-between gap-2`}>
         <span>{t('coachDashboard.groupTopicLabel')}</span>
-        {!todayTopic && (
+        {(
           <button
             type="button"
-            onClick={() => openModal(today)}
+            onClick={() => openModal(firstFreeDay())}
             disabled={members.length === 0 || saving}
-            aria-label={t('coachDashboard.groupTopicSet')}
-            title={t('coachDashboard.groupTopicSet')}
+            aria-label={t(todayTopic ? 'coachDashboard.groupTopicPlan' : 'coachDashboard.groupTopicSet')}
+            title={t(todayTopic ? 'coachDashboard.groupTopicPlan' : 'coachDashboard.groupTopicSet')}
             className="-my-1 w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all disabled:opacity-40"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -368,6 +375,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         </div>
       )}
 
+      {!todayTopic && upcoming.length === 0 && (
+        <p className="text-[10px] font-bold text-gray-400 ml-1">{t('coachDashboard.groupTopicNone')}</p>
+      )}
+
       {/* Zaplanowane na kolejne dni — w tej samej sekcji co dzisiejszy temat
           (user 2026-10-22); uczniowie zobaczą je dopiero w ich dniu. */}
       {upcoming.length > 0 && (
@@ -406,18 +417,6 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => {
-          const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-          openModal(dayKeyOf(tomorrow.getTime()));
-        }}
-        disabled={members.length === 0 || saving}
-        className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] flex items-center justify-center gap-1 active:scale-95 transition-all disabled:opacity-40"
-      >
-        <span className="material-symbols-outlined text-rose-500 text-[14px]">event</span>
-        {t('coachDashboard.groupTopicPlan')}
-      </button>
       </div>
       </div>
 

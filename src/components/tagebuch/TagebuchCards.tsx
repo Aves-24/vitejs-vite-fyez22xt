@@ -368,9 +368,31 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
 }) {
   const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState(false);
+  // Opis i linki zwinięte (user 2026-10-22) — w zwiniętym widać tylko, ŻE są.
+  const [more, setMore] = useState(false);
   const tt = entry.trainingTopic!;
   const open = isTopicOpen(tt);
   const day = new Date(`${tt.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  const linkCount = tt.links?.length || 0;
+  const hasMore = !!tt.desc || linkCount > 0;
+  // Status po zamknięciu tematu — mały, w stopce po prawej zamiast dużego przycisku.
+  const status = open ? null : trained ? (
+    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+      <span className="material-symbols-outlined text-[13px]">check</span>{t('tagebuch.topicTrained')}
+    </span>
+  ) : tt.ackAt ? (
+    <span className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-200 rounded-full px-2 py-0.5">
+      <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAcked')}
+    </span>
+  ) : (
+    <button
+      onClick={async () => { setBusy(true); try { await onAck(); } finally { setBusy(false); } }}
+      disabled={busy}
+      className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-300 rounded-full px-2.5 py-1 active:scale-95 transition-all disabled:opacity-50"
+    >
+      <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAck')}
+    </button>
+  );
   return (
     <div className={`${CARD_SHAPE} tb-topic bg-violet-50 border-violet-200 ${CARD_PAD}`}>
       <EntryRow
@@ -382,29 +404,37 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
         extra={isNew ? <NewBadge /> : undefined}
       >
       <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
-      {tt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{tt.desc}</p>}
       <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
       <TopicChips topics={entry.topics} />
-      <TopicLinks links={tt.links} className="mt-2" />
-      {!open && (
-        <div className="mt-2">
-          {trained ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
-              <span className="material-symbols-outlined text-[13px]">check</span>{t('tagebuch.topicTrained')}
-            </span>
-          ) : tt.ackAt ? (
-            <span className="inline-flex items-center gap-1 text-[10px] font-black text-violet-700 bg-white border border-violet-200 rounded-full px-2 py-0.5">
-              <span className="material-symbols-outlined text-[13px]">visibility</span>{t('tagebuch.topicAcked')}
-            </span>
-          ) : (
+      {more && (
+        <div className="mt-2 pt-2 border-t border-violet-200/70 space-y-2">
+          {tt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{tt.desc}</p>}
+          <TopicLinks links={tt.links} />
+        </div>
+      )}
+      {(hasMore || status) && (
+        <div className="flex items-center justify-between gap-2 mt-2">
+          {hasMore ? (
             <button
-              onClick={async () => { setBusy(true); try { await onAck(); } finally { setBusy(false); } }}
-              disabled={busy}
-              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-white bg-violet-500 rounded-full px-3 py-1 active:scale-95 transition-all disabled:opacity-50"
+              type="button"
+              onClick={() => setMore(m => !m)}
+              aria-expanded={more}
+              className="inline-flex items-center gap-1.5 text-[10px] font-black text-violet-700 active:opacity-60"
             >
-              <span className="material-symbols-outlined text-[14px]">visibility</span>{t('tagebuch.topicAck')}
+              {tt.desc && (
+                <span className="inline-flex items-center gap-0.5 bg-white border border-violet-200 rounded-full px-1.5 py-0.5">
+                  <span className="material-symbols-outlined text-[13px]">notes</span>{t('tagebuch.topicDesc')}
+                </span>
+              )}
+              {linkCount > 0 && (
+                <span className="inline-flex items-center gap-0.5 bg-white border border-violet-200 rounded-full px-1.5 py-0.5">
+                  <span className="material-symbols-outlined text-[13px]">link</span>{t('tagebuch.topicLinks', { count: linkCount })}
+                </span>
+              )}
+              <span className={`material-symbols-outlined text-[16px] transition-transform ${more ? 'rotate-180' : ''}`}>expand_more</span>
             </button>
-          )}
+          ) : <span />}
+          {status}
         </div>
       )}
       </EntryRow>

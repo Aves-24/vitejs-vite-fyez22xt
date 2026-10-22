@@ -1851,16 +1851,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
                       onOpenStudent={setSheetStudentId}
-                    />
-
-                    <GroupTrainingHistory
-                      groupId={group.id}
-                      coachId={userId}
-                      members={members}
-                      topics={coachGroupTopics[group.id] || {}}
-                      legacyNotes={groupNotes[group.id] || EMPTY_NOTES}
-                      onLegacyMigrated={() => handleLegacyNotesMigrated(group.id)}
-                      onOpenStudent={setSheetStudentId}
+                      renderHistory={repeatToday => (
+                        <GroupTrainingHistory
+                          onRepeat={repeatToday}
+                          groupId={group.id}
+                          coachId={userId}
+                          members={members}
+                          topics={coachGroupTopics[group.id] || {}}
+                          legacyNotes={groupNotes[group.id] || EMPTY_NOTES}
+                          onLegacyMigrated={() => handleLegacyNotesMigrated(group.id)}
+                          onOpenStudent={setSheetStudentId}
+                        />
+                      )}
                     />
 
                     <CollapsibleSection

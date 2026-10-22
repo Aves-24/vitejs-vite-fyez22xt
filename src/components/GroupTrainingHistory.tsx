@@ -7,7 +7,7 @@ import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
 import { dayKeyOf } from '../utils/focus';
-import { loadTopicStatus, TopicMemberList, type GroupTopicsByDay, type MemberStatus } from './GroupTopicPanel';
+import { loadTopicStatus, TopicMemberList, type GroupTopic, type GroupTopicsByDay, type MemberStatus } from './GroupTopicPanel';
 
 // [HISTORIA TRENINGÓW] (user 2026-10-15) Zastępuje „Dziennik grupy”: minione
 // tematy treningu grupy od najnowszego — kto trenował pod temat, kto
@@ -22,7 +22,7 @@ const PAGE = 5;
 interface LooseNote { id: string; text: string; timestamp: number }
 interface HistoryDoc { notes?: Record<string, string>; loose?: LooseNote[] }
 
-export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent }: {
+export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent, onRepeat }: {
   groupId: string;
   coachId: string;
   members: any[];
@@ -30,6 +30,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   legacyNotes: LooseNote[];
   onLegacyMigrated: () => void;
   onOpenStudent?: (studentId: string) => void;
+  /** „Powtórz na dziś” przy wpisie (user 2026-10-22); null = dziś już jest temat. */
+  onRepeat?: ((gt: GroupTopic) => void) | null;
 }) {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -139,7 +141,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           const isOpen = expanded === day;
           return (
             <div key={it.key} className={`bg-white border rounded-xl ${isOpen ? 'border-rose-300' : 'border-rose-100'}`}>
-              <button onClick={() => toggle(day)} className="w-full flex items-start gap-2 pl-3 pr-2 py-2 text-left active:opacity-70">
+              <div className="flex items-start">
+              <button onClick={() => toggle(day)} className="flex-1 min-w-0 flex items-start gap-2 pl-3 pr-2 py-2 text-left active:opacity-70">
                 <span className="material-symbols-outlined text-[16px] text-rose-500 mt-px">sports</span>
                 <span className="flex-1 min-w-0">
                   <span className="block text-[9px] font-black text-[#0a3a2a]">{dayLabel(day)}</span>
@@ -150,6 +153,18 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
                 {note && !isOpen && <span className="material-symbols-outlined text-[15px] text-gray-400 mt-px">edit_note</span>}
                 <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
               </button>
+              {onRepeat && (
+                <button
+                  type="button"
+                  onClick={() => onRepeat(gt)}
+                  aria-label={t('coachDashboard.groupTopicRepeat')}
+                  title={t('coachDashboard.groupTopicRepeat')}
+                  className="w-8 h-8 mt-1.5 mr-1.5 shrink-0 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[17px]">replay</span>
+                </button>
+              )}
+              </div>
               {isOpen && (
                 <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
                   <TopicLinks links={gt.links} tone="coach" small />

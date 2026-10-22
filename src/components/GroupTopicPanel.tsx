@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
@@ -112,7 +112,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -121,6 +121,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   onChanged: (next: GroupTopicsByDay) => void;
   showToast: (msg: string) => void;
   onOpenStudent?: (studentId: string) => void;
+  /** Historia treningów pod sekcją tematu — dostaje „Powtórz na dziś” (null, gdy dziś już jest temat). */
+  renderHistory?: (repeatToday: ((gt: GroupTopic) => void) | null) => ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -134,8 +136,6 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const days = useMemo(() => Object.keys(byDay).sort(), [byDay]);
   const todayTopic = byDay[today];
   const upcoming = days.filter(d => d > today);
-  const lastDay = [...days].reverse().find(d => d < today);
-  const last = lastDay ? byDay[lastDay] : undefined;
   // Karta główna: tylko dzisiejszy temat — minione są w historii treningów.
   // Zakończony dziś trening od razu idzie do historii treningów.
   const shown = todayTopic && !todayTopic.closedAt ? todayTopic : undefined;
@@ -298,7 +298,22 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     <div className="space-y-2">
       {/* Odcienie różu od jasnego (temat) do ciemnego (lista grupy) — user 2026-10-16. */}
       <div className="bg-white border-2 border-rose-100 rounded-xl overflow-hidden">
-      <p className={`${sectionHeader} bg-rose-50 text-rose-500`}>{t('coachDashboard.groupTopicLabel')}</p>
+      {/* „+” = temat na dziś (user 2026-10-22); „Powtórz” jest przy wpisach historii. */}
+      <div className={`${sectionHeader} bg-rose-50 text-rose-500 flex items-center justify-between gap-2`}>
+        <span>{t('coachDashboard.groupTopicLabel')}</span>
+        {!todayTopic && (
+          <button
+            type="button"
+            onClick={() => openModal(today)}
+            disabled={members.length === 0 || saving}
+            aria-label={t('coachDashboard.groupTopicSet')}
+            title={t('coachDashboard.groupTopicSet')}
+            className="-my-1 w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all disabled:opacity-40"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+          </button>
+        )}
+      </div>
       <div className="space-y-2 p-2.5">
 
       {todayTopic?.closedAt && (
@@ -308,38 +323,6 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         </p>
       )}
 
-      {!todayTopic && (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => openModal(today)}
-            disabled={members.length === 0 || saving}
-            className="flex-1 py-2.5 rounded-xl border-2 border-dashed border-rose-300 bg-white text-[#0a3a2a] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-rose-500 text-[16px]">sports</span>
-            {t('coachDashboard.groupTopicSet')}
-          </button>
-          {last && (
-            <button
-              type="button"
-              onClick={() => create(today, { text: last.text, topic: last.topic, links: last.links ?? [] })}
-              disabled={members.length === 0 || saving}
-              className="flex-1 py-2.5 rounded-xl bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all disabled:opacity-40"
-            >
-              <span className="material-symbols-outlined text-[16px]">replay</span>
-              {t('coachDashboard.groupTopicRepeat')}
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Przypomnienie, co „Powtórz” skopiuje — bez wchodzenia w historię. */}
-      {!todayTopic && last && (
-        <p className="text-[10px] font-bold text-[#0a3a2a] leading-snug ml-1 line-clamp-2 break-words">
-          <span className="text-[9px] font-black uppercase tracking-wide text-rose-500">{t('coachDashboard.groupTopicLast', { date: dayLabel(last.day) })}: </span>
-          {focusTitle(last, t)}
-        </p>
-      )}
 
       {shown && (
         <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-white border-rose-200' : 'bg-white border-gray-200'}`}>
@@ -437,6 +420,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       </button>
       </div>
       </div>
+
+      {renderHistory?.(!todayTopic && members.length > 0 && !saving
+        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [] })
+        : null)}
 
       {modal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>

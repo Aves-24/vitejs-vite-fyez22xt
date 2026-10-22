@@ -384,15 +384,12 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           )}
         </div>
       )}
-      </div>
-      </div>
 
-      {/* Zaplanowane na kolejne dni — uczniowie zobaczą je dopiero w ich dniu. */}
-      <div className="bg-white border-2 border-rose-200 rounded-xl overflow-hidden">
-      <p className={`${sectionHeader} bg-rose-100 text-rose-600`}>{t('coachDashboard.groupTopicPlanned')}</p>
-      <div className="space-y-1 p-2.5">
+      {/* Zaplanowane na kolejne dni — w tej samej sekcji co dzisiejszy temat
+          (user 2026-10-22); uczniowie zobaczą je dopiero w ich dniu. */}
       {upcoming.length > 0 && (
-        <div className="space-y-1">
+        <div className="space-y-1 pt-2 border-t border-rose-100">
+          <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-1">{t('coachDashboard.groupTopicPlanned')}</p>
           {upcoming.map(d => {
             const gt = byDay[d];
             return (

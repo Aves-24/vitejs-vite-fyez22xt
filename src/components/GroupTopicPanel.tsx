@@ -539,6 +539,21 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           placeholder={t('coachDashboard.groupTopicLinkPlaceholder')}
                           className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
                         />
+                        {/* Usuń link razem z tytułem (user 2026-10-22); zapis tematu usuwa go też u uczniów. */}
+                        {(v || linkTitleInputs[i]) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLinkInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
+                              setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
+                            }}
+                            aria-label={t('coachDashboard.groupTopicLinkRemove')}
+                            title={t('coachDashboard.groupTopicLinkRemove')}
+                            className="w-8 h-8 shrink-0 rounded-lg text-red-400 hover:text-red-600 flex items-center justify-center active:scale-90 transition-all"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        )}
                       </div>
                       {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-9">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
                       {linkChecks[i] && (

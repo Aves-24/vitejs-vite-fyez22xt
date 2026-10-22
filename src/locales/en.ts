@@ -1644,6 +1644,7 @@ export const views = {
     groupTopicEdit: "Edit topic",
     groupTopicPlanned: "Planned",
     groupTopicNone: "No topic for today — add one with the plus.",
+    groupTopicLinkRemove: "Remove link",
     groupTopicLinkTitlePlaceholder: "Link title (optional)",
     groupTopicTitleFetch: "Get title",
     groupTopicTitleFetchFail: "Could not get the title — please type it yourself.",

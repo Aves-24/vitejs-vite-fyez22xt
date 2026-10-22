@@ -1968,15 +1968,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           >
             {/* Nagłówek — przyklejony na górze, nie scrolluje */}
             <div className="bg-[#0a3a2a] px-6 pt-6 pb-5 relative overflow-hidden shrink-0">
-              <div className="absolute right-4 top-4 opacity-[0.07]">
-                <span className="material-symbols-outlined text-[80px] text-white">military_tech</span>
-              </div>
               <div className="flex items-start justify-between relative z-10">
                 <div>
                   <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-1">Grot-X</p>
                   <h2 className="text-xl font-black text-white tracking-tighter leading-none">GROT-X System</h2>
-                  <p className="text-[11px] font-black text-[#fed33e] leading-none mt-0.5">{t('home.motivational')}</p>
-                  <p className="text-[9px] font-bold text-white/50 mt-1">{t('home.xpAndHandicap')}</p>
+
                 </div>
                 <button
                   onClick={() => setIsRankInfoOpen(false)}
@@ -2004,7 +2000,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                         style={{ width: `${rankProgress}%`, background: userRankColor, opacity: 0.9 }}
                       />
                     </div>
-                    <span className="text-[8px] font-black text-white/50 shrink-0">{rankProgress}%</span>
+                    {!rankPending && rank.nextHandicap !== null && rank.handicap !== null && (
+                      <span className="text-[8px] font-black text-white/60 shrink-0">
+                        {t('home.rankToNext', { n: Math.max(1, rank.handicap - rank.nextHandicap), name: nextRankName })}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="text-right shrink-0">

@@ -1038,6 +1038,18 @@ test('[OPIS TEMATU] opis do 1000 znakow, autor go edytuje', async () => {
   await assertFails(updateDoc(l(alice(), 'd1'), { desc: 'Uczeń zmienia opis' }));
 });
 
+test('[TYTULY LINKOW] do 3 tytulow po 120 znakow, autor je edytuje', async () => {
+  const base = { authorId: 'coach1', text: 'Temat', type: 'topic', topics: [], day: '2026-10-22', groupId: 'g1', links: ['https://youtu.be/abc'] };
+  const l = (db, id) => doc(db, `users/alice/coachLog/${id}`);
+  await assertSucceeds(setDoc(l(coach1(), 't1'), { ...base, linkTitles: ['Rückenspannung – Übung'] }));
+  await assertFails(setDoc(l(coach1(), 't2'), { ...base, linkTitles: ['x'.repeat(121)] }));
+  await assertFails(setDoc(l(coach1(), 't3'), { ...base, linkTitles: ['a', 'b', 'c', 'd'] }));
+  await assertFails(setDoc(l(coach1(), 't4'), { ...base, linkTitles: 'Tytuł' }));
+  await assertSucceeds(updateDoc(l(coach1(), 't1'), { text: 'Temat', topics: [], links: ['https://youtu.be/abc'], linkTitles: ['Nowy tytuł'], editedAt: Date.now() }));
+  await assertSucceeds(updateDoc(l(coach1(), 't1'), { text: 'Temat', topics: [], links: [], linkTitles: [], editedAt: Date.now() }));
+  await assertFails(updateDoc(l(alice(), 't1'), { linkTitles: ['Uczeń'] }));
+});
+
 test('Path K: trener ustawia liczbe lekcji fokusu 1-5', async () => {
   const a = () => doc(coach1(), 'users/alice');
   await assertSucceeds(updateDoc(a(), { focusGoal: 1, focusDots: true }));

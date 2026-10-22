@@ -446,7 +446,7 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
           {linkCount > 0 && (
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[16px] text-violet-500 shrink-0">link</span>
-              <TopicLinks links={tt.links} />
+              <TopicLinks links={tt.links} titles={tt.linkTitles} />
             </div>
           )}
         </div>

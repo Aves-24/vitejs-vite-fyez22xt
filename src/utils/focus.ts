@@ -74,6 +74,7 @@ export interface ActiveFocus {
   topicId?: string;      // TEMAT TRENINGU (nie fokus) — id wpisu 'topic' w coachLog
   links?: string[];      // TEMAT TRENINGU — linki od trenera
   desc?: string;         // TEMAT TRENINGU — opis pod tytułem (jak treść maila)
+  linkTitles?: string[]; // TEMAT TRENINGU — tytuły linków (ten sam indeks co links)
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -661,6 +662,7 @@ export interface TrainingTopic {
   ackAt?: number;
   links?: string[];     // do TOPIC_LINKS_MAX linków http(s) od trenera
   desc?: string;        // opis pod tytułem, do TOPIC_DESC_MAX znaków
+  linkTitles?: string[]; // tytuł przy linku (ten sam indeks), '' = bez tytułu
 }
 
 // [LINKI W TEMACIE] (user 2026-10-16) Trener dokłada do tematu do 3 linków
@@ -669,6 +671,8 @@ export interface TrainingTopic {
 export const TOPIC_LINKS_MAX = 3;
 /** Opis tematu pod tytułem — jak treść maila pod tematem (user 2026-10-22). LUSTRO: firestore.rules (coachLog). */
 export const TOPIC_DESC_MAX = 1000;
+/** Tytuł linku (wpisany albo pobrany z YouTube przez trenera). LUSTRO: firestore.rules. */
+export const TOPIC_LINK_TITLE_MAX = 120;
 export const TOPIC_LINK_MAX_LEN = 500;
 
 /** Link wpisany przez trenera → pełny adres http(s) albo null (zły / inny protokół). */
@@ -692,6 +696,17 @@ export function readTopicLinks(data: any): string[] {
     : [];
 }
 
+/** Tytuły do linków z readTopicLinks — ten sam porządek, '' gdy brak. */
+export function readTopicLinkTitles(data: any): string[] {
+  if (!Array.isArray(data?.links)) return [];
+  const titles: unknown[] = Array.isArray(data.linkTitles) ? data.linkTitles : [];
+  return (data.links as unknown[])
+    .map((l, i) => ({ l, i }))
+    .filter(({ l }) => typeof l === 'string' && normalizeTopicLink(l) === l)
+    .slice(0, TOPIC_LINKS_MAX)
+    .map(({ i }) => (typeof titles[i] === 'string' ? (titles[i] as string).slice(0, TOPIC_LINK_TITLE_MAX) : ''));
+}
+
 /** Migawka tematu w sesji — trening robiony pod ten temat. */
 export interface SessionTrainingTopic { id: string; text: string; topic: string; day: string }
 
@@ -711,6 +726,7 @@ export function readTrainingTopic(id: string, data: any): TrainingTopic | null {
     ...(data.ackAt ? { ackAt: toMs(data.ackAt) } : {}),
     ...(readTopicLinks(data).length ? { links: readTopicLinks(data) } : {}),
     ...(typeof data.desc === 'string' && data.desc ? { desc: data.desc } : {}),
+    ...(readTopicLinkTitles(data).some(Boolean) ? { linkTitles: readTopicLinkTitles(data) } : {}),
   };
 }
 
@@ -722,7 +738,7 @@ export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Da
 export function topicAsFocus(t: TrainingTopic): ActiveFocus {
   return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id,
     ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}),
-    ...(t.links?.length ? { links: t.links } : {}), ...(t.desc ? { desc: t.desc } : {}) };
+    ...(t.links?.length ? { links: t.links } : {}), ...(t.desc ? { desc: t.desc } : {}), ...(t.linkTitles ? { linkTitles: t.linkTitles } : {}) };
 }
 
 export function sessionTrainingTopic(f: ActiveFocus): SessionTrainingTopic {

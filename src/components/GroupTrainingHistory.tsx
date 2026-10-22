@@ -184,7 +184,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               {isOpen && (
                 <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
                   {gt.desc && <p className="text-[11px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{gt.desc}</p>}
-                  <TopicLinks links={gt.links} tone="coach" small />
+                  <TopicLinks links={gt.links} titles={gt.linkTitles} tone="coach" small />
                   <TopicMemberList members={members} gt={gt} status={status[day] || {}} onOpenStudent={onOpenStudent} />
                   <textarea
                     value={draft}

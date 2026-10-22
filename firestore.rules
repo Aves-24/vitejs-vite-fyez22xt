@@ -460,6 +460,19 @@ service cloud.firestore {
     }
     // [TEMAT TRENINGU 2026-10-22] Opis pod tytułem (jak treść maila).
     // LUSTRO: src/utils/focus.ts (TOPIC_DESC_MAX).
+    // [TYTUŁY LINKÓW 2026-10-22] tytuł przy linku (ten sam indeks), każdy ≤ 120 znaków.
+    // LUSTRO: src/utils/focus.ts (TOPIC_LINK_TITLE_MAX).
+    function okLinkTitle(x) {
+      return x is string && x.size() <= 120;
+    }
+    function okTopicLinkTitles(d) {
+      return !('linkTitles' in d)
+        || (d.linkTitles is list
+            && d.linkTitles.size() <= 3
+            && (d.linkTitles.size() < 1 || okLinkTitle(d.linkTitles[0]))
+            && (d.linkTitles.size() < 2 || okLinkTitle(d.linkTitles[1]))
+            && (d.linkTitles.size() < 3 || okLinkTitle(d.linkTitles[2])));
+    }
     function okTopicDesc(d) {
       return !('desc' in d) || (d.desc is string && d.desc.size() <= 1000);
     }
@@ -487,16 +500,18 @@ service cloud.firestore {
                 && !('closedAt' in request.resource.data)
                 && !('ackAt' in request.resource.data)))
         && okTopicLinks(request.resource.data)
-        && okTopicDesc(request.resource.data);
+        && okTopicDesc(request.resource.data)
+        && okTopicLinkTitles(request.resource.data);
 
       // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'topic'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc', 'linkTitles'])
         && okTopicLinks(request.resource.data)
         && okTopicDesc(request.resource.data)
+        && okTopicLinkTitles(request.resource.data)
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 300

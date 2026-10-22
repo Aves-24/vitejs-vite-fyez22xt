@@ -1560,7 +1560,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {focusState?.trainingTopic?.desc && (
               <p className="text-[10px] font-medium text-gray-500 leading-snug line-clamp-2 mt-1.5 px-1">{focusState.trainingTopic.desc}</p>
             )}
-            <TopicLinks links={focusState?.trainingTopic?.links} className="mt-1.5 justify-end" />
+            <TopicLinks links={focusState?.trainingTopic?.links} titles={focusState?.trainingTopic?.linkTitles} className="mt-1.5 justify-end" />
           </div>
         )}
 

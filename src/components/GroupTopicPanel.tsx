@@ -4,10 +4,10 @@ import { useTranslation } from 'react-i18next';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import TopicPicker from './TopicPicker';
-import TopicLinks from './TopicLinks';
+import TopicLinks, { isYouTube } from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
-import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
+import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_LINK_TITLE_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
 
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
 // dziś albo planuje go na kolejne dni. Technicznie: wpis 'topic' w coachLog
@@ -32,9 +32,11 @@ export interface GroupTopic {
   links?: string[];
   /** Opis pod tytułem (jak treść maila). */
   desc?: string;
+  /** Tytuły linków (ten sam indeks co links), '' = bez tytułu. */
+  linkTitles?: string[];
 }
 
-type TopicBase = { text: string; topic: string; links: string[]; desc: string };
+type TopicBase = { text: string; topic: string; links: string[]; desc: string; linkTitles: string[] };
 
 export type GroupTopicsByDay = Record<string, GroupTopic>;
 
@@ -132,6 +134,9 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const [pickedTopics, setPickedTopics] = useState<string[]>([]);
   const [linkInputs, setLinkInputs] = useState<string[]>(['', '', '']);
   const [desc, setDesc] = useState('');
+  const [linkTitleInputs, setLinkTitleInputs] = useState<string[]>(['', '', '']);
+  // Indeks linku, dla którego trwa pobieranie tytułu z YouTube.
+  const [fetchingTitle, setFetchingTitle] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Record<string, MemberStatus>>({});
 
@@ -167,7 +172,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   // Wpis u każdego ucznia osobno — błąd u jednego nie blokuje reszty.
-  const assignTo = async (list: any[], topic: { text: string; topic: string; day: string; links?: string[]; desc?: string }) => {
+  const assignTo = async (list: any[], topic: { text: string; topic: string; day: string; links?: string[]; desc?: string; linkTitles?: string[] }) => {
     const authorName = await coachName();
     const results = await Promise.all(list.map(async s => {
       try {
@@ -181,6 +186,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           groupId,
           ...(topic.links?.length ? { links: topic.links } : {}),
           ...(topic.desc ? { desc: topic.desc } : {}),
+          ...(topic.links?.length && topic.linkTitles?.some(Boolean) ? { linkTitles: topic.linkTitles } : {}),
           createdAt: serverTimestamp(),
         });
         return [s.id, ref.id] as const;
@@ -240,8 +246,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     if (!base.text || members.length === 0) return;
     const entryIds = await assignTo(members, { ...base, day });
     const cal = await addToCalendar(day, base);
-    const { links, desc, ...rest } = base;
-    await save(day, { ...rest, ...(links.length ? { links } : {}), ...(desc ? { desc } : {}), day, setAt: Date.now(), entryIds, ...cal });
+    const { links, desc, linkTitles, ...rest } = base;
+    await save(day, { ...rest, ...(links.length ? { links } : {}), ...(desc ? { desc } : {}), ...(linkTitles.some(Boolean) ? { linkTitles } : {}), day, setAt: Date.now(), entryIds, ...cal });
     setModal(null);
   });
 
@@ -249,13 +255,14 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const edit = (gt: GroupTopic, base: TopicBase) => run(async () => {
     if (!base.text) return;
     await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), {
-      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, desc: base.desc, editedAt: Date.now(),
+      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, desc: base.desc, linkTitles: base.linkTitles, editedAt: Date.now(),
     }));
     await syncCalendar(gt, base);
-    const { links, desc, ...rest } = base;
+    const { links, desc, linkTitles, ...rest } = base;
     const next: GroupTopic = { ...gt, ...rest };
     if (links.length) next.links = links; else delete next.links;
     if (desc) next.desc = desc; else delete next.desc;
+    if (linkTitles.some(Boolean)) next.linkTitles = linkTitles; else delete next.linkTitles;
     await save(gt.day, next);
     setModal(null);
   });
@@ -284,6 +291,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     setPickedTopics(gt?.topic ? [gt.topic] : []);
     setLinkInputs([0, 1, 2].map(i => gt?.links?.[i] ?? ''));
     setDesc(gt?.desc ?? '');
+    setLinkTitleInputs([0, 1, 2].map(i => gt?.linkTitles?.[i] ?? ''));
     setModal({ day, edit: !!gt });
   };
 
@@ -300,11 +308,37 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   // Puste pole = brak linku; wpisane, ale złe = blokada zapisu z komunikatem.
   const linkChecks = linkInputs.map(v => (v.trim() ? normalizeTopicLink(v) : ''));
   const linksInvalid = linkChecks.some(v => v === null);
+  // Link + jego tytuł; powtórzony link liczy się raz (pierwszy wygrywa).
+  const linkPairs = linkChecks
+    .map((link, i) => ({ link, title: (linkTitleInputs[i] || '').trim().slice(0, TOPIC_LINK_TITLE_MAX) }))
+    .filter((p, i, all): p is { link: string; title: string } => !!p.link && all.findIndex(q => q.link === p.link) === i)
+    .slice(0, TOPIC_LINKS_MAX);
+
+  // [TYTUŁ Z YOUTUBE] (user 2026-10-22) Tylko na przycisk trenera: publiczny
+  // oEmbed YouTube zwraca tytuł filmu, trener go sprawdza/poprawia, a uczniowie
+  // dostają zapisany tekst — ich telefony nie łączą się z YouTube.
+  // Opisane w Datenschutzerklärung (2.9).
+  const fetchYouTubeTitle = async (i: number) => {
+    const url = linkChecks[i];
+    if (!url) return;
+    setFetchingTitle(i);
+    try {
+      const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, { referrerPolicy: 'no-referrer', credentials: 'omit' });
+      const data = res.ok ? await res.json() : null;
+      const title = typeof data?.title === 'string' ? data.title.trim().slice(0, TOPIC_LINK_TITLE_MAX) : '';
+      if (title) setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? title : x)));
+      else showToast(t('coachDashboard.groupTopicTitleFetchFail'));
+    } catch {
+      showToast(t('coachDashboard.groupTopicTitleFetchFail'));
+    }
+    setFetchingTitle(null);
+  };
   const modalBase: TopicBase = {
     text: text.trim().slice(0, FOCUS_TEXT_MAX),
     topic: pickedTopics[0] || '',
-    links: [...new Set(linkChecks.filter((v): v is string => !!v))].slice(0, TOPIC_LINKS_MAX),
+    links: linkPairs.map(p => p.link),
     desc: desc.trim().slice(0, TOPIC_DESC_MAX),
+    linkTitles: linkPairs.map(p => p.title),
   };
 
   return (
@@ -367,7 +401,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
             )}
           </div>
 
-          <TopicLinks links={shown.links} tone="coach" small className="mt-2" />
+          <TopicLinks links={shown.links} titles={shown.linkTitles} tone="coach" small className="mt-2" />
 
           <div className="mt-2">
             <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} onOpenStudent={onOpenStudent} />
@@ -429,7 +463,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       </div>
 
       {renderHistory?.(!todayTopic && members.length > 0 && !saving
-        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '' })
+        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '', linkTitles: gt.linkTitles ?? [] })
         : null, gt => openModal(gt.day, gt))}
 
       {modal && createPortal(
@@ -507,10 +541,36 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                         />
                       </div>
                       {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-9">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
+                      {linkChecks[i] && (
+                        <div className="flex items-center gap-1.5 mt-1 ml-9">
+                          <input
+                            value={linkTitleInputs[i]}
+                            maxLength={TOPIC_LINK_TITLE_MAX}
+                            onChange={e => setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? e.target.value.slice(0, TOPIC_LINK_TITLE_MAX) : x)))}
+                            placeholder={t('coachDashboard.groupTopicLinkTitlePlaceholder')}
+                            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500"
+                          />
+                          {isYouTube(linkChecks[i] as string) && (
+                            <button
+                              type="button"
+                              onClick={() => fetchYouTubeTitle(i)}
+                              disabled={fetchingTitle !== null}
+                              title={t('coachDashboard.groupTopicTitleFetch')}
+                              className="shrink-0 h-8 px-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-1 active:scale-95 transition-all disabled:opacity-50"
+                            >
+                              <span className={`material-symbols-outlined text-[15px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'download'}</span>
+                              {t('coachDashboard.groupTopicTitleFetch')}
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
                 <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1.5">{t('coachDashboard.groupTopicLinksHint')}</p>
+                {linkChecks.some(l => l && isYouTube(l)) && (
+                  <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
+                )}
               </div>
             </div>
             <div className="flex gap-2 mt-3 shrink-0">

@@ -1071,7 +1071,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         : null;
 
   // Wiersz ucznia — ten sam w zakładce UCZNIOWIE i w rozwiniętej grupie.
-  const renderStudentRow = (student: any) => {
+  const renderStudentRow = (student: any, index = 0) => {
     const lastActivity = student.exactLastActivity || 0;
     const lastChecked = studentLastChecked[student.id] || 0;
     const hasNewActivity = lastActivity > lastChecked;
@@ -1088,7 +1088,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         {/* W trybie wyboru klik zaznacza zamiast otwierać statystyki */}
         <div
           onClick={(e) => isSelecting ? toggleStudentSelection(e, student.id) : setSheetStudentId(student.id)}
-          className={`bg-white rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
+          // Co drugi wiersz minimalnie szary — długa lista się nie zlewa (user 2026-10-22).
+          className={`${index % 2 ? 'bg-gray-50' : 'bg-white'} rounded-2xl p-2.5 pr-1 shadow-sm border active:scale-[0.98] transition-all relative overflow-hidden flex items-center justify-between cursor-pointer ${
             isSelected ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : 'border-gray-100'
           }`}
         >
@@ -1174,10 +1175,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   flag: '#dc2626',
                 };
                 const color = typeColors[entry.type] || '#059669';
+                // Opis, co to za linia — sam tekst był dla trenera zagadką (user 2026-10-22).
+                const typeLabel: Record<string, string> = {
+                  observation: t('coachLog.typeObservation'),
+                  tip: t('coachLog.typeTip'),
+                  goal: t('coachLog.typeGoal'),
+                  flag: t('coachLog.typeFlag'),
+                  topic: t('coachDashboard.groupTopicLabel'),
+                };
                 return (
                   <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
                     <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
-                    {entry.text}
+                    <span className="truncate">{typeLabel[entry.type] && <span className="font-black">{typeLabel[entry.type]}:</span>} {entry.text}</span>
                   </p>
                 );
               })()}
@@ -1311,7 +1320,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     return (
       <p className="text-[9px] font-bold mt-0.5 flex items-center gap-1 min-w-0 text-amber-800">
         <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">track_changes</span>
-        <span className="truncate">{focusTitle(fc.focus, t)}</span>
+        <span className="truncate"><span className="font-black">{t('coachLog.typeGoal')}:</span> {focusTitle(fc.focus, t)}</span>
         {fc.dots && <span className="shrink-0 ml-0.5"><FocusDots count={fc.count} goal={fc.goal} small light /></span>}
       </p>
     );

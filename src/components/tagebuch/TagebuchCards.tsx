@@ -394,7 +394,13 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
     </button>
   );
   return (
-    <div className={`${CARD_SHAPE} tb-topic bg-violet-50 border-violet-200 ${CARD_PAD}`}>
+    // Całe pole rozwija opis i linki (user 2026-10-22); przyciski w środku nie.
+    <div
+      className={`${CARD_SHAPE} tb-topic bg-violet-50 border-violet-200 ${CARD_PAD} ${hasMore ? 'cursor-pointer' : ''}`}
+      onClick={hasMore ? () => setMore(m => !m) : undefined}
+      role={hasMore ? 'button' : undefined}
+      aria-expanded={hasMore ? more : undefined}
+    >
       <EntryRow
         icon="sports"
         iconCls="text-violet-600"
@@ -404,34 +410,45 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
         extra={isNew ? <NewBadge /> : undefined}
       >
       <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
-      <p className="text-[10px] font-bold text-violet-700/80 mt-0.5">— {entry.authorName}</p>
-      <TopicChips topics={entry.topics} />
-      {more && (
-        <div className="mt-2 pt-2 border-t border-violet-200/70 space-y-2">
-          {tt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{tt.desc}</p>}
-          <TopicLinks links={tt.links} />
+      {/* Autor, a po prawej znak, że jest coś więcej (opis / linki) — bez osobnej stopki. */}
+      <div className="flex items-center gap-2 mt-0.5">
+        <p className="flex-1 min-w-0 truncate text-[10px] font-bold text-violet-700/80">— {entry.authorName}</p>
+        {hasMore && (
+          <span
+            className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-black text-violet-600"
+            aria-label={[tt.desc ? t('tagebuch.topicDesc') : '', linkCount ? t('tagebuch.topicLinks', { count: linkCount }) : ''].filter(Boolean).join(', ')}
+          >
+            {!more && tt.desc && <span className="material-symbols-outlined text-[16px]">notes</span>}
+            {!more && linkCount > 0 && (
+              <span className="inline-flex items-center">
+                <span className="material-symbols-outlined text-[16px]">link</span>{linkCount > 1 ? linkCount : null}
+              </span>
+            )}
+            <span className={`material-symbols-outlined text-[16px] transition-transform ${more ? 'rotate-180' : ''}`}>expand_more</span>
+          </span>
+        )}
+      </div>
+      {/* Temat z listy po lewej, status / „Zapoznałem się” po prawej — w tym samym rzędzie. */}
+      {(entry.topics.length > 0 || status) && (
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0"><TopicChips topics={entry.topics} /></div>
+          {status && <div className="shrink-0 mt-1.5" onClick={e => e.stopPropagation()}>{status}</div>}
         </div>
       )}
-      {(hasMore || status) && (
-        <div className="flex items-center justify-between gap-2 mt-2">
-          {hasMore ? (
-            <button
-              type="button"
-              onClick={() => setMore(m => !m)}
-              aria-expanded={more}
-              aria-label={[tt.desc ? t('tagebuch.topicDesc') : '', linkCount ? t('tagebuch.topicLinks', { count: linkCount }) : ''].filter(Boolean).join(', ')}
-              className="shrink-0 whitespace-nowrap inline-flex items-center gap-2 text-[11px] font-black text-violet-600 active:opacity-60"
-            >
-              {tt.desc && <span className="material-symbols-outlined text-[17px]">notes</span>}
-              {linkCount > 0 && (
-                <span className="inline-flex items-center">
-                  <span className="material-symbols-outlined text-[17px]">link</span>{linkCount > 1 ? linkCount : null}
-                </span>
-              )}
-              <span className={`material-symbols-outlined text-[16px] transition-transform ${more ? 'rotate-180' : ''}`}>expand_more</span>
-            </button>
-          ) : <span />}
-          {status}
+      {more && (
+        <div className="mt-2 pt-2 border-t border-violet-200/70 space-y-2" onClick={e => e.stopPropagation()}>
+          {tt.desc && (
+            <div className="flex items-start gap-2">
+              <span className="material-symbols-outlined text-[16px] text-violet-500 shrink-0 mt-px">notes</span>
+              <p className="flex-1 min-w-0 text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{tt.desc}</p>
+            </div>
+          )}
+          {linkCount > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-[16px] text-violet-500 shrink-0">link</span>
+              <TopicLinks links={tt.links} />
+            </div>
+          )}
         </div>
       )}
       </EntryRow>

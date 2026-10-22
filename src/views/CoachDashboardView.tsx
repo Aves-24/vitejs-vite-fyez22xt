@@ -75,6 +75,11 @@ interface FormCompare {
 // Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony i brałby
 // „up" z warunku za nazwę ikony.
 const TREND_ICON = { up: 'trending_up', down: 'trending_down' } as const;
+const ROW_ICON = { lastTraining: 'schedule' } as const;
+// Ikona na początku linii wpisu trenera — rodzaj widać bez czytania (user 2026-10-22).
+const LOG_ICON: Record<string, string> = {
+  observation: 'visibility', tip: 'lightbulb', goal: 'track_changes', flag: 'priority_high', topic: 'sports',
+};
 
 const scoredArrows = (x: any): number => Number(x.scoreArrows ?? x.sessionArrows ?? x.arrows) || 0;
 
@@ -1150,18 +1155,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               </h3>
               {/* tracking-wide, nie -widest: ta linia niesie dystans i wynik
                   i przy szerokim rozstrzeleniu ucinała się w połowie */}
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5 truncate">
-                {trend && (
-                  <span
-                    className={`material-symbols-outlined text-[12px] align-[-2px] mr-0.5 ${trend === 'up' ? 'text-emerald-500' : 'text-orange-500'}`}
-                    title={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
-                    aria-label={t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown')}
-                  >
-                    {trend === 'up' ? 'trending_up' : 'trending_down'}
-                  </span>
-                )}
-                {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
-                {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
+              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide mt-0.5 flex items-center gap-1 min-w-0">
+                {/* Każda linia zaczyna się od ikony (user 2026-10-22): trend formy albo zegar. */}
+                <span
+                  className={`material-symbols-outlined text-[12px] shrink-0 ${trend === 'up' ? 'text-emerald-500' : trend === 'down' ? 'text-orange-500' : 'text-gray-400'}`}
+                  title={trend ? t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown') : undefined}
+                  aria-label={trend ? t(trend === 'up' ? 'coachDashboard.trendUp' : 'coachDashboard.trendDown') : undefined}
+                >
+                  {trend ? TREND_ICON[trend] : ROW_ICON.lastTraining}
+                </span>
+                <span className="truncate">
+                  {hasNewActivity ? <span className="text-emerald-500">{t('coachDashboard.newTraining')}</span> : getTimeSinceLastActivity(lastActivity)}
+                  {lastActivity > 0 && lastSessionDetails(student) && ` · ${lastSessionDetails(student)}`}
+                </span>
               </p>
               {renderFocusLine(student.id)}
               {/* Ostatni wpis z dziennika — bez celu, gdy fokus już jest wyżej. */}
@@ -1172,6 +1178,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   tip: '#b45309',
                   goal: '#2563eb',
                   flag: '#dc2626',
+                  topic: '#e11d48',
                 };
                 const color = typeColors[entry.type] || '#059669';
                 // Opis, co to za linia — sam tekst był dla trenera zagadką (user 2026-10-22).
@@ -1184,7 +1191,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 };
                 return (
                   <p className="text-[9px] font-bold mt-0.5 truncate flex items-center gap-1" style={{ color }}>
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0 inline-block" style={{ backgroundColor: color }} />
+                    <span className="material-symbols-outlined text-[12px] shrink-0">{LOG_ICON[entry.type] || LOG_ICON.observation}</span>
                     <span className="truncate">{typeLabel[entry.type] && <span className="font-black">{typeLabel[entry.type]}:</span>} {entry.text}</span>
                   </p>
                 );

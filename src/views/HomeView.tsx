@@ -490,8 +490,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   useEffect(() => {
     if (!isClubBattlesModalOpen || !userId) return;
     let alive = true;
-    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    getDocs(query(collection(db, 'battles'), where('participants', 'array-contains', userId), where('createdAt', '>', since), orderBy('createdAt'), limit(30)))
+    // Najnowsze gry bez względu na datę — ostatnia rozegrana zostaje widoczna i po dniach.
+    // Zapytanie malejące wymaga indeksu participants+createdAt DESC; bez niego
+    // wracamy do starego okna 24 h (indeks rosnący).
+    const battlesRef = collection(db, 'battles');
+    getDocs(query(battlesRef, where('participants', 'array-contains', userId), orderBy('createdAt', 'desc'), limit(10)))
+      .catch(() => {
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        return getDocs(query(battlesRef, where('participants', 'array-contains', userId), where('createdAt', '>', since), orderBy('createdAt'), limit(30)));
+      })
       .then(snap => { if (alive) setRecentBattles(snap.docs.map(d => ({ id: d.id, ...d.data() }))); })
       .catch(e => console.warn('Recent battles fetch failed:', e));
     return () => { alive = false; };
@@ -1058,6 +1065,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   }
 
   const hasAnyBattle = allActiveBattles.length > 0;
+  const isBattleOver = (b: any) => b.status === 'FINISHED'
+    || (b.expiresAt ? getSafeTime(b.expiresAt) < currentTime : (currentTime - getSafeTime(b.createdAt)) > 3 * 60 * 60 * 1000);
+  // [ARENA] Z rozegranych przez Ciebie gier widać tylko ostatnią — plus te,
+  // które jeszcze trwają (np. 3 h gry klubowej), nawet jeśli są starsze (user 2026-10-22).
   const modalBattles = (() => {
     const byNewest = (a: any, b: any) => getSafeTime(b.createdAt) - getSafeTime(a.createdAt);
     const active = allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId)).sort(byNewest);
@@ -1065,10 +1076,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       ...allActiveBattles.filter(b => b.finishedParticipants?.includes(userId)),
       ...recentBattles.filter(b => b.finishedParticipants?.includes(userId) && !allActiveBattles.some(a => a.id === b.id)),
     ].sort(byNewest);
-    return [...active, ...mineDone];
+    const shownDone = mineDone.filter((b, i) => i === 0 || !isBattleOver(b));
+    return [...active, ...shownDone];
   })();
-  const isBattleOver = (b: any) => b.status === 'FINISHED'
-    || (b.expiresAt ? getSafeTime(b.expiresAt) < currentTime : (currentTime - getSafeTime(b.createdAt)) > 3 * 60 * 60 * 1000);
   // [ARENA] Kafel w stylu battle (user 2026-10-21): gra czeka na Ciebie (fiolet,
   // puls) albo już skończyłeś (zieleń, Twoje miejsce). Zamiast różowego „1kl”.
   const pendingBattles = allActiveBattles.filter(b => !b.finishedParticipants?.includes(userId));

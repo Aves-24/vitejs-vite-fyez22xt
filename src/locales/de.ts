@@ -1622,6 +1622,7 @@ export const views = {
     upcomingOpenCalendar: "Kalender öffnen",
     newEventBtn: "Neuer Termin",
     studentTournamentsTitle: "Wettkämpfe Schüler",
+    milestonesTitle: "Meilensteine Schüler",
     selectMode: "Auswählen",
     sendMessageBtn: "Nachricht senden",
     groupPulseActive: "{{active}}/{{total}} trainiert in 7 Tagen",

@@ -1116,6 +1116,9 @@ test('privateNotes: udostępniony wpis (shared) czyta trener ucznia; nieudostęp
   await assertFails(getDoc(doc(bob(), 'users/alice/privateNotes/s1')));
   // Zapytanie trenera musi filtrować po shared — inaczej odrzucone.
   await assertSucceeds(getDocs(query(collection(coach1(), 'users/alice/privateNotes'), where('shared', '==', true))));
+  // Panel trenera: kamienie milowe = shared + important.
+  await assertSucceeds(getDocs(query(collection(coach1(), 'users/alice/privateNotes'), where('shared', '==', true), where('important', '==', true))));
+  await assertFails(getDocs(query(collection(coach1(), 'users/alice/privateNotes'), where('important', '==', true))));
   await assertFails(getDocs(collection(coach1(), 'users/alice/privateNotes')));
   // Trener nie zmienia; uczeń włącza i wyłącza udostępnienie.
   await assertFails(updateDoc(doc(coach1(), 'users/alice/privateNotes/s1'), { text: 'trener' }));

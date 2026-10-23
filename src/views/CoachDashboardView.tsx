@@ -198,6 +198,58 @@ const STUDENT_TOURNAMENTS_SHOWN = 3;
  * `category` (liczą się jako turniej), a przed turniejem mogą stać kopie
  * terminów od trenera.
  */
+// [MEILENSTEIN] (user 2026-10-23) Kamienie milowe, które uczniowie sami
+// udostępnili (privateNotes: shared + important), z ostatnich 30 dni — na
+// stronie głównej panelu, nie dopiero w zakładce ucznia. Reguła wpuszcza
+// trenera tylko z filtrem shared == true. Jak starty: zapytanie na ucznia,
+// wynik 30 min w pamięci telefonu.
+interface StudentMilestone { student: any; id: string; text: string; ts: number }
+const MILESTONE_DAYS = 30;
+
+async function loadStudentMilestones(coachId: string, students: any[]): Promise<StudentMilestone[]> {
+  const key = `grotX_studentMilestones_${coachId}`;
+  const ids = students.map(s => s.id).sort().join(',');
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const cached = JSON.parse(raw);
+      if (cached.ids === ids && Date.now() <= cached.expiresAt) {
+        // W pamięci tylko id ucznia — obiekt ucznia bierzemy z bieżącej listy.
+        return (cached.data as any[])
+          .map(m => ({ ...m, student: students.find(s => s.id === m.studentId) }))
+          .filter(m => m.student);
+      }
+    }
+  } catch { /* uszkodzony wpis — czytamy z bazy */ }
+
+  const since = Date.now() - MILESTONE_DAYS * 24 * 60 * 60 * 1000;
+  const found = await Promise.all(students.map(async s => {
+    try {
+      // Dwie równości — bez indeksu złożonego; datę filtrujemy tutaj.
+      const snap = await getDocs(query(
+        collection(db, `users/${s.id}/privateNotes`),
+        where('shared', '==', true),
+        where('important', '==', true),
+        limit(10),
+      ));
+      return snap.docs.map(d => {
+        const data = d.data();
+        const c = data.createdAt;
+        const ts = typeof c?.toMillis === 'function' ? c.toMillis() : typeof c === 'number' ? c : 0;
+        return { student: s, id: d.id, text: String(data.text || ''), ts };
+      }).filter(m => m.ts >= since);
+    } catch { return []; }
+  }));
+  const data = found.flat().sort((a, b) => b.ts - a.ts);
+  try {
+    localStorage.setItem(key, JSON.stringify({
+      ids, expiresAt: Date.now() + STUDENT_TOURNAMENT_TTL,
+      data: data.map(({ student, ...m }) => ({ ...m, studentId: student.id })),
+    }));
+  } catch { /* ignore */ }
+  return data;
+}
+
 async function loadStudentTournaments(coachId: string, students: any[]): Promise<StudentTournament[]> {
   const key = `grotX_studentTournaments_${coachId}`;
   const ids = students.map(s => s.id).sort().join(',');
@@ -345,6 +397,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
   const [isStudentTournamentsOpen, setIsStudentTournamentsOpen] = useState(false);
+  const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
+  const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   const [isInactiveOpen, setIsInactiveOpen] = useState(false);
@@ -479,6 +533,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           loadStudentTournaments(userId, studentsData)
             .then(setStudentTournaments)
             .catch(() => setStudentTournaments([]));
+          loadStudentMilestones(userId, studentsData)
+            .then(setStudentMilestones)
+            .catch(() => setStudentMilestones([]));
           loadFormCompare(userId, studentsData)
             .then(setFormCompare)
             .catch(() => setFormCompare({}));
@@ -523,6 +580,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         } else {
           setStudents([]);
           setStudentTournaments([]);
+          setStudentMilestones([]);
           setFormCompare({});
           setNewStudentIds([]);
           // [C37] Nie ma uczniów — czyścimy pamięć tylko, gdy coś w niej było.
@@ -1485,6 +1543,37 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </div>
               );
             })}
+          </div>
+        </CollapsibleSection>
+      )}
+
+      {/* Kamienie milowe podopiecznych (udostępnione przez nich) — zwinięta
+          sekcja pokazuje najnowszy, rozwinięta wszystkie z 30 dni. */}
+      {studentMilestones.length > 0 && (
+        <CollapsibleSection
+          label={t('coachDashboard.milestonesTitle')}
+          open={isMilestonesOpen}
+          onToggle={() => setIsMilestonesOpen(o => !o)}
+          summary={
+            <span className="inline-flex items-center gap-1 min-w-0">
+              <span className="material-symbols-outlined text-[14px] text-[#b8860b] shrink-0">star</span>
+              <span className="truncate">{studentMilestones[0].student.firstName}: {studentMilestones[0].text}</span>
+            </span>
+          }
+        >
+          <div className="space-y-1.5">
+            {studentMilestones.map(m => (
+              <React.Fragment key={`${m.student.id}_${m.id}`}>
+                {renderMiniStudentRow(
+                  m.student,
+                  <span className="text-[#8B6508]">
+                    <span className="material-symbols-outlined text-[12px] align-[-2px]">star</span>{' '}
+                    {m.text}{m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
+                  </span>,
+                  'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
+                )}
+              </React.Fragment>
+            ))}
           </div>
         </CollapsibleSection>
       )}

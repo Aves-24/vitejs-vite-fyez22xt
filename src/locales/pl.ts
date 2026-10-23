@@ -1653,6 +1653,7 @@ export const views = {
     upcomingOpenCalendar: "Otwórz kalendarz",
     newEventBtn: "Nowy termin",
     studentTournamentsTitle: "Starty uczniów",
+    milestonesTitle: "Kamienie milowe uczniów",
     selectMode: "Wybierz",
     sendMessageBtn: "Wyślij wiadomość",
     groupPulseActive: "{{active}}/{{total}} trenowało w 7 dni",

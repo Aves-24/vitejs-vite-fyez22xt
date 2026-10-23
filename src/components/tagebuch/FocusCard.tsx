@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readSessionFocus, orderedTracks, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
+import { readSessionFocus, orderedTracks, topicDayTs, dayKeyOf, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 import { CARD_SHAPE, CARD_PAD, EntryRow } from './TagebuchCards';
 import { isYouTube } from '../TopicLinks';
@@ -21,6 +21,29 @@ export function focusPalette(f: Pick<ActiveFocus, 'fromCoach' | 'topicId'>) {
   if (f.topicId) return { bg: 'bg-violet-50 border-violet-200', icon: 'bg-violet-500 text-white', label: 'text-violet-800', sub: 'text-violet-700', accent: 'text-violet-500', pillIcon: 'text-violet-600', glassIcon: 'text-violet-300', chip: 'bg-violet-100 border-violet-300 text-violet-900', choiceOn: 'bg-violet-50 border-violet-400 text-[#0a3a2a]' };
   if (f.fromCoach) return { bg: 'bg-sky-50 border-sky-200', icon: 'bg-sky-500 text-white', label: 'text-sky-800', sub: 'text-sky-700', accent: 'text-sky-500', pillIcon: 'text-sky-600', glassIcon: 'text-sky-300', chip: 'bg-sky-100 border-sky-300 text-sky-900', choiceOn: 'bg-sky-50 border-sky-400 text-[#0a3a2a]' };
   return { bg: 'bg-amber-50 border-amber-200', icon: 'bg-[#fed33e] text-[#0a3a2a]', label: 'text-amber-800', sub: 'text-amber-700', accent: 'text-amber-500', pillIcon: 'text-amber-600', glassIcon: 'text-[#fed33e]', chip: 'bg-amber-100 border-amber-300 text-amber-900', choiceOn: 'bg-amber-50 border-amber-400 text-[#0a3a2a]' };
+}
+
+/**
+ * Temat treningu: kafelek daty jak terminy w Kalendarzu (miesiąc + dzień),
+ * zamiast okrągłej ikony (user 2026-10-23). Fioletowy — kolor tematu.
+ */
+function TopicDateTile({ focus, muted = false }: { focus: ActiveFocus; muted?: boolean }) {
+  const { i18n } = useTranslation();
+  const d = new Date(topicDayTs(focus));
+  return (
+    <div className={`${muted ? 'bg-gray-200 text-gray-500' : 'bg-violet-600 text-white'} px-2 py-1.5 rounded-xl text-center min-w-[42px] shadow-sm shrink-0`}>
+      <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+      <span className="block text-lg font-black leading-none">{d.getDate()}</span>
+    </div>
+  );
+}
+
+/** „Heute · Donnerstag” (dziś) albo sama nazwa dnia (minione treningi). */
+function topicDayText(focus: ActiveFocus, t: (k: string, o?: any) => string, lang: string): string {
+  const ts = topicDayTs(focus);
+  const wd = new Date(ts).toLocaleDateString(lang, { weekday: 'long' });
+  const weekday = wd.charAt(0).toUpperCase() + wd.slice(1);
+  return dayKeyOf(ts) === dayKeyOf(Date.now()) ? t('tagebuch.topicTodayDay', { weekday }) : weekday;
 }
 
 /** Ikona: temat treningu = gwizdek, fokus = cel. */
@@ -326,9 +349,11 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
   const cardCls = `w-full flex items-start gap-3 ${done ? 'bg-gray-50 border-gray-200' : pal.bg} border rounded-[20px] px-3.5 py-3 text-left ${locked ? '' : 'active:scale-[0.99] transition-all'}`;
   const body = (
     <>
-      <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
-        <span className="material-symbols-outlined text-[20px]">{focusIcon(focus)}</span>
-      </span>
+      {isTopic ? <TopicDateTile focus={focus} muted={done} /> : (
+        <span className={`w-9 h-9 rounded-full ${done ? 'bg-gray-200 text-gray-500' : pal.icon} flex items-center justify-center shrink-0`}>
+          <span className="material-symbols-outlined text-[20px]">{focusIcon(focus)}</span>
+        </span>
+      )}
       <div className="flex-1 min-w-0">
         <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest ${done ? 'text-gray-500' : pal.label}`}>
           <span className="truncate">
@@ -350,7 +375,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
             </>
           ) : (
             <span className={`text-[10px] font-bold ${pal.sub}`}>
-              {isTopic ? t('tagebuch.topicToday') : t('tagebuch.focusSince', { date: fmt(focus.since) })}
+              {isTopic ? topicDayText(focus, t, i18n.language) : t('tagebuch.focusSince', { date: fmt(focus.since) })}
             </span>
           )}
         </div>
@@ -403,7 +428,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
  * nagłówka), bez klikania (user 2026-09-16).
  */
 export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false, topicMore }: {
-  past?: boolean;   // minione sesje (statystyki): bez „Heute im Training” przy temacie
+  past?: boolean;   // minione sesje (statystyki): sama nazwa dnia zamiast „Heute · …”
   // Home: sam znak, że temat ma opis / linki (treść w dzienniku) — user 2026-10-23.
   topicMore?: { desc: boolean; links: string[] };
   focus: ActiveFocus;
@@ -419,7 +444,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   sourceLabel?: string;
   variant?: 'card' | 'pill' | 'glass';
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const source = sourceLabel ?? (focus.fromCoach
     ? `${t('tagebuch.focusFromCoach')}${focus.authorName ? ` ${focus.authorName}` : ''}`
     : '');
@@ -477,7 +502,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
     <>
       {glass
         ? <span className={`material-symbols-outlined text-[22px] shrink-0 ${pal.glassIcon}`}>{icon}</span>
-        : (
+        : focus.topicId ? <TopicDateTile focus={focus} /> : (
           <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${pal.icon}`}>
             <span className="material-symbols-outlined text-[20px]">{icon}</span>
           </span>
@@ -497,9 +522,9 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
         {/* Temat treningu: „Heute im Training” jak w karcie dziennika (user 2026-10-15). */}
-        {!dots && focus.topicId && !past && (
+        {!dots && focus.topicId && (!past || !glass) && (
           <div className={`flex items-center gap-2 mt-1 text-[10px] font-bold ${glass ? 'text-white/60' : pal.sub}`}>
-            <p className="flex-1 min-w-0 truncate">{t('tagebuch.topicToday')}</p>
+            <p className="flex-1 min-w-0 truncate">{glass ? t('tagebuch.topicToday') : topicDayText(focus, t, i18n.language)}</p>
             {(topicMore?.desc || !!topicMore?.links.length) && (
               <span
                 className="shrink-0 inline-flex items-center gap-1 font-black"

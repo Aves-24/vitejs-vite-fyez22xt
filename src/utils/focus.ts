@@ -75,6 +75,12 @@ export interface ActiveFocus {
   links?: string[];      // TEMAT TRENINGU — linki od trenera
   desc?: string;         // TEMAT TRENINGU — opis pod tytułem (jak treść maila)
   linkTitles?: string[]; // TEMAT TRENINGU — tytuły linków (ten sam indeks co links)
+  day?: string;          // TEMAT TRENINGU — dzień treningu 'YYYY-MM-DD' (kafelek daty)
+}
+
+/** Dzień tematu treningu jako znacznik czasu (południe — bez przesunięć strefy). */
+export function topicDayTs(f: Pick<ActiveFocus, 'day' | 'since'>): number {
+  return (f.day && new Date(`${f.day}T12:00:00`).getTime()) || f.since;
 }
 
 export function readOwnFocus(userData: any): OwnFocus | null {
@@ -764,7 +770,7 @@ export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Da
 }
 
 export function topicAsFocus(t: TrainingTopic): ActiveFocus {
-  return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id,
+  return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id, day: t.day,
     ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}),
     ...(t.links?.length ? { links: t.links } : {}), ...(t.desc ? { desc: t.desc } : {}), ...(t.linkTitles ? { linkTitles: t.linkTitles } : {}) };
 }

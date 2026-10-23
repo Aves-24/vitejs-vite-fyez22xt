@@ -193,8 +193,10 @@ export function FocusProgressText({ count, goal, light = false, coach = false }:
   const { t } = useTranslation();
   return (
     <span className={`text-[10px] font-bold ${light ? (coach ? 'text-sky-800' : 'text-amber-800') : 'text-white/75'}`}>
+      {/* Ukończony fokus dalej zbiera treningi (suma, nie seria) — napis nie
+          przekracza celu: „5 von 2” → „2 von 2” (user 2026-10-23). */}
       {count >= goal
-        ? t('tagebuch.focusDone', { count, goal })
+        ? t('tagebuch.focusDone', { count: goal, goal })
         : t(goal === 1 ? 'tagebuch.focusCountOne' : 'tagebuch.focusCount', { hit: count, goal })}
     </span>
   );

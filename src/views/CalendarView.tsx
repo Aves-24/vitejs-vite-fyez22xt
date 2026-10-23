@@ -1691,6 +1691,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           // do kubełka wyliczonego z metrów, tak jak stare sesje.
           distanceId={viewingEvent.distanceId || undefined}
           distanceLabel={viewingEvent.distanceLabel || undefined}
+          eventDate={viewingEvent.date}
           onClose={() => setShowScoreInput(false)}
           onNavigate={onNavigate}
         />

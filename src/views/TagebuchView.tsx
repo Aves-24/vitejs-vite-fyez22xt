@@ -7,6 +7,7 @@ import { guestExpiryFields } from '../utils/guestMode';
 import { readPrivateSessionNotes } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
+import TournamentScoreInput from '../components/TournamentScoreInput';
 import ViewHeader from '../components/ViewHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
@@ -26,7 +27,7 @@ import {
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
-  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, PrivateNoteCard, NewBadge,
+  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
   type TbSession, type TbPrivateNote, type TbCoachEntry, type TbLedTraining,
 } from '../components/tagebuch/TagebuchCards';
@@ -67,6 +68,7 @@ function entryKind(it: TimelineItem): EntryKind {
     case 'private': return 'private';
     case 'milestone': return it.milestone.fromCoach ? 'coachFocus' : 'focus';
     case 'led': return 'led';
+    case 'missed': return 'target';
     default: return it.entry.trainingTopic ? 'topic' : 'coachEntry';
   }
 }
@@ -120,7 +122,14 @@ interface UpcomingEvent {
   isCoach: boolean;
   isLed: boolean;      // własny termin trenera (nie kopia od mojego trenera) — różowy
   kind: EventKind;
+  hasScore: boolean;   // zawody z wpisanym wynikiem — znikają z „Als Nächstes”
+  distance?: string;
+  distanceId?: string;
+  distanceLabel?: string;
 }
+
+// Zaległe zawody bez wyniku pokazujemy z ostatnich 30 dni.
+const MISSED_TOURNAMENT_DAYS = 30;
 
 // Jeden słownik kolorów terminów (user 2026-10-15) — jak w kalendarzu i na Home:
 // zawody ciemnozielone, Inne granat, ja jako trener róż, od mojego trenera fiolet.
@@ -137,7 +146,8 @@ type TimelineItem =
   | { kind: 'private'; id: string; ts: number; note: TbPrivateNote }
   | { kind: 'milestone'; id: string; ts: number; milestone: FocusMilestone }
   | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry }
-  | { kind: 'led'; id: string; ts: number; entry: TbLedTraining };
+  | { kind: 'led'; id: string; ts: number; entry: TbLedTraining }
+  | { kind: 'missed'; id: string; ts: number; ev: UpcomingEvent };
 
 interface TagebuchViewProps {
   userId: string;
@@ -200,6 +210,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [notes, setNotes] = useState<TbPrivateNote[]>([]);
   const [coachEntries, setCoachEntries] = useState<TbCoachEntry[]>([]);
   const [upcoming, setUpcoming] = useState<UpcomingEvent[]>([]);
+  // Minione zawody bez wyniku — karta w dniu zawodów z „Ringzahl eingeben”.
+  const [missed, setMissed] = useState<UpcomingEvent[]>([]);
+  const [scoreFor, setScoreFor] = useState<UpcomingEvent | null>(null);
   // Źródło wyczerpane = ostatnia strona przyszła niepełna.
   const [sessionsDone, setSessionsDone] = useState(false);
   const [notesDone, setNotesDone] = useState(false);
@@ -347,13 +360,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     })();
     (async () => {
       try {
+        const today = ymd(new Date());
+        const since = new Date();
+        since.setDate(since.getDate() - MISSED_TOURNAMENT_DAYS);
         const snap = await getDocs(query(
           collection(db, `users/${userId}/tournaments`),
-          where('date', '>=', ymd(new Date())),
+          where('date', '>=', ymd(since)),
           orderBy('date'),
-          limit(20),
+          limit(60),
         ));
-        setUpcoming(snap.docs.map(d => {
+        const all: UpcomingEvent[] = snap.docs.map(d => {
           const data = d.data();
           return {
             id: d.id,
@@ -363,8 +379,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             isCoach: data.category === 'Trener',
             isLed: data.category === 'Trener' && !data.isMirrored,
             kind: (data.category === 'Trener' ? (data.isMirrored ? 'fromCoach' : 'led') : data.category === 'Inne' ? 'other' : 'tournament') as EventKind,
+            hasScore: data.hasScore === true,
+            ...(data.distance ? { distance: data.distance } : {}),
+            ...(data.distanceId ? { distanceId: data.distanceId } : {}),
+            ...(data.distanceLabel ? { distanceLabel: data.distanceLabel } : {}),
           };
-        }).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)));
+        }).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+        // Zawody z wynikiem nie są już „następne” — trening z wynikiem stoi pod „Heute”.
+        setUpcoming(all.filter(ev => ev.date >= today && !(ev.kind === 'tournament' && ev.hasScore)));
+        // Minione zawody bez wyniku → karta w historii (user 2026-10-23).
+        setMissed(all.filter(ev => ev.date < today && ev.kind === 'tournament' && !ev.hasScore));
       } catch (e) {
         console.error('Tagebuch: błąd pobierania terminów', e);
       }
@@ -777,6 +801,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       if (e.ts < cutoff || !hit(e.topics)) return;
       all.push({ kind: 'coach', id: e.id, ts: e.ts, entry: e });
     });
+    // Zaległe zawody bez wyniku — w dniu (i godzinie) zawodów; bez tematów.
+    if (!topic) missed.forEach(ev => {
+      const ts = new Date(`${ev.date}T${/^\d{2}:\d{2}$/.test(ev.time) ? ev.time : '12:00'}:00`).getTime();
+      if (!isNaN(ts) && ts >= cutoff) all.push({ kind: 'missed', id: ev.id, ts, ev });
+    });
     const kinds = new Set(all.map(entryKind));
     // „Od trenera”: uwagi trenera do treningów, wpisy trenera i tematy od trenera.
     const list = filter === 'all' ? all
@@ -784,7 +813,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
     return { items: list, hasMore: sessionsFull || notesFull, cutoff, kinds };
-  }, [sessions, notes, coachEntries, ledTrainings, filter, topic, sessionsDone, notesDone]);
+  }, [sessions, notes, coachEntries, ledTrainings, missed, filter, topic, sessionsDone, notesDone]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -1256,6 +1285,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     />
                   ) : it.kind === 'milestone' ? (
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
+                  ) : it.kind === 'missed' ? (
+                    <MissedTournamentCard title={it.ev.title} date={it.ev.date} time={timeOf(it.ts)} onEnter={() => setScoreFor(it.ev)} />
                   ) : it.kind === 'led' ? (
                     <LedTrainingCard entry={it.entry} time={timeOf(it.ts)} />
                   ) : it.kind === 'private' ? (
@@ -1273,6 +1304,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     <CoachEntryCard entry={it.entry} time={timeOf(it.ts)} isNew={isNew('coach_log', it.entry.id)} />
                   )}
                 </div>
+                {/* Linia zamykająca „Heute” — pod ostatnim dzisiejszym wpisem (user 2026-10-23). */}
+                {isTodayItem(it) && g.items.findIndex((x, i) => i > idx && isTodayItem(x)) === -1 && (
+                  <div className="px-1 pt-0.5" aria-hidden><div className="h-px bg-emerald-200" /></div>
+                )}
                 </React.Fragment>
               ))}
             </div>
@@ -1305,6 +1340,22 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           <span className="material-symbols-outlined text-[26px]">add</span>
         </button>,
         document.body,
+      )}
+
+      {/* Zaległy wynik zawodów — zapis w dniu zawodów (eventDate), potem statystyki tego dnia. */}
+      {scoreFor && (
+        <TournamentScoreInput
+          userId={userId}
+          eventId={scoreFor.id}
+          tournamentName={scoreFor.title}
+          distance={scoreFor.distance || '70m'}
+          distanceId={scoreFor.distanceId}
+          distanceLabel={scoreFor.distanceLabel}
+          eventDate={scoreFor.date}
+          // Po zapisie okno samo przechodzi do statystyk; przy powrocie dziennik czyta zawody od nowa.
+          onClose={() => setScoreFor(null)}
+          onNavigate={onNavigate}
+        />
       )}
 
       {openMessageCoach && (

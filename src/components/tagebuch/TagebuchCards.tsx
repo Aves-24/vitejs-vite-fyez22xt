@@ -493,6 +493,29 @@ export function LedTrainingCard({ entry, time }: { entry: TbLedTraining; time: s
   );
 }
 
+/**
+ * [ZALEGŁY TURNIEJ] (user 2026-10-23) Zawody z kalendarza, które już minęły,
+ * a nie mają wyniku — stoją w dniu zawodów i pozwalają dopisać wynik później.
+ */
+export function MissedTournamentCard({ title, date, time, onEnter }: { title: string; date: string; time: string; onEnter: () => void }) {
+  const { t, i18n } = useTranslation();
+  const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  return (
+    <div className={`${CARD_SHAPE} tb-d3 bg-white border-emerald-200 ${CARD_PAD}`}>
+      <EntryRow icon="emoji_events" iconCls="text-[#0a3a2a]" label={`${t('tagebuch.missedTournament')} · ${day}`} labelCls="text-emerald-800" time={time}>
+        <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{title}</p>
+        <button
+          onClick={onEnter}
+          className="mt-2 inline-flex items-center gap-1 bg-[#fed33e] text-[#5d4a00] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-[15px]">edit_note</span>
+          {t('calendar.modalEnterScore')}
+        </button>
+      </EntryRow>
+    </div>
+  );
+}
+
 // --- KARTA TRENINGU ---
 // Notatka ucznia, notatki prywatne przypięte do sesji i Anmerkung trenera
 // w jednym miejscu — uwaga trenera jest przyklejona do treningu, którego dotyczy.

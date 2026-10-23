@@ -375,7 +375,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       const all = await loadUpcomingEvents(userId);
       if (cancelled) return;
 
-      setNextTournament(all.find((e: any) => e.category === 'Turniej' || !e.category) || null);
+      // Dzisiejsze zawody z wpisanym wynikiem nie są już „następne” (jak w Tagebuch).
+      setNextTournament(all.find((e: any) => (e.category === 'Turniej' || !e.category) && !e.hasScore) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
       setNextTrainerSent(all.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
       setNextTrainerReceived(all.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);

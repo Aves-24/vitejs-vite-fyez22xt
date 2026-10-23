@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, setDoc, Timestamp } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { guestExpiryFields } from '../utils/guestMode';
 import { getSetupStamp } from '../utils/setupStamp';
@@ -17,11 +17,14 @@ interface TournamentScoreInputProps {
   distanceId?: string;
   /** [ZAWODY] Nazwa z etykietą („18m barebow"); brak = same metry. */
   distanceLabel?: string;
+  /** Dzień zawodów 'YYYY-MM-DD'. Wynik dopisany później (np. następnego dnia
+   *  z dziennika) ląduje w dniu zawodów, a nie w dniu wpisania (user 2026-10-23). */
+  eventDate?: string;
   onClose: () => void;
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
-export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, distanceId, distanceLabel, onClose, onNavigate }: TournamentScoreInputProps) {
+export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, distanceId, distanceLabel, eventDate, onClose, onNavigate }: TournamentScoreInputProps) {
   const { t } = useTranslation();
   const [inputMode, setInputMode] = useState<'DETAILED' | 'SUMMARY'>('DETAILED');
 
@@ -167,8 +170,14 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
   const saveTournamentScore = async () => {
     setIsSaving(true);
     const finalEnds = currentEnd.length > 0 ? [...ends, currentEnd] : ends;
-    const todayStr = new Date().toLocaleDateString('pl-PL');
-    const todayISO = new Date().toISOString().split('T')[0];
+    // Zaległy wynik (zawody w przeszłości): data i dzień statystyk = dzień zawodów.
+    const now = new Date();
+    const localISO = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const past = !!eventDate && /^\d{4}-\d{2}-\d{2}$/.test(eventDate) && eventDate < localISO(now);
+    const sessionDay = past ? new Date(`${eventDate}T12:00:00`) : now;
+    const todayStr = sessionDay.toLocaleDateString('pl-PL');
+    const todayISO = past ? eventDate! : new Date().toISOString().split('T')[0];
+    const sameMonth = sessionDay.getFullYear() === now.getFullYear() && sessionDay.getMonth() === now.getMonth();
     // M = wystrzelona strzała (0 pkt), liczy do średniej i do łącznej liczby
     const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : 72;
     const scoreArrows = sessionArrows; // M wliczone do mianownika średniej
@@ -187,6 +196,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         settleWrite(updateDoc(doc(db, 'users', userId, 'tournaments', eventId), {
           hasScore: true
         })).catch(e => console.warn('Znacznik wyniku zawodow:', e));
+        // Pamięć terminów (utils/upcomingEvents) — Home od razu bez tych zawodów.
+        try { localStorage.removeItem(`grotX_tournaments_${userId}`); } catch { /* prywatny tryb */ }
       }
 
       // [ZESTAWY] Start rozegrany dzisiaj — bieżąca klasa sprzętu jest właściwa.
@@ -196,7 +207,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       await settleWrite(addDoc(collection(db, 'users', userId, 'sessions'), {
         ...setupStamp,
         date: todayStr,
-        timestamp: serverTimestamp(),
+        timestamp: past ? Timestamp.fromDate(sessionDay) : serverTimestamp(),
         distance,
         // [ZAWODY] Stempel dystansu jak przy treningu (`distanceStamp`) —
         // bez niego wynik z „18m barebow" lądował w kubełku gołego 18 m.
@@ -227,7 +238,8 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       try {
         const userRef = doc(db, 'users', userId);
         const totalCount = sessionArrows + practiceArrows;
-        settleWrite(updateDoc(userRef, { totalArrows: increment(totalCount), monthlyArrows: increment(totalCount) }))
+        // Wynik z poprzedniego miesiąca nie dokłada się do bieżącego licznika miesiąca.
+        settleWrite(updateDoc(userRef, { totalArrows: increment(totalCount), ...(sameMonth ? { monthlyArrows: increment(totalCount) } : {}) }))
           .catch(e => console.warn('Nieblokujący błąd aktualizacji statystyk:', e));
         const dailyRef = doc(db, 'users', userId, 'dailyStats', todayISO);
         settleWrite(setDoc(dailyRef, { arrows: increment(totalCount), ...guestExpiryFields() }, { merge: true }))

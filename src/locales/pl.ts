@@ -328,6 +328,7 @@ export const views = {
     topic: "Temat",
     allTopics: "Wszystkie tematy",
     next: "Najbliżej",
+    missedTournament: "Turniej bez wyniku",
     fromCoach: "od trenera",
     filterAll: "Wszystko",
     filterCoach: "Trener",

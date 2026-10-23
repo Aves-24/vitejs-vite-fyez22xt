@@ -314,6 +314,7 @@ export const views = {
     topic: "Topic",
     allTopics: "All topics",
     next: "Up next",
+    missedTournament: "Tournament without score",
     fromCoach: "from your coach",
     filterAll: "All",
     filterCoach: "Coach",

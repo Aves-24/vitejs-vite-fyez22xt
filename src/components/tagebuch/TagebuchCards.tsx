@@ -93,9 +93,9 @@ export const CARD_SHAPE = 'tb-card border rounded-l-md rounded-r-2xl shadow-sm';
 export const CARD_PAD = 'pl-2 pr-3 py-2.5';
 
 /**
- * Nagłówek wpisu — ten sam układ w każdej karcie (user 2026-10-23): w pierwszej
- * linii „TYP: tytuł” (typ wersalikami w kolorze wpisu, tytuł pogrubiony), dopiero
- * pod spodem szczegóły (data, autor, wynik). Godzina w prawym górnym rogu.
+ * Nagłówek wpisu — ten sam układ w każdej karcie (user 2026-10-23): u góry typ
+ * (wersaliki w kolorze wpisu), pod nim pogrubiony tytuł, dopiero niżej
+ * szczegóły (data, autor, wynik). Godzina w prawym górnym rogu.
  */
 export function EntryHeading({ kind, kindCls, title, titleCls = 'text-[#0a3a2a]' }: {
   kind: string;
@@ -104,9 +104,11 @@ export function EntryHeading({ kind, kindCls, title, titleCls = 'text-[#0a3a2a]'
   titleCls?: string;
 }) {
   return (
-    <span className="block min-w-0 leading-snug line-clamp-2 break-words">
-      <span className={`text-[9px] font-black uppercase tracking-widest ${kindCls}`}>{kind}{title ? ':' : ''}</span>
-      {title && <span className={`text-[13px] font-black ${titleCls}`}> {title}</span>}
+    // Typ jako mała etykieta, tytuł pod nią (user 2026-10-23) — tytuły zaczynają
+    // się zawsze w tym samym miejscu, jak na karcie fokusu.
+    <span className="block min-w-0">
+      <span className={`block text-[9px] font-black uppercase tracking-widest leading-tight ${kindCls}`}>{kind}</span>
+      {title && <span className={`block text-[13px] font-black leading-snug line-clamp-2 break-words ${titleCls}`}>{title}</span>}
     </span>
   );
 }

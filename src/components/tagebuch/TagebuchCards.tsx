@@ -329,7 +329,7 @@ function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (i
 export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
   const { t } = useTranslation();
   return (
-    <div className={`${CARD_SHAPE} tb-private bg-white border-gray-200 ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
       <EntryRow icon="lock" iconCls="text-indigo-500" label={t('tagebuch.onlyYou')} labelCls="text-indigo-600" time={time}>
         <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
       </EntryRow>
@@ -342,7 +342,7 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
-    <div className={`${CARD_SHAPE} tb-coach bg-white border-amber-200 ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} tb-coach ${CARD_PAD}`}>
       <EntryRow
         icon="menu_book"
         iconCls="text-amber-600"
@@ -404,7 +404,7 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck, autoOpen
   return (
     // Całe pole rozwija opis i linki (user 2026-10-22); przyciski w środku nie.
     <div
-      className={`${CARD_SHAPE} tb-topic bg-violet-50 border-violet-200 ${CARD_PAD} ${hasMore ? 'cursor-pointer' : ''}`}
+      className={`${CARD_SHAPE} tb-topic ${CARD_PAD} ${hasMore ? 'cursor-pointer' : ''}`}
       onClick={hasMore ? () => setMore(m => !m) : undefined}
       role={hasMore ? 'button' : undefined}
       aria-expanded={hasMore ? more : undefined}
@@ -483,7 +483,7 @@ export function LedTrainingCard({ entry, time }: { entry: TbLedTraining; time: s
   const { t, i18n } = useTranslation();
   const day = new Date(`${entry.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
-    <div className={`${CARD_SHAPE} tb-led bg-rose-50 border-rose-200 ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
       <EntryRow icon="sports" iconCls="text-rose-600" label={`${t('tagebuch.ledTraining')} · ${entry.groupName} · ${day}`} labelCls="text-rose-700" time={time}>
         <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
         <TopicChips topics={entry.topic ? [entry.topic] : []} />
@@ -507,7 +507,7 @@ export function MissedTournamentCard({ title, date, time, onEnter, onSkip }: { t
   const [busy, setBusy] = useState(false);
   const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
-    <div className={`${CARD_SHAPE} tb-d3 bg-white border-emerald-200 ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} tb-tourney ${CARD_PAD}`}>
       <EntryRow icon="emoji_events" iconCls="text-[#0a3a2a]" label={`${t('tagebuch.missedTournament')} · ${day}`} labelCls="text-emerald-800" time={time}>
         <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{title}</p>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -552,7 +552,7 @@ export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onD
   const [busy, setBusy] = useState(false);
   const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
-    <div className={`${CARD_SHAPE} tb-skipped bg-gray-50 border-gray-200 ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD}`}>
       <EntryRow icon="event_busy" iconCls="text-gray-500" label={`${t('tagebuch.notStarted')} · ${day}`} labelCls="text-gray-500" time={time}>
         <p className="text-[13px] font-black text-gray-600 leading-snug break-words mt-0.5">{title}</p>
         {notes.map(n => (
@@ -726,20 +726,27 @@ function FocusToggle({ topic, marked, onToggle }: { topic: string; marked: boole
 }
 
 // Wyniki serii w rozwiniętej karcie; najlepsza seria wyróżniona.
+// Passy jak w metryczce zawodów (user 2026-10-23: wszystko podobnie) — same
+// liczby w wierszach po 6, bez kafelków; najlepsza passa na jasnożółtym.
 function EndsGrid({ sums }: { sums: number[] }) {
   const { t } = useTranslation();
   const best = Math.max(...sums);
+  const rows: number[][] = [];
+  for (let i = 0; i < sums.length; i += 6) rows.push(sums.slice(i, i + 6));
   return (
     <div className="mt-2">
-      <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">{t('tagebuch.ends')}</p>
-      <div className="grid grid-cols-6 gap-1">
-        {sums.map((sum, i) => (
-          <div
-            key={i}
-            className={`rounded-lg py-1 text-center leading-none ${sum === best ? 'bg-emerald-600 text-white' : 'tb-icon text-[#0a3a2a]'}`}
-          >
-            <span className="block text-[8px] font-bold opacity-60">{i + 1}</span>
-            <span className="block text-[12px] font-black mt-0.5">{sum}</span>
+      <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{t('tagebuch.ends')}</p>
+      <div className="border-t border-gray-100">
+        {rows.map((row, ri) => (
+          <div key={ri} className="grid grid-cols-6 gap-0.5 py-1 border-b border-gray-100">
+            {row.map((sum, i) => (
+              <span
+                key={i}
+                className={`text-center text-[12px] tabular-nums rounded-md py-0.5 ${sum === best ? 'bg-[#fed33e]/40 font-black text-[#0a3a2a]' : 'font-bold text-gray-600'}`}
+              >
+                {sum}
+              </span>
+            ))}
           </div>
         ))}
       </div>
@@ -793,10 +800,10 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 min-w-0">
-          <span className={`text-[13px] font-black truncate ${tourney ? 'tb-tourney-title' : 'text-[#0a3a2a]'}`}>{title}</span>
+          <span className={`text-[13px] font-black truncate text-[#0a3a2a]`}>{title}</span>
           <InsightBadge insight={insight} />
         </span>
-        <span className={`block text-[10px] font-bold truncate ${tourney ? 'tb-tourney-sub' : 'text-gray-500'}`}>{stats}</span>
+        <span className={`block text-[10px] font-bold truncate text-gray-500`}>{stats}</span>
         {/* [ARENA] Miejsce po zakończeniu gry, wcześniej „gra trwa”. */}
         {session.battle?.place ? (
           <span className="flex items-center gap-1 mt-0.5 text-[10px] font-black text-fuchsia-700">
@@ -849,16 +856,15 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   );
 
   return (
-    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : tourney ? 'tb-tourney' : `tb-dist ${distanceTier(session.meters)}`} ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : tourney ? 'tb-tourney' : distanceTier(session.meters)} ${CARD_PAD}`}>
       {header}
       {focus && (
         <FocusToggle topic={focus.topic} marked={focus.marked} onToggle={focus.onToggle} />
       )}
 
-      {/* Zawody: rozwinięta treść na jasnym panelu — na ciemnej zieleni byłaby nieczytelna. */}
-      {expanded && <div className={tourney ? 'tb-tourney-panel mt-2 rounded-xl px-3 pb-2.5 pt-2.5' : ''}>
+      {expanded && <div>
       {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
-      <TopicChips topics={visibleTopics} tone="onTint" />
+      <TopicChips topics={visibleTopics} />
 
       {tourney && <TournamentSummary session={session} />}
 

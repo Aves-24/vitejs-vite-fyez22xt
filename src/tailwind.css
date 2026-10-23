@@ -203,27 +203,20 @@
    róż (rose) = ja jako trener · fiolet (violet) = od mojego trenera (temat,
    terminy) · pomarańczowy (amber) = wpis trenera · indygo = prywatna notatka ·
    żółty #fed33e = fokus i marka · niebieski (sky-500) = fokus od trenera. */
-.tb-card { border-left-width: 5px; border-left-style: solid; }
+/* JEDEN WYGLĄD KART (user 2026-10-23: „schludnie, prosto i bardzo podobnie”):
+   każda karta biała z cienką szarą ramką; typ wpisu mówi TYLKO pasek po
+   lewej i kolor ikonki — bez kolorowych teł i pełnych wypełnień. */
+.tb-card { border-left-width: 5px; border-left-style: solid; background-color: #ffffff; border-top-color: #e9edeb; border-right-color: #e9edeb; border-bottom-color: #e9edeb; }
 /* Dzisiejsze wpisy w dzienniku — pasek grubszy, „Heute 11:16” pogrubione (user 2026-10-23). */
 .tb-today .tb-card { border-left-width: 7px; }
 .tb-today .tb-time { font-weight: 900; color: #0a3a2a; }
 .dark .tb-today .tb-time { color: #e5e7eb; }
-/* Zawody — ciemna zieleń i żółty akcent jak karta zawodów na Home. Kolory
-   wprost (nie klasy Tailwind), bo ciemny motyw remapuje text-[#0a3a2a]/bg-white. */
-.tb-tourney { background-color: #0a3a2a; border-top-color: #0a3a2a; border-right-color: #0a3a2a; border-bottom-color: #0a3a2a; border-left-color: #fed33e; }
-.tb-tourney-icon { background-color: rgba(255, 255, 255, 0.1); }
+.tb-icon { background-color: #f3f5f4; }
+/* Zawody — ciemna zieleń z Home tylko w pasku i w ikonce (żółty puchar). */
+.tb-tourney { border-left-color: #0a3a2a; }
+.tb-tourney-icon { background-color: #0a3a2a; }
 .tb-tourney-accent { color: #fed33e; }
-.tb-tourney-title { color: #ffffff; }
-.tb-tourney-sub,
-.tb-tourney > button .text-gray-400,
-.tb-tourney > button .text-gray-500 { color: rgba(255, 255, 255, 0.7); }
-.tb-today .tb-tourney .tb-time { color: #ffffff; }
-.tb-tourney-panel { background-color: #ffffff; }
-.dark .tb-tourney { background-color: #0d3b2b; border-top-color: #14523c; border-right-color: #14523c; border-bottom-color: #14523c; }
-.dark .tb-tourney-panel { background-color: #16211b; }
-.tb-icon { background-color: rgba(255, 255, 255, 0.75); }
-.tb-dist { background-color: #ecfdf5; border-top-color: #d1fae5; border-right-color: #d1fae5; border-bottom-color: #d1fae5; }
-.tb-tech { background-color: #f0f9ff; border-top-color: #e0f2fe; border-right-color: #e0f2fe; border-bottom-color: #e0f2fe; border-left-color: #7dd3fc; }
+.tb-tech { border-left-color: #7dd3fc; }
 .tb-d1 { border-left-color: #6ee7b7; }
 .tb-d2 { border-left-color: #10b981; }
 .tb-d3 { border-left-color: #059669; }
@@ -237,15 +230,17 @@
 .tb-focus-coach { border-left-color: #0ea5e9; }
 .tb-skipped { border-left-color: #9ca3af; }
 
+.dark .tb-card { background-color: #18211c; border-top-color: #26312b; border-right-color: #26312b; border-bottom-color: #26312b; }
 .dark .tb-icon { background-color: rgba(255, 255, 255, 0.06); }
-.dark .tb-dist { background-color: #1c2b23; border-top-color: #243a2e; border-right-color: #243a2e; border-bottom-color: #243a2e; }
-.dark .tb-tech { background-color: #1b2830; border-top-color: #233543; border-right-color: #233543; border-bottom-color: #233543; border-left-color: #7dd3fc; }
+.dark .tb-tourney { border-left-color: #fed33e; }
+.dark .tb-tourney-icon { background-color: #0d3b2b; }
+.dark .tb-tech { border-left-color: #7dd3fc; }
 .dark .tb-d1 { border-left-color: #047857; }
 .dark .tb-d2 { border-left-color: #059669; }
 .dark .tb-d3 { border-left-color: #10b981; }
 .dark .tb-d4 { border-left-color: #34d399; }
 .dark .tb-d5 { border-left-color: #6ee7b7; }
-.dark .tb-coach { border-left-color: #f59e0b; border-top-color: #4a3a14; border-right-color: #4a3a14; border-bottom-color: #4a3a14; }
+.dark .tb-coach { border-left-color: #f59e0b; }
 .dark .tb-private { border-left-color: #818cf8; }
 .dark .tb-topic { border-left-color: #a78bfa; }
 .dark .tb-led { border-left-color: #fb7185; }

@@ -593,7 +593,7 @@ export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: F
   const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
   const dots = milestone.step !== undefined && !!milestone.goal;
   return (
-    <div className={`${CARD_SHAPE} ${milestone.fromCoach ? 'tb-focus-coach' : 'tb-focus'} ${CARD_PAD} ${milestone.done ? 'bg-amber-50 border-amber-300' : 'bg-white border-amber-200'}`}>
+    <div className={`${CARD_SHAPE} ${milestone.fromCoach ? 'tb-focus-coach' : 'tb-focus'} ${CARD_PAD}`}>
       <EntryRow
         icon={milestone.done ? 'emoji_events' : 'flag'}
         iconCls="text-amber-600"

@@ -1987,6 +1987,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     {/* Skład grupy — zwijany, liczba w nagłówku; „dodaj ucznia” obok, nie na dole listy. */}
                     <section>
                       <GroupSectionHeader
+                        icon="groups"
                         label={t('coachDashboard.groupList')}
                         count={members.length}
                         open={isGroupListOpen}

@@ -50,6 +50,7 @@ export interface TbSession {
   isTournament?: boolean; // wynik zawodów (type 'Turniej') — ciemnozielona karta jak na Home
   // Zawody: wynik Durchgangów (roundScores albo z serii 1–6 / 7–12) i liczba X/10/9.
   rounds?: number[];
+  distanceText?: string;  // zawody: strzelany dystans („70m”, „18m barebow”)
   counts?: { x: number; ten: number; nine: number };
 }
 
@@ -777,7 +778,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
     : session.label ? `${kind} · ${session.label}` : kind;
   const stats = session.isTech
     ? `${session.arrows} ${t('common.arrows')}`
-    : `${session.score} ${t('tagebuch.rings')} · ${session.arrows} ${t('common.arrows')}`;
+    : `${tourney && session.distanceText ? `${session.distanceText} · ` : ''}${session.score} ${t('tagebuch.rings')} · ${session.arrows} ${t('common.arrows')}`;
 
   // Notatkę „dla trenera" da się dopisać tylko raz do pustej sesji w limicie
   // edycji — resztę zawsze można dopisać jako prywatną.

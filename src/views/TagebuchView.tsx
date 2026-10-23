@@ -178,7 +178,7 @@ const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.ge
 
 // Zawody: Durchgangi z roundScores (zapis od 2026-10-23) albo z serii 1–6 / 7–12;
 // starsze zapisy skrótowe nie mają ani jednego — wtedy sama suma.
-function tournamentFields(data: any): Pick<TbSession, 'isTournament' | 'rounds' | 'counts'> {
+function tournamentFields(data: any): Pick<TbSession, 'isTournament' | 'rounds' | 'counts' | 'distanceText'> {
   const sums: number[] = Array.isArray(data.ends)
     ? data.ends.map((e: any) => Number(e?.total_sum)).filter((n: number) => Number.isFinite(n))
     : [];
@@ -187,6 +187,8 @@ function tournamentFields(data: any): Pick<TbSession, 'isTournament' | 'rounds' 
     : sums.length > 6 ? [sums.slice(0, 6).reduce((a, b) => a + b, 0), sums.slice(6, 12).reduce((a, b) => a + b, 0)] : undefined;
   return {
     isTournament: true,
+    // Tytuł zawodów zajmuje nazwa turnieju — dystans idzie do linii z wynikiem.
+    ...(data.distanceLabel || data.distance ? { distanceText: String(data.distanceLabel || data.distance) } : {}),
     ...(rounds ? { rounds } : {}),
     counts: { x: data.xCount || 0, ten: data.tenCount || 0, nine: data.nineCount || 0 },
   };

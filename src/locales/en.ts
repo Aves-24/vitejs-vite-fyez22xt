@@ -1716,6 +1716,8 @@ export const views = {
     chat: "Messages",
     loadError: "Couldn't load sessions.",
     last14: "Last 14 days",
+    dayEmpty: "Nothing recorded on this day",
+    dayHint: "Tap a day for details",
     legendScore: "scored",
     legendPractice: "technique",
     sessions: "Sessions",

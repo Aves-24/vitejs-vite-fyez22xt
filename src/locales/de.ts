@@ -1716,6 +1716,8 @@ export const views = {
     chat: "Nachrichten",
     loadError: "Trainings konnten nicht geladen werden.",
     last14: "Letzte 14 Tage",
+    dayEmpty: "An diesem Tag nichts eingetragen",
+    dayHint: "Tippe auf einen Tag für Details",
     legendScore: "Wertung",
     legendPractice: "Technik",
     sessions: "Trainings",

@@ -28,6 +28,24 @@ function toMs(v: any): number {
 
 interface NextStart { title: string; date: string }
 
+// Wpis dnia na liście pod paskiem (klik w dzień).
+interface DayItem { kind: MarkKind | 'session' | 'tech'; ts: number; title: string; sub?: string }
+const DAY_ITEM_STYLE: Record<'session' | 'tech', { icon: string; cls: string }> = {
+  session: { icon: 'target', cls: 'text-emerald-600' },
+  tech: { icon: 'fitness_center', cls: 'text-sky-600' },
+};
+
+// Znaczniki nad paskiem 14 dni — ikony i kolory jak w dzienniku; kolejność =
+// ważność (przy kilku tego samego dnia najważniejsze u góry).
+type MarkKind = 'milestone' | 'tournament' | 'focus' | 'topic' | 'note';
+const MARKS: { kind: MarkKind; icon: string; cls: string; labelKey: string }[] = [
+  { kind: 'milestone', icon: 'star', cls: 'text-[#b8860b]', labelKey: 'tagebuch.kindMilestone' },
+  { kind: 'tournament', icon: 'emoji_events', cls: 'text-[#0a3a2a]', labelKey: 'tagebuch.tournament' },
+  { kind: 'focus', icon: 'center_focus_strong', cls: 'text-amber-600', labelKey: 'tagebuch.filterFocus' },
+  { kind: 'topic', icon: 'sports', cls: 'text-violet-600', labelKey: 'tagebuch.topicLabel' },
+  { kind: 'note', icon: 'edit_note', cls: 'text-indigo-500', labelKey: 'tagebuch.kindNote' },
+];
+
 export default function CoachStudentSheet({
   student, coachId, subtitle, focusState, milestones = [], pause, pauseReminder, onStartPause, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
 }: {
@@ -58,6 +76,14 @@ export default function CoachStudentSheet({
   // Edycja już zapisanej notatki trenera (user 2026-09-18: poprawić/dopisać).
   const [editing, setEditing] = useState(false);
 
+  // [ZNACZNIKI 14 DNI] (user 2026-10-23) Ikony nad paskiem dni: zawody, trening
+  // pod temat trenera (z sesji), udostępnione notatki (osobne zapytanie —
+  // reguła wymaga filtra shared), kamienie milowe (z panelu) i start fokusu.
+  // Klik w dzień paska = lista, co się tego dnia działo (user 2026-10-23).
+  const [dayEvents, setDayEvents] = useState<DayItem[]>([]);
+  const [sharedNotes, setSharedNotes] = useState<DayItem[]>([]);
+  const [pickedDay, setPickedDay] = useState<number | null>(null);
+
   useEffect(() => {
     let alive = true;
     const since = Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -66,6 +92,22 @@ export default function CoachStudentSheet({
         if (!alive) return;
         const list: SnapSession[] = qs.docs.map(d => ({ id: d.id, ...(d.data() as any), ts: toMs(d.data().timestamp) }));
         setSnap(buildSnapshot(list, student.pfeilzaehler));
+        const ev: DayItem[] = [];
+        for (const s of list as any[]) {
+          const dist = s.distanceLabel || s.distance || '';
+          const arrows = s.arrows || s.totalArrows || 0;
+          const rings = s.score ? `${s.score} ${t('tagebuch.rings')}` : '';
+          const pfeile = arrows ? `${arrows} ${t('common.arrows')}` : '';
+          if (s.type === 'Turniej') {
+            ev.push({ kind: 'tournament', ts: s.ts, title: s.tournamentName || t('tagebuch.tournament'), sub: [dist, rings].filter(Boolean).join(' · ') });
+          } else if (s.type === 'TECHNICAL') {
+            ev.push({ kind: 'tech', ts: s.ts, title: t('tagebuch.techTraining'), sub: pfeile });
+          } else {
+            ev.push({ kind: 'session', ts: s.ts, title: [t('tagebuch.training'), dist].filter(Boolean).join(' · '), sub: [rings, pfeile].filter(Boolean).join(' · ') });
+          }
+          if (s.trainingTopic?.id) ev.push({ kind: 'topic', ts: s.ts, title: String(s.trainingTopic.text || topicLabel(s.trainingTopic.topic || '', t)) });
+        }
+        setDayEvents(ev);
       })
       .catch(e => { console.error('Karta ucznia: błąd odczytu treningów', e); if (alive) setFailed(true); });
 
@@ -77,8 +119,28 @@ export default function CoachStudentSheet({
         setNextStart(e ? { title: String(e.title || ''), date: String(e.date) } : null);
       })
       .catch(() => { /* start to dodatek — bez niego karta i tak działa */ });
+
+    // Zwykłe notatki udostępnione przez ucznia (kamienie milowe przychodzą z panelu).
+    getDocs(query(collection(db, `users/${student.id}/privateNotes`), where('shared', '==', true), limit(30)))
+      .then(qs => {
+        if (!alive) return;
+        setSharedNotes(qs.docs.map(d => d.data()).filter(x => x.important !== true).map(x => ({
+          kind: 'note' as const, ts: toMs(x.createdAt),
+          title: String(x.title || x.text || ''), sub: x.title ? String(x.text || '') : '',
+        })));
+      })
+      .catch(() => { /* znaczniki to dodatek */ });
     return () => { alive = false; };
   }, [student.id]);
+
+  const items: DayItem[] = [
+    ...milestones.map(m => ({ kind: 'milestone' as const, ts: m.ts, title: m.title || m.text, sub: m.title ? m.text : '' })),
+    ...dayEvents,
+    ...sharedNotes,
+    ...(focusState?.focus ? [{ kind: 'focus' as const, ts: focusState.focus.since, title: focusTitle(focusState.focus, t) }] : []),
+  ];
+  // Ikony nad paskiem — tylko rodzaje z MARKS (zwykłe treningi pokazuje sam pasek).
+  const marks = items.filter(it => MARKS.some(mk => mk.kind === it.kind));
 
   const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
   const name = `${student.firstName || t('coachDashboard.defaultStudentName')} ${student.lastName || ''}`.trim();
@@ -225,34 +287,95 @@ export default function CoachStudentSheet({
                   {snap.days.includes('practice') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>}
                 </p>
               </div>
-              {/* Kamień milowy — gwiazdka nad dniem na pasku; po 14 dniach sam znika. */}
-              {milestones.length > 0 && (
-                <div className="flex gap-[3px] mb-0.5" aria-hidden>
-                  {snap.days.map((_, i) => {
-                    const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
-                    const hit = milestones.some(m => Math.floor((new Date(m.ts).setHours(0, 0, 0, 0) - day0) / 86400000) === i);
-                    return (
-                      <span key={i} className="flex-1 flex justify-center">
-                        {hit && <span className="material-symbols-outlined text-[12px] leading-none text-[#b8860b]">star</span>}
+              {/* Znaczniki nad dniem: kamień milowy, zawody, fokus, temat, notatka —
+                  po 14 dniach same wypadają z paska (user 2026-10-23). */}
+              {(() => {
+                const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
+                const dayOf = (ts: number) => Math.round((new Date(ts).setHours(0, 0, 0, 0) - day0) / 86400000);
+                const perDay = snap.days.map((_, i) => MARKS.filter(mk => marks.some(m => m.kind === mk.kind && dayOf(m.ts) === i)));
+                if (!perDay.some(d => d.length)) return null;
+                return (
+                  <div className="flex gap-[3px] mb-0.5 items-end" aria-hidden>
+                    {perDay.map((list, i) => (
+                      <span key={i} className="flex-1 flex flex-col items-center gap-px">
+                        {list.slice(0, 3).map(mk => (
+                          <span key={mk.kind} className={`material-symbols-outlined text-[12px] leading-none ${mk.cls}`}>{mk.icon}</span>
+                        ))}
                       </span>
-                    );
-                  })}
-                </div>
-              )}
+                    ))}
+                  </div>
+                );
+              })()}
               <div className="flex gap-[3px]">
                 {snap.days.map((k, i) => (
-                  <span
+                  <button
+                    type="button"
                     key={i}
-                    className={`flex-1 h-4 rounded-[3px] flex items-center justify-center text-[8px] font-black text-white ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'}`}
+                    onClick={() => setPickedDay(d => (d === i ? null : i))}
+                    aria-pressed={pickedDay === i}
+                    aria-label={fmtDate(new Date(snap.fromTs).setHours(0, 0, 0, 0) + i * 86400000)}
+                    className={`flex-1 h-5 rounded-[3px] flex items-center justify-center text-[8px] font-black text-white transition-all ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'} ${pickedDay === i ? 'ring-2 ring-[#fed33e] ring-offset-1' : ''}`}
                   >
                     {snap.dayCounts[i] > 1 ? snap.dayCounts[i] : ''}
-                  </span>
+                  </button>
                 ))}
               </div>
               <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-0.5 mb-2">
                 <span>{fmtDate(snap.fromTs)}</span>
+                {pickedDay === null && <span className="text-gray-300">{t('coachSheet.dayHint')}</span>}
                 <span>{t('coachSheet.today')}</span>
               </div>
+              {pickedDay !== null && (() => {
+                const dayStart = new Date(new Date(snap.fromTs).setHours(0, 0, 0, 0) + pickedDay * 86400000 + 43200000).setHours(0, 0, 0, 0);
+                const list = items
+                  .filter(it => new Date(it.ts).setHours(0, 0, 0, 0) === dayStart)
+                  .sort((a, b) => a.ts - b.ts);
+                return (
+                  <div className="mb-2 rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
+                      {new Date(dayStart).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'short' })}
+                    </p>
+                    {list.length === 0 ? (
+                      <p className="text-[11px] font-bold text-gray-400">{t('coachSheet.dayEmpty')}</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {list.map((it, j) => {
+                          const st = MARKS.find(mk => mk.kind === it.kind) || DAY_ITEM_STYLE[it.kind as 'session' | 'tech'];
+                          return (
+                            <div key={j} className="flex items-start gap-2">
+                              <span className={`material-symbols-outlined text-[16px] shrink-0 mt-px ${st.cls}`}>{st.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{it.title}</p>
+                                {it.sub && <p className="text-[10px] font-bold text-gray-500 leading-snug break-words line-clamp-2">{it.sub}</p>}
+                              </div>
+                              {it.kind !== 'focus' && (
+                                <span className="text-[9px] font-bold text-gray-400 shrink-0 mt-0.5">
+                                  {new Date(it.ts).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+              {/* Legenda znaczników — tylko te, które są na pasku. */}
+              {(() => {
+                const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
+                const present = MARKS.filter(mk => marks.some(m => m.kind === mk.kind && m.ts >= day0));
+                if (!present.length) return null;
+                return (
+                  <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[9px] font-bold text-gray-400 -mt-1 mb-2">
+                    {present.map(mk => (
+                      <span key={mk.kind} className="inline-flex items-center gap-0.5">
+                        <span className={`material-symbols-outlined text-[12px] ${mk.cls}`}>{mk.icon}</span>{t(mk.labelKey)}
+                      </span>
+                    ))}
+                  </p>
+                );
+              })()}
               {milestones.length > 0 && (
                 <div className="mb-2 space-y-1">
                   {[...milestones].sort((a, b) => b.ts - a.ts).map(m => (

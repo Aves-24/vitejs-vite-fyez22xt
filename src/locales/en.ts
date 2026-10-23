@@ -333,6 +333,7 @@ export const views = {
     kindNote: "Note",
     kindMilestone: "Milestone",
     newEntry: "New entry",
+    editEntry: "Edit entry",
     milestoneToggle: "Mark as milestone",
     milestoneHint: "A turning point in your archery",
     milestoneInfoLabel: "What is a milestone?",

@@ -179,20 +179,21 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
 // --- EDYTOR NOTATKI ---
 // Używany na górze dziennika (zawsze prywatna) i przy sesji („+ Notiz",
 // z przełącznikiem widoczności, jeśli sesję da się jeszcze opisać dla trenera).
-export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false }: {
+export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false, initial }: {
   allowShare: boolean;
   autoFocus?: boolean;
   onSave: (text: string, topics: string[], shared: boolean, important: boolean) => Promise<void>;
   onCancel?: () => void;
   allowMilestone?: boolean; // przełącznik „Meilenstein” (nowy wpis z „+”)
   bare?: boolean;           // bez własnej ramki — w oknie NoteSheet
+  initial?: { text: string; topics: string[]; important?: boolean }; // edycja wpisu
 }) {
   const { t } = useTranslation();
-  const [text, setText] = useState('');
-  const [topics, setTopics] = useState<string[]>([]);
+  const [text, setText] = useState(initial?.text ?? '');
+  const [topics, setTopics] = useState<string[]>(initial?.topics ?? []);
   const [showTopics, setShowTopics] = useState(false);
   const [shared, setShared] = useState(false);
-  const [important, setImportant] = useState(false);
+  const [important, setImportant] = useState(!!initial?.important);
   const [showInfo, setShowInfo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -368,7 +369,13 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
 }
 
 // --- NOTATKA PRYWATNA ---
-function PrivateNoteBody({ note, onDelete, strong = false }: { note: TbPrivateNote; onDelete: (id: string) => Promise<void>; strong?: boolean }) {
+function PrivateNoteBody({ note, onDelete, onEdit, strong = false, privacyLine = false }: {
+  note: TbPrivateNote;
+  onDelete: (id: string) => Promise<void>;
+  onEdit?: () => void;    // ołówek — okno edycji (NoteSheet)
+  strong?: boolean;       // Meilenstein: tekst pogrubiony jak tytuł
+  privacyLine?: boolean;  // „Nur für dich” pod tekstem (karta samej notatki)
+}) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState(false);
   return (
@@ -376,15 +383,32 @@ function PrivateNoteBody({ note, onDelete, strong = false }: { note: TbPrivateNo
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <p className={`leading-relaxed whitespace-pre-wrap break-words ${strong ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{note.text}</p>
+          {/* Najpierw treść, potem „tylko dla ciebie” (user 2026-10-23). */}
+          {privacyLine && (
+            <p className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-gray-400">
+              <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
+            </p>
+          )}
           <TopicChips topics={note.topics} tone="indigo" />
         </div>
-        <button
-          onClick={() => setConfirm(v => !v)}
-          className={`shrink-0 active:scale-90 transition-all ${confirm ? 'text-red-400' : 'text-gray-200 hover:text-red-400'}`}
-          aria-label={t('tagebuch.delete')}
-        >
-          <span className="material-symbols-outlined text-[18px]">delete</span>
-        </button>
+        <span className="shrink-0 flex items-center gap-1">
+          {onEdit && (
+            <button
+              onClick={onEdit}
+              className="text-gray-300 hover:text-emerald-600 active:scale-90 transition-all"
+              aria-label={t('tagebuch.editEntry')}
+            >
+              <span className="material-symbols-outlined text-[18px]">edit</span>
+            </button>
+          )}
+          <button
+            onClick={() => setConfirm(v => !v)}
+            className={`active:scale-90 transition-all ${confirm ? 'text-red-400' : 'text-gray-200 hover:text-red-400'}`}
+            aria-label={t('tagebuch.delete')}
+          >
+            <span className="material-symbols-outlined text-[18px]">delete</span>
+          </button>
+        </span>
       </div>
       {confirm && (
         <div className="flex items-center gap-2 mt-2">
@@ -401,19 +425,19 @@ function PrivateNoteBody({ note, onDelete, strong = false }: { note: TbPrivateNo
   );
 }
 
-export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
+export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void>; onEdit?: () => void }) {
   const { t } = useTranslation();
-  // Meilenstein — złoty pasek i gwiazdka; dalej prywatny („Nur für dich”).
+  // Meilenstein — złoty pasek i gwiazdka; dalej prywatny („Nur für dich” pod tekstem).
   return note.important ? (
     <div className={`${CARD_SHAPE} tb-mark ${CARD_PAD}`}>
-      <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" meta={t('tagebuch.onlyYou')} time={time}>
-        <div className="mt-1"><PrivateNoteBody note={note} onDelete={onDelete} strong /></div>
+      <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" time={time}>
+        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} strong privacyLine /></div>
       </EntryRow>
     </div>
   ) : (
     <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
-      <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" meta={t('tagebuch.onlyYou')} time={time}>
-        <div className="mt-1"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
+      <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" time={time}>
+        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} privacyLine /></div>
       </EntryRow>
     </div>
   );
@@ -422,19 +446,22 @@ export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote;
 /**
  * [NOWY WPIS] (user 2026-10-23) „+” otwiera okno od dołu zamiast pola na
  * górze dziennika — z przełącznikiem „Meilenstein” dla ważnych wydarzeń.
+ * Z `initial` to samo okno służy do edycji istniejącego wpisu.
  */
-export function NoteSheet({ onSave, onClose }: {
+export function NoteSheet({ onSave, onClose, initial }: {
   onSave: (text: string, topics: string[], important: boolean) => Promise<void>;
   onClose: () => void;
+  initial?: { text: string; topics: string[]; important?: boolean };
 }) {
   const { t } = useTranslation();
+  const title = t(initial ? 'tagebuch.editEntry' : 'tagebuch.newEntry');
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40 tb-fade-in" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={t('tagebuch.newEntry')}
+        aria-label={title}
         className="relative w-full max-w-md bg-white rounded-t-[28px] shadow-2xl px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)] max-h-[92dvh] overflow-y-auto tb-sheet-in"
       >
         <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-3" />
@@ -443,7 +470,7 @@ export function NoteSheet({ onSave, onClose }: {
             <span className="material-symbols-outlined text-[20px]">edit_note</span>
           </span>
           <div className="flex-1 min-w-0">
-            <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{t('tagebuch.newEntry')}</p>
+            <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{title}</p>
             <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
               <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
             </p>
@@ -457,6 +484,7 @@ export function NoteSheet({ onSave, onClose }: {
           allowShare={false}
           allowMilestone
           autoFocus
+          initial={initial}
           onSave={async (text, topics, _shared, important) => { await onSave(text, topics, important); onClose(); }}
         />
       </div>

@@ -636,6 +636,18 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['expiresAt', 'isGuest'])
         && !('expiresAt' in request.resource.data)
         && !('isGuest' in request.resource.data);
+      // [EDYCJA WPISU 2026-10-23] Właściciel poprawia własną notatkę: tekst,
+      // tematy i znacznik Meilenstein. Wpisy fokusu (pole kind) — nie.
+      allow update: if isSelf(uid)
+        && resource.data.get('kind', '') == ''
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'topics', 'important', 'editedAt'])
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.get('topics', []) is list
+        && request.resource.data.get('topics', []).size() <= 20
+        && request.resource.data.get('important', false) is bool
+        && request.resource.data.get('editedAt', 0) is number;
     }
 
     // ─── /users/{uid}/notifications/{notifId} ───────────────────

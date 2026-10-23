@@ -333,6 +333,7 @@ export const views = {
     kindNote: "Notiz",
     kindMilestone: "Meilenstein",
     newEntry: "Neuer Eintrag",
+    editEntry: "Eintrag bearbeiten",
     milestoneToggle: "Als Meilenstein markieren",
     milestoneHint: "Ein Wendepunkt in deinem Bogensport",
     milestoneInfoLabel: "Was ist ein Meilenstein?",

@@ -267,6 +267,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
+  const [editingNote, setEditingNote] = useState<TbPrivateNote | null>(null);
   // Rozwinięte karty treningów. Nowa uwaga trenera rozwija się sama, ale
   // tylko raz — potem decyduje użytkownik.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -574,6 +575,12 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
     setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}) }, ...prev]);
+  }, [userId]);
+
+  // [EDYCJA WPISU] (user 2026-10-23) Tekst, tematy i Meilenstein własnej notatki.
+  const updatePrivateNote = useCallback(async (id: string, text: string, topics: string[], important: boolean) => {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/privateNotes`, id), { text, topics, important, editedAt: Date.now() }));
+    setNotes(prev => prev.map(n => (n.id === id ? { ...n, text, topics, important: important || undefined } : n)));
   }, [userId]);
 
   // [NIE STARTOWAŁEM] Znacznik na terminie; cofnięcie wraca do „bez wyniku”.
@@ -1154,6 +1161,13 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             onClose={() => setComposerOpen(false)}
           />
         )}
+        {editingNote && (
+          <NoteSheet
+            initial={{ text: editingNote.text, topics: editingNote.topics, important: editingNote.important }}
+            onSave={(text, topics, important) => updatePrivateNote(editingNote.id, text, topics, important)}
+            onClose={() => setEditingNote(null)}
+          />
+        )}
 
         {/* ALS NÄCHSTES — każdy termin w kolorze swojego rodzaju (EVENT_STYLE, 2026-10-15);
             wcześniej żółte tło: szare ginęło na jasnym tle strony
@@ -1344,7 +1358,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   ) : it.kind === 'led' ? (
                     <LedTrainingCard entry={it.entry} time={timeOf(it.ts)} />
                   ) : it.kind === 'private' ? (
-                    <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} />
+                    <PrivateNoteCard note={it.note} time={timeOf(it.ts)} onDelete={deleteNote} onEdit={() => setEditingNote(it.note)} />
                   ) : it.entry.trainingTopic ? (
                     <TrainingTopicCard
                       entry={it.entry}
@@ -1385,7 +1399,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           fixed wewnątrz liczyłby się od niego, a nie od ekranu. */}
       {/* [FILTRY PRZY „+”] (user 2026-10-23) Mniejsze kółko (¾ plusa) obok „+”;
           panel z ikonami rodzajów wpisów wysuwa się nad przyciskami. */}
-      {!composerOpen && !focusEditing && !openMessageCoach && createPortal(
+      {!composerOpen && !editingNote && !focusEditing && !openMessageCoach && createPortal(
         <>
           {filtersOpen && (
             <>

@@ -1080,14 +1080,30 @@ test('privateNotes: po rejestracji gościa właściciel zdejmuje tylko expiresAt
     await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/g1'), { text: 'notatka', expiresAt: 123, isGuest: true });
   });
   const n = () => doc(alice(), 'users/alice/privateNotes/g1');
-  // Nic poza zdjęciem pól wygaśnięcia.
-  await assertFails(updateDoc(n(), { text: 'zmiana' }));
+  // Nic poza zdjęciem pól wygaśnięcia (edycję tekstu sprawdza test niżej).
   await assertFails(updateDoc(n(), { expiresAt: deleteField(), text: 'zmiana' }));
   await assertFails(updateDoc(n(), { expiresAt: 999 }));
   // Obcy — nie.
   await assertFails(updateDoc(doc(bob(), 'users/alice/privateNotes/g1'), { expiresAt: deleteField(), isGuest: deleteField() }));
   // Właściciel — tak.
   await assertSucceeds(updateDoc(n(), { expiresAt: deleteField(), isGuest: deleteField() }));
+});
+
+test('privateNotes: właściciel edytuje tekst/tematy/Meilenstein, nic więcej; wpisu fokusu nie', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/e1'), { text: 'stary', topics: [], createdAt: 1 });
+    await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/f1'), { kind: 'focusMilestone', text: '', createdAt: 1 });
+  });
+  const n = (db) => doc(db, 'users/alice/privateNotes/e1');
+  await assertSucceeds(updateDoc(n(alice()), { text: 'nowy łuk', topics: ['panik'], important: true, editedAt: 5 }));
+  await assertFails(updateDoc(n(alice()), { text: '' }));
+  await assertFails(updateDoc(n(alice()), { text: 'x'.repeat(1001) }));
+  await assertFails(updateDoc(n(alice()), { important: 'tak' }));
+  await assertFails(updateDoc(n(alice()), { createdAt: 9 }));
+  await assertFails(updateDoc(n(alice()), { sessionId: 's1' }));
+  await assertFails(updateDoc(n(bob()), { text: 'obcy' }));
+  await assertFails(updateDoc(n(coach1()), { text: 'trener' }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice/privateNotes/f1'), { text: 'fokus' }));
 });
 
 // Kopie terminów trenera (coachCalendarMirror.ts) w kalendarzu ucznia.

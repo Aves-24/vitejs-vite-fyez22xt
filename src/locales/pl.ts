@@ -347,6 +347,7 @@ export const views = {
     kindNote: "Notatka",
     kindMilestone: "Kamień milowy",
     newEntry: "Nowy wpis",
+    editEntry: "Edytuj wpis",
     milestoneToggle: "Oznacz jako kamień milowy",
     milestoneHint: "Punkt zwrotny w Twoim łucznictwie",
     milestoneInfoLabel: "Co to jest kamień milowy?",

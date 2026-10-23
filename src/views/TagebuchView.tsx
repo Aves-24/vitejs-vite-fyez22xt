@@ -277,6 +277,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return next;
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [topicPickOpen, setTopicPickOpen] = useState(false);   // wybór tematu w zwiniętym panelu
   // „Ausklappen” w panelu filtrów — opisy przy ikonach; zapamiętane w telefonie.
   const filtersWideKey = `grotx_tbFiltersWide_${userId}`;
   const [filtersWide, setFiltersWide] = useState(() => {
@@ -1438,9 +1439,18 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       </button>
                     );
                   })}
+                  {/* Tematy w zwiniętym — ta sama ikona co w rozwiniętym wyborze tematu;
+                      tap pokazuje wybór tematu pod ikonami (user 2026-10-23). */}
+                  {!filtersWide && (
+                    <button onClick={() => setTopicPickOpen(v => !v)} className="flex justify-center active:scale-90 transition-all" aria-expanded={topicPickOpen} aria-label={t('tagebuch.topic')} title={t('tagebuch.topic')}>
+                      <span className={`relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${topic ? 'bg-emerald-600 text-white' : topicPickOpen ? 'bg-emerald-50 text-emerald-700 ring-2 ring-emerald-200' : 'tb-icon text-emerald-700'}`}>
+                        <span className="material-symbols-outlined text-[20px]">psychology</span>
+                      </span>
+                    </button>
+                  )}
                 </div>
-                {/* Temat treningu — tylko w rozwiniętym; własny wybór zamiast systemowej listy. */}
-                {filtersWide && (
+                {/* Temat treningu — w rozwiniętym zawsze, w zwiniętym po tapnięciu ikony tematów. */}
+                {(filtersWide || topicPickOpen) && (
                   <TopicFilter value={topic} onChange={setTopic} counts={topicCounts} customIds={customTopicOptions} />
                 )}
               </div>

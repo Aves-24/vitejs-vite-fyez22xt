@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
@@ -137,6 +137,11 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const [linkTitleInputs, setLinkTitleInputs] = useState<string[]>(['', '', '']);
   // Indeks linku, dla którego trwa pobieranie tytułu z YouTube.
   const [fetchingTitle, setFetchingTitle] = useState<number | null>(null);
+  // Na slot linku: adres trwającego zapytania, ostatni tytuł wpisany automatycznie, timer.
+  const titleReqRef = useRef<string[]>(['', '', '']);
+  const autoTitleRef = useRef<string[]>(['', '', '']);
+  const titleTimersRef = useRef<number[]>([]);
+  useEffect(() => () => titleTimersRef.current.forEach(id => window.clearTimeout(id)), []);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<Record<string, MemberStatus>>({});
 
@@ -292,6 +297,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     setLinkInputs([0, 1, 2].map(i => gt?.links?.[i] ?? ''));
     setDesc(gt?.desc ?? '');
     setLinkTitleInputs([0, 1, 2].map(i => gt?.linkTitles?.[i] ?? ''));
+    titleTimersRef.current.forEach(id => window.clearTimeout(id));
+    titleReqRef.current = ['', '', ''];
+    autoTitleRef.current = ['', '', ''];
+    setFetchingTitle(null);
     setModal({ day, edit: !!gt });
   };
 
@@ -314,24 +323,41 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     .filter((p, i, all): p is { link: string; title: string } => !!p.link && all.findIndex(q => q.link === p.link) === i)
     .slice(0, TOPIC_LINKS_MAX);
 
-  // [TYTUŁ Z YOUTUBE] (user 2026-10-22) Tylko na przycisk trenera: publiczny
-  // oEmbed YouTube zwraca tytuł filmu, trener go sprawdza/poprawia, a uczniowie
-  // dostają zapisany tekst — ich telefony nie łączą się z YouTube.
-  // Opisane w Datenschutzerklärung (2.9).
-  const fetchYouTubeTitle = async (i: number) => {
-    const url = linkChecks[i];
-    if (!url) return;
+  // [TYTUŁ Z YOUTUBE] (user 2026-10-23) Sam po wklejeniu linku YouTube przez
+  // trenera (publiczny oEmbed), ikonka obok = pobierz ponownie. Trener tytuł
+  // sprawdza/poprawia, a uczniowie dostają zapisany tekst — ich telefony nie
+  // łączą się z YouTube. Opisane w Datenschutzerklärung (2.9).
+  // auto: bez komunikatu o błędzie i bez nadpisywania tytułu wpisanego ręcznie
+  // (nadpisuje tylko pusty albo poprzednio pobrany automatycznie).
+  const fetchYouTubeTitle = async (i: number, url: string, auto: boolean) => {
+    titleReqRef.current[i] = url;
     setFetchingTitle(i);
+    let title = '';
     try {
       const res = await fetch(`https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(url)}`, { referrerPolicy: 'no-referrer', credentials: 'omit' });
       const data = res.ok ? await res.json() : null;
-      const title = typeof data?.title === 'string' ? data.title.trim().slice(0, TOPIC_LINK_TITLE_MAX) : '';
-      if (title) setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? title : x)));
-      else showToast(t('coachDashboard.groupTopicTitleFetchFail'));
-    } catch {
-      showToast(t('coachDashboard.groupTopicTitleFetchFail'));
+      title = typeof data?.title === 'string' ? data.title.trim().slice(0, TOPIC_LINK_TITLE_MAX) : '';
+    } catch { /* brak sieci / zły film */ }
+    // Link zmieniony w trakcie — wynik starego zapytania już nie pasuje.
+    if (titleReqRef.current[i] !== url) return;
+    setFetchingTitle(prev => (prev === i ? null : prev));
+    if (!title) {
+      if (!auto) showToast(t('coachDashboard.groupTopicTitleFetchFail'));
+      return;
     }
-    setFetchingTitle(null);
+    const prevAuto = autoTitleRef.current[i];
+    autoTitleRef.current[i] = title;
+    setLinkTitleInputs(prev => prev.map((x, j) => (j === i && (!auto || !x.trim() || x === prevAuto) ? title : x)));
+  };
+  const onLinkChange = (i: number, value: string) => {
+    setLinkInputs(prev => prev.map((x, j) => (j === i ? value : x)));
+    window.clearTimeout(titleTimersRef.current[i]);
+    titleReqRef.current[i] = '';
+    setFetchingTitle(prev => (prev === i ? null : prev));
+    const url = value.trim() ? normalizeTopicLink(value) : '';
+    if (url && isYouTube(url)) {
+      titleTimersRef.current[i] = window.setTimeout(() => fetchYouTubeTitle(i, url, true), 600);
+    }
   };
   const modalBase: TopicBase = {
     text: text.trim().slice(0, FOCUS_TEXT_MAX),
@@ -535,7 +561,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           autoCorrect="off"
                           value={v}
                           maxLength={500}
-                          onChange={e => setLinkInputs(prev => prev.map((x, j) => (j === i ? e.target.value : x)))}
+                          onChange={e => onLinkChange(i, e.target.value)}
                           placeholder={t('coachDashboard.groupTopicLinkPlaceholder')}
                           className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
                         />
@@ -544,7 +570,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           <button
                             type="button"
                             onClick={() => {
-                              setLinkInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
+                              onLinkChange(i, '');
+                              autoTitleRef.current[i] = '';
                               setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
                             }}
                             aria-label={t('coachDashboard.groupTopicLinkRemove')}
@@ -568,13 +595,13 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           {isYouTube(linkChecks[i] as string) && (
                             <button
                               type="button"
-                              onClick={() => fetchYouTubeTitle(i)}
-                              disabled={fetchingTitle !== null}
+                              onClick={() => fetchYouTubeTitle(i, linkChecks[i] as string, false)}
+                              disabled={fetchingTitle === i}
+                              aria-label={t('coachDashboard.groupTopicTitleFetch')}
                               title={t('coachDashboard.groupTopicTitleFetch')}
-                              className="shrink-0 h-8 px-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-[9px] font-black uppercase tracking-wide flex items-center gap-1 active:scale-95 transition-all disabled:opacity-50"
+                              className="w-8 h-8 shrink-0 rounded-lg text-rose-400 hover:text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-60"
                             >
-                              <span className={`material-symbols-outlined text-[15px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'download'}</span>
-                              {t('coachDashboard.groupTopicTitleFetch')}
+                              <span className={`material-symbols-outlined text-[18px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'refresh'}</span>
                             </button>
                           )}
                         </div>

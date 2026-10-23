@@ -376,7 +376,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       if (cancelled) return;
 
       // Dzisiejsze zawody z wpisanym wynikiem nie są już „następne” (jak w Tagebuch).
-      setNextTournament(all.find((e: any) => (e.category === 'Turniej' || !e.category) && !e.hasScore) || null);
+      setNextTournament(all.find((e: any) => (e.category === 'Turniej' || !e.category) && !e.hasScore && !e.skipped) || null);
       setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
       setNextTrainerSent(all.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
       setNextTrainerReceived(all.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);

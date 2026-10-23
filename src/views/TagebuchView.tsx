@@ -27,7 +27,7 @@ import {
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
-  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, PrivateNoteCard, NewBadge,
+  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, SkippedTournamentCard, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
   type TbSession, type TbPrivateNote, type TbCoachEntry, type TbLedTraining,
 } from '../components/tagebuch/TagebuchCards';
@@ -68,7 +68,8 @@ function entryKind(it: TimelineItem): EntryKind {
     case 'private': return 'private';
     case 'milestone': return it.milestone.fromCoach ? 'coachFocus' : 'focus';
     case 'led': return 'led';
-    case 'missed': return 'target';
+    case 'missed':
+    case 'skipped': return 'target';
     default: return it.entry.trainingTopic ? 'topic' : 'coachEntry';
   }
 }
@@ -123,6 +124,7 @@ interface UpcomingEvent {
   isLed: boolean;      // własny termin trenera (nie kopia od mojego trenera) — różowy
   kind: EventKind;
   hasScore: boolean;   // zawody z wpisanym wynikiem — znikają z „Als Nächstes”
+  skipped?: boolean;   // „Nicht gestartet” — zostaje w dzienniku z notatkami
   distance?: string;
   distanceId?: string;
   distanceLabel?: string;
@@ -147,7 +149,8 @@ type TimelineItem =
   | { kind: 'milestone'; id: string; ts: number; milestone: FocusMilestone }
   | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry }
   | { kind: 'led'; id: string; ts: number; entry: TbLedTraining }
-  | { kind: 'missed'; id: string; ts: number; ev: UpcomingEvent };
+  | { kind: 'missed'; id: string; ts: number; ev: UpcomingEvent }
+  | { kind: 'skipped'; id: string; ts: number; ev: UpcomingEvent; linked: TbPrivateNote[] };
 
 interface TagebuchViewProps {
   userId: string;
@@ -213,6 +216,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Minione zawody bez wyniku — karta w dniu zawodów z „Ringzahl eingeben”.
   const [missed, setMissed] = useState<UpcomingEvent[]>([]);
   const [scoreFor, setScoreFor] = useState<UpcomingEvent | null>(null);
+  // Zawody „Nicht gestartet” — wszystkie, bez limitu dni (to wpis w dzienniku).
+  const [skipped, setSkipped] = useState<UpcomingEvent[]>([]);
   // Źródło wyczerpane = ostatnia strona przyszła niepełna.
   const [sessionsDone, setSessionsDone] = useState(false);
   const [notesDone, setNotesDone] = useState(false);
@@ -369,7 +374,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           orderBy('date'),
           limit(60),
         ));
-        const all: UpcomingEvent[] = snap.docs.map(d => {
+        const toEvent = (d: QueryDocumentSnapshot): UpcomingEvent => {
           const data = d.data();
           return {
             id: d.id,
@@ -380,15 +385,20 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             isLed: data.category === 'Trener' && !data.isMirrored,
             kind: (data.category === 'Trener' ? (data.isMirrored ? 'fromCoach' : 'led') : data.category === 'Inne' ? 'other' : 'tournament') as EventKind,
             hasScore: data.hasScore === true,
+            ...(data.skipped === true ? { skipped: true } : {}),
             ...(data.distance ? { distance: data.distance } : {}),
             ...(data.distanceId ? { distanceId: data.distanceId } : {}),
             ...(data.distanceLabel ? { distanceLabel: data.distanceLabel } : {}),
           };
-        }).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+        };
+        const all = snap.docs.map(toEvent).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
         // Zawody z wynikiem nie są już „następne” — trening z wynikiem stoi pod „Heute”.
-        setUpcoming(all.filter(ev => ev.date >= today && !(ev.kind === 'tournament' && ev.hasScore)));
+        setUpcoming(all.filter(ev => ev.date >= today && !(ev.kind === 'tournament' && (ev.hasScore || ev.skipped))));
         // Minione zawody bez wyniku → karta w historii (user 2026-10-23).
-        setMissed(all.filter(ev => ev.date < today && ev.kind === 'tournament' && !ev.hasScore));
+        setMissed(all.filter(ev => ev.date < today && ev.kind === 'tournament' && !ev.hasScore && !ev.skipped));
+        // „Nicht gestartet” — osobno i bez limitu dni (równość na jednym polu, bez indeksu).
+        const sk = await getDocs(query(collection(db, `users/${userId}/tournaments`), where('skipped', '==', true)));
+        setSkipped(sk.docs.map(toEvent));
       } catch (e) {
         console.error('Tagebuch: błąd pobierania terminów', e);
       }
@@ -427,6 +437,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ts: toMs(data.timestamp) || toMs(data.createdAt),
             date: data.date || '',
             isTech: data.type === 'TECHNICAL',
+            ...(data.type === 'Turniej' ? { isTournament: true } : {}),
             meters: distanceMeters(data.distance),
             distKey: distanceKey(data),
             label: data.tournamentName || data.distanceLabel || data.distance || '',
@@ -526,6 +537,19 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
     setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now() }, ...prev]);
+  }, [userId]);
+
+  // [NIE STARTOWAŁEM] Znacznik na terminie; cofnięcie wraca do „bez wyniku”.
+  const markSkipped = useCallback(async (ev: UpcomingEvent, on: boolean) => {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/tournaments`, ev.id), on ? { skipped: true } : { skipped: deleteField() }));
+    try { localStorage.removeItem(`grotX_tournaments_${userId}`); } catch { /* prywatny tryb */ }
+    if (on) {
+      setMissed(prev => prev.filter(x => x.id !== ev.id));
+      setSkipped(prev => [...prev, { ...ev, skipped: true }]);
+    } else {
+      setSkipped(prev => prev.filter(x => x.id !== ev.id));
+      setMissed(prev => [...prev, { ...ev, skipped: undefined }]);
+    }
   }, [userId]);
 
   const addSessionNote = useCallback(async (s: TbSession, text: string, topics: string[], shared: boolean) => {
@@ -786,8 +810,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       if (topic && !(hit(s.topics) || hit(s.coachTopics) || linked.some(n => hit(n.topics)))) return;
       all.push({ kind: 'session', id: s.id, ts: s.ts, session: s, linked });
     });
+    // Notatki do zawodów „Nicht gestartet” (sessionId = id terminu) — w karcie zawodów.
+    const skippedIds = new Set(skipped.map(ev => ev.id));
+    const bySkipped: Record<string, TbPrivateNote[]> = {};
     notes.forEach(n => {
-      if (n.ts < cutoff || (n.sessionId && sessionIds.has(n.sessionId))) return;
+      if (n.sessionId && skippedIds.has(n.sessionId)) (bySkipped[n.sessionId] ||= []).push(n);
+    });
+    notes.forEach(n => {
+      if (n.ts < cutoff || (n.sessionId && (sessionIds.has(n.sessionId) || skippedIds.has(n.sessionId)))) return;
       if (!hit(n.topics)) return;
       if (n.milestone) all.push({ kind: 'milestone', id: n.id, ts: n.ts, milestone: n.milestone });
       else all.push({ kind: 'private', id: n.id, ts: n.ts, note: n });
@@ -802,9 +832,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       all.push({ kind: 'coach', id: e.id, ts: e.ts, entry: e });
     });
     // Zaległe zawody bez wyniku — w dniu (i godzinie) zawodów; bez tematów.
+    const evTs = (ev: UpcomingEvent) => new Date(`${ev.date}T${/^\d{2}:\d{2}$/.test(ev.time) ? ev.time : '12:00'}:00`).getTime();
     if (!topic) missed.forEach(ev => {
-      const ts = new Date(`${ev.date}T${/^\d{2}:\d{2}$/.test(ev.time) ? ev.time : '12:00'}:00`).getTime();
+      const ts = evTs(ev);
       if (!isNaN(ts) && ts >= cutoff) all.push({ kind: 'missed', id: ev.id, ts, ev });
+    });
+    skipped.forEach(ev => {
+      const ts = evTs(ev);
+      const linked = (bySkipped[ev.id] || []).slice().sort((a, b) => a.ts - b.ts);
+      if (isNaN(ts) || ts < cutoff || (topic && !linked.some(n => hit(n.topics)))) return;
+      all.push({ kind: 'skipped', id: ev.id, ts, ev, linked });
     });
     const kinds = new Set(all.map(entryKind));
     // „Od trenera”: uwagi trenera do treningów, wpisy trenera i tematy od trenera.
@@ -813,7 +850,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
     return { items: list, hasMore: sessionsFull || notesFull, cutoff, kinds };
-  }, [sessions, notes, coachEntries, ledTrainings, missed, filter, topic, sessionsDone, notesDone]);
+  }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -1286,7 +1323,17 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   ) : it.kind === 'milestone' ? (
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
                   ) : it.kind === 'missed' ? (
-                    <MissedTournamentCard title={it.ev.title} date={it.ev.date} time={timeOf(it.ts)} onEnter={() => setScoreFor(it.ev)} />
+                    <MissedTournamentCard title={it.ev.title} date={it.ev.date} time={timeOf(it.ts)} onEnter={() => setScoreFor(it.ev)} onSkip={() => markSkipped(it.ev, true)} />
+                  ) : it.kind === 'skipped' ? (
+                    <SkippedTournamentCard
+                      title={it.ev.title}
+                      date={it.ev.date}
+                      time={timeOf(it.ts)}
+                      notes={it.linked}
+                      onAddNote={(text, topics) => addPrivateNote(text, topics, it.ev.id)}
+                      onDeleteNote={deleteNote}
+                      onUndo={() => markSkipped(it.ev, false)}
+                    />
                   ) : it.kind === 'led' ? (
                     <LedTrainingCard entry={it.entry} time={timeOf(it.ts)} />
                   ) : it.kind === 'private' ? (

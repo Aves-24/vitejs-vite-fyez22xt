@@ -47,6 +47,7 @@ export interface TbSession {
   trainingTopic?: { text: string; topic: string };
   // [ARENA] Trening z bitwy: tryb i wynik (place po zakończeniu gry, live = trwa).
   battle?: { id: string; mode: string; place?: number; players?: number; live?: boolean };
+  isTournament?: boolean; // wynik zawodów (type 'Turniej') — ciemnozielona karta jak na Home
 }
 
 export interface TbCoachEntry {
@@ -105,7 +106,7 @@ export function EntryRow({ icon, iconCls, label, labelCls, time, extra, children
         <div className="flex items-center gap-1.5 min-h-[16px]">
           <span className={`flex-1 min-w-0 truncate text-[10px] font-black ${labelCls || ''}`}>{label}</span>
           {extra}
-          {time && <span className="shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
+          {time && <span className="tb-time shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
         </div>
         {children}
       </div>
@@ -497,20 +498,96 @@ export function LedTrainingCard({ entry, time }: { entry: TbLedTraining; time: s
  * [ZALEGŁY TURNIEJ] (user 2026-10-23) Zawody z kalendarza, które już minęły,
  * a nie mają wyniku — stoją w dniu zawodów i pozwalają dopisać wynik później.
  */
-export function MissedTournamentCard({ title, date, time, onEnter }: { title: string; date: string; time: string; onEnter: () => void }) {
+export function MissedTournamentCard({ title, date, time, onEnter, onSkip }: { title: string; date: string; time: string; onEnter: () => void; onSkip: () => Promise<void> }) {
   const { t, i18n } = useTranslation();
+  const [busy, setBusy] = useState(false);
   const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
     <div className={`${CARD_SHAPE} tb-d3 bg-white border-emerald-200 ${CARD_PAD}`}>
       <EntryRow icon="emoji_events" iconCls="text-[#0a3a2a]" label={`${t('tagebuch.missedTournament')} · ${day}`} labelCls="text-emerald-800" time={time}>
         <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{title}</p>
-        <button
-          onClick={onEnter}
-          className="mt-2 inline-flex items-center gap-1 bg-[#fed33e] text-[#5d4a00] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl active:scale-95 transition-all"
-        >
-          <span className="material-symbols-outlined text-[15px]">edit_note</span>
-          {t('calendar.modalEnterScore')}
-        </button>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={onEnter}
+            className="inline-flex items-center gap-1 bg-[#fed33e] text-[#5d4a00] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[15px]">edit_note</span>
+            {t('calendar.modalEnterScore')}
+          </button>
+          {/* Choroba, wyjazd… (user 2026-10-23) — zawody zostają w dzienniku jako „nie startowałem”. */}
+          <button
+            onClick={async () => { setBusy(true); try { await onSkip(); } finally { setBusy(false); } }}
+            disabled={busy}
+            className="inline-flex items-center gap-1 bg-white border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl active:scale-95 transition-all disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-[15px]">event_busy</span>
+            {t('tagebuch.notStarted')}
+          </button>
+        </div>
+      </EntryRow>
+    </div>
+  );
+}
+
+/**
+ * [NIE STARTOWAŁEM] Zawody oznaczone „Nicht gestartet” zostają w dzienniku
+ * w swoim dniu — z prywatnymi notatkami (privateNotes z sessionId = id terminu;
+ * trener ich nie widzi, bo powodem bywa choroba) i cofnięciem.
+ */
+export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onDeleteNote, onUndo }: {
+  title: string;
+  date: string;
+  time: string;
+  notes: TbPrivateNote[];
+  onAddNote: (text: string, topics: string[]) => Promise<void>;
+  onDeleteNote: (id: string) => Promise<void>;
+  onUndo: () => Promise<void>;
+}) {
+  const { t, i18n } = useTranslation();
+  const [composing, setComposing] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  return (
+    <div className={`${CARD_SHAPE} tb-skipped bg-gray-50 border-gray-200 ${CARD_PAD}`}>
+      <EntryRow icon="event_busy" iconCls="text-gray-500" label={`${t('tagebuch.notStarted')} · ${day}`} labelCls="text-gray-500" time={time}>
+        <p className="text-[13px] font-black text-gray-600 leading-snug break-words mt-0.5">{title}</p>
+        {notes.map(n => (
+          <div key={n.id} className="mt-2 bg-indigo-50 rounded-xl p-2.5">
+            <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-0.5">
+              <span className="material-symbols-outlined text-[13px]">lock</span>
+              {t('tagebuch.onlyYou')}
+            </div>
+            <PrivateNoteBody note={n} onDelete={onDeleteNote} />
+          </div>
+        ))}
+        {composing ? (
+          <div className="mt-2">
+            <NoteComposer
+              allowShare={false}
+              autoFocus
+              onSave={async (text, topics) => { await onAddNote(text, topics); setComposing(false); }}
+              onCancel={() => setComposing(false)}
+            />
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 mt-2">
+            <button
+              onClick={() => setComposing(true)}
+              className="flex items-center gap-0.5 text-[10px] font-black text-indigo-600 bg-white border border-indigo-200 px-2.5 py-1.5 rounded-full active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[14px]">add</span>
+              {t('tagebuch.noteShort')}
+            </button>
+            <div className="flex-1" />
+            <button
+              onClick={async () => { setBusy(true); try { await onUndo(); } finally { setBusy(false); } }}
+              disabled={busy}
+              className="text-[10px] font-black text-gray-400 px-2 py-1.5 rounded-full active:bg-white/60 disabled:opacity-50"
+            >
+              {t('tagebuch.notStartedUndo')}
+            </button>
+          </div>
+        )}
       </EntryRow>
     </div>
   );
@@ -622,9 +699,11 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   const [composing, setComposing] = useState(false);
 
   // [ARENA] Trening z bitwy podpisany jej trybem zamiast ogólnego „Training”.
+  // Zawody (user 2026-10-23): „Turnier · nazwa”, ciemna zieleń i żółty puchar jak karta zawodów na Home.
+  const tourney = !session.isTech && !session.battle && !!session.isTournament;
   const kind = session.battle
     ? (session.battle.mode === 'CLUB' ? t('tagebuch.clubGame') : session.battle.mode === 'WORLD' ? 'World' : t('tagebuch.duel'))
-    : t('tagebuch.training');
+    : tourney ? t('tagebuch.tournament') : t('tagebuch.training');
   const title = session.isTech
     ? t('tagebuch.techTraining')
     : session.label ? `${kind} · ${session.label}` : kind;
@@ -640,15 +719,15 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
 
   const header = (
     <button onClick={onToggle} className="w-full flex items-stretch gap-2.5 text-left active:opacity-60" aria-expanded={expanded}>
-      <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 self-start">
-        <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : session.battle ? 'text-fuchsia-600' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : session.battle ? 'shield' : 'target'}</span>
+      <span className={`${tourney ? 'tb-tourney-icon' : 'tb-icon'} w-8 h-8 rounded-lg flex items-center justify-center shrink-0 self-start`}>
+        <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : session.battle ? 'text-fuchsia-600' : tourney ? 'tb-tourney-accent' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : session.battle ? 'shield' : tourney ? 'emoji_events' : 'target'}</span>
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 min-w-0">
-          <span className="text-[13px] font-black text-[#0a3a2a] truncate">{title}</span>
+          <span className={`text-[13px] font-black truncate ${tourney ? 'tb-tourney-title' : 'text-[#0a3a2a]'}`}>{title}</span>
           <InsightBadge insight={insight} />
         </span>
-        <span className="block text-[10px] font-bold text-gray-500 truncate">{stats}</span>
+        <span className={`block text-[10px] font-bold truncate ${tourney ? 'tb-tourney-sub' : 'text-gray-500'}`}>{stats}</span>
         {/* [ARENA] Miejsce po zakończeniu gry, wcześniej „gra trwa”. */}
         {session.battle?.place ? (
           <span className="flex items-center gap-1 mt-0.5 text-[10px] font-black text-fuchsia-700">
@@ -671,7 +750,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
       </span>
       {/* Godzina w prawym górnym rogu, strzałka w prawym dolnym (user 2026-10-15). */}
       <span className="shrink-0 flex flex-col items-end justify-between gap-1">
-        {time ? <span className="text-[10px] font-bold text-gray-400 leading-none mt-0.5">{time}</span> : <span />}
+        {time ? <span className="tb-time text-[10px] font-bold text-gray-400 leading-none mt-0.5">{time}</span> : <span />}
         <span className="flex items-center gap-1">
       {/* Zwinięta: znaczki, że w środku coś jest (trener, notatki). */}
       {!expanded && (session.coachNote || noteCount > 0 || session.coachSeen) && (
@@ -701,13 +780,14 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   );
 
   return (
-    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : `tb-dist ${distanceTier(session.meters)}`} ${CARD_PAD}`}>
+    <div className={`${CARD_SHAPE} ${session.isTech ? 'tb-tech' : tourney ? 'tb-tourney' : `tb-dist ${distanceTier(session.meters)}`} ${CARD_PAD}`}>
       {header}
       {focus && (
         <FocusToggle topic={focus.topic} marked={focus.marked} onToggle={focus.onToggle} />
       )}
 
-      {expanded && <>
+      {/* Zawody: rozwinięta treść na jasnym panelu — na ciemnej zieleni byłaby nieczytelna. */}
+      {expanded && <div className={tourney ? 'tb-tourney-panel mt-2 rounded-xl px-2.5 pb-2.5 pt-0.5' : ''}>
       {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
       <TopicChips topics={visibleTopics} tone="onTint" />
 
@@ -796,7 +876,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           </button>
         </div>
       )}
-      </>}
+      </div>}
     </div>
   );
 }

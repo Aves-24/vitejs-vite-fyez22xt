@@ -21,6 +21,7 @@ export interface TbPrivateNote {
   ts: number;
   milestone?: FocusMilestone;   // wpis „fokus ukończony / zakończony” (kind: 'focusMilestone')
   important?: boolean;          // Meilenstein — punkt zwrotny (nowy łuk, ważne wydarzenie)
+  shared?: boolean;             // uczeń udostępnił wpis trenerom (privateNotes.shared)
 }
 
 export interface TbSession {
@@ -179,26 +180,28 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
 // --- EDYTOR NOTATKI ---
 // Używany na górze dziennika (zawsze prywatna) i przy sesji („+ Notiz",
 // z przełącznikiem widoczności, jeśli sesję da się jeszcze opisać dla trenera).
-export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false, initial }: {
+export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false, initial, shareKeepsLength = false }: {
   allowShare: boolean;
   autoFocus?: boolean;
   onSave: (text: string, topics: string[], shared: boolean, important: boolean) => Promise<void>;
   onCancel?: () => void;
   allowMilestone?: boolean; // przełącznik „Meilenstein” (nowy wpis z „+”)
   bare?: boolean;           // bez własnej ramki — w oknie NoteSheet
-  initial?: { text: string; topics: string[]; important?: boolean }; // edycja wpisu
+  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean }; // edycja wpisu
+  // Udostępnienie samego wpisu (privateNotes.shared) — bez skracania do limitu notatki sesji.
+  shareKeepsLength?: boolean;
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState(initial?.text ?? '');
   const [topics, setTopics] = useState<string[]>(initial?.topics ?? []);
   const [showTopics, setShowTopics] = useState(false);
-  const [shared, setShared] = useState(false);
+  const [shared, setShared] = useState(!!initial?.shared);
   const [important, setImportant] = useState(!!initial?.important);
   const [showInfo, setShowInfo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const max = shared ? SESSION_NOTE_MAX : PRIVATE_NOTE_MAX;
+  const max = shared && !shareKeepsLength ? SESSION_NOTE_MAX : PRIVATE_NOTE_MAX;
 
   const grow = () => {
     const el = textareaRef.current;
@@ -277,7 +280,7 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
             {t('tagebuch.onlyYou')}
           </button>
           <button
-            onClick={() => { setShared(true); setText(prev => prev.slice(0, SESSION_NOTE_MAX)); }}
+            onClick={() => { setShared(true); if (!shareKeepsLength) setText(prev => prev.slice(0, SESSION_NOTE_MAX)); }}
             className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-black transition-all ${shared ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-400'}`}
           >
             <span className="material-symbols-outlined text-[14px]">visibility</span>
@@ -383,12 +386,16 @@ function PrivateNoteBody({ note, onDelete, onEdit, strong = false, privacyLine =
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
           <p className={`leading-relaxed whitespace-pre-wrap break-words ${strong ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{note.text}</p>
-          {/* Najpierw treść, potem „tylko dla ciebie” (user 2026-10-23). */}
-          {privacyLine && (
+          {/* Najpierw treść, potem kto widzi: tylko ty albo też trener (user 2026-10-23). */}
+          {privacyLine && (note.shared ? (
+            <p className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-emerald-700">
+              <span className="material-symbols-outlined text-[12px]">visibility</span>{t('tagebuch.visibleCoach')}
+            </p>
+          ) : (
             <p className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-gray-400">
               <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
             </p>
-          )}
+          ))}
           <TopicChips topics={note.topics} tone="indigo" />
         </div>
         <span className="shrink-0 flex items-center gap-1">
@@ -436,7 +443,7 @@ export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPriv
     </div>
   ) : (
     <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
-      <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" time={time}>
+      <EntryRow icon={note.shared ? 'visibility' : 'lock'} iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" time={time}>
         <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} privacyLine /></div>
       </EntryRow>
     </div>
@@ -448,13 +455,16 @@ export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPriv
  * górze dziennika — z przełącznikiem „Meilenstein” dla ważnych wydarzeń.
  * Z `initial` to samo okno służy do edycji istniejącego wpisu.
  */
-export function NoteSheet({ onSave, onClose, initial }: {
-  onSave: (text: string, topics: string[], important: boolean) => Promise<void>;
+export function NoteSheet({ onSave, onClose, initial, canShare = false, standalone = true }: {
+  onSave: (text: string, topics: string[], important: boolean, shared: boolean) => Promise<void>;
   onClose: () => void;
-  initial?: { text: string; topics: string[]; important?: boolean };
+  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean };
+  canShare?: boolean;    // uczeń ma trenera — przełącznik „Für Trainer sichtbar”
+  standalone?: boolean;  // false = notatka przypięta do treningu/zawodów: bez Meilenstein i udostępniania
 }) {
   const { t } = useTranslation();
   const title = t(initial ? 'tagebuch.editEntry' : 'tagebuch.newEntry');
+  const share = canShare && standalone;
   return createPortal(
     <div className="fixed inset-0 z-[120] flex items-end justify-center">
       <div className="absolute inset-0 bg-black/40 tb-fade-in" onClick={onClose} aria-hidden />
@@ -471,9 +481,12 @@ export function NoteSheet({ onSave, onClose, initial }: {
           </span>
           <div className="flex-1 min-w-0">
             <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{title}</p>
-            <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
-            </p>
+            {/* Z trenerem o widoczności decyduje przełącznik niżej. */}
+            {!share && (
+              <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
+              </p>
+            )}
           </div>
           <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all" aria-label={t('tagebuch.cancel')}>
             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -481,11 +494,12 @@ export function NoteSheet({ onSave, onClose, initial }: {
         </div>
         <NoteComposer
           bare
-          allowShare={false}
-          allowMilestone
+          allowShare={share}
+          shareKeepsLength
+          allowMilestone={standalone}
           autoFocus
           initial={initial}
-          onSave={async (text, topics, _shared, important) => { await onSave(text, topics, important); onClose(); }}
+          onSave={async (text, topics, shared, important) => { await onSave(text, topics, important, share && shared); onClose(); }}
         />
       </div>
     </div>,
@@ -693,13 +707,14 @@ export function MissedTournamentCard({ title, date, time, onEnter, onSkip }: { t
  * w swoim dniu — z prywatnymi notatkami (privateNotes z sessionId = id terminu;
  * trener ich nie widzi, bo powodem bywa choroba) i cofnięciem.
  */
-export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onDeleteNote, onUndo }: {
+export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onDeleteNote, onEditNote, onUndo }: {
   title: string;
   date: string;
   time: string;
   notes: TbPrivateNote[];
   onAddNote: (text: string, topics: string[]) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  onEditNote?: (note: TbPrivateNote) => void;
   onUndo: () => Promise<void>;
 }) {
   const { t, i18n } = useTranslation();
@@ -715,7 +730,7 @@ export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onD
               <span className="material-symbols-outlined text-[13px]">lock</span>
               {t('tagebuch.onlyYou')}
             </div>
-            <PrivateNoteBody note={n} onDelete={onDeleteNote} />
+            <PrivateNoteBody note={n} onDelete={onDeleteNote} onEdit={onEditNote ? () => onEditNote(n) : undefined} />
           </div>
         ))}
         {composing ? (
@@ -911,7 +926,7 @@ function EndsGrid({ sums }: { sums: number[] }) {
 // Karta treningu: zwinięta = wynik i porównanie, rozwinięta (dotknięcie) =
 // serie, notatki, uwaga trenera i akcje. Do statystyk prowadzi osobny
 // przycisk — wcześniej każde dotknięcie wyrzucało z dziennika.
-export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote }: {
+export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote, onEditNote }: {
   session: TbSession;
   time: string;
   insight?: SessionInsight;
@@ -924,6 +939,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   onOpenStats: () => void;
   onAddNote: (session: TbSession, text: string, topics: string[], shared: boolean) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
+  onEditNote?: (note: TbPrivateNote) => void; // ołówek przy przypiętej notatce
 }) {
   const { t } = useTranslation();
   const [composing, setComposing] = useState(false);
@@ -1058,7 +1074,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
             <span className="material-symbols-outlined text-[13px]">lock</span>
             {t('tagebuch.onlyYou')}
           </div>
-          <PrivateNoteBody note={n} onDelete={onDeleteNote} />
+          <PrivateNoteBody note={n} onDelete={onDeleteNote} onEdit={onEditNote ? () => onEditNote(n) : undefined} />
         </div>
       ))}
 

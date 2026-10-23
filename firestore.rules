@@ -626,9 +626,15 @@ service cloud.firestore {
     }
 
     // ─── /users/{uid}/privateNotes/{noteId}─────────────────────
-    //  Student-only private notes. Coaches have NO access (by design).
+    //  Student-only private notes. Coaches have NO access (by design) —
+    //  z wyjątkiem wpisów, które uczeń sam udostępnił (shared: true).
     match /users/{uid}/privateNotes/{noteId} {
       allow read, create, delete: if isSelf(uid) || isAdmin();
+      // [UDOSTĘPNIONY WPIS 2026-10-23] Uczeń sam decyduje (shared: true), że
+      // wpis widzą jego trenerzy — tylko czytanie; reszta notatek bez zmian.
+      allow read: if isSignedIn()
+        && resource.data.get('shared', false) == true
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', []);
       // Notatek nie edytujemy. Jedyny wyjątek: po rejestracji gościa
       // (clearGuestExpiry) właściciel zdejmuje expiresAt/isGuest, żeby TTL
       // nie skasował jego notatek — nic innego nie może się zmienić.
@@ -640,13 +646,14 @@ service cloud.firestore {
       // tematy i znacznik Meilenstein. Wpisy fokusu (pole kind) — nie.
       allow update: if isSelf(uid)
         && resource.data.get('kind', '') == ''
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'topics', 'important', 'editedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['text', 'topics', 'important', 'shared', 'editedAt'])
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 1000
         && request.resource.data.get('topics', []) is list
         && request.resource.data.get('topics', []).size() <= 20
         && request.resource.data.get('important', false) is bool
+        && request.resource.data.get('shared', false) is bool
         && request.resource.data.get('editedAt', 0) is number;
     }
 

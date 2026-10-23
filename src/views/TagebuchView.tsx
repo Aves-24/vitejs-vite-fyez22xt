@@ -524,6 +524,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ts: toMs(data.createdAt) || Date.now(),
             milestone: readFocusMilestone(data) || undefined,
             ...(data.important === true ? { important: true } : {}),
+            ...(data.shared === true ? { shared: true } : {}),
           };
       });
       setNotes(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
@@ -563,7 +564,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   // --- ZAPIS / USUWANIE ---
   // `important` = Meilenstein (user 2026-10-23): punkt zwrotny, np. nowy łuk.
-  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string, important = false) => {
+  // `shared` = uczeń udostępnia wpis trenerom (reguła privateNotes: trener tylko czyta).
+  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string, important = false, shared = false) => {
     // [C41] Id nadany w telefonie — bez zasiegu notatka czeka i wysle sie sama.
     const ref = doc(collection(db, `users/${userId}/privateNotes`));
     await settleWrite(setDoc(ref, {
@@ -571,16 +573,17 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       topics,
       ...(sessionId ? { sessionId } : {}),
       ...(important ? { important: true } : {}),
+      ...(shared ? { shared: true } : {}),
       createdAt: serverTimestamp(),
       ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
-    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}) }, ...prev]);
+    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}), ...(shared ? { shared: true } : {}) }, ...prev]);
   }, [userId]);
 
-  // [EDYCJA WPISU] (user 2026-10-23) Tekst, tematy i Meilenstein własnej notatki.
-  const updatePrivateNote = useCallback(async (id: string, text: string, topics: string[], important: boolean) => {
-    await settleWrite(updateDoc(doc(db, `users/${userId}/privateNotes`, id), { text, topics, important, editedAt: Date.now() }));
-    setNotes(prev => prev.map(n => (n.id === id ? { ...n, text, topics, important: important || undefined } : n)));
+  // [EDYCJA WPISU] (user 2026-10-23) Tekst, tematy, Meilenstein i udostępnienie własnej notatki.
+  const updatePrivateNote = useCallback(async (id: string, text: string, topics: string[], important: boolean, shared: boolean) => {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/privateNotes`, id), { text, topics, important, shared, editedAt: Date.now() }));
+    setNotes(prev => prev.map(n => (n.id === id ? { ...n, text, topics, important: important || undefined, shared: shared || undefined } : n)));
   }, [userId]);
 
   // [NIE STARTOWAŁEM] Znacznik na terminie; cofnięcie wraca do „bez wyniku”.
@@ -1154,17 +1157,22 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           />
         )}
 
-        {/* NOWY WPIS — okno od dołu (NoteSheet) po „+”, zawsze prywatny; opcjonalnie Meilenstein. */}
+        {/* NOWY WPIS — okno od dołu (NoteSheet) po „+”: domyślnie prywatny,
+            z trenerem przełącznik „Für Trainer sichtbar”; opcjonalnie Meilenstein. */}
         {composerOpen && (
           <NoteSheet
-            onSave={(text, topics, important) => addPrivateNote(text, topics, undefined, important)}
+            canShare={hasCoach}
+            onSave={(text, topics, important, shared) => addPrivateNote(text, topics, undefined, important, shared)}
             onClose={() => setComposerOpen(false)}
           />
         )}
+        {/* Edycja — notatka przypięta do treningu/zawodów bez Meilenstein i udostępniania. */}
         {editingNote && (
           <NoteSheet
-            initial={{ text: editingNote.text, topics: editingNote.topics, important: editingNote.important }}
-            onSave={(text, topics, important) => updatePrivateNote(editingNote.id, text, topics, important)}
+            canShare={hasCoach}
+            standalone={!editingNote.sessionId}
+            initial={{ text: editingNote.text, topics: editingNote.topics, important: editingNote.important, shared: editingNote.shared }}
+            onSave={(text, topics, important, shared) => updatePrivateNote(editingNote.id, text, topics, important, shared)}
             onClose={() => setEditingNote(null)}
           />
         )}
@@ -1340,6 +1348,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       }}
                       onAddNote={addSessionNote}
                       onDeleteNote={deleteNote}
+                      onEditNote={setEditingNote}
                     />
                   ) : it.kind === 'milestone' ? (
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
@@ -1353,6 +1362,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       notes={it.linked}
                       onAddNote={(text, topics) => addPrivateNote(text, topics, it.ev.id)}
                       onDeleteNote={deleteNote}
+                      onEditNote={setEditingNote}
                       onUndo={() => markSkipped(it.ev, false)}
                     />
                   ) : it.kind === 'led' ? (

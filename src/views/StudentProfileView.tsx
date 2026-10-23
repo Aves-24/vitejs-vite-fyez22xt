@@ -9,6 +9,7 @@ import StatsView from './StatsView';
 import QuickStatsModal from '../components/QuickStatsModal';
 import ViewHeader from '../components/ViewHeader';
 import CoachLogPanel from '../components/CoachLogPanel';
+import StudentSharedNotes from '../components/StudentSharedNotes';
 import CoachFocusModal from '../components/CoachFocusModal';
 import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
@@ -1041,6 +1042,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-5 pt-3">
+            {/* Wpisy, które uczeń sam udostępnił z własnego dziennika (user 2026-10-23). */}
+            <StudentSharedNotes studentId={studentId} />
             <CoachLogPanel studentId={studentId} currentUserId={coachId} onChange={() => setFocusNonce(n => n + 1)} />
           </div>
         )}

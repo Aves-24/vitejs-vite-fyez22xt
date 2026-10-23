@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where } from 'firebase/firestore';
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let env;
@@ -1104,6 +1104,23 @@ test('privateNotes: właściciel edytuje tekst/tematy/Meilenstein, nic więcej; 
   await assertFails(updateDoc(n(bob()), { text: 'obcy' }));
   await assertFails(updateDoc(n(coach1()), { text: 'trener' }));
   await assertFails(updateDoc(doc(alice(), 'users/alice/privateNotes/f1'), { text: 'fokus' }));
+});
+
+test('privateNotes: udostępniony wpis (shared) czyta trener ucznia; nieudostępniony i obcy — nie', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/s1'), { text: 'nowy łuk', shared: true, createdAt: 1 });
+    await setDoc(doc(ctx.firestore(), 'users/alice/privateNotes/s2'), { text: 'tylko moje', createdAt: 1 });
+  });
+  await assertSucceeds(getDoc(doc(coach1(), 'users/alice/privateNotes/s1')));
+  await assertFails(getDoc(doc(coach1(), 'users/alice/privateNotes/s2')));
+  await assertFails(getDoc(doc(bob(), 'users/alice/privateNotes/s1')));
+  // Zapytanie trenera musi filtrować po shared — inaczej odrzucone.
+  await assertSucceeds(getDocs(query(collection(coach1(), 'users/alice/privateNotes'), where('shared', '==', true))));
+  await assertFails(getDocs(collection(coach1(), 'users/alice/privateNotes')));
+  // Trener nie zmienia; uczeń włącza i wyłącza udostępnienie.
+  await assertFails(updateDoc(doc(coach1(), 'users/alice/privateNotes/s1'), { text: 'trener' }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice/privateNotes/s2'), { shared: true, editedAt: 2 }));
+  await assertFails(updateDoc(doc(alice(), 'users/alice/privateNotes/s2'), { shared: 'tak' }));
 });
 
 // Kopie terminów trenera (coachCalendarMirror.ts) w kalendarzu ucznia.

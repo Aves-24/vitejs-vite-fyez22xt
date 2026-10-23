@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
@@ -19,6 +20,7 @@ export interface TbPrivateNote {
   sessionId?: string;
   ts: number;
   milestone?: FocusMilestone;   // wpis „fokus ukończony / zakończony” (kind: 'focusMilestone')
+  important?: boolean;          // Meilenstein — punkt zwrotny (nowy łuk, ważne wydarzenie)
 }
 
 export interface TbSession {
@@ -177,17 +179,21 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
 // --- EDYTOR NOTATKI ---
 // Używany na górze dziennika (zawsze prywatna) i przy sesji („+ Notiz",
 // z przełącznikiem widoczności, jeśli sesję da się jeszcze opisać dla trenera).
-export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
+export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false }: {
   allowShare: boolean;
   autoFocus?: boolean;
-  onSave: (text: string, topics: string[], shared: boolean) => Promise<void>;
+  onSave: (text: string, topics: string[], shared: boolean, important: boolean) => Promise<void>;
   onCancel?: () => void;
+  allowMilestone?: boolean; // przełącznik „Meilenstein” (nowy wpis z „+”)
+  bare?: boolean;           // bez własnej ramki — w oknie NoteSheet
 }) {
   const { t } = useTranslation();
   const [text, setText] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const [showTopics, setShowTopics] = useState(false);
   const [shared, setShared] = useState(false);
+  const [important, setImportant] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -213,11 +219,12 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
     setIsSaving(true);
     setError(false);
     try {
-      await onSave(clean, topics, shared);
+      await onSave(clean, topics, shared, important);
       setText('');
       setTopics([]);
       setShowTopics(false);
       setShared(false);
+      setImportant(false);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     } catch (e) {
       console.error('Tagebuch: błąd zapisu notatki', e);
@@ -227,7 +234,7 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
   };
 
   return (
-    <div className={`bg-white rounded-2xl border p-3 transition-colors ${voice.isListening ? 'border-red-300' : 'border-gray-200'}`}>
+    <div className={bare ? '' : `bg-white rounded-2xl border p-3 transition-colors ${voice.isListening ? 'border-red-300' : 'border-gray-200'}`}>
       {voice.isListening ? (
         <div className="flex items-center gap-2 mb-2 px-1">
           <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
@@ -246,9 +253,11 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
         onChange={e => { setText(e.target.value.slice(0, max)); grow(); }}
         onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
         placeholder={t('tagebuch.notePlaceholder')}
-        rows={2}
-        className="w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed"
-        style={{ minHeight: '44px' }}
+        rows={bare ? 4 : 2}
+        className={bare
+          ? 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors'
+          : 'w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed'}
+        style={{ minHeight: bare ? '104px' : '44px', maxHeight: bare ? '40vh' : undefined }}
       />
 
       {showTopics && (
@@ -273,6 +282,47 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
             <span className="material-symbols-outlined text-[14px]">visibility</span>
             {t('tagebuch.visibleCoach')}
           </button>
+        </div>
+      )}
+
+      {/* [MEILENSTEIN] (user 2026-10-23) Punkt zwrotny — wyróżniony w dzienniku
+          i w filtrach; „i” wyjaśnia, na co to jest (naprawdę ważne wydarzenia). */}
+      {allowMilestone && (
+        <div className="mt-2">
+          <div className={`flex items-center gap-1 rounded-xl border pl-1 pr-1 py-1 transition-colors ${important ? 'bg-amber-50 border-amber-300' : 'bg-gray-50 border-gray-100'}`}>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={important}
+              onClick={() => setImportant(v => !v)}
+              className="flex-1 min-w-0 flex items-center gap-2 text-left active:scale-[0.99] transition-all"
+            >
+              <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${important ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-white text-gray-400 border border-gray-200'}`}>
+                <span className="material-symbols-outlined text-[18px]">star</span>
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className={`block text-[12px] font-black ${important ? 'text-amber-900' : 'text-gray-600'}`}>{t('tagebuch.milestoneToggle')}</span>
+                <span className="block text-[10px] font-bold text-gray-400 truncate">{t('tagebuch.milestoneHint')}</span>
+              </span>
+              <span className={`relative w-9 h-5 rounded-full shrink-0 transition-colors ${important ? 'bg-amber-500' : 'bg-gray-300'}`}>
+                <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-all ${important ? 'left-[18px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowInfo(v => !v)}
+              className={`w-8 h-8 shrink-0 flex items-center justify-center rounded-lg transition-colors ${showInfo ? 'text-amber-700 bg-white' : 'text-gray-400'}`}
+              aria-label={t('tagebuch.milestoneInfoLabel')}
+              aria-expanded={showInfo}
+            >
+              <span className="material-symbols-outlined text-[18px]">info</span>
+            </button>
+          </div>
+          {showInfo && (
+            <p className="mt-1.5 px-2.5 py-2 rounded-xl bg-amber-50/60 text-[11px] font-medium text-amber-900 leading-relaxed">
+              {t('tagebuch.milestoneInfo')}
+            </p>
+          )}
         </div>
       )}
 
@@ -318,14 +368,14 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel }: {
 }
 
 // --- NOTATKA PRYWATNA ---
-function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (id: string) => Promise<void> }) {
+function PrivateNoteBody({ note, onDelete, strong = false }: { note: TbPrivateNote; onDelete: (id: string) => Promise<void>; strong?: boolean }) {
   const { t } = useTranslation();
   const [confirm, setConfirm] = useState(false);
   return (
     <div>
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words">{note.text}</p>
+          <p className={`leading-relaxed whitespace-pre-wrap break-words ${strong ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{note.text}</p>
           <TopicChips topics={note.topics} tone="indigo" />
         </div>
         <button
@@ -353,12 +403,65 @@ function PrivateNoteBody({ note, onDelete }: { note: TbPrivateNote; onDelete: (i
 
 export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void> }) {
   const { t } = useTranslation();
-  return (
+  // Meilenstein — złoty pasek i gwiazdka; dalej prywatny („Nur für dich”).
+  return note.important ? (
+    <div className={`${CARD_SHAPE} tb-mark ${CARD_PAD}`}>
+      <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" meta={t('tagebuch.onlyYou')} time={time}>
+        <div className="mt-1"><PrivateNoteBody note={note} onDelete={onDelete} strong /></div>
+      </EntryRow>
+    </div>
+  ) : (
     <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
       <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" meta={t('tagebuch.onlyYou')} time={time}>
         <div className="mt-1"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
       </EntryRow>
     </div>
+  );
+}
+
+/**
+ * [NOWY WPIS] (user 2026-10-23) „+” otwiera okno od dołu zamiast pola na
+ * górze dziennika — z przełącznikiem „Meilenstein” dla ważnych wydarzeń.
+ */
+export function NoteSheet({ onSave, onClose }: {
+  onSave: (text: string, topics: string[], important: boolean) => Promise<void>;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  return createPortal(
+    <div className="fixed inset-0 z-[120] flex items-end justify-center">
+      <div className="absolute inset-0 bg-black/40 tb-fade-in" onClick={onClose} aria-hidden />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={t('tagebuch.newEntry')}
+        className="relative w-full max-w-md bg-white rounded-t-[28px] shadow-2xl px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)] max-h-[92dvh] overflow-y-auto tb-sheet-in"
+      >
+        <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-3" />
+        <div className="flex items-center gap-2.5 mb-3">
+          <span className="w-9 h-9 rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px]">edit_note</span>
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{t('tagebuch.newEntry')}</p>
+            <p className="text-[10px] font-bold text-gray-400 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[12px]">lock</span>{t('tagebuch.onlyYou')}
+            </p>
+          </div>
+          <button onClick={onClose} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all" aria-label={t('tagebuch.cancel')}>
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+        <NoteComposer
+          bare
+          allowShare={false}
+          allowMilestone
+          autoFocus
+          onSave={async (text, topics, _shared, important) => { await onSave(text, topics, important); onClose(); }}
+        />
+      </div>
+    </div>,
+    document.body,
   );
 }
 

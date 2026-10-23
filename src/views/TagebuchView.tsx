@@ -28,7 +28,7 @@ import {
   type ActiveFocus, type FocusMilestone, type OwnFocus,
 } from '../utils/focus';
 import {
-  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, SkippedTournamentCard, PrivateNoteCard, NewBadge,
+  NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, SkippedTournamentCard, NoteSheet, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
   type TbSession, type TbPrivateNote, type TbCoachEntry, type TbLedTraining,
 } from '../components/tagebuch/TagebuchCards';
@@ -49,7 +49,7 @@ const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach
 
 // Filtry (user 2026-10-15): „Wszystko”, „Od trenera” i rodzaje wpisów —
 // każdy w kolorze swoich kart (pasek z lewej, tb-* w tailwind.css).
-type EntryKind = 'target' | 'tournament' | 'tech' | 'coachEntry' | 'private' | 'topic' | 'focus' | 'coachFocus' | 'led';
+type EntryKind = 'target' | 'tournament' | 'tech' | 'coachEntry' | 'private' | 'mark' | 'topic' | 'focus' | 'coachFocus' | 'led';
 type Filter = 'all' | 'coach' | EntryKind;
 
 // Panel filtrów przy „+” (user 2026-10-23): ikona = ta sama co na karcie,
@@ -62,6 +62,7 @@ const KIND_FILTERS: { kind: Filter; labelKey: string; icon: string; color: strin
   { kind: 'topic', labelKey: 'tagebuch.topicLabel', icon: 'sports', color: 'text-violet-600', fill: 'bg-violet-500' },
   { kind: 'coachEntry', labelKey: 'tagebuch.coachEntry', icon: 'menu_book', color: 'text-amber-600', fill: 'bg-amber-500' },
   { kind: 'coach', labelKey: 'tagebuch.filterCoach', icon: 'person', color: 'text-amber-700', fill: 'bg-amber-700' },
+  { kind: 'mark', labelKey: 'tagebuch.kindMilestone', icon: 'star', color: 'text-[#b8860b]', fill: 'bg-[#d4a017]' },
   { kind: 'private', labelKey: 'tagebuch.kindNote', icon: 'lock', color: 'text-indigo-500', fill: 'bg-indigo-500' },
   { kind: 'focus', labelKey: 'tagebuch.filterFocus', icon: 'center_focus_strong', color: 'text-amber-600', fill: 'bg-amber-500' },
   { kind: 'coachFocus', labelKey: 'tagebuch.filterCoachFocus', icon: 'center_focus_strong', color: 'text-sky-700', fill: 'bg-sky-700' },
@@ -71,7 +72,7 @@ const KIND_FILTERS: { kind: Filter; labelKey: string; icon: string; color: strin
 function entryKind(it: TimelineItem): EntryKind {
   switch (it.kind) {
     case 'session': return it.session.isTech ? 'tech' : it.session.isTournament ? 'tournament' : 'target';
-    case 'private': return 'private';
+    case 'private': return it.note.important ? 'mark' : 'private';
     case 'milestone': return it.milestone.fromCoach ? 'coachFocus' : 'focus';
     case 'led': return 'led';
     case 'missed':
@@ -266,7 +267,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [focusGoal, setFocusGoal] = useState(() => readFocusGoal(null));
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
-  const composerRef = useRef<HTMLDivElement>(null);
   // Rozwinięte karty treningów. Nowa uwaga trenera rozwija się sama, ale
   // tylko raz — potem decyduje użytkownik.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -522,6 +522,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             sessionId: data.sessionId || undefined,
             ts: toMs(data.createdAt) || Date.now(),
             milestone: readFocusMilestone(data) || undefined,
+            ...(data.important === true ? { important: true } : {}),
           };
       });
       setNotes(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
@@ -560,17 +561,19 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   });
 
   // --- ZAPIS / USUWANIE ---
-  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string) => {
+  // `important` = Meilenstein (user 2026-10-23): punkt zwrotny, np. nowy łuk.
+  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string, important = false) => {
     // [C41] Id nadany w telefonie — bez zasiegu notatka czeka i wysle sie sama.
     const ref = doc(collection(db, `users/${userId}/privateNotes`));
     await settleWrite(setDoc(ref, {
       text,
       topics,
       ...(sessionId ? { sessionId } : {}),
+      ...(important ? { important: true } : {}),
       createdAt: serverTimestamp(),
       ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
-    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now() }, ...prev]);
+    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}) }, ...prev]);
   }, [userId]);
 
   // [NIE STARTOWAŁEM] Znacznik na terminie; cofnięcie wraca do „bez wyniku”.
@@ -811,10 +814,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : x));
   }, [userId]);
 
-  const openComposer = () => {
-    setComposerOpen(true);
-    requestAnimationFrame(() => composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
-  };
+  const openComposer = () => setComposerOpen(true);
 
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
@@ -1147,16 +1147,12 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           />
         )}
 
-        {/* SZYBKA NOTATKA — zawsze prywatna; otwierana przyciskiem „+" */}
+        {/* NOWY WPIS — okno od dołu (NoteSheet) po „+”, zawsze prywatny; opcjonalnie Meilenstein. */}
         {composerOpen && (
-          <div ref={composerRef}>
-            <NoteComposer
-              allowShare={false}
-              autoFocus
-              onSave={async (text, topics) => { await addPrivateNote(text, topics); setComposerOpen(false); }}
-              onCancel={() => setComposerOpen(false)}
-            />
-          </div>
+          <NoteSheet
+            onSave={(text, topics, important) => addPrivateNote(text, topics, undefined, important)}
+            onClose={() => setComposerOpen(false)}
+          />
         )}
 
         {/* ALS NÄCHSTES — każdy termin w kolorze swojego rodzaju (EVENT_STYLE, 2026-10-15);
@@ -1395,7 +1391,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <>
               <div className="fixed inset-0 z-[59]" onClick={() => setFiltersOpen(false)} aria-hidden />
               <div
-                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+150px)] z-[61] w-[min(19rem,calc(100vw_-_2rem))] max-h-[calc(100dvh_-_220px)] overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/15 p-3 animate-fade-in"
+                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+150px)] z-[61] w-[min(19rem,calc(100vw_-_2rem))] max-h-[calc(100dvh_-_220px)] overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/15 p-3 tb-fade-in"
                 role="dialog"
                 aria-label={t('tagebuch.filters')}
               >

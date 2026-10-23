@@ -229,6 +229,13 @@
 .tb-focus { border-left-color: #fbbf24; }
 .tb-focus-coach { border-left-color: #0ea5e9; }
 .tb-skipped { border-left-color: #9ca3af; }
+/* Meilenstein — złoto (gwiazdka), odróżnia się od pomarańczu wpisów trenera. */
+.tb-mark { border-left-color: #d4a017; }
+/* Okno nowego wpisu i panel filtrów — wjazd od dołu / pojawienie się. */
+.tb-sheet-in { animation: tbSheetIn 0.28s cubic-bezier(0.16, 1, 0.3, 1); }
+.tb-fade-in { animation: tbFadeIn 0.18s ease-out; }
+@keyframes tbSheetIn { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes tbFadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .dark .tb-card { background-color: #18211c; border-top-color: #26312b; border-right-color: #26312b; border-bottom-color: #26312b; }
 .dark .tb-icon { background-color: rgba(255, 255, 255, 0.06); }

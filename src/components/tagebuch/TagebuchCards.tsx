@@ -92,11 +92,33 @@ export const CARD_SHAPE = 'tb-card border rounded-l-md rounded-r-2xl shadow-sm';
 // górnym rogu. Ikona mniej odsunięta (pl-2) niż reszta krawędzi.
 export const CARD_PAD = 'pl-2 pr-3 py-2.5';
 
-export function EntryRow({ icon, iconCls, label, labelCls, time, extra, children }: {
+/**
+ * Nagłówek wpisu — ten sam układ w każdej karcie (user 2026-10-23): w pierwszej
+ * linii „TYP: tytuł” (typ wersalikami w kolorze wpisu, tytuł pogrubiony), dopiero
+ * pod spodem szczegóły (data, autor, wynik). Godzina w prawym górnym rogu.
+ */
+export function EntryHeading({ kind, kindCls, title, titleCls = 'text-[#0a3a2a]' }: {
+  kind: string;
+  kindCls: string;
+  title?: React.ReactNode;
+  titleCls?: string;
+}) {
+  return (
+    <span className="block min-w-0 leading-snug line-clamp-2 break-words">
+      <span className={`text-[9px] font-black uppercase tracking-widest ${kindCls}`}>{kind}{title ? ':' : ''}</span>
+      {title && <span className={`text-[13px] font-black ${titleCls}`}> {title}</span>}
+    </span>
+  );
+}
+
+export function EntryRow({ icon, iconCls, kind, kindCls, title, titleCls, meta, time, extra, children }: {
   icon: string;
   iconCls: string;        // kolor ikony (tło: tb-icon)
-  label?: React.ReactNode;
-  labelCls?: string;
+  kind: string;           // co to jest: Training, Turnier, Notiz…
+  kindCls: string;
+  title?: React.ReactNode;
+  titleCls?: string;
+  meta?: React.ReactNode; // linia pod nagłówkiem: data, autor, grupa
   time?: string;
   extra?: React.ReactNode; // przy godzinie: NEU, kosz
   children?: React.ReactNode;
@@ -107,11 +129,12 @@ export function EntryRow({ icon, iconCls, label, labelCls, time, extra, children
         <span className={`material-symbols-outlined text-[18px] ${iconCls}`}>{icon}</span>
       </span>
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 min-h-[16px]">
-          <span className={`flex-1 min-w-0 truncate text-[10px] font-black ${labelCls || ''}`}>{label}</span>
+        <div className="flex items-start gap-1.5">
+          <div className="flex-1 min-w-0"><EntryHeading kind={kind} kindCls={kindCls} title={title} titleCls={titleCls} /></div>
           {extra}
-          {time && <span className="tb-time shrink-0 text-[10px] font-bold text-gray-400">{time}</span>}
+          {time && <span className="tb-time shrink-0 text-[10px] font-bold text-gray-400 mt-0.5">{time}</span>}
         </div>
+        {meta && <p className="text-[10px] font-bold text-gray-500 truncate mt-0.5">{meta}</p>}
         {children}
       </div>
     </div>
@@ -330,8 +353,8 @@ export function PrivateNoteCard({ note, time, onDelete }: { note: TbPrivateNote;
   const { t } = useTranslation();
   return (
     <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
-      <EntryRow icon="lock" iconCls="text-indigo-500" label={t('tagebuch.onlyYou')} labelCls="text-indigo-600" time={time}>
-        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
+      <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" meta={t('tagebuch.onlyYou')} time={time}>
+        <div className="mt-1"><PrivateNoteBody note={note} onDelete={onDelete} /></div>
       </EntryRow>
     </div>
   );
@@ -346,13 +369,14 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
       <EntryRow
         icon="menu_book"
         iconCls="text-amber-600"
-        label={`${t('tagebuch.coachEntry')} · ${t(cfg.labelKey, { defaultValue: cfg.labelDefault })}`}
-        labelCls="text-amber-700"
+        kind={t('tagebuch.coachEntry')}
+        kindCls="text-amber-700"
+        title={t(cfg.labelKey, { defaultValue: cfg.labelDefault })}
+        meta={`— ${entry.authorName}`}
         time={time}
         extra={isNew ? <NewBadge /> : undefined}
       >
-        <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
-        <p className="text-[10px] font-bold text-gray-400 mt-1">— {entry.authorName}</p>
+        <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1">{entry.text}</p>
         <TopicChips topics={entry.topics} />
       </EntryRow>
     </div>
@@ -412,15 +436,15 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck, autoOpen
       <EntryRow
         icon="sports"
         iconCls="text-violet-600"
-        label={`${t('tagebuch.topicLabel')} · ${day}`}
-        labelCls="text-violet-700"
+        kind={t('tagebuch.topicLabel')}
+        kindCls="text-violet-700"
+        title={entry.text}
         time={time}
         extra={isNew ? <NewBadge /> : undefined}
       >
-      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
-      {/* Autor, a po prawej znak, że jest coś więcej (opis / linki) — bez osobnej stopki. */}
+      {/* Dzień i autor, a po prawej znak, że jest coś więcej (opis / linki) — bez osobnej stopki. */}
       <div className="flex items-center gap-2 mt-0.5">
-        <p className="flex-1 min-w-0 truncate text-[10px] font-bold text-violet-700/80">— {entry.authorName}</p>
+        <p className="flex-1 min-w-0 truncate text-[10px] font-bold text-gray-500">{day} · {entry.authorName}</p>
         {hasMore && (
           <span
             className="shrink-0 inline-flex items-center gap-1.5 text-[11px] font-black text-violet-600"
@@ -484,8 +508,7 @@ export function LedTrainingCard({ entry, time }: { entry: TbLedTraining; time: s
   const day = new Date(`${entry.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
     <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
-      <EntryRow icon="sports" iconCls="text-rose-600" label={`${t('tagebuch.ledTraining')} · ${entry.groupName} · ${day}`} labelCls="text-rose-700" time={time}>
-        <p className="text-[13px] font-black text-[#0a3a2a] leading-snug whitespace-pre-wrap break-words mt-0.5">{entry.text}</p>
+      <EntryRow icon="sports" iconCls="text-rose-600" kind={t('tagebuch.ledTraining')} kindCls="text-rose-700" title={entry.text} meta={`${entry.groupName} · ${day}`} time={time}>
         <TopicChips topics={entry.topic ? [entry.topic] : []} />
         {entry.note && (
           <p className="mt-1.5 flex items-start gap-1 text-[11px] font-medium text-gray-600 leading-relaxed whitespace-pre-wrap break-words">
@@ -508,8 +531,7 @@ export function MissedTournamentCard({ title, date, time, onEnter, onSkip }: { t
   const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
     <div className={`${CARD_SHAPE} tb-tourney ${CARD_PAD}`}>
-      <EntryRow icon="emoji_events" iconCls="text-[#0a3a2a]" label={`${t('tagebuch.missedTournament')} · ${day}`} labelCls="text-emerald-800" time={time}>
-        <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{title}</p>
+      <EntryRow icon="emoji_events" iconCls="text-[#0a3a2a]" kind={t('tagebuch.tournament')} kindCls="text-emerald-800" title={title} meta={`${day} · ${t('tagebuch.missedTournament')}`} time={time}>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <button
             onClick={onEnter}
@@ -553,8 +575,7 @@ export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onD
   const day = new Date(`${date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
   return (
     <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD}`}>
-      <EntryRow icon="event_busy" iconCls="text-gray-500" label={`${t('tagebuch.notStarted')} · ${day}`} labelCls="text-gray-500" time={time}>
-        <p className="text-[13px] font-black text-gray-600 leading-snug break-words mt-0.5">{title}</p>
+      <EntryRow icon="event_busy" iconCls="text-gray-500" kind={t('tagebuch.tournament')} kindCls="text-gray-500" title={title} titleCls="text-gray-600" meta={`${day} · ${t('tagebuch.notStarted')}`} time={time}>
         {notes.map(n => (
           <div key={n.id} className="mt-2 bg-indigo-50 rounded-xl p-2.5">
             <div className="flex items-center gap-1 text-[10px] font-black text-indigo-600 mb-0.5">
@@ -780,9 +801,10 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   const kind = session.battle
     ? (session.battle.mode === 'CLUB' ? t('tagebuch.clubGame') : session.battle.mode === 'WORLD' ? 'World' : t('tagebuch.duel'))
     : tourney ? t('tagebuch.tournament') : t('tagebuch.training');
-  const title = session.isTech
-    ? t('tagebuch.techTraining')
-    : session.label ? `${kind} · ${session.label}` : kind;
+  // Nagłówek „TYP: tytuł” jak w każdym wpisie (EntryHeading): technika bez tytułu.
+  const headKind = session.isTech ? t('tagebuch.techTraining') : kind;
+  const headTitle = session.isTech ? undefined : session.label || undefined;
+  const headCls = session.isTech ? 'text-sky-700' : session.battle ? 'text-fuchsia-700' : tourney ? 'text-[#0a3a2a]' : 'text-emerald-700';
   const stats = session.isTech
     ? `${session.arrows} ${t('common.arrows')}`
     : `${tourney && session.distanceText ? `${session.distanceText} · ` : ''}${session.score} ${t('tagebuch.rings')} · ${session.arrows} ${t('common.arrows')}`;
@@ -799,11 +821,11 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
         <span className={`material-symbols-outlined text-[18px] ${session.isTech ? 'text-sky-600' : session.battle ? 'text-fuchsia-600' : tourney ? 'tb-tourney-accent' : 'text-emerald-600'}`}>{session.isTech ? 'fitness_center' : session.battle ? 'shield' : tourney ? 'emoji_events' : 'target'}</span>
       </span>
       <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-1.5 min-w-0">
-          <span className={`text-[13px] font-black truncate text-[#0a3a2a]`}>{title}</span>
+        <span className="flex items-start gap-1.5 min-w-0">
+          <span className="min-w-0"><EntryHeading kind={headKind} kindCls={headCls} title={headTitle} /></span>
           <InsightBadge insight={insight} />
         </span>
-        <span className={`block text-[10px] font-bold truncate text-gray-500`}>{stats}</span>
+        <span className="block text-[10px] font-bold truncate text-gray-500 mt-0.5">{stats}</span>
         {/* [ARENA] Miejsce po zakończeniu gry, wcześniej „gra trwa”. */}
         {session.battle?.place ? (
           <span className="flex items-center gap-1 mt-0.5 text-[10px] font-black text-fuchsia-700">

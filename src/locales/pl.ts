@@ -349,6 +349,7 @@ export const views = {
     neu: "Nowe",
     training: "Trening",
     tournament: "Turniej",
+    kindNote: "Notatka",
     techTraining: "Trening techniczny",
     rings: "pkt",
     noteShort: "Notatka",

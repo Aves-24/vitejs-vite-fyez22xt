@@ -335,6 +335,7 @@ export const views = {
     neu: "Neu",
     training: "Training",
     tournament: "Turnier",
+    kindNote: "Notiz",
     techTraining: "Techniktraining",
     rings: "Ringe",
     noteShort: "Notiz",

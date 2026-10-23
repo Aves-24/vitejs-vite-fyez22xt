@@ -597,8 +597,10 @@ export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: F
       <EntryRow
         icon={milestone.done ? 'emoji_events' : 'flag'}
         iconCls="text-amber-600"
-        label={`${t(milestone.done ? 'tagebuch.focusMilestoneDone' : 'tagebuch.focusMilestoneEnded')}${milestone.fromCoach ? ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}` : ''}`}
-        labelCls="text-amber-800"
+        kind={t('tagebuch.filterFocus')}
+        kindCls={milestone.fromCoach ? 'text-sky-700' : 'text-amber-700'}
+        title={focusTitle(milestone, t)}
+        meta={`${t(milestone.done ? 'tagebuch.focusMilestoneDone' : 'tagebuch.focusMilestoneEnded')}${milestone.fromCoach ? ` · ${t('tagebuch.focusFromCoach')}${milestone.authorName ? ` ${milestone.authorName}` : ''}` : ''}`}
         time={time}
         extra={onDelete && (
           <button
@@ -610,7 +612,6 @@ export function FocusMilestoneCard({ milestone, time, onDelete }: { milestone: F
           </button>
         )}
       >
-      <p className="text-[13px] font-black text-[#0a3a2a] leading-snug break-words mt-0.5">{focusTitle(milestone, t)}</p>
       {milestone.text && milestone.topic && (
         <p className="text-[10px] font-bold text-amber-700 mt-0.5">{topicLabel(milestone.topic, t)}</p>
       )}

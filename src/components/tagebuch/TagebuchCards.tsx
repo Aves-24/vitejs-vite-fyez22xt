@@ -48,6 +48,9 @@ export interface TbSession {
   // [ARENA] Trening z bitwy: tryb i wynik (place po zakończeniu gry, live = trwa).
   battle?: { id: string; mode: string; place?: number; players?: number; live?: boolean };
   isTournament?: boolean; // wynik zawodów (type 'Turniej') — ciemnozielona karta jak na Home
+  // Zawody: wynik Durchgangów (roundScores albo z serii 1–6 / 7–12) i liczba X/10/9.
+  rounds?: number[];
+  counts?: { x: number; ten: number; nine: number };
 }
 
 export interface TbCoachEntry {
@@ -593,6 +596,53 @@ export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onD
   );
 }
 
+/**
+ * Zawody po rozwinięciu (user 2026-10-23): wynik Durchgang 1 i 2 oraz suma na
+ * wierzchu, pod nimi X / 10 / 9 — kolory jak na ekranie wpisywania wyniku.
+ */
+function TournamentSummary({ session }: { session: TbSession }) {
+  const { t } = useTranslation();
+  const c = session.counts;
+  return (
+    <div className="mt-2 space-y-1.5">
+      <div className="flex gap-1.5">
+        {session.rounds && (
+          <>
+            <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-xl py-1.5 text-center">
+              <span className="block text-[8px] font-black uppercase tracking-widest text-emerald-700">{t('tournamentInput.durchgang1')}</span>
+              <span className="block text-[18px] font-black text-[#0a3a2a] leading-tight">{session.rounds[0]}</span>
+            </div>
+            <div className="flex-1 bg-blue-50 border border-blue-100 rounded-xl py-1.5 text-center">
+              <span className="block text-[8px] font-black uppercase tracking-widest text-blue-700">{t('tournamentInput.durchgang2')}</span>
+              <span className="block text-[18px] font-black text-blue-900 leading-tight">{session.rounds[1]}</span>
+            </div>
+          </>
+        )}
+        <div className="flex-[1.2] tb-tourney rounded-xl py-1.5 text-center">
+          <span className="block text-[8px] font-black uppercase tracking-widest tb-tourney-accent">{t('tournamentInput.totalScore')}</span>
+          <span className="block text-[22px] font-black tb-tourney-title leading-tight">{session.score}</span>
+        </div>
+      </div>
+      {c && (
+        <div className="flex gap-1.5">
+          <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#F2C94C]/25 rounded-lg py-1">
+            <span className="text-[10px] font-black text-[#8a6d00]">X</span>
+            <span className="text-[14px] font-black text-[#0a3a2a]">{c.x}</span>
+          </div>
+          <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#F2C94C]/15 rounded-lg py-1">
+            <span className="text-[10px] font-black text-[#8a6d00]">10</span>
+            <span className="text-[14px] font-black text-[#0a3a2a]">{c.ten}</span>
+          </div>
+          <div className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 rounded-lg py-1">
+            <span className="text-[10px] font-black text-gray-500">9</span>
+            <span className="text-[14px] font-black text-[#0a3a2a]">{c.nine}</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // --- KARTA TRENINGU ---
 // Notatka ucznia, notatki prywatne przypięte do sesji i Anmerkung trenera
 // w jednym miejscu — uwaga trenera jest przyklejona do treningu, którego dotyczy.
@@ -790,6 +840,8 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
       {expanded && <div className={tourney ? 'tb-tourney-panel mt-2 rounded-xl px-2.5 pb-2.5 pt-0.5' : ''}>
       {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
       <TopicChips topics={visibleTopics} tone="onTint" />
+
+      {tourney && <TournamentSummary session={session} />}
 
       {session.endSums.length > 0 && <EndsGrid sums={session.endSums} />}
 

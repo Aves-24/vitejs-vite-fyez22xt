@@ -176,6 +176,22 @@ function toMs(v: any): number {
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
+// Zawody: Durchgangi z roundScores (zapis od 2026-10-23) albo z serii 1–6 / 7–12;
+// starsze zapisy skrótowe nie mają ani jednego — wtedy sama suma.
+function tournamentFields(data: any): Pick<TbSession, 'isTournament' | 'rounds' | 'counts'> {
+  const sums: number[] = Array.isArray(data.ends)
+    ? data.ends.map((e: any) => Number(e?.total_sum)).filter((n: number) => Number.isFinite(n))
+    : [];
+  const rounds = Array.isArray(data.roundScores) && data.roundScores.length === 2 && data.roundScores.every((n: any) => typeof n === 'number')
+    ? data.roundScores
+    : sums.length > 6 ? [sums.slice(0, 6).reduce((a, b) => a + b, 0), sums.slice(6, 12).reduce((a, b) => a + b, 0)] : undefined;
+  return {
+    isTournament: true,
+    ...(rounds ? { rounds } : {}),
+    counts: { x: data.xCount || 0, ten: data.tenCount || 0, nine: data.nineCount || 0 },
+  };
+}
+
 // Wpis „z dzisiaj”: zrobiony dziś albo temat treningu na dziś (mógł być ustawiony wcześniej).
 function isTodayItem(it: TimelineItem): boolean {
   const today = ymd(new Date());
@@ -437,7 +453,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             ts: toMs(data.timestamp) || toMs(data.createdAt),
             date: data.date || '',
             isTech: data.type === 'TECHNICAL',
-            ...(data.type === 'Turniej' ? { isTournament: true } : {}),
+            ...(data.type === 'Turniej' ? tournamentFields(data) : {}),
             meters: distanceMeters(data.distance),
             distKey: distanceKey(data),
             label: data.tournamentName || data.distanceLabel || data.distance || '',

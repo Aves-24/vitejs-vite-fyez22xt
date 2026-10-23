@@ -223,6 +223,11 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         sessionArrows,
         practiceArrows: practiceArrows,
         arrows: sessionArrows + practiceArrows,
+        // Wynik każdego Durchgangu — dziennik pokazuje D1 / D2 / suma (user 2026-10-23).
+        // W trybie skrótowym bez serii to jedyne miejsce, gdzie te sumy zostają.
+        roundScores: inputMode === 'DETAILED' || hasDetailedData
+          ? [detailedR1.score, detailedR2.score]
+          : [parseInt(summaryR1) || 0, parseInt(summaryR2) || 0],
         xCount: stats.totalX,
         tenCount: stats.total10,
         nineCount: stats.total9,

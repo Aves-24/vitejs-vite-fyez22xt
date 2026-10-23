@@ -336,7 +336,7 @@ export const views = {
     filterCoach: "Trener",
     filterMine: "Moje",
     filterLed: "Jako trener",
-    filterTarget: "Tarcza",
+    filterTarget: "Trening",
     filterTech: "Technika",
     filterCoachEntry: "Wpisy trenera",
     filterPrivate: "Notatki",

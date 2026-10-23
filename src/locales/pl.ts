@@ -390,7 +390,6 @@ export const views = {
     focusAddOwn: "Własny fokus",
     topicLabel: "Temat treningu",
     topicToday: "Dziś na treningu",
-    topicTodayDay: "Dziś · {{weekday}}",
     topicOther: "Temat treningu: {{title}} — dotknij, aby zamienić",
     topicChoice: "Temat treningu",
     focusChoiceFocus: "Fokus",

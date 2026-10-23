@@ -76,6 +76,7 @@ export interface ActiveFocus {
   desc?: string;         // TEMAT TRENINGU — opis pod tytułem (jak treść maila)
   linkTitles?: string[]; // TEMAT TRENINGU — tytuły linków (ten sam indeks co links)
   day?: string;          // TEMAT TRENINGU — dzień treningu 'YYYY-MM-DD' (kafelek daty)
+  groupName?: string;    // TEMAT TRENINGU — grupa, której trener go ustawił
 }
 
 /** Dzień tematu treningu jako znacznik czasu (południe — bez przesunięć strefy). */
@@ -692,6 +693,7 @@ export interface TrainingTopic {
   authorId?: string;
   authorName?: string;
   groupId?: string;
+  groupName?: string;
   closedAt?: number;
   ackAt?: number;
   links?: string[];     // do TOPIC_LINKS_MAX linków http(s) od trenera
@@ -708,6 +710,8 @@ export const TOPIC_DESC_MAX = 1000;
 /** Tytuł linku (wpisany albo pobrany z YouTube przez trenera). LUSTRO: firestore.rules. */
 export const TOPIC_LINK_TITLE_MAX = 120;
 export const TOPIC_LINK_MAX_LEN = 500;
+/** Nazwa grupy zapisana na wpisie tematu. LUSTRO: firestore.rules (okTopicGroupName). */
+export const TOPIC_GROUP_NAME_MAX = 60;
 
 /** Link wpisany przez trenera → pełny adres http(s) albo null (zły / inny protokół). */
 export function normalizeTopicLink(raw: string): string | null {
@@ -756,6 +760,7 @@ export function readTrainingTopic(id: string, data: any): TrainingTopic | null {
     ...(data.authorId ? { authorId: data.authorId } : {}),
     ...(data.authorName ? { authorName: data.authorName } : {}),
     ...(data.groupId ? { groupId: data.groupId } : {}),
+    ...(typeof data.groupName === 'string' && data.groupName ? { groupName: data.groupName.slice(0, TOPIC_GROUP_NAME_MAX) } : {}),
     ...(typeof data.closedAt === 'number' ? { closedAt: data.closedAt } : {}),
     ...(data.ackAt ? { ackAt: toMs(data.ackAt) } : {}),
     ...(readTopicLinks(data).length ? { links: readTopicLinks(data) } : {}),
@@ -771,6 +776,7 @@ export function isTopicOpen(t: Pick<TrainingTopic, 'closedAt' | 'day'>, now = Da
 
 export function topicAsFocus(t: TrainingTopic): ActiveFocus {
   return { topic: t.topic, text: t.text, since: t.ts, fromCoach: true, topicId: t.id, day: t.day,
+    ...(t.groupName ? { groupName: t.groupName } : {}),
     ...(t.authorName ? { authorName: t.authorName } : {}), ...(t.authorId ? { authorId: t.authorId } : {}),
     ...(t.links?.length ? { links: t.links } : {}), ...(t.desc ? { desc: t.desc } : {}), ...(t.linkTitles ? { linkTitles: t.linkTitles } : {}) };
 }

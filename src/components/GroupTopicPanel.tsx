@@ -7,7 +7,7 @@ import TopicPicker from './TopicPicker';
 import TopicLinks, { isYouTube } from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
-import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_LINK_TITLE_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
+import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_GROUP_NAME_MAX, TOPIC_LINK_TITLE_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
 
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
 // dziś albo planuje go na kolejne dni. Technicznie: wpis 'topic' w coachLog
@@ -189,6 +189,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           topics: topic.topic ? [topic.topic] : [],
           day: topic.day,
           groupId,
+          // Uczeń nie czyta grup trenera — nazwa grupy na karcie tematu (user 2026-10-23).
+          groupName: groupName.slice(0, TOPIC_GROUP_NAME_MAX),
           ...(topic.links?.length ? { links: topic.links } : {}),
           ...(topic.desc ? { desc: topic.desc } : {}),
           ...(topic.links?.length && topic.linkTitles?.some(Boolean) ? { linkTitles: topic.linkTitles } : {}),
@@ -260,7 +262,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const edit = (gt: GroupTopic, base: TopicBase) => run(async () => {
     if (!base.text) return;
     await forEntries(gt, (sid, eid) => updateDoc(doc(db, `users/${sid}/coachLog`, eid), {
-      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, desc: base.desc, linkTitles: base.linkTitles, editedAt: Date.now(),
+      text: base.text, topics: base.topic ? [base.topic] : [], links: base.links, desc: base.desc, linkTitles: base.linkTitles, groupName: groupName.slice(0, TOPIC_GROUP_NAME_MAX), editedAt: Date.now(),
     }));
     await syncCalendar(gt, base);
     const { links, desc, linkTitles, ...rest } = base;

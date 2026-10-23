@@ -375,7 +375,6 @@ export const views = {
     focusAddOwn: "Own focus",
     topicLabel: "Training topic",
     topicToday: "Today in training",
-    topicTodayDay: "Today · {{weekday}}",
     topicOther: "Training topic: {{title}} — tap to swap",
     topicChoice: "Training topic",
     focusChoiceFocus: "Focus",

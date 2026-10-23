@@ -476,6 +476,11 @@ service cloud.firestore {
     function okTopicDesc(d) {
       return !('desc' in d) || (d.desc is string && d.desc.size() <= 1000);
     }
+    // [NAZWA GRUPY 2026-10-23] uczeń nie czyta coachGroups trenera — nazwa na wpisie.
+    // LUSTRO: src/utils/focus.ts (TOPIC_GROUP_NAME_MAX).
+    function okTopicGroupName(d) {
+      return !('groupName' in d) || (d.groupName is string && d.groupName.size() <= 60);
+    }
 
     match /users/{uid}/coachLog/{entryId} {
       allow read: if isSelf(uid)
@@ -501,17 +506,19 @@ service cloud.firestore {
                 && !('ackAt' in request.resource.data)))
         && okTopicLinks(request.resource.data)
         && okTopicDesc(request.resource.data)
-        && okTopicLinkTitles(request.resource.data);
+        && okTopicLinkTitles(request.resource.data)
+        && okTopicGroupName(request.resource.data);
 
       // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'topic'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc', 'linkTitles'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc', 'linkTitles', 'groupName'])
         && okTopicLinks(request.resource.data)
         && okTopicDesc(request.resource.data)
         && okTopicLinkTitles(request.resource.data)
+        && okTopicGroupName(request.resource.data)
         && request.resource.data.text is string
         && request.resource.data.text.size() >= 1
         && request.resource.data.text.size() <= 300

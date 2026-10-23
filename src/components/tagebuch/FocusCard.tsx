@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { readSessionFocus, orderedTracks, topicDayTs, dayKeyOf, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
+import { readSessionFocus, orderedTracks, topicDayTs, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 import { CARD_SHAPE, CARD_PAD, EntryRow } from './TagebuchCards';
 import { isYouTube } from '../TopicLinks';
@@ -30,20 +30,26 @@ export function focusPalette(f: Pick<ActiveFocus, 'fromCoach' | 'topicId'>) {
 function TopicDateTile({ focus, muted = false }: { focus: ActiveFocus; muted?: boolean }) {
   const { i18n } = useTranslation();
   const d = new Date(topicDayTs(focus));
+  const wd = d.toLocaleDateString(i18n.language, { weekday: 'long' });
   return (
-    <div className={`${muted ? 'bg-gray-200 text-gray-500' : 'bg-violet-600 text-white'} px-2 py-1.5 rounded-xl text-center min-w-[42px] shadow-sm shrink-0`}>
+    <div className={`${muted ? 'bg-gray-200 text-gray-500' : 'bg-violet-600 text-white'} px-1.5 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0`}>
       <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
       <span className="block text-lg font-black leading-none">{d.getDate()}</span>
+      {/* Nazwa dnia pod datą (user 2026-10-23: „pod datą dodaj Freitag”). */}
+      <span className="block text-[7px] font-black leading-none mt-0.5 opacity-90">{wd.charAt(0).toUpperCase() + wd.slice(1)}</span>
     </div>
   );
 }
 
-/** „Heute · Donnerstag” (dziś) albo sama nazwa dnia (minione treningi). */
-function topicDayText(focus: ActiveFocus, t: (k: string, o?: any) => string, lang: string): string {
-  const ts = topicDayTs(focus);
-  const wd = new Date(ts).toLocaleDateString(lang, { weekday: 'long' });
-  const weekday = wd.charAt(0).toUpperCase() + wd.slice(1);
-  return dayKeyOf(ts) === dayKeyOf(Date.now()) ? t('tagebuch.topicTodayDay', { weekday }) : weekday;
+/** Grupa, której trener ustawił temat — w miejscu dawnego „Heute im Training”. */
+function TopicGroupLine({ focus, className = '' }: { focus: ActiveFocus; className?: string }) {
+  if (!focus.groupName) return null;
+  return (
+    <span className={`flex items-center gap-1 min-w-0 ${className}`}>
+      <span className="material-symbols-outlined text-[13px] shrink-0">groups</span>
+      <span className="truncate">{focus.groupName}</span>
+    </span>
+  );
 }
 
 /** Ikona: temat treningu = gwizdek, fokus = cel. */
@@ -374,9 +380,9 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
               <FocusProgressText count={count} goal={goal} light coach={focus.fromCoach} />
             </>
           ) : (
-            <span className={`text-[10px] font-bold ${pal.sub}`}>
-              {isTopic ? topicDayText(focus, t, i18n.language) : t('tagebuch.focusSince', { date: fmt(focus.since) })}
-            </span>
+            isTopic ? <TopicGroupLine focus={focus} className={`text-[10px] font-bold ${pal.sub}`} /> : (
+              <span className={`text-[10px] font-bold ${pal.sub}`}>{t('tagebuch.focusSince', { date: fmt(focus.since) })}</span>
+            )
           )}
         </div>
         {/* Cała karta i tak otwiera edytor — to tylko zachęta, nie osobny przycisk. */}
@@ -522,9 +528,11 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
           </div>
         )}
         {/* Temat treningu: „Heute im Training” jak w karcie dziennika (user 2026-10-15). */}
-        {!dots && focus.topicId && (!past || !glass) && (
+        {!dots && focus.topicId && (glass ? !past : !!(focus.groupName || topicMore?.desc || topicMore?.links.length)) && (
           <div className={`flex items-center gap-2 mt-1 text-[10px] font-bold ${glass ? 'text-white/60' : pal.sub}`}>
-            <p className="flex-1 min-w-0 truncate">{glass ? t('tagebuch.topicToday') : topicDayText(focus, t, i18n.language)}</p>
+            {glass
+              ? <p className="flex-1 min-w-0 truncate">{t('tagebuch.topicToday')}</p>
+              : <span className="flex-1 min-w-0"><TopicGroupLine focus={focus} /></span>}
             {(topicMore?.desc || !!topicMore?.links.length) && (
               <span
                 className="shrink-0 inline-flex items-center gap-1 font-black"

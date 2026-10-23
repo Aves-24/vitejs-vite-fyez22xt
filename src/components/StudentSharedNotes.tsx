@@ -53,7 +53,7 @@ export default function StudentSharedNotes({ studentId }: { studentId: string })
           <div key={n.id} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 ${n.important ? 'tb-mark' : 'tb-private'}`}>
             <div className="flex items-start gap-2.5">
               <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                <span className={`material-symbols-outlined text-[18px] ${n.important ? 'text-[#b8860b]' : 'text-indigo-500'}`}>{n.important ? 'star' : 'edit_note'}</span>
+                <span className={`material-symbols-outlined text-[18px] ${n.important ? 'text-[#b8860b]' : 'text-indigo-500'}`}>{n.important ? 'star' : 'visibility'}</span>
               </span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-1.5">

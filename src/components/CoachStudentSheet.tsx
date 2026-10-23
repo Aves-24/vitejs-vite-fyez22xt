@@ -43,7 +43,7 @@ const MARKS: { kind: MarkKind; icon: string; cls: string; labelKey: string }[] =
   { kind: 'tournament', icon: 'emoji_events', cls: 'text-[#0a3a2a]', labelKey: 'tagebuch.tournament' },
   { kind: 'focus', icon: 'center_focus_strong', cls: 'text-amber-600', labelKey: 'tagebuch.filterFocus' },
   { kind: 'topic', icon: 'sports', cls: 'text-violet-600', labelKey: 'tagebuch.topicLabel' },
-  { kind: 'note', icon: 'edit_note', cls: 'text-indigo-500', labelKey: 'tagebuch.kindNote' },
+  { kind: 'note', icon: 'visibility', cls: 'text-indigo-500', labelKey: 'tagebuch.kindNote' },
 ];
 
 export default function CoachStudentSheet({

@@ -203,11 +203,11 @@ const STUDENT_TOURNAMENTS_SHOWN = 3;
 // stronie głównej panelu, nie dopiero w zakładce ucznia. Reguła wpuszcza
 // trenera tylko z filtrem shared == true. Jak starty: zapytanie na ucznia,
 // wynik 30 min w pamięci telefonu.
-interface StudentMilestone { student: any; id: string; text: string; ts: number }
+interface StudentMilestone { student: any; id: string; title: string; text: string; ts: number }
 const MILESTONE_DAYS = 30;
 
 async function loadStudentMilestones(coachId: string, students: any[]): Promise<StudentMilestone[]> {
-  const key = `grotX_studentMilestones_${coachId}`;
+  const key = `grotX_studentMilestones2_${coachId}`; // 2: z tytułem
   const ids = students.map(s => s.id).sort().join(',');
   try {
     const raw = localStorage.getItem(key);
@@ -236,7 +236,7 @@ async function loadStudentMilestones(coachId: string, students: any[]): Promise<
         const data = d.data();
         const c = data.createdAt;
         const ts = typeof c?.toMillis === 'function' ? c.toMillis() : typeof c === 'number' ? c : 0;
-        return { student: s, id: d.id, text: String(data.text || ''), ts };
+        return { student: s, id: d.id, title: typeof data.title === 'string' ? data.title : '', text: String(data.text || ''), ts };
       }).filter(m => m.ts >= since);
     } catch { return []; }
   }));
@@ -1559,7 +1559,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           summary={
             <span className="inline-flex items-center gap-1 min-w-0">
               <span className="material-symbols-outlined text-[14px] text-[#b8860b] shrink-0">star</span>
-              <span className="truncate">{studentMilestones[0].student.firstName}: {studentMilestones[0].text}</span>
+              <span className="truncate">{studentMilestones[0].student.firstName}: {studentMilestones[0].title || studentMilestones[0].text}</span>
             </span>
           }
         >
@@ -1570,7 +1570,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   m.student,
                   <span className="text-[#8B6508]">
                     <span className="material-symbols-outlined text-[12px] align-[-2px]">star</span>{' '}
-                    {m.text}{m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
+                    {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
+                    <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
+                    {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
+                    {m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
                   </span>,
                   'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
                   undefined,

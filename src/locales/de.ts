@@ -338,6 +338,8 @@ export const views = {
     showLess: "Weniger anzeigen",
     showAllCount: "Alle {{count}} anzeigen",
     milestoneToggle: "Als Meilenstein markieren",
+    milestoneTitlePlaceholder: "Titel, z. B. Neuer Bogen",
+    milestoneDescPlaceholder: "Beschreibung (optional)…",
     milestoneHint: "Ein Wendepunkt in deinem Bogensport",
     milestoneInfoLabel: "Was ist ein Meilenstein?",
     milestoneInfo: "Für wirklich wichtige Wendepunkte: ein neuer Bogen, ein Trainer- oder Vereinswechsel, die erste Meisterschaft, eine Verletzung oder ein großer Durchbruch. Meilensteine sind im Tagebuch golden hervorgehoben und über den Filter schnell zu finden – so siehst du später, was sich ab wann verändert hat.",

@@ -1099,6 +1099,10 @@ test('privateNotes: właściciel edytuje tekst/tematy/Meilenstein, nic więcej; 
   await assertFails(updateDoc(n(alice()), { text: '' }));
   await assertFails(updateDoc(n(alice()), { text: 'x'.repeat(1001) }));
   await assertFails(updateDoc(n(alice()), { important: 'tak' }));
+  // Meilenstein: tytuł ≤ 120, opis może być pusty przy tytule.
+  await assertSucceeds(updateDoc(n(alice()), { title: 'Nowy łuk', text: '' }));
+  await assertFails(updateDoc(n(alice()), { title: '', text: '' }));
+  await assertFails(updateDoc(n(alice()), { title: 'x'.repeat(121) }));
   await assertFails(updateDoc(n(alice()), { createdAt: 9 }));
   await assertFails(updateDoc(n(alice()), { sessionId: 's1' }));
   await assertFails(updateDoc(n(bob()), { text: 'obcy' }));

@@ -7,7 +7,7 @@ import { topicLabel } from '../constants/trainingTopics';
 // [UDOSTĘPNIONY WPIS] (user 2026-10-23) Wpisy z dziennika ucznia, które uczeń
 // sam udostępnił trenerom (privateNotes.shared). Reguła wpuszcza trenera tylko
 // z filtrem shared == true; resztę notatek widzi wyłącznie uczeń.
-interface SharedNote { id: string; text: string; topics: string[]; important: boolean; ts: number }
+interface SharedNote { id: string; title: string; text: string; topics: string[]; important: boolean; ts: number }
 
 const PREVIEW = 3;
 
@@ -31,7 +31,7 @@ export default function StudentSharedNotes({ studentId }: { studentId: string })
         if (cancelled) return;
         setNotes(snap.docs.map(d => {
           const data = d.data();
-          return { id: d.id, text: data.text || '', topics: data.topics || [], important: data.important === true, ts: toMs(data.createdAt) };
+          return { id: d.id, title: typeof data.title === 'string' ? data.title : '', text: data.text || '', topics: data.topics || [], important: data.important === true, ts: toMs(data.createdAt) };
         }).sort((a, b) => b.ts - a.ts));
       })
       .catch(e => console.error('Udostępnione wpisy ucznia:', e));
@@ -62,7 +62,9 @@ export default function StudentSharedNotes({ studentId }: { studentId: string })
                   </span>
                   <span className="shrink-0 text-[10px] font-bold text-gray-400">{fmt(n.ts)}</span>
                 </div>
-                <p className={`mt-0.5 leading-relaxed whitespace-pre-wrap break-words ${n.important ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{n.text}</p>
+                {/* Meilenstein: tytuł pogrubiony, pod nim opis (starsze bez tytułu — tekst jako tytuł). */}
+                {n.title && <p className="mt-0.5 text-[13px] font-black text-[#0a3a2a] leading-snug break-words">{n.title}</p>}
+                {n.text && <p className={`mt-0.5 leading-relaxed whitespace-pre-wrap break-words ${n.important && !n.title ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{n.text}</p>}
                 {n.topics.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
                     {n.topics.map(id => (

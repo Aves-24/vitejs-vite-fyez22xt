@@ -525,6 +525,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             milestone: readFocusMilestone(data) || undefined,
             ...(data.important === true ? { important: true } : {}),
             ...(data.shared === true ? { shared: true } : {}),
+            ...(typeof data.title === 'string' && data.title ? { title: data.title } : {}),
           };
       });
       setNotes(prev => first ? page : [...prev, ...page.filter(p => !prev.some(x => x.id === p.id))]);
@@ -565,7 +566,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- ZAPIS / USUWANIE ---
   // `important` = Meilenstein (user 2026-10-23): punkt zwrotny, np. nowy łuk.
   // `shared` = uczeń udostępnia wpis trenerom (reguła privateNotes: trener tylko czyta).
-  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string, important = false, shared = false) => {
+  const addPrivateNote = useCallback(async (text: string, topics: string[], sessionId?: string, important = false, shared = false, title = '') => {
     // [C41] Id nadany w telefonie — bez zasiegu notatka czeka i wysle sie sama.
     const ref = doc(collection(db, `users/${userId}/privateNotes`));
     await settleWrite(setDoc(ref, {
@@ -574,16 +575,17 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       ...(sessionId ? { sessionId } : {}),
       ...(important ? { important: true } : {}),
       ...(shared ? { shared: true } : {}),
+      ...(title ? { title } : {}),
       createdAt: serverTimestamp(),
       ...guestExpiryFields(), // [GOŚĆ] notatki gościa wygasają po 24h (TTL)
     }));
-    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}), ...(shared ? { shared: true } : {}) }, ...prev]);
+    setNotes(prev => [{ id: ref.id, text, topics, sessionId, ts: Date.now(), ...(important ? { important: true } : {}), ...(shared ? { shared: true } : {}), ...(title ? { title } : {}) }, ...prev]);
   }, [userId]);
 
   // [EDYCJA WPISU] (user 2026-10-23) Tekst, tematy, Meilenstein i udostępnienie własnej notatki.
-  const updatePrivateNote = useCallback(async (id: string, text: string, topics: string[], important: boolean, shared: boolean) => {
-    await settleWrite(updateDoc(doc(db, `users/${userId}/privateNotes`, id), { text, topics, important, shared, editedAt: Date.now() }));
-    setNotes(prev => prev.map(n => (n.id === id ? { ...n, text, topics, important: important || undefined, shared: shared || undefined } : n)));
+  const updatePrivateNote = useCallback(async (id: string, text: string, topics: string[], important: boolean, shared: boolean, title: string) => {
+    await settleWrite(updateDoc(doc(db, `users/${userId}/privateNotes`, id), { text, topics, important, shared, title, editedAt: Date.now() }));
+    setNotes(prev => prev.map(n => (n.id === id ? { ...n, text, topics, important: important || undefined, shared: shared || undefined, title: title || undefined } : n)));
   }, [userId]);
 
   // [NIE STARTOWAŁEM] Znacznik na terminie; cofnięcie wraca do „bez wyniku”.
@@ -1162,7 +1164,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         {composerOpen && (
           <NoteSheet
             canShare={hasCoach}
-            onSave={(text, topics, important, shared) => addPrivateNote(text, topics, undefined, important, shared)}
+            onSave={(text, topics, important, shared, title) => addPrivateNote(text, topics, undefined, important, shared, title)}
             onClose={() => setComposerOpen(false)}
           />
         )}
@@ -1171,8 +1173,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           <NoteSheet
             canShare={hasCoach}
             standalone={!editingNote.sessionId}
-            initial={{ text: editingNote.text, topics: editingNote.topics, important: editingNote.important, shared: editingNote.shared }}
-            onSave={(text, topics, important, shared) => updatePrivateNote(editingNote.id, text, topics, important, shared)}
+            initial={{ text: editingNote.text, topics: editingNote.topics, important: editingNote.important, shared: editingNote.shared, title: editingNote.title }}
+            onSave={(text, topics, important, shared, title) => updatePrivateNote(editingNote.id, text, topics, important, shared, title)}
             onClose={() => setEditingNote(null)}
           />
         )}

@@ -22,6 +22,7 @@ export interface TbPrivateNote {
   milestone?: FocusMilestone;   // wpis „fokus ukończony / zakończony” (kind: 'focusMilestone')
   important?: boolean;          // Meilenstein — punkt zwrotny (nowy łuk, ważne wydarzenie)
   shared?: boolean;             // uczeń udostępnił wpis trenerom (privateNotes.shared)
+  title?: string;               // Meilenstein: tytuł (text = opis)
 }
 
 export interface TbSession {
@@ -70,6 +71,7 @@ export interface TbCoachEntry {
 export const SESSION_NOTE_MAX = 250;   // jak w StatsView/NoteModule
 export const SESSION_NOTE_EDITS = 2;   // limit edycji notatki przy sesji
 const PRIVATE_NOTE_MAX = 1000;
+const MILESTONE_TITLE_MAX = 120;   // LUSTRO: firestore.rules (privateNotes, title ≤ 120)
 
 const COACH_ENTRY_TYPES: Record<string, { icon: string; labelKey: string; labelDefault: string }> = {
   observation: { icon: 'visibility',    labelKey: 'coachLog.typeObservation', labelDefault: 'Beobachtung' },
@@ -183,15 +185,17 @@ function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'em
 export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMilestone = false, bare = false, initial, shareKeepsLength = false }: {
   allowShare: boolean;
   autoFocus?: boolean;
-  onSave: (text: string, topics: string[], shared: boolean, important: boolean) => Promise<void>;
+  onSave: (text: string, topics: string[], shared: boolean, important: boolean, title: string) => Promise<void>;
   onCancel?: () => void;
   allowMilestone?: boolean; // przełącznik „Meilenstein” (nowy wpis z „+”)
   bare?: boolean;           // bez własnej ramki — w oknie NoteSheet
-  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean }; // edycja wpisu
+  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean; title?: string }; // edycja wpisu
   // Udostępnienie samego wpisu (privateNotes.shared) — bez skracania do limitu notatki sesji.
   shareKeepsLength?: boolean;
 }) {
   const { t } = useTranslation();
+  // Meilenstein ma tytuł i opis (user 2026-10-23); zwykła notatka — sam tekst.
+  const [title, setTitle] = useState(initial?.title ?? '');
   const [text, setText] = useState(initial?.text ?? '');
   const [topics, setTopics] = useState<string[]>(initial?.topics ?? []);
   const [showTopics, setShowTopics] = useState(false);
@@ -217,13 +221,19 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
     },
   });
 
+  const asMilestone = allowMilestone && important;
+  const cleanTitle = asMilestone ? title.trim().slice(0, MILESTONE_TITLE_MAX) : '';
+  // Meilenstein: wymagany tytuł, opis opcjonalny; notatka: wymagany tekst.
+  const canSave = asMilestone ? !!cleanTitle : !!text.trim();
+
   const handleSave = async () => {
     const clean = text.trim().slice(0, max);
-    if (!clean || isSaving) return;
+    if (!canSave || isSaving) return;
     setIsSaving(true);
     setError(false);
     try {
-      await onSave(clean, topics, shared, important);
+      await onSave(clean, topics, shared, important, cleanTitle);
+      setTitle('');
       setText('');
       setTopics([]);
       setShowTopics(false);
@@ -250,45 +260,6 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
           {t('tagebuch.onlyYou')}
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        autoFocus={autoFocus}
-        value={text}
-        onChange={e => { setText(e.target.value.slice(0, max)); grow(); }}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
-        placeholder={t('tagebuch.notePlaceholder')}
-        rows={bare ? 4 : 2}
-        className={bare
-          ? 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors'
-          : 'w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed'}
-        style={{ minHeight: bare ? '104px' : '44px', maxHeight: bare ? '40vh' : undefined }}
-      />
-
-      {showTopics && (
-        <div className="mt-2">
-          <TopicPicker selectedTopics={topics} onChange={setTopics} />
-        </div>
-      )}
-
-      {allowShare && (
-        <div className="flex bg-gray-50 rounded-xl p-0.5 mt-2">
-          <button
-            onClick={() => setShared(false)}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-black transition-all ${!shared ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-400'}`}
-          >
-            <span className="material-symbols-outlined text-[14px]">lock</span>
-            {t('tagebuch.onlyYou')}
-          </button>
-          <button
-            onClick={() => { setShared(true); if (!shareKeepsLength) setText(prev => prev.slice(0, SESSION_NOTE_MAX)); }}
-            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-black transition-all ${shared ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-400'}`}
-          >
-            <span className="material-symbols-outlined text-[14px]">visibility</span>
-            {t('tagebuch.visibleCoach')}
-          </button>
-        </div>
-      )}
-
       {/* [MEILENSTEIN] (user 2026-10-23) Punkt zwrotny — wyróżniony w dzienniku
           i w filtrach; „i” wyjaśnia, na co to jest (naprawdę ważne wydarzenia). */}
       {allowMilestone && (
@@ -330,6 +301,55 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
         </div>
       )}
 
+      {/* Meilenstein: tytuł (wymagany), niżej opis — u ucznia i u trenera (user 2026-10-23). */}
+      {asMilestone && (
+        <input
+          value={title}
+          onChange={e => setTitle(e.target.value.slice(0, MILESTONE_TITLE_MAX))}
+          placeholder={t('tagebuch.milestoneTitlePlaceholder')}
+          maxLength={MILESTONE_TITLE_MAX}
+          className="w-full mb-2 bg-amber-50/50 border border-amber-200 focus:border-amber-400 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-black text-[#0a3a2a] placeholder-amber-300 outline-none transition-colors"
+        />
+      )}
+      <textarea
+        ref={textareaRef}
+        autoFocus={autoFocus}
+        value={text}
+        onChange={e => { setText(e.target.value.slice(0, max)); grow(); }}
+        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
+        placeholder={t(asMilestone ? 'tagebuch.milestoneDescPlaceholder' : 'tagebuch.notePlaceholder')}
+        rows={bare ? 4 : 2}
+        className={bare
+          ? 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors'
+          : 'w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed'}
+        style={{ minHeight: bare ? '104px' : '44px', maxHeight: bare ? '40vh' : undefined }}
+      />
+
+      {showTopics && (
+        <div className="mt-2">
+          <TopicPicker selectedTopics={topics} onChange={setTopics} />
+        </div>
+      )}
+
+      {allowShare && (
+        <div className="flex bg-gray-50 rounded-xl p-0.5 mt-2">
+          <button
+            onClick={() => setShared(false)}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-black transition-all ${!shared ? 'bg-white text-indigo-700 shadow-sm' : 'text-gray-400'}`}
+          >
+            <span className="material-symbols-outlined text-[14px]">lock</span>
+            {t('tagebuch.onlyYou')}
+          </button>
+          <button
+            onClick={() => { setShared(true); if (!shareKeepsLength) setText(prev => prev.slice(0, SESSION_NOTE_MAX)); }}
+            className={`flex-1 flex items-center justify-center gap-1 py-1.5 rounded-lg text-[10px] font-black transition-all ${shared ? 'bg-white text-emerald-700 shadow-sm' : 'text-gray-400'}`}
+          >
+            <span className="material-symbols-outlined text-[14px]">visibility</span>
+            {t('tagebuch.visibleCoach')}
+          </button>
+        </div>
+      )}
+
       {error && <p className="text-[10px] font-bold text-red-500 mt-2">{t('tagebuch.saveError')}</p>}
 
       <div className="flex items-center gap-2 mt-2">
@@ -361,7 +381,7 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
         )}
         <button
           onClick={handleSave}
-          disabled={!text.trim() || isSaving}
+          disabled={!canSave || isSaving}
           className="shrink-0 bg-[#0a3a2a] text-white text-[10px] font-black uppercase tracking-widest px-4 py-2 rounded-xl disabled:opacity-40 active:scale-95 transition-all"
         >
           {t('tagebuch.save')}
@@ -385,7 +405,7 @@ function PrivateNoteBody({ note, onDelete, onEdit, strong = false, privacyLine =
     <div>
       <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className={`leading-relaxed whitespace-pre-wrap break-words ${strong ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{note.text}</p>
+          {note.text && <p className={`leading-relaxed whitespace-pre-wrap break-words ${strong ? 'text-[13px] font-black text-[#0a3a2a]' : 'text-[12px] font-medium text-gray-700'}`}>{note.text}</p>}
           {/* Najpierw treść, potem kto widzi: tylko ty albo też trener (user 2026-10-23). */}
           {privacyLine && (note.shared ? (
             <p className="flex items-center gap-1 mt-0.5 text-[10px] font-bold text-emerald-700">
@@ -434,11 +454,12 @@ function PrivateNoteBody({ note, onDelete, onEdit, strong = false, privacyLine =
 
 export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPrivateNote; time: string; onDelete: (id: string) => Promise<void>; onEdit?: () => void }) {
   const { t } = useTranslation();
-  // Meilenstein — złoty pasek i gwiazdka; dalej prywatny („Nur für dich” pod tekstem).
+  // Meilenstein — złoty pasek i gwiazdka; tytuł pod etykietą, opis pod nim.
+  // Starsze bez tytułu: tekst pogrubiony jak tytuł.
   return note.important ? (
     <div className={`${CARD_SHAPE} tb-mark ${CARD_PAD}`}>
-      <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" time={time}>
-        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} strong privacyLine /></div>
+      <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" title={note.title || undefined} time={time}>
+        <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} strong={!note.title} privacyLine /></div>
       </EntryRow>
     </div>
   ) : (
@@ -456,9 +477,9 @@ export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPriv
  * Z `initial` to samo okno służy do edycji istniejącego wpisu.
  */
 export function NoteSheet({ onSave, onClose, initial, canShare = false, standalone = true }: {
-  onSave: (text: string, topics: string[], important: boolean, shared: boolean) => Promise<void>;
+  onSave: (text: string, topics: string[], important: boolean, shared: boolean, title: string) => Promise<void>;
   onClose: () => void;
-  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean };
+  initial?: { text: string; topics: string[]; important?: boolean; shared?: boolean; title?: string };
   canShare?: boolean;    // uczeń ma trenera — przełącznik „Für Trainer sichtbar”
   standalone?: boolean;  // false = notatka przypięta do treningu/zawodów: bez Meilenstein i udostępniania
 }) {
@@ -499,7 +520,7 @@ export function NoteSheet({ onSave, onClose, initial, canShare = false, standalo
           allowMilestone={standalone}
           autoFocus
           initial={initial}
-          onSave={async (text, topics, shared, important) => { await onSave(text, topics, important, share && shared); onClose(); }}
+          onSave={async (text, topics, shared, important, title) => { await onSave(text, topics, important, share && shared, title); onClose(); }}
         />
       </div>
     </div>,

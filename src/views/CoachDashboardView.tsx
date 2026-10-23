@@ -1390,7 +1390,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
-  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string, action?: React.ReactNode) => {
+  // opts.focus=false — bez linijki fokusu (kamienie milowe: user 2026-10-23
+  // „po co tam fokus”); opts.plainSub — opis zwykłym tekstem, nie wersalikami.
+  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string, action?: React.ReactNode, opts: { focus?: boolean; plainSub?: boolean } = {}) => {
     const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
     return (
       <div key={s.id} className="w-full flex items-center bg-white rounded-xl shadow-sm border border-gray-100">
@@ -1408,8 +1410,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">
             {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
           </p>
-          <p className="text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate">{sub}</p>
-          {renderFocusLine(s.id)}
+          <p className={opts.plainSub ? 'text-[11px] font-bold mt-0.5 line-clamp-2 break-words' : 'text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate'}>{sub}</p>
+          {opts.focus !== false && renderFocusLine(s.id)}
         </div>
         {!action && <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>}
       </button>
@@ -1571,6 +1573,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     {m.text}{m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
                   </span>,
                   'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
+                  undefined,
+                  { focus: false, plainSub: true },
                 )}
               </React.Fragment>
             ))}

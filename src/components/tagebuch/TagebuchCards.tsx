@@ -487,15 +487,16 @@ export function NoteSheet({ onSave, onClose, initial, canShare = false, standalo
   const title = t(initial ? 'tagebuch.editEntry' : 'tagebuch.newEntry');
   const share = canShare && standalone;
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-end justify-center">
-      <div className="absolute inset-0 bg-black/40 tb-fade-in" onClick={onClose} aria-hidden />
+    // U góry jak inne okna aplikacji (FocusModal), nie od dołu (user 2026-10-23) —
+    // klawiatura telefonu nie zasłania pola.
+    <div className="fixed inset-0 z-[120] flex items-start justify-center p-4 pt-[calc(env(safe-area-inset-top)+16px)]">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm tb-fade-in" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative w-full max-w-md bg-white rounded-t-[28px] shadow-2xl px-4 pt-2 pb-[calc(env(safe-area-inset-bottom)+16px)] max-h-[92dvh] overflow-y-auto tb-sheet-in"
+        className="relative w-full max-w-[400px] bg-white rounded-[32px] shadow-2xl p-5 max-h-[85dvh] overflow-y-auto tb-fade-in"
       >
-        <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-3" />
         <div className="flex items-center gap-2.5 mb-3">
           <span className="w-9 h-9 rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]">edit_note</span>

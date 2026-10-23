@@ -817,7 +817,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
-  const { items, hasMore, cutoff, kindCounts } = useMemo(() => {
+  const { items, hasMore, cutoff, kindCounts, topicCounts } = useMemo(() => {
     // Puste źródło (przed wczytaniem albo bez wpisów) niczego nie ucina.
     const sessionsFull = !sessionsDone && sessions.length > 0;
     const notesFull = !notesDone && notes.length > 0;
@@ -834,6 +834,19 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       }
     });
     const hit = (arr: string[]) => !topic || arr.includes(topic);
+
+    // Ile wpisów ma każdy temat (user 2026-10-23) — po tych samych polach co
+    // filtr tematu, niezależnie od wybranego rodzaju; wpis liczy się raz.
+    const topicCounts = new Map<string, number>();
+    const countTopics = (arr: string[]) => new Set(arr).forEach(x => topicCounts.set(x, (topicCounts.get(x) || 0) + 1));
+    sessions.forEach(s => {
+      if (s.ts >= cutoff) countTopics([...s.topics, ...s.coachTopics, ...(bySession[s.id] || []).flatMap(n => n.topics)]);
+    });
+    notes.forEach(n => {
+      if (n.ts >= cutoff && !n.milestone && !(n.sessionId && sessionIds.has(n.sessionId))) countTopics(n.topics);
+    });
+    ledTrainings.forEach(e => { if (e.ts >= cutoff && e.topic) countTopics([e.topic]); });
+    coachEntries.forEach(e => { if (e.ts >= cutoff) countTopics(e.topics); });
 
     const all: TimelineItem[] = [];
     sessions.forEach(s => {
@@ -888,7 +901,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : filter === 'coach' ? all.filter(fromCoach)
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
-    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kindCounts };
+    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kindCounts, topicCounts };
   }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
@@ -1439,14 +1452,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       {TRAINING_TOPICS.map(cat => (
                         <optgroup key={cat.id} label={`${cat.num}. ${t(`sessionSetup.topicCat_${cat.id}`)}`}>
                           {cat.subtopics.map(sub => (
-                            <option key={sub.id} value={sub.id}>{topicLabel(sub.id, t)}</option>
+                            <option key={sub.id} value={sub.id}>{`${topicLabel(sub.id, t)} · ${topicCounts.get(sub.id) || 0}`}</option>
                           ))}
                         </optgroup>
                       ))}
                       {customTopicOptions.length > 0 && (
                         <optgroup label={t(`sessionSetup.topicCat_${CUSTOM_CATEGORY_ID}`)}>
                           {customTopicOptions.map(id => (
-                            <option key={id} value={id}>{topicLabel(id, t)}</option>
+                            <option key={id} value={id}>{`${topicLabel(id, t)} · ${topicCounts.get(id) || 0}`}</option>
                           ))}
                         </optgroup>
                       )}

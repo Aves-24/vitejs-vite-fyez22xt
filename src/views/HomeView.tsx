@@ -14,7 +14,6 @@ import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
-import TopicLinks from '../components/TopicLinks';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
@@ -1554,13 +1553,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               onOpen={() => onNavigate?.('MY_COACH')}
               other={focusPair.other}
               onSwap={() => swapFocus(userId, focusState)}
+              // Opis i linki tylko jako ikonki — treść w dzienniku (user 2026-10-23).
+              topicMore={focusPair.main.topicId && focusState?.trainingTopic
+                ? { desc: !!focusState.trainingTopic.desc, links: focusState.trainingTopic.links?.length || 0 }
+                : undefined}
             />
-            {/* Linki od trenera przy dzisiejszym temacie (poza przyciskiem paska). */}
-            {/* Opis tematu od trenera — skrót; całość w dzienniku. */}
-            {focusState?.trainingTopic?.desc && (
-              <p className="text-[10px] font-medium text-gray-500 leading-snug line-clamp-2 mt-1.5 px-1">{focusState.trainingTopic.desc}</p>
-            )}
-            <TopicLinks links={focusState?.trainingTopic?.links} titles={focusState?.trainingTopic?.linkTitles} className="mt-1.5 justify-end" />
           </div>
         )}
 

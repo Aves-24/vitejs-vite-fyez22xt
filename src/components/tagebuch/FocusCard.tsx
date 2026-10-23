@@ -401,8 +401,10 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
  * W profilu ucznia trener widzi go w nagłówku jako `glass` (zielone tło
  * nagłówka), bez klikania (user 2026-09-16).
  */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false, topicMore }: {
   past?: boolean;   // minione sesje (statystyki): bez „Heute im Training” przy temacie
+  // Home: sam znak, że temat ma opis / linki (treść w dzienniku) — user 2026-10-23.
+  topicMore?: { desc: boolean; links: number };
   focus: ActiveFocus;
   other?: ActiveFocus | null;   // [DWA FOKUSY] drugi fokus — kropka po prawej
   onSwap?: () => void;
@@ -495,7 +497,22 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
         )}
         {/* Temat treningu: „Heute im Training” jak w karcie dziennika (user 2026-10-15). */}
         {!dots && focus.topicId && !past && (
-          <p className={`text-[10px] font-bold mt-1 ${glass ? 'text-white/60' : pal.sub}`}>{t('tagebuch.topicToday')}</p>
+          <div className={`flex items-center gap-2 mt-1 text-[10px] font-bold ${glass ? 'text-white/60' : pal.sub}`}>
+            <p className="flex-1 min-w-0 truncate">{t('tagebuch.topicToday')}</p>
+            {(topicMore?.desc || !!topicMore?.links) && (
+              <span
+                className="shrink-0 inline-flex items-center gap-1.5 font-black"
+                aria-label={[topicMore.desc ? t('tagebuch.topicDesc') : '', topicMore.links ? t('tagebuch.topicLinks', { count: topicMore.links }) : ''].filter(Boolean).join(', ')}
+              >
+                {topicMore.desc && <span className="material-symbols-outlined text-[15px]">notes</span>}
+                {!!topicMore.links && (
+                  <span className="inline-flex items-center">
+                    <span className="material-symbols-outlined text-[15px]">link</span>{topicMore.links > 1 ? topicMore.links : null}
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
         )}
       </div>
       {onOpen && !chip && <span className={`material-symbols-outlined text-[20px] shrink-0 ${glass ? 'text-white/60' : pal.accent}`}>chevron_right</span>}

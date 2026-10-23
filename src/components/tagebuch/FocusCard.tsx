@@ -171,9 +171,11 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false, showLa
 export function FocusDots({ count, goal, small = false, light = false, muted = false, coach = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean; coach?: boolean }) {
   const done = count >= goal;
   const size = small ? 'w-2 h-2' : 'w-2.5 h-2.5';
-  // muted: szara karta zakończonego fokusu (user 2026-10-14).
+  // muted: szara karta zakończonego fokusu (user 2026-10-14) — ale kropki
+  // dalej mówią to samo co wszędzie: żółta = zrobione, szara = nie
+  // (user 2026-10-23: szare „zrobione” kropki myliły się z niezrobionymi).
   const [doneCls, onCls, offCls] = muted
-    ? ['bg-gray-400', 'bg-gray-500', 'bg-gray-200']
+    ? ['bg-amber-400', 'bg-amber-400', 'bg-gray-200']
     : light
     ? ['bg-amber-400', 'bg-[#1f6e53]', coach ? 'bg-sky-200' : 'bg-amber-200']
     : ['bg-[#fed33e]', 'bg-emerald-400', 'bg-white/25'];
@@ -217,7 +219,9 @@ export function FocusProgress({ dots, count, goal, dates, since }: {
 }) {
   const { t, i18n } = useTranslation();
   const fmt = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
-  const list = dates.map(fmt).join(' · ');
+  // Z kropkami — tylko daty, które zapełniły kropki (do celu); treningi po
+  // ukończeniu nie dokładają dat („2 von 2” i pięć dat, user 2026-10-23).
+  const list = (dots ? dates.slice(0, goal) : dates).map(fmt).join(' · ');
   if (!dots && !list) return null;
   return (
     <div className="mt-1.5">

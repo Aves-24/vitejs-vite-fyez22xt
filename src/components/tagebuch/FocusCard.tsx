@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { readSessionFocus, orderedTracks, type ActiveFocus, type FocusChoice, type FocusMilestone, type FocusState, type SessionFocus } from '../../utils/focus';
 import { topicLabel } from '../../constants/trainingTopics';
 import { CARD_SHAPE, CARD_PAD, EntryRow } from './TagebuchCards';
+import { isYouTube } from '../TopicLinks';
 
 // --- FOKUS ---
 // Karta „Twój fokus" na górze dziennika i pasek na Home (edycja: FocusModal). Logika
@@ -404,7 +405,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
 export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false, topicMore }: {
   past?: boolean;   // minione sesje (statystyki): bez „Heute im Training” przy temacie
   // Home: sam znak, że temat ma opis / linki (treść w dzienniku) — user 2026-10-23.
-  topicMore?: { desc: boolean; links: number };
+  topicMore?: { desc: boolean; links: string[] };
   focus: ActiveFocus;
   other?: ActiveFocus | null;   // [DWA FOKUSY] drugi fokus — kropka po prawej
   onSwap?: () => void;
@@ -499,17 +500,16 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
         {!dots && focus.topicId && !past && (
           <div className={`flex items-center gap-2 mt-1 text-[10px] font-bold ${glass ? 'text-white/60' : pal.sub}`}>
             <p className="flex-1 min-w-0 truncate">{t('tagebuch.topicToday')}</p>
-            {(topicMore?.desc || !!topicMore?.links) && (
+            {(topicMore?.desc || !!topicMore?.links.length) && (
               <span
-                className="shrink-0 inline-flex items-center gap-1.5 font-black"
-                aria-label={[topicMore.desc ? t('tagebuch.topicDesc') : '', topicMore.links ? t('tagebuch.topicLinks', { count: topicMore.links }) : ''].filter(Boolean).join(', ')}
+                className="shrink-0 inline-flex items-center gap-1 font-black"
+                aria-label={[topicMore.desc ? t('tagebuch.topicDesc') : '', topicMore.links.length ? t('tagebuch.topicLinks', { count: topicMore.links.length }) : ''].filter(Boolean).join(', ')}
               >
                 {topicMore.desc && <span className="material-symbols-outlined text-[15px]">notes</span>}
-                {!!topicMore.links && (
-                  <span className="inline-flex items-center">
-                    <span className="material-symbols-outlined text-[15px]">link</span>{topicMore.links > 1 ? topicMore.links : null}
-                  </span>
-                )}
+                {/* Te same ikony co linki w dzienniku (TopicLinks), tylko bez klikania. */}
+                {topicMore.links.map((href, i) => (
+                  <span key={href + i} className="material-symbols-outlined text-[15px]">{isYouTube(href) ? 'smart_display' : 'open_in_new'}</span>
+                ))}
               </span>
             )}
           </div>

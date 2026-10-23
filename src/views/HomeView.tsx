@@ -1555,7 +1555,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               onSwap={() => swapFocus(userId, focusState)}
               // Opis i linki tylko jako ikonki — treść w dzienniku (user 2026-10-23).
               topicMore={focusPair.main.topicId && focusState?.trainingTopic
-                ? { desc: !!focusState.trainingTopic.desc, links: focusState.trainingTopic.links?.length || 0 }
+                ? { desc: !!focusState.trainingTopic.desc, links: focusState.trainingTopic.links ?? [] }
                 : undefined}
             />
           </div>

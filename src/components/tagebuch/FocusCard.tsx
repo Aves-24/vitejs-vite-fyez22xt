@@ -53,7 +53,7 @@ function TopicGroupLine({ focus, className = '' }: { focus: ActiveFocus; classNa
 }
 
 /** Ikona: temat treningu = gwizdek, fokus = cel. */
-export const focusIcon = (f: Pick<ActiveFocus, 'topicId'>) => (f.topicId ? 'sports' : 'track_changes');
+export const focusIcon = (f: Pick<ActiveFocus, 'topicId'>) => (f.topicId ? 'sports' : 'center_focus_strong');
 
 const otherLabel = (f: ActiveFocus, t: (k: string, o?: any) => string) =>
   t(f.topicId ? 'tagebuch.topicOther' : 'tagebuch.focusOtherOwn', { title: focusTitle(f, t) });
@@ -309,7 +309,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
         {/* Zakończony fokus na szaro (user 2026-10-14) — żółty zostaje dla
             fokusu, nad którym się teraz pracuje. Przycisk dalej żółty. */}
         <span className="w-9 h-9 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-[20px]">track_changes</span>
+          <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
         </span>
         <div className="flex-1 min-w-0">
           <div className="text-[9px] font-black uppercase tracking-widest text-gray-500 truncate">
@@ -339,7 +339,7 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
         className="w-full flex items-center gap-2.5 bg-amber-50 border border-dashed border-amber-300 rounded-[20px] px-3.5 py-2.5 text-left active:scale-[0.99] transition-all"
       >
         <span className="w-9 h-9 rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-[20px]">track_changes</span>
+          <span className="material-symbols-outlined text-[20px]">center_focus_strong</span>
         </span>
         <span className="text-[12px] font-bold text-amber-900 leading-snug">{t('tagebuch.focusEmpty')}</span>
       </button>

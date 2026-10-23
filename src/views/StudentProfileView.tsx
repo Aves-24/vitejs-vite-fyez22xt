@@ -818,7 +818,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </button>
         ) : focusState && (
           <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2 text-left">
-            <span className="material-symbols-outlined text-[22px] text-white/25 shrink-0">track_changes</span>
+            <span className="material-symbols-outlined text-[22px] text-white/25 shrink-0">center_focus_strong</span>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300/60 truncate">{t('studentProfile.focusLabel')}</p>
               <p className="text-[11px] font-bold text-white/50 leading-snug truncate">{t('studentProfile.focusNone')}</p>

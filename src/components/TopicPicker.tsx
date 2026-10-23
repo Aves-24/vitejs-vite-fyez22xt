@@ -123,7 +123,7 @@ export default function TopicPicker({ selectedTopics, onChange, onDark = false, 
               onClick={() => toggleTopic(id)}
               className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black active:scale-95 transition-all ${c.chip}`}
             >
-              {id === markedTopic && <span className="material-symbols-outlined text-[11px] text-[#b8860b] mr-0.5" aria-label={t('tagebuch.focusLabel')}>track_changes</span>}
+              {id === markedTopic && <span className="material-symbols-outlined text-[11px] text-[#b8860b] mr-0.5" aria-label={t('tagebuch.focusLabel')}>center_focus_strong</span>}
               {id === trainingTopic && <span className={`material-symbols-outlined text-[11px] mr-0.5 ${onDark ? 'text-violet-300' : 'text-violet-600'}`} aria-label={t('tagebuch.topicChoice')}>sports</span>}
               {topicLabel(id, t)}
               <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>

@@ -311,7 +311,7 @@ export default function CoachStudentSheet({
           <div className="mt-4">
             <p className={sectionLabel}>{t('tagebuch.focusLabel')}</p>
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2">
-              <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-px">track_changes</span>
+              <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-px">center_focus_strong</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(focusState.focus, t)}</p>
                 {focusState.focus.text && focusState.focus.topic && (

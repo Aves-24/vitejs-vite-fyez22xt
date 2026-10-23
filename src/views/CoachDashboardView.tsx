@@ -78,7 +78,7 @@ const TREND_ICON = { up: 'trending_up', down: 'trending_down' } as const;
 const ROW_ICON = { lastTraining: 'schedule' } as const;
 // Ikona na początku linii wpisu trenera — rodzaj widać bez czytania (user 2026-10-22).
 const LOG_ICON: Record<string, string> = {
-  observation: 'visibility', tip: 'lightbulb', goal: 'track_changes', flag: 'priority_high', topic: 'sports',
+  observation: 'visibility', tip: 'lightbulb', goal: 'center_focus_strong', flag: 'priority_high', topic: 'sports',
 };
 
 const scoredArrows = (x: any): number => Number(x.scoreArrows ?? x.sessionArrows ?? x.arrows) || 0;
@@ -1325,7 +1325,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     if (!fc?.focus) return null;
     return (
       <p className="text-[9px] font-bold mt-0.5 flex items-center gap-1 min-w-0 text-amber-800">
-        <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">track_changes</span>
+        <span className="material-symbols-outlined text-[12px] text-amber-600 shrink-0">center_focus_strong</span>
         <span className="truncate"><span className="font-black">{t('coachLog.typeGoal')}:</span> {focusTitle(fc.focus, t)}</span>
         {fc.dots && <span className="shrink-0 ml-0.5"><FocusDots count={fc.count} goal={fc.goal} small light /></span>}
       </p>

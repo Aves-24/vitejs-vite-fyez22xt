@@ -158,7 +158,7 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
 
         <div className="flex items-center gap-3 mb-4 mt-2 shrink-0">
           <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#fed33e]">track_changes</span>
+            <span className="material-symbols-outlined text-[#fed33e]">center_focus_strong</span>
           </div>
           <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.focusModalTitle', { defaultValue: 'Fokus ucznia' })}</h2>
         </div>

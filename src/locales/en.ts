@@ -419,6 +419,9 @@ export const views = {
     showStats: "Stats",
     filters: "Filters",
     closeFilters: "Close filters",
+    filtersExpand: "Expand",
+    filtersCollapse: "Collapse",
+    filterTournament: "Tournaments",
     inviteHide: "Hide"
   },
   home: {

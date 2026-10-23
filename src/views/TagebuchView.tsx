@@ -48,28 +48,32 @@ const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach
 
 // Filtry (user 2026-10-15): „Wszystko”, „Od trenera” i rodzaje wpisów —
 // każdy w kolorze swoich kart (pasek z lewej, tb-* w tailwind.css).
-type EntryKind = 'target' | 'tech' | 'coachEntry' | 'private' | 'topic' | 'focus' | 'coachFocus' | 'led';
+type EntryKind = 'target' | 'tournament' | 'tech' | 'coachEntry' | 'private' | 'topic' | 'focus' | 'coachFocus' | 'led';
 type Filter = 'all' | 'coach' | EntryKind;
 
-const KIND_FILTERS: { kind: EntryKind; labelKey: string; on: string; off: string }[] = [
-  { kind: 'target', labelKey: 'tagebuch.filterTarget', on: 'bg-emerald-600 text-white border-emerald-600', off: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { kind: 'tech', labelKey: 'tagebuch.filterTech', on: 'bg-sky-400 text-white border-sky-400', off: 'bg-sky-50 text-sky-700 border-sky-200' },
-  { kind: 'coachEntry', labelKey: 'tagebuch.filterCoachEntry', on: 'bg-amber-500 text-white border-amber-500', off: 'bg-amber-50 text-amber-700 border-amber-200' },
-  { kind: 'private', labelKey: 'tagebuch.filterPrivate', on: 'bg-indigo-400 text-white border-indigo-400', off: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
-  { kind: 'topic', labelKey: 'tagebuch.filterTopic', on: 'bg-violet-500 text-white border-violet-500', off: 'bg-violet-50 text-violet-700 border-violet-200' },
-  { kind: 'focus', labelKey: 'tagebuch.filterFocus', on: 'bg-amber-400 text-[#0a3a2a] border-amber-400', off: 'bg-yellow-50 text-amber-800 border-yellow-300' },
-  { kind: 'coachFocus', labelKey: 'tagebuch.filterCoachFocus', on: 'bg-sky-600 text-white border-sky-600', off: 'bg-sky-50 text-sky-800 border-sky-300' },
-  { kind: 'led', labelKey: 'tagebuch.filterLed', on: 'bg-rose-500 text-white border-rose-500', off: 'bg-rose-50 text-rose-700 border-rose-200' },
+// Panel filtrów przy „+” (user 2026-10-23): ikona = ta sama co na karcie,
+// `color` = kolor ikonki, `fill` = tło wybranej ikonki.
+const KIND_FILTERS: { kind: Filter; labelKey: string; icon: string; color: string; fill: string }[] = [
+  { kind: 'target', labelKey: 'tagebuch.filterTarget', icon: 'target', color: 'text-emerald-600', fill: 'bg-emerald-600' },
+  { kind: 'tournament', labelKey: 'tagebuch.filterTournament', icon: 'emoji_events', color: 'text-[#0a3a2a]', fill: 'bg-[#0a3a2a]' },
+  { kind: 'tech', labelKey: 'tagebuch.filterTech', icon: 'fitness_center', color: 'text-sky-600', fill: 'bg-sky-500' },
+  { kind: 'topic', labelKey: 'tagebuch.filterTopic', icon: 'sports', color: 'text-violet-600', fill: 'bg-violet-500' },
+  { kind: 'coachEntry', labelKey: 'tagebuch.filterCoachEntry', icon: 'menu_book', color: 'text-amber-600', fill: 'bg-amber-500' },
+  { kind: 'coach', labelKey: 'tagebuch.filterCoach', icon: 'person', color: 'text-amber-700', fill: 'bg-amber-700' },
+  { kind: 'private', labelKey: 'tagebuch.filterPrivate', icon: 'lock', color: 'text-indigo-500', fill: 'bg-indigo-500' },
+  { kind: 'focus', labelKey: 'tagebuch.filterFocus', icon: 'center_focus_strong', color: 'text-amber-600', fill: 'bg-amber-500' },
+  { kind: 'coachFocus', labelKey: 'tagebuch.filterCoachFocus', icon: 'center_focus_strong', color: 'text-sky-700', fill: 'bg-sky-700' },
+  { kind: 'led', labelKey: 'tagebuch.filterLed', icon: 'sports', color: 'text-rose-600', fill: 'bg-rose-500' },
 ];
 
 function entryKind(it: TimelineItem): EntryKind {
   switch (it.kind) {
-    case 'session': return it.session.isTech ? 'tech' : 'target';
+    case 'session': return it.session.isTech ? 'tech' : it.session.isTournament ? 'tournament' : 'target';
     case 'private': return 'private';
     case 'milestone': return it.milestone.fromCoach ? 'coachFocus' : 'focus';
     case 'led': return 'led';
     case 'missed':
-    case 'skipped': return 'target';
+    case 'skipped': return 'tournament';
     default: return it.entry.trainingTopic ? 'topic' : 'coachEntry';
   }
 }
@@ -271,6 +275,15 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return next;
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
+  // „Ausklappen” w panelu filtrów — opisy przy ikonach; zapamiętane w telefonie.
+  const filtersWideKey = `grotx_tbFiltersWide_${userId}`;
+  const [filtersWide, setFiltersWide] = useState(() => {
+    try { return localStorage.getItem(filtersWideKey) === '1'; } catch { return false; }
+  });
+  const toggleFiltersWide = () => setFiltersWide(v => {
+    try { localStorage.setItem(filtersWideKey, v ? '0' : '1'); } catch { /* prywatny tryb */ }
+    return !v;
+  });
   const inviteHiddenKey = `grotx_tbInviteHidden_${userId}`;
   const [inviteHidden, setInviteHidden] = useState(() => {
     try { return localStorage.getItem(inviteHiddenKey) === '1'; } catch { return false; }
@@ -803,7 +816,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
-  const { items, hasMore, cutoff, kinds } = useMemo(() => {
+  const { items, hasMore, cutoff, kindCounts } = useMemo(() => {
     // Puste źródło (przed wczytaniem albo bez wpisów) niczego nie ucina.
     const sessionsFull = !sessionsDone && sessions.length > 0;
     const notesFull = !notesDone && notes.length > 0;
@@ -861,13 +874,20 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       if (isNaN(ts) || ts < cutoff || (topic && !linked.some(n => hit(n.topics)))) return;
       all.push({ kind: 'skipped', id: ev.id, ts, ev, linked });
     });
-    const kinds = new Set(all.map(entryKind));
     // „Od trenera”: uwagi trenera do treningów, wpisy trenera i tematy od trenera.
+    const fromCoach = (it: TimelineItem) => (it.kind === 'session' && !!it.session.coachNote) || it.kind === 'coach';
+    // Ile wpisów każdego rodzaju — panel filtrów pokazuje tylko te, które są.
+    const kindCounts = new Map<Filter, number>();
+    all.forEach(it => {
+      const k = entryKind(it);
+      kindCounts.set(k, (kindCounts.get(k) || 0) + 1);
+      if (fromCoach(it)) kindCounts.set('coach', (kindCounts.get('coach') || 0) + 1);
+    });
     const list = filter === 'all' ? all
-      : filter === 'coach' ? all.filter(it => (it.kind === 'session' && !!it.session.coachNote) || it.kind === 'coach')
+      : filter === 'coach' ? all.filter(fromCoach)
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
-    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kinds };
+    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kindCounts };
   }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
@@ -934,8 +954,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Filtr albo temat = szukanie, więc pokazujemy wszystkie trafienia.
   const filterActive = filter !== 'all' || !!topic;
   const forceOpen = filterActive;
-  // Aktywny filtr zostawia rząd filtrów widoczny — widać, czemu lista jest krótsza.
-  const showFilters = filtersOpen || filterActive;
   const isWeekOpen = (key: string, index: number) => forceOpen || (weekOpen[key] ?? index < 2);
 
   // Dzień tygodnia + godzina; nagłówek tygodnia niesie resztę daty.
@@ -1011,19 +1029,13 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const showCoachFilter = hasCoach || coachContentCount > 0;
   const isEmpty = !isLoading && sessions.length === 0 && notes.length === 0 && coachEntries.length === 0;
 
-  const chip = (value: Filter, label: string, badge = 0) => (
-    <button
-      onClick={() => setFilter(value)}
-      className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black transition-all active:scale-95 ${
-        filter === value ? 'bg-[#0a3a2a] text-white' : 'bg-white text-gray-500 border border-gray-200'
-      }`}
-    >
-      {label}
-      {badge > 0 && (
-        <span className={`min-w-[16px] h-4 px-1 rounded-full text-[9px] flex items-center justify-center ${filter === value ? 'bg-white text-[#0a3a2a]' : 'bg-emerald-600 text-white'}`}>{badge}</span>
-      )}
-    </button>
-  );
+  // [FILTRY PRZY „+”] (user 2026-10-23) Tylko rodzaje, które są w dzienniku
+  // („Trainer” także, gdy jest trener). Tap = filtr; drugi tap = wszystko.
+  const kindOptions = KIND_FILTERS.filter(k =>
+    (kindCounts.get(k.kind) || 0) > 0 || filter === k.kind || (k.kind === 'coach' && showCoachFilter));
+  const activeKind = KIND_FILTERS.find(k => k.kind === filter);
+  const pickFilter = (k: Filter) => setFilter(f => (f === k ? 'all' : k));
+  const clearFilters = () => { setFilter('all'); setTopic(''); };
 
   return (
     <div className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
@@ -1086,18 +1098,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
               </div>
             )}
         </>}
-        actions={
-          /* Filtry schowane pod lupą — używane rzadko, a zajmowały cały rząd. */
-          <button
-            onClick={() => setFiltersOpen(v => !v)}
-            className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white transition-all active:scale-90 shrink-0 ${showFilters ? 'bg-white/25' : 'bg-white/10 hover:bg-white/20'}`}
-            aria-label={t('tagebuch.filters')}
-            aria-expanded={showFilters}
-          >
-            <span className="material-symbols-outlined text-[20px]">search</span>
-            {filterActive && <span className="absolute top-1 right-1 w-2 h-2 bg-[#fed33e] rounded-full" />}
-          </button>
-        }
       >
         {focusEditing && (
           <FocusModal
@@ -1186,55 +1186,32 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           </div>
         )}
 
-        {/* FILTRY — pod lupą w nagłówku */}
-        {showFilters && (
-        <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 pb-0.5" style={{ scrollbarWidth: 'none' }}>
-          {chip('all', t('tagebuch.filterAll'))}
-          {showCoachFilter && chip('coach', t('tagebuch.filterCoach'), coachNewCount)}
-          {/* Rodzaje wpisów w kolorach ich kart — tylko te, które są na osi. */}
-          {KIND_FILTERS.filter(k => kinds.has(k.kind) || filter === k.kind).map(k => (
+        {/* AKTYWNY FILTR — widać, czemu lista jest krótsza; × wraca do wszystkiego.
+            Same filtry są w panelu przy „+” na dole. */}
+        {filterActive && (
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {activeKind && (
+              <span className="inline-flex items-center gap-1 pl-1 pr-2.5 py-1 rounded-full bg-white border border-gray-200 text-[11px] font-black text-[#0a3a2a]">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-white ${activeKind.fill}`}>
+                  <span className="material-symbols-outlined text-[13px]">{activeKind.icon}</span>
+                </span>
+                {t(activeKind.labelKey)}
+              </span>
+            )}
+            {topic && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-gray-200 text-[11px] font-black text-emerald-700">
+                <span className="material-symbols-outlined text-[14px]">psychology</span>
+                {topicLabel(topic, t)}
+              </span>
+            )}
             <button
-              key={k.kind}
-              onClick={() => setFilter(k.kind)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all active:scale-95 ${filter === k.kind ? k.on : k.off}`}
+              onClick={clearFilters}
+              className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-90 transition-all"
+              aria-label={t('tagebuch.closeFilters')}
             >
-              {t(k.labelKey)}
+              <span className="material-symbols-outlined text-[16px]">close</span>
             </button>
-          ))}
-          <div className={`shrink-0 relative flex items-center rounded-full border text-[11px] font-black ${topic ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500'}`}>
-            <span className="material-symbols-outlined text-[14px] pl-2.5">psychology</span>
-            <select
-              value={topic}
-              onChange={e => setTopic(e.target.value)}
-              className="appearance-none bg-transparent pl-1 pr-6 py-1.5 outline-none max-w-[150px] truncate"
-              aria-label={t('tagebuch.topic')}
-            >
-              <option value="">{t('tagebuch.allTopics')}</option>
-              {TRAINING_TOPICS.map(cat => (
-                <optgroup key={cat.id} label={`${cat.num}. ${t(`sessionSetup.topicCat_${cat.id}`)}`}>
-                  {cat.subtopics.map(sub => (
-                    <option key={sub.id} value={sub.id}>{topicLabel(sub.id, t)}</option>
-                  ))}
-                </optgroup>
-              ))}
-              {customTopicOptions.length > 0 && (
-                <optgroup label={t(`sessionSetup.topicCat_${CUSTOM_CATEGORY_ID}`)}>
-                  {customTopicOptions.map(id => (
-                    <option key={id} value={id}>{topicLabel(id, t)}</option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-            <span className="material-symbols-outlined text-[14px] absolute right-1.5 pointer-events-none">expand_more</span>
           </div>
-          <button
-            onClick={() => { setFilter('all'); setTopic(''); setFiltersOpen(false); }}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-90 transition-all"
-            aria-label={t('tagebuch.closeFilters')}
-          >
-            <span className="material-symbols-outlined text-[16px]">close</span>
-          </button>
-        </div>
         )}
 
         {/* ZAPROSZENIE DO TRENERA — da się ukryć na stałe (Ustawienia → Trener dalej działa) */}
@@ -1394,7 +1371,102 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
       {/* „+" nowa notatka. Portal, bo <main> w App ma transform (scale) —
           fixed wewnątrz liczyłby się od niego, a nie od ekranu. */}
+      {/* [FILTRY PRZY „+”] (user 2026-10-23) Mniejsze kółko (¾ plusa) obok „+”;
+          panel z ikonami rodzajów wpisów wysuwa się nad przyciskami. */}
       {!composerOpen && !focusEditing && !openMessageCoach && createPortal(
+        <>
+          {filtersOpen && (
+            <>
+              <div className="fixed inset-0 z-[59]" onClick={() => setFiltersOpen(false)} aria-hidden />
+              <div
+                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+150px)] z-[61] w-[min(19rem,calc(100vw_-_2rem))] bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/15 p-3 animate-fade-in"
+                role="dialog"
+                aria-label={t('tagebuch.filters')}
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="flex-1 text-[9px] font-black uppercase tracking-widest text-gray-400">{t('tagebuch.filters')}</span>
+                  <button
+                    onClick={toggleFiltersWide}
+                    className="flex items-center gap-0.5 text-[10px] font-black text-emerald-700 px-2 py-1 rounded-full active:bg-gray-100"
+                    aria-expanded={filtersWide}
+                  >
+                    {t(filtersWide ? 'tagebuch.filtersCollapse' : 'tagebuch.filtersExpand')}
+                    <span className={`material-symbols-outlined text-[16px] transition-transform ${filtersWide ? 'rotate-180' : ''}`}>expand_more</span>
+                  </button>
+                  {filterActive && (
+                    <button onClick={clearFilters} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-90" aria-label={t('tagebuch.closeFilters')}>
+                      <span className="material-symbols-outlined text-[16px]">filter_alt_off</span>
+                    </button>
+                  )}
+                </div>
+                {/* Zwinięte: same ikony w siatce; rozwinięte: ikona + opis + liczba wpisów. */}
+                <div className={filtersWide ? 'space-y-0.5' : 'grid grid-cols-5 gap-2'}>
+                  {kindOptions.map(k => {
+                    const on = filter === k.kind;
+                    const count = kindCounts.get(k.kind) || 0;
+                    const badge = k.kind === 'coach' ? coachNewCount : 0;
+                    const dot = (
+                      <span className={`relative w-10 h-10 rounded-full flex items-center justify-center shrink-0 transition-all ${on ? `${k.fill} text-white` : `tb-icon ${k.color}`}`}>
+                        <span className="material-symbols-outlined text-[20px]">{k.icon}</span>
+                        {badge > 0 && <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-emerald-600 text-white text-[9px] font-black flex items-center justify-center">{badge}</span>}
+                      </span>
+                    );
+                    return filtersWide ? (
+                      <button key={k.kind} onClick={() => pickFilter(k.kind)} className={`w-full flex items-center gap-2.5 p-1 pr-2 rounded-xl text-left active:scale-[0.98] transition-all ${on ? 'bg-gray-50' : ''}`} aria-pressed={on}>
+                        {dot}
+                        <span className="flex-1 min-w-0 text-[12px] font-black text-[#0a3a2a] truncate">{t(k.labelKey)}</span>
+                        <span className="text-[11px] font-bold text-gray-400 tabular-nums">{count}</span>
+                      </button>
+                    ) : (
+                      <button key={k.kind} onClick={() => pickFilter(k.kind)} className="flex justify-center active:scale-90 transition-all" aria-pressed={on} aria-label={t(k.labelKey)} title={t(k.labelKey)}>
+                        {dot}
+                      </button>
+                    );
+                  })}
+                </div>
+                {/* Temat treningu — tylko w rozwiniętym (lista jest długa). */}
+                {filtersWide && (
+                  <div className={`mt-2 relative flex items-center rounded-xl border text-[12px] font-black ${topic ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500'}`}>
+                    <span className="material-symbols-outlined text-[16px] pl-3">psychology</span>
+                    <select
+                      value={topic}
+                      onChange={e => setTopic(e.target.value)}
+                      className="flex-1 min-w-0 appearance-none bg-transparent pl-1.5 pr-7 py-2 outline-none truncate"
+                      aria-label={t('tagebuch.topic')}
+                    >
+                      <option value="">{t('tagebuch.allTopics')}</option>
+                      {TRAINING_TOPICS.map(cat => (
+                        <optgroup key={cat.id} label={`${cat.num}. ${t(`sessionSetup.topicCat_${cat.id}`)}`}>
+                          {cat.subtopics.map(sub => (
+                            <option key={sub.id} value={sub.id}>{topicLabel(sub.id, t)}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                      {customTopicOptions.length > 0 && (
+                        <optgroup label={t(`sessionSetup.topicCat_${CUSTOM_CATEGORY_ID}`)}>
+                          {customTopicOptions.map(id => (
+                            <option key={id} value={id}>{topicLabel(id, t)}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                    <span className="material-symbols-outlined text-[16px] absolute right-2 pointer-events-none">expand_more</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+          <button
+            onClick={() => setFiltersOpen(v => !v)}
+            className={`fixed right-[max(4.5rem,calc((100vw_-_28rem)/2_+_4.5rem))] bottom-[calc(env(safe-area-inset-bottom)+98px)] z-[60] w-9 h-9 rounded-full shadow-md shadow-black/20 flex items-center justify-center active:scale-90 transition-all ${
+              activeKind ? `${activeKind.fill} text-white` : filtersOpen ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-[#0a3a2a] border border-gray-200'
+            }`}
+            aria-label={t('tagebuch.filters')}
+            aria-expanded={filtersOpen}
+          >
+            <span className="material-symbols-outlined text-[19px]">{activeKind ? activeKind.icon : 'filter_list'}</span>
+            {topic && !activeKind && <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-[#fed33e] rounded-full" />}
+          </button>
         <button
           onClick={openComposer}
           // Prawy brzeg KOLUMNY aplikacji (max-w-md = 28rem), nie okna — na
@@ -1403,7 +1475,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           aria-label={t('tagebuch.newNote')}
         >
           <span className="material-symbols-outlined text-[26px]">add</span>
-        </button>,
+        </button>
+        </>,
         document.body,
       )}
 

@@ -419,6 +419,9 @@ export const views = {
     showStats: "Statistik",
     filters: "Filter",
     closeFilters: "Filter schließen",
+    filtersExpand: "Ausklappen",
+    filtersCollapse: "Einklappen",
+    filterTournament: "Turniere",
     inviteHide: "Ausblenden"
   },
   home: {

@@ -26,7 +26,7 @@ export const IMPRESSUM_URL = '/legal/impressum.html';
 // Zmiana treści = podbij wersję: TermsGate poprosi każde konto o ponowną,
 // wyraźną akceptację (w DE ciche „dalsze używanie = zgoda” nie działa,
 // regulamin § 15) i trzeba ją zapowiedzieć 6 tygodni wcześniej.
-export const TERMS_VERSION = '1.1'; // 1.1 (2026-10-22): § 6 (5) linki i tytuły z YouTube
+export const TERMS_VERSION = '1.2'; // 1.1 (2026-10-22): § 6 (5) linki i tytuły z YouTube; 1.2 (2026-10-23): oEmbed zamiast „YouTube API”
 
 export function termsUrl(lang: string): string {
   if (lang.startsWith('de')) return '/legal/agb.html';

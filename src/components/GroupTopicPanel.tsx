@@ -610,9 +610,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   ))}
                 </div>
                 <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1.5">{t('coachDashboard.groupTopicLinksHint')}</p>
-                {linkChecks.some(l => l && isYouTube(l)) && (
-                  <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
-                )}
+                {/* Zawsze widoczne — informacja przed wklejeniem, bo tytuł pobiera się sam (Datenschutz 2.9). */}
+                <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
               </div>
             </div>
             <div className="flex gap-2 mt-3 shrink-0">

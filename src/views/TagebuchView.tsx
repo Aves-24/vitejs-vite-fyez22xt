@@ -8,10 +8,11 @@ import { readPrivateSessionNotes } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import TournamentScoreInput from '../components/TournamentScoreInput';
+import TopicFilter from '../components/tagebuch/TopicFilter';
 import ViewHeader from '../components/ViewHeader';
 import { useNotifications } from '../hooks/useNotifications';
 import { notificationId, type NotificationType } from '../utils/notificationTypes';
-import { TRAINING_TOPICS, CUSTOM_CATEGORY_ID, isCustomTopic, topicLabel } from '../constants/trainingTopics';
+import { isCustomTopic, topicLabel } from '../constants/trainingTopics';
 import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard';
@@ -1393,7 +1394,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             <>
               <div className="fixed inset-0 z-[59]" onClick={() => setFiltersOpen(false)} aria-hidden />
               <div
-                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+150px)] z-[61] w-[min(19rem,calc(100vw_-_2rem))] bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/15 p-3 animate-fade-in"
+                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+150px)] z-[61] w-[min(19rem,calc(100vw_-_2rem))] max-h-[calc(100dvh_-_220px)] overflow-y-auto bg-white rounded-2xl border border-gray-100 shadow-xl shadow-black/15 p-3 animate-fade-in"
                 role="dialog"
                 aria-label={t('tagebuch.filters')}
               >
@@ -1438,34 +1439,9 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     );
                   })}
                 </div>
-                {/* Temat treningu — tylko w rozwiniętym (lista jest długa). */}
+                {/* Temat treningu — tylko w rozwiniętym; własny wybór zamiast systemowej listy. */}
                 {filtersWide && (
-                  <div className={`mt-2 relative flex items-center rounded-xl border text-[12px] font-black ${topic ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-white border-gray-200 text-gray-500'}`}>
-                    <span className="material-symbols-outlined text-[16px] pl-3">psychology</span>
-                    <select
-                      value={topic}
-                      onChange={e => setTopic(e.target.value)}
-                      className="flex-1 min-w-0 appearance-none bg-transparent pl-1.5 pr-7 py-2 outline-none truncate"
-                      aria-label={t('tagebuch.topic')}
-                    >
-                      <option value="">{t('tagebuch.allTopics')}</option>
-                      {TRAINING_TOPICS.map(cat => (
-                        <optgroup key={cat.id} label={`${cat.num}. ${t(`sessionSetup.topicCat_${cat.id}`)}`}>
-                          {cat.subtopics.map(sub => (
-                            <option key={sub.id} value={sub.id}>{`${topicLabel(sub.id, t)} · ${topicCounts.get(sub.id) || 0}`}</option>
-                          ))}
-                        </optgroup>
-                      ))}
-                      {customTopicOptions.length > 0 && (
-                        <optgroup label={t(`sessionSetup.topicCat_${CUSTOM_CATEGORY_ID}`)}>
-                          {customTopicOptions.map(id => (
-                            <option key={id} value={id}>{`${topicLabel(id, t)} · ${topicCounts.get(id) || 0}`}</option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    <span className="material-symbols-outlined text-[16px] absolute right-2 pointer-events-none">expand_more</span>
-                  </div>
+                  <TopicFilter value={topic} onChange={setTopic} counts={topicCounts} customIds={customTopicOptions} />
                 )}
               </div>
             </>

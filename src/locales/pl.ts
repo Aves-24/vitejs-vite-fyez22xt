@@ -336,11 +336,6 @@ export const views = {
     filterCoach: "Trener",
     filterMine: "Moje",
     filterLed: "Jako trener",
-    filterTarget: "Trening",
-    filterTech: "Technika",
-    filterCoachEntry: "Wpisy trenera",
-    filterPrivate: "Notatki",
-    filterTopic: "Temat treningu",
     filterFocus: "Fokus",
     filterCoachFocus: "Fokus od trenera",
     today: "Dziś",
@@ -438,7 +433,6 @@ export const views = {
     closeFilters: "Zamknij filtry",
     filtersExpand: "Rozwiń",
     filtersCollapse: "Zwiń",
-    filterTournament: "Turnieje",
     inviteHide: "Ukryj"
   },
   home: {

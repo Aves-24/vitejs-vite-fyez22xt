@@ -322,11 +322,6 @@ export const views = {
     filterCoach: "Coach",
     filterMine: "Mine",
     filterLed: "As coach",
-    filterTarget: "Training",
-    filterTech: "Technique",
-    filterCoachEntry: "Coach entries",
-    filterPrivate: "Notes",
-    filterTopic: "Training topic",
     filterFocus: "Focus",
     filterCoachFocus: "Focus from coach",
     today: "Today",
@@ -421,7 +416,6 @@ export const views = {
     closeFilters: "Close filters",
     filtersExpand: "Expand",
     filtersCollapse: "Collapse",
-    filterTournament: "Tournaments",
     inviteHide: "Hide"
   },
   home: {

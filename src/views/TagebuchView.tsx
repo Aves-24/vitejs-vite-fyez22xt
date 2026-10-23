@@ -54,16 +54,17 @@ type Filter = 'all' | 'coach' | EntryKind;
 // Panel filtrów przy „+” (user 2026-10-23): ikona = ta sama co na karcie,
 // `color` = kolor ikonki, `fill` = tło wybranej ikonki.
 const KIND_FILTERS: { kind: Filter; labelKey: string; icon: string; color: string; fill: string }[] = [
-  { kind: 'target', labelKey: 'tagebuch.filterTarget', icon: 'target', color: 'text-emerald-600', fill: 'bg-emerald-600' },
-  { kind: 'tournament', labelKey: 'tagebuch.filterTournament', icon: 'emoji_events', color: 'text-[#0a3a2a]', fill: 'bg-[#0a3a2a]' },
-  { kind: 'tech', labelKey: 'tagebuch.filterTech', icon: 'fitness_center', color: 'text-sky-600', fill: 'bg-sky-500' },
-  { kind: 'topic', labelKey: 'tagebuch.filterTopic', icon: 'sports', color: 'text-violet-600', fill: 'bg-violet-500' },
-  { kind: 'coachEntry', labelKey: 'tagebuch.filterCoachEntry', icon: 'menu_book', color: 'text-amber-600', fill: 'bg-amber-500' },
+  // Nazwy = etykiety typu na kartach (EntryHeading), user 2026-10-23: „opisy te same”.
+  { kind: 'target', labelKey: 'tagebuch.training', icon: 'target', color: 'text-emerald-600', fill: 'bg-emerald-600' },
+  { kind: 'tournament', labelKey: 'tagebuch.tournament', icon: 'emoji_events', color: 'text-[#0a3a2a]', fill: 'bg-[#0a3a2a]' },
+  { kind: 'tech', labelKey: 'tagebuch.techTraining', icon: 'fitness_center', color: 'text-sky-600', fill: 'bg-sky-500' },
+  { kind: 'topic', labelKey: 'tagebuch.topicLabel', icon: 'sports', color: 'text-violet-600', fill: 'bg-violet-500' },
+  { kind: 'coachEntry', labelKey: 'tagebuch.coachEntry', icon: 'menu_book', color: 'text-amber-600', fill: 'bg-amber-500' },
   { kind: 'coach', labelKey: 'tagebuch.filterCoach', icon: 'person', color: 'text-amber-700', fill: 'bg-amber-700' },
-  { kind: 'private', labelKey: 'tagebuch.filterPrivate', icon: 'lock', color: 'text-indigo-500', fill: 'bg-indigo-500' },
+  { kind: 'private', labelKey: 'tagebuch.kindNote', icon: 'lock', color: 'text-indigo-500', fill: 'bg-indigo-500' },
   { kind: 'focus', labelKey: 'tagebuch.filterFocus', icon: 'center_focus_strong', color: 'text-amber-600', fill: 'bg-amber-500' },
   { kind: 'coachFocus', labelKey: 'tagebuch.filterCoachFocus', icon: 'center_focus_strong', color: 'text-sky-700', fill: 'bg-sky-700' },
-  { kind: 'led', labelKey: 'tagebuch.filterLed', icon: 'sports', color: 'text-rose-600', fill: 'bg-rose-500' },
+  { kind: 'led', labelKey: 'tagebuch.ledTraining', icon: 'sports', color: 'text-rose-600', fill: 'bg-rose-500' },
 ];
 
 function entryKind(it: TimelineItem): EntryKind {

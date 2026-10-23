@@ -9,7 +9,7 @@ import { getFullCodec } from '../utils/mediaCodecs';
 import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import TopicPicker from '../components/TopicPicker';
 import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
-import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus } from '../utils/focus';
+import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 
 const DEFAULT_DELAY_S = 15;
@@ -144,7 +144,8 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const focusState = useCurrentFocus(uid);
   const activeFocus = focusState?.focus ?? null;
   const focusPair = displayPair(focusState);
-  const [focusChoice, setFocusChoice] = useFocusChoice(focusState);
+  // Z uid — wybór z Vorbereitung („Dieses Training zählt für”) przechodzi też tutaj.
+  const [focusChoice, setFocusChoice] = useFocusChoice(focusState, uid);
   const focusTopic = activeFocus?.topic || '';
 
   // Strzaly ida do licznika dnia na biezaco, nie dopiero przy wyjsciu —
@@ -1478,7 +1479,18 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
         </div>
       )}
       <div className="mb-3">
-        <TopicPicker selectedTopics={techTopics} onChange={setTechTopics} markedTopic={focusTopic} onDark />
+        {/* Tematy z „Dieses Training zählt für” są tu zaznaczone; odznaczenie gasi chip. */}
+        <TopicPicker
+          selectedTopics={shownTopics(focusState, focusChoice, techTopics)}
+          onChange={next => {
+            const r = pickTopics(focusState, focusChoice, next);
+            setTechTopics(r.picked);
+            if (r.choice !== focusChoice) setFocusChoice(r.choice);
+          }}
+          markedTopic={focusTopic}
+          trainingTopic={focusChoice.topic ? focusState?.trainingTopic?.topic : undefined}
+          onDark
+        />
       </div>
       <div className="mb-4">
         <div className="flex justify-between items-center mb-1.5">

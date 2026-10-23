@@ -5,7 +5,7 @@ import { db } from '../firebase';
 import { useTranslation } from 'react-i18next';
 import TopicPicker from './TopicPicker';
 import { invalidateSetupStamp } from '../utils/setupStamp';
-import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus } from '../utils/focus';
+import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip, FocusChoiceChips } from './tagebuch/FocusCard';
@@ -639,7 +639,17 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
             {/* TEMATY */}
             <div className="mb-3">
-              <TopicPicker selectedTopics={selectedTopics} onChange={setSelectedTopics} markedTopic={focusTopic} />
+              {/* Tematy z „Dieses Training zählt für” są tu zaznaczone; odznaczenie gasi chip. */}
+              <TopicPicker
+                selectedTopics={shownTopics(focusState, focusChoice, selectedTopics)}
+                onChange={next => {
+                  const r = pickTopics(focusState, focusChoice, next);
+                  setSelectedTopics(r.picked);
+                  if (r.choice !== focusChoice) setFocusChoice(r.choice);
+                }}
+                markedTopic={focusTopic}
+                trainingTopic={focusChoice.topic ? focusState?.trainingTopic?.topic : undefined}
+              />
             </div>
 
             {/* NOTATKI */}

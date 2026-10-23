@@ -11,6 +11,8 @@ interface TopicPickerProps {
   onDark?: boolean;   // na zielonym nagłówku (edytor fokusu w dzienniku)
   /** Temat oznaczony ikoną fokusu na chipie (formularz treningu). */
   markedTopic?: string;
+  /** Temat treningu od trenera — chip z gwizdkiem (fioletowy, jak karta tematu). */
+  trainingTopic?: string;
   /** Bez podpisu „Tematy treningowe” — gdy rodzic ma własny nagłówek. */
   hideCaption?: boolean;
 }
@@ -56,7 +58,7 @@ const DARK: typeof LIGHT = {
   remove: 'text-white/40 hover:text-red-300',
 };
 
-export default function TopicPicker({ selectedTopics, onChange, onDark = false, markedTopic, hideCaption = false }: TopicPickerProps) {
+export default function TopicPicker({ selectedTopics, onChange, onDark = false, markedTopic, trainingTopic, hideCaption = false }: TopicPickerProps) {
   const { t } = useTranslation();
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
@@ -122,6 +124,7 @@ export default function TopicPicker({ selectedTopics, onChange, onDark = false, 
               className={`flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black active:scale-95 transition-all ${c.chip}`}
             >
               {id === markedTopic && <span className="material-symbols-outlined text-[11px] text-[#b8860b] mr-0.5" aria-label={t('tagebuch.focusLabel')}>track_changes</span>}
+              {id === trainingTopic && <span className={`material-symbols-outlined text-[11px] mr-0.5 ${onDark ? 'text-violet-300' : 'text-violet-600'}`} aria-label={t('tagebuch.topicChoice')}>sports</span>}
               {topicLabel(id, t)}
               <span className="material-symbols-outlined text-[10px] ml-0.5">close</span>
             </button>

@@ -333,6 +333,34 @@ export function chosenFocusTopics(state: FocusState | null, choice: FocusChoice)
   return [...new Set(list)];
 }
 
+/**
+ * Lista tematów widoczna w wyborze tematów: zaznaczone ręcznie + tematy
+ * fokusu/tematu treningu z „Dieses Training zählt für” (user 2026-10-23:
+ * zaznaczony temat od trenera ma być zaznaczony też w tematach).
+ */
+export function shownTopics(state: FocusState | null, choice: FocusChoice, picked: string[]): string[] {
+  return [...new Set([...picked, ...chosenFocusTopics(state, choice)])];
+}
+
+/**
+ * Zmiana w wyborze tematów. Odznaczony temat fokusu albo tematu treningu
+ * odznacza też jego chip (inaczej wróciłby sam). Ręczne `picked` nie trzyma
+ * tematów, które i tak dochodzą z chipów.
+ */
+export function pickTopics(state: FocusState | null, choice: FocusChoice, next: string[]): { picked: string[]; choice: FocusChoice } {
+  let nextChoice = choice;
+  if (state) {
+    for (const tr of orderedTracks(state)) {
+      const side = sideOf(tr.focus);
+      if (choice[side] && tr.focus.topic && !next.includes(tr.focus.topic)) nextChoice = { ...nextChoice, [side]: false };
+    }
+    const tt = state.trainingTopic?.topic;
+    if (choice.topic && tt && !next.includes(tt)) nextChoice = { ...nextChoice, topic: false };
+  }
+  const linked = chosenFocusTopics(state, nextChoice);
+  return { picked: next.filter(x => !linked.includes(x)), choice: nextChoice };
+}
+
 /** Migawka fokusu kończonego przyciskiem „Fokus beenden” (uczeń albo trener). */
 export function endedFocusSnapshot(focus: ActiveFocus, dots: boolean, count: number, goal: number): SessionFocus {
   return {

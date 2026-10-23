@@ -597,46 +597,64 @@ export function SkippedTournamentCard({ title, date, time, notes, onAddNote, onD
 }
 
 /**
- * Zawody po rozwinięciu (user 2026-10-23): wynik Durchgang 1 i 2 oraz suma na
- * wierzchu, pod nimi X / 10 / 9 — kolory jak na ekranie wpisywania wyniku.
+ * Zawody po rozwinięciu — jak metryczka z zawodów (user 2026-10-23: „wszystko
+ * jest, ale nie wygląda dobrze”). Jedna hierarchia zamiast pięciu kolorowych
+ * pudełek: na górze suma (największa) i X / 10 / 9, pod nią tabela —
+ * wiersz na Durchgang: sześć pass i suma Durchgangu na końcu wiersza.
+ * Kolor tylko tam, gdzie coś znaczy: najlepsza passa i X.
  */
 function TournamentSummary({ session }: { session: TbSession }) {
   const { t } = useTranslation();
   const c = session.counts;
+  const ends = session.endSums;
+  const best = ends.length ? Math.max(...ends) : -1;
+  // Wiersze tabeli: passy z serii (12 = 2×6); bez serii same sumy Durchgangów.
+  const rows = session.rounds
+    ? session.rounds.map((sum, i) => ({ label: `D${i + 1}`, title: t(`tournamentInput.durchgang${i + 1}`), sum, ends: ends.slice(i * 6, i * 6 + 6) }))
+    : [];
+  const stat = (label: string, value: number, cls: string) => (
+    <div className="text-center min-w-[30px]">
+      <span className={`block text-[9px] font-black leading-none ${cls}`}>{label}</span>
+      <span className="block text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5">{value}</span>
+    </div>
+  );
   return (
-    <div className="mt-2 space-y-1.5">
-      <div className="flex gap-1.5">
-        {session.rounds && (
-          <>
-            <div className="flex-1 bg-emerald-50 border border-emerald-100 rounded-xl py-1.5 text-center">
-              <span className="block text-[8px] font-black uppercase tracking-widest text-emerald-700">{t('tournamentInput.durchgang1')}</span>
-              <span className="block text-[18px] font-black text-[#0a3a2a] leading-tight">{session.rounds[0]}</span>
-            </div>
-            <div className="flex-1 bg-blue-50 border border-blue-100 rounded-xl py-1.5 text-center">
-              <span className="block text-[8px] font-black uppercase tracking-widest text-blue-700">{t('tournamentInput.durchgang2')}</span>
-              <span className="block text-[18px] font-black text-blue-900 leading-tight">{session.rounds[1]}</span>
-            </div>
-          </>
-        )}
-        <div className="flex-[1.2] tb-tourney rounded-xl py-1.5 text-center">
-          <span className="block text-[8px] font-black uppercase tracking-widest tb-tourney-accent">{t('tournamentInput.totalScore')}</span>
-          <span className="block text-[22px] font-black tb-tourney-title leading-tight">{session.score}</span>
+    <div className="mt-1">
+      <div className="flex items-end justify-between gap-3 pb-2">
+        <div className="min-w-0">
+          <span className="block text-[9px] font-black uppercase tracking-widest text-gray-400">{t('tournamentInput.totalScore')}</span>
+          <span className="block text-[32px] font-black text-[#0a3a2a] leading-none mt-1 tabular-nums">{session.score}</span>
         </div>
+        {c && (
+          <div className="flex items-end gap-2.5 shrink-0">
+            {stat('X', c.x, 'text-[#b8860b]')}
+            {stat('10', c.ten, 'text-gray-400')}
+            {stat('9', c.nine, 'text-gray-400')}
+          </div>
+        )}
       </div>
-      {c && (
-        <div className="flex gap-1.5">
-          <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#F2C94C]/25 rounded-lg py-1">
-            <span className="text-[10px] font-black text-[#8a6d00]">X</span>
-            <span className="text-[14px] font-black text-[#0a3a2a]">{c.x}</span>
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5 bg-[#F2C94C]/15 rounded-lg py-1">
-            <span className="text-[10px] font-black text-[#8a6d00]">10</span>
-            <span className="text-[14px] font-black text-[#0a3a2a]">{c.ten}</span>
-          </div>
-          <div className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 rounded-lg py-1">
-            <span className="text-[10px] font-black text-gray-500">9</span>
-            <span className="text-[14px] font-black text-[#0a3a2a]">{c.nine}</span>
-          </div>
+      {rows.length > 0 && (
+        <div className="border-t border-gray-100">
+          {rows.map(r => (
+            <div key={r.label} className="flex items-center gap-2 py-1.5 border-b border-gray-100" title={r.title}>
+              <span className="w-6 shrink-0 text-[10px] font-black text-gray-400">{r.label}</span>
+              {r.ends.length > 0 ? (
+                <div className="flex-1 grid grid-cols-6 gap-0.5">
+                  {r.ends.map((sum, i) => (
+                    <span
+                      key={i}
+                      className={`text-center text-[12px] font-bold tabular-nums rounded-md py-0.5 ${sum === best ? 'bg-[#fed33e]/40 font-black text-[#0a3a2a]' : 'text-gray-600'}`}
+                    >
+                      {sum}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <span className="flex-1 text-[11px] font-bold text-gray-400 truncate">{r.title}</span>
+              )}
+              <span className="w-10 shrink-0 text-right text-[15px] font-black text-[#0a3a2a] tabular-nums">{r.sum}</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -837,13 +855,14 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
       )}
 
       {/* Zawody: rozwinięta treść na jasnym panelu — na ciemnej zieleni byłaby nieczytelna. */}
-      {expanded && <div className={tourney ? 'tb-tourney-panel mt-2 rounded-xl px-2.5 pb-2.5 pt-0.5' : ''}>
+      {expanded && <div className={tourney ? 'tb-tourney-panel mt-2 rounded-xl px-3 pb-2.5 pt-2.5' : ''}>
       {/* Temat fokusu pokazuje już przełącznik — bez dublowania w chipach. */}
       <TopicChips topics={visibleTopics} tone="onTint" />
 
       {tourney && <TournamentSummary session={session} />}
 
-      {session.endSums.length > 0 && <EndsGrid sums={session.endSums} />}
+      {/* Zawody mają passy w swojej tabeli (TournamentSummary). */}
+      {session.endSums.length > 0 && !(tourney && session.rounds) && <EndsGrid sums={session.endSums} />}
 
       {session.note && (
         <div className="mt-2">

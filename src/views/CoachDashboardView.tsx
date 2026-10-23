@@ -399,6 +399,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isStudentTournamentsOpen, setIsStudentTournamentsOpen] = useState(false);
   const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
+  // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
+  // jak coachSeenStudents: odhaczenie na telefonie gaśnie też na laptopie.
+  const [seenMilestones, setSeenMilestones] = useState<string[]>([]);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   const [isInactiveOpen, setIsInactiveOpen] = useState(false);
@@ -472,6 +475,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         setStudentLastChecked(data.studentLastChecked || {});
         
         setCoachGroups(data.coachGroups || []);
+        setSeenMilestones(Array.isArray(data.coachSeenMilestones) ? data.coachSeenMilestones : []);
         setStudentGroupMap(data.studentGroupMap || {});
         setGroupNotes(data.groupNotes || {});
         // [TEMAT TRENINGU] tematy grup po dniach; coachGroupTopic = pierwsza wersja (jeden temat na grupę, 2026-10-15)
@@ -1390,15 +1394,29 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
+  // [MEILENSTEIN] Otwarcie wpisu = przeczytany → znika z sekcji na głównej
+  // (user 2026-10-23). W karcie ucznia zostaje przez 14 dni. Zapisujemy tylko
+  // klucze wciąż obecne w sekcji (30 dni), więc lista nie rośnie bez końca.
+  const milestoneKey = (m: StudentMilestone) => `${m.student.id}_${m.id}`;
+  const unseenMilestones = studentMilestones.filter(m => !seenMilestones.includes(milestoneKey(m)));
+  const openMilestone = (m: StudentMilestone) => {
+    const live = new Set(studentMilestones.map(milestoneKey));
+    const next = [...new Set([...seenMilestones.filter(k => live.has(k)), milestoneKey(m)])];
+    setSeenMilestones(next);
+    setDoc(doc(db, 'users', userId), { coachSeenMilestones: next }, { merge: true })
+      .catch(e => console.error('Zapis przeczytanych kamieni milowych:', e));
+    setSheetStudentId(m.student.id);
+  };
+
   // opts.focus=false — bez linijki fokusu (kamienie milowe: user 2026-10-23
   // „po co tam fokus”); opts.plainSub — opis zwykłym tekstem, nie wersalikami.
-  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string, action?: React.ReactNode, opts: { focus?: boolean; plainSub?: boolean } = {}) => {
+  const renderMiniStudentRow = (s: any, sub: React.ReactNode, avatarClass: string, action?: React.ReactNode, opts: { focus?: boolean; plainSub?: boolean; onOpen?: () => void } = {}) => {
     const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
     return (
       <div key={s.id} className="w-full flex items-center bg-white rounded-xl shadow-sm border border-gray-100">
       <button
         type="button"
-        onClick={() => setSheetStudentId(s.id)}
+        onClick={opts.onOpen ?? (() => setSheetStudentId(s.id))}
         className="flex-1 min-w-0 flex items-center gap-2.5 px-2.5 py-2 active:scale-[0.98] transition-all text-left"
       >
         <div className={`w-9 h-9 border rounded-full flex items-center justify-center shrink-0 ${avatarClass}`}>
@@ -1551,7 +1569,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
       {/* Kamienie milowe podopiecznych (udostępnione przez nich) — zwinięta
           sekcja pokazuje najnowszy, rozwinięta wszystkie z 30 dni. */}
-      {studentMilestones.length > 0 && (
+      {unseenMilestones.length > 0 && (
         <CollapsibleSection
           label={t('coachDashboard.milestonesTitle')}
           open={isMilestonesOpen}
@@ -1559,12 +1577,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           summary={
             <span className="inline-flex items-center gap-1 min-w-0">
               <span className="material-symbols-outlined text-[14px] text-[#b8860b] shrink-0">star</span>
-              <span className="truncate">{studentMilestones[0].student.firstName}: {studentMilestones[0].title || studentMilestones[0].text}</span>
+              <span className="truncate">{unseenMilestones[0].student.firstName}: {unseenMilestones[0].title || unseenMilestones[0].text}</span>
             </span>
           }
         >
           <div className="space-y-1.5">
-            {studentMilestones.map(m => (
+            {unseenMilestones.map(m => (
               <React.Fragment key={`${m.student.id}_${m.id}`}>
                 {renderMiniStudentRow(
                   m.student,
@@ -1577,7 +1595,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   </span>,
                   'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
                   undefined,
-                  { focus: false, plainSub: true },
+                  { focus: false, plainSub: true, onOpen: () => openMilestone(m) },
                 )}
               </React.Fragment>
             ))}
@@ -2353,6 +2371,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             coachId={userId}
             subtitle={subtitle}
             focusState={studentFocus[st.id]}
+            milestones={studentMilestones.filter(m => m.student.id === st.id && m.ts >= Date.now() - 14 * 24 * 60 * 60 * 1000)}
             pause={pauseOf(st)}
             pauseReminder={pauseReminderDue(st)}
             onStartPause={() => setPause(st.id, { at: Date.now() })}

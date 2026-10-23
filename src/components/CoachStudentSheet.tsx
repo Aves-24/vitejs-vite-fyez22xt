@@ -29,12 +29,14 @@ function toMs(v: any): number {
 interface NextStart { title: string; date: string }
 
 export default function CoachStudentSheet({
-  student, coachId, subtitle, focusState, pause, pauseReminder, onStartPause, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
+  student, coachId, subtitle, focusState, milestones = [], pause, pauseReminder, onStartPause, onEndPause, onKeepPause, onClose, onOpenProfile, onOpenChat,
 }: {
   student: any;
   coachId: string;
   subtitle: string;
   focusState?: FocusState;
+  /** [MEILENSTEIN] Udostępnione kamienie milowe ucznia z ostatnich 14 dni (user 2026-10-23). */
+  milestones?: { id: string; title: string; text: string; ts: number }[];
   /** [PAUZA] Aktywna pauza (od kiedy) albo null. */
   pause: { at: number } | null;
   /** Minął miesiąc pauzy — jedno przypomnienie. */
@@ -223,6 +225,20 @@ export default function CoachStudentSheet({
                   {snap.days.includes('practice') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>}
                 </p>
               </div>
+              {/* Kamień milowy — gwiazdka nad dniem na pasku; po 14 dniach sam znika. */}
+              {milestones.length > 0 && (
+                <div className="flex gap-[3px] mb-0.5" aria-hidden>
+                  {snap.days.map((_, i) => {
+                    const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
+                    const hit = milestones.some(m => Math.floor((new Date(m.ts).setHours(0, 0, 0, 0) - day0) / 86400000) === i);
+                    return (
+                      <span key={i} className="flex-1 flex justify-center">
+                        {hit && <span className="material-symbols-outlined text-[12px] leading-none text-[#b8860b]">star</span>}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
               <div className="flex gap-[3px]">
                 {snap.days.map((k, i) => (
                   <span
@@ -237,6 +253,20 @@ export default function CoachStudentSheet({
                 <span>{fmtDate(snap.fromTs)}</span>
                 <span>{t('coachSheet.today')}</span>
               </div>
+              {milestones.length > 0 && (
+                <div className="mb-2 space-y-1">
+                  {[...milestones].sort((a, b) => b.ts - a.ts).map(m => (
+                    <div key={m.id} className="flex items-start gap-2 rounded-xl bg-[#fed33e]/15 border border-[#fed33e]/40 px-2.5 py-1.5">
+                      <span className="material-symbols-outlined text-[16px] text-[#b8860b] shrink-0 mt-px">star</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{m.title || m.text}</p>
+                        {m.title && m.text && <p className="text-[11px] font-medium text-gray-600 leading-snug break-words line-clamp-3">{m.text}</p>}
+                      </div>
+                      <span className="text-[9px] font-bold text-[#8B6508] shrink-0 mt-0.5">{fmtDate(m.ts)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <p className="text-[9px] font-bold text-gray-400 mb-1">{t('coachSheet.tilesCaption')}</p>
               <div className="grid grid-cols-3 gap-1.5">
                 <div className="bg-gray-50 rounded-xl px-2.5 py-1.5">

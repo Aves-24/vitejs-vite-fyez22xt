@@ -1307,7 +1307,7 @@ export const views = {
     topic_atem: "Rytm oddechowy",
     topic_visual: "Wizualizacja",
     topic_losen: "Zwolnienie cięciwy",
-    topic_panik: "Panika celu",
+    topic_panik: "Panika tarczowa",
     topic_nachhalten: "Wytrzymanie po strzale",
     topic_rhythmus: "Płynność i rytm",
     topic_visier: "Regulacja celownika",

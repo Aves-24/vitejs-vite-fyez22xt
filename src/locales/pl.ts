@@ -354,6 +354,7 @@ export const views = {
     milestoneToggle: "Oznacz jako kamień milowy",
     milestoneTitlePlaceholder: "Tytuł, np. Nowy łuk",
     milestoneDescPlaceholder: "Opis (opcjonalnie)…",
+    noteTitlePlaceholder: "Tytuł (opcjonalnie)",
     milestoneHint: "Punkt zwrotny w Twoim łucznictwie",
     milestoneInfoLabel: "Co to jest kamień milowy?",
     milestoneInfo: "Na naprawdę ważne punkty zwrotne: nowy łuk, zmiana trenera albo klubu, pierwsze mistrzostwa, kontuzja czy duży przełom. Kamienie milowe są w dzienniku wyróżnione na złoto i łatwo je znaleźć filtrem — później widzisz, co i od kiedy się zmieniło.",

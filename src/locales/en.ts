@@ -340,6 +340,7 @@ export const views = {
     milestoneToggle: "Mark as milestone",
     milestoneTitlePlaceholder: "Title, e.g. New bow",
     milestoneDescPlaceholder: "Description (optional)…",
+    noteTitlePlaceholder: "Title (optional)",
     milestoneHint: "A turning point in your archery",
     milestoneInfoLabel: "What is a milestone?",
     milestoneInfo: "For truly important turning points: a new bow, a change of coach or club, your first championship, an injury or a big breakthrough. Milestones are highlighted in gold in your diary and easy to find with the filter — so later you can see what changed and from when.",

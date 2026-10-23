@@ -222,9 +222,11 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
   });
 
   const asMilestone = allowMilestone && important;
-  const cleanTitle = asMilestone ? title.trim().slice(0, MILESTONE_TITLE_MAX) : '';
+  // Tytuł w każdym wpisie z okna (bare): przy notatce opcjonalny, przy Meilenstein wymagany.
+  const withTitle = bare && allowMilestone;
+  const cleanTitle = withTitle ? title.trim().slice(0, MILESTONE_TITLE_MAX) : '';
   // Meilenstein: wymagany tytuł, opis opcjonalny; notatka: wymagany tekst.
-  const canSave = asMilestone ? !!cleanTitle : !!text.trim();
+  const canSave = asMilestone ? !!cleanTitle : !!(text.trim() || cleanTitle);
 
   const handleSave = async () => {
     const clean = text.trim().slice(0, max);
@@ -260,6 +262,31 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
           {t('tagebuch.onlyYou')}
         </div>
       )}
+      {/* Tytuł (user 2026-10-23): w każdym wpisie, przy Meilenstein wymagany; niżej opis. */}
+      {withTitle && (
+        <input
+          value={title}
+          autoFocus={autoFocus}
+          onChange={e => setTitle(e.target.value.slice(0, MILESTONE_TITLE_MAX))}
+          placeholder={t(asMilestone ? 'tagebuch.milestoneTitlePlaceholder' : 'tagebuch.noteTitlePlaceholder')}
+          maxLength={MILESTONE_TITLE_MAX}
+          className="w-full mb-2 bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-black text-[#0a3a2a] placeholder-gray-300 outline-none transition-colors"
+        />
+      )}
+      <textarea
+        ref={textareaRef}
+        autoFocus={autoFocus && !withTitle}
+        value={text}
+        onChange={e => { setText(e.target.value.slice(0, max)); grow(); }}
+        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
+        placeholder={t(withTitle ? 'tagebuch.milestoneDescPlaceholder' : 'tagebuch.notePlaceholder')}
+        rows={bare ? 4 : 2}
+        className={bare
+          ? 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors'
+          : 'w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed'}
+        style={{ minHeight: bare ? '104px' : '44px', maxHeight: bare ? '40vh' : undefined }}
+      />
+
       {/* [MEILENSTEIN] (user 2026-10-23) Punkt zwrotny — wyróżniony w dzienniku
           i w filtrach; „i” wyjaśnia, na co to jest (naprawdę ważne wydarzenia). */}
       {allowMilestone && (
@@ -300,30 +327,6 @@ export function NoteComposer({ allowShare, autoFocus, onSave, onCancel, allowMil
           )}
         </div>
       )}
-
-      {/* Meilenstein: tytuł (wymagany), niżej opis — u ucznia i u trenera (user 2026-10-23). */}
-      {asMilestone && (
-        <input
-          value={title}
-          onChange={e => setTitle(e.target.value.slice(0, MILESTONE_TITLE_MAX))}
-          placeholder={t('tagebuch.milestoneTitlePlaceholder')}
-          maxLength={MILESTONE_TITLE_MAX}
-          className="w-full mb-2 bg-amber-50/50 border border-amber-200 focus:border-amber-400 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-black text-[#0a3a2a] placeholder-amber-300 outline-none transition-colors"
-        />
-      )}
-      <textarea
-        ref={textareaRef}
-        autoFocus={autoFocus}
-        value={text}
-        onChange={e => { setText(e.target.value.slice(0, max)); grow(); }}
-        onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSave(); }}
-        placeholder={t(asMilestone ? 'tagebuch.milestoneDescPlaceholder' : 'tagebuch.notePlaceholder')}
-        rows={bare ? 4 : 2}
-        className={bare
-          ? 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors'
-          : 'w-full text-[13px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed'}
-        style={{ minHeight: bare ? '104px' : '44px', maxHeight: bare ? '40vh' : undefined }}
-      />
 
       {showTopics && (
         <div className="mt-2">
@@ -464,7 +467,7 @@ export function PrivateNoteCard({ note, time, onDelete, onEdit }: { note: TbPriv
     </div>
   ) : (
     <div className={`${CARD_SHAPE} tb-private ${CARD_PAD}`}>
-      <EntryRow icon={note.shared ? 'visibility' : 'lock'} iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" time={time}>
+      <EntryRow icon={note.shared ? 'visibility' : 'lock'} iconCls="text-indigo-500" kind={t('tagebuch.kindNote')} kindCls="text-indigo-600" title={note.title || undefined} time={time}>
         <div className="mt-0.5"><PrivateNoteBody note={note} onDelete={onDelete} onEdit={onEdit} privacyLine /></div>
       </EntryRow>
     </div>

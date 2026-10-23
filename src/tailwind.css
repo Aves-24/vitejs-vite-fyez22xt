@@ -204,6 +204,8 @@
    terminy) · pomarańczowy (amber) = wpis trenera · indygo = prywatna notatka ·
    żółty #fed33e = fokus i marka · niebieski (sky-500) = fokus od trenera. */
 .tb-card { border-left-width: 5px; border-left-style: solid; }
+/* Dzisiejsze wpisy w dzienniku — pasek o 1px grubszy (user 2026-10-23). */
+.tb-today .tb-card { border-left-width: 6px; }
 .tb-icon { background-color: rgba(255, 255, 255, 0.75); }
 .tb-dist { background-color: #ecfdf5; border-top-color: #d1fae5; border-right-color: #d1fae5; border-bottom-color: #d1fae5; }
 .tb-tech { background-color: #f0f9ff; border-top-color: #e0f2fe; border-right-color: #e0f2fe; border-bottom-color: #e0f2fe; border-left-color: #7dd3fc; }

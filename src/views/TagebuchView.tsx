@@ -1222,7 +1222,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   key={`${it.kind}_${it.id}`}
                   id={`tb-${it.id}`}
                   // Dzisiejsze wpisy w pełni, starsze lekko przygaszone (user 2026-10-23: „max 5%”).
-                  className={`rounded-2xl transition-shadow duration-500 ${isTodayItem(it) ? '' : 'brightness-[0.96]'} ${flashId === it.id ? 'ring-2 ring-emerald-400' : ''}`}
+                  className={`rounded-2xl transition-shadow duration-500 ${isTodayItem(it) ? 'tb-today' : 'brightness-[0.96]'} ${flashId === it.id ? 'ring-2 ring-emerald-400' : ''}`}
                 >
                   {it.kind === 'session' ? (
                     <SessionCard

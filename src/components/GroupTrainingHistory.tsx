@@ -115,6 +115,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
     // z podpisem — w zwiniętej zostaje tylko to, co trzeba przeczytać.
     <section>
       <GroupSectionHeader
+        icon="history"
         label={t('coachDashboard.historyTitle')}
         count={items.length}
         open={open}

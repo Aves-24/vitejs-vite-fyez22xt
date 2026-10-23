@@ -63,7 +63,9 @@ export async function loadTopicStatus(gt: GroupTopic): Promise<Record<string, Me
  * sam napis + odstęp zamiast różowego paska i ramki. Z onToggle — zwijany
  * (cały wiersz ≥ 40 px), action = przycisk po prawej (np. „Planen”).
  */
-export function GroupSectionHeader({ label, count, open, onToggle, action }: {
+// Ikonka przed napisem (user 2026-10-23: „jeszcze się gubię”) — sekcję poznaje się po obrazku.
+export function GroupSectionHeader({ icon, label, count, open, onToggle, action }: {
+  icon: string;
   label: string;
   count?: ReactNode;
   open?: boolean;
@@ -71,19 +73,24 @@ export function GroupSectionHeader({ label, count, open, onToggle, action }: {
   action?: ReactNode;
 }) {
   const text = (
-    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-[#0a3a2a]">
-      {label}
-      {count !== undefined && <span className="text-gray-400"> · {count}</span>}
-    </span>
+    <>
+      <span className="tb-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
+        <span className="material-symbols-outlined text-[17px] text-rose-600">{icon}</span>
+      </span>
+      <span className="min-w-0 truncate text-[11px] font-black uppercase tracking-widest text-[#0a3a2a]">
+        {label}
+        {count !== undefined && <span className="text-gray-400"> · {count}</span>}
+      </span>
+    </>
   );
   return (
     <div className="flex items-center gap-2 min-h-[40px] pl-1">
       {onToggle ? (
-        <button type="button" onClick={onToggle} aria-expanded={open} className="flex-1 min-w-0 min-h-[40px] flex items-center gap-1 text-left active:opacity-60 transition-opacity">
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex-1 min-w-0 min-h-[40px] flex items-center gap-2 text-left active:opacity-60 transition-opacity">
           {text}
           <span className="material-symbols-outlined text-[20px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
         </button>
-      ) : <div className="flex-1 min-w-0 flex items-center">{text}</div>}
+      ) : <div className="flex-1 min-w-0 flex items-center gap-2">{text}</div>}
       {action}
     </div>
   );
@@ -406,7 +413,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     // + odstęp, róż tylko w pasku, ikonce i przycisku głównym.
     <div className="space-y-3">
       <section>
-        <GroupSectionHeader label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
+        <GroupSectionHeader icon="today" label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
 
         {shown ? (
           <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
@@ -479,6 +486,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
       {(upcoming.length > 0 || !!todayTopic) && (
         <section>
           <GroupSectionHeader
+            icon="calendar_month"
             label={t('coachDashboard.groupTopicPlanned')}
             count={upcoming.length || undefined}
             action={(

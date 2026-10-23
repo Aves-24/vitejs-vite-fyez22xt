@@ -1217,9 +1217,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   {t('tagebuch.showWeek')}
                 </button>
               )}
-              {open && g.items.map(it => (
+              {open && g.items.map((it, idx) => (
+                <React.Fragment key={`${it.kind}_${it.id}`}>
+                {/* Przegródka „Heute” nad dzisiejszymi wpisami (user 2026-10-23, wariant 1). */}
+                {g.items.findIndex(isTodayItem) === idx && (
+                  <div className="flex items-center gap-2 px-1 pt-1" aria-hidden>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-700">{t('tagebuch.today')}</span>
+                    <span className="flex-1 h-px bg-emerald-200" />
+                  </div>
+                )}
                 <div
-                  key={`${it.kind}_${it.id}`}
                   id={`tb-${it.id}`}
                   // Dzisiejsze wpisy w pełni, starsze lekko przygaszone (user 2026-10-23: „max 5%”).
                   className={`rounded-2xl transition-shadow duration-500 ${isTodayItem(it) ? 'tb-today' : 'brightness-[0.96]'} ${flashId === it.id ? 'ring-2 ring-emerald-400' : ''}`}
@@ -1266,6 +1273,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     <CoachEntryCard entry={it.entry} time={timeOf(it.ts)} isNew={isNew('coach_log', it.entry.id)} />
                   )}
                 </div>
+                </React.Fragment>
               ))}
             </div>
             );

@@ -6,7 +6,7 @@ import { db } from '../firebase';
 import TopicPicker from './TopicPicker';
 import TopicLinks, { isYouTube } from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
-import { topicLabel } from '../constants/trainingTopics';
+import { CARD_PAD, CARD_SHAPE, EntryRow, TopicChips } from './tagebuch/TagebuchCards';
 import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_GROUP_NAME_MAX, TOPIC_LINK_TITLE_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
 
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
@@ -58,7 +58,39 @@ export async function loadTopicStatus(gt: GroupTopic): Promise<Record<string, Me
   return Object.fromEntries(list);
 }
 
+/**
+ * Nagłówek sekcji w rozwiniętej grupie (user 2026-10-23: „tabelka w tabelce”):
+ * sam napis + odstęp zamiast różowego paska i ramki. Z onToggle — zwijany
+ * (cały wiersz ≥ 40 px), action = przycisk po prawej (np. „Planen”).
+ */
+export function GroupSectionHeader({ label, count, open, onToggle, action }: {
+  label: string;
+  count?: ReactNode;
+  open?: boolean;
+  onToggle?: () => void;
+  action?: ReactNode;
+}) {
+  const text = (
+    <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-[#0a3a2a]">
+      {label}
+      {count !== undefined && <span className="text-gray-400"> · {count}</span>}
+    </span>
+  );
+  return (
+    <div className="flex items-center gap-2 min-h-[40px] pl-1">
+      {onToggle ? (
+        <button type="button" onClick={onToggle} aria-expanded={open} className="flex-1 min-w-0 min-h-[40px] flex items-center gap-1 text-left active:opacity-60 transition-opacity">
+          {text}
+          <span className="material-symbols-outlined text-[20px] text-gray-400 shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
+        </button>
+      ) : <div className="flex-1 min-w-0 flex items-center">{text}</div>}
+      {action}
+    </div>
+  );
+}
+
 /** Lista uczniów ze statusem przy temacie (panel tematu i historia treningów). */
+// Wiersze bez ramek, rozdzielone kreską, każdy ≥ 40 px — wygodny dotyk (user 2026-10-23).
 export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenStudent }: {
   members: any[];
   gt: GroupTopic;
@@ -69,23 +101,23 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
 }) {
   const { t } = useTranslation();
   return (
-    <div className="space-y-1">
+    <div className="divide-y divide-gray-100">
       {members.map(s => {
         const name = `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim();
         const st = status[s.id];
         return (
-          <div key={s.id} className="flex items-center gap-2 min-h-[22px]">
+          <div key={s.id} className="flex items-center gap-2 min-h-[40px]">
             {onOpenStudent ? (
               <button
                 type="button"
                 onClick={() => onOpenStudent(s.id)}
-                className="flex-1 min-w-0 flex items-center gap-0.5 text-left text-[11px] font-bold text-[#0a3a2a] active:opacity-60 transition-opacity"
+                className="flex-1 min-w-0 min-h-[40px] flex items-center gap-0.5 text-left text-[12px] font-bold text-[#0a3a2a] active:opacity-60 transition-opacity"
               >
                 <span className="truncate">{name}</span>
-                <span className="material-symbols-outlined text-gray-300 text-[14px] shrink-0">chevron_right</span>
+                <span className="material-symbols-outlined text-gray-300 text-[16px] shrink-0">chevron_right</span>
               </button>
             ) : (
-              <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{name}</span>
+              <span className="flex-1 min-w-0 text-[12px] font-bold text-[#0a3a2a] truncate">{name}</span>
             )}
             {!gt.entryIds[s.id] ? (
               onAssign ? (
@@ -93,21 +125,21 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
                   type="button"
                   onClick={() => onAssign(s)}
                   disabled={saving}
-                  className="text-[9px] font-black uppercase tracking-wide text-[#0a3a2a] bg-white border border-rose-200 rounded-md px-2 py-0.5 active:scale-95 transition-all disabled:opacity-40"
+                  className="h-8 px-3 shrink-0 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wide text-rose-600 active:scale-95 transition-all disabled:opacity-40"
                 >
                   {t('coachDashboard.groupFocusAssign')}
                 </button>
-              ) : <span className="text-[9px] font-bold text-gray-300">—</span>
+              ) : <span className="text-[10px] font-bold text-gray-300 shrink-0">—</span>
             ) : st === 'trained' ? (
-              <span className="flex items-center gap-0.5 text-[9px] font-black text-emerald-700">
-                <span className="material-symbols-outlined text-[13px]">check</span>{t('coachDashboard.groupTopicTrained')}
+              <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black text-emerald-700">
+                <span className="material-symbols-outlined text-[15px]">check_circle</span>{t('coachDashboard.groupTopicTrained')}
               </span>
             ) : st === 'acked' ? (
-              <span className="flex items-center gap-0.5 text-[9px] font-black text-[#0a3a2a]">
-                <span className="material-symbols-outlined text-rose-500 text-[13px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
+              <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black text-gray-600">
+                <span className="material-symbols-outlined text-rose-500 text-[15px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
               </span>
             ) : (
-              <span className="text-[9px] font-bold text-gray-400">{st ? '—' : '…'}</span>
+              <span className="text-[10px] font-bold text-gray-400 shrink-0">{st ? '—' : '…'}</span>
             )}
           </div>
         );
@@ -152,7 +184,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   // Karta główna: tylko dzisiejszy temat — minione są w historii treningów.
   // Zakończony dziś trening od razu idzie do historii treningów.
   const shown = todayTopic && !todayTopic.closedAt ? todayTopic : undefined;
-  const open = !!todayTopic && !todayTopic.closedAt;
+  // Planowany temat czekający na potwierdzenie usunięcia (dzień).
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
   useEffect(() => {
@@ -161,6 +194,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     loadTopicStatus(shown).then(st => { if (!cancelled) setStatus(st); });
     return () => { cancelled = true; };
   }, [shown]);
+  const trainedCount = Object.values(status).filter(st => st === 'trained').length;
 
   const coachName = async () => {
     const cached = localStorage.getItem(`grotX_userName_${coachId}`);
@@ -313,9 +347,6 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     return dayKeyOf(d.getTime());
   };
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  // Sekcja = biały środek, ramka i pasek nagłówka w odcieniu różu (user 2026-10-22).
-  const sectionHeader = 'text-[9px] font-black uppercase tracking-widest px-3 py-2';
-  const btn = 'flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest border active:scale-95 transition-all disabled:opacity-40';
   // Puste pole = brak linku; wpisane, ale złe = blokada zapisu z komunikatem.
   const linkChecks = linkInputs.map(v => (v.trim() ? normalizeTopicLink(v) : ''));
   const linksInvalid = linkChecks.some(v => v === null);
@@ -370,125 +401,160 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   };
 
   return (
-    <div className="space-y-2">
-      {/* Odcienie różu od jasnego (temat) do ciemnego (lista grupy) — user 2026-10-16. */}
-      <div className="bg-white border-2 border-rose-100 rounded-xl overflow-hidden">
-      {/* „+” = nowy temat (user 2026-10-22): na dziś, a gdy dziś już jest —
-          na pierwszy wolny dzień; datę zmienia się w oknie. „Powtórz” jest przy wpisach historii. */}
-      <div className={`${sectionHeader} bg-rose-50 text-rose-500 flex items-center justify-between gap-2`}>
-        <span>{t('coachDashboard.groupTopicLabel')}</span>
-        {(
-          <button
-            type="button"
-            onClick={() => openModal(firstFreeDay())}
-            disabled={members.length === 0 || saving}
-            aria-label={t(todayTopic ? 'coachDashboard.groupTopicPlan' : 'coachDashboard.groupTopicSet')}
-            title={t(todayTopic ? 'coachDashboard.groupTopicPlan' : 'coachDashboard.groupTopicSet')}
-            className="-my-1 w-7 h-7 rounded-lg bg-rose-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[18px]">add</span>
-          </button>
-        )}
-      </div>
-      <div className="space-y-2 p-2.5">
+    // [WIDOK GRUPY] (user 2026-10-23: „tabelka w tabelce i w środku jeszcze
+    // tabelka”) Jeden poziom kart jak w dzienniku: sekcje to sam nagłówek
+    // + odstęp, róż tylko w pasku, ikonce i przycisku głównym.
+    <div className="space-y-3">
+      <section>
+        <GroupSectionHeader label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
 
-      {todayTopic?.closedAt && (
-        <p className="flex items-center gap-1 text-[10px] font-bold text-[#0a3a2a] ml-1">
-          <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
-          {t('coachDashboard.groupTopicClosedToday')}
-        </p>
-      )}
-
-
-      {shown && (
-        <div className={`rounded-xl px-3 py-2.5 border ${open ? 'bg-white border-rose-200' : 'bg-white border-gray-200'}`}>
-          <div className="flex items-start gap-2">
-            <span className={`material-symbols-outlined text-[18px] shrink-0 mt-px ${open ? 'text-rose-600' : 'text-gray-400'}`}>sports</span>
-            <div className="flex-1 min-w-0">
-              <p className={`text-[9px] font-black uppercase tracking-widest ${open ? 'text-rose-700' : 'text-gray-500'}`}>
-                {shown === todayTopic
-                  ? (open ? t('coachDashboard.groupTopicToday') : t('coachDashboard.groupTopicTodayClosed'))
-                  : t('coachDashboard.groupTopicLast', { date: dayLabel(shown.day) })}
-              </p>
-              <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(shown, t)}</p>
-              {shown.desc && <p className="text-[11px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-0.5">{shown.desc}</p>}
-              {shown.text && shown.topic && (
-                <p className={`text-[10px] font-bold ${open ? 'text-[#0a3a2a]' : 'text-gray-500'}`}>{topicLabel(shown.topic, t)}</p>
-              )}
-            </div>
-            {shown === todayTopic && (
-              <button
-                onClick={() => openModal(today, todayTopic)}
-                disabled={saving}
-                aria-label={t('coachDashboard.groupTopicEdit')}
-                title={t('coachDashboard.groupTopicEdit')}
-                className="w-7 h-7 shrink-0 rounded-lg bg-white border border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
-              >
-                <span className="material-symbols-outlined text-[16px]">edit</span>
-              </button>
-            )}
-          </div>
-
-          <TopicLinks links={shown.links} titles={shown.linkTitles} tone="coach" small className="mt-2" />
-
-          <div className="mt-2">
-            <TopicMemberList members={members} gt={shown} status={status} onAssign={open ? s => assignOne(shown, s) : undefined} saving={saving} onOpenStudent={onOpenStudent} />
-          </div>
-
-          {open && (
-            <div className="flex gap-2 mt-2.5 pt-2 border-t border-rose-200/70">
-              <button onClick={() => close(todayTopic!)} disabled={saving} className={`${btn} bg-white text-red-600 border-red-100`}>
-                {t('coachDashboard.groupTopicClose')}
-              </button>
-            </div>
-          )}
-        </div>
-      )}
-
-      {!todayTopic && upcoming.length === 0 && (
-        <p className="text-[10px] font-bold text-gray-400 ml-1">{t('coachDashboard.groupTopicNone')}</p>
-      )}
-
-      {/* Zaplanowane na kolejne dni — w tej samej sekcji co dzisiejszy temat
-          (user 2026-10-22); uczniowie zobaczą je dopiero w ich dniu. */}
-      {upcoming.length > 0 && (
-        <div className="space-y-1 pt-2 border-t border-rose-100">
-          <p className="text-[9px] font-black uppercase tracking-widest text-rose-500 ml-1">{t('coachDashboard.groupTopicPlanned')}</p>
-          {upcoming.map(d => {
-            const gt = byDay[d];
-            return (
-              <div key={d} className="flex items-center gap-2 bg-white border border-rose-200 rounded-xl pl-3 pr-1.5 py-1.5">
-                <span className="text-[10px] font-black text-[#0a3a2a] shrink-0 w-20 truncate">{dayLabel(d)}</span>
-                <span className="flex-1 min-w-0 text-[11px] font-bold text-[#0a3a2a] truncate">{focusTitle(gt, t)}</span>
-                {!!gt.links?.length && (
-                  <span className="flex items-center text-[10px] font-black text-rose-500 shrink-0" aria-label={String(gt.links.length)}>
-                    <span className="material-symbols-outlined text-[14px]">link</span>{gt.links.length}
-                  </span>
-                )}
+        {shown ? (
+          <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
+            <EntryRow
+              icon="sports"
+              iconCls="text-rose-600"
+              kind={t('coachDashboard.groupTopicLabel')}
+              kindCls="text-rose-700"
+              title={focusTitle(shown, t)}
+              extra={(
                 <button
-                  onClick={() => openModal(d, gt)}
+                  onClick={() => openModal(today, shown)}
                   disabled={saving}
                   aria-label={t('coachDashboard.groupTopicEdit')}
-                  className="w-7 h-7 shrink-0 rounded-lg text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                  title={t('coachDashboard.groupTopicEdit')}
+                  className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
                 >
-                  <span className="material-symbols-outlined text-[16px]">edit</span>
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
                 </button>
-                <button
-                  onClick={() => remove(gt)}
-                  disabled={saving}
-                  aria-label={t('coachDashboard.groupTopicDelete')}
-                  className="w-7 h-7 shrink-0 rounded-lg text-red-400 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[16px]">delete</span>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+              )}
+            >
+              {shown.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{shown.desc}</p>}
+              {shown.text && shown.topic && <TopicChips topics={[shown.topic]} />}
+              <TopicLinks links={shown.links} titles={shown.linkTitles} tone="coach" className="mt-2" />
+            </EntryRow>
 
-      </div>
-      </div>
+            {/* Kto ćwiczył pod temat — od razu na karcie, bez kolejnej ramki. */}
+            <div className="mt-2.5 pt-2 border-t border-gray-100 pl-1">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                {t('coachDashboard.groupTopicMembersTrained', { trained: trainedCount, total: Object.keys(shown.entryIds).length })}
+              </p>
+              <TopicMemberList members={members} gt={shown} status={status} onAssign={s => assignOne(shown, s)} saving={saving} onOpenStudent={onOpenStudent} />
+            </div>
+
+            <button
+              onClick={() => close(shown)}
+              disabled={saving}
+              className="mt-2 w-full min-h-[44px] rounded-xl bg-rose-600 text-white flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[18px]">sports_score</span>
+              {t('coachDashboard.groupTopicClose')}
+            </button>
+          </div>
+        ) : todayTopic?.closedAt ? (
+          <p className="flex items-center gap-1.5 text-[12px] font-bold text-[#0a3a2a] pl-1 py-1">
+            <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+            {t('coachDashboard.groupTopicClosedToday')}
+          </p>
+        ) : (
+          // Najczęstsza akcja rano przed treningiem — duży przycisk zamiast małego „+”.
+          <>
+            <button
+              type="button"
+              onClick={() => openModal(firstFreeDay())}
+              disabled={members.length === 0 || saving}
+              className="w-full min-h-[52px] rounded-2xl bg-rose-600 text-white flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[22px]">add</span>
+              {t('coachDashboard.groupTopicSet')}
+            </button>
+            {members.length === 0 && (
+              <p className="text-[11px] font-bold text-gray-500 pl-1 mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Zaplanowane na kolejne dni (uczniowie zobaczą je dopiero w ich dniu).
+          „Planen” zawsze tu, gdy dziś już jest temat — dawny „+” w nagłówku. */}
+      {(upcoming.length > 0 || !!todayTopic) && (
+        <section>
+          <GroupSectionHeader
+            label={t('coachDashboard.groupTopicPlanned')}
+            count={upcoming.length || undefined}
+            action={(
+              <button
+                type="button"
+                onClick={() => openModal(firstFreeDay())}
+                disabled={members.length === 0 || saving}
+                title={t('coachDashboard.groupTopicPlan')}
+                className="h-10 shrink-0 pl-2 pr-3 rounded-xl text-rose-600 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-[20px]">add</span>
+                {t('coachDashboard.groupTopicPlanShort')}
+              </button>
+            )}
+          />
+          {upcoming.length > 0 && (
+            <div className="space-y-2">
+              {upcoming.map(d => {
+                const gt = byDay[d];
+                const asking = confirmDel === d;
+                return (
+                  <div key={d} className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-1.5 flex items-center gap-2.5`}>
+                    <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[18px] text-rose-600">event</span>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-rose-700">{dayLabel(d)}</span>
+                      <span className="block text-[12px] font-black text-[#0a3a2a] leading-snug truncate">{focusTitle(gt, t)}</span>
+                    </span>
+                    {asking ? (
+                      // Usunięcie kasuje wpisy u uczniów — najpierw pytamy (user 2026-10-23).
+                      <>
+                        <button
+                          onClick={() => setConfirmDel(null)}
+                          aria-label={t('coachDashboard.cancel')}
+                          className="w-10 h-10 shrink-0 rounded-xl text-gray-400 flex items-center justify-center active:scale-90 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                        <button
+                          onClick={() => { setConfirmDel(null); remove(gt); }}
+                          disabled={saving}
+                          className="h-10 shrink-0 px-3 rounded-xl bg-red-600 text-white text-[10px] font-black uppercase tracking-wide active:scale-95 transition-all disabled:opacity-40"
+                        >
+                          {t('coachDashboard.groupTopicDelete')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => openModal(d, gt)}
+                          disabled={saving}
+                          aria-label={t('coachDashboard.groupTopicEdit')}
+                          title={t('coachDashboard.groupTopicEdit')}
+                          className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button
+                          onClick={() => setConfirmDel(d)}
+                          disabled={saving}
+                          aria-label={t('coachDashboard.groupTopicDelete')}
+                          title={t('coachDashboard.groupTopicDelete')}
+                          className="w-10 h-10 shrink-0 rounded-xl text-gray-400 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
 
       {renderHistory?.(!todayTopic && members.length > 0 && !saving
         ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '', linkTitles: gt.linkTitles ?? [] })

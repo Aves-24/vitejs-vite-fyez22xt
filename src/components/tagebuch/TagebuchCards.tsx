@@ -158,7 +158,7 @@ function distanceTier(meters: number): string {
   return 'tb-d5';
 }
 
-function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'amber' | 'onTint' }) {
+export function TopicChips({ topics, tone = 'emerald' }: { topics: string[]; tone?: 'emerald' | 'indigo' | 'amber' | 'onTint' }) {
   const { t } = useTranslation();
   if (!topics.length) return null;
   const cls = tone === 'indigo'

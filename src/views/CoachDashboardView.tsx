@@ -13,10 +13,11 @@ import CollapsibleSection from '../components/CollapsibleSection';
 import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
+import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
-import GroupTopicPanel,{ type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
+import GroupTopicPanel,{ GroupSectionHeader, type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
@@ -1865,13 +1866,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             const isPicked = isGroupSelecting && selectedGroupId === group.id;
             const pulse = groupPulse(members);
             return (
-              <div
-                key={group.id}
-                id={`coach-group-${group.id}`}
-                className={`bg-white rounded-2xl shadow-sm border transition-all scroll-mt-4 ${
-                  isPicked ? 'border-[#0a3a2a] ring-1 ring-[#0a3a2a]' : isOpen ? 'border-rose-300 ring-1 ring-rose-200' : 'border-rose-100'
-                }`}
-              >
+              // [WIDOK GRUPY] (user 2026-10-23) Karta grupy = sam nagłówek w stylu
+              // dziennika (biała, różowy pasek). Rozwinięta treść stoi POD nią,
+              // nie w niej — koniec „tabelki w tabelce”.
+              <div key={group.id} id={`coach-group-${group.id}`} className={`scroll-mt-4 ${isOpen ? 'pb-3' : ''}`}>
                 <div
                   role="button"
                   aria-expanded={isGroupSelecting ? undefined : isOpen}
@@ -1881,7 +1879,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     if (isGroupSelecting) { setSelectedGroupId(isPicked ? null : group.id); return; }
                     setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false);
                   }}
-                  className="px-3 py-2.5 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-all"
+                  // Otwarta grupa: grubszy pasek, jak dzisiejsze wpisy w dzienniku.
+                  style={isOpen ? { borderLeftWidth: 7 } : undefined}
+                  className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-2 flex items-center gap-2.5 cursor-pointer active:scale-[0.99] transition-all ${
+                    isPicked ? 'ring-2 ring-[#0a3a2a]' : ''
+                  }`}
                 >
                   {isGroupSelecting ? (
                     <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
@@ -1890,17 +1892,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <span className="material-symbols-outlined text-[18px] font-black">check</span>
                     </div>
                   ) : (
-                    <div className="w-9 h-9 bg-rose-50 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-rose-600 text-[18px]">{groupIcon(group)}</span>
-                    </div>
+                    <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-rose-600 text-[20px]">{groupIcon(group)}</span>
+                    </span>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{group.name}</h3>
-                    {members.length > 0 && !isLoading && (
-                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
+                    {/* Liczba uczniów i puls w jednej linii — dawniej liczba stała osobno po prawej i ściskała nazwę. */}
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="text-[10px] font-bold text-gray-500">{t('coachDashboard.studentsCount', { count: members.length })}</span>
+                      {members.length > 0 && !isLoading && (<>
                         {pulse.total > 0 && (
                           <span
-                            className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${
+                            className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
                               pulse.active === pulse.total ? 'bg-emerald-50 text-emerald-700'
                                 : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
                             }`}
@@ -1910,52 +1914,52 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                           </span>
                         )}
                         {pulse.up > 0 && (
-                          <span className="flex items-center text-[9px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
-                            <span className="material-symbols-outlined text-[13px]">trending_up</span>{pulse.up}
+                          <span className="flex items-center text-[10px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
+                            <span className="material-symbols-outlined text-[14px]">trending_up</span>{pulse.up}
                           </span>
                         )}
                         {pulse.down > 0 && (
-                          <span className="flex items-center text-[9px] font-black text-red-500" title={t('coachDashboard.groupPulseDown')} aria-label={`${t('coachDashboard.groupPulseDown')}: ${pulse.down}`}>
-                            <span className="material-symbols-outlined text-[13px]">trending_down</span>{pulse.down}
+                          <span className="flex items-center text-[10px] font-black text-red-500" title={t('coachDashboard.groupPulseDown')} aria-label={`${t('coachDashboard.groupPulseDown')}: ${pulse.down}`}>
+                            <span className="material-symbols-outlined text-[14px]">trending_down</span>{pulse.down}
                           </span>
                         )}
                         {pulse.inactive > 0 && (
-                          <span className="flex items-center gap-0.5 text-[9px] font-black text-amber-600" title={t('coachDashboard.groupPulseInactive')} aria-label={`${t('coachDashboard.groupPulseInactive')}: ${pulse.inactive}`}>
-                            <span className="material-symbols-outlined text-[13px]">person_off</span>{pulse.inactive}
+                          <span className="flex items-center gap-0.5 text-[10px] font-black text-amber-600" title={t('coachDashboard.groupPulseInactive')} aria-label={`${t('coachDashboard.groupPulseInactive')}: ${pulse.inactive}`}>
+                            <span className="material-symbols-outlined text-[14px]">person_off</span>{pulse.inactive}
                           </span>
                         )}
-                      </div>
-                    )}
+                      </>)}
+                    </div>
                     {!isOpen && nextTopic && (
-                      <p className="flex items-center gap-1 text-[9px] font-black text-[#0a3a2a] truncate mt-0.5">
-                        <span className="material-symbols-outlined text-rose-500 text-[12px]">sports</span>
+                      <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
+                        <span className="material-symbols-outlined text-rose-600 text-[14px]">sports</span>
                         <span className="truncate">
-                          {nextTopicDay === todayKey
-                            ? t('coachDashboard.groupTopicToday')
-                            : new Date(`${nextTopicDay}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}
-                          : {nextTopic.text}
+                          <span className="font-black">
+                            {nextTopicDay === todayKey
+                              ? t('coachDashboard.groupTopicToday')
+                              : new Date(`${nextTopicDay}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}:
+                          </span> {nextTopic.text}
                         </span>
                       </p>
                     )}
                   </div>
-                  <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest shrink-0">{t('coachDashboard.studentsCount', { count: members.length })}</span>
                   {!isGroupSelecting && members.length > 0 && (
                     <button
                       onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
                       aria-label={t('coachDashboard.groupMessageBtn')}
                       title={t('coachDashboard.groupMessageBtn')}
-                      className="w-8 h-8 shrink-0 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                      className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all"
                     >
-                      <span className="material-symbols-outlined text-[17px]">mail</span>
+                      <span className="material-symbols-outlined text-[20px]">mail</span>
                     </button>
                   )}
                   {!isGroupSelecting && (
-                    <span className="material-symbols-outlined text-gray-400 text-[20px] shrink-0">{isOpen ? 'expand_less' : 'expand_more'}</span>
+                    <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0 mr-1">{isOpen ? 'expand_less' : 'expand_more'}</span>
                   )}
                 </div>
 
                 {isOpen && (
-                  <div className="px-3 pb-3 pt-2.5 border-t border-rose-100 rounded-b-2xl space-y-2">
+                  <div className="pt-1 space-y-3">
                     <GroupTopicPanel
                       groupId={group.id}
                       groupName={group.name}
@@ -1980,30 +1984,27 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       )}
                     />
 
-                    <CollapsibleSection
-                      label={t('coachDashboard.groupList')}
-                      open={isGroupListOpen}
-                      onToggle={() => setIsGroupListOpen(o => !o)}
-                      summary={t('coachDashboard.studentsCount', { count: members.length })}
-                      className="bg-white border-2 border-rose-300 rounded-xl overflow-hidden"
-                      headerClassName="bg-rose-300"
-                      flush
-                      labelClassName="text-rose-900"
-                    >
-                    {renderStudentList(members, '')}
-
-                    {members.length < students.length && !isSelecting && (
-                      <button
-                        type="button"
-                        onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
-                        aria-label={t('coachDashboard.addToGroupBtn')}
-                        title={t('coachDashboard.addToGroupBtn')}
-                        className="mx-auto w-10 h-10 rounded-xl border-2 border-dashed border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
-                      >
-                        <span className="material-symbols-outlined text-[20px]">person_add</span>
-                      </button>
-                    )}
-                    </CollapsibleSection>
+                    {/* Skład grupy — zwijany, liczba w nagłówku; „dodaj ucznia” obok, nie na dole listy. */}
+                    <section>
+                      <GroupSectionHeader
+                        label={t('coachDashboard.groupList')}
+                        count={members.length}
+                        open={isGroupListOpen}
+                        onToggle={() => setIsGroupListOpen(o => !o)}
+                        action={members.length < students.length && !isSelecting ? (
+                          <button
+                            type="button"
+                            onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
+                            aria-label={t('coachDashboard.addToGroupBtn')}
+                            title={t('coachDashboard.addToGroupBtn')}
+                            className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">person_add</span>
+                          </button>
+                        ) : undefined}
+                      />
+                      {isGroupListOpen && renderStudentList(members, '')}
+                    </section>
                   </div>
                 )}
               </div>

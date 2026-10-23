@@ -3,12 +3,11 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase';
-import CollapsibleSection from './CollapsibleSection';
 import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
-import { topicLabel } from '../constants/trainingTopics';
+import { CARD_PAD, CARD_SHAPE, EntryRow, TopicChips } from './tagebuch/TagebuchCards';
 import { dayKeyOf } from '../utils/focus';
-import { loadTopicStatus, TopicMemberList, type GroupTopic, type GroupTopicsByDay, type MemberStatus } from './GroupTopicPanel';
+import { GroupSectionHeader, loadTopicStatus, TopicMemberList, type GroupTopic, type GroupTopicsByDay, type MemberStatus } from './GroupTopicPanel';
 
 // [HISTORIA TRENINGÓW] (user 2026-10-15) Zastępuje „Dziennik grupy”: minione
 // tematy treningu grupy od najnowszego — kto trenował pod temat, kto
@@ -111,32 +110,40 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
 
   return (
-    <CollapsibleSection
-      label={t('coachDashboard.historyTitle')}
-      open={open}
-      onToggle={() => setOpen(o => !o)}
-      summary={t('coachDashboard.historyCount', { count: items.length })}
-      className="bg-white border-2 border-rose-200 rounded-xl overflow-hidden"
-      headerClassName="bg-rose-200"
-      flush
-      labelClassName="text-rose-800"
-    >
-      <div className="space-y-1.5">
-        <p className="flex items-center gap-1 text-[9px] font-bold text-[#0a3a2a] ml-1">
-          <span className="material-symbols-outlined text-rose-500 text-[11px]">lock</span>{t('coachDashboard.historyPrivate')}
+    // Bez różowej ramki i paska (user 2026-10-23): nagłówek sekcji + karty jak
+    // „Training geleitet” w dzienniku. Edycja i „Powtórz” w rozwiniętej karcie,
+    // z podpisem — w zwiniętej zostaje tylko to, co trzeba przeczytać.
+    <section>
+      <GroupSectionHeader
+        label={t('coachDashboard.historyTitle')}
+        count={items.length}
+        open={open}
+        onToggle={() => setOpen(o => !o)}
+      />
+      {open && (
+      <div className="space-y-2">
+        <p className="flex items-center gap-1 text-[11px] font-bold text-gray-500 pl-1">
+          <span className="material-symbols-outlined text-rose-500 text-[14px]">lock</span>{t('coachDashboard.historyPrivate')}
         </p>
         {items.slice(0, shown).map(it => {
           if (it.loose) {
+            // Stary dziennik grupy — szary pasek, bo to nie trening z tematem.
             return (
-              <div key={it.key} className="bg-white border border-gray-100 rounded-xl pl-3 pr-1.5 py-2 flex items-start gap-2">
-                <span className="material-symbols-outlined text-[16px] text-gray-400 mt-px">edit_note</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black text-gray-400">{new Date(it.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                  <p className="text-[11px] font-medium text-[#333] leading-relaxed whitespace-pre-wrap break-words">{it.loose.text}</p>
-                </div>
-                <button onClick={() => deleteLoose(it.loose!.id)} aria-label={t('coachDashboard.groupTopicDelete')} className="w-7 h-7 shrink-0 text-gray-300 hover:text-red-500 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-[16px]">close</span>
-                </button>
+              <div key={it.key} className={`${CARD_SHAPE} tb-skipped ${CARD_PAD}`}>
+                <EntryRow
+                  icon="edit_note"
+                  iconCls="text-gray-500"
+                  kind={t('coachDashboard.journalTitle')}
+                  kindCls="text-gray-500"
+                  time={new Date(it.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  extra={(
+                    <button onClick={() => deleteLoose(it.loose!.id)} aria-label={t('coachDashboard.groupTopicDelete')} title={t('coachDashboard.groupTopicDelete')} className="order-last w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-gray-400 hover:text-red-500 flex items-center justify-center active:scale-90 transition-all">
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  )}
+                >
+                  <p className="text-[12px] font-medium text-[#333] leading-relaxed whitespace-pre-wrap break-words mt-0.5">{it.loose.text}</p>
+                </EntryRow>
               </div>
             );
           }
@@ -145,72 +152,85 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           const note = data?.notes?.[day];
           const isOpen = expanded === day;
           return (
-            <div key={it.key} className={`bg-white border rounded-xl ${isOpen ? 'border-rose-300' : 'border-rose-100'}`}>
-              <div className="flex items-start">
-              <button onClick={() => toggle(day)} className="flex-1 min-w-0 flex items-start gap-2 pl-3 pr-2 py-2 text-left active:opacity-70">
-                <span className="material-symbols-outlined text-[16px] text-rose-500 mt-px">sports</span>
-                <span className="flex-1 min-w-0">
-                  <span className="block text-[9px] font-black text-[#0a3a2a]">{dayLabel(day)}</span>
-                  <span className="block text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(gt, t)}</span>
-                  {gt.text && gt.topic && <span className="block text-[10px] font-bold text-[#0a3a2a]">{topicLabel(gt.topic, t)}</span>}
-                  {note && !isOpen && <span className="block text-[10px] font-medium text-gray-500 truncate mt-0.5">„{note}”</span>}
-                </span>
-                {note && !isOpen && <span className="material-symbols-outlined text-[15px] text-gray-400 mt-px">edit_note</span>}
-                <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
-              </button>
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={() => onEdit(gt)}
-                  aria-label={t('coachDashboard.groupTopicEdit')}
-                  title={t('coachDashboard.groupTopicEdit')}
-                  className="w-8 h-8 mt-1.5 mr-1 shrink-0 rounded-lg text-rose-600 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[17px]">edit</span>
-                </button>
-              )}
-              {onRepeat && (
-                <button
-                  type="button"
-                  onClick={() => setRepeatAsk(gt)}
-                  aria-label={t('coachDashboard.groupTopicRepeat')}
-                  title={t('coachDashboard.groupTopicRepeat')}
-                  className="w-8 h-8 mt-1.5 mr-1.5 shrink-0 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center active:scale-90 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[17px]">replay</span>
-                </button>
-              )}
+            <div key={it.key} className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
+              <div role="button" tabIndex={0} aria-expanded={isOpen} onClick={() => toggle(day)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(day); } }} className="cursor-pointer">
+                <EntryRow icon="sports" iconCls="text-rose-600" kind={t('tagebuch.ledTraining')} kindCls="text-rose-700" title={focusTitle(gt, t)} time={dayLabel(day)}>
+                  <div className="flex items-end gap-2">
+                    <div className="flex-1 min-w-0">
+                      {gt.text && gt.topic && <TopicChips topics={[gt.topic]} />}
+                      {note && !isOpen && (
+                        <p className="mt-1.5 flex items-start gap-1 text-[11px] font-medium text-gray-600 leading-relaxed">
+                          <span className="material-symbols-outlined text-[13px] text-rose-400 mt-0.5">lock</span>
+                          <span className="line-clamp-2 break-words">„{note}”</span>
+                        </p>
+                      )}
+                    </div>
+                    <span className={`material-symbols-outlined text-[20px] text-gray-400 shrink-0 transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                  </div>
+                </EntryRow>
               </div>
               {isOpen && (
-                <div className="px-3 pb-2.5 space-y-2 border-t border-rose-100 pt-2">
-                  {gt.desc && <p className="text-[11px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{gt.desc}</p>}
-                  <TopicLinks links={gt.links} titles={gt.linkTitles} tone="coach" small />
+                <div className="mt-2.5 pt-2.5 border-t border-gray-100 pl-1 space-y-2.5">
+                  {gt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words">{gt.desc}</p>}
+                  <TopicLinks links={gt.links} titles={gt.linkTitles} tone="coach" />
                   <TopicMemberList members={members} gt={gt} status={status[day] || {}} onOpenStudent={onOpenStudent} />
-                  <textarea
-                    value={draft}
-                    onChange={e => setDraft(e.target.value.slice(0, NOTE_MAX))}
-                    maxLength={NOTE_MAX}
-                    placeholder={t('coachDashboard.historyNotePlaceholder')}
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-16"
-                  />
-                  <button
-                    onClick={() => saveNote(day)}
-                    disabled={saving || draft.trim() === (note || '')}
-                    className="w-full py-2 rounded-lg text-[9px] font-black uppercase tracking-widest bg-rose-600 text-white disabled:opacity-40 active:scale-95 transition-all"
-                  >
-                    {t('coachDashboard.groupTopicSaveEdit')}
-                  </button>
+                  <div>
+                    <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">
+                      <span className="material-symbols-outlined text-rose-500 text-[14px]">lock</span>{t('coachDashboard.historyNoteLabel')}
+                    </p>
+                    <textarea
+                      value={draft}
+                      onChange={e => setDraft(e.target.value.slice(0, NOTE_MAX))}
+                      maxLength={NOTE_MAX}
+                      placeholder={t('coachDashboard.historyNotePlaceholder')}
+                      className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-20"
+                    />
+                    {draft.trim() !== (note || '') && (
+                      <button
+                        onClick={() => saveNote(day)}
+                        disabled={saving}
+                        className="mt-1.5 w-full min-h-[40px] rounded-xl text-[11px] font-black uppercase tracking-widest bg-rose-600 text-white disabled:opacity-40 active:scale-95 transition-all"
+                      >
+                        {t('coachDashboard.historyNoteSave')}
+                      </button>
+                    )}
+                  </div>
+                  {(onEdit || onRepeat) && (
+                    <div className="flex gap-2">
+                      {onEdit && (
+                        <button
+                          type="button"
+                          onClick={() => onEdit(gt)}
+                          className="flex-1 min-w-0 min-h-[40px] px-2 rounded-xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wide active:scale-95 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-rose-600 text-[18px] shrink-0">edit</span>
+                          <span className="truncate">{t('coachDashboard.groupTopicEdit')}</span>
+                        </button>
+                      )}
+                      {onRepeat && (
+                        <button
+                          type="button"
+                          onClick={() => setRepeatAsk(gt)}
+                          className="flex-1 min-w-0 min-h-[40px] px-2 rounded-xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wide active:scale-95 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-rose-600 text-[18px] shrink-0">replay</span>
+                          <span className="truncate">{t('coachDashboard.groupTopicRepeat')}</span>
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           );
         })}
         {items.length > shown && (
-          <button onClick={() => setShown(n => n + PAGE)} className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
+          <button onClick={() => setShown(n => n + PAGE)} className="w-full min-h-[40px] text-[11px] font-black uppercase tracking-widest text-[#0a3a2a] active:opacity-60">
             {t('coachDashboard.historyMore')}
           </button>
         )}
       </div>
+      )}
 
       {repeatAsk && onRepeat && createPortal(
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[500000] flex items-center justify-center p-6 animate-fade-in" onClick={() => setRepeatAsk(null)}>
@@ -221,7 +241,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               </div>
               <p className="text-[14px] font-black text-[#0a3a2a] leading-tight">{t('coachDashboard.groupTopicRepeatConfirm')}</p>
             </div>
-            <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">{focusTitle(repeatAsk, t)}</p>
+            <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">{focusTitle(repeatAsk, t)}</p>
             <div className="flex gap-2 mt-4">
               <button onClick={() => setRepeatAsk(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
                 {t('coachDashboard.cancel')}
@@ -237,6 +257,6 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
         </div>,
         document.body,
       )}
-    </CollapsibleSection>
+    </section>
   );
 }

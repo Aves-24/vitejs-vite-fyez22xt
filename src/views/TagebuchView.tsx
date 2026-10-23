@@ -162,6 +162,13 @@ function toMs(v: any): number {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+// Wpis „z dzisiaj”: zrobiony dziś albo temat treningu na dziś (mógł być ustawiony wcześniej).
+function isTodayItem(it: TimelineItem): boolean {
+  const today = ymd(new Date());
+  if (it.kind === 'coach' && it.entry.trainingTopic?.day) return it.entry.trainingTopic.day === today;
+  return ymd(new Date(it.ts)) === today;
+}
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Poniedziałek tygodnia (jak w PL/DE), północ czasu lokalnego.
@@ -1214,7 +1221,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 <div
                   key={`${it.kind}_${it.id}`}
                   id={`tb-${it.id}`}
-                  className={`rounded-2xl transition-shadow duration-500 ${flashId === it.id ? 'ring-2 ring-emerald-400' : ''}`}
+                  // Dzisiejsze wpisy w pełni, starsze lekko przygaszone (user 2026-10-23: „max 5%”).
+                  className={`rounded-2xl transition-shadow duration-500 ${isTodayItem(it) ? '' : 'brightness-[0.96]'} ${flashId === it.id ? 'ring-2 ring-emerald-400' : ''}`}
                 >
                   {it.kind === 'session' ? (
                     <SessionCard

@@ -21,7 +21,7 @@ interface SessionSetupProps {
   activeDistances: UserDistance[];
   onStartSession: (distance: string, targetType: string, forceClear: boolean, battleId: string | null, practiceArrows?: number, distanceId?: string, distanceLabel?: string, plannedEnds?: number) => void;
   onUpdateDistances?: (newDistances: UserDistance[]) => void;
-  onNavigate?: (view: string, tab?: string) => void;
+  onNavigate?: (view: string, tab?: string, extraData?: string) => void;
   onGoToBattle?: (distance: string, targetType: string, distanceId?: string, distanceLabel?: string) => void;
   hasActiveSession?: boolean;
 }
@@ -316,7 +316,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             <FocusStrip
               focus={focusPair.main}
               {...displayProgress(focusState, focusPair.main)}
-              onOpen={() => onNavigate?.('MY_COACH')}
+              onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
               other={focusPair.other}
               onSwap={() => swapFocus(userId, focusState)}
             />
@@ -631,7 +631,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             {/* TWÓJ FOKUS — przypomnienie; temat już zaznaczony niżej */}
             {focusPair.main && focusState && (
               <div className="mb-3 space-y-2">
+                {/* Klik → Tagebuch, jak na Home (user 2026-10-23). Licznik strzał zostaje w telefonie. */}
                 <FocusStrip focus={focusPair.main} {...displayProgress(focusState, focusPair.main)}
+                  onOpen={() => { setShowTechModal(false); onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId); }}
                   other={focusPair.other} onSwap={() => swapFocus(userId, focusState)} />
                 <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
               </div>

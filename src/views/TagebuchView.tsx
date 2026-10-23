@@ -1251,6 +1251,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       time={timeOf(it.ts)}
                       isNew={isNew('coach_log', it.entry.id)}
                       trained={trainedTopicIds.has(it.entry.id)}
+                      autoOpen={expandedIds.has(it.entry.id)}
                       onAck={() => ackTopic(it.entry.id)}
                     />
                   ) : (

@@ -1550,7 +1550,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             <FocusStrip
               focus={focusPair.main}
               {...displayProgress(focusState, focusPair.main)}
-              onOpen={() => onNavigate?.('MY_COACH')}
+              // Temat treningu: dziennik przewija do wpisu i rozwija opis/linki.
+              onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
               other={focusPair.other}
               onSwap={() => swapFocus(userId, focusState)}
               // Opis i linki tylko jako ikonki — treść w dzienniku (user 2026-10-23).

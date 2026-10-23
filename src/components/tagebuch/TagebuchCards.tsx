@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '../../hooks/useVoiceInput';
 import TopicPicker from '../TopicPicker';
@@ -359,17 +359,20 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
  * Otwarty (dziś) — sam temat. Zamknięty: ✓ trenowane (trening pod ten temat),
  * ✓ zapoznany (ackAt) albo przycisk „Zapoznałem się”.
  */
-export function TrainingTopicCard({ entry, time, isNew, trained, onAck }: {
+export function TrainingTopicCard({ entry, time, isNew, trained, onAck, autoOpen = false }: {
   entry: TbCoachEntry;
   time: string;
   isNew: boolean;
   trained: boolean;
   onAck: () => Promise<void>;
+  // Wejście z karty tematu (Home, Vorbereitung) — opis i linki od razu rozwinięte (user 2026-10-23).
+  autoOpen?: boolean;
 }) {
   const { t, i18n } = useTranslation();
   const [busy, setBusy] = useState(false);
   // Opis i linki zwinięte (user 2026-10-22) — w zwiniętym widać tylko, ŻE są.
-  const [more, setMore] = useState(false);
+  const [more, setMore] = useState(autoOpen);
+  useEffect(() => { if (autoOpen) setMore(true); }, [autoOpen]);
   const tt = entry.trainingTopic!;
   const open = isTopicOpen(tt);
   const day = new Date(`${tt.day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });

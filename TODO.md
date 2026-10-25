@@ -92,8 +92,12 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
    2. ~~Krótszy trening~~ ✅ 2026-10-25: 20 testów w `partialSession.test.ts`.
       Naprawione: krótszy PRZERWANY (plan 8, oddane 5) statystyki i karta
       ucznia dzieliły 5+0 zamiast 4+1 jak ScoringView — `roundSizeFor` = połowa planu.
-   3. Tarcza wg wieku/łuku (`getRecommendation` w `config/archeryRules.ts`)
-      + `fallbackTargetFor` (`config/distances.ts`).
+   3. ~~Tarcza wg wieku/łuku~~ ✅ 2026-10-25: 23 testy w `archeryRules.test.ts`.
+      ZNALEZIONE (do decyzji usera, NIE zmienione):
+      a) łuk tradycyjny nie ma reguły → nowe konto dostaje aktywne tylko 70 m
+         122 cm, także jako dystans halowy (18 m nieaktywne);
+      b) recurve Schüler C (≤10 lat) na torach dostaje dystans dorosłych
+         (60 m chłopcy / 50 m dziewczynki, 122 cm). W hali 18 m 40 cm.
    4. Ranga z handicapu (`rankEngine`, `handicapEngine`; XP usunięte 2026-10-22).
    5. Punktacja tarcz (`config/targetFaces.ts`: pierścienie, 6-Ring,
       dmuchawka X = 10).

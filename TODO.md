@@ -89,7 +89,10 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
    **NASTĘPNE ZADANIE (ustalone z userem 2026-10-21), po kolei:**
    1. ~~Sumy/statystyki serii~~ ✅ 2026-10-25: `getStats` → `utils/endStats.ts`
       (1:1), 16 testów w `endStats.test.ts`, błędów nie znaleziono.
-   2. Krótszy trening (`utils/partialSession.ts`: 6/8/10 serii, 2 rundy).
+   2. ~~Krótszy trening~~ ✅ 2026-10-25: 20 testów w `partialSession.test.ts`.
+      ZNALEZIONE (do decyzji usera): krótszy trening PRZERWANY (np. plan 8,
+      oddane 5) — ScoringView dzieli rundy 4+1, statystyki/karta ucznia 5+0
+      (`roundSizeFor` daje 6). Poprawka: roundSizeFor = ceil(endsPlanned/2).
    3. Tarcza wg wieku/łuku (`getRecommendation` w `config/archeryRules.ts`)
       + `fallbackTargetFor` (`config/distances.ts`).
    4. Ranga z handicapu (`rankEngine`, `handicapEngine`; XP usunięte 2026-10-22).

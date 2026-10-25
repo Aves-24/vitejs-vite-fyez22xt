@@ -94,11 +94,15 @@ describe('roundSizeFor — serii na Durchgang', () => {
     });
   });
 
-  // ZNANA NIESPÓJNOŚĆ (2026-10-25, pokazana userowi, NIE zmieniona):
-  // krótszy trening przerwany przed końcem (np. plan 8, oddane 5) ScoringView
-  // dzielił na 4+1, a statystyki dzielą po 6 → 5+0.
-  it('[obecne działanie] krótszy przerwany dzieli się po 6, nie po połowie planu', () => {
-    expect(roundSizeFor(interrupted(5, 8))).toBe(6);
+  // Poprawione 2026-10-25: wcześniej statystyki dzieliły taki trening po 6 (5+0).
+  it('krótszy przerwany: też po połowie planu, jak w ScoringView (plan 8, oddane 5 = 4+1)', () => {
+    expect(roundSizeFor(interrupted(5, 8))).toBe(4);
+    expect(roundSizeFor(interrupted(2, 6))).toBe(3);
+    expect(roundSizeFor(interrupted(7, 10))).toBe(5);
+  });
+
+  it('bez flagi isPartial plan jest ignorowany', () => {
+    expect(roundSizeFor({ endsShot: 4, endsPlanned: 8 })).toBe(6);
   });
 });
 

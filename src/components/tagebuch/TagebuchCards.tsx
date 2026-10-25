@@ -1144,10 +1144,10 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           {session.isTech && onEditTech && (
             <button
               onClick={onEditTech}
-              className="flex items-center gap-0.5 text-[10px] font-black text-sky-700 bg-white border border-sky-200 px-2.5 py-1.5 rounded-full active:scale-95 transition-all"
+              aria-label={t('tagebuch.editTech')}
+              className="w-7 h-7 flex items-center justify-center text-sky-700 bg-white border border-sky-200 rounded-full active:scale-95 transition-all"
             >
-              <span className="material-symbols-outlined text-[14px]">edit</span>
-              {t('tagebuch.editShort')}
+              <span className="material-symbols-outlined text-[15px]">edit</span>
             </button>
           )}
           <div className="flex-1" />

@@ -309,7 +309,7 @@ export const views = {
   },
   tagebuch: {
     editTech: "Edytuj trening techniczny",
-    editShort: "Edytuj",
+    techNote: "Opis",
     techDate: "Data",
     techTime: "Godzina",
     techSaveError: "Nie udało się zapisać treningu. Spróbuj jeszcze raz.",

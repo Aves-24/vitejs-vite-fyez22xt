@@ -295,7 +295,7 @@ export const views = {
   },
   tagebuch: {
     editTech: "Techniktraining bearbeiten",
-    editShort: "Bearbeiten",
+    techNote: "Beschreibung",
     techDate: "Datum",
     techTime: "Uhrzeit",
     techSaveError: "Training konnte nicht gespeichert werden. Versuch es noch einmal.",

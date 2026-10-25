@@ -5,14 +5,16 @@ import TopicPicker from '../TopicPicker';
 import { TECH_ARROWS_MAX, type TechSessionEdit } from '../../utils/techSession';
 
 // [TECHNIK] Poprawka treningu technicznego z dziennika (user 2026-10-25):
-// liczba strzał, data + godzina, tematy. Okno u góry jak NoteSheet.
+// liczba strzał, data + godzina, tematy i opis. Okno u góry jak NoteSheet.
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const dateValue = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const timeValue = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
-export function TechEditSheet({ initial, onSave, onClose }: {
+export function TechEditSheet({ initial, noteMax, onSave, onClose }: {
   initial: TechSessionEdit;
+  /** Limit opisu: widoczny dla trenera krótszy (jak notatka sesji). */
+  noteMax: number;
   onSave: (edit: TechSessionEdit) => Promise<void>;
   onClose: () => void;
 }) {
@@ -22,6 +24,7 @@ export function TechEditSheet({ initial, onSave, onClose }: {
   const [date, setDate] = useState(dateValue(start));
   const [time, setTime] = useState(timeValue(start));
   const [topics, setTopics] = useState<string[]>(initial.topics);
+  const [note, setNote] = useState(initial.note);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(false);
 
@@ -38,7 +41,7 @@ export function TechEditSheet({ initial, onSave, onClose }: {
     setIsSaving(true);
     setError(false);
     try {
-      await onSave({ arrows: count, ts: when.getTime(), topics });
+      await onSave({ arrows: count, ts: when.getTime(), topics, note: note.trim().slice(0, noteMax) });
       onClose();
     } catch (e) {
       console.error('Tagebuch: błąd zapisu treningu technicznego', e);
@@ -97,6 +100,15 @@ export function TechEditSheet({ initial, onSave, onClose }: {
             <input type="time" value={time} onChange={e => setTime(e.target.value)} className={field} />
           </div>
         </div>
+
+        <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('tagebuch.techNote')}</label>
+        <textarea
+          value={note}
+          onChange={e => setNote(e.target.value.slice(0, noteMax))}
+          rows={3}
+          placeholder={t('tagebuch.notePlaceholder')}
+          className="w-full mb-3 bg-gray-50 border border-gray-100 focus:border-sky-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors"
+        />
 
         <TopicPicker selectedTopics={topics} onChange={setTopics} />
 

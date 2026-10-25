@@ -4,6 +4,7 @@ import { getSetupStamp } from './setupStamp';
 import { settleWrite } from './offlineWrite';
 import { sessionFocusFields, chosenFocusTopics, FocusState, type FocusChoice } from './focus';
 import { guestExpiryFields } from './guestMode';
+import { sessionNoteField, writePrivateSessionNote } from './privateSessionNote';
 
 function invalidateStatsCache(userId: string) {
   localStorage.removeItem(`grotX_stats_v13_${userId}`);
@@ -37,16 +38,25 @@ export interface TechSessionEdit {
   /** Nowa chwila treningu (data + godzina), ms. */
   ts: number;
   topics: string[];
+  /** Opis treningu (notatka przy sesji). */
+  note: string;
 }
 
 /**
  * Poprawka treningu technicznego z dziennika (user 2026-10-25): liczba
- * strzał, data/godzina i tematy. Notatki NIE — mają własny limit edycji
- * notatki widocznej dla trenera (SESSION_NOTE_EDITS). Fokusu też nie ruszamy:
+ * strzał, data/godzina, tematy i opis. Opis zachowuje widoczność, którą miał
+ * (dla trenera albo prywatny — wtedy tekst idzie do sessionNotes, RODO C36);
+ * zmiana opisu widocznego dla trenera podbija `editCount`. Fokusu nie ruszamy:
  * zaliczenie fokusu odhacza się przełącznikiem na karcie.
  */
-export async function updateTechnicalSession(userId: string, sessionId: string, { arrows, ts, topics }: TechSessionEdit): Promise<void> {
+export async function updateTechnicalSession(
+  userId: string,
+  sessionId: string,
+  { arrows, ts, topics, note }: TechSessionEdit,
+  prev: { note: string; isNotePublic: boolean; editCount: number },
+): Promise<void> {
   const when = new Date(ts);
+  const noteChanged = note !== prev.note;
   await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, sessionId), {
     arrows,
     totalArrows: arrows,
@@ -54,7 +64,14 @@ export async function updateTechnicalSession(userId: string, sessionId: string, 
     timestamp: Timestamp.fromDate(when),
     date: when.toLocaleDateString('pl-PL'),
     editedAt: Date.now(),
+    ...(noteChanged ? {
+      note: sessionNoteField(note, prev.isNotePublic),
+      ...(prev.isNotePublic ? { editCount: prev.editCount + 1 } : {}),
+    } : {}),
   }));
+  if (noteChanged && !prev.isNotePublic) {
+    await settleWrite(writePrivateSessionNote(userId, sessionId, note, false));
+  }
   invalidateStatsCache(userId);
 }
 

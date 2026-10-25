@@ -621,12 +621,16 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
 
   // [TECHNIK] Poprawka treningu technicznego (strzały, data, tematy).
   const updateTech = useCallback(async (id: string, edit: TechSessionEdit) => {
-    await updateTechnicalSession(userId, id, edit);
+    const s = sessions.find(x => x.id === id);
+    if (!s) return;
+    await updateTechnicalSession(userId, id, edit, { note: s.note, isNotePublic: s.isNotePublic, editCount: s.editCount });
     const when = new Date(edit.ts);
+    const noteChanged = edit.note !== s.note;
     setSessions(prev => prev.map(x => x.id === id
-      ? { ...x, arrows: edit.arrows, ts: edit.ts, date: when.toLocaleDateString('pl-PL'), topics: edit.topics }
+      ? { ...x, arrows: edit.arrows, ts: edit.ts, date: when.toLocaleDateString('pl-PL'), topics: edit.topics, note: edit.note,
+          editCount: noteChanged && x.isNotePublic ? x.editCount + 1 : x.editCount }
       : x));
-  }, [userId]);
+  }, [userId, sessions]);
 
   // Usunięcie wpisu fokusu z osi czasu. Sam deleteDoc nie wystarczy: efekt
   // kamieni milowych odtworzyłby wpis zakończonego fokusu przy następnym
@@ -1192,7 +1196,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         )}
         {editingTech && (
           <TechEditSheet
-            initial={{ arrows: editingTech.arrows, ts: editingTech.ts, topics: editingTech.topics }}
+            initial={{ arrows: editingTech.arrows, ts: editingTech.ts, topics: editingTech.topics, note: editingTech.note }}
+            noteMax={Math.max(editingTech.isNotePublic ? SESSION_NOTE_MAX : 2000, editingTech.note.length)}
             onSave={edit => updateTech(editingTech.id, edit)}
             onClose={() => setEditingTech(null)}
           />

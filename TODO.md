@@ -5,6 +5,15 @@
 
 ---
 
+## MAŁE ZADANIA (zgłoszone przez usera)
+
+- [ ] **Techniktraining edytowalny w Tagebuch** (2026-10-25): po dodaniu
+      nowego treningu technicznego (strzały bez punktów, `utils/techSession.ts`,
+      karta `TechSessionCard`) da się go poprawić z dziennika — liczba strzał,
+      fokus/temat, notatka, data. Dziś po zapisie nie ma edycji.
+
+---
+
 ## BITWY — OTWARTE 2026-10-21 (po teście usera na 2 kontach)
 
 ### ✅ Tarcza ↔ dystans — ZROBIONE 2026-10-21 w bitwach (122 cm: 30–90 m wg DSB, decyzja usera)
@@ -78,12 +87,12 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
    **2026-10-21 START:** Vitest 3 + `npm test` w CI; 30 testów bitew
    (`battleStage`, `battleStats`, `targetDistanceRanges`).
    **NASTĘPNE ZADANIE (ustalone z userem 2026-10-21), po kolei:**
-   1. Sumy/statystyki serii (X/10/9, średnia, M = strzała) — najpierw wydzielić
-      `getStats` z `ScoringView.tsx` do osobnego pliku BEZ zmiany działania.
+   1. ~~Sumy/statystyki serii~~ ✅ 2026-10-25: `getStats` → `utils/endStats.ts`
+      (1:1), 16 testów w `endStats.test.ts`, błędów nie znaleziono.
    2. Krótszy trening (`utils/partialSession.ts`: 6/8/10 serii, 2 rundy).
    3. Tarcza wg wieku/łuku (`getRecommendation` w `config/archeryRules.ts`)
       + `fallbackTargetFor` (`config/distances.ts`).
-   4. Ranga, XP, handicap (`rankEngine`, `xpEngine`, `handicapEngine`).
+   4. Ranga z handicapu (`rankEngine`, `handicapEngine`; XP usunięte 2026-10-22).
    5. Punktacja tarcz (`config/targetFaces.ts`: pierścienie, 6-Ring,
       dmuchawka X = 10).
    Szacunek 50–70 testów. Znaleziony błąd → NAJPIERW pokazać userowi,

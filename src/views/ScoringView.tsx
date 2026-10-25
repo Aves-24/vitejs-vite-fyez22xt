@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
+import { getStats } from '../utils/endStats';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -479,14 +480,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
     return () => clearTimeout(timeoutId);
   }, [inputArrows, submittedEnds.length, onRoundTwoStart, roundSize]); 
-
-  const getStats = (ends: any[], active: string[] = []) => {
-    let x=0, t=0, n=0, score=0, count=0;
-    const proc = (v: string) => { if (!v) return; count++; if (v === 'X') { x++; t++; score += 10; } else if (v === '10') { t++; score += 10; } else if (v === '9') { n++; score += 9; } else if (v !== 'M') { score += parseInt(v); } };
-    ends.forEach(e => e.arrows?.forEach(proc)); active.forEach(proc);
-    const avg = count > 0 ? (score / count).toFixed(2) : '0.00';
-    return { x, t, n, score, count, avg };
-  };
 
   const r1Ends = submittedEnds.slice(0, roundSize);
   const r2Ends = submittedEnds.slice(roundSize, plannedEnds);

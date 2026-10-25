@@ -98,7 +98,10 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
          122 cm, także jako dystans halowy (18 m nieaktywne);
       b) recurve Schüler C (≤10 lat) na torach dostaje dystans dorosłych
          (60 m chłopcy / 50 m dziewczynki, 122 cm). W hali 18 m 40 cm.
-   4. Ranga z handicapu (`rankEngine`, `handicapEngine`; XP usunięte 2026-10-22).
+      User 2026-10-25: płeć nic nie zmienia; dokładne dystanse/tarcze
+      tradycyjnego i Schüler C user dopiero sprawdza — czekamy.
+   4. ~~Ranga z handicapu~~ ✅ 2026-10-25: +34 testy w `handicapRank.test.ts`
+      (granice handicapu, progi łuków, hamulec spadku, okno 10 sesji). Bez błędów.
    5. Punktacja tarcz (`config/targetFaces.ts`: pierścienie, 6-Ring,
       dmuchawka X = 10).
    Szacunek 50–70 testów. Znaleziony błąd → NAJPIERW pokazać userowi,

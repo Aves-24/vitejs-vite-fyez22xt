@@ -24,6 +24,14 @@ jobs:
       # Testy czystej logiki (Vitest, src/**/*.test.ts) — bitwy, statystyki, tarcze.
       - run: npm test
       - run: npm run build
+      # [CI BRAMKA] Deploy wysyła DOKŁADNIE ten build, który przeszedł lint
+      # i testy — bez drugiego budowania w jobie deploy.
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
 
   rules-tests:
     runs-on: ubuntu-latest
@@ -46,13 +54,20 @@ jobs:
       - run: npm run test:rules
 
   # [C42] Auto-deploy reguł Firestore + Firebase Hosting (grot-x.web.app) po
-  # każdym merge do main — bez terminala. Tylko gdy lint/build i testy reguł zielone.
+  # każdym merge do main — bez terminala. BRAMKA: tylko gdy lint, testy logiki,
+  # build i testy reguł zielone; wysyła przetestowany build (artefakt `dist`).
+  # Ręczny deploy z komputera pilnuje hook predeploy (scripts/predeploy-check.mjs).
   # Wymaga sekretu FIREBASE_SERVICE_ACCOUNT (JSON konta usługi z rolą
   # Firebase Hosting Admin). Bez sekretu job kończy się ostrzeżeniem, nie błędem.
   deploy-hosting:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: [lint-build, rules-tests]
     runs-on: ubuntu-latest
+    # [CI BRAMKA] Jeden deploy naraz, po kolei — przy dwóch szybkich pushach
+    # starszy build nie nadpisze nowszego. Czekający deploy zastępuje nowszy.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     steps:
       - name: Check secret
         id: secret
@@ -74,8 +89,11 @@ jobs:
           cache: npm
       - run: npm ci
         if: steps.secret.outputs.ok == 'true'
-      - run: npm run build
+      - uses: actions/download-artifact@v4
         if: steps.secret.outputs.ok == 'true'
+        with:
+          name: dist
+          path: dist
       # Reguły Firestore przed hostingiem (nowy kod może ich wymagać).
       # Konto usługi potrzebuje ról: Firebase Rules Admin + Service Usage Consumer.
       - name: Deploy Firestore rules

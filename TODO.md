@@ -108,10 +108,19 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
       spójność katalogu). Bez błędów.
       Do sprzątnięcia: `src/components/SpotTarget.tsx` — martwa stara kopia,
       nikt jej nie importuje (żywa jest w `components/targets/`).
-   **PLAN TESTÓW 1–5 ZAKOŃCZONY 2026-10-25: 168 testów.** Dalej: pkt 2 (CI jako bramka).
+   **PLAN TESTÓW 1–5 ZAKOŃCZONY 2026-10-25: 168 testów.** CI jako bramka też (pkt 2).
    Szacunek 50–70 testów. Znaleziony błąd → NAJPIERW pokazać userowi,
    dopiero potem zmieniać działanie aplikacji.
-2. CI jako BRAMKA (lint + build + testy logiki + testy reguł), nie tylko info.
+2. ~~CI jako BRAMKA~~ ✅ 2026-10-25. Deploy (grot-x.web.app + reguły) rusza
+   tylko po zielonym lint + testy logiki + build + testy reguł (było już
+   `needs:`), a do tego:
+   - deploy wysyła przetestowany build (artefakt `dist`), nie buduje drugi raz;
+   - deploye w kolejce (`concurrency: deploy-production`) — starszy push
+     nie nadpisze nowszego;
+   - ręczne `npx firebase deploy --only hosting` z komputera odpala najpierw
+     `scripts/predeploy-check.mjs` (lint + testy + build), błąd = stop.
+   Lint blokuje tylko BŁĘDY; ostrzeżeń jest ~460 (głównie `any`) — nie blokują.
+   Main bez ochrony gałęzi (push prosto na main zostaje), bramka jest na deployu.
 3. Firebase Hosting preview channel przed prod — zmienia tryb „od razu main”,
    decyzja usera.
 4. Kilka E2E (Playwright, tryb gościa): start → trening → 6 strzał → zapis →

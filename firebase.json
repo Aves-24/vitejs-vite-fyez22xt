@@ -12,6 +12,7 @@
   "hosting": {
     "site": "grot-x",
     "public": "dist",
+    "predeploy": ["node scripts/predeploy-check.mjs"],
     "ignore": [
       "firebase.json",
       "**/.*",

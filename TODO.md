@@ -102,8 +102,13 @@ Stan: ~47 tys. linii, 0 testów jednostkowych, push prosto na main.
       tradycyjnego i Schüler C user dopiero sprawdza — czekamy.
    4. ~~Ranga z handicapu~~ ✅ 2026-10-25: +34 testy w `handicapRank.test.ts`
       (granice handicapu, progi łuków, hamulec spadku, okno 10 sesji). Bez błędów.
-   5. Punktacja tarcz (`config/targetFaces.ts`: pierścienie, 6-Ring,
-      dmuchawka X = 10).
+   5. ~~Punktacja tarcz~~ ✅ 2026-10-25: liczenie kliknięcia wydzielone 1:1
+      z TargetInput/SpotTarget do `utils/targetScoring.ts`, 28 testów
+      w `targetScoring.test.ts` (pełne, 6-Ring, 3-Spot, pion, dmuchawka,
+      spójność katalogu). Bez błędów.
+      Do sprzątnięcia: `src/components/SpotTarget.tsx` — martwa stara kopia,
+      nikt jej nie importuje (żywa jest w `components/targets/`).
+   **PLAN TESTÓW 1–5 ZAKOŃCZONY 2026-10-25: 168 testów.** Dalej: pkt 2 (CI jako bramka).
    Szacunek 50–70 testów. Znaleziony błąd → NAJPIERW pokazać userowi,
    dopiero potem zmieniać działanie aplikacji.
 2. CI jako BRAMKA (lint + build + testy logiki + testy reguł), nie tylko info.

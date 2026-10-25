@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StandardTarget } from './StandardTarget';
-import { SpotTarget, calculateSpotScore } from './SpotTarget';
+import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
+import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -97,26 +98,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (is3Spot) {
       return calculateSpotScore(x, y, isVertical, isTarget2);
     } 
-    let val = "M"; const sId = "";
-    const d = Math.hypot(x - 150, y - 150);
-
-    // [STREFY] Tarcze o nierównej punktacji (dmuchawkowa 3-5-7, w przyszłości
-    // IFAA 5-4-3) nie dają się wyliczyć wzorem `10 - floor(d / krok)` — mają
-    // jawną listę stref. Pierwsza strefa, w którą trafiamy, wygrywa.
-    if (face.zones) {
-      const zone = face.zones.find(z => d <= z.r);
-      return { val: zone ? String(zone.value) : "M", sId: "" };
-    }
-
-    const ring = face.scoringRingStep;
-    const maxRadius = ring * 10;
-    if (d <= maxRadius) {
-      const s = 10 - Math.floor(d / ring);
-      val = d <= ring / 2 ? "X" : s >= 1 ? s.toString() : "M";
-      // Tarcza 6-Ring punktuje tylko 10..5 — niżej jest pudło.
-      if (s < face.minScoringRing) val = "M";
-    }
-    return { val, sId: sId || "" };
+    return scoreSingleFace(face, x, y);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {

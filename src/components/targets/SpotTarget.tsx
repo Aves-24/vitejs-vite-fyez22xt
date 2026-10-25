@@ -9,35 +9,8 @@ interface SpotTargetProps {
   preview?: boolean;
 }
 
-// EKSPORTOWANA LOGIKA OBLICZEŃ - Sercem tarczy 3-Spot jest precyzyjny pomiar odległości
-export const calculateSpotScore = (x: number, y: number, isVertical: boolean, isTarget2: boolean) => {
-  const tX = !isVertical ? (isTarget2 ? 225 : 75) : 150;
-  
-  // 1. Blokada Vegas (nie pozwalamy na zaliczenie punktów z nieaktywnej połowy)
-  if (!isVertical) {
-    if ((!isTarget2 && x > 150) || (isTarget2 && x <= 150)) {
-      return { val: "M", sId: "" };
-    }
-  }
-
-  // 2. Szukamy najbliższego środka spośród 3 tarcz (TOP, MID, BOT)
-  const centers = [66, 200, 333].map((cy, i) => ({ 
-    id: `${!isVertical ? (isTarget2 ? 'R' : 'L') : 'V'}${i}`, 
-    d: Math.hypot(x - tX, y - cy) 
-  }));
-  
-  const closest = centers.reduce((p, n) => p.d < n.d ? p : n);
-  
-  // 3. WERYFIKACJA TRAFIENIA: Największy krąg (6 punktów) ma promień 62.5
-  if (closest.d <= 62.5) {
-    const s = 10 - Math.floor(closest.d / 12.5);
-    const val = closest.d <= 6.25 ? "X" : s >= 6 ? s.toString() : "M";
-    return { val, sId: closest.id }; // Trafienie w kolor - zwracamy ID spotu
-  }
-
-  // Trafienie w białe/szare tło - sId musi być PUSTE
-  return { val: "M", sId: "" };
-};
+// Liczenie punktów spotu mieszka w utils/targetScoring.ts (testy).
+export { calculateSpotScore } from '../../utils/targetScoring';
 
 export const SpotTarget: React.FC<SpotTargetProps> = ({ isVertical, isTarget2, preview }) => {
   const renderOriginalSpot = (cx: number, cy: number) => (

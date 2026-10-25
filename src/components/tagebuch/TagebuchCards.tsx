@@ -951,7 +951,7 @@ function EndsGrid({ sums }: { sums: number[] }) {
 // Karta treningu: zwinięta = wynik i porównanie, rozwinięta (dotknięcie) =
 // serie, notatki, uwaga trenera i akcje. Do statystyk prowadzi osobny
 // przycisk — wcześniej każde dotknięcie wyrzucało z dziennika.
-export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote, onEditNote }: {
+export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote, onEditNote, onEditTech }: {
   session: TbSession;
   time: string;
   insight?: SessionInsight;
@@ -965,6 +965,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
   onAddNote: (session: TbSession, text: string, topics: string[], shared: boolean) => Promise<void>;
   onDeleteNote: (id: string) => Promise<void>;
   onEditNote?: (note: TbPrivateNote) => void; // ołówek przy przypiętej notatce
+  onEditTech?: () => void; // [TECHNIK] poprawka strzał/daty/tematów treningu technicznego
 }) {
   const { t } = useTranslation();
   const [composing, setComposing] = useState(false);
@@ -1140,6 +1141,15 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
             <span className="material-symbols-outlined text-[14px]">add</span>
             {t('tagebuch.noteShort')}
           </button>
+          {session.isTech && onEditTech && (
+            <button
+              onClick={onEditTech}
+              className="flex items-center gap-0.5 text-[10px] font-black text-sky-700 bg-white border border-sky-200 px-2.5 py-1.5 rounded-full active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[14px]">edit</span>
+              {t('tagebuch.editShort')}
+            </button>
+          )}
           <div className="flex-1" />
           <button
             onClick={onOpenStats}

@@ -294,6 +294,11 @@ export const views = {
     inProgress: "LIVE"
   },
   tagebuch: {
+    editTech: "Edit technique training",
+    editShort: "Edit",
+    techDate: "Date",
+    techTime: "Time",
+    techSaveError: "Could not save the training. Please try again.",
     clubGame: "Club game",
     duel: "Duel",
     battlePlace: "Place {{place}}/{{players}}",

@@ -294,6 +294,11 @@ export const views = {
     inProgress: "LÄUFT"
   },
   tagebuch: {
+    editTech: "Techniktraining bearbeiten",
+    editShort: "Bearbeiten",
+    techDate: "Datum",
+    techTime: "Uhrzeit",
+    techSaveError: "Training konnte nicht gespeichert werden. Versuch es noch einmal.",
     clubGame: "Vereinsspiel",
     duel: "Duell",
     battlePlace: "Platz {{place}}/{{players}}",

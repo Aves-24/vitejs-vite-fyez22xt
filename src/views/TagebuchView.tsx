@@ -17,6 +17,8 @@ import { distanceMeters, distanceKey } from '../config/distances';
 import { computeInsights } from '../components/tagebuch/sessionInsights';
 import { FocusCard, FocusMilestoneCard } from '../components/tagebuch/FocusCard';
 import FocusModal from '../components/tagebuch/FocusModal';
+import { TechEditSheet } from '../components/tagebuch/TechEditSheet';
+import { updateTechnicalSession, type TechSessionEdit } from '../utils/techSession';
 import { resolveBattleResult } from '../utils/battleResult';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
@@ -268,6 +270,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   const [focusEditing, setFocusEditing] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<TbPrivateNote | null>(null);
+  const [editingTech, setEditingTech] = useState<TbSession | null>(null);
   // Rozwinięte karty treningów. Nowa uwaga trenera rozwija się sama, ale
   // tylko raz — potem decyduje użytkownik.
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -615,6 +618,15 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       ? { ...x, note: clean, isNotePublic: true, editCount: x.editCount + 1, topics: topics.length ? mergedTopics : x.topics }
       : x));
   }, [userId, addPrivateNote]);
+
+  // [TECHNIK] Poprawka treningu technicznego (strzały, data, tematy).
+  const updateTech = useCallback(async (id: string, edit: TechSessionEdit) => {
+    await updateTechnicalSession(userId, id, edit);
+    const when = new Date(edit.ts);
+    setSessions(prev => prev.map(x => x.id === id
+      ? { ...x, arrows: edit.arrows, ts: edit.ts, date: when.toLocaleDateString('pl-PL'), topics: edit.topics }
+      : x));
+  }, [userId]);
 
   // Usunięcie wpisu fokusu z osi czasu. Sam deleteDoc nie wystarczy: efekt
   // kamieni milowych odtworzyłby wpis zakończonego fokusu przy następnym
@@ -1178,6 +1190,13 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             onClose={() => setEditingNote(null)}
           />
         )}
+        {editingTech && (
+          <TechEditSheet
+            initial={{ arrows: editingTech.arrows, ts: editingTech.ts, topics: editingTech.topics }}
+            onSave={edit => updateTech(editingTech.id, edit)}
+            onClose={() => setEditingTech(null)}
+          />
+        )}
 
         {/* ALS NÄCHSTES — każdy termin w kolorze swojego rodzaju (EVENT_STYLE, 2026-10-15);
             wcześniej żółte tło: szare ginęło na jasnym tle strony
@@ -1351,6 +1370,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                       onAddNote={addSessionNote}
                       onDeleteNote={deleteNote}
                       onEditNote={setEditingNote}
+                      onEditTech={() => setEditingTech(it.session)}
                     />
                   ) : it.kind === 'milestone' ? (
                     <FocusMilestoneCard milestone={it.milestone} time={timeOf(it.ts)} onDelete={() => deleteMilestone(it.id)} />
@@ -1411,7 +1431,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
           fixed wewnątrz liczyłby się od niego, a nie od ekranu. */}
       {/* [FILTRY PRZY „+”] (user 2026-10-23) Mniejsze kółko (¾ plusa) obok „+”;
           panel z ikonami rodzajów wpisów wysuwa się nad przyciskami. */}
-      {!composerOpen && !editingNote && !focusEditing && !openMessageCoach && createPortal(
+      {!composerOpen && !editingNote && !editingTech && !focusEditing && !openMessageCoach && createPortal(
         <>
           {filtersOpen && (
             <>

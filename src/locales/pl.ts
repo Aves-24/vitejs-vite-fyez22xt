@@ -308,6 +308,11 @@ export const views = {
     inProgress: "W TOKU"
   },
   tagebuch: {
+    editTech: "Edytuj trening techniczny",
+    editShort: "Edytuj",
+    techDate: "Data",
+    techTime: "Godzina",
+    techSaveError: "Nie udało się zapisać treningu. Spróbuj jeszcze raz.",
     clubGame: "Gra klubowa",
     duel: "Pojedynek",
     battlePlace: "Miejsce {{place}}/{{players}}",

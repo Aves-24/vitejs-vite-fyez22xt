@@ -7,7 +7,8 @@
 
 ## MAŁE ZADANIA (zgłoszone przez usera)
 
-- [ ] **Techniktraining edytowalny w Tagebuch** (2026-10-25): po dodaniu
+- [x] ✅ ZROBIONE 2026-10-25 (`TechEditSheet`, `updateTechnicalSession`): strzały, data+godzina, tematy; notatki bez zmian (osobny limit).
+      **Techniktraining edytowalny w Tagebuch** (2026-10-25): po dodaniu
       nowego treningu technicznego (strzały bez punktów, `utils/techSession.ts`,
       karta `TechSessionCard`) da się go poprawić z dziennika — liczba strzał,
       fokus/temat, notatka, data. Dziś po zapisie nie ma edycji.

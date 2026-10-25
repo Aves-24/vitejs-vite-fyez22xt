@@ -29,6 +29,35 @@ export async function addToDailyArrowCounter(userId: string, count: number): Pro
   await write;
 }
 
+/** Najwięcej strzał w jednym treningu technicznym przy ręcznej poprawce. */
+export const TECH_ARROWS_MAX = 999;
+
+export interface TechSessionEdit {
+  arrows: number;
+  /** Nowa chwila treningu (data + godzina), ms. */
+  ts: number;
+  topics: string[];
+}
+
+/**
+ * Poprawka treningu technicznego z dziennika (user 2026-10-25): liczba
+ * strzał, data/godzina i tematy. Notatki NIE — mają własny limit edycji
+ * notatki widocznej dla trenera (SESSION_NOTE_EDITS). Fokusu też nie ruszamy:
+ * zaliczenie fokusu odhacza się przełącznikiem na karcie.
+ */
+export async function updateTechnicalSession(userId: string, sessionId: string, { arrows, ts, topics }: TechSessionEdit): Promise<void> {
+  const when = new Date(ts);
+  await settleWrite(updateDoc(doc(db, `users/${userId}/sessions`, sessionId), {
+    arrows,
+    totalArrows: arrows,
+    topics,
+    timestamp: Timestamp.fromDate(when),
+    date: when.toLocaleDateString('pl-PL'),
+    editedAt: Date.now(),
+  }));
+  invalidateStatsCache(userId);
+}
+
 export type TechSessionSource = 'DELAY_MIRROR';
 
 interface TechSessionInput {

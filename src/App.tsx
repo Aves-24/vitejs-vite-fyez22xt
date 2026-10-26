@@ -659,7 +659,7 @@ export default function App() {
   if (!isAuthLoading && !user) return <><AuthView /><MoveNotice hidden={false} /></>;
 
   return (
-    <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-hidden max-w-md mx-auto shadow-2xl">
+    <div className="min-h-screen bg-[#fcfdfe] text-[#333] font-sans relative overflow-x-clip max-w-md mx-auto shadow-2xl">
       
       {(!isDataReady || !fadeOutSplash) && (
         <div className={`fixed inset-0 z-[100000] bg-[#0a3a2a] flex flex-col items-center justify-center transition-opacity duration-300 ${fadeOutSplash ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>

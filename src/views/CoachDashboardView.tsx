@@ -1553,8 +1553,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 relative">
 
       <ViewHeader
-        className="-mx-5 mb-4"
-        onBack={() => onNavigate('HOME')}
+        // Nagłówek przyklejony u góry: zakładka trenera zawsze widoczna, też nad kartą ucznia.
+        className="-mx-5 mb-4 sticky top-0"
+        // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
+        onBack={() => (section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
         title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : t('coachDashboard.subtitle')}
         hideLogo
         actions={<>

@@ -222,12 +222,17 @@ export default function CoachStudentSheet({
   const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5';
 
   return createPortal(
-    <div className="fixed inset-0 z-[400000] bg-black/50 flex items-end justify-center animate-fade-in" onClick={onClose}>
+    // Karta zaczyna się tuż pod nagłówkiem panelu (72 px + notch), żeby było
+    // widać, w której zakładce jesteśmy (user 2026-10-26); nagłówek nie jest przyciemniony.
+    <div
+      className="fixed inset-x-0 bottom-0 z-[400000] bg-black/50 flex items-start justify-center px-2 pt-2 pb-2 animate-fade-in"
+      style={{ top: 'calc(env(safe-area-inset-top) + 72px)' }}
+      onClick={onClose}
+    >
       <div
-        className="bg-white w-full max-w-md rounded-t-[28px] px-4 pt-3 pb-6 max-h-[88vh] overflow-y-auto hide-scrollbar animate-fade-in-up"
+        className="bg-white w-full max-w-md rounded-[28px] px-4 pt-4 pb-6 max-h-full overflow-y-auto hide-scrollbar shadow-2xl animate-fade-in"
         onClick={e => e.stopPropagation()}
       >
-        <button onClick={onClose} className="block mx-auto w-10 h-1.5 rounded-full bg-gray-200 mb-3" aria-label={t('coachSheet.close')} />
 
         {/* NAGŁÓWEK */}
         <div className="flex items-center gap-3">
@@ -244,6 +249,13 @@ export default function CoachStudentSheet({
             aria-label={t('coachSheet.chat')}
           >
             <span className="material-symbols-outlined text-[20px]">chat</span>
+          </button>
+          <button
+            onClick={onClose}
+            className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 active:scale-90 transition-all"
+            aria-label={t('coachSheet.close')}
+          >
+            <span className="material-symbols-outlined text-[22px]">close</span>
           </button>
         </div>
 

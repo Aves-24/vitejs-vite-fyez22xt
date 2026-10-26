@@ -291,7 +291,11 @@ export const views = {
     tagebuch: "Tagebuch",
     coach: "Trainer",
     training: "Training",
-    inProgress: "LÄUFT"
+    inProgress: "LÄUFT",
+    coachToday: "Heute",
+    coachEvents: "Termine",
+    coachAthletes: "Schüler",
+    archerMode: "Schütze"
   },
   tagebuch: {
     editTech: "Techniktraining bearbeiten",

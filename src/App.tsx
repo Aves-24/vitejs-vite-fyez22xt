@@ -66,6 +66,12 @@ type AppView = 'HOME' | 'SETUP' | 'SCORING' | 'SETTINGS' | 'CALENDAR' | 'STATS' 
 const RESTORABLE_VIEWS: AppView[] = ['STATS', 'STUDENT_PROFILE', 'COACH', 'MY_COACH', 'CALENDAR',
   'SETTINGS', 'ANNOUNCEMENTS', 'ADMIN', 'BATTLE_HISTORY', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
 
+// Tryb trenera (wzór: Airbnb „Switch to hosting”): wejście w COACH podmienia
+// dolne menu na menu trenera. Na tych widokach tryb zostaje, każdy inny
+// (Home, Tagebuch, trening…) wraca do menu zawodnika.
+const COACH_MODE_VIEWS: AppView[] = ['COACH', 'CALENDAR', 'STATS', 'STUDENT_PROFILE'];
+export type CoachSection = 'TODAY' | 'ATHLETES';
+
 // Czytane raz przy ładowaniu modułu — przed pierwszym renderem App.
 const restorePoint = (() => {
   const p = takeRestorePoint();
@@ -88,6 +94,8 @@ export default function App() {
   const [fadeOutSplash, setFadeOutSplash] = useState(false);
 
   const [currentView, setCurrentView] = useState<AppView>((restorePoint?.view as AppView) || 'HOME');
+  const [coachMode, setCoachMode] = useState(restorePoint?.view === 'COACH');
+  const [coachSection, setCoachSection] = useState<CoachSection>('TODAY');
   const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>(
     (restorePoint?.settingsTab as 'PROFIL') || 'PROFIL');
   const [sessionDistance, setSessionDistance] = useState<string>('70m');
@@ -202,6 +210,10 @@ export default function App() {
     const onPopState = (e: PopStateEvent) => {
       const v: AppView = (e.state && e.state.view) || 'HOME';
       setCurrentView(v);
+      if (v === 'COACH') {
+        setCoachMode(true);
+        setCoachSection(e.state?.coachSection || 'TODAY');
+      } else if (!COACH_MODE_VIEWS.includes(v)) setCoachMode(false);
       if (v !== 'STATS' && v !== 'STUDENT_PROFILE') setViewingStudentId(null);
     };
     window.addEventListener('popstate', onPopState);
@@ -393,9 +405,20 @@ export default function App() {
       guestBlockTimerRef.current = setTimeout(() => setGuestBlockMsg(false), 3500);
       return;
     }
+    // Zakładka trybu trenera: „GROUP” (termin tematu z kalendarza) i „ATHLETES” → Schüler.
+    // Bez zakładki (np. powrót z profilu ucznia) trener wraca tam, skąd wyszedł.
+    const nextSection: CoachSection = tab === 'GROUP' || tab === 'ATHLETES' ? 'ATHLETES'
+      : tab === 'TODAY' || !coachMode ? 'TODAY' : coachSection;
     // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
-    if (view !== currentView) window.history.pushState({ view }, '');
+    // Zakładki trybu trenera też, żeby „wstecz” cofało z Schüler na Heute.
+    if (view !== currentView || (view === 'COACH' && nextSection !== coachSection)) {
+      window.history.pushState(view === 'COACH' ? { view, coachSection: nextSection } : { view }, '');
+    }
     setCurrentView(view);
+    if (view === 'COACH') {
+      setCoachMode(true);
+      setCoachSection(nextSection);
+    } else if (!COACH_MODE_VIEWS.includes(view)) setCoachMode(false);
     
     if (view !== 'STATS' && view !== 'STUDENT_PROFILE') {
       setViewingStudentId(null);
@@ -534,20 +557,51 @@ export default function App() {
     handleStartSession(entry.m, targetType, true, battleId, 0, entry.id, entry.label ? displayDistance(entry) : undefined);
   };
 
+  // Menu trybu trenera: podpisy zawsze widoczne (trener nie zgaduje ikon),
+  // na końcu wyraźny przełącznik z powrotem do trybu zawodnika.
+  const renderCoachNav = () => {
+    const items: { key: string; icon: string; label: string; active: boolean; onClick: () => void }[] = [
+      { key: 'today', icon: 'today', label: t('nav.coachToday'), active: currentView === 'COACH' && coachSection === 'TODAY', onClick: () => handleNavigate('COACH', 'TODAY') },
+      { key: 'events', icon: 'event_note', label: t('nav.coachEvents'), active: currentView === 'CALENDAR', onClick: () => { setFocusedEventId(null); handleNavigate('CALENDAR'); } },
+      { key: 'athletes', icon: 'groups', label: t('nav.coachAthletes'), active: (currentView === 'COACH' && coachSection === 'ATHLETES') || currentView === 'STATS', onClick: () => handleNavigate('COACH', 'ATHLETES') },
+    ];
+    return (
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] bg-white border-t border-gray-100" style={{ boxShadow: '0 -6px 16px rgba(0,0,0,0.08)' }}>
+        <nav aria-label={t('nav.coach')} className="h-[68px] flex items-stretch px-2">
+          {items.map(it => (
+            <button
+              key={it.key}
+              onClick={it.onClick}
+              aria-current={it.active ? 'page' : undefined}
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all ${it.active ? 'text-rose-600' : 'text-gray-500'}`}
+            >
+              <span className={`material-symbols-outlined text-[26px] px-4 rounded-full transition-colors ${it.active ? 'bg-rose-50' : ''}`}>{it.icon}</span>
+              <span className={`text-[12px] leading-tight ${it.active ? 'font-black' : 'font-bold'}`}>{it.label}</span>
+            </button>
+          ))}
+          <button
+            onClick={() => handleNavigate('HOME')}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[#0a3a2a] active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[22px] w-9 h-7 rounded-full bg-[#F2C94C] flex items-center justify-center">target</span>
+            <span className="text-[12px] leading-tight font-bold">{t('nav.archerMode')}</span>
+          </button>
+        </nav>
+        <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
+      </div>
+    );
+  };
+
   const renderBottomNav = () => {
     const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
-
-    // W panelu trenera zostają Home, Kalendarz i Trener; reszta niewidoczna, ale trzyma miejsce,
-    // żeby ikony stały dokładnie tam, gdzie zwykle.
-    const coachMode = currentView === 'COACH';
-    const hideInCoach = coachMode ? 'invisible' : '';
+    if (coachMode && isCoach) return renderCoachNav();
 
     return (
       <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
         <div className="relative h-20 w-full px-2">
           <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
-            <path d={coachMode ? "M0,0 H390 V80 H0 Z" : "M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z"} fill="white"/>
+            <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white"/>
           </svg>
         <div className="flex justify-between items-center h-full w-full relative">
           
@@ -560,13 +614,13 @@ export default function App() {
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
               {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
-            <button onClick={() => handleNavigate('MY_COACH')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">menu_book</span>
               {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.tagebuch')}</span>}
             </button>
           </div>
           
-          <div className={`${hideInCoach} relative -top-7 w-20 shrink-0 flex flex-col items-center z-50`}>
+          <div className={`relative -top-7 w-20 shrink-0 flex flex-col items-center z-50`}>
             {hasActiveSession && (
               <div className="absolute top-0 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white z-20 animate-pulse shadow-sm"></div>
             )}
@@ -588,7 +642,7 @@ export default function App() {
           </div>
 
           <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('STATS')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('STATS')} className={`flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
               {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
             </button>
@@ -600,7 +654,7 @@ export default function App() {
               </button>
             )}
 
-            <button onClick={() => handleNavigate('SETTINGS')} className={`${hideInCoach} flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('SETTINGS')} className={`flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
               {currentView === 'SETTINGS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>}
             </button>
@@ -769,7 +823,7 @@ export default function App() {
         {currentView === 'ADMIN' && ['info@aves-24.de', 'rafal.woropaj@googlemail.com'].includes(user?.email || '') && (
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
-        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
+        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}

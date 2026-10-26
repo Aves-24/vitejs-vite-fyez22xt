@@ -303,9 +303,11 @@ interface CoachDashboardViewProps {
   /** Z terminu tematu w kalendarzu: zakładka Grupy z tą grupą rozwiniętą. */
   pendingOpenGroupId?: string | null;
   onClearPendingGroup?: () => void;
+  /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
+  section?: 'TODAY' | 'ATHLETES';
 }
 
-export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup }: CoachDashboardViewProps) {
+export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
   const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
@@ -361,7 +363,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
-  const [viewMode, setViewMode] = useState<'groups' | 'students' | null>(null);
+  const [viewMode, setViewMode] = useState<'groups' | 'students'>('students');
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [newGroupIcon, setNewGroupIcon] = useState(DEFAULT_GROUP_ICON);
@@ -458,6 +460,24 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     onClearPendingGroup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingOpenGroupId, coachGroups]);
+
+  // [C37] Lista uczniów na ekranie = nowi zobaczeni; kropka gaśnie na
+  // wszystkich urządzeniach trenera, bo lista idzie do jego dokumentu.
+  useEffect(() => {
+    if (section !== 'ATHLETES' || viewMode !== 'students' || newStudentIds.length === 0) return;
+    setHighlightStudentIds(newStudentIds);
+    setNewStudentIds([]);
+    void saveSeenStudents(userId, students.map(s => s.id));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [section, viewMode, newStudentIds]);
+
+  // Filtr „nieaktywni” i zaznaczanie dotyczą tylko zakładki Schüler.
+  useEffect(() => {
+    if (section !== 'TODAY') return;
+    setInactiveOnly(false);
+    setIsSelecting(false); setSelectedStudents([]);
+    setIsGroupSelecting(false); setSelectedGroupId(null);
+  }, [section]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1445,7 +1465,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       <ViewHeader
         className="-mx-5 mb-4"
         onBack={() => onNavigate('HOME')}
-        title={t('coachDashboard.subtitle')}
+        title={section === 'ATHLETES' ? t('nav.coachAthletes') : t('coachDashboard.subtitle')}
         hideLogo
         actions={<>
           <div className="bg-white/10 text-[#fed33e] px-2.5 rounded-xl flex items-center gap-1.5 h-10">
@@ -1462,11 +1482,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               : 'bg-[#fed33e] text-[#0a3a2a] active:scale-95'
             }`}
           >
-            <span className="material-symbols-outlined text-[20px]">add_reaction</span>
+            <span className="material-symbols-outlined text-[20px]">person_add</span>
           </button>
         </>}
       />
 
+      {section === 'TODAY' && (
       <div className="space-y-2 mb-4">
       {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy.
           „+" obok: nowy termin w kalendarzu z kategorią Trener. */}
@@ -1672,7 +1693,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             ))}
             <button
               type="button"
-              onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); }}
+              onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); onNavigate('COACH', 'ATHLETES'); }}
               className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all"
             >
               {inactiveCount > INACTIVE_SHOWN
@@ -1682,53 +1703,47 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
         </CollapsibleSection>
       )}
-      </div>
 
-      {/* Toggle widoku: Grupy / Uczniowie */}
-      <div className="flex gap-2 mb-5">
+      {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”; przycisk
+          przeszedł do dolnego menu, więc informacja zostaje na Heute. */}
+      {newStudentIds.length > 0 && (
         <button
-          onClick={() => { setViewMode(m => (m === 'groups' ? null : 'groups')); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
-          aria-expanded={viewMode === 'groups'}
-          className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-            viewMode === 'groups' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-[#0a3a2a] border border-rose-200'
-          }`}
+          type="button"
+          onClick={() => { setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
+          className="w-full flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all"
         >
-          <span className={`material-symbols-outlined text-sm ${viewMode === 'groups' ? '' : 'text-rose-500'}`}>folder_shared</span>
-          {t('coachDashboard.viewGroups')}
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span className="flex-1 text-[13px] font-black text-emerald-800">{t('coachDashboard.newStudentDot', { count: newStudentIds.length })}</span>
+          <span className="material-symbols-outlined text-emerald-400 text-[20px]">chevron_right</span>
         </button>
-        <button
-          onClick={() => {
-            // Stan liczymy przed setState: funkcja aktualizująca musi być czysta
-            // (StrictMode woła ją dwa razy), więc zapis do bazy i drugi
-            // setState nie mogą siedzieć w środku.
-            const opening = viewMode !== 'students';
-            // [C37] Wejście w listę = zobaczone; kropka gaśnie na wszystkich
-            // urządzeniach trenera, bo lista idzie do jego dokumentu.
-            if (opening && newStudentIds.length > 0) {
-              setHighlightStudentIds(newStudentIds);
-              setNewStudentIds([]);
-              void saveSeenStudents(userId, students.map(s => s.id));
-            }
-            setViewMode(opening ? 'students' : null);
-            setInactiveOnly(false); exitSelecting(); exitGroupSelecting();
-          }}
-          aria-expanded={viewMode === 'students'}
-          className={`relative flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-sm ${
-            viewMode === 'students' ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-gray-400 border border-gray-100'
-          }`}
-        >
-          <span className="material-symbols-outlined text-sm">group</span>
-          {t('coachDashboard.viewStudents')}
-          {/* [C37] Zielona kropka: doszedł nowy uczeń, jeszcze nieoglądany. */}
-          {newStudentIds.length > 0 && (
-            <span
-              aria-label={t('coachDashboard.newStudentDot', { count: newStudentIds.length })}
-              title={t('coachDashboard.newStudentDot', { count: newStudentIds.length })}
-              className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white shadow-sm animate-pulse shrink-0"
-            />
-          )}
-        </button>
+      )}
       </div>
+      )}
+
+      {/* Zakładka Schüler: przełącznik segmentowy Schüler | Gruppen zamiast
+          dwóch zwijanych przycisków pod sekcjami Heute — lista od razu otwarta. */}
+      {section === 'ATHLETES' && (
+      <div role="tablist" className="flex p-1 mb-4 bg-gray-100 rounded-2xl">
+        {([
+          { mode: 'students' as const, icon: 'group', label: t('coachDashboard.viewStudents'), count: students.length },
+          { mode: 'groups' as const, icon: 'folder_shared', label: t('coachDashboard.viewGroups'), count: coachGroups.length },
+        ]).map(seg => (
+          <button
+            key={seg.mode}
+            role="tab"
+            aria-selected={viewMode === seg.mode}
+            onClick={() => { setViewMode(seg.mode); setInactiveOnly(false); exitSelecting(); exitGroupSelecting(); }}
+            className={`flex-1 py-2.5 rounded-xl text-[13px] font-black transition-all flex items-center justify-center gap-1.5 ${
+              viewMode === seg.mode ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-500'
+            }`}
+          >
+            <span className={`material-symbols-outlined text-[18px] ${viewMode === seg.mode ? 'text-rose-600' : ''}`}>{seg.icon}</span>
+            {seg.label}
+            <span className="text-[12px] font-bold text-gray-400">{seg.count}</span>
+          </button>
+        ))}
+      </div>
+      )}
 
       {/* [C34] Skaner jako popup (zgłoszenie usera 2026-09-16: doczepiał się
           na dole strony, pod listą uczniów, i łatwo było go przeoczyć).
@@ -1795,7 +1810,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         document.body
       )}
 
-      {viewMode === 'groups' && (
+      {section === 'ATHLETES' && viewMode === 'groups' && (
         <div className="space-y-2">
           {/* [C27] Same grupy. Klik rozwija grupę w miejscu: jej uczniowie
               i dziennik (do czytania). Zmiana nazwy, nowy wpis i usunięcie —
@@ -2040,7 +2055,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       )}
 
       {/* Zakładka UCZNIOWIE — sama lista, bez paska grup */}
-      {viewMode === 'students' && (
+      {section === 'ATHLETES' && viewMode === 'students' && (
         <div>
           {inactiveOnly && (
             <button

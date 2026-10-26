@@ -16,6 +16,8 @@ export interface ScheduleSlot {
   day: number;
   /** „HH:MM”. */
   time: string;
+  /** Miejsce tego terminu — w różne dni bywa inne (user 2026-10-26). */
+  place?: string;
 }
 
 export interface GroupSchedule {
@@ -24,12 +26,14 @@ export interface GroupSchedule {
   every: 1 | 2;
   /** Dzień (YYYY-MM-DD) w tygodniu, od którego liczy się „co drugi tydzień”. */
   anchor: string;
+  /** Tylko w starych zapisach: jedno miejsce dla całej grupy (przenoszone do terminów). */
   place?: string;
 }
 
 export interface Occurrence {
   date: string;
   time: string;
+  place?: string;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -59,9 +63,11 @@ export function normalizeSchedule(raw: unknown): GroupSchedule | null {
   const slots: ScheduleSlot[] = Array.isArray(x.slots)
     ? x.slots
     : Array.isArray(x.days) && x.time ? x.days.map(day => ({ day, time: x.time as string })) : [];
-  const clean = sortSlots(slots.filter(s => Number.isInteger(s?.day) && s.day >= 0 && s.day <= 6 && TIME_RE.test(s.time || '')));
+  const clean = sortSlots(slots
+    .filter(s => Number.isInteger(s?.day) && s.day >= 0 && s.day <= 6 && TIME_RE.test(s.time || ''))
+    .map(s => ({ ...s, place: (s.place || x.place || '').trim() || undefined })));
   if (clean.length === 0) return null;
-  return { slots: clean, every: x.every, anchor: x.anchor as string, ...(x.place ? { place: x.place } : {}) };
+  return { slots: clean, every: x.every, anchor: x.anchor as string };
 }
 
 export function isValidSchedule(s: unknown): s is GroupSchedule {
@@ -72,13 +78,13 @@ export function isValidSchedule(s: unknown): s is GroupSchedule {
 export function sortSlots(slots: ScheduleSlot[]): ScheduleSlot[] {
   const seen = new Set<string>();
   return slots
-    .map(s => ({ day: s.day, time: s.time.padStart(5, '0') }))
+    .map(s => ({ day: s.day, time: s.time.padStart(5, '0'), ...(s.place ? { place: s.place } : {}) }))
     .filter(s => { const k = `${s.day}|${s.time}`; if (seen.has(k)) return false; seen.add(k); return true; })
     .sort((a, b) => weekPos(a.day) - weekPos(b.day) || a.time.localeCompare(b.time));
 }
 
-/** Godziny treningów tego dnia (posortowane), pusta lista = brak treningu. */
-export function timesOn(raw: unknown, dayKey: string): string[] {
+/** Terminy tego dnia (po godzinie), pusta lista = brak treningu. */
+function slotsOn(raw: unknown, dayKey: string): ScheduleSlot[] {
   const s = normalizeSchedule(raw);
   if (!s) return [];
   if (s.every === 2) {
@@ -86,7 +92,12 @@ export function timesOn(raw: unknown, dayKey: string): string[] {
     if (weeks % 2 !== 0) return [];
   }
   const day = noon(dayKey).getDay();
-  return s.slots.filter(x => x.day === day).map(x => x.time);
+  return s.slots.filter(x => x.day === day);
+}
+
+/** Godziny treningów tego dnia (posortowane), pusta lista = brak treningu. */
+export function timesOn(raw: unknown, dayKey: string): string[] {
+  return slotsOn(raw, dayKey).map(x => x.time);
 }
 
 export function occursOn(raw: unknown, dayKey: string): boolean {
@@ -99,7 +110,7 @@ export function upcomingOccurrences(raw: unknown, fromDayKey: string, count = 2,
   const d = noon(fromDayKey);
   for (let i = 0; i < maxDays && out.length < count; i++) {
     const date = dayKeyOfDate(d);
-    for (const time of timesOn(raw, date)) if (out.length < count) out.push({ date, time });
+    for (const x of slotsOn(raw, date)) if (out.length < count) out.push({ date, time: x.time, ...(x.place ? { place: x.place } : {}) });
     d.setDate(d.getDate() + 1);
   }
   return out;

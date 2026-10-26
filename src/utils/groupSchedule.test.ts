@@ -68,6 +68,16 @@ describe('groupSchedule', () => {
     expect(nextOccurrence({ slots: [], every: 1, anchor: '2026-10-28' }, '2026-10-26')).toBeNull();
   });
 
+  it('miejsce osobno dla terminu, stare miejsce grupy przechodzi na terminy', () => {
+    const s = { slots: [{ day: 3, time: '18:00', place: 'Halle' }, { day: 6, time: '12:00', place: 'Platz' }], every: 1, anchor: '2026-10-28' };
+    expect(upcomingOccurrences(s, '2026-10-28', 2)).toEqual([
+      { date: '2026-10-28', time: '18:00', place: 'Halle' },
+      { date: '2026-10-31', time: '12:00', place: 'Platz' },
+    ]);
+    const old = { slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28', place: 'Halle' };
+    expect(normalizeSchedule(old)?.slots).toEqual([{ day: 3, time: '18:00', place: 'Halle' }]);
+  });
+
   it('sloty od poniedziałku, niedziela na końcu, bez duplikatów', () => {
     expect(sortSlots([{ day: 0, time: '10:00' }, { day: 3, time: '18:00' }, { day: 1, time: '17:00' }, { day: 3, time: '18:00' }]))
       .toEqual([{ day: 1, time: '17:00' }, { day: 3, time: '18:00' }, { day: 0, time: '10:00' }]);

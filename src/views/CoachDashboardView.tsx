@@ -356,7 +356,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [scheduleGroupId, setScheduleGroupId] = useState<string | null>(null);
   const [schedSlots, setSchedSlots] = useState<ScheduleSlot[]>([]);
   const [schedEvery, setSchedEvery] = useState<1 | 2>(1);
-  const [schedPlace, setSchedPlace] = useState('');
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
@@ -1104,7 +1103,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const sc = normalizeSchedule(group.schedule);
     setSchedSlots(sc?.slots || [{ day: new Date().getDay(), time: '18:00' }]);
     setSchedEvery(sc?.every || 1);
-    setSchedPlace(sc?.place || '');
     setScheduleGroupId(group.id);
   };
 
@@ -1114,11 +1112,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     if (!scheduleGroupId) return;
     let schedule: GroupSchedule | null = null;
     if (!remove) {
-      const draft: GroupSchedule = { slots: sortSlots(schedSlots), every: schedEvery, anchor: dayKeyOf(Date.now()) };
+      const slots = schedSlots.map(x => ({ ...x, place: (x.place || '').trim().slice(0, 40) || undefined }));
+      const draft: GroupSchedule = { slots: sortSlots(slots), every: schedEvery, anchor: dayKeyOf(Date.now()) };
       draft.anchor = upcomingOccurrences({ ...draft, every: 1 }, draft.anchor, 1, 7)[0]?.date || draft.anchor;
-      if (schedPlace.trim()) draft.place = schedPlace.trim().slice(0, 40);
       schedule = normalizeSchedule(draft);
       if (!schedule) return;
+      schedule = { ...schedule, slots: schedule.slots.map(x => (x.place ? x : { day: x.day, time: x.time })) };
     }
     const updatedGroups = coachGroups.map(g => {
       if (g.id !== scheduleGroupId) return g;
@@ -1137,12 +1136,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // 1.11.2026 to niedziela, więc 1 + getDay() daje właściwy dzień tygodnia.
   const weekdayShort = (day: number) => new Date(2026, 10, 1 + day).toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '');
-  // „Mi 18:00, Sa 12:00 · jede Woche · Halle” — na karcie grupy.
+  // „Mi 18:00, Sa 12:00 · jede Woche · Halle” — na karcie grupy. Gdy miejsca
+  // się różnią, każde stoi przy swoim terminie: „Mi 18:00 Halle, Sa 12:00 Platz”.
   const scheduleSummary = (raw: unknown) => {
     const sc = normalizeSchedule(raw);
     if (!sc) return '';
-    const slots = sc.slots.map(x => `${weekdayShort(x.day)} ${x.time}`).join(', ');
-    return [slots, t(sc.every === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1'), sc.place].filter(Boolean).join(' · ');
+    const places = [...new Set(sc.slots.map(x => x.place || ''))];
+    const shared = places.length === 1 ? places[0] : '';
+    const slots = sc.slots.map(x => [weekdayShort(x.day), x.time, shared ? '' : x.place].filter(Boolean).join(' ')).join(', ');
+    return [slots, t(sc.every === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1'), shared].filter(Boolean).join(' · ');
   };
 
   const handleEditGroup = async () => {
@@ -1594,7 +1596,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const scheduledOcc = coachGroups.flatMap(g => {
           const sc = normalizeSchedule(g.schedule);
           return sc ? upcomingOccurrences(sc, todayKey, 4).map(o => ({
-            id: `sched_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, place: sc.place,
+            id: `sched_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, place: o.place,
             trainingTopicGroupId: g.id, topicText: coachGroupTopics[g.id]?.[o.date]?.text, scheduledGroupId: g.id,
           })) : [];
         });
@@ -1618,6 +1620,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - startOfToday) / 86400000);
           return days === 0 ? t('coachToday.today') : days === 1 ? t('coachToday.tomorrow')
             : d.toLocaleDateString(i18n.language, { weekday: 'long' });
+        };
+        // „Samstag, 31.10.” — dzień tygodnia z datą (user 2026-10-26); dziś bez daty.
+        const dateLabel = (d: Date) => {
+          const day = dayLabel(d);
+          return dayKeyOf(d.getTime()) === todayKey ? day : `${day}, ${d.toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric' })}`;
         };
         // „in 1:30 h” / „läuft” / „vorbei” — trening liczymy jako 2 h.
         const countdown = (ev: any) => {
@@ -1687,8 +1694,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             className="mt-2 w-full flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-100 opacity-70 active:scale-[0.98] transition-all text-left"
           >
             <span className="material-symbols-outlined text-[16px] text-rose-600 shrink-0">schedule</span>
-            <span className="text-[12px] font-black text-rose-600 shrink-0 first-letter:uppercase">{dayLabel(eventDate(ev))}{ev.time ? ` · ${ev.time}` : ''}</span>
-            <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}</span>
+            <span className="text-[12px] font-black text-rose-600 shrink-0 first-letter:uppercase">{dateLabel(eventDate(ev))}{ev.time ? ` · ${ev.time}` : ''}</span>
+            <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}{ev.place && <span className="text-gray-400"> · {ev.place}</span>}</span>
             <span className="material-symbols-outlined text-gray-300 text-[18px] shrink-0">chevron_right</span>
           </button>
         );
@@ -1790,7 +1797,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dayLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
+                      <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dateLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
                       <p className="text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5 truncate">{nextEv.title}{nextEv.place && <span className="text-gray-400 font-bold"> · {nextEv.place}</span>}</p>
                       {topics && <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">{topics}</p>}
                     </div>
@@ -2526,9 +2533,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
               {/* Każdy termin osobno: dzień + godzina (user 2026-10-26: „sobota 12, środa 18”). */}
               <p className="text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.days')}</p>
-              <div className="space-y-2 mb-2">
+              <div className="space-y-3 mb-2">
                 {schedSlots.map((slot, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                  <div key={i} className="space-y-1.5">
+                  <div className="flex items-center gap-2">
                     <select
                       value={slot.day}
                       onChange={e => setSlot(i, { day: Number(e.target.value) })}
@@ -2556,12 +2564,26 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
                   </div>
+                  {/* Miejsce tego terminu — w różne dni może być inne. */}
+                  <div className="flex items-center gap-2 pr-11">
+                    <span className="material-symbols-outlined text-[18px] text-gray-400 shrink-0">location_on</span>
+                    <input
+                      type="text"
+                      value={slot.place || ''}
+                      maxLength={40}
+                      placeholder={t('coachSchedule.placeHint')}
+                      aria-label={t('coachSchedule.place')}
+                      onChange={e => setSlot(i, { place: e.target.value })}
+                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[14px] font-bold text-[#333] outline-none focus:border-rose-500"
+                    />
+                  </div>
+                  </div>
                 ))}
               </div>
               {schedSlots.length < 7 && (
                 <button
                   type="button"
-                  onClick={() => setSchedSlots(prev => [...prev, { day: prev[prev.length - 1]?.day ?? 3, time: prev[prev.length - 1]?.time || '18:00' }])}
+                  onClick={() => setSchedSlots(prev => [...prev, { day: prev[prev.length - 1]?.day ?? 3, time: prev[prev.length - 1]?.time || '18:00', place: prev[prev.length - 1]?.place }])}
                   className="w-full mb-4 py-2 rounded-xl border border-dashed border-rose-200 text-[13px] font-black text-rose-600 flex items-center justify-center gap-1 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>
@@ -2584,17 +2606,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 ))}
               </div>
 
-              <label className="block mb-5">
-                <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.place')}</span>
-                <input
-                  type="text"
-                  value={schedPlace}
-                  maxLength={40}
-                  placeholder={t('coachSchedule.placeHint')}
-                  onChange={e => setSchedPlace(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] font-bold text-[#333] outline-none focus:border-rose-500"
-                />
-              </label>
 
               <div className="flex gap-2">
                 <button onClick={() => setScheduleGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>

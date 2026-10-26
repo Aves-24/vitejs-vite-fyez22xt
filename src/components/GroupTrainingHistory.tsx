@@ -124,7 +124,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
       {open && (
       <div className="space-y-2">
         <p className="flex items-center gap-1 text-[11px] font-bold text-gray-500 pl-1">
-          <span className="material-symbols-outlined text-rose-500 text-[14px]">lock</span>{t('coachDashboard.historyPrivate')}
+          <span className="material-symbols-outlined text-gray-400 text-[14px]">lock</span>{t('coachDashboard.historyPrivate')}
         </p>
         {items.slice(0, shown).map(it => {
           if (it.loose) {
@@ -155,13 +155,13 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
           return (
             <div key={it.key} className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
               <div role="button" tabIndex={0} aria-expanded={isOpen} onClick={() => toggle(day)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(day); } }} className="cursor-pointer">
-                <EntryRow icon="sports" iconCls="text-rose-600" kind={t('tagebuch.ledTraining')} kindCls="text-rose-700" title={focusTitle(gt, t)} time={dayLabel(day)}>
+                <EntryRow icon="sports" iconCls="text-[#0a3a2a]" kind={t('tagebuch.ledTraining')} kindCls="text-[#0a3a2a]" title={focusTitle(gt, t)} time={dayLabel(day)}>
                   <div className="flex items-end gap-2">
                     <div className="flex-1 min-w-0">
                       {gt.text && gt.topic && <TopicChips topics={[gt.topic]} />}
                       {note && !isOpen && (
                         <p className="mt-1.5 flex items-start gap-1 text-[11px] font-medium text-gray-600 leading-relaxed">
-                          <span className="material-symbols-outlined text-[13px] text-rose-400 mt-0.5">lock</span>
+                          <span className="material-symbols-outlined text-[13px] text-gray-400 mt-0.5">lock</span>
                           <span className="line-clamp-2 break-words">„{note}”</span>
                         </p>
                       )}
@@ -177,20 +177,20 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
                   <TopicMemberList members={members} gt={gt} status={status[day] || {}} onOpenStudent={onOpenStudent} />
                   <div>
                     <p className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-gray-500 mb-1">
-                      <span className="material-symbols-outlined text-rose-500 text-[14px]">lock</span>{t('coachDashboard.historyNoteLabel')}
+                      <span className="material-symbols-outlined text-gray-400 text-[14px]">lock</span>{t('coachDashboard.historyNoteLabel')}
                     </p>
                     <textarea
                       value={draft}
                       onChange={e => setDraft(e.target.value.slice(0, NOTE_MAX))}
                       maxLength={NOTE_MAX}
                       placeholder={t('coachDashboard.historyNotePlaceholder')}
-                      className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-20"
+                      className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-[12px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-20"
                     />
                     {draft.trim() !== (note || '') && (
                       <button
                         onClick={() => saveNote(day)}
                         disabled={saving}
-                        className="mt-1.5 w-full min-h-[40px] rounded-xl text-[11px] font-black uppercase tracking-widest bg-rose-600 text-white disabled:opacity-40 active:scale-95 transition-all"
+                        className="mt-1.5 w-full min-h-[40px] rounded-xl text-[11px] font-black uppercase tracking-widest bg-[#0a3a2a] text-[#fed33e] disabled:opacity-40 active:scale-95 transition-all"
                       >
                         {t('coachDashboard.historyNoteSave')}
                       </button>
@@ -204,7 +204,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
                           onClick={() => onEdit(gt)}
                           className="flex-1 min-w-0 min-h-[40px] px-2 rounded-xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wide active:scale-95 transition-all"
                         >
-                          <span className="material-symbols-outlined text-rose-600 text-[18px] shrink-0">edit</span>
+                          <span className="material-symbols-outlined text-[#0a3a2a] text-[18px] shrink-0">edit</span>
                           <span className="truncate">{t('coachDashboard.groupTopicEdit')}</span>
                         </button>
                       )}
@@ -214,7 +214,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
                           onClick={() => setRepeatAsk(gt)}
                           className="flex-1 min-w-0 min-h-[40px] px-2 rounded-xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center justify-center gap-1 text-[10px] font-black uppercase tracking-wide active:scale-95 transition-all"
                         >
-                          <span className="material-symbols-outlined text-rose-600 text-[18px] shrink-0">replay</span>
+                          <span className="material-symbols-outlined text-[#0a3a2a] text-[18px] shrink-0">replay</span>
                           <span className="truncate">{t('coachDashboard.groupTopicRepeat')}</span>
                         </button>
                       )}
@@ -237,7 +237,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[500000] flex items-center justify-center p-6 animate-fade-in" onClick={() => setRepeatAsk(null)}>
           <div className="bg-white rounded-[28px] p-5 w-full max-w-[340px] shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-white text-[20px]">replay</span>
               </div>
               <p className="text-[14px] font-black text-[#0a3a2a] leading-tight">{t('coachDashboard.groupTopicRepeatConfirm')}</p>
@@ -249,7 +249,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
               </button>
               <button
                 onClick={() => { onRepeat(repeatAsk); setRepeatAsk(null); }}
-                className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md"
+                className="flex-[2] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 shadow-md"
               >
                 {t('coachDashboard.groupTopicRepeat')}
               </button>

@@ -1424,7 +1424,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             onClick={() => setIsSelecting(true)}
             className="text-[9px] font-black uppercase text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
           >
-            <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
+            <span className="material-symbols-outlined text-gray-400 text-[14px]">check_circle</span>
             {t('coachDashboard.selectMode')}
           </button>
         ))}
@@ -1670,7 +1670,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
         );
         const more = (total: number, open: boolean, toggle: () => void) => total > TODAY_SHOWN && (
-          <button type="button" onClick={toggle} className="w-full py-2 text-[12px] font-black text-rose-600 active:scale-95 transition-all">
+          <button type="button" onClick={toggle} className="w-full py-2 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all">
             {open ? t('coachToday.showLess') : t('coachToday.showAll', { count: total })}
           </button>
         );
@@ -1693,8 +1693,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             onClick={() => openEv(ev)}
             className="mt-2 w-full flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-100 opacity-70 active:scale-[0.98] transition-all text-left"
           >
-            <span className="material-symbols-outlined text-[16px] text-rose-600 shrink-0">schedule</span>
-            <span className="text-[12px] font-black text-rose-600 shrink-0 first-letter:uppercase">{dateLabel(eventDate(ev))}{ev.time ? ` · ${ev.time}` : ''}</span>
+            <span className="material-symbols-outlined text-[16px] text-[#0a3a2a] shrink-0">schedule</span>
+            <span className="text-[12px] font-black text-[#0a3a2a] shrink-0 first-letter:uppercase">{dateLabel(eventDate(ev))}{ev.time ? ` · ${ev.time}` : ''}</span>
             <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}{ev.place && <span className="text-gray-400"> · {ev.place}</span>}</span>
             <span className="material-symbols-outlined text-gray-300 text-[18px] shrink-0">chevron_right</span>
           </button>
@@ -1703,7 +1703,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <button
             type="button"
             onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-            className="flex items-center gap-1 text-[12px] font-black text-rose-600 active:scale-95 transition-all"
+            className="flex items-center gap-1 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             {t('coachDashboard.newEventBtn')}
@@ -1732,15 +1732,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             const cd = countdown(todayEv);
             const topics = topicsLine(todayEv);
             return (
-              <section className="bg-white rounded-2xl border-2 border-rose-200 shadow-sm overflow-hidden">
+              <section className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-rose-400 shadow-sm overflow-hidden">
                 <button
                   type="button"
                   onClick={() => openEv(todayEv)}
-                  className="w-full text-left px-3.5 pt-3 pb-2.5 active:bg-rose-50/50 transition-all"
+                  className="w-full text-left px-3.5 pt-3 pb-2.5 active:bg-gray-50 transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-[16px] font-black text-[#0a3a2a] leading-tight min-w-0 break-words">{todayEv.title}{todayEv.place && <span className="text-gray-400 font-bold"> · {todayEv.place}</span>}</p>
-                    {cd && <span className="shrink-0 text-[12px] font-black text-rose-600 bg-rose-50 rounded-full px-2 py-0.5">{cd}</span>}
+                    {cd && <span className="shrink-0 text-[12px] font-black text-[#0a3a2a] bg-gray-50 rounded-full px-2 py-0.5">{cd}</span>}
                   </div>
                   {topics && <p className="text-[13px] font-bold text-emerald-700 mt-1">{topics}</p>}
                 </button>
@@ -1773,7 +1773,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     );
                   })}
                   {roster.length > 5 && (
-                    <button type="button" onClick={() => setIsRosterOpen(o => !o)} className="w-full py-1.5 text-[12px] font-black text-rose-600 active:scale-95 transition-all">
+                    <button type="button" onClick={() => setIsRosterOpen(o => !o)} className="w-full py-1.5 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all">
                       {isRosterOpen ? t('coachToday.showLess') : t('coachToday.rosterMore', { count: roster.length - 5 })}
                     </button>
                   )}
@@ -1794,10 +1794,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <button
                     type="button"
                     onClick={() => openEv(nextEv)}
-                    className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
+                    className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-gray-100 border-l-4 border-l-rose-400 active:scale-[0.98] transition-all text-left"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dateLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
+                      <p className="text-[13px] font-black text-[#0a3a2a] first-letter:uppercase">{dateLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
                       <p className="text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5 truncate">{nextEv.title}{nextEv.place && <span className="text-gray-400 font-bold"> · {nextEv.place}</span>}</p>
                       {topics && <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">{topics}</p>}
                     </div>
@@ -1808,10 +1808,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 <button
                   type="button"
                   onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-                  className="w-full rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 py-4 text-center active:scale-[0.98] transition-all"
+                  className="w-full rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 py-4 text-center active:scale-[0.98] transition-all"
                 >
                   <span className="block text-[13px] font-bold text-gray-500">{t('coachDashboard.upcomingNone')}</span>
-                  <span className="block text-[13px] font-black text-rose-600 mt-1">{t('coachDashboard.newEventBtn')}</span>
+                  <span className="block text-[13px] font-black text-[#0a3a2a] mt-1">{t('coachDashboard.newEventBtn')}</span>
                 </button>
               )}
               {followCard(followUpOf(nextEv))}
@@ -1963,7 +1963,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               value={manualStudentId}
               onChange={(e) => setManualStudentId(e.target.value)}
               placeholder={t('coachDashboard.idPlaceholder')}
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] font-bold outline-none focus:border-rose-500 text-[#333]"
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-[11px] font-bold outline-none focus:border-[#0a3a2a] text-[#333]"
             />
             <button
               onClick={() => {
@@ -1972,7 +1972,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 }
               }}
               disabled={!manualStudentId.trim() || isLoading}
-              className="bg-rose-600 text-white px-4 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-md"
+              className="bg-[#0a3a2a] text-[#fed33e] px-4 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 disabled:opacity-50 transition-all shadow-md"
             >
               {t('coachDashboard.addBtn')}
             </button>
@@ -1984,7 +1984,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             <div className="flex-1 h-px bg-gray-100"></div>
           </div>
 
-          <div id="reader" className={`w-full rounded-2xl overflow-hidden border-2 border-rose-100 bg-gray-50 flex items-center justify-center min-h-[250px] ${cameraError ? 'hidden' : ''}`}></div>
+          <div id="reader" className={`w-full rounded-2xl overflow-hidden border-2 border-gray-200 bg-gray-50 flex items-center justify-center min-h-[250px] ${cameraError ? 'hidden' : ''}`}></div>
           {cameraError && (
             <div className="w-full bg-red-50 border border-red-100 rounded-2xl p-6 flex flex-col items-center justify-center min-h-[150px] text-center">
                <span className="material-symbols-outlined text-red-400 text-3xl mb-2">no_photography</span>
@@ -2006,7 +2006,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               2026-09-10); w rozwiniętej grupie tych przycisków już nie ma. */}
           {coachGroups.length > 0 && (
             <div className="flex items-center justify-between ml-2 pr-1 mb-1">
-              <h2 className="text-[10px] font-black text-rose-500 uppercase tracking-widest">
+              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                 {t('coachDashboard.viewGroups')} ({coachGroups.length})
               </h2>
               {isGroupSelecting ? (
@@ -2021,7 +2021,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   onClick={() => { setIsGroupSelecting(true); setActiveGroup('ALL'); exitSelecting(); }}
                   className="text-[9px] font-black uppercase text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
                 >
-                  <span className="material-symbols-outlined text-rose-500 text-[14px]">check_circle</span>
+                  <span className="material-symbols-outlined text-gray-400 text-[14px]">check_circle</span>
                   {t('coachDashboard.selectMode')}
                 </button>
               )}
@@ -2096,14 +2096,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     </div>
                   ) : (
                     <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-rose-600 text-[20px]">{groupIcon(group)}</span>
+                      <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
                     </span>
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
                     {/* [HARMONOGRAM] Stały trening od razu pod nazwą (user 2026-10-26: „ma być u góry”). */}
                     {scheduleSummary(group.schedule) && (
-                      <p className="flex items-center gap-1 text-[12px] font-bold text-rose-700 truncate mt-0.5">
+                      <p className="flex items-center gap-1 text-[12px] font-bold text-[#0a3a2a] truncate mt-0.5">
                         <span className="material-symbols-outlined text-[14px]">schedule</span>
                         <span className="truncate">{scheduleSummary(group.schedule)}</span>
                       </p>
@@ -2142,7 +2142,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     </div>
                     {!isOpen && nextTopic && (
                       <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
-                        <span className="material-symbols-outlined text-rose-600 text-[14px]">sports</span>
+                        <span className="material-symbols-outlined text-[#0a3a2a] text-[14px]">sports</span>
                         <span className="truncate">
                           <span className="font-black">
                             {nextTopicDay === todayKey
@@ -2158,7 +2158,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
                       aria-label={t('coachDashboard.groupMessageBtn')}
                       title={t('coachDashboard.groupMessageBtn')}
-                      className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                      className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[20px]">mail</span>
                     </button>
@@ -2175,10 +2175,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       type="button"
                       onClick={() => openScheduleEditor(group)}
                       className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all ${
-                        scheduleSummary(group.schedule) ? 'bg-white border border-rose-100 shadow-sm' : 'border border-dashed border-rose-200 bg-rose-50/40'
+                        scheduleSummary(group.schedule) ? 'bg-white border border-gray-100 border-l-4 border-l-rose-400 shadow-sm' : 'border border-dashed border-gray-200 bg-gray-50/50'
                       }`}
                     >
-                      <span className="material-symbols-outlined text-rose-600 text-[20px]">schedule</span>
+                      <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">schedule</span>
                       <span className="flex-1 min-w-0">
                         <span className="block text-[12px] font-bold text-gray-500">{t('coachSchedule.title')}</span>
                         <span className="block text-[14px] font-black text-[#0a3a2a] truncate">
@@ -2225,7 +2225,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                             onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
                             aria-label={t('coachDashboard.addToGroupBtn')}
                             title={t('coachDashboard.addToGroupBtn')}
-                            className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all"
+                            className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
                           >
                             <span className="material-symbols-outlined text-[20px]">person_add</span>
                           </button>
@@ -2246,7 +2246,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">{t('coachDashboard.noGroups')}</p>
               <button
                 onClick={() => setIsCreatingGroup(true)}
-                className="bg-rose-600 text-white px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
+                className="bg-[#0a3a2a] text-[#fed33e] px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
               >
                 {t('coachDashboard.createFirstGroup')}
               </button>
@@ -2257,9 +2257,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           {coachGroups.length > 0 && coachGroups.length < 5 && (
             <button
               onClick={() => setIsCreatingGroup(true)}
-              className="w-full py-2.5 bg-rose-50 text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-rose-100 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
+              className="w-full py-2.5 bg-gray-50 text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-gray-200 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
             >
-              <span className="material-symbols-outlined text-rose-500 text-sm">add</span>
+              <span className="material-symbols-outlined text-gray-400 text-sm">add</span>
               {t('coachDashboard.newGroupTitle')}
             </button>
           )}
@@ -2320,12 +2320,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                value={newGroupName}
                onChange={e => setNewGroupName(e.target.value)}
                maxLength={15}
-               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-4 text-[#333]"
+               className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-[#0a3a2a] mb-4 text-[#333]"
              />
              <GroupIconPicker value={newGroupIcon} onChange={setNewGroupIcon} />
              <div className="flex gap-2">
                <button onClick={() => setIsCreatingGroup(false)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-               <button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.save')}</button>
+               <button onClick={handleCreateGroup} disabled={!newGroupName.trim()} className="flex-1 py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.save')}</button>
              </div>
            </div>
          </div>,
@@ -2350,11 +2350,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       aria-pressed={picked}
                       onClick={() => setAddPicked(p => picked ? p.filter(id => id !== s.id) : [...p, s.id])}
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border text-left active:scale-[0.98] transition-all ${
-                        picked ? 'bg-rose-50 border-rose-300' : 'bg-white border-gray-100'
+                        picked ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100'
                       }`}
                     >
                       <span className={`w-6 h-6 rounded-md flex items-center justify-center shrink-0 ${
-                        picked ? 'bg-rose-600 text-white' : 'border-2 border-gray-200 text-transparent'
+                        picked ? 'bg-[#0a3a2a] text-[#fed33e]' : 'border-2 border-gray-200 text-transparent'
                       }`}>
                         <span className="material-symbols-outlined text-[16px] font-black">check</span>
                       </span>
@@ -2367,7 +2367,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             </div>
             <div className="flex gap-2">
               <button onClick={() => setAddToGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-              <button onClick={addPickedToGroup} disabled={addPicked.length === 0} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">
+              <button onClick={addPickedToGroup} disabled={addPicked.length === 0} className="flex-1 py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">
                 {t('coachDashboard.addToGroupConfirm', { count: addPicked.length })}
               </button>
             </div>
@@ -2394,12 +2394,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                      key={g.id}
                      onClick={() => toggleGroupForSelected(g.id)}
                      className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all active:scale-[0.98] ${
-                       isAssigned || isPartial ? 'bg-rose-50 border-rose-200' : 'bg-white border-gray-200'
+                       isAssigned || isPartial ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-200'
                      }`}
                    >
                      <span className={`text-[12px] font-black ${isAssigned || isPartial ? 'text-[#0a3a2a]' : 'text-gray-600'}`}>{g.name}</span>
                      <div className={`w-6 h-6 rounded flex items-center justify-center ${
-                       isAssigned ? 'bg-rose-600 text-white' : isPartial ? 'bg-rose-200 text-[#0a3a2a]' : 'bg-gray-100 text-transparent'
+                       isAssigned ? 'bg-[#0a3a2a] text-[#fed33e]' : isPartial ? 'bg-gray-200 text-[#0a3a2a]' : 'bg-gray-100 text-transparent'
                      }`}>
                         {/* „–" jako tekst: ikony `remove` nie ma w subsecie fontu */}
                         {isPartial
@@ -2421,7 +2421,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
              <div className="flex justify-between items-center mb-5">
                <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center">
+                 <div className="w-8 h-8 bg-gray-50 text-[#0a3a2a] rounded-full flex items-center justify-center">
                     <span className="material-symbols-outlined text-[16px]">campaign</span>
                  </div>
                  <h2 className="text-lg font-black text-[#0a3a2a] leading-none">{t('coachDashboard.messageTitle')}</h2>
@@ -2439,13 +2439,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                  placeholder={t('coachDashboard.titlePlaceholder')}
                  value={msgTitle} 
                  onChange={e => setMsgTitle(e.target.value)} 
-                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-black outline-none focus:border-rose-500 transition-colors text-[#333]" 
+                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-black outline-none focus:border-[#0a3a2a] transition-colors text-[#333]" 
                />
                <textarea 
                  placeholder={t('coachDashboard.contentPlaceholder')}
                  value={msgContent} 
                  onChange={e => setMsgContent(e.target.value)} 
-                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium h-32 resize-none outline-none focus:border-rose-500 transition-colors text-[#333]" 
+                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium h-32 resize-none outline-none focus:border-[#0a3a2a] transition-colors text-[#333]" 
                />
              </div>
 
@@ -2541,7 +2541,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       value={slot.day}
                       onChange={e => setSlot(i, { day: Number(e.target.value) })}
                       aria-label={t('coachSchedule.days')}
-                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
+                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-[#0a3a2a]"
                     >
                       {weekDays.map(d => (
                         <option key={d} value={d}>{new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'long' })}</option>
@@ -2552,7 +2552,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       value={slot.time}
                       onChange={e => setSlot(i, { time: e.target.value })}
                       aria-label={t('coachSchedule.time')}
-                      className="w-[104px] shrink-0 bg-gray-50 border border-gray-200 rounded-xl px-2 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
+                      className="w-[104px] shrink-0 bg-gray-50 border border-gray-200 rounded-xl px-2 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-[#0a3a2a]"
                     />
                     <button
                       type="button"
@@ -2574,7 +2574,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       placeholder={t('coachSchedule.placeHint')}
                       aria-label={t('coachSchedule.place')}
                       onChange={e => setSlot(i, { place: e.target.value })}
-                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[14px] font-bold text-[#333] outline-none focus:border-rose-500"
+                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[14px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
                     />
                   </div>
                   </div>
@@ -2584,7 +2584,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 <button
                   type="button"
                   onClick={() => setSchedSlots(prev => [...prev, { day: prev[prev.length - 1]?.day ?? 3, time: prev[prev.length - 1]?.time || '18:00', place: prev[prev.length - 1]?.place }])}
-                  className="w-full mb-4 py-2 rounded-xl border border-dashed border-rose-200 text-[13px] font-black text-rose-600 flex items-center justify-center gap-1 active:scale-95 transition-all"
+                  className="w-full mb-4 py-2 rounded-xl border border-dashed border-gray-200 text-[13px] font-black text-[#0a3a2a] flex items-center justify-center gap-1 active:scale-95 transition-all"
                 >
                   <span className="material-symbols-outlined text-[18px]">add</span>
                   {t('coachSchedule.addSlot')}
@@ -2599,7 +2599,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     type="button"
                     aria-pressed={schedEvery === n}
                     onClick={() => setSchedEvery(n)}
-                    className={`flex-1 py-2.5 rounded-xl text-[13px] font-black transition-all ${schedEvery === n ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
+                    className={`flex-1 py-2.5 rounded-xl text-[13px] font-black transition-all ${schedEvery === n ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
                   >
                     {t(n === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1')}
                   </button>
@@ -2609,7 +2609,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
               <div className="flex gap-2">
                 <button onClick={() => setScheduleGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-                <button onClick={() => saveSchedule()} disabled={!canSave} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachSchedule.save')}</button>
+                <button onClick={() => saveSchedule()} disabled={!canSave} className="flex-1 py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachSchedule.save')}</button>
               </div>
               {group.schedule && (
                 <button onClick={() => saveSchedule(true)} className="w-full mt-3 py-2 text-[12px] font-black text-red-500 active:scale-95">{t('coachSchedule.remove')}</button>
@@ -2629,12 +2629,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               value={editGroupName}
               onChange={e => setEditGroupName(e.target.value)}
               maxLength={15}
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-rose-500 mb-4 text-[#333]"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-4 text-[12px] font-black outline-none focus:border-[#0a3a2a] mb-4 text-[#333]"
             />
             <GroupIconPicker value={editGroupIcon} onChange={setEditGroupIcon} />
             <div className="flex gap-2">
               <button onClick={() => setEditingGroup(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
-              <button onClick={handleEditGroup} disabled={!editGroupName.trim()} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.editGroupBtn')}</button>
+              <button onClick={handleEditGroup} disabled={!editGroupName.trim()} className="flex-1 py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachDashboard.editGroupBtn')}</button>
             </div>
           </div>
         </div>,

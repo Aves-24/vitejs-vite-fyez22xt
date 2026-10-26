@@ -560,11 +560,12 @@ export default function App() {
   // [MENU] Oba dolne menu (zawodnik i trener) z tych samych klocków (user
   // 2026-10-26: „wszystko musi być spójne”): ta sama wysokość i tło, ikona 24 px
   // w pigułce, podpis 10 px zawsze widoczny, przełącznik trybu całkiem z prawej
-  // za kreską. Różni je tylko kolor aktywnej zakładki: zieleń zawodnika, róż trenera.
+  // za kreską. Oba w zieleni aplikacji (wariant B, user 2026-10-26); tryb trenera
+  // zdradza tylko cienki różowy pasek u góry menu — róż = „ja jako trener”.
   type NavAccent = 'archer' | 'coach';
   const NAV_ACTIVE: Record<NavAccent, { text: string; pill: string }> = {
     archer: { text: 'text-[#0a3a2a]', pill: 'bg-[#0a3a2a]/[0.07]' },
-    coach: { text: 'text-rose-600', pill: 'bg-rose-50' },
+    coach: { text: 'text-[#0a3a2a]', pill: 'bg-[#0a3a2a]/[0.07]' },
   };
   const NAV_SLOT = 'flex-1 min-w-0 flex flex-col items-center gap-1 active:scale-95 transition-all';
   const NAV_ICON = 'material-symbols-outlined text-[24px] leading-none w-11 h-7 rounded-full flex items-center justify-center transition-colors';
@@ -595,6 +596,7 @@ export default function App() {
         <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
           <path d={notch ? 'M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z' : 'M0,0 H390 V80 H0 Z'} fill="white"/>
         </svg>
+        {!notch && <div aria-hidden="true" className="absolute top-0 inset-x-0 h-[3px] bg-rose-400" />}
         <div className="flex items-center h-full w-full relative">{children}</div>
       </nav>
       <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
@@ -650,7 +652,7 @@ export default function App() {
         <div className="flex flex-1 items-center h-full">
           {navButton('archer', 'stats', 'analytics', t('nav.stats'), currentView === 'STATS', () => handleNavigate('STATS'))}
           {navButton('archer', 'settings', 'tune', t('nav.settings'), currentView === 'SETTINGS', () => handleNavigate('SETTINGS'))}
-          {isCoach && navModeSwitch('sports', t('nav.coach'), 'bg-rose-50 text-rose-600', () => handleNavigate('COACH'))}
+          {isCoach && navModeSwitch('sports', t('nav.coach'), 'bg-[#0a3a2a] text-[#fed33e]', () => handleNavigate('COACH'))}
         </div>
       </>
     ));

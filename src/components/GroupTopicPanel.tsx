@@ -75,7 +75,7 @@ export function GroupSectionHeader({ icon, label, count, open, onToggle, action 
   const text = (
     <>
       <span className="tb-icon w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
-        <span className="material-symbols-outlined text-[17px] text-rose-600">{icon}</span>
+        <span className="material-symbols-outlined text-[17px] text-[#0a3a2a]">{icon}</span>
       </span>
       <span className="min-w-0 truncate text-[11px] font-black uppercase tracking-widest text-[#0a3a2a]">
         {label}
@@ -132,7 +132,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
                   type="button"
                   onClick={() => onAssign(s)}
                   disabled={saving}
-                  className="h-8 px-3 shrink-0 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wide text-rose-600 active:scale-95 transition-all disabled:opacity-40"
+                  className="h-8 px-3 shrink-0 rounded-lg bg-white border border-gray-200 text-[10px] font-black uppercase tracking-wide text-[#0a3a2a] active:scale-95 transition-all disabled:opacity-40"
                 >
                   {t('coachDashboard.groupFocusAssign')}
                 </button>
@@ -143,7 +143,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
               </span>
             ) : st === 'acked' ? (
               <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-black text-gray-600">
-                <span className="material-symbols-outlined text-rose-500 text-[15px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
+                <span className="material-symbols-outlined text-gray-400 text-[15px]">visibility</span>{t('coachDashboard.groupTopicAcked')}
               </span>
             ) : (
               <span className="text-[10px] font-bold text-gray-400 shrink-0">{st ? '—' : '…'}</span>
@@ -419,9 +419,9 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
             <EntryRow
               icon="sports"
-              iconCls="text-rose-600"
+              iconCls="text-[#0a3a2a]"
               kind={t('coachDashboard.groupTopicLabel')}
-              kindCls="text-rose-700"
+              kindCls="text-[#0a3a2a]"
               title={focusTitle(shown, t)}
               extra={(
                 <button
@@ -429,7 +429,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   disabled={saving}
                   aria-label={t('coachDashboard.groupTopicEdit')}
                   title={t('coachDashboard.groupTopicEdit')}
-                  className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+                  className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
                 >
                   <span className="material-symbols-outlined text-[20px]">edit</span>
                 </button>
@@ -451,7 +451,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
             <button
               onClick={() => close(shown)}
               disabled={saving}
-              className="mt-2 w-full min-h-[44px] rounded-xl bg-rose-600 text-white flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              className="mt-2 w-full min-h-[44px] rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[18px]">sports_score</span>
               {t('coachDashboard.groupTopicClose')}
@@ -469,7 +469,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               type="button"
               onClick={() => openModal(firstFreeDay())}
               disabled={members.length === 0 || saving}
-              className="w-full min-h-[52px] rounded-2xl bg-rose-600 text-white flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
             >
               <span className="material-symbols-outlined text-[22px]">add</span>
               {t('coachDashboard.groupTopicSet')}
@@ -495,7 +495,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 onClick={() => openModal(firstFreeDay())}
                 disabled={members.length === 0 || saving}
                 title={t('coachDashboard.groupTopicPlan')}
-                className="h-10 shrink-0 pl-2 pr-3 rounded-xl text-rose-600 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
+                className="h-10 shrink-0 pl-2 pr-3 rounded-xl text-[#0a3a2a] flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
               >
                 <span className="material-symbols-outlined text-[20px]">add</span>
                 {t('coachDashboard.groupTopicPlanShort')}
@@ -510,10 +510,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 return (
                   <div key={d} className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-1.5 flex items-center gap-2.5`}>
                     <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[18px] text-rose-600">event</span>
+                      <span className="material-symbols-outlined text-[18px] text-[#0a3a2a]">event</span>
                     </span>
                     <span className="flex-1 min-w-0">
-                      <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-rose-700">{dayLabel(d)}</span>
+                      <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-[#0a3a2a]">{dayLabel(d)}</span>
                       <span className="block text-[12px] font-black text-[#0a3a2a] leading-snug truncate">{focusTitle(gt, t)}</span>
                     </span>
                     {asking ? (
@@ -541,7 +541,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           disabled={saving}
                           aria-label={t('coachDashboard.groupTopicEdit')}
                           title={t('coachDashboard.groupTopicEdit')}
-                          className="w-10 h-10 shrink-0 rounded-xl text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+                          className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
                         >
                           <span className="material-symbols-outlined text-[20px]">edit</span>
                         </button>
@@ -572,7 +572,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3 shrink-0">
-              <div className="w-10 h-10 rounded-full bg-rose-500 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-white">sports</span>
               </div>
               <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
@@ -591,7 +591,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                     value={modal.day}
                     min={today}
                     onChange={e => e.target.value && setModal({ ...modal, day: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-rose-500"
+                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
                   />
                 )}
                 {!modal.edit && byDay[modal.day] && (
@@ -606,7 +606,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
                   maxLength={FOCUS_TEXT_MAX}
                   placeholder={t('coachDashboard.groupTopicPlaceholder')}
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-black text-[#333] outline-none focus:border-rose-500"
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-black text-[#333] outline-none focus:border-[#0a3a2a]"
                 />
               </div>
               <div>
@@ -616,7 +616,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                   onChange={e => setDesc(e.target.value.slice(0, TOPIC_DESC_MAX))}
                   maxLength={TOPIC_DESC_MAX}
                   placeholder={t('coachDashboard.groupTopicDescPlaceholder')}
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-medium text-[#333] outline-none focus:border-rose-500 resize-none h-24"
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-24"
                 />
               </div>
               <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
@@ -629,7 +629,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                         {/* Poprawny link = ikona do otwarcia (z potwierdzeniem), inaczej sama ikona pola. */}
                         {linkChecks[i]
                           ? <TopicLinks links={[linkChecks[i] as string]} tone="coach" small />
-                          : <span className="material-symbols-outlined text-rose-300 text-[16px] shrink-0 w-7 text-center">link</span>}
+                          : <span className="material-symbols-outlined text-gray-400 text-[16px] shrink-0 w-7 text-center">link</span>}
                         <input
                           type="url"
                           inputMode="url"
@@ -639,7 +639,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                           maxLength={500}
                           onChange={e => onLinkChange(i, e.target.value)}
                           placeholder={t('coachDashboard.groupTopicLinkPlaceholder')}
-                          className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500 ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
+                          className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
                         />
                         {/* Usuń link razem z tytułem (user 2026-10-22); zapis tematu usuwa go też u uczniów. */}
                         {(v || linkTitleInputs[i]) && (
@@ -666,7 +666,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                             maxLength={TOPIC_LINK_TITLE_MAX}
                             onChange={e => setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? e.target.value.slice(0, TOPIC_LINK_TITLE_MAX) : x)))}
                             placeholder={t('coachDashboard.groupTopicLinkTitlePlaceholder')}
-                            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-rose-500"
+                            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
                           />
                           {isYouTube(linkChecks[i] as string) && (
                             <button
@@ -675,7 +675,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                               disabled={fetchingTitle === i}
                               aria-label={t('coachDashboard.groupTopicTitleFetch')}
                               title={t('coachDashboard.groupTopicTitleFetch')}
-                              className="w-8 h-8 shrink-0 rounded-lg text-rose-400 hover:text-rose-600 flex items-center justify-center active:scale-90 transition-all disabled:opacity-60"
+                              className="w-8 h-8 shrink-0 rounded-lg text-gray-400 hover:text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-60"
                             >
                               <span className={`material-symbols-outlined text-[18px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'refresh'}</span>
                             </button>
@@ -697,7 +697,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               <button
                 onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
                 disabled={saving || !text.trim() || linksInvalid || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
-                className="flex-[2] py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
+                className="flex-[2] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
               >
                 {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
               </button>

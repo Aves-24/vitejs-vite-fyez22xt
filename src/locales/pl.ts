@@ -300,7 +300,6 @@ export const views = {
   coachTermine: {
     month: "Miesiąc",
     showPrivate: "Pokaż moje prywatne terminy",
-    showPrivateHint: "Zawody, własne terminy – od razu widać kolizje",
     private: "Prywatne",
     thisWeek: "Ten tydzień",
     nextWeek: "Następny tydzień",

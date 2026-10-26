@@ -286,7 +286,6 @@ export const views = {
   coachTermine: {
     month: "Monat",
     showPrivate: "Meine privaten Termine zeigen",
-    showPrivateHint: "Wettkämpfe, eigene Termine – so siehst du Überschneidungen",
     private: "Privat",
     thisWeek: "Diese Woche",
     nextWeek: "Nächste Woche",

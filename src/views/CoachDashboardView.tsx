@@ -2040,6 +2040,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           if (weeks === 1) return t('coachTermine.nextWeek');
           return t('coachTermine.weekOf', { date: new Date(`${mon}T12:00:00`).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric' }) });
         };
+        // Pierwszy odbywający się termin wyróżniony, reszta lekko przygaszona (user 2026-10-26).
+        const firstKey = items.find(it => !it.cancelled)?.key;
         const weeks: { mon: string; list: Item[] }[] = [];
         for (const it of items) {
           const mon = mondayKey(it.date);
@@ -2058,6 +2060,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 <span className="material-symbols-outlined text-[18px]">add</span>
                 {t('coachDashboard.newEventBtn')}
               </button>
+              {/* Prywatne terminy obok trenerskich — mały przełącznik (user 2026-10-26). */}
+              <button
+                type="button"
+                aria-pressed={showPrivate}
+                title={t('coachTermine.showPrivate')}
+                onClick={() => {
+                  const next = !showPrivate;
+                  setShowPrivate(next);
+                  try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
+                }}
+                className={`py-2.5 px-3 rounded-xl text-[13px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
+                  showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
+                {t('coachTermine.private')}
+              </button>
               <button
                 type="button"
                 onClick={() => onNavigate('CALENDAR')}
@@ -2067,27 +2086,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {t('coachTermine.month')}
               </button>
             </div>
-
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showPrivate}
-              onClick={() => {
-                const next = !showPrivate;
-                setShowPrivate(next);
-                try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
-              }}
-              className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-left active:scale-[0.99] transition-all"
-            >
-              <span className="material-symbols-outlined text-[20px] text-gray-400">event_available</span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[13px] font-black text-[#0a3a2a]">{t('coachTermine.showPrivate')}</span>
-                <span className="block text-[11px] font-bold text-gray-400">{t('coachTermine.showPrivateHint')}</span>
-              </span>
-              <span className={`w-10 h-6 rounded-full p-0.5 transition-colors shrink-0 ${showPrivate ? 'bg-[#0a3a2a]' : 'bg-gray-200'}`}>
-                <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${showPrivate ? 'translate-x-4' : ''}`} />
-              </span>
-            </button>
 
             {upcomingCoachEvents === null ? (
               <div className="h-24 rounded-2xl bg-gray-50 border border-gray-100 animate-pulse" />
@@ -2102,23 +2100,24 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 {w.list.map(it => {
                   const d = new Date(`${it.date}T12:00:00`);
                   const isToday = it.date === todayKey;
+                  const first = it.key === firstKey;
                   return (
-                    <div key={it.key} className={`flex items-center bg-white rounded-xl border border-gray-100 border-l-4 ${it.stripe} shadow-sm ${it.cancelled ? 'opacity-60' : ''}`}>
+                    <div key={it.key} className={`flex items-center bg-white rounded-xl border border-gray-100 border-l-4 ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
                       <button
                         type="button"
                         onClick={it.onOpen}
                         disabled={!it.onOpen}
-                        className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+                        className={`flex-1 min-w-0 flex items-center gap-3 px-3 text-left active:scale-[0.99] transition-all ${first ? 'py-3.5' : 'py-2.5'}`}
                       >
-                        <div className={`w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
-                          <span className={`block text-[10px] font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}</span>
-                          <span className={`block text-[17px] font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
+                        <div className={`${first ? 'w-14' : 'w-11'} text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
+                          <span className={`block ${first ? 'text-[11px]' : 'text-[10px]'} font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}</span>
+                          <span className={`block ${first ? 'text-[22px]' : 'text-[17px]'} font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-[14px] font-black text-[#0a3a2a] leading-tight truncate ${it.cancelled ? 'line-through' : ''}`}>
+                          <p className={`${first ? 'text-[16px]' : 'text-[14px]'} font-black text-[#0a3a2a] leading-tight truncate ${it.cancelled ? 'line-through' : ''}`}>
                             {it.title}{it.time && <span className="font-bold text-gray-500"> · {it.time}</span>}
                           </p>
-                          {it.sub && <p className={`text-[12px] font-bold truncate mt-0.5 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>{it.sub}</p>}
+                          {it.sub && <p className={`${first ? 'text-[13px]' : 'text-[12px]'} font-bold truncate mt-0.5 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>{it.sub}</p>}
                         </div>
                         {it.kind === 'plan' && !it.cancelled && <span className="text-[10px] font-black text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 shrink-0">{t('coachTermine.planTag')}</span>}
                         {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">emoji_events</span>}

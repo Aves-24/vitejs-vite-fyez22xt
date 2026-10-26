@@ -286,7 +286,6 @@ export const views = {
   coachTermine: {
     month: "Month",
     showPrivate: "Show my private events",
-    showPrivateHint: "Competitions, own events – spot overlaps at a glance",
     private: "Private",
     thisWeek: "This week",
     nextWeek: "Next week",

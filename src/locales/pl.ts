@@ -299,8 +299,10 @@ export const views = {
   },
   coachSchedule: {
     title: "Stały trening",
+    addSlot: "Dodaj kolejny termin",
+    removeSlot: "Usuń termin",
     setUp: "Ustaw dzień tygodnia i godzinę",
-    days: "Dni tygodnia",
+    days: "Terminy",
     time: "Godzina",
     interval: "Częstotliwość",
     every1: "co tydzień",

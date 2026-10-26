@@ -20,7 +20,7 @@ import GroupTopicPanel,{ GroupSectionHeader, type GroupTopic, type GroupTopicsBy
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
-import { type GroupSchedule, isValidSchedule, occursOn, nextOccurrence, prevOccurrence, sortedDays } from '../utils/groupSchedule';
+import { type GroupSchedule, type ScheduleSlot, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence } from '../utils/groupSchedule';
 
 const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
 import { formatViewerAgeCategory } from '../utils/privateProfile';
@@ -354,8 +354,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: GroupSchedule}[]>([]);
   // [HARMONOGRAM] Edytor stałego treningu grupy (id grupy albo null).
   const [scheduleGroupId, setScheduleGroupId] = useState<string | null>(null);
-  const [schedDays, setSchedDays] = useState<number[]>([]);
-  const [schedTime, setSchedTime] = useState('18:00');
+  const [schedSlots, setSchedSlots] = useState<ScheduleSlot[]>([]);
   const [schedEvery, setSchedEvery] = useState<1 | 2>(1);
   const [schedPlace, setSchedPlace] = useState('');
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
@@ -1102,9 +1101,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   const openScheduleEditor = (group: { id: string; schedule?: GroupSchedule }) => {
-    const sc = group.schedule;
-    setSchedDays(sc?.days || []);
-    setSchedTime(sc?.time || '18:00');
+    const sc = normalizeSchedule(group.schedule);
+    setSchedSlots(sc?.slots || [{ day: new Date().getDay(), time: '18:00' }]);
     setSchedEvery(sc?.every || 1);
     setSchedPlace(sc?.place || '');
     setScheduleGroupId(group.id);
@@ -1116,11 +1114,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     if (!scheduleGroupId) return;
     let schedule: GroupSchedule | null = null;
     if (!remove) {
-      const draft: GroupSchedule = { days: sortedDays(schedDays), time: schedTime, every: schedEvery, anchor: dayKeyOf(Date.now()) };
-      draft.anchor = nextOccurrence({ ...draft, every: 1 }, draft.anchor, 7) || draft.anchor;
+      const draft: GroupSchedule = { slots: sortSlots(schedSlots), every: schedEvery, anchor: dayKeyOf(Date.now()) };
+      draft.anchor = upcomingOccurrences({ ...draft, every: 1 }, draft.anchor, 1, 7)[0]?.date || draft.anchor;
       if (schedPlace.trim()) draft.place = schedPlace.trim().slice(0, 40);
-      if (!isValidSchedule(draft)) return;
-      schedule = draft;
+      schedule = normalizeSchedule(draft);
+      if (!schedule) return;
     }
     const updatedGroups = coachGroups.map(g => {
       if (g.id !== scheduleGroupId) return g;
@@ -1137,11 +1135,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
-  // „Mi 18:00 · jede Woche · Halle” — na karcie grupy i w edytorze.
-  const scheduleSummary = (sc: GroupSchedule) => {
-    // 1.11.2026 to niedziela, więc 1 + getDay() daje właściwy dzień tygodnia.
-    const days = sortedDays(sc.days).map(d => new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'short' })).join(', ');
-    return [`${days} ${sc.time}`, t(sc.every === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1'), sc.place].filter(Boolean).join(' · ');
+  // 1.11.2026 to niedziela, więc 1 + getDay() daje właściwy dzień tygodnia.
+  const weekdayShort = (day: number) => new Date(2026, 10, 1 + day).toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '');
+  // „Mi 18:00, Sa 12:00 · jede Woche · Halle” — na karcie grupy.
+  const scheduleSummary = (raw: unknown) => {
+    const sc = normalizeSchedule(raw);
+    if (!sc) return '';
+    const slots = sc.slots.map(x => `${weekdayShort(x.day)} ${x.time}`).join(', ');
+    return [slots, t(sc.every === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1'), sc.place].filter(Boolean).join(' · ');
   };
 
   const handleEditGroup = async () => {
@@ -1590,22 +1591,25 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         // [HARMONOGRAM] Treningi ze stałego planu grup liczone w locie. Termin
         // z kalendarza dla tej samej grupy tego dnia ma pierwszeństwo.
         const tomorrowKey = dayKeyOf(startOfToday + 36 * 60 * 60 * 1000);
-        const scheduled = (dayKey: string | null, g: { id: string; name: string; schedule?: GroupSchedule }) => dayKey && g.schedule ? {
-          id: `sched_${g.id}_${dayKey}`, date: dayKey, time: g.schedule.time, title: g.name, place: g.schedule.place,
-          trainingTopicGroupId: g.id, topicText: coachGroupTopics[g.id]?.[dayKey]?.text, scheduledGroupId: g.id,
-        } : null;
-        const withSchedule = (list: any[]) => list.filter(Boolean).filter((e: any, _i, all: any[]) =>
-          !e.scheduledGroupId || !all.some(o => !o.scheduledGroupId && o.date === e.date && o.trainingTopicGroupId === e.scheduledGroupId));
+        const scheduledOcc = coachGroups.flatMap(g => {
+          const sc = normalizeSchedule(g.schedule);
+          return sc ? upcomingOccurrences(sc, todayKey, 4).map(o => ({
+            id: `sched_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, place: sc.place,
+            trainingTopicGroupId: g.id, topicText: coachGroupTopics[g.id]?.[o.date]?.text, scheduledGroupId: g.id,
+          })) : [];
+        });
         const byWhen = (a: any, b: any) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`);
-        const allToday = withSchedule([
-          ...evs.filter(e => e.date === todayKey),
-          ...coachGroups.map(g => scheduled(g.schedule && occursOn(g.schedule, todayKey) ? todayKey : null, g)),
-        ]).sort(byWhen);
-        const todayEv = allToday[0];
-        const nextEv = withSchedule([
-          ...evs.filter(e => e.date > todayKey),
-          ...coachGroups.map(g => scheduled(g.schedule ? nextOccurrence(g.schedule, tomorrowKey) : null, g)),
-        ]).sort(byWhen)[0];
+        // Oś treningów od dziś: kalendarz + plan grup, po czasie.
+        const timeline: any[] = [...evs, ...scheduledOcc]
+          .filter((e: any, _i, all: any[]) =>
+            !e.scheduledGroupId || !all.some(o => !o.scheduledGroupId && o.date === e.date && o.trainingTopicGroupId === e.scheduledGroupId))
+          .sort(byWhen);
+        const todayEv = timeline.find(e => e.date === todayKey);
+        const nextEv = timeline.find(e => e.date >= tomorrowKey);
+        // Następny trening tej samej grupy (termin bez grupy — po prostu kolejny termin).
+        const followUpOf = (ev: any) => ev && timeline
+          .slice(timeline.indexOf(ev) + 1)
+          .find(e => !ev.trainingTopicGroupId || e.trainingTopicGroupId === ev.trainingTopicGroupId);
         // Termin z kalendarza otwiera kalendarz, trening z planu — swoją grupę.
         const openEv = (ev: any) => ev.scheduledGroupId
           ? onNavigate('COACH', 'GROUP', ev.scheduledGroupId)
@@ -1633,7 +1637,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const rosterRank = (s: any) => formCompare[s.id]?.dir === 'down' ? 0 : isInactive(s) ? 1 : 2;
 
         // Ostatni trening: późniejszy z kalendarza i z planu grup.
-        const lastDay = [lastTrainingDate, ...coachGroups.map(g => g.schedule ? prevOccurrence(g.schedule, todayKey) : null)]
+        const lastDay = [lastTrainingDate, ...coachGroups.map(g => prevOccurrence(g.schedule, todayKey))]
           .filter((d): d is string => !!d).sort().pop() || null;
         const since = lastDay ? new Date(`${lastDay}T00:00:00`).getTime() : nowTick - 7 * DAY_MS;
         const sinceLabel = lastDay
@@ -1675,6 +1679,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const plain = { plainSub: true, focus: false };
         const topicsLine = (ev: any) => Array.isArray(ev.topics) && ev.topics.length > 0
           ? ev.topics.map((id: string) => topicLabel(id, t)).join(' · ') : ev.topicText || null;
+        // Kolejny trening tej grupy: pod kartą, mniejszy i przygaszony (user 2026-10-26).
+        const followCard = (ev: any) => ev && (
+          <button
+            type="button"
+            onClick={() => openEv(ev)}
+            className="mt-2 w-full flex items-center gap-2 bg-white rounded-xl px-3 py-2 border border-gray-100 opacity-70 active:scale-[0.98] transition-all text-left"
+          >
+            <span className="material-symbols-outlined text-[16px] text-rose-600 shrink-0">schedule</span>
+            <span className="text-[12px] font-black text-rose-600 shrink-0 first-letter:uppercase">{dayLabel(eventDate(ev))}{ev.time ? ` · ${ev.time}` : ''}</span>
+            <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}</span>
+            <span className="material-symbols-outlined text-gray-300 text-[18px] shrink-0">chevron_right</span>
+          </button>
+        );
         const addEventBtn = (
           <button
             type="button"
@@ -1757,6 +1774,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               </section>
             );
           })()}
+          {todayEv && <div className="-mt-4">{followCard(followUpOf(todayEv))}</div>}
 
           {/* B: bez treningu dziś — najbliższy trening jedną kartą */}
           {!todayEv && upcomingCoachEvents !== null && (
@@ -1789,6 +1807,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <span className="block text-[13px] font-black text-rose-600 mt-1">{t('coachDashboard.newEventBtn')}</span>
                 </button>
               )}
+              {followCard(followUpOf(nextEv))}
             </section>
           )}
 
@@ -2075,6 +2094,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   )}
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
+                    {/* [HARMONOGRAM] Stały trening od razu pod nazwą (user 2026-10-26: „ma być u góry”). */}
+                    {scheduleSummary(group.schedule) && (
+                      <p className="flex items-center gap-1 text-[12px] font-bold text-rose-700 truncate mt-0.5">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        <span className="truncate">{scheduleSummary(group.schedule)}</span>
+                      </p>
+                    )}
                     {/* Liczba uczniów i puls w jednej linii — dawniej liczba stała osobno po prawej i ściskała nazwę. */}
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                       <span className="text-[10px] font-bold text-gray-500">{t('coachDashboard.studentsCount', { count: members.length })}</span>
@@ -2107,12 +2133,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         )}
                       </>)}
                     </div>
-                    {group.schedule && (
-                      <p className="flex items-center gap-1 text-[12px] font-bold text-rose-700 truncate mt-1">
-                        <span className="material-symbols-outlined text-[14px]">schedule</span>
-                        <span className="truncate">{scheduleSummary(group.schedule)}</span>
-                      </p>
-                    )}
                     {!isOpen && nextTopic && (
                       <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
                         <span className="material-symbols-outlined text-rose-600 text-[14px]">sports</span>
@@ -2148,17 +2168,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       type="button"
                       onClick={() => openScheduleEditor(group)}
                       className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all ${
-                        group.schedule ? 'bg-white border border-rose-100 shadow-sm' : 'border border-dashed border-rose-200 bg-rose-50/40'
+                        scheduleSummary(group.schedule) ? 'bg-white border border-rose-100 shadow-sm' : 'border border-dashed border-rose-200 bg-rose-50/40'
                       }`}
                     >
                       <span className="material-symbols-outlined text-rose-600 text-[20px]">schedule</span>
                       <span className="flex-1 min-w-0">
                         <span className="block text-[12px] font-bold text-gray-500">{t('coachSchedule.title')}</span>
                         <span className="block text-[14px] font-black text-[#0a3a2a] truncate">
-                          {group.schedule ? scheduleSummary(group.schedule) : t('coachSchedule.setUp')}
+                          {scheduleSummary(group.schedule) || t('coachSchedule.setUp')}
                         </span>
                       </span>
-                      <span className="material-symbols-outlined text-gray-300 text-[20px]">{group.schedule ? 'edit' : 'add'}</span>
+                      <span className="material-symbols-outlined text-gray-300 text-[20px]">{scheduleSummary(group.schedule) ? 'edit' : 'add'}</span>
                     </button>
                     <GroupTopicPanel
                       groupId={group.id}
@@ -2495,57 +2515,73 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         if (!group) return null;
         // Kolejność od poniedziałku; podpis z kalendarza (1.11.2026 = niedziela).
         const weekDays = [1, 2, 3, 4, 5, 6, 0];
-        const canSave = schedDays.length > 0 && /^\d{1,2}:\d{2}$/.test(schedTime);
+        const canSave = schedSlots.length > 0 && schedSlots.every(x => /^\d{1,2}:\d{2}$/.test(x.time));
+        const setSlot = (i: number, patch: Partial<ScheduleSlot>) =>
+          setSchedSlots(prev => prev.map((x, j) => (j === i ? { ...x, ...patch } : x)));
         return createPortal(
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-end sm:items-center justify-center p-4 animate-fade-in" onClick={() => setScheduleGroupId(null)}>
-            <div className="bg-white rounded-[32px] p-6 w-full max-w-[360px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-[32px] p-6 w-full max-w-[360px] shadow-2xl relative max-h-[90vh] overflow-y-auto hide-scrollbar" onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-black text-[#0a3a2a] leading-tight">{t('coachSchedule.title')}</h2>
               <p className="text-[13px] font-bold text-gray-500 mb-4">{group.name}</p>
 
+              {/* Każdy termin osobno: dzień + godzina (user 2026-10-26: „sobota 12, środa 18”). */}
               <p className="text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.days')}</p>
-              <div className="grid grid-cols-7 gap-1 mb-4">
-                {weekDays.map(d => {
-                  const on = schedDays.includes(d);
-                  return (
-                    <button
-                      key={d}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => setSchedDays(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
-                      className={`h-10 rounded-xl text-[12px] font-black transition-all active:scale-90 ${on ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
+              <div className="space-y-2 mb-2">
+                {schedSlots.map((slot, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <select
+                      value={slot.day}
+                      onChange={e => setSlot(i, { day: Number(e.target.value) })}
+                      aria-label={t('coachSchedule.days')}
+                      className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
                     >
-                      {new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}
+                      {weekDays.map(d => (
+                        <option key={d} value={d}>{new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'long' })}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="time"
+                      value={slot.time}
+                      onChange={e => setSlot(i, { time: e.target.value })}
+                      aria-label={t('coachSchedule.time')}
+                      className="w-[104px] shrink-0 bg-gray-50 border border-gray-200 rounded-xl px-2 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSchedSlots(prev => prev.filter((_, j) => j !== i))}
+                      disabled={schedSlots.length === 1}
+                      aria-label={t('coachSchedule.removeSlot')}
+                      className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all disabled:opacity-30"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">close</span>
                     </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex gap-3 mb-4">
-                <label className="flex-1">
-                  <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.time')}</span>
-                  <input
-                    type="time"
-                    value={schedTime}
-                    onChange={e => setSchedTime(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
-                  />
-                </label>
-                <div className="flex-1">
-                  <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.interval')}</span>
-                  <div className="flex flex-col gap-1">
-                    {([1, 2] as const).map(n => (
-                      <button
-                        key={n}
-                        type="button"
-                        aria-pressed={schedEvery === n}
-                        onClick={() => setSchedEvery(n)}
-                        className={`py-1.5 rounded-lg text-[12px] font-black transition-all ${schedEvery === n ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
-                      >
-                        {t(n === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1')}
-                      </button>
-                    ))}
                   </div>
-                </div>
+                ))}
+              </div>
+              {schedSlots.length < 7 && (
+                <button
+                  type="button"
+                  onClick={() => setSchedSlots(prev => [...prev, { day: prev[prev.length - 1]?.day ?? 3, time: prev[prev.length - 1]?.time || '18:00' }])}
+                  className="w-full mb-4 py-2 rounded-xl border border-dashed border-rose-200 text-[13px] font-black text-rose-600 flex items-center justify-center gap-1 active:scale-95 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[18px]">add</span>
+                  {t('coachSchedule.addSlot')}
+                </button>
+              )}
+
+              <p className="text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.interval')}</p>
+              <div className="flex gap-2 mb-4">
+                {([1, 2] as const).map(n => (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={schedEvery === n}
+                    onClick={() => setSchedEvery(n)}
+                    className={`flex-1 py-2.5 rounded-xl text-[13px] font-black transition-all ${schedEvery === n ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
+                  >
+                    {t(n === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1')}
+                  </button>
+                ))}
               </div>
 
               <label className="block mb-5">

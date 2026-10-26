@@ -285,8 +285,10 @@ export const views = {
   },
   coachSchedule: {
     title: "Regular training",
+    addSlot: "Add another time",
+    removeSlot: "Remove time",
     setUp: "Set weekday and time",
-    days: "Weekdays",
+    days: "Times",
     time: "Time",
     interval: "Frequency",
     every1: "every week",

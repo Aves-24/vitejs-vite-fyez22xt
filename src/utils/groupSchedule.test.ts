@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { occursOn, nextOccurrence, prevOccurrence, isValidSchedule, sortedDays, type GroupSchedule } from './groupSchedule';
+import { occursOn, timesOn, nextOccurrence, prevOccurrence, upcomingOccurrences, isValidSchedule, normalizeSchedule, sortSlots, type GroupSchedule } from './groupSchedule';
 
-// 2026-10-28 to środa.
-const wed: GroupSchedule = { days: [3], time: '18:00', every: 1, anchor: '2026-10-28' };
-const biweekly: GroupSchedule = { days: [3], time: '18:00', every: 2, anchor: '2026-10-28' };
+// 2026-10-28 to środa, 2026-10-31 sobota.
+const wed: GroupSchedule = { slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28' };
+const biweekly: GroupSchedule = { ...wed, every: 2 };
+const wedSat: GroupSchedule = { slots: [{ day: 6, time: '12:00' }, { day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28' };
 
 describe('groupSchedule', () => {
   it('co tydzień w środę', () => {
@@ -27,32 +28,48 @@ describe('groupSchedule', () => {
   });
 
   it('przez zmianę czasu (25.10.2026) tydzień liczy się dobrze', () => {
-    const s: GroupSchedule = { days: [0], time: '10:00', every: 2, anchor: '2026-10-18' };
+    const s: GroupSchedule = { slots: [{ day: 0, time: '10:00' }], every: 2, anchor: '2026-10-18' };
     expect(occursOn(s, '2026-10-25')).toBe(false);
     expect(occursOn(s, '2026-11-01')).toBe(true);
+  });
+
+  it('różne godziny w różne dni: środa 18, sobota 12', () => {
+    expect(timesOn(wedSat, '2026-10-28')).toEqual(['18:00']);
+    expect(timesOn(wedSat, '2026-10-31')).toEqual(['12:00']);
+    expect(upcomingOccurrences(wedSat, '2026-10-26', 3)).toEqual([
+      { date: '2026-10-28', time: '18:00' },
+      { date: '2026-10-31', time: '12:00' },
+      { date: '2026-11-04', time: '18:00' },
+    ]);
+  });
+
+  it('dwa treningi jednego dnia — po godzinie', () => {
+    const s: GroupSchedule = { slots: [{ day: 6, time: '15:00' }, { day: 6, time: '9:30' }], every: 1, anchor: '2026-10-31' };
+    expect(timesOn(s, '2026-10-31')).toEqual(['09:30', '15:00']);
   });
 
   it('następny i poprzedni termin', () => {
     expect(nextOccurrence(wed, '2026-10-26')).toBe('2026-10-28');
     expect(nextOccurrence(wed, '2026-10-28')).toBe('2026-10-28');
     expect(prevOccurrence(wed, '2026-10-28')).toBe('2026-10-21');
-    expect(prevOccurrence(wed, '2026-10-29')).toBe('2026-10-28');
+    expect(prevOccurrence(wedSat, '2026-10-31')).toBe('2026-10-28');
     expect(nextOccurrence(biweekly, '2026-10-29')).toBe('2026-11-11');
   });
 
-  it('kilka dni w tygodniu', () => {
-    const s: GroupSchedule = { days: [2, 4], time: '17:30', every: 1, anchor: '2026-10-26' };
-    expect(nextOccurrence(s, '2026-10-28')).toBe('2026-10-29');
-    expect(prevOccurrence(s, '2026-10-29')).toBe('2026-10-27');
+  it('stary zapis (days + time) dalej działa', () => {
+    const old = { days: [3, 6], time: '18:00', every: 1, anchor: '2026-10-28' };
+    expect(normalizeSchedule(old)?.slots).toEqual([{ day: 3, time: '18:00' }, { day: 6, time: '18:00' }]);
+    expect(occursOn(old, '2026-10-31')).toBe(true);
   });
 
   it('niepoprawny szablon nigdy nie wypada', () => {
-    expect(isValidSchedule({ days: [], time: '18:00', every: 1, anchor: '2026-10-28' })).toBe(false);
-    expect(isValidSchedule({ days: [3], time: '', every: 1, anchor: '2026-10-28' })).toBe(false);
-    expect(nextOccurrence({ days: [], time: '18:00', every: 1, anchor: '2026-10-28' }, '2026-10-26')).toBeNull();
+    expect(isValidSchedule({ slots: [], every: 1, anchor: '2026-10-28' })).toBe(false);
+    expect(isValidSchedule({ slots: [{ day: 3, time: '' }], every: 1, anchor: '2026-10-28' })).toBe(false);
+    expect(nextOccurrence({ slots: [], every: 1, anchor: '2026-10-28' }, '2026-10-26')).toBeNull();
   });
 
-  it('dni od poniedziałku, niedziela na końcu', () => {
-    expect(sortedDays([0, 3, 1, 3])).toEqual([1, 3, 0]);
+  it('sloty od poniedziałku, niedziela na końcu, bez duplikatów', () => {
+    expect(sortSlots([{ day: 0, time: '10:00' }, { day: 3, time: '18:00' }, { day: 1, time: '17:00' }, { day: 3, time: '18:00' }]))
+      .toEqual([{ day: 1, time: '17:00' }, { day: 3, time: '18:00' }, { day: 0, time: '10:00' }]);
   });
 });

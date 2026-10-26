@@ -155,7 +155,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -169,6 +169,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   /** [TERMINE] Dzień wybrany w terminarzu (przyszły trening) — karta „Thema für …” zamiast dzisiejszej. */
   focusDay?: string | null;
   onClearFocusDay?: () => void;
+  /** [TERMINE] Samo okienko tematu (bez kart) — otwierane z terminarza na dzień autoOpenDay. */
+  modalOnly?: boolean;
+  autoOpenDay?: string;
+  onModalClose?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -188,6 +192,14 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const [status, setStatus] = useState<Record<string, MemberStatus>>({});
 
   const today = dayKeyOf(Date.now());
+  // [TERMINE] Otwarcie okienka od razu na dzień z terminarza; zamknięcie zgłaszamy wyżej.
+  const autoOpenedRef = useRef(false);
+  const wasOpenRef = useRef(false);
+  useEffect(() => {
+    if (modal) { wasOpenRef.current = true; return; }
+    if (wasOpenRef.current) { wasOpenRef.current = false; onModalClose?.(); }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal]);
   const days = useMemo(() => Object.keys(byDay).sort(), [byDay]);
   const todayTopic = byDay[today];
   const upcoming = days.filter(d => d > today);
@@ -350,6 +362,13 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     setModal({ day, edit: !!gt });
   };
 
+  useEffect(() => {
+    if (!autoOpenDay || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    openModal(autoOpenDay, byDay[autoOpenDay]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoOpenDay]);
+
   // Pierwszy dzień bez tematu, od dziś.
   const firstFreeDay = () => {
     const d = new Date();
@@ -413,6 +432,149 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     desc: desc.trim().slice(0, TOPIC_DESC_MAX),
     linkTitles: linkPairs.map(p => p.title),
   };
+
+  const modalEl = modal && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3 shrink-0">
+              <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-white">sports</span>
+              </div>
+              <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
+                {t(modal.edit ? 'coachDashboard.groupTopicEdit' : 'coachDashboard.groupTopicModalTitle')}
+              </h2>
+            </div>
+            <div className="overflow-y-auto flex-1 space-y-3 pr-1 pb-2 hide-scrollbar">
+              {!modal.edit && <p className="text-[10px] font-bold text-gray-500 leading-snug">{t('coachDashboard.groupTopicModalHint')}</p>}
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDay')}</p>
+                {modal.edit ? (
+                  <p className="text-[12px] font-black text-[#0a3a2a]">{dayLabel(modal.day)}</p>
+                ) : (
+                  <input
+                    type="date"
+                    value={modal.day}
+                    min={today}
+                    onChange={e => e.target.value && setModal({ ...modal, day: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
+                  />
+                )}
+                {!modal.edit && byDay[modal.day] && (
+                  <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachDashboard.groupTopicDayTaken')}</p>
+                )}
+              </div>
+              {/* Jak w mailu: temat (tytuł) u góry, opis pod nim (user 2026-10-22). */}
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicTitleLabel')}</p>
+                <input
+                  value={text}
+                  onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
+                  maxLength={FOCUS_TEXT_MAX}
+                  placeholder={t('coachDashboard.groupTopicPlaceholder')}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-black text-[#333] outline-none focus:border-[#0a3a2a]"
+                />
+              </div>
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDescLabel')}</p>
+                <textarea
+                  value={desc}
+                  onChange={e => setDesc(e.target.value.slice(0, TOPIC_DESC_MAX))}
+                  maxLength={TOPIC_DESC_MAX}
+                  placeholder={t('coachDashboard.groupTopicDescPlaceholder')}
+                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-24"
+                />
+              </div>
+              <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
+              <div>
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicLinks')}</p>
+                <div className="space-y-1.5">
+                  {linkInputs.map((v, i) => (
+                    <div key={i}>
+                      <div className="flex items-center gap-1.5">
+                        {/* Poprawny link = ikona do otwarcia (z potwierdzeniem), inaczej sama ikona pola. */}
+                        {linkChecks[i]
+                          ? <TopicLinks links={[linkChecks[i] as string]} tone="coach" small />
+                          : <span className="material-symbols-outlined text-gray-400 text-[16px] shrink-0 w-7 text-center">link</span>}
+                        <input
+                          type="url"
+                          inputMode="url"
+                          autoCapitalize="off"
+                          autoCorrect="off"
+                          value={v}
+                          maxLength={500}
+                          onChange={e => onLinkChange(i, e.target.value)}
+                          placeholder={t('coachDashboard.groupTopicLinkPlaceholder')}
+                          className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
+                        />
+                        {/* Usuń link razem z tytułem (user 2026-10-22); zapis tematu usuwa go też u uczniów. */}
+                        {(v || linkTitleInputs[i]) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onLinkChange(i, '');
+                              autoTitleRef.current[i] = '';
+                              setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
+                            }}
+                            aria-label={t('coachDashboard.groupTopicLinkRemove')}
+                            title={t('coachDashboard.groupTopicLinkRemove')}
+                            className="w-8 h-8 shrink-0 rounded-lg text-red-400 hover:text-red-600 flex items-center justify-center active:scale-90 transition-all"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        )}
+                      </div>
+                      {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-9">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
+                      {linkChecks[i] && (
+                        <div className="flex items-center gap-1.5 mt-1 ml-9">
+                          <input
+                            value={linkTitleInputs[i]}
+                            maxLength={TOPIC_LINK_TITLE_MAX}
+                            onChange={e => setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? e.target.value.slice(0, TOPIC_LINK_TITLE_MAX) : x)))}
+                            placeholder={t('coachDashboard.groupTopicLinkTitlePlaceholder')}
+                            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
+                          />
+                          {isYouTube(linkChecks[i] as string) && (
+                            <button
+                              type="button"
+                              onClick={() => fetchYouTubeTitle(i, linkChecks[i] as string, false)}
+                              disabled={fetchingTitle === i}
+                              aria-label={t('coachDashboard.groupTopicTitleFetch')}
+                              title={t('coachDashboard.groupTopicTitleFetch')}
+                              className="w-8 h-8 shrink-0 rounded-lg text-gray-400 hover:text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-60"
+                            >
+                              <span className={`material-symbols-outlined text-[18px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'refresh'}</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1.5">{t('coachDashboard.groupTopicLinksHint')}</p>
+                {/* Zawsze widoczne — informacja przed wklejeniem, bo tytuł pobiera się sam (Datenschutz 2.9). */}
+                <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
+              </div>
+            </div>
+            <div className="flex gap-2 mt-3 shrink-0">
+              <button onClick={() => setModal(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
+                {t('coachDashboard.cancel')}
+              </button>
+              <button
+                onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
+                disabled={saving || !text.trim() || linksInvalid || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
+                className="flex-[2] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
+              >
+                {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body,
+      );
+
+  // [TERMINE] Okienko otwarte z terminarza: od razu na wybrany dzień, a po
+  // zamknięciu (zapis albo „Abbrechen”) wracamy do listy.
+  if (modalOnly) return <>{modalEl}</>;
 
   return (
     // [WIDOK GRUPY] (user 2026-10-23: „tabelka w tabelce i w środku jeszcze
@@ -636,144 +798,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '', linkTitles: gt.linkTitles ?? [] })
         : null, gt => openModal(gt.day, gt))}
 
-      {modal && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-3 shrink-0">
-              <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-white">sports</span>
-              </div>
-              <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
-                {t(modal.edit ? 'coachDashboard.groupTopicEdit' : 'coachDashboard.groupTopicModalTitle')}
-              </h2>
-            </div>
-            <div className="overflow-y-auto flex-1 space-y-3 pr-1 pb-2 hide-scrollbar">
-              {!modal.edit && <p className="text-[10px] font-bold text-gray-500 leading-snug">{t('coachDashboard.groupTopicModalHint')}</p>}
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDay')}</p>
-                {modal.edit ? (
-                  <p className="text-[12px] font-black text-[#0a3a2a]">{dayLabel(modal.day)}</p>
-                ) : (
-                  <input
-                    type="date"
-                    value={modal.day}
-                    min={today}
-                    onChange={e => e.target.value && setModal({ ...modal, day: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-lg p-2 text-[12px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
-                  />
-                )}
-                {!modal.edit && byDay[modal.day] && (
-                  <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachDashboard.groupTopicDayTaken')}</p>
-                )}
-              </div>
-              {/* Jak w mailu: temat (tytuł) u góry, opis pod nim (user 2026-10-22). */}
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicTitleLabel')}</p>
-                <input
-                  value={text}
-                  onChange={e => setText(e.target.value.slice(0, FOCUS_TEXT_MAX))}
-                  maxLength={FOCUS_TEXT_MAX}
-                  placeholder={t('coachDashboard.groupTopicPlaceholder')}
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-black text-[#333] outline-none focus:border-[#0a3a2a]"
-                />
-              </div>
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicDescLabel')}</p>
-                <textarea
-                  value={desc}
-                  onChange={e => setDesc(e.target.value.slice(0, TOPIC_DESC_MAX))}
-                  maxLength={TOPIC_DESC_MAX}
-                  placeholder={t('coachDashboard.groupTopicDescPlaceholder')}
-                  className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-medium text-[#333] outline-none focus:border-[#0a3a2a] resize-none h-24"
-                />
-              </div>
-              <TopicPicker selectedTopics={pickedTopics} onChange={setPickedTopics} />
-              <div>
-                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400 mb-1">{t('coachDashboard.groupTopicLinks')}</p>
-                <div className="space-y-1.5">
-                  {linkInputs.map((v, i) => (
-                    <div key={i}>
-                      <div className="flex items-center gap-1.5">
-                        {/* Poprawny link = ikona do otwarcia (z potwierdzeniem), inaczej sama ikona pola. */}
-                        {linkChecks[i]
-                          ? <TopicLinks links={[linkChecks[i] as string]} tone="coach" small />
-                          : <span className="material-symbols-outlined text-gray-400 text-[16px] shrink-0 w-7 text-center">link</span>}
-                        <input
-                          type="url"
-                          inputMode="url"
-                          autoCapitalize="off"
-                          autoCorrect="off"
-                          value={v}
-                          maxLength={500}
-                          onChange={e => onLinkChange(i, e.target.value)}
-                          placeholder={t('coachDashboard.groupTopicLinkPlaceholder')}
-                          className={`w-full bg-white border rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] ${linkChecks[i] === null ? 'border-red-400' : 'border-gray-200'}`}
-                        />
-                        {/* Usuń link razem z tytułem (user 2026-10-22); zapis tematu usuwa go też u uczniów. */}
-                        {(v || linkTitleInputs[i]) && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onLinkChange(i, '');
-                              autoTitleRef.current[i] = '';
-                              setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? '' : x)));
-                            }}
-                            aria-label={t('coachDashboard.groupTopicLinkRemove')}
-                            title={t('coachDashboard.groupTopicLinkRemove')}
-                            className="w-8 h-8 shrink-0 rounded-lg text-red-400 hover:text-red-600 flex items-center justify-center active:scale-90 transition-all"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        )}
-                      </div>
-                      {linkChecks[i] === null && <p className="text-[10px] font-bold text-red-500 mt-0.5 ml-9">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
-                      {linkChecks[i] && (
-                        <div className="flex items-center gap-1.5 mt-1 ml-9">
-                          <input
-                            value={linkTitleInputs[i]}
-                            maxLength={TOPIC_LINK_TITLE_MAX}
-                            onChange={e => setLinkTitleInputs(prev => prev.map((x, j) => (j === i ? e.target.value.slice(0, TOPIC_LINK_TITLE_MAX) : x)))}
-                            placeholder={t('coachDashboard.groupTopicLinkTitlePlaceholder')}
-                            className="flex-1 min-w-0 bg-white border border-gray-200 rounded-lg p-2 text-[11px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]"
-                          />
-                          {isYouTube(linkChecks[i] as string) && (
-                            <button
-                              type="button"
-                              onClick={() => fetchYouTubeTitle(i, linkChecks[i] as string, false)}
-                              disabled={fetchingTitle === i}
-                              aria-label={t('coachDashboard.groupTopicTitleFetch')}
-                              title={t('coachDashboard.groupTopicTitleFetch')}
-                              className="w-8 h-8 shrink-0 rounded-lg text-gray-400 hover:text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-60"
-                            >
-                              <span className={`material-symbols-outlined text-[18px] ${fetchingTitle === i ? 'animate-spin' : ''}`}>{fetchingTitle === i ? 'progress_activity' : 'refresh'}</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1.5">{t('coachDashboard.groupTopicLinksHint')}</p>
-                {/* Zawsze widoczne — informacja przed wklejeniem, bo tytuł pobiera się sam (Datenschutz 2.9). */}
-                <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-3 shrink-0">
-              <button onClick={() => setModal(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
-                {t('coachDashboard.cancel')}
-              </button>
-              <button
-                onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
-                disabled={saving || !text.trim() || linksInvalid || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
-                className="flex-[2] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md"
-              >
-                {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+      {modalEl}
     </div>
   );
 }

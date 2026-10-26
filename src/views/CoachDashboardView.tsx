@@ -12,8 +12,7 @@ import { effectiveCoachLimit } from '../utils/coachAccess';
 import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
-import { CARD_SHAPE, TopicChips } from '../components/tagebuch/TagebuchCards';
-import TopicLinks from '../components/TopicLinks';
+import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
@@ -376,8 +375,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
   // [TERMINE] Grupa otwarta z terminarza na konkretny (przyszły) trening.
   const [groupFocusDay, setGroupFocusDay] = useState<{ groupId: string; day: string } | null>(null);
-  // [TERMINE] Podgląd ustalonego tematu treningu z planu (klik w terminarzu).
-  const [topicPreview, setTopicPreview] = useState<{ groupId: string; groupName: string; date: string; time?: string; place?: string } | null>(null);
+  // [TERMINE] Okienko tematu treningu otwarte z terminarza (grupa + dzień).
+  const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string } | null>(null);
   const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
@@ -1665,7 +1664,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         // Termin z kalendarza otwiera kalendarz, trening z planu — swoją grupę.
         const openEv = (ev: any) => ev.scheduledGroupId
           ? (coachGroupTopics[ev.scheduledGroupId]?.[ev.date]
-            ? setTopicPreview({ groupId: ev.scheduledGroupId, groupName: ev.title, date: ev.date, time: ev.time, place: ev.place })
+            ? setTopicEdit({ groupId: ev.scheduledGroupId, date: ev.date })
             : onNavigate('COACH', 'GROUP', `${ev.scheduledGroupId}@${ev.date}`))
           : onNavigate('CALENDAR', undefined, ev.id);
         const dayLabel = (d: Date) => {
@@ -2010,7 +2009,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
                 : [o.place, topic].filter(Boolean).join(' · '),
               onOpen: topic
-                ? () => setTopicPreview({ groupId: g.id, groupName: g.name, date: o.date, time: o.time, place: o.place })
+                ? () => setTopicEdit({ groupId: g.id, date: o.date })
                 : () => onNavigate('COACH', 'GROUP', `${g.id}@${o.date}`),
               occ: { groupId: g.id, time: o.time },
             });
@@ -2169,44 +2168,25 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         );
       })()}
 
-      {/* [TERMINE] Podgląd tematu ustalonego na ten trening; „Bearbeiten” → grupa na ten dzień. */}
-      {topicPreview && typeof document !== 'undefined' && (() => {
-        const gt = coachGroupTopics[topicPreview.groupId]?.[topicPreview.date];
-        if (!gt) return null;
-        const when = new Date(`${topicPreview.date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'numeric' });
-        return createPortal(
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setTopicPreview(null)}>
-            <div className="bg-white rounded-[28px] p-5 w-full max-w-[360px] max-h-[85vh] overflow-y-auto hide-scrollbar shadow-2xl relative border-l-4 border-l-rose-400" onClick={e => e.stopPropagation()}>
-              <div className="flex items-start gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[12px] font-black text-gray-500 first-letter:uppercase">
-                    {[when, topicPreview.time, topicPreview.place].filter(Boolean).join(' · ')}
-                  </p>
-                  <p className="text-[13px] font-black text-[#0a3a2a] mt-0.5">{topicPreview.groupName}</p>
-                </div>
-                <button
-                  onClick={() => setTopicPreview(null)}
-                  aria-label={t('coachSheet.close')}
-                  className="w-10 h-10 shrink-0 -mt-1 -mr-1 rounded-full flex items-center justify-center bg-gray-100 text-gray-600 active:scale-90 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[22px]">close</span>
-                </button>
-              </div>
-              <p className="text-[11px] font-black uppercase tracking-widest text-gray-400 mt-4">{t('coachDashboard.groupTopicLabel')}</p>
-              <p className="text-[18px] font-black text-[#0a3a2a] leading-tight mt-1 break-words">{focusTitle(gt, t)}</p>
-              {gt.desc && <p className="text-[14px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-2">{gt.desc}</p>}
-              {gt.text && gt.topic && <TopicChips topics={[gt.topic]} />}
-              <TopicLinks links={gt.links} titles={gt.linkTitles} tone="coach" className="mt-3" />
-              <button
-                onClick={() => { const p = topicPreview; setTopicPreview(null); onNavigate('COACH', 'GROUP', `${p.groupId}@${p.date}`); }}
-                className="mt-5 w-full py-3 rounded-xl bg-[#0a3a2a] text-[#fed33e] font-black text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md"
-              >
-                <span className="material-symbols-outlined text-[18px]">edit</span>
-                {t('coachDashboard.groupTopicEdit')}
-              </button>
-            </div>
-          </div>,
-          document.body
+      {/* [TERMINE] Trening z ustalonym tematem: to samo okienko „Trainingsthema”,
+          co w grupie (user 2026-10-26), bez wychodzenia z listy. */}
+      {topicEdit && (() => {
+        const g = coachGroups.find(x => x.id === topicEdit.groupId);
+        if (!g) return null;
+        return (
+          <GroupTopicPanel
+            key={`${topicEdit.groupId}_${topicEdit.date}`}
+            modalOnly
+            autoOpenDay={topicEdit.date}
+            onModalClose={() => setTopicEdit(null)}
+            groupId={g.id}
+            groupName={g.name}
+            members={studentsOfGroup(g.id)}
+            coachId={userId}
+            topics={coachGroupTopics[g.id] || {}}
+            onChanged={next => handleGroupTopicChanged(g.id, next)}
+            showToast={showToast}
+          />
         );
       })()}
 

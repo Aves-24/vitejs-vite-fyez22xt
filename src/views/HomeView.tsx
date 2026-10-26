@@ -12,6 +12,7 @@ import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
+import { upcomingOccurrences, dayKeyOfDate } from '../utils/groupSchedule';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
@@ -100,6 +101,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
+  // [HARMONOGRAM] Grupy trenera ze stałym planem — do kafelka „jako trener”.
+  const [coachGroupsHome, setCoachGroupsHome] = useState<any[]>([]);
   const [nextTrainerReceived, setNextTrainerReceived] = useState<any | null>(null);
   const [todoItems, setTodoItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -338,6 +341,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const computedIsPremium = boughtPro || promoPro || isTrialActive;
 
         setFirstName(d.firstName || '');
+        setCoachGroupsHome(Array.isArray(d.coachGroups) ? d.coachGroups : []);
         setUserClub(fullClubName);
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));
         setRawIsPremium(boughtPro);
@@ -1251,8 +1255,23 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         )}
 
         {/* TERMINY TRENERSKIE — jako trener / od trenera */}
-        {!isLoading && (nextTrainerSent || nextTrainerReceived) && (() => {
-          const both = !!(nextTrainerSent && nextTrainerReceived);
+        {!isLoading && (() => {
+          // [HARMONOGRAM] Najbliższy termin trenera: z kalendarza albo ze stałego
+          // planu grup — co wypada wcześniej (user 2026-10-26). Dzisiejszy trening
+          // z planu znika 2 h po starcie.
+          const now = new Date();
+          const todayKey = dayKeyOfDate(now);
+          const nowMin = now.getHours() * 60 + now.getMinutes();
+          const toMin = (hm: string) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+          const planNext = isCoach ? coachGroupsHome.flatMap((g: any) =>
+            upcomingOccurrences(g.schedule, todayKey, 3)
+              .filter(o => o.date > todayKey || toMin(o.time) + 120 > nowMin)
+              .slice(0, 1)
+              .map(o => ({ id: `sched_${g.id}_${o.date}`, date: o.date, time: o.time, title: g.name, address: o.place, scheduledGroupId: g.id }))) : [];
+          const byWhen = (a: any, b: any) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`);
+          const nextCoach = [nextTrainerSent, ...planNext].filter(Boolean).sort(byWhen)[0] || null;
+          if (!nextCoach && !nextTrainerReceived) return null;
+          const both = !!(nextCoach && nextTrainerReceived);
           const renderCard = (event: any, isMirrored: boolean, half: boolean) => {
             const palette = isMirrored
               ? { bg: 'bg-violet-50', border: 'border-violet-200', label: 'text-violet-600', tag: 'bg-violet-500 text-white border-violet-500', accent: 'text-violet-700/40', dateBg: 'bg-violet-100' }
@@ -1266,7 +1285,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             return (
               <div
                 key={event.id}
-                onClick={() => onGoToCalendar(event.id)}
+                // Trening z planu grupy otwiera grupę na ten dzień w panelu trenera.
+                onClick={() => (event.scheduledGroupId
+                  ? onNavigate?.('COACH', 'GROUP', `${event.scheduledGroupId}@${event.date}`)
+                  : onGoToCalendar(event.id))}
                 className={`relative ${palette.bg} border ${palette.border} rounded-[20px] ${half ? 'px-2.5 py-2' : 'px-3.5 py-2'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
               >
                 <button onClick={tagToggle(cardId)} className={`absolute -top-2 left-4 flex items-center gap-0.5 ${palette.tag} pl-2.5 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
@@ -1296,11 +1318,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             return (
               <div className="grid grid-cols-2 gap-2">
                 {renderCard(nextTrainerReceived, true, true)}
-                {renderCard(nextTrainerSent, false, true)}
+                {renderCard(nextCoach, false, true)}
               </div>
             );
           }
-          return renderCard(nextTrainerReceived || nextTrainerSent, !!nextTrainerReceived, false);
+          return renderCard(nextTrainerReceived || nextCoach, !!nextTrainerReceived, false);
         })()}
 
         {/* ─── PASEK STATYSTYK + OSTATNI WYNIK ──────────────────────────────── */}

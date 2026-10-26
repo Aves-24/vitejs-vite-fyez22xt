@@ -297,6 +297,21 @@ export const views = {
     errorAffirm: "Zaznacz zgodę, aby kontynuować.",
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
+  coachSchedule: {
+    title: "Stały trening",
+    setUp: "Ustaw dzień tygodnia i godzinę",
+    days: "Dni tygodnia",
+    time: "Godzina",
+    interval: "Częstotliwość",
+    every1: "co tydzień",
+    every2: "co 2 tygodnie",
+    place: "Miejsce (opcjonalnie)",
+    placeHint: "np. hala",
+    save: "Zapisz",
+    remove: "Usuń stały trening",
+    toastSaved: "Zapisano godziny treningu",
+    toastRemoved: "Usunięto stały trening"
+  },
   coachToday: {
     today: "Dziś",
     tomorrow: "Jutro",
@@ -333,7 +348,8 @@ export const views = {
     coachToday: "Dziś",
     coachEvents: "Terminy",
     coachAthletes: "Uczniowie",
-    archerMode: "Zawodnik"
+    archerMode: "Zawodnik",
+    coachNewEvent: "Termin"
   },
   tagebuch: {
     editTech: "Edytuj trening techniczny",

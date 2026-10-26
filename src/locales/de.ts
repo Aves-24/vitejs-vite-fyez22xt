@@ -283,6 +283,21 @@ export const views = {
     errorAffirm: "Bitte bestätige die Einwilligung, um fortzufahren.",
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
+  coachSchedule: {
+    title: "Regelmäßiges Training",
+    setUp: "Wochentag und Uhrzeit festlegen",
+    days: "Wochentage",
+    time: "Uhrzeit",
+    interval: "Rhythmus",
+    every1: "jede Woche",
+    every2: "alle 2 Wochen",
+    place: "Ort (optional)",
+    placeHint: "z. B. Halle",
+    save: "Speichern",
+    remove: "Regelmäßiges Training entfernen",
+    toastSaved: "Trainingszeit gespeichert",
+    toastRemoved: "Trainingszeit entfernt"
+  },
   coachToday: {
     today: "Heute",
     tomorrow: "Morgen",
@@ -319,7 +334,8 @@ export const views = {
     coachToday: "Heute",
     coachEvents: "Termine",
     coachAthletes: "Schüler",
-    archerMode: "Schütze"
+    archerMode: "Schütze",
+    coachNewEvent: "Termin"
   },
   tagebuch: {
     editTech: "Techniktraining bearbeiten",

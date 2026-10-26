@@ -283,6 +283,21 @@ export const views = {
     errorAffirm: "Please tick the consent box to continue.",
     errorSave: "Could not save consent. Please try again."
   },
+  coachSchedule: {
+    title: "Regular training",
+    setUp: "Set weekday and time",
+    days: "Weekdays",
+    time: "Time",
+    interval: "Frequency",
+    every1: "every week",
+    every2: "every 2 weeks",
+    place: "Place (optional)",
+    placeHint: "e.g. hall",
+    save: "Save",
+    remove: "Remove regular training",
+    toastSaved: "Training time saved",
+    toastRemoved: "Training time removed"
+  },
   coachToday: {
     today: "Today",
     tomorrow: "Tomorrow",
@@ -319,7 +334,8 @@ export const views = {
     coachToday: "Today",
     coachEvents: "Events",
     coachAthletes: "Athletes",
-    archerMode: "Archer"
+    archerMode: "Archer",
+    coachNewEvent: "Event"
   },
   tagebuch: {
     editTech: "Edit technique training",

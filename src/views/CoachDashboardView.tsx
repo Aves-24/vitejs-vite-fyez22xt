@@ -20,6 +20,7 @@ import GroupTopicPanel,{ GroupSectionHeader, type GroupTopic, type GroupTopicsBy
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
+import { type GroupSchedule, isValidSchedule, occursOn, nextOccurrence, prevOccurrence, sortedDays } from '../utils/groupSchedule';
 
 const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
 import { formatViewerAgeCategory } from '../utils/privateProfile';
@@ -350,7 +351,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // Zarządzanie Grupami i Dziennikiem
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string}[]>([]);
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: GroupSchedule}[]>([]);
+  // [HARMONOGRAM] Edytor stałego treningu grupy (id grupy albo null).
+  const [scheduleGroupId, setScheduleGroupId] = useState<string | null>(null);
+  const [schedDays, setSchedDays] = useState<number[]>([]);
+  const [schedTime, setSchedTime] = useState('18:00');
+  const [schedEvery, setSchedEvery] = useState<1 | 2>(1);
+  const [schedPlace, setSchedPlace] = useState('');
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
@@ -1096,6 +1103,49 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
+  const openScheduleEditor = (group: { id: string; schedule?: GroupSchedule }) => {
+    const sc = group.schedule;
+    setSchedDays(sc?.days || []);
+    setSchedTime(sc?.time || '18:00');
+    setSchedEvery(sc?.every || 1);
+    setSchedPlace(sc?.place || '');
+    setScheduleGroupId(group.id);
+  };
+
+  // null = usunięcie stałego treningu. Kotwica „co drugi tydzień” = najbliższy
+  // termin od dziś, czyli „zaczynamy w tym/następnym tygodniu”.
+  const saveSchedule = async (remove = false) => {
+    if (!scheduleGroupId) return;
+    let schedule: GroupSchedule | null = null;
+    if (!remove) {
+      const draft: GroupSchedule = { days: sortedDays(schedDays), time: schedTime, every: schedEvery, anchor: dayKeyOf(Date.now()) };
+      draft.anchor = nextOccurrence({ ...draft, every: 1 }, draft.anchor, 7) || draft.anchor;
+      if (schedPlace.trim()) draft.place = schedPlace.trim().slice(0, 40);
+      if (!isValidSchedule(draft)) return;
+      schedule = draft;
+    }
+    const updatedGroups = coachGroups.map(g => {
+      if (g.id !== scheduleGroupId) return g;
+      const { schedule: _old, ...rest } = g;
+      return schedule ? { ...rest, schedule } : rest;
+    });
+    try {
+      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
+      setCoachGroups(updatedGroups);
+      setScheduleGroupId(null);
+      showToast(t(remove ? 'coachSchedule.toastRemoved' : 'coachSchedule.toastSaved'));
+    } catch {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
+  // „Mi 18:00 · jede Woche · Halle” — na karcie grupy i w edytorze.
+  const scheduleSummary = (sc: GroupSchedule) => {
+    // 1.11.2026 to niedziela, więc 1 + getDay() daje właściwy dzień tygodnia.
+    const days = sortedDays(sc.days).map(d => new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'short' })).join(', ');
+    return [`${days} ${sc.time}`, t(sc.every === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1'), sc.place].filter(Boolean).join(' · ');
+  };
+
   const handleEditGroup = async () => {
     if (!editingGroup || !editGroupName.trim()) return;
     const updatedGroups = coachGroups.map(g =>
@@ -1537,8 +1587,29 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const todayKey = dayKeyOf(nowTick);
         const startOfToday = new Date(nowTick).setHours(0, 0, 0, 0);
         const evs = upcomingCoachEvents || [];
-        const todayEv = evs.find(e => e.date === todayKey);
-        const nextEv = evs.find(e => e.date > todayKey);
+        // [HARMONOGRAM] Treningi ze stałego planu grup liczone w locie. Termin
+        // z kalendarza dla tej samej grupy tego dnia ma pierwszeństwo.
+        const tomorrowKey = dayKeyOf(startOfToday + 36 * 60 * 60 * 1000);
+        const scheduled = (dayKey: string | null, g: { id: string; name: string; schedule?: GroupSchedule }) => dayKey && g.schedule ? {
+          id: `sched_${g.id}_${dayKey}`, date: dayKey, time: g.schedule.time, title: g.name, place: g.schedule.place,
+          trainingTopicGroupId: g.id, topicText: coachGroupTopics[g.id]?.[dayKey]?.text, scheduledGroupId: g.id,
+        } : null;
+        const withSchedule = (list: any[]) => list.filter(Boolean).filter((e: any, _i, all: any[]) =>
+          !e.scheduledGroupId || !all.some(o => !o.scheduledGroupId && o.date === e.date && o.trainingTopicGroupId === e.scheduledGroupId));
+        const byWhen = (a: any, b: any) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`);
+        const allToday = withSchedule([
+          ...evs.filter(e => e.date === todayKey),
+          ...coachGroups.map(g => scheduled(g.schedule && occursOn(g.schedule, todayKey) ? todayKey : null, g)),
+        ]).sort(byWhen);
+        const todayEv = allToday[0];
+        const nextEv = withSchedule([
+          ...evs.filter(e => e.date > todayKey),
+          ...coachGroups.map(g => scheduled(g.schedule ? nextOccurrence(g.schedule, tomorrowKey) : null, g)),
+        ]).sort(byWhen)[0];
+        // Termin z kalendarza otwiera kalendarz, trening z planu — swoją grupę.
+        const openEv = (ev: any) => ev.scheduledGroupId
+          ? onNavigate('COACH', 'GROUP', ev.scheduledGroupId)
+          : onNavigate('CALENDAR', undefined, ev.id);
         const dayLabel = (d: Date) => {
           const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - startOfToday) / 86400000);
           return days === 0 ? t('coachToday.today') : days === 1 ? t('coachToday.tomorrow')
@@ -1561,9 +1632,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         // Najpierw ci, na których trzeba zwrócić uwagę: spadek formy, potem dawno bez treningu.
         const rosterRank = (s: any) => formCompare[s.id]?.dir === 'down' ? 0 : isInactive(s) ? 1 : 2;
 
-        const since = lastTrainingDate ? new Date(`${lastTrainingDate}T00:00:00`).getTime() : nowTick - 7 * DAY_MS;
-        const sinceLabel = lastTrainingDate
-          ? t('coachToday.sinceTraining', { day: new Date(`${lastTrainingDate}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }) })
+        // Ostatni trening: późniejszy z kalendarza i z planu grup.
+        const lastDay = [lastTrainingDate, ...coachGroups.map(g => g.schedule ? prevOccurrence(g.schedule, todayKey) : null)]
+          .filter((d): d is string => !!d).sort().pop() || null;
+        const since = lastDay ? new Date(`${lastDay}T00:00:00`).getTime() : nowTick - 7 * DAY_MS;
+        const sinceLabel = lastDay
+          ? t('coachToday.sinceTraining', { day: new Date(`${lastDay}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }) })
           : t('coachToday.sinceWeek');
         const trainedToday = students
           .filter(s => (s.exactLastActivity || 0) >= startOfToday)
@@ -1600,7 +1674,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         };
         const plain = { plainSub: true, focus: false };
         const topicsLine = (ev: any) => Array.isArray(ev.topics) && ev.topics.length > 0
-          ? ev.topics.map((id: string) => topicLabel(id, t)).join(' · ') : null;
+          ? ev.topics.map((id: string) => topicLabel(id, t)).join(' · ') : ev.topicText || null;
         const addEventBtn = (
           <button
             type="button"
@@ -1637,11 +1711,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <section className="bg-white rounded-2xl border-2 border-rose-200 shadow-sm overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => onNavigate('CALENDAR', undefined, todayEv.id)}
+                  onClick={() => openEv(todayEv)}
                   className="w-full text-left px-3.5 pt-3 pb-2.5 active:bg-rose-50/50 transition-all"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-[16px] font-black text-[#0a3a2a] leading-tight min-w-0 break-words">{todayEv.title}</p>
+                    <p className="text-[16px] font-black text-[#0a3a2a] leading-tight min-w-0 break-words">{todayEv.title}{todayEv.place && <span className="text-gray-400 font-bold"> · {todayEv.place}</span>}</p>
                     {cd && <span className="shrink-0 text-[12px] font-black text-rose-600 bg-rose-50 rounded-full px-2 py-0.5">{cd}</span>}
                   </div>
                   {topics && <p className="text-[13px] font-bold text-emerald-700 mt-1">{topics}</p>}
@@ -1694,12 +1768,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 return (
                   <button
                     type="button"
-                    onClick={() => onNavigate('CALENDAR', undefined, nextEv.id)}
+                    onClick={() => openEv(nextEv)}
                     className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dayLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
-                      <p className="text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5 truncate">{nextEv.title}</p>
+                      <p className="text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5 truncate">{nextEv.title}{nextEv.place && <span className="text-gray-400 font-bold"> · {nextEv.place}</span>}</p>
                       {topics && <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">{topics}</p>}
                     </div>
                     <span className="material-symbols-outlined text-gray-300 text-[22px] shrink-0">chevron_right</span>
@@ -2058,6 +2132,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         )}
                       </>)}
                     </div>
+                    {group.schedule && (
+                      <p className="flex items-center gap-1 text-[12px] font-bold text-rose-700 truncate mt-1">
+                        <span className="material-symbols-outlined text-[14px]">schedule</span>
+                        <span className="truncate">{scheduleSummary(group.schedule)}</span>
+                      </p>
+                    )}
                     {!isOpen && nextTopic && (
                       <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
                         <span className="material-symbols-outlined text-rose-600 text-[14px]">sports</span>
@@ -2088,6 +2168,23 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
                 {isOpen && (
                   <div className="pt-1 space-y-3">
+                    {/* [HARMONOGRAM] Stały trening grupy — z niego Heute wie, kiedy jest trening. */}
+                    <button
+                      type="button"
+                      onClick={() => openScheduleEditor(group)}
+                      className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all ${
+                        group.schedule ? 'bg-white border border-rose-100 shadow-sm' : 'border border-dashed border-rose-200 bg-rose-50/40'
+                      }`}
+                    >
+                      <span className="material-symbols-outlined text-rose-600 text-[20px]">schedule</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[12px] font-bold text-gray-500">{t('coachSchedule.title')}</span>
+                        <span className="block text-[14px] font-black text-[#0a3a2a] truncate">
+                          {group.schedule ? scheduleSummary(group.schedule) : t('coachSchedule.setUp')}
+                        </span>
+                      </span>
+                      <span className="material-symbols-outlined text-gray-300 text-[20px]">{group.schedule ? 'edit' : 'add'}</span>
+                    </button>
                     <GroupTopicPanel
                       groupId={group.id}
                       groupName={group.name}
@@ -2417,6 +2514,89 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>,
         document.body
       )}
+
+      {scheduleGroupId && typeof document !== 'undefined' && (() => {
+        const group = coachGroups.find(g => g.id === scheduleGroupId);
+        if (!group) return null;
+        // Kolejność od poniedziałku; podpis z kalendarza (1.11.2026 = niedziela).
+        const weekDays = [1, 2, 3, 4, 5, 6, 0];
+        const canSave = schedDays.length > 0 && /^\d{1,2}:\d{2}$/.test(schedTime);
+        return createPortal(
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-end sm:items-center justify-center p-4 animate-fade-in" onClick={() => setScheduleGroupId(null)}>
+            <div className="bg-white rounded-[32px] p-6 w-full max-w-[360px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+              <h2 className="text-lg font-black text-[#0a3a2a] leading-tight">{t('coachSchedule.title')}</h2>
+              <p className="text-[13px] font-bold text-gray-500 mb-4">{group.name}</p>
+
+              <p className="text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.days')}</p>
+              <div className="grid grid-cols-7 gap-1 mb-4">
+                {weekDays.map(d => {
+                  const on = schedDays.includes(d);
+                  return (
+                    <button
+                      key={d}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setSchedDays(prev => on ? prev.filter(x => x !== d) : [...prev, d])}
+                      className={`h-10 rounded-xl text-[12px] font-black transition-all active:scale-90 ${on ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
+                    >
+                      {new Date(2026, 10, 1 + d).toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-3 mb-4">
+                <label className="flex-1">
+                  <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.time')}</span>
+                  <input
+                    type="time"
+                    value={schedTime}
+                    onChange={e => setSchedTime(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[15px] font-black text-[#0a3a2a] outline-none focus:border-rose-500"
+                  />
+                </label>
+                <div className="flex-1">
+                  <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.interval')}</span>
+                  <div className="flex flex-col gap-1">
+                    {([1, 2] as const).map(n => (
+                      <button
+                        key={n}
+                        type="button"
+                        aria-pressed={schedEvery === n}
+                        onClick={() => setSchedEvery(n)}
+                        className={`py-1.5 rounded-lg text-[12px] font-black transition-all ${schedEvery === n ? 'bg-rose-600 text-white' : 'bg-gray-50 text-gray-500 border border-gray-200'}`}
+                      >
+                        {t(n === 2 ? 'coachSchedule.every2' : 'coachSchedule.every1')}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <label className="block mb-5">
+                <span className="block text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.place')}</span>
+                <input
+                  type="text"
+                  value={schedPlace}
+                  maxLength={40}
+                  placeholder={t('coachSchedule.placeHint')}
+                  onChange={e => setSchedPlace(e.target.value)}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] font-bold text-[#333] outline-none focus:border-rose-500"
+                />
+              </label>
+
+              <div className="flex gap-2">
+                <button onClick={() => setScheduleGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+                <button onClick={() => saveSchedule()} disabled={!canSave} className="flex-1 py-3 bg-rose-600 text-white rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 disabled:opacity-50 shadow-md">{t('coachSchedule.save')}</button>
+              </div>
+              {group.schedule && (
+                <button onClick={() => saveSchedule(true)} className="w-full mt-3 py-2 text-[12px] font-black text-red-500 active:scale-95">{t('coachSchedule.remove')}</button>
+              )}
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
 
       {editingGroup && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setEditingGroup(null)}>

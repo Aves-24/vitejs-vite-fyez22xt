@@ -74,6 +74,11 @@ te punkty razem z userem i ustalić kolejność.
   dzień trenera (A: odprawa przed dzisiejszym treningiem, B: dzień bez treningu).
   Dalej: Termine = same terminy trenera, zakładka Chat, obecność + szybka
   notatka w karcie treningu (trzeba ustalić, gdzie zapisywać).
+- **Harmonogram etap 1 ZROBIONY 2026-10-26:** w Gruppen → karta grupy →
+  „Regelmäßiges Training” (dni tygodnia, godzina, co 1/2 tygodnie, miejsce);
+  `coachGroups[].schedule`, terminy liczone w locie (utils/groupSchedule.ts),
+  Heute bierze je pod uwagę. Uczniowie jeszcze NIE widzą planu; potwierdzanie
+  obecności — następny krok, do przemyślenia (poniżej).
 - **POMYSŁ: harmonogram treningów (jak Spond)** — trener ma stałe treningi
   (np. zawsze środa 18:00, grupa U14, hala). Zamiast wpisywać każdy termin:
   szablon cykliczny (dzień tygodnia, godzina, grupa, miejsce) generujący

@@ -565,27 +565,58 @@ export default function App() {
       { key: 'events', icon: 'event_note', label: t('nav.coachEvents'), active: currentView === 'CALENDAR', onClick: () => { setFocusedEventId(null); handleNavigate('CALENDAR'); } },
       { key: 'athletes', icon: 'groups', label: t('nav.coachAthletes'), active: (currentView === 'COACH' && coachSection === 'ATHLETES') || currentView === 'STATS', onClick: () => handleNavigate('COACH', 'ATHLETES') },
     ];
+    // Ten sam układ co menu zawodnika (sloty w-12, wcięcie pod środkowy
+    // przycisk), żeby „Schütze” stał dokładnie tam, gdzie „Trainer” — przełącznik
+    // trybu zawsze w tym samym punkcie ekranu.
     return (
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] bg-white border-t border-gray-100" style={{ boxShadow: '0 -6px 16px rgba(0,0,0,0.08)' }}>
-        <nav aria-label={t('nav.coach')} className="h-[68px] flex items-stretch px-2">
-          {items.map(it => (
-            <button
-              key={it.key}
-              onClick={it.onClick}
-              aria-current={it.active ? 'page' : undefined}
-              className={`flex-1 flex flex-col items-center justify-center gap-0.5 active:scale-95 transition-all ${it.active ? 'text-rose-600' : 'text-gray-500'}`}
-            >
-              <span className={`material-symbols-outlined text-[26px] px-4 rounded-full transition-colors ${it.active ? 'bg-rose-50' : ''}`}>{it.icon}</span>
-              <span className={`text-[12px] leading-tight ${it.active ? 'font-black' : 'font-bold'}`}>{it.label}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => handleNavigate('HOME')}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[#0a3a2a] active:scale-95 transition-all"
-          >
-            <span className="material-symbols-outlined text-[22px] w-9 h-7 rounded-full bg-[#F2C94C] flex items-center justify-center">target</span>
-            <span className="text-[12px] leading-tight font-bold">{t('nav.archerMode')}</span>
-          </button>
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
+        <nav aria-label={t('nav.coach')} className="relative h-20 w-full px-2">
+          <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
+            <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white"/>
+          </svg>
+          <div className="flex justify-between items-center h-full w-full relative">
+            <div className="flex flex-1 justify-evenly items-center h-full">
+              {items.map(it => (
+                <button
+                  key={it.key}
+                  onClick={it.onClick}
+                  aria-current={it.active ? 'page' : undefined}
+                  className={`w-12 flex flex-col items-center gap-0.5 active:scale-95 transition-all ${it.active ? 'text-rose-600' : 'text-gray-500'}`}
+                >
+                  <span className={`material-symbols-outlined text-[26px] px-2.5 rounded-full transition-colors ${it.active ? 'bg-rose-50' : ''}`}>{it.icon}</span>
+                  <span className={`text-[11px] leading-tight whitespace-nowrap ${it.active ? 'font-black' : 'font-bold'}`}>{it.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Środek: nowy termin — odpowiednik żółtego „Training” w menu zawodnika. */}
+            <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
+              <button
+                onClick={() => handleNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+                aria-label={t('coachDashboard.newEventBtn')}
+                className="w-16 h-16 bg-rose-600 shadow-rose-600/30 rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-white text-3xl font-black">add</span>
+              </button>
+              <span className="text-[9px] font-black text-rose-600 uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm whitespace-nowrap">
+                {t('nav.coachNewEvent')}
+              </span>
+            </div>
+
+            <div className="relative flex flex-1 justify-evenly items-center h-full">
+              {/* Kreska: tu kończy się menu trenera, „Schütze” z niego wychodzi. */}
+              <span aria-hidden="true" className="absolute left-0 top-1/2 -translate-y-1/2 w-px h-10 bg-gray-200" />
+              <button
+                onClick={() => handleNavigate('HOME')}
+                className="w-12 flex flex-col items-center gap-0.5 text-[#0a3a2a] active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[22px] w-9 h-7 rounded-full bg-[#F2C94C] flex items-center justify-center">target</span>
+                <span className="text-[11px] leading-tight font-bold whitespace-nowrap">{t('nav.archerMode')}</span>
+              </button>
+              <span aria-hidden="true" className="w-12" />
+              <span aria-hidden="true" className="w-12" />
+            </div>
+          </div>
         </nav>
         <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
       </div>
@@ -606,15 +637,15 @@ export default function App() {
         <div className="flex justify-between items-center h-full w-full relative">
           
           <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('HOME')} className={`flex flex-col items-center ${currentView === 'HOME' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('HOME')} className={`w-12 flex flex-col items-center ${currentView === 'HOME' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">home</span>
               {currentView === 'HOME' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.home')}</span>}
             </button>
-            <button onClick={() => { setFocusedEventId(null); handleNavigate('CALENDAR'); }} className={`flex flex-col items-center ${currentView === 'CALENDAR' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => { setFocusedEventId(null); handleNavigate('CALENDAR'); }} className={`w-12 flex flex-col items-center ${currentView === 'CALENDAR' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
               {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
             </button>
-            <button onClick={() => handleNavigate('MY_COACH')} className={`flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('MY_COACH')} className={`w-12 flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">menu_book</span>
               {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.tagebuch')}</span>}
             </button>
@@ -642,19 +673,19 @@ export default function App() {
           </div>
 
           <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('STATS')} className={`flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
-              {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
-            </button>
-
             {isCoach && (
-              <button onClick={() => handleNavigate('COACH')} className={`flex flex-col items-center ${currentView === 'COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+              <button onClick={() => handleNavigate('COACH')} className={`w-12 flex flex-col items-center ${currentView === 'COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
                 <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
                 {currentView === 'COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.coach')}</span>}
               </button>
             )}
 
-            <button onClick={() => handleNavigate('SETTINGS')} className={`flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+            <button onClick={() => handleNavigate('STATS')} className={`w-12 flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
+              <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
+              {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
+            </button>
+
+            <button onClick={() => handleNavigate('SETTINGS')} className={`w-12 flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
               <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
               {currentView === 'SETTINGS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>}
             </button>

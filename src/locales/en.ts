@@ -1735,7 +1735,7 @@ export const views = {
     groupTopicLinkPlaceholder: "https://… (YouTube or website)",
     groupTopicLinkInvalid: "This is not a valid http(s) link.",
     groupTopicLinksHint: "Students see a link icon and the full address before opening it. Only add content you may share and stand behind.",
-    groupTopicSave: "Set for {{count}}",
+    groupTopicSave: "Save",
     groupTopicTodayClosed: "Today · training ended",
     groupTopicEdit: "Edit topic",
     groupTopicPlanned: "Planned",

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { occursOn, timesOn, nextOccurrence, prevOccurrence, upcomingOccurrences, isValidSchedule, normalizeSchedule, sortSlots, type GroupSchedule } from './groupSchedule';
+import { occursOn, timesOn, nextOccurrence, prevOccurrence, upcomingOccurrences, listOccurrences, scheduleForSave, isValidSchedule, normalizeSchedule, sortSlots, type GroupSchedule } from './groupSchedule';
 
 // 2026-10-28 to środa, 2026-10-31 sobota.
 const wed: GroupSchedule = { slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28' };
@@ -76,6 +76,39 @@ describe('groupSchedule', () => {
     ]);
     const old = { slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28', place: 'Halle' };
     expect(normalizeSchedule(old)?.slots).toEqual([{ day: 3, time: '18:00', place: 'Halle' }]);
+  });
+
+  it('odwołany pojedynczy trening i przerwa: znikają z planu, a lista je oznacza', () => {
+    const s: GroupSchedule = {
+      ...wedSat,
+      cancelled: { '2026-10-28 18:00': 'Halle belegt' },
+      breaks: [{ from: '2026-11-02', to: '2026-11-06', note: 'Herbstferien' }],
+    };
+    expect(occursOn(s, '2026-10-28')).toBe(false);
+    expect(occursOn(s, '2026-11-04')).toBe(false);
+    expect(nextOccurrence(s, '2026-10-26')).toBe('2026-10-31');
+    expect(prevOccurrence(s, '2026-11-07')).toBe('2026-10-31');
+    expect(listOccurrences(s, '2026-10-26', '2026-11-08')).toEqual([
+      { date: '2026-10-28', time: '18:00', cancelled: true, note: 'Halle belegt' },
+      { date: '2026-10-31', time: '12:00' },
+      { date: '2026-11-04', time: '18:00', cancelled: true, note: 'Herbstferien' },
+      { date: '2026-11-07', time: '12:00' },
+    ]);
+  });
+
+  it('zapis: bez undefined i bez odwołań starszych niż 60 dni', () => {
+    const s = normalizeSchedule({
+      slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28',
+      cancelled: { '2026-07-01 18:00': '', '2026-10-28 18:00': '' },
+      breaks: [{ from: '2026-07-01', to: '2026-07-10' }, { from: '2026-12-21', to: '2027-01-06', note: 'Weihnachten' }],
+    })!;
+    const out = scheduleForSave(s, '2026-10-26');
+    expect(out).toEqual({
+      slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28',
+      cancelled: { '2026-10-28 18:00': '' },
+      breaks: [{ from: '2026-12-21', to: '2027-01-06', note: 'Weihnachten' }],
+    });
+    expect(JSON.stringify(out)).not.toContain('undefined');
   });
 
   it('sloty od poniedziałku, niedziela na końcu, bez duplikatów', () => {

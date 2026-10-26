@@ -20,7 +20,7 @@ import GroupTopicPanel,{ GroupSectionHeader, type GroupTopic, type GroupTopicsBy
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
-import { type GroupSchedule, type ScheduleSlot, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence } from '../utils/groupSchedule';
+import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
 
 const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
 import { formatViewerAgeCategory } from '../utils/privateProfile';
@@ -304,7 +304,7 @@ interface CoachDashboardViewProps {
   pendingOpenGroupId?: string | null;
   onClearPendingGroup?: () => void;
   /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
-  section?: 'TODAY' | 'ATHLETES' | 'GROUPS';
+  section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS';
 }
 
 export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
@@ -356,6 +356,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [scheduleGroupId, setScheduleGroupId] = useState<string | null>(null);
   const [schedSlots, setSchedSlots] = useState<ScheduleSlot[]>([]);
   const [schedEvery, setSchedEvery] = useState<1 | 2>(1);
+  const [schedBreaks, setSchedBreaks] = useState<ScheduleBreak[]>([]);
+  // [TERMINE] Odwołanie jednego treningu z planu: okienko z powodem.
+  const [cancelOcc, setCancelOcc] = useState<{ groupId: string; title: string; date: string; time: string; cancelled: boolean } | null>(null);
+  const [cancelNote, setCancelNote] = useState('');
+  const [termineWeeks, setTermineWeeks] = useState(4);
+  // Prywatne terminy obok trenerskich — kolizje widać od razu (pomysł usera 2026-10-26).
+  const [showPrivate, setShowPrivate] = useState(() => {
+    try { return localStorage.getItem('grotX_coachShowPrivate') === '1'; } catch { return false; }
+  });
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
   
@@ -402,6 +411,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [C27] Trzy najbliższe własne terminy trenerskie (bez kopii od innego
   // trenera — `isMirrored`). null = jeszcze się wczytują.
   const [upcomingCoachEvents, setUpcomingCoachEvents] = useState<any[] | null>(null);
+  // Wszystkie nadchodzące terminy trenera (każda kategoria) — dla zakładki Termine.
+  const [allUpcoming, setAllUpcoming] = useState<any[]>([]);
   const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
   const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
@@ -426,6 +437,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       .then(all => {
         if (cancelled) return;
         setUpcomingCoachEvents(all.filter((e: any) => e.category === 'Trener' && !e.isMirrored).slice(0, 3));
+        setAllUpcoming(all);
       })
       .catch(err => {
         console.error('Błąd pobierania terminów trenera:', err);
@@ -1102,6 +1114,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const openScheduleEditor = (group: { id: string; schedule?: GroupSchedule }) => {
     const sc = normalizeSchedule(group.schedule);
     setSchedSlots(sc?.slots || [{ day: new Date().getDay(), time: '18:00' }]);
+    setSchedBreaks(sc?.breaks || []);
     setSchedEvery(sc?.every || 1);
     setScheduleGroupId(group.id);
   };
@@ -1113,11 +1126,18 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     let schedule: GroupSchedule | null = null;
     if (!remove) {
       const slots = schedSlots.map(x => ({ ...x, place: (x.place || '').trim().slice(0, 40) || undefined }));
-      const draft: GroupSchedule = { slots: sortSlots(slots), every: schedEvery, anchor: dayKeyOf(Date.now()) };
-      draft.anchor = upcomingOccurrences({ ...draft, every: 1 }, draft.anchor, 1, 7)[0]?.date || draft.anchor;
-      schedule = normalizeSchedule(draft);
-      if (!schedule) return;
-      schedule = { ...schedule, slots: schedule.slots.map(x => (x.place ? x : { day: x.day, time: x.time })) };
+      const prev = normalizeSchedule(coachGroups.find(g => g.id === scheduleGroupId)?.schedule);
+      // Odwołania zostają; przerwy z edytora (niepełne wiersze pomijamy).
+      const breaks = schedBreaks
+        .filter(b => b.from && b.to)
+        .map(b => ({ from: b.from <= b.to ? b.from : b.to, to: b.from <= b.to ? b.to : b.from, note: (b.note || '').trim().slice(0, 40) || undefined }));
+      const draft: GroupSchedule = { slots: sortSlots(slots), every: schedEvery, anchor: dayKeyOf(Date.now()), cancelled: prev?.cancelled, breaks };
+      // Kotwica „co 2 tygodnie” zostaje przy edycji, żeby rytm się nie przesunął.
+      draft.anchor = prev && prev.every === schedEvery ? prev.anchor
+        : upcomingOccurrences({ ...draft, every: 1 }, draft.anchor, 1, 7)[0]?.date || draft.anchor;
+      const norm = normalizeSchedule(draft);
+      if (!norm) return;
+      schedule = scheduleForSave(norm, dayKeyOf(Date.now()));
     }
     const updatedGroups = coachGroups.map(g => {
       if (g.id !== scheduleGroupId) return g;
@@ -1129,6 +1149,28 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setCoachGroups(updatedGroups);
       setScheduleGroupId(null);
       showToast(t(remove ? 'coachSchedule.toastRemoved' : 'coachSchedule.toastSaved'));
+    } catch {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+  };
+
+  // [TERMINE] Odwołanie / przywrócenie jednego treningu z planu grupy.
+  const saveCancel = async (restore: boolean) => {
+    if (!cancelOcc) return;
+    const updatedGroups = coachGroups.map(g => {
+      if (g.id !== cancelOcc.groupId) return g;
+      const sc = normalizeSchedule(g.schedule);
+      if (!sc) return g;
+      const cancelled = { ...(sc.cancelled || {}) };
+      const key = occurrenceKey(cancelOcc.date, cancelOcc.time);
+      if (restore) delete cancelled[key]; else cancelled[key] = cancelNote.trim().slice(0, 60);
+      return { ...g, schedule: scheduleForSave({ ...sc, cancelled }, dayKeyOf(Date.now())) };
+    });
+    try {
+      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
+      setCoachGroups(updatedGroups);
+      setCancelOcc(null);
+      showToast(t(restore ? 'coachTermine.toastRestored' : 'coachTermine.toastCancelled'));
     } catch {
       showToast(t('coachDashboard.toastGroupError'));
     }
@@ -1560,7 +1602,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         className="-mx-5 mb-4 sticky top-0"
         // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
         onBack={() => (section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
-        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : t('coachDashboard.subtitle')}
+        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : t('coachDashboard.subtitle')}
         hideLogo
         actions={<>
           <div className="bg-white/10 text-[#fed33e] px-2.5 rounded-xl flex items-center gap-1.5 h-10">
@@ -1932,6 +1974,224 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </div>
         );
       })()}
+
+      {/* [TERMINE] Lista terminów trenera na 4 tygodnie (jak Spond), po tygodniach:
+          treningi z planu grup, własne terminy z kalendarza, starty uczniów;
+          na życzenie też prywatne terminy, żeby od razu widać było kolizje.
+          Siatka miesiąca i archiwum zostają w kalendarzu („Monat”). */}
+      {section === 'EVENTS' && (() => {
+        const todayKey = dayKeyOf(Date.now());
+        const startOfToday = new Date().setHours(0, 0, 0, 0);
+        const toKey = dayKeyOf(startOfToday + (termineWeeks * 7 + 0.5) * DAY_MS);
+        const inRange = (d: string) => d >= todayKey && d < toKey;
+        type Item = { key: string; date: string; time?: string; title: string; sub?: string; kind: 'plan' | 'event' | 'tour' | 'private'; stripe: string; cancelled?: boolean; onOpen?: () => void; occ?: { groupId: string; time: string } };
+
+        const ownEvents = allUpcoming.filter(e => e.category === 'Trener' && !e.isMirrored && inRange(e.date));
+        const items: Item[] = [];
+        for (const g of coachGroups) {
+          for (const o of listOccurrences(g.schedule, todayKey, toKey)) {
+            // Termin z kalendarza dla tej grupy tego dnia zastępuje trening z planu (jak na Übersicht).
+            if (ownEvents.some(e => e.date === o.date && e.trainingTopicGroupId === g.id)) continue;
+            const topic = coachGroupTopics[g.id]?.[o.date]?.text;
+            items.push({
+              key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'border-l-rose-400',
+              cancelled: o.cancelled,
+              sub: o.cancelled
+                ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
+                : [o.place, topic].filter(Boolean).join(' · '),
+              onOpen: () => onNavigate('COACH', 'GROUP', g.id),
+              occ: { groupId: g.id, time: o.time },
+            });
+          }
+        }
+        for (const e of ownEvents) {
+          items.push({
+            key: `ev_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'event', stripe: 'border-l-rose-400',
+            sub: [e.address, eventRecipients(e)].filter(Boolean).join(' · '),
+            onOpen: () => onNavigate('CALENDAR', undefined, e.id),
+          });
+        }
+        for (const tour of studentTournaments.filter(x => inRange(x.date))) {
+          items.push({ key: `tour_${tour.date}_${tour.title}`, date: tour.date, title: tour.title, kind: 'tour', stripe: 'border-l-[#fed33e]', sub: tour.names.join(', ') });
+        }
+        if (showPrivate) {
+          // Kolory ze słownika: zawody ciemnozielone, „Inne” granat, od mojego trenera fiolet.
+          for (const e of allUpcoming.filter(x => !(x.category === 'Trener' && !x.isMirrored) && inRange(x.date))) {
+            const stripe = e.category === 'Trener' ? 'border-l-violet-400' : e.category === 'Inne' ? 'border-l-blue-900' : 'border-l-[#0a3a2a]';
+            items.push({
+              key: `pr_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'private', stripe,
+              sub: t('coachTermine.private'),
+              onOpen: () => onNavigate('CALENDAR', undefined, e.id),
+            });
+          }
+        }
+        items.sort((a, b) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`));
+
+        // Tydzień od poniedziałku: „Diese Woche”, „Nächste Woche”, dalej „Woche ab 9.11.”.
+        const mondayKey = (dayKey: string) => {
+          const d = new Date(`${dayKey}T12:00:00`);
+          d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          return dayKeyOf(d.getTime());
+        };
+        const thisMonday = mondayKey(todayKey);
+        const weekLabel = (mon: string) => {
+          const weeks = Math.round((new Date(`${mon}T12:00:00`).getTime() - new Date(`${thisMonday}T12:00:00`).getTime()) / (7 * DAY_MS));
+          if (weeks === 0) return t('coachTermine.thisWeek');
+          if (weeks === 1) return t('coachTermine.nextWeek');
+          return t('coachTermine.weekOf', { date: new Date(`${mon}T12:00:00`).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric' }) });
+        };
+        const weeks: { mon: string; list: Item[] }[] = [];
+        for (const it of items) {
+          const mon = mondayKey(it.date);
+          const last = weeks[weeks.length - 1];
+          if (last && last.mon === mon) last.list.push(it); else weeks.push({ mon, list: [it] });
+        }
+
+        return (
+          <div className="space-y-4 mb-4">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+                className="flex-1 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                {t('coachDashboard.newEventBtn')}
+              </button>
+              <button
+                type="button"
+                onClick={() => onNavigate('CALENDAR')}
+                className="py-2.5 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] font-black text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">calendar_month</span>
+                {t('coachTermine.month')}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showPrivate}
+              onClick={() => {
+                const next = !showPrivate;
+                setShowPrivate(next);
+                try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
+              }}
+              className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-xl px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+            >
+              <span className="material-symbols-outlined text-[20px] text-gray-400">event_available</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[13px] font-black text-[#0a3a2a]">{t('coachTermine.showPrivate')}</span>
+                <span className="block text-[11px] font-bold text-gray-400">{t('coachTermine.showPrivateHint')}</span>
+              </span>
+              <span className={`w-10 h-6 rounded-full p-0.5 transition-colors shrink-0 ${showPrivate ? 'bg-[#0a3a2a]' : 'bg-gray-200'}`}>
+                <span className={`block w-5 h-5 rounded-full bg-white shadow transition-transform ${showPrivate ? 'translate-x-4' : ''}`} />
+              </span>
+            </button>
+
+            {upcomingCoachEvents === null ? (
+              <div className="h-24 rounded-2xl bg-gray-50 border border-gray-100 animate-pulse" />
+            ) : weeks.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                <p className="text-[13px] font-bold text-gray-500">{t('coachTermine.empty')}</p>
+                <p className="text-[12px] font-bold text-gray-400 mt-1">{t('coachTermine.emptyHint')}</p>
+              </div>
+            ) : weeks.map(w => (
+              <section key={w.mon} className="space-y-1.5">
+                <h2 className="text-[12px] font-black text-gray-500 uppercase tracking-wider px-1">{weekLabel(w.mon)}</h2>
+                {w.list.map(it => {
+                  const d = new Date(`${it.date}T12:00:00`);
+                  const isToday = it.date === todayKey;
+                  return (
+                    <div key={it.key} className={`flex items-center bg-white rounded-xl border border-gray-100 border-l-4 ${it.stripe} shadow-sm ${it.cancelled ? 'opacity-60' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={it.onOpen}
+                        disabled={!it.onOpen}
+                        className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+                      >
+                        <div className={`w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
+                          <span className={`block text-[10px] font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}</span>
+                          <span className={`block text-[17px] font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[14px] font-black text-[#0a3a2a] leading-tight truncate ${it.cancelled ? 'line-through' : ''}`}>
+                            {it.title}{it.time && <span className="font-bold text-gray-500"> · {it.time}</span>}
+                          </p>
+                          {it.sub && <p className={`text-[12px] font-bold truncate mt-0.5 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>{it.sub}</p>}
+                        </div>
+                        {it.kind === 'plan' && !it.cancelled && <span className="text-[10px] font-black text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 shrink-0">{t('coachTermine.planTag')}</span>}
+                        {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">emoji_events</span>}
+                      </button>
+                      {it.occ && (
+                        <button
+                          type="button"
+                          onClick={() => { setCancelNote(''); setCancelOcc({ groupId: it.occ!.groupId, title: it.title, date: it.date, time: it.occ!.time, cancelled: !!it.cancelled }); }}
+                          aria-label={it.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
+                          title={it.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
+                          className="w-10 h-10 mr-1 shrink-0 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">{it.cancelled ? 'undo' : 'event_busy'}</span>
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </section>
+            ))}
+
+            {termineWeeks < 12 && (
+              <button type="button" onClick={() => setTermineWeeks(w => w + 4)} className="w-full py-2 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all">
+                {t('coachTermine.more')}
+              </button>
+            )}
+            {/* Wcześniejsze terminy: archiwum kalendarza i historia grupy (Gruppen). */}
+            <button
+              type="button"
+              onClick={() => onNavigate('CALENDAR')}
+              className="w-full flex items-center justify-center gap-1 py-2 text-[12px] font-bold text-gray-400 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[16px]">history</span>
+              {t('coachTermine.past')}
+            </button>
+          </div>
+        );
+      })()}
+
+      {/* [TERMINE] Odwołanie jednego treningu z planu (albo przywrócenie). */}
+      {cancelOcc && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setCancelOcc(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black text-[#0a3a2a] leading-tight">
+              {cancelOcc.cancelled ? t('coachTermine.restoreTitle') : t('coachTermine.cancelTitle')}
+            </h2>
+            <p className="text-[13px] font-bold text-gray-500 mt-1 mb-4 first-letter:uppercase">
+              {cancelOcc.title} · {new Date(`${cancelOcc.date}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'numeric' })} · {cancelOcc.time}
+            </p>
+            {!cancelOcc.cancelled && (
+              <input
+                type="text"
+                value={cancelNote}
+                maxLength={60}
+                placeholder={t('coachTermine.reasonHint')}
+                onChange={e => setCancelNote(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] mb-2"
+              />
+            )}
+            <p className="text-[12px] font-bold text-gray-400 mb-5">{t('coachTermine.cancelInfo')}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setCancelOcc(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
+              <button
+                onClick={() => saveCancel(cancelOcc.cancelled)}
+                className={`flex-1 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 shadow-md ${cancelOcc.cancelled ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-red-500 text-white'}`}
+              >
+                {cancelOcc.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* [C34] Skaner jako popup (zgłoszenie usera 2026-09-16: doczepiał się
           na dole strony, pod listą uczniów, i łatwo było go przeoczyć).
@@ -2606,6 +2866,38 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 ))}
               </div>
 
+              {/* [TERMINE] Przerwy, np. ferie — w tym czasie plan nie wypada. */}
+              <p className="text-[12px] font-black text-gray-500 mb-2">{t('coachSchedule.breaks')}</p>
+              <div className="space-y-3 mb-2">
+                {schedBreaks.map((b, i) => {
+                  const setBreak = (patch: Partial<ScheduleBreak>) => setSchedBreaks(prev => prev.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+                  return (
+                    <div key={i} className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <input type="date" value={b.from} onChange={e => setBreak({ from: e.target.value })} aria-label={t('coachSchedule.breakFrom')}
+                          className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-[13px] font-black text-[#0a3a2a] outline-none focus:border-[#0a3a2a]" />
+                        <span className="text-gray-400 font-black">–</span>
+                        <input type="date" value={b.to} onChange={e => setBreak({ to: e.target.value })} aria-label={t('coachSchedule.breakTo')}
+                          className="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-xl px-2 py-2 text-[13px] font-black text-[#0a3a2a] outline-none focus:border-[#0a3a2a]" />
+                        <button type="button" onClick={() => setSchedBreaks(prev => prev.filter((_, j) => j !== i))} aria-label={t('coachSchedule.removeBreak')}
+                          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all">
+                          <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                      </div>
+                      <input type="text" value={b.note || ''} maxLength={40} placeholder={t('coachSchedule.breakHint')} onChange={e => setBreak({ note: e.target.value })}
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-[14px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]" />
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                type="button"
+                onClick={() => { const d = dayKeyOf(Date.now()); setSchedBreaks(prev => [...prev, { from: d, to: d }]); }}
+                className="w-full mb-5 py-2 rounded-xl border border-dashed border-gray-200 text-[13px] font-black text-[#0a3a2a] flex items-center justify-center gap-1 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                {t('coachSchedule.addBreak')}
+              </button>
 
               <div className="flex gap-2">
                 <button onClick={() => setScheduleGroupId(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>

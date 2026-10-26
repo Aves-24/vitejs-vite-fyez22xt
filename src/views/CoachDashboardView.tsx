@@ -1639,8 +1639,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const todayKey = dayKeyOf(nowTick);
         const startOfToday = new Date(nowTick).setHours(0, 0, 0, 0);
         const evs = upcomingCoachEvents || [];
-        // [HARMONOGRAM] Treningi ze stałego planu grup liczone w locie. Termin
-        // z kalendarza dla tej samej grupy tego dnia ma pierwszeństwo.
+        // [HARMONOGRAM] Treningi ze stałego planu grup liczone w locie. Ustawienie
+        // tematu zakłada termin w kalendarzu (trainingTopicGroupId) — gdy tego dnia
+        // grupa ma trening z planu, ten termin jest tylko jego cieniem i znika z osi.
         const tomorrowKey = dayKeyOf(startOfToday + 36 * 60 * 60 * 1000);
         const scheduledOcc = coachGroups.flatMap(g => {
           const sc = normalizeSchedule(g.schedule);
@@ -1653,7 +1654,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         // Oś treningów od dziś: kalendarz + plan grup, po czasie.
         const timeline: any[] = [...evs, ...scheduledOcc]
           .filter((e: any, _i, all: any[]) =>
-            !e.scheduledGroupId || !all.some(o => !o.scheduledGroupId && o.date === e.date && o.trainingTopicGroupId === e.scheduledGroupId))
+            e.scheduledGroupId || !e.trainingTopicGroupId
+            || !all.some(o => o.scheduledGroupId === e.trainingTopicGroupId && o.date === e.date))
           .sort(byWhen);
         const todayEv = timeline.find(e => e.date === todayKey);
         const nextEv = timeline.find(e => e.date >= tomorrowKey);
@@ -1661,12 +1663,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         const followUpOf = (ev: any) => ev && timeline
           .slice(timeline.indexOf(ev) + 1)
           .find(e => !ev.trainingTopicGroupId || e.trainingTopicGroupId === ev.trainingTopicGroupId);
-        // Termin z kalendarza otwiera kalendarz, trening z planu — swoją grupę.
-        const openEv = (ev: any) => ev.scheduledGroupId
-          ? (coachGroupTopics[ev.scheduledGroupId]?.[ev.date]
-            ? setTopicEdit({ groupId: ev.scheduledGroupId, date: ev.date })
-            : onNavigate('COACH', 'GROUP', `${ev.scheduledGroupId}@${ev.date}`))
-          : onNavigate('CALENDAR', undefined, ev.id);
+        // Trening grupy z ustalonym tematem → okienko tematu; trening z planu bez
+        // tematu → grupa na ten dzień; zwykły termin → kalendarz.
+        const openEv = (ev: any) => {
+          const gid = ev.scheduledGroupId || ev.trainingTopicGroupId;
+          if (gid && coachGroupTopics[gid]?.[ev.date]) setTopicEdit({ groupId: gid, date: ev.date });
+          else if (ev.scheduledGroupId) onNavigate('COACH', 'GROUP', `${ev.scheduledGroupId}@${ev.date}`);
+          else onNavigate('CALENDAR', undefined, ev.id);
+        };
         const dayLabel = (d: Date) => {
           const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - startOfToday) / 86400000);
           return days === 0 ? t('coachToday.today') : days === 1 ? t('coachToday.tomorrow')
@@ -1997,10 +2001,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
         const ownEvents = allUpcoming.filter(e => e.category === 'Trener' && !e.isMirrored && inRange(e.date));
         const items: Item[] = [];
+        // Dni, w które grupa ma trening z planu — termin tematu z kalendarza jest wtedy tylko jego cieniem.
+        const planDays = new Set<string>();
         for (const g of coachGroups) {
           for (const o of listOccurrences(g.schedule, todayKey, toKey)) {
-            // Termin z kalendarza dla tej grupy tego dnia zastępuje trening z planu (jak na Übersicht).
-            if (ownEvents.some(e => e.date === o.date && e.trainingTopicGroupId === g.id)) continue;
+            planDays.add(`${g.id}|${o.date}`);
             const topic = coachGroupTopics[g.id]?.[o.date]?.text;
             items.push({
               key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'border-l-rose-400',
@@ -2016,10 +2021,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           }
         }
         for (const e of ownEvents) {
+          if (e.trainingTopicGroupId && planDays.has(`${e.trainingTopicGroupId}|${e.date}`)) continue;
+          const gid = e.trainingTopicGroupId as string | undefined;
           items.push({
             key: `ev_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'event', stripe: 'border-l-rose-400',
             sub: [e.address, eventRecipients(e)].filter(Boolean).join(' · '),
-            onOpen: () => onNavigate('CALENDAR', undefined, e.id),
+            // Termin tematu grupy → to samo okienko tematu co w Gruppen.
+            onOpen: gid && coachGroupTopics[gid]?.[e.date]
+              ? () => setTopicEdit({ groupId: gid, date: e.date })
+              : () => onNavigate('CALENDAR', undefined, e.id),
           });
         }
         for (const tour of studentTournaments.filter(x => inRange(x.date))) {

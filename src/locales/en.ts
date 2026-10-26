@@ -1719,6 +1719,7 @@ export const views = {
     groupFocusLabel: "Group focus",
     groupTopicLabel: "Training topic",
     groupTopicSet: "Set today's topic",
+    groupTopicSetFor: "Set topic for {{day}}",
     groupTopicToday: "Today in training",
     groupTopicLast: "Last topic · {{date}}",
     groupTopicNew: "New topic",

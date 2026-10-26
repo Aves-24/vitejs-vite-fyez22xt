@@ -373,6 +373,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
   const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  // [TERMINE] Grupa otwarta z terminarza na konkretny (przyszły) trening.
+  const [groupFocusDay, setGroupFocusDay] = useState<{ groupId: string; day: string } | null>(null);
   const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
@@ -510,10 +512,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Z kalendarza (termin tematu treningu): Grupy + ta grupa rozwinięta, przewinięta do widoku.
   useEffect(() => {
     if (!pendingOpenGroupId || coachGroups.length === 0) return;
-    if (coachGroups.some(g => g.id === pendingOpenGroupId)) {
-      setActiveGroup(pendingOpenGroupId);
+    // „grupa@YYYY-MM-DD” — z terminarza na konkretny dzień treningu.
+    const [id, day] = pendingOpenGroupId.split('@');
+    if (coachGroups.some(g => g.id === id)) {
+      setActiveGroup(id);
       setIsGroupListOpen(false);
-      const id = pendingOpenGroupId;
+      setGroupFocusDay(day ? { groupId: id, day } : null);
       setTimeout(() => document.getElementById(`coach-group-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
     }
     onClearPendingGroup?.();
@@ -533,6 +537,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // Filtr „nieaktywni” dotyczy tylko zakładki Schüler; zaznaczanie gaśnie przy każdej zmianie zakładki.
   useEffect(() => {
     if (section !== 'ATHLETES') setInactiveOnly(false);
+    if (section !== 'GROUPS') setGroupFocusDay(null);
     setIsSelecting(false); setSelectedStudents([]);
     setIsGroupSelecting(false); setSelectedGroupId(null);
   }, [section]);
@@ -1656,7 +1661,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           .find(e => !ev.trainingTopicGroupId || e.trainingTopicGroupId === ev.trainingTopicGroupId);
         // Termin z kalendarza otwiera kalendarz, trening z planu — swoją grupę.
         const openEv = (ev: any) => ev.scheduledGroupId
-          ? onNavigate('COACH', 'GROUP', ev.scheduledGroupId)
+          ? onNavigate('COACH', 'GROUP', `${ev.scheduledGroupId}@${ev.date}`)
           : onNavigate('CALENDAR', undefined, ev.id);
         const dayLabel = (d: Date) => {
           const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - startOfToday) / 86400000);
@@ -1999,7 +2004,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               sub: o.cancelled
                 ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
                 : [o.place, topic].filter(Boolean).join(' · '),
-              onOpen: () => onNavigate('COACH', 'GROUP', g.id),
+              onOpen: () => onNavigate('COACH', 'GROUP', `${g.id}@${o.date}`),
               occ: { groupId: g.id, time: o.time },
             });
           }
@@ -2339,7 +2344,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   onClick={() => {
                     // W trybie wyboru klik zaznacza (jedna grupa naraz), poza nim rozwija.
                     if (isGroupSelecting) { setSelectedGroupId(isPicked ? null : group.id); return; }
-                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false);
+                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false); setGroupFocusDay(null);
                   }}
                   // Otwarta grupa: grubszy pasek, jak dzisiejsze wpisy w dzienniku.
                   style={isOpen ? { borderLeftWidth: 7 } : undefined}
@@ -2455,6 +2460,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       onChanged={next => handleGroupTopicChanged(group.id, next)}
                       showToast={showToast}
                       onOpenStudent={setSheetStudentId}
+                      focusDay={groupFocusDay?.groupId === group.id ? groupFocusDay.day : null}
+                      onClearFocusDay={() => setGroupFocusDay(null)}
                       renderHistory={(repeatToday, editTopic) => (
                         <GroupTrainingHistory
                           onRepeat={repeatToday}

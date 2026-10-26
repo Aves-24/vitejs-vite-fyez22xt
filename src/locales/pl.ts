@@ -1750,6 +1750,7 @@ export const views = {
     groupFocusLabel: "Fokus grupy",
     groupTopicLabel: "Temat treningu",
     groupTopicSet: "Ustaw temat na dziś",
+    groupTopicSetFor: "Ustaw temat na {{day}}",
     groupTopicToday: "Dziś na treningu",
     groupTopicLast: "Ostatni temat · {{date}}",
     groupTopicNew: "Nowy temat",

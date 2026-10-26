@@ -155,7 +155,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -166,6 +166,9 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   onOpenStudent?: (studentId: string) => void;
   /** Historia treningów pod sekcją tematu — dostaje „Powtórz na dziś” (null, gdy dziś już jest temat) i edycję. */
   renderHistory?: (repeatToday: ((gt: GroupTopic) => void) | null, editTopic: (gt: GroupTopic) => void) => ReactNode;
+  /** [TERMINE] Dzień wybrany w terminarzu (przyszły trening) — karta „Thema für …” zamiast dzisiejszej. */
+  focusDay?: string | null;
+  onClearFocusDay?: () => void;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -354,6 +357,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     return dayKeyOf(d.getTime());
   };
   const dayLabel = (day: string) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
+  // Przyszły dzień z terminarza; dzisiejszy i miniony obsługuje zwykła karta „Heute”.
+  const focus = focusDay && focusDay > today ? focusDay : null;
+  const focusTopic = focus ? byDay[focus] : undefined;
+  const focusLabel = focus ? new Date(`${focus}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'numeric' }) : '';
   // Puste pole = brak linku; wpisane, ale złe = blokada zapisu z komunikatem.
   const linkChecks = linkInputs.map(v => (v.trim() ? normalizeTopicLink(v) : ''));
   const linksInvalid = linkChecks.some(v => v === null);
@@ -412,6 +419,66 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
     // tabelka”) Jeden poziom kart jak w dzienniku: sekcje to sam nagłówek
     // + odstęp, róż tylko w pasku, ikonce i przycisku głównym.
     <div className="space-y-3">
+      {focus ? (
+        // [TERMINE] Wejście z terminarza na konkretny trening: temat właśnie na ten dzień.
+        <section>
+          <GroupSectionHeader
+            icon="event"
+            label={focusLabel}
+            action={onClearFocusDay ? (
+              <button
+                type="button"
+                onClick={onClearFocusDay}
+                className="h-10 shrink-0 px-3 rounded-xl text-gray-500 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">today</span>
+                {t('coachDashboard.groupTopicTodayHeading')}
+              </button>
+            ) : undefined}
+          />
+          {focusTopic ? (
+            <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
+              <EntryRow
+                icon="sports"
+                iconCls="text-[#0a3a2a]"
+                kind={t('coachDashboard.groupTopicLabel')}
+                kindCls="text-[#0a3a2a]"
+                title={focusTitle(focusTopic, t)}
+                extra={(
+                  <button
+                    onClick={() => openModal(focus, focusTopic)}
+                    disabled={saving}
+                    aria-label={t('coachDashboard.groupTopicEdit')}
+                    title={t('coachDashboard.groupTopicEdit')}
+                    className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">edit</span>
+                  </button>
+                )}
+              >
+                {focusTopic.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{focusTopic.desc}</p>}
+                {focusTopic.text && focusTopic.topic && <TopicChips topics={[focusTopic.topic]} />}
+                <TopicLinks links={focusTopic.links} titles={focusTopic.linkTitles} tone="coach" className="mt-2" />
+              </EntryRow>
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => openModal(focus)}
+                disabled={members.length === 0 || saving}
+                className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-[22px]">add</span>
+                {t('coachDashboard.groupTopicSetFor', { day: dayLabel(focus) })}
+              </button>
+              {members.length === 0 && (
+                <p className="text-[11px] font-bold text-gray-500 pl-1 mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
+              )}
+            </>
+          )}
+        </section>
+      ) : (
       <section>
         <GroupSectionHeader icon="today" label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
 
@@ -480,6 +547,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           </>
         )}
       </section>
+      )}
 
       {/* Zaplanowane na kolejne dni (uczniowie zobaczą je dopiero w ich dniu).
           „Planen” zawsze tu, gdy dziś już jest temat — dawny „+” w nagłówku. */}

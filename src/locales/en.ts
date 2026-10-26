@@ -331,11 +331,11 @@ export const views = {
     coach: "Trainer",
     training: "Training",
     inProgress: "LIVE",
-    coachToday: "Today",
+    coachToday: "Overview",
     coachEvents: "Events",
     coachAthletes: "Athletes",
-    archerMode: "Archer",
-    coachNewEvent: "Event"
+    coachGroups: "Groups",
+    archerMode: "Archer"
   },
   tagebuch: {
     editTech: "Edit technique training",

@@ -345,11 +345,11 @@ export const views = {
     coach: "Trener",
     training: "Trening",
     inProgress: "W TOKU",
-    coachToday: "Dziś",
+    coachToday: "Przegląd",
     coachEvents: "Terminy",
     coachAthletes: "Uczniowie",
-    archerMode: "Zawodnik",
-    coachNewEvent: "Termin"
+    coachGroups: "Grupy",
+    archerMode: "Zawodnik"
   },
   tagebuch: {
     editTech: "Edytuj trening techniczny",

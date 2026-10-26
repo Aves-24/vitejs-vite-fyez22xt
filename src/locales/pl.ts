@@ -337,10 +337,10 @@ export const views = {
     showLess: "Pokaż mniej"
   },
   nav: {
-    home: "Ekran główny",
+    home: "Start",
     calendar: "Terminarz",
-    stats: "Statystyki",
-    settings: "Ustawienia",
+    stats: "Wyniki",
+    settings: "Ustaw.",
     tagebuch: "Dziennik",
     coach: "Trener",
     training: "Trening",

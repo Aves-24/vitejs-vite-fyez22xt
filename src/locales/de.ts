@@ -323,7 +323,7 @@ export const views = {
     showLess: "Weniger anzeigen"
   },
   nav: {
-    home: "Startseite",
+    home: "Start",
     calendar: "Kalender",
     stats: "Stats",
     settings: "Einst.",

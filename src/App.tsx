@@ -557,118 +557,103 @@ export default function App() {
     handleStartSession(entry.m, targetType, true, battleId, 0, entry.id, entry.label ? displayDistance(entry) : undefined);
   };
 
-  // Menu trybu trenera: podpisy zawsze widoczne (trener nie zgaduje ikon).
-  // „Schütze” całkiem z prawej, za kreską — tam, gdzie „Trainer” w menu
-  // zawodnika (user 2026-10-26), więc przełącznik trybów stoi w tym samym rogu.
-  const renderCoachNav = () => {
-    const items: { key: string; icon: string; label: string; active: boolean; onClick: () => void }[] = [
-      { key: 'today', icon: 'space_dashboard', label: t('nav.coachToday'), active: currentView === 'COACH' && coachSection === 'TODAY', onClick: () => handleNavigate('COACH', 'TODAY') },
-      { key: 'events', icon: 'event_note', label: t('nav.coachEvents'), active: currentView === 'CALENDAR', onClick: () => { setFocusedEventId(null); handleNavigate('CALENDAR'); } },
-      { key: 'athletes', icon: 'group', label: t('nav.coachAthletes'), active: (currentView === 'COACH' && coachSection === 'ATHLETES') || currentView === 'STATS', onClick: () => handleNavigate('COACH', 'ATHLETES') },
-      { key: 'groups', icon: 'folder_shared', label: t('nav.coachGroups'), active: currentView === 'COACH' && coachSection === 'GROUPS', onClick: () => handleNavigate('COACH', 'GROUPS') },
-    ];
-    return (
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] bg-white" style={{ boxShadow: '0 -6px 16px rgba(0,0,0,0.08)' }}>
-        <nav aria-label={t('nav.coach')} className="h-[68px] flex items-center px-1">
-          {items.map(it => (
-            <button
-              key={it.key}
-              onClick={it.onClick}
-              aria-current={it.active ? 'page' : undefined}
-              className={`flex-1 min-w-0 flex flex-col items-center gap-0.5 active:scale-95 transition-all ${it.active ? 'text-rose-600' : 'text-gray-500'}`}
-            >
-              <span className={`material-symbols-outlined text-[26px] px-3 rounded-full transition-colors ${it.active ? 'bg-rose-50' : ''}`}>{it.icon}</span>
-              <span className={`text-[11px] leading-tight whitespace-nowrap ${it.active ? 'font-black' : 'font-bold'}`}>{it.label}</span>
-            </button>
-          ))}
-          {/* Kreska: tu kończy się menu trenera, „Schütze” z niego wychodzi. */}
-          <span aria-hidden="true" className="w-px h-10 bg-gray-200 shrink-0" />
-          <button
-            onClick={() => handleNavigate('HOME')}
-            className="flex-1 min-w-0 flex flex-col items-center gap-0.5 text-[#0a3a2a] active:scale-95 transition-all"
-          >
-            <span className="material-symbols-outlined text-[22px] w-9 h-7 rounded-full bg-[#F2C94C] flex items-center justify-center">target</span>
-            <span className="text-[11px] leading-tight font-bold whitespace-nowrap">{t('nav.archerMode')}</span>
-          </button>
-        </nav>
-        <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
-      </div>
-    );
+  // [MENU] Oba dolne menu (zawodnik i trener) z tych samych klocków (user
+  // 2026-10-26: „wszystko musi być spójne”): ta sama wysokość i tło, ikona 24 px
+  // w pigułce, podpis 10 px zawsze widoczny, przełącznik trybu całkiem z prawej
+  // za kreską. Różni je tylko kolor aktywnej zakładki: zieleń zawodnika, róż trenera.
+  type NavAccent = 'archer' | 'coach';
+  const NAV_ACTIVE: Record<NavAccent, { text: string; pill: string }> = {
+    archer: { text: 'text-[#0a3a2a]', pill: 'bg-[#0a3a2a]/[0.07]' },
+    coach: { text: 'text-rose-600', pill: 'bg-rose-50' },
   };
+  const NAV_SLOT = 'flex-1 min-w-0 flex flex-col items-center gap-1 active:scale-95 transition-all';
+  const NAV_ICON = 'material-symbols-outlined text-[24px] leading-none w-11 h-7 rounded-full flex items-center justify-center transition-colors';
+  const NAV_LABEL = 'text-[10px] leading-none whitespace-nowrap';
+
+  const navButton = (accent: NavAccent, key: string, icon: string, label: string, active: boolean, onClick: () => void) => (
+    <button key={key} onClick={onClick} aria-current={active ? 'page' : undefined} className={`${NAV_SLOT} ${active ? NAV_ACTIVE[accent].text : 'text-gray-400'}`}>
+      <span className={`${NAV_ICON} ${active ? NAV_ACTIVE[accent].pill : ''}`}>{icon}</span>
+      <span className={`${NAV_LABEL} ${active ? 'font-black' : 'font-bold'}`}>{label}</span>
+    </button>
+  );
+
+  // Przełącznik trybu: zawsze ostatni, za kreską, ikona na kolorze trybu, do którego prowadzi.
+  const navModeSwitch = (icon: string, label: string, pill: string, onClick: () => void) => (
+    <>
+      <span aria-hidden="true" className="w-px h-8 bg-gray-200 shrink-0" />
+      <button onClick={onClick} className={`${NAV_SLOT} text-gray-500`}>
+        <span className={`${NAV_ICON} ${pill}`}>{icon}</span>
+        <span className={`${NAV_LABEL} font-bold`}>{label}</span>
+      </button>
+    </>
+  );
+
+  // Wspólna rama: biały pasek 80 px z cieniem; zawodnik ma wcięcie pod żółty przycisk.
+  const navFrame = (ariaLabel: string, notch: boolean, children: React.ReactNode) => (
+    <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
+      <nav aria-label={ariaLabel} className="relative h-20 w-full px-1">
+        <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
+          <path d={notch ? 'M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z' : 'M0,0 H390 V80 H0 Z'} fill="white"/>
+        </svg>
+        <div className="flex items-center h-full w-full relative">{children}</div>
+      </nav>
+      <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
+    </div>
+  );
+
+  const renderCoachNav = () => navFrame(t('nav.coach'), false, (
+    <>
+      <div className="flex flex-1 items-center h-full">
+        {navButton('coach', 'today', 'space_dashboard', t('nav.coachToday'), currentView === 'COACH' && coachSection === 'TODAY', () => handleNavigate('COACH', 'TODAY'))}
+        {navButton('coach', 'events', 'event_note', t('nav.coachEvents'), currentView === 'CALENDAR', () => { setFocusedEventId(null); handleNavigate('CALENDAR'); })}
+        {navButton('coach', 'athletes', 'group', t('nav.coachAthletes'), (currentView === 'COACH' && coachSection === 'ATHLETES') || currentView === 'STATS', () => handleNavigate('COACH', 'ATHLETES'))}
+        {navButton('coach', 'groups', 'folder_shared', t('nav.coachGroups'), currentView === 'COACH' && coachSection === 'GROUPS', () => handleNavigate('COACH', 'GROUPS'))}
+        {navModeSwitch('target', t('nav.archerMode'), 'bg-[#F2C94C] text-[#0a3a2a]', () => handleNavigate('HOME'))}
+      </div>
+    </>
+  ));
 
   const renderBottomNav = () => {
     const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
     if (hiddenViews.includes(currentView)) return null;
     if (coachMode && isCoach) return renderCoachNav();
 
-    return (
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
-        <div className="relative h-20 w-full px-2">
-          <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
-            <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white"/>
-          </svg>
-        <div className="flex justify-between items-center h-full w-full relative">
-          
-          <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('HOME')} className={`w-12 flex flex-col items-center ${currentView === 'HOME' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">home</span>
-              {currentView === 'HOME' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.home')}</span>}
-            </button>
-            <button onClick={() => { setFocusedEventId(null); handleNavigate('CALENDAR'); }} className={`w-12 flex flex-col items-center ${currentView === 'CALENDAR' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">event_note</span>
-              {currentView === 'CALENDAR' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.calendar')}</span>}
-            </button>
-            <button onClick={() => handleNavigate('MY_COACH')} className={`w-12 flex flex-col items-center ${currentView === 'MY_COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">menu_book</span>
-              {currentView === 'MY_COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.tagebuch')}</span>}
-            </button>
-          </div>
-          
-          <div className={`relative -top-7 w-20 shrink-0 flex flex-col items-center z-50`}>
-            {hasActiveSession && (
-              <div className="absolute top-0 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white z-20 animate-pulse shadow-sm"></div>
-            )}
-            <button 
-              onClick={() => hasActiveSession ? handleNavigate('SCORING') : handleNavigate('SETUP')} 
-              className={`w-16 h-16 ${hasActiveSession ? 'bg-red-500 shadow-red-500/30' : 'bg-[#F2C94C] shadow-[#F2C94C]/30'} rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden`}
-            >
-                <div className="absolute inset-0 pointer-events-none">
-                    <div className="absolute w-8 h-8 bg-white/20 rounded-full top-[-10%] left-[-10%] animate-pulse"></div>
-                    <div className="absolute w-6 h-6 bg-white/10 rounded-full bottom-0 right-0 animate-bounce" style={{animationDuration: '3s'}}></div>
-                </div>
-                <span className="material-symbols-outlined text-white text-3xl font-black relative z-10">
-                  {hasActiveSession ? 'play_arrow' : 'target'}
-                </span>
-            </button>
-            <span className={`text-[9px] font-black ${hasActiveSession ? 'text-red-500' : 'text-[#8B6508]'} uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm`}>
-              {hasActiveSession ? t('nav.inProgress') : t('nav.training')}
-            </span>
-          </div>
-
-          <div className="flex flex-1 justify-evenly items-center h-full">
-            <button onClick={() => handleNavigate('STATS')} className={`w-12 flex flex-col items-center ${currentView === 'STATS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">analytics</span>
-              {currentView === 'STATS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.stats')}</span>}
-            </button>
-
-            <button onClick={() => handleNavigate('SETTINGS')} className={`w-12 flex flex-col items-center ${currentView === 'SETTINGS' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-              <span className="material-symbols-outlined text-[26px] font-bold">tune</span>
-              {currentView === 'SETTINGS' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.settings')}</span>}
-            </button>
-
-            {isCoach && (
-              <button onClick={() => handleNavigate('COACH')} className={`w-12 flex flex-col items-center ${currentView === 'COACH' ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                <span className="material-symbols-outlined text-[26px] font-bold">sports</span>
-                {currentView === 'COACH' && <span className="text-[8px] font-black uppercase mt-0.5">{t('nav.coach')}</span>}
-              </button>
-            )}
-          </div>
-
+    return navFrame(t('nav.home'), true, (
+      <>
+        <div className="flex flex-1 items-center h-full">
+          {navButton('archer', 'home', 'home', t('nav.home'), currentView === 'HOME', () => handleNavigate('HOME'))}
+          {navButton('archer', 'calendar', 'event_note', t('nav.calendar'), currentView === 'CALENDAR', () => { setFocusedEventId(null); handleNavigate('CALENDAR'); })}
+          {navButton('archer', 'tagebuch', 'menu_book', t('nav.tagebuch'), currentView === 'MY_COACH', () => handleNavigate('MY_COACH'))}
         </div>
+
+        <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
+          {hasActiveSession && (
+            <div className="absolute top-0 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white z-20 animate-pulse shadow-sm"></div>
+          )}
+          <button
+            onClick={() => hasActiveSession ? handleNavigate('SCORING') : handleNavigate('SETUP')}
+            className={`w-16 h-16 ${hasActiveSession ? 'bg-red-500 shadow-red-500/30' : 'bg-[#F2C94C] shadow-[#F2C94C]/30'} rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden`}
+          >
+              <div className="absolute inset-0 pointer-events-none">
+                  <div className="absolute w-8 h-8 bg-white/20 rounded-full top-[-10%] left-[-10%] animate-pulse"></div>
+                  <div className="absolute w-6 h-6 bg-white/10 rounded-full bottom-0 right-0 animate-bounce" style={{animationDuration: '3s'}}></div>
+              </div>
+              <span className="material-symbols-outlined text-white text-3xl font-black relative z-10">
+                {hasActiveSession ? 'play_arrow' : 'target'}
+              </span>
+          </button>
+          <span className={`text-[9px] font-black ${hasActiveSession ? 'text-red-500' : 'text-[#8B6508]'} uppercase tracking-widest mt-1.5 bg-white/80 px-2 rounded-full shadow-sm`}>
+            {hasActiveSession ? t('nav.inProgress') : t('nav.training')}
+          </span>
         </div>
-        <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
-      </div>
-    );
+
+        <div className="flex flex-1 items-center h-full">
+          {navButton('archer', 'stats', 'analytics', t('nav.stats'), currentView === 'STATS', () => handleNavigate('STATS'))}
+          {navButton('archer', 'settings', 'tune', t('nav.settings'), currentView === 'SETTINGS', () => handleNavigate('SETTINGS'))}
+          {isCoach && navModeSwitch('sports', t('nav.coach'), 'bg-rose-50 text-rose-600', () => handleNavigate('COACH'))}
+        </div>
+      </>
+    ));
   };
 
   if (!isAuthLoading && !user) return <><AuthView /><MoveNotice hidden={false} /></>;

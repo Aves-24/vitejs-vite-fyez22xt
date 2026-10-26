@@ -284,6 +284,7 @@ export const views = {
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   coachTermine: {
+    list: "Liste",
     month: "Monat",
     showPrivate: "Meine privaten Termine zeigen",
     private: "Privat",

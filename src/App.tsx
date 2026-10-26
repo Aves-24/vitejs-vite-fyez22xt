@@ -781,7 +781,7 @@ export default function App() {
         
         {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
         {currentView === 'WORLD_LEADERBOARD' && <WorldLeaderboardView userLevel={userLevel} onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
         
         {currentView === 'STATS' && (
           <StatsView

@@ -298,6 +298,7 @@ export const views = {
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
   coachTermine: {
+    list: "Lista",
     month: "Miesiąc",
     showPrivate: "Pokaż moje prywatne terminy",
     private: "Prywatne",

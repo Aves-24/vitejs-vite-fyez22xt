@@ -69,9 +69,11 @@ interface CalendarViewProps {
   openNewTrainerEvent?: boolean;
   clearOpenNewTrainerEvent?: () => void;
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
+  /** [TERMINE] Otwarty z panelu trenera („Monat”): powrót i przycisk listy prowadzą do Termine. */
+  coachMode?: boolean;
 }
 
-export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate }: CalendarViewProps) {
+export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate, coachMode = false }: CalendarViewProps) {
   const { t, i18n: i18nCore } = useTranslation(); 
   // Nasłuch trzyma tylko ostatnie 60 dni i przyszłość. PRO widzi do 730 dni
   // wstecz — starsze miesiące dociągamy dopiero, gdy kalendarz tam zajdzie.
@@ -671,9 +673,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     <div className="flex flex-col h-full bg-[#fcfdfe] pb-32">
 
       <ViewHeader
-        onBack={() => onNavigate?.('HOME')}
+        onBack={() => (coachMode ? onNavigate?.('COACH', 'EVENTS') : onNavigate?.('HOME'))}
         title={t('nav.calendar')}
         actions={
+          <>
+          {/* [TERMINE] Z widoku miesiąca z powrotem do listy terminów trenera. */}
+          {coachMode && (
+            <button
+              onClick={() => onNavigate?.('COACH', 'EVENTS')}
+              className="h-10 px-3 rounded-full bg-white/10 text-white flex items-center gap-1 text-[12px] font-black active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[20px]">list</span>
+              {t('coachTermine.list')}
+            </button>
+          )}
           <div className="relative">
             <div className="absolute inset-0 rounded-full bg-[#fed33e]/30 animate-ping" />
             <button
@@ -683,6 +696,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
             </button>
           </div>
+          </>
         }
       />
 

@@ -284,6 +284,7 @@ export const views = {
     errorSave: "Could not save consent. Please try again."
   },
   coachTermine: {
+    list: "List",
     month: "Month",
     showPrivate: "Show my private events",
     private: "Private",

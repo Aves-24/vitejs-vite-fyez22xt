@@ -69,8 +69,20 @@ te punkty razem z userem i ustalić kolejność.
 - **Cel:** od otwarcia appki do pierwszej strzały max 3 s.
 - **Pusty start:** user OK z tym, że appka zapełnia się stopniowo; uwaga Claude:
   pierwsza zapisana sesja powinna od razu coś pokazać (nagroda pierwszego dnia).
-- **Panel trenera:** do przemyślenia układ i czytelność. Zacząć od pytania
-  „co trener chce wiedzieć w hali w 5 s?” — user ma spisać swoje 3 pytania.
+- **Panel trenera (2026-10-26):** tryb trenera z własnym dolnym menu (Heute ·
+  Termine · Schüler · Schütze), Schüler | Gruppen w jednej zakładce, Heute jako
+  dzień trenera (A: odprawa przed dzisiejszym treningiem, B: dzień bez treningu).
+  Dalej: Termine = same terminy trenera, zakładka Chat, obecność + szybka
+  notatka w karcie treningu (trzeba ustalić, gdzie zapisywać).
+- **POMYSŁ: harmonogram treningów (jak Spond)** — trener ma stałe treningi
+  (np. zawsze środa 18:00, grupa U14, hala). Zamiast wpisywać każdy termin:
+  szablon cykliczny (dzień tygodnia, godzina, grupa, miejsce) generujący
+  terminy na kolejne tygodnie; odwołanie pojedynczego terminu, przerwa
+  wakacyjna, zmiana godziny „od teraz”. Uczniowie widzą plan, ewentualnie
+  potwierdzają obecność (Spond: „Zusage/Absage”) — to zasiliłoby kartę
+  treningu na Heute (kto przyjdzie). Do przemyślenia z userem: czy obecność
+  potwierdza uczeń czy odhacza trener, przypomnienia push, koszt odczytów
+  (generować terminy z wyprzedzeniem czy liczyć z szablonu w locie).
 - **Płatności:** po Blaze. **CENNIK (decyzja 2026-10-21):** pakiet trenera
   15 €/mies. za 10 uczniów z PRO dla trenera w cenie, każde kolejne 10
   uczniów +10 €/mies., bez ceny promocyjnej na start. Otwarte: plan roczny,

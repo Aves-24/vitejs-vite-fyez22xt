@@ -404,7 +404,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [seenMilestones, setSeenMilestones] = useState<string[]>([]);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
-  const [isInactiveOpen, setIsInactiveOpen] = useState(false);
+  // Heute: dzień ostatniego minionego treningu (YYYY-MM-DD); null = brak,
+  // undefined = jeszcze się ładuje. Od niego liczy się „seit dem letzten Training”.
+  const [lastTrainingDate, setLastTrainingDate] = useState<string | null | undefined>(undefined);
+  const [isRosterOpen, setIsRosterOpen] = useState(false);
+  // Odliczanie „in 1:30 h” na karcie dzisiejszego treningu.
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
   const [formCompare, setFormCompare] = useState<Record<string, FormCompare>>({});
 
@@ -422,6 +427,46 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       });
     return () => { cancelled = true; };
   }, [userId]);
+
+  // Ostatni miniony termin trenera — raz dziennie (pamięć do północy), bo
+  // zmienia się tylko po kolejnym treningu. Bez indeksu złożonego: kategorię
+  // filtrujemy u siebie z kilkunastu ostatnich terminów.
+  useEffect(() => {
+    if (!userId) return;
+    const today = dayKeyOf(Date.now());
+    const key = `grotX_lastCoachTraining_${userId}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const c = JSON.parse(raw);
+        if (c?.day === today) { setLastTrainingDate(c.date ?? null); return; }
+      }
+    } catch { /* uszkodzony wpis — czytamy z bazy */ }
+    let cancelled = false;
+    getDocs(query(
+      collection(db, `users/${userId}/tournaments`),
+      where('date', '<', today),
+      orderBy('date', 'desc'),
+      limit(15),
+    ))
+      .then(snap => {
+        const ev = snap.docs.map(d => d.data()).find(e => e.category === 'Trener' && !e.isMirrored);
+        const date = (ev?.date as string) || null;
+        try { localStorage.setItem(key, JSON.stringify({ day: today, date })); } catch { /* ignore */ }
+        if (!cancelled) setLastTrainingDate(date);
+      })
+      .catch(err => {
+        console.error('Ostatni trening trenera:', err);
+        if (!cancelled) setLastTrainingDate(null);
+      });
+    return () => { cancelled = true; };
+  }, [userId]);
+
+  useEffect(() => {
+    if (section !== 'TODAY') return;
+    const id = setInterval(() => setNowTick(Date.now()), 60000);
+    return () => clearInterval(id);
+  }, [section]);
 
   // [C34] Esc zamyka skaner — i, co ważniejsze, gasi kamerę. Bez tego
   // zamknięcie klawiaturą zostawiłoby diodę zapaloną.
@@ -1484,30 +1529,60 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </>}
       />
 
-      {/* Zakładka Heute — odpowiedź na „co trener chce wiedzieć w 5 s”:
-          najbliższy termin, kto go potrzebuje, co nowego. Wszystko rozwinięte
-          (dawniej pięć zwiniętych sekcji), długie listy ucięte do TODAY_SHOWN. */}
+      {/* Zakładka Heute — dzień trenera, nie skrzynka zaległości.
+          A: dziś jest trening → odprawa: kto przyjdzie, z jakim fokusem i formą.
+          B: dziś bez treningu → najbliższy trening i kto dziś sam trenował.
+          W obu: co od ostatniego treningu grupy, a nieaktywni tylko jedną linią. */}
       {section === 'TODAY' && (() => {
-        const nextEv = upcomingCoachEvents?.[0];
-        const laterEvs = (upcomingCoachEvents || []).slice(1);
-        const unread = students.filter(s => unreadStudentIds.has(s.id));
-        const formDown = newTrainingStudents.filter(s => newTrend(s)?.dir === 'down');
-        const otherNew = newTrainingStudents.filter(s => newTrend(s)?.dir !== 'down');
-        const needsCount = unread.length + formDown.length + inactiveCount + newStudentIds.length;
-        const hasNews = otherNew.length > 0 || unseenMilestones.length > 0 || studentTournaments.length > 0;
+        const todayKey = dayKeyOf(nowTick);
+        const startOfToday = new Date(nowTick).setHours(0, 0, 0, 0);
+        const evs = upcomingCoachEvents || [];
+        const todayEv = evs.find(e => e.date === todayKey);
+        const nextEv = evs.find(e => e.date > todayKey);
         const dayLabel = (d: Date) => {
-          const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+          const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - startOfToday) / 86400000);
           return days === 0 ? t('coachToday.today') : days === 1 ? t('coachToday.tomorrow')
             : d.toLocaleDateString(i18n.language, { weekday: 'long' });
         };
-        const head = (label: string, right?: React.ReactNode) => (
+        // „in 1:30 h” / „läuft” / „vorbei” — trening liczymy jako 2 h.
+        const countdown = (ev: any) => {
+          const m = /^(\d{1,2}):(\d{2})/.exec(ev.time || '');
+          if (!m) return null;
+          const start = new Date(nowTick).setHours(+m[1], +m[2], 0, 0);
+          const diff = Math.round((start - nowTick) / 60000);
+          if (diff > 0) return t('coachToday.inTime', { time: diff >= 60 ? `${Math.floor(diff / 60)}:${String(diff % 60).padStart(2, '0')} h` : `${diff} min` });
+          return diff > -120 ? t('coachToday.running') : t('coachToday.finished');
+        };
+        // Skład terminu: grupa z tematu treningu, wybrani uczniowie albo wszyscy.
+        const rosterOf = (ev: any): any[] =>
+          ev.trainingTopicGroupId ? studentsOfGroup(ev.trainingTopicGroupId)
+            : Array.isArray(ev.coachStudents) ? students.filter(s => ev.coachStudents.includes(s.id))
+            : students;
+        // Najpierw ci, na których trzeba zwrócić uwagę: spadek formy, potem dawno bez treningu.
+        const rosterRank = (s: any) => formCompare[s.id]?.dir === 'down' ? 0 : isInactive(s) ? 1 : 2;
+
+        const since = lastTrainingDate ? new Date(`${lastTrainingDate}T00:00:00`).getTime() : nowTick - 7 * DAY_MS;
+        const sinceLabel = lastTrainingDate
+          ? t('coachToday.sinceTraining', { day: new Date(`${lastTrainingDate}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }) })
+          : t('coachToday.sinceWeek');
+        const trainedToday = students
+          .filter(s => (s.exactLastActivity || 0) >= startOfToday)
+          .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
+        const unread = students.filter(s => unreadStudentIds.has(s.id));
+        // W stanie B dzisiejsi są już wyżej, w „Heute trainiert”.
+        const trainedSince = students
+          .filter(s => (s.exactLastActivity || 0) >= since && (todayEv || (s.exactLastActivity || 0) < startOfToday))
+          .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
+        const sinceUp = trainedSince.filter(s => formCompare[s.id]?.dir === 'up').length;
+        const sinceDown = trainedSince.filter(s => formCompare[s.id]?.dir === 'down').length;
+        const hasSince = unread.length > 0 || newStudentIds.length > 0 || trainedSince.length > 0
+          || unseenMilestones.length > 0 || studentTournaments.length > 0;
+
+        const label = (text: string, right?: React.ReactNode) => (
           <div className="flex items-center justify-between mb-2 px-1">
-            <h2 className="text-[12px] font-black text-gray-500 uppercase tracking-wider">{label}</h2>
+            <h2 className="text-[12px] font-black text-gray-500 uppercase tracking-wider">{text}</h2>
             {right}
           </div>
-        );
-        const subHead = (label: string) => (
-          <p className="text-[12px] font-bold text-gray-400 px-1 pt-1">{label}</p>
         );
         const more = (total: number, open: boolean, toggle: () => void) => total > TODAY_SHOWN && (
           <button type="button" onClick={toggle} className="w-full py-2 text-[12px] font-black text-rose-600 active:scale-95 transition-all">
@@ -1515,223 +1590,244 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </button>
         );
         const cap = <T,>(list: T[], open: boolean) => (open ? list : list.slice(0, TODAY_SHOWN));
-        const plain = { plainSub: true };
+        const trend = (s: any) => {
+          const c = formCompare[s.id];
+          return c ? (
+            <span className={`inline-flex items-center text-[13px] font-black ${c.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}`}>
+              <span className="material-symbols-outlined text-[16px]">{TREND_ICON[c.dir]}</span>{c.now}
+            </span>
+          ) : s.lastSessionScore > 0 ? <span className="text-[13px] font-black text-gray-400">{s.lastSessionScore}</span> : null;
+        };
+        const plain = { plainSub: true, focus: false };
+        const topicsLine = (ev: any) => Array.isArray(ev.topics) && ev.topics.length > 0
+          ? ev.topics.map((id: string) => topicLabel(id, t)).join(' · ') : null;
+        const addEventBtn = (
+          <button
+            type="button"
+            onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+            className="flex items-center gap-1 text-[12px] font-black text-rose-600 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            {t('coachDashboard.newEventBtn')}
+          </button>
+        );
+
         return (
         <div className="space-y-6 mb-4">
 
-          <section>
-            {head(t('coachToday.nextEvent'),
-              <button
-                type="button"
-                onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-                className="flex items-center gap-1 text-[12px] font-black text-rose-600 active:scale-95 transition-all"
-              >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                {t('coachDashboard.newEventBtn')}
-              </button>
-            )}
-            {upcomingCoachEvents === null ? (
-              <div className="h-[92px] rounded-2xl bg-gray-50 border border-gray-100 animate-pulse" />
-            ) : nextEv ? (() => {
-              const d = eventDate(nextEv);
-              const recipients = eventRecipients(nextEv);
-              return (
+          {/* Nagłówek dnia — mówi wprost, czy dziś jest trening. */}
+          <div className="px-1">
+            <p className="text-[13px] font-bold text-gray-500 first-letter:uppercase">
+              {new Date(nowTick).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <h1 className="text-[22px] font-black text-[#0a3a2a] leading-tight mt-0.5">
+              {upcomingCoachEvents === null ? '…'
+                : todayEv ? (todayEv.time ? t('coachToday.trainingAt', { time: todayEv.time }) : t('coachToday.trainingToday'))
+                : t('coachToday.noTraining')}
+            </h1>
+          </div>
+
+          {/* A: odprawa przed dzisiejszym treningiem */}
+          {todayEv && (() => {
+            const roster = rosterOf(todayEv).slice().sort((a, b) => rosterRank(a) - rosterRank(b));
+            const shown = isRosterOpen ? roster : roster.slice(0, 5);
+            const cd = countdown(todayEv);
+            const topics = topicsLine(todayEv);
+            return (
+              <section className="bg-white rounded-2xl border-2 border-rose-200 shadow-sm overflow-hidden">
                 <button
                   type="button"
-                  onClick={() => onNavigate('CALENDAR', undefined, nextEv.id)}
-                  className="w-full flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
+                  onClick={() => onNavigate('CALENDAR', undefined, todayEv.id)}
+                  className="w-full text-left px-3.5 pt-3 pb-2.5 active:bg-rose-50/50 transition-all"
                 >
-                  <div className="bg-rose-600 text-white rounded-xl text-center min-w-[54px] px-2 py-2 shrink-0">
-                    <span className="block text-[11px] font-black uppercase leading-none mb-1">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                    <span className="block text-[24px] font-black leading-none">{d.getDate()}</span>
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[16px] font-black text-[#0a3a2a] leading-tight min-w-0 break-words">{todayEv.title}</p>
+                    {cd && <span className="shrink-0 text-[12px] font-black text-rose-600 bg-rose-50 rounded-full px-2 py-0.5">{cd}</span>}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dayLabel(d)} · {nextEv.time || t('calendar.wholeDay')}</p>
-                    <p className="text-[16px] font-black text-[#0a3a2a] leading-tight mt-0.5 line-clamp-2 break-words">{nextEv.title}</p>
-                    {recipients && <p className="text-[12px] font-bold text-gray-500 mt-1 truncate">{recipients}</p>}
-                    {Array.isArray(nextEv.topics) && nextEv.topics.length > 0 && (
-                      <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">
-                        {nextEv.topics.map((id: string) => topicLabel(id, t)).join(' · ')}
-                      </p>
-                    )}
-                  </div>
-                  <span className="material-symbols-outlined text-gray-300 text-[22px] shrink-0">chevron_right</span>
+                  {topics && <p className="text-[13px] font-bold text-emerald-700 mt-1">{topics}</p>}
                 </button>
-              );
-            })() : (
-              <button
-                type="button"
-                onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-                className="w-full rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 py-5 text-center active:scale-[0.98] transition-all"
-              >
-                <span className="block text-[13px] font-bold text-gray-500">{t('coachDashboard.upcomingNone')}</span>
-                <span className="block text-[13px] font-black text-rose-600 mt-1">{t('coachDashboard.newEventBtn')}</span>
-              </button>
-            )}
-            {laterEvs.length > 0 && (
-              <div className="mt-1.5 space-y-1">
-                {laterEvs.map(ev => {
-                  const d = eventDate(ev);
-                  return (
-                    <button
-                      key={ev.id}
-                      type="button"
-                      onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left active:bg-gray-50 transition-all"
-                    >
-                      <span className="text-[12px] font-black text-rose-600 shrink-0 w-[92px] truncate first-letter:uppercase">{dayLabel(d)} {d.getDate()}.{d.getMonth() + 1}.</span>
-                      <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}</span>
-                      <span className="text-[12px] font-bold text-gray-400 shrink-0">{ev.time || ''}</span>
+                <div className="border-t border-gray-100 px-3.5 py-2">
+                  <p className="text-[12px] font-bold text-gray-400 mb-1">{t('coachToday.rosterTitle', { count: roster.length })}</p>
+                  {roster.length === 0 && <p className="text-[13px] font-bold text-gray-400 py-1">{t('coachToday.noRoster')}</p>}
+                  {shown.map(s => {
+                    const fc = studentFocus[s.id];
+                    const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSheetStudentId(s.id)}
+                        className="w-full flex items-center gap-2.5 py-1.5 text-left active:scale-[0.98] transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-[11px] font-black text-[#0a3a2a]">{initials || '?'}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-black text-[#0a3a2a] leading-tight truncate">{s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}</p>
+                          <p className="text-[12px] font-bold truncate">
+                            {isInactive(s)
+                              ? <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>
+                              : fc?.focus
+                                ? <span className="text-amber-800">{t('coachLog.typeGoal')}: {focusTitle(fc.focus, t)}</span>
+                                : <span className="text-gray-400">{t('coachToday.noFocus')}</span>}
+                          </p>
+                        </div>
+                        {trend(s)}
+                      </button>
+                    );
+                  })}
+                  {roster.length > 5 && (
+                    <button type="button" onClick={() => setIsRosterOpen(o => !o)} className="w-full py-1.5 text-[12px] font-black text-rose-600 active:scale-95 transition-all">
+                      {isRosterOpen ? t('coachToday.showLess') : t('coachToday.rosterMore', { count: roster.length - 5 })}
                     </button>
-                  );
-                })}
-              </div>
-            )}
-          </section>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
-          {!isLoading && (
-          <section>
-            {head(t('coachToday.needsYou'))}
-            {needsCount === 0 ? (
-              <div className="flex items-center gap-2.5 bg-emerald-50/60 border border-emerald-100 rounded-2xl px-3.5 py-3">
-                <span className="material-symbols-outlined text-emerald-500 text-[22px]">check_circle</span>
-                <span className="text-[13px] font-bold text-emerald-800">{t('coachToday.allGood')}</span>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
-                {newStudentIds.length > 0 && (
+          {/* B: bez treningu dziś — najbliższy trening jedną kartą */}
+          {!todayEv && upcomingCoachEvents !== null && (
+            <section>
+              {label(t('coachToday.nextTraining'), addEventBtn)}
+              {nextEv ? (() => {
+                const d = eventDate(nextEv);
+                const topics = topicsLine(nextEv);
+                return (
                   <button
                     type="button"
-                    onClick={() => { setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
-                    className="w-full flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-3 text-left active:scale-[0.98] transition-all"
+                    onClick={() => onNavigate('CALENDAR', undefined, nextEv.id)}
+                    className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
                   >
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0 ml-1" />
-                    <span className="flex-1 text-[14px] font-black text-emerald-800">{t('coachDashboard.newStudentDot', { count: newStudentIds.length })}</span>
-                    <span className="material-symbols-outlined text-emerald-400 text-[20px]">chevron_right</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dayLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
+                      <p className="text-[15px] font-black text-[#0a3a2a] leading-tight mt-0.5 truncate">{nextEv.title}</p>
+                      {topics && <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">{topics}</p>}
+                    </div>
+                    <span className="material-symbols-outlined text-gray-300 text-[22px] shrink-0">chevron_right</span>
                   </button>
-                )}
-                {unread.map(s => renderMiniStudentRow(
-                  s,
-                  <span className="text-red-600 inline-flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">chat</span>{t('coachToday.unreadMessage')}
-                  </span>,
-                  'bg-red-50 text-red-700 border-red-100',
-                  undefined,
-                  { ...plain, focus: false, onOpen: () => setOpenMessageStudentId(s.id) },
-                ))}
-                {formDown.map(s => {
-                  const trend = newTrend(s)!;
-                  const details = lastSessionDetails(s);
-                  return renderMiniStudentRow(
-                    s,
-                    <span className="text-orange-600">
-                      <span className="material-symbols-outlined text-[14px] align-[-3px]">{TREND_ICON.down}</span>{' '}
-                      {formPrev(trend)}{details && ` · ${details}`}
-                    </span>,
-                    'bg-orange-50 text-orange-700 border-orange-100',
-                    undefined,
-                    plain,
-                  );
-                })}
-                {inactiveCount > 0 && (
-                  <>
-                    {subHead(t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS }))}
-                    {cap(inactiveStudents, isInactiveOpen).map(s => renderMiniStudentRow(
-                      s,
-                      pauseReminderDue(s)
-                        ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
-                        : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
-                      'bg-amber-50 text-amber-800 border-amber-100',
-                      undefined,
-                      plain,
-                    ))}
-                    {more(inactiveCount, isInactiveOpen, () => setIsInactiveOpen(o => !o))}
-                  </>
-                )}
-              </div>
-            )}
-          </section>
+                );
+              })() : (
+                <button
+                  type="button"
+                  onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+                  className="w-full rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 py-4 text-center active:scale-[0.98] transition-all"
+                >
+                  <span className="block text-[13px] font-bold text-gray-500">{t('coachDashboard.upcomingNone')}</span>
+                  <span className="block text-[13px] font-black text-rose-600 mt-1">{t('coachDashboard.newEventBtn')}</span>
+                </button>
+              )}
+            </section>
           )}
 
-          {!isLoading && hasNews && (
-          <section className="space-y-1.5">
-            {head(t('coachToday.news'))}
-            {otherNew.length > 0 && (
-              <>
-                {subHead(t('coachDashboard.newTrainingsTitle'))}
-                {cap(otherNew, isNewTrainingsOpen).map(s => {
-                  const details = lastSessionDetails(s);
-                  const trend = newTrend(s);
-                  return renderMiniStudentRow(
+          {/* B: kto dziś sam trenował */}
+          {!todayEv && !isLoading && trainedToday.length > 0 && (
+            <section className="space-y-1.5">
+              {label(t('coachToday.trainedToday'))}
+              {cap(trainedToday, isNewTrainingsOpen).map(s => renderMiniStudentRow(
+                s,
+                <span className="text-emerald-700">{lastSessionDetails(s) || getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
+                'bg-emerald-50 text-emerald-700 border-emerald-100',
+                trend(s),
+                plain,
+              ))}
+              {more(trainedToday.length, isNewTrainingsOpen, () => setIsNewTrainingsOpen(o => !o))}
+            </section>
+          )}
+
+          {/* Od ostatniego treningu grupy (albo z 7 dni, gdy go jeszcze nie było) */}
+          {!isLoading && lastTrainingDate !== undefined && (
+            <section className="space-y-1.5">
+              {label(sinceLabel)}
+              {!hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
+              {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
+              {newStudentIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
+                  className="w-full flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-3 text-left active:scale-[0.98] transition-all"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0 ml-1" />
+                  <span className="flex-1 text-[14px] font-black text-emerald-800">{t('coachDashboard.newStudentDot', { count: newStudentIds.length })}</span>
+                  <span className="material-symbols-outlined text-emerald-400 text-[20px]">chevron_right</span>
+                </button>
+              )}
+              {unread.map(s => renderMiniStudentRow(
+                s,
+                <span className="text-red-600 inline-flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px]">chat</span>{t('coachToday.unreadMessage')}
+                </span>,
+                'bg-red-50 text-red-700 border-red-100',
+                undefined,
+                { ...plain, onOpen: () => setOpenMessageStudentId(s.id) },
+              ))}
+              {trainedSince.length > 0 && (
+                <>
+                  <p className="text-[12px] font-bold text-gray-400 px-1 pt-1 flex items-center gap-2">
+                    {t('coachToday.trainedSince', { count: trainedSince.length })}
+                    {sinceUp > 0 && <span className="inline-flex items-center text-emerald-600"><span className="material-symbols-outlined text-[14px]">trending_up</span>{sinceUp}</span>}
+                    {sinceDown > 0 && <span className="inline-flex items-center text-orange-500"><span className="material-symbols-outlined text-[14px]">trending_down</span>{sinceDown}</span>}
+                  </p>
+                  {cap(trainedSince, isMilestonesOpen).map(s => renderMiniStudentRow(
                     s,
-                    <span className="text-emerald-700">
-                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
-                      {trend && (
-                        <>
-                          {' · '}
-                          <span className="material-symbols-outlined text-[14px] align-[-3px]">{TREND_ICON[trend.dir]}</span>
-                          {formPrev(trend)}
-                        </>
-                      )}
+                    <span className="text-gray-500">
+                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}{lastSessionDetails(s) && ` · ${lastSessionDetails(s)}`}
                     </span>,
-                    'bg-emerald-50 text-emerald-700 border-emerald-100',
-                    undefined,
+                    'bg-gray-50 text-[#0a3a2a] border-gray-100',
+                    trend(s),
                     plain,
-                  );
-                })}
-                {more(otherNew.length, isNewTrainingsOpen, () => setIsNewTrainingsOpen(o => !o))}
-              </>
-            )}
-            {unseenMilestones.length > 0 && (
-              <>
-                {subHead(t('coachDashboard.milestonesTitle'))}
-                {cap(unseenMilestones, isMilestonesOpen).map(m => (
-                  <React.Fragment key={`${m.student.id}_${m.id}`}>
-                    {renderMiniStudentRow(
-                      m.student,
-                      <span className="text-[#8B6508]">
-                        <span className="material-symbols-outlined text-[14px] align-[-3px]">star</span>{' '}
-                        {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
-                        <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
-                        {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
-                        {m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
-                      </span>,
-                      'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
-                      undefined,
-                      { focus: false, plainSub: true, onOpen: () => openMilestone(m) },
-                    )}
-                  </React.Fragment>
-                ))}
-                {more(unseenMilestones.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}
-              </>
-            )}
-            {studentTournaments.length > 0 && (
-              <>
-                {subHead(t('coachDashboard.studentTournamentsTitle'))}
-                {studentTournaments.map(tour => {
-                  const d = eventDate(tour);
-                  return (
-                    <div
-                      key={`${tour.date}|${tour.title}`}
-                      className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
-                    >
-                      <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[42px] px-1.5 py-1 shrink-0">
-                        <span className="block text-[10px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                        <span className="block text-[16px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{tour.title}</p>
-                        <p className="text-[12px] font-bold text-[#8B6508] mt-0.5 truncate first-letter:uppercase">
-                          {dayLabel(d)} · {tour.names.join(', ')}
-                        </p>
-                      </div>
+                  ))}
+                  {more(trainedSince.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}
+                </>
+              )}
+              {unseenMilestones.map(m => (
+                <React.Fragment key={`${m.student.id}_${m.id}`}>
+                  {renderMiniStudentRow(
+                    m.student,
+                    <span className="text-[#8B6508]">
+                      <span className="material-symbols-outlined text-[14px] align-[-3px]">star</span>{' '}
+                      {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
+                      <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
+                      {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
+                    </span>,
+                    'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
+                    undefined,
+                    { ...plain, onOpen: () => openMilestone(m) },
+                  )}
+                </React.Fragment>
+              ))}
+              {studentTournaments.map(tour => {
+                const d = eventDate(tour);
+                return (
+                  <div
+                    key={`${tour.date}|${tour.title}`}
+                    className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
+                  >
+                    <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[42px] px-1.5 py-1 shrink-0">
+                      <span className="block text-[10px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                      <span className="block text-[16px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
                     </div>
-                  );
-                })}
-              </>
-            )}
-          </section>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{tour.title}</p>
+                      <p className="text-[12px] font-bold text-[#8B6508] mt-0.5 truncate first-letter:uppercase">
+                        {dayLabel(d)} · {tour.names.join(', ')}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </section>
+          )}
+
+          {/* Zaległości — ważne, ale nie na dziś: jedna linia do listy z filtrem. */}
+          {!isLoading && inactiveCount > 0 && (
+            <button
+              type="button"
+              onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
+              className="w-full flex items-center gap-2 border-t border-gray-100 px-1 pt-3 text-left active:scale-[0.98] transition-all"
+            >
+              <span className="material-symbols-outlined text-[18px] text-amber-600">person_off</span>
+              <span className="flex-1 text-[13px] font-bold text-gray-500">{t('coachToday.inactiveLine', { count: inactiveCount, days: INACTIVE_DAYS })}</span>
+              <span className="material-symbols-outlined text-gray-300 text-[20px]">chevron_right</span>
+            </button>
           )}
         </div>
         );

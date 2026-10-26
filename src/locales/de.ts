@@ -283,6 +283,17 @@ export const views = {
     errorAffirm: "Bitte bestätige die Einwilligung, um fortzufahren.",
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
+  coachToday: {
+    nextEvent: "Nächster Termin",
+    today: "Heute",
+    tomorrow: "Morgen",
+    needsYou: "Braucht dich",
+    allGood: "Alles im grünen Bereich – gerade braucht dich niemand.",
+    unreadMessage: "Neue Nachricht",
+    news: "Neu seit deinem letzten Blick",
+    showAll: "Alle {{count}} anzeigen",
+    showLess: "Weniger anzeigen"
+  },
   nav: {
     home: "Startseite",
     calendar: "Kalender",

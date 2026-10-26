@@ -283,6 +283,17 @@ export const views = {
     errorAffirm: "Please tick the consent box to continue.",
     errorSave: "Could not save consent. Please try again."
   },
+  coachToday: {
+    nextEvent: "Next event",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    needsYou: "Needs you",
+    allGood: "All good – nobody needs you right now.",
+    unreadMessage: "New message",
+    news: "New since you last looked",
+    showAll: "Show all {{count}}",
+    showLess: "Show less"
+  },
   nav: {
     home: "Home",
     calendar: "Schedule",

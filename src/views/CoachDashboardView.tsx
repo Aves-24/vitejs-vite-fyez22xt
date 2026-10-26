@@ -9,7 +9,6 @@ import ViewHeader from '../components/ViewHeader';
 import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { effectiveCoachLimit } from '../utils/coachAccess';
-import CollapsibleSection from '../components/CollapsibleSection';
 import { topicLabel } from '../constants/trainingTopics';
 import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
@@ -27,8 +26,8 @@ import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
-/** Ilu z nich widać w rozwiniętej sekcji; resztę pokazuje lista z filtrem. */
-const INACTIVE_SHOWN = 5;
+// Heute: tyle wierszy na listę, reszta pod „Alle anzeigen”.
+const TODAY_SHOWN = 3;
 // [PAUZA] Po tylu dniach pauzy uczeń wraca RAZ do „bez treningu" jako
 // przypomnienie (user 2026-09-18: najpierw 14 dni, potem jeszcze miesiąc).
 const PAUSE_REMIND_DAYS = 30;
@@ -397,9 +396,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [C27] Trzy najbliższe własne terminy trenerskie (bez kopii od innego
   // trenera — `isMirrored`). null = jeszcze się wczytują.
   const [upcomingCoachEvents, setUpcomingCoachEvents] = useState<any[] | null>(null);
-  const [isUpcomingOpen, setIsUpcomingOpen] = useState(false);
   const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
-  const [isStudentTournamentsOpen, setIsStudentTournamentsOpen] = useState(false);
   const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
@@ -1446,10 +1443,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             : <span className="material-symbols-outlined text-[18px]">person</span>}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">
+          <p className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">
             {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
           </p>
-          <p className={opts.plainSub ? 'text-[11px] font-bold mt-0.5 line-clamp-2 break-words' : 'text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate'}>{sub}</p>
+          <p className={opts.plainSub ? 'text-[12px] font-bold mt-0.5 line-clamp-2 break-words' : 'text-[9px] font-bold uppercase tracking-widest mt-0.5 truncate'}>{sub}</p>
           {opts.focus !== false && renderFocusLine(s.id)}
         </div>
         {!action && <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>}
@@ -1487,238 +1484,258 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         </>}
       />
 
-      {section === 'TODAY' && (
-      <div className="space-y-2 mb-4">
-      {/* [C27] Najbliższe terminy trenerskie — zwinięte pokazują pierwszy.
-          „+" obok: nowy termin w kalendarzu z kategorią Trener. */}
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-        <CollapsibleSection
-          label={t('coachDashboard.upcomingTitle')}
-          open={isUpcomingOpen}
-          onToggle={() => setIsUpcomingOpen(o => !o)}
-          summary={
-            upcomingCoachEvents === null ? '…'
-              : upcomingCoachEvents.length === 0 ? <span className="text-gray-400">{t('coachDashboard.upcomingNone')}</span>
-              : `${eventDate(upcomingCoachEvents[0]).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${upcomingCoachEvents[0].title}`
-          }
-        >
-          <div className="space-y-1.5">
-            {(upcomingCoachEvents || []).map(ev => {
-              const d = eventDate(ev);
-              const recipients = eventRecipients(ev);
+      {/* Zakładka Heute — odpowiedź na „co trener chce wiedzieć w 5 s”:
+          najbliższy termin, kto go potrzebuje, co nowego. Wszystko rozwinięte
+          (dawniej pięć zwiniętych sekcji), długie listy ucięte do TODAY_SHOWN. */}
+      {section === 'TODAY' && (() => {
+        const nextEv = upcomingCoachEvents?.[0];
+        const laterEvs = (upcomingCoachEvents || []).slice(1);
+        const unread = students.filter(s => unreadStudentIds.has(s.id));
+        const formDown = newTrainingStudents.filter(s => newTrend(s)?.dir === 'down');
+        const otherNew = newTrainingStudents.filter(s => newTrend(s)?.dir !== 'down');
+        const needsCount = unread.length + formDown.length + inactiveCount + newStudentIds.length;
+        const hasNews = otherNew.length > 0 || unseenMilestones.length > 0 || studentTournaments.length > 0;
+        const dayLabel = (d: Date) => {
+          const days = Math.round((new Date(d).setHours(0, 0, 0, 0) - new Date().setHours(0, 0, 0, 0)) / 86400000);
+          return days === 0 ? t('coachToday.today') : days === 1 ? t('coachToday.tomorrow')
+            : d.toLocaleDateString(i18n.language, { weekday: 'long' });
+        };
+        const head = (label: string, right?: React.ReactNode) => (
+          <div className="flex items-center justify-between mb-2 px-1">
+            <h2 className="text-[12px] font-black text-gray-500 uppercase tracking-wider">{label}</h2>
+            {right}
+          </div>
+        );
+        const subHead = (label: string) => (
+          <p className="text-[12px] font-bold text-gray-400 px-1 pt-1">{label}</p>
+        );
+        const more = (total: number, open: boolean, toggle: () => void) => total > TODAY_SHOWN && (
+          <button type="button" onClick={toggle} className="w-full py-2 text-[12px] font-black text-rose-600 active:scale-95 transition-all">
+            {open ? t('coachToday.showLess') : t('coachToday.showAll', { count: total })}
+          </button>
+        );
+        const cap = <T,>(list: T[], open: boolean) => (open ? list : list.slice(0, TODAY_SHOWN));
+        const plain = { plainSub: true };
+        return (
+        <div className="space-y-6 mb-4">
+
+          <section>
+            {head(t('coachToday.nextEvent'),
+              <button
+                type="button"
+                onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+                className="flex items-center gap-1 text-[12px] font-black text-rose-600 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                {t('coachDashboard.newEventBtn')}
+              </button>
+            )}
+            {upcomingCoachEvents === null ? (
+              <div className="h-[92px] rounded-2xl bg-gray-50 border border-gray-100 animate-pulse" />
+            ) : nextEv ? (() => {
+              const d = eventDate(nextEv);
+              const recipients = eventRecipients(nextEv);
               return (
                 <button
-                  key={ev.id}
                   type="button"
-                  onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                  className="w-full flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100 active:scale-[0.98] transition-all text-left"
+                  onClick={() => onNavigate('CALENDAR', undefined, nextEv.id)}
+                  className="w-full flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-rose-100 active:scale-[0.98] transition-all text-left"
                 >
-                  <div className="bg-rose-50 rounded-lg text-center min-w-[40px] px-1.5 py-1 shrink-0">
-                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-[#0a3a2a]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                    <span className="block text-[15px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
+                  <div className="bg-rose-600 text-white rounded-xl text-center min-w-[54px] px-2 py-2 shrink-0">
+                    <span className="block text-[11px] font-black uppercase leading-none mb-1">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                    <span className="block text-[24px] font-black leading-none">{d.getDate()}</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">{ev.title}</p>
-                    <p className="text-[9px] font-bold text-[#0a3a2a] uppercase tracking-widest mt-0.5 truncate">
-                      {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {ev.time || t('calendar.wholeDay')}{recipients ? ` · ${recipients}` : ''}
-                    </p>
-                    {/* Tematy treningu z formularza terminu (TopicPicker) */}
-                    {Array.isArray(ev.topics) && ev.topics.length > 0 && (
-                      <p className="text-[9px] font-bold text-emerald-700 mt-0.5 truncate">
-                        {ev.topics.map((id: string) => topicLabel(id, t)).join(' · ')}
+                    <p className="text-[13px] font-black text-rose-600 first-letter:uppercase">{dayLabel(d)} · {nextEv.time || t('calendar.wholeDay')}</p>
+                    <p className="text-[16px] font-black text-[#0a3a2a] leading-tight mt-0.5 line-clamp-2 break-words">{nextEv.title}</p>
+                    {recipients && <p className="text-[12px] font-bold text-gray-500 mt-1 truncate">{recipients}</p>}
+                    {Array.isArray(nextEv.topics) && nextEv.topics.length > 0 && (
+                      <p className="text-[12px] font-bold text-emerald-700 mt-0.5 truncate">
+                        {nextEv.topics.map((id: string) => topicLabel(id, t)).join(' · ')}
                       </p>
                     )}
                   </div>
-                  <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>
+                  <span className="material-symbols-outlined text-gray-300 text-[22px] shrink-0">chevron_right</span>
                 </button>
               );
-            })}
-            <button
-              type="button"
-              onClick={() => onNavigate('CALENDAR')}
-              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all"
-            >
-              {t('coachDashboard.upcomingOpenCalendar')}
-            </button>
-          </div>
-        </CollapsibleSection>
-        </div>
-        <button
-          type="button"
-          onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-          aria-label={t('coachDashboard.newEventBtn')}
-          title={t('coachDashboard.newEventBtn')}
-          className="w-10 h-10 shrink-0 bg-rose-600 text-white rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all"
-        >
-          <span className="material-symbols-outlined text-[20px]">add</span>
-        </button>
-      </div>
+            })() : (
+              <button
+                type="button"
+                onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
+                className="w-full rounded-2xl border border-dashed border-rose-200 bg-rose-50/40 py-5 text-center active:scale-[0.98] transition-all"
+              >
+                <span className="block text-[13px] font-bold text-gray-500">{t('coachDashboard.upcomingNone')}</span>
+                <span className="block text-[13px] font-black text-rose-600 mt-1">{t('coachDashboard.newEventBtn')}</span>
+              </button>
+            )}
+            {laterEvs.length > 0 && (
+              <div className="mt-1.5 space-y-1">
+                {laterEvs.map(ev => {
+                  const d = eventDate(ev);
+                  return (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-left active:bg-gray-50 transition-all"
+                    >
+                      <span className="text-[12px] font-black text-rose-600 shrink-0 w-[92px] truncate first-letter:uppercase">{dayLabel(d)} {d.getDate()}.{d.getMonth() + 1}.</span>
+                      <span className="flex-1 min-w-0 text-[13px] font-bold text-[#0a3a2a] truncate">{ev.title}</span>
+                      <span className="text-[12px] font-bold text-gray-400 shrink-0">{ev.time || ''}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-      {/* Starty podopiecznych — ta sama zwijana sekcja, co terminy: zwinięta
-          pokazuje najbliższy, rozwinięta do 3. Bez startów — sekcji nie ma. */}
-      {studentTournaments.length > 0 && (
-        <CollapsibleSection
-          label={t('coachDashboard.studentTournamentsTitle')}
-          open={isStudentTournamentsOpen}
-          onToggle={() => setIsStudentTournamentsOpen(o => !o)}
-          summary={`${eventDate(studentTournaments[0]).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' })} · ${studentTournaments[0].title}`}
-        >
-          <div className="space-y-1.5">
-            {studentTournaments.map(tour => {
-              const d = eventDate(tour);
-              return (
-                <div
-                  key={`${tour.date}|${tour.title}`}
-                  className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
-                >
-                  <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[40px] px-1.5 py-1 shrink-0">
-                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                    <span className="block text-[15px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-black text-[#0a3a2a] text-[12px] leading-tight truncate">{tour.title}</p>
-                    <p className="text-[9px] font-bold text-[#8B6508] uppercase tracking-widest mt-0.5 truncate">
-                      {d.toLocaleDateString(i18n.language, { weekday: 'short' })} · {tour.names.join(', ')}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Kamienie milowe podopiecznych (udostępnione przez nich) — zwinięta
-          sekcja pokazuje najnowszy, rozwinięta wszystkie z 30 dni. */}
-      {unseenMilestones.length > 0 && (
-        <CollapsibleSection
-          label={t('coachDashboard.milestonesTitle')}
-          open={isMilestonesOpen}
-          onToggle={() => setIsMilestonesOpen(o => !o)}
-          summary={
-            <span className="inline-flex items-center gap-1 min-w-0">
-              <span className="material-symbols-outlined text-[14px] text-[#b8860b] shrink-0">star</span>
-              <span className="truncate">{unseenMilestones[0].student.firstName}: {unseenMilestones[0].title || unseenMilestones[0].text}</span>
-            </span>
-          }
-        >
-          <div className="space-y-1.5">
-            {unseenMilestones.map(m => (
-              <React.Fragment key={`${m.student.id}_${m.id}`}>
-                {renderMiniStudentRow(
-                  m.student,
-                  <span className="text-[#8B6508]">
-                    <span className="material-symbols-outlined text-[12px] align-[-2px]">star</span>{' '}
-                    {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
-                    <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
-                    {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
-                    {m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
-                  </span>,
-                  'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
-                  undefined,
-                  { focus: false, plainSub: true, onOpen: () => openMilestone(m) },
+          {!isLoading && (
+          <section>
+            {head(t('coachToday.needsYou'))}
+            {needsCount === 0 ? (
+              <div className="flex items-center gap-2.5 bg-emerald-50/60 border border-emerald-100 rounded-2xl px-3.5 py-3">
+                <span className="material-symbols-outlined text-emerald-500 text-[22px]">check_circle</span>
+                <span className="text-[13px] font-bold text-emerald-800">{t('coachToday.allGood')}</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
+                {newStudentIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => { setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
+                    className="w-full flex items-center gap-2.5 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-3 text-left active:scale-[0.98] transition-all"
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0 ml-1" />
+                    <span className="flex-1 text-[14px] font-black text-emerald-800">{t('coachDashboard.newStudentDot', { count: newStudentIds.length })}</span>
+                    <span className="material-symbols-outlined text-emerald-400 text-[20px]">chevron_right</span>
+                  </button>
                 )}
-              </React.Fragment>
-            ))}
-          </div>
-        </CollapsibleSection>
-      )}
+                {unread.map(s => renderMiniStudentRow(
+                  s,
+                  <span className="text-red-600 inline-flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">chat</span>{t('coachToday.unreadMessage')}
+                  </span>,
+                  'bg-red-50 text-red-700 border-red-100',
+                  undefined,
+                  { ...plain, focus: false, onOpen: () => setOpenMessageStudentId(s.id) },
+                ))}
+                {formDown.map(s => {
+                  const trend = newTrend(s)!;
+                  const details = lastSessionDetails(s);
+                  return renderMiniStudentRow(
+                    s,
+                    <span className="text-orange-600">
+                      <span className="material-symbols-outlined text-[14px] align-[-3px]">{TREND_ICON.down}</span>{' '}
+                      {formPrev(trend)}{details && ` · ${details}`}
+                    </span>,
+                    'bg-orange-50 text-orange-700 border-orange-100',
+                    undefined,
+                    plain,
+                  );
+                })}
+                {inactiveCount > 0 && (
+                  <>
+                    {subHead(t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS }))}
+                    {cap(inactiveStudents, isInactiveOpen).map(s => renderMiniStudentRow(
+                      s,
+                      pauseReminderDue(s)
+                        ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
+                        : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
+                      'bg-amber-50 text-amber-800 border-amber-100',
+                      undefined,
+                      plain,
+                    ))}
+                    {more(inactiveCount, isInactiveOpen, () => setIsInactiveOpen(o => !o))}
+                  </>
+                )}
+              </div>
+            )}
+          </section>
+          )}
 
-      {/* Nowe treningi — poranna skrzynka trenera. Po otwarciu profilu uczeń
-          z niej schodzi (handleCheckStudent zapisuje studentLastChecked). */}
-      {!isLoading && newTrainingStudents.length > 0 && (
-        <CollapsibleSection
-          label={t('coachDashboard.newTrainingsTitle')}
-          open={isNewTrainingsOpen}
-          onToggle={() => setIsNewTrainingsOpen(o => !o)}
-          summary={
-            <span className="inline-flex items-center gap-2">
-              <span className="text-emerald-600">{t('coachDashboard.studentsCount', { count: newTrainingStudents.length })}</span>
-              {formUpCount > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-emerald-600">
-                  <span className="material-symbols-outlined text-[14px]">trending_up</span>{formUpCount}
-                </span>
-              )}
-              {formDownCount > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-orange-500">
-                  <span className="material-symbols-outlined text-[14px]">trending_down</span>{formDownCount}
-                </span>
-              )}
-            </span>
-          }
-        >
-          <div className="space-y-1.5">
-            {newTrainingStudents.map(s => {
-              const details = lastSessionDetails(s);
-              const trend = newTrend(s);
-              // Zmiana formy w tym samym wierszu: ↑/↓ i % względem poprzedniego
-              // treningu na tym samym dystansie (dawna osobna sekcja „Forma”).
-              return renderMiniStudentRow(
-                s,
-                <span className="text-emerald-600">
-                  {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
-                  {trend && (
-                    <span className={trend.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}>
-                      {' · '}
-                      <span className="material-symbols-outlined text-[12px] align-[-2px]">{TREND_ICON[trend.dir]}</span>
-                      {formPrev(trend)}
-                    </span>
-                  )}
-                </span>,
-                'bg-emerald-50 text-emerald-700 border-emerald-100',
-              );
-            })}
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* Kto wypada z rytmu — ta sama zwijana sekcja, co wyżej. Rozwinięta:
-          najdłużej nieaktywni na górze (do INACTIVE_SHOWN), klik = profil;
-          na dole przejście do pełnej listy z filtrem. */}
-      {!isLoading && inactiveCount > 0 && (
-        <CollapsibleSection
-          label={t('coachDashboard.inactiveFilterChip', { days: INACTIVE_DAYS })}
-          open={isInactiveOpen}
-          onToggle={() => setIsInactiveOpen(o => !o)}
-          summary={<span className="text-amber-700">{t('coachDashboard.studentsCount', { count: inactiveCount })}</span>}
-        >
-          <div className="space-y-1.5">
-            {inactiveStudents.slice(0, INACTIVE_SHOWN).map(s => renderMiniStudentRow(
-              s,
-              pauseReminderDue(s)
-                ? <span className="text-gray-500">{t('coachDashboard.pauseReminder')}</span>
-                : <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>,
-              'bg-amber-50 text-amber-800 border-amber-100',
-            ))}
-            <button
-              type="button"
-              onClick={() => { setInactiveOnly(true); setActiveGroup('ALL'); setViewMode('students'); setIsInactiveOpen(false); onNavigate('COACH', 'ATHLETES'); }}
-              className="w-full py-1.5 text-[9px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all"
-            >
-              {inactiveCount > INACTIVE_SHOWN
-                ? t('coachDashboard.inactiveShowAll', { count: inactiveCount })
-                : t('coachDashboard.inactiveShowOnList')}
-            </button>
-          </div>
-        </CollapsibleSection>
-      )}
-
-      {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”; przycisk
-          przeszedł do dolnego menu, więc informacja zostaje na Heute. */}
-      {newStudentIds.length > 0 && (
-        <button
-          type="button"
-          onClick={() => { setViewMode('students'); onNavigate('COACH', 'ATHLETES'); }}
-          className="w-full flex items-center gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all"
-        >
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-          <span className="flex-1 text-[13px] font-black text-emerald-800">{t('coachDashboard.newStudentDot', { count: newStudentIds.length })}</span>
-          <span className="material-symbols-outlined text-emerald-400 text-[20px]">chevron_right</span>
-        </button>
-      )}
-      </div>
-      )}
+          {!isLoading && hasNews && (
+          <section className="space-y-1.5">
+            {head(t('coachToday.news'))}
+            {otherNew.length > 0 && (
+              <>
+                {subHead(t('coachDashboard.newTrainingsTitle'))}
+                {cap(otherNew, isNewTrainingsOpen).map(s => {
+                  const details = lastSessionDetails(s);
+                  const trend = newTrend(s);
+                  return renderMiniStudentRow(
+                    s,
+                    <span className="text-emerald-700">
+                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}{details && ` · ${details}`}
+                      {trend && (
+                        <>
+                          {' · '}
+                          <span className="material-symbols-outlined text-[14px] align-[-3px]">{TREND_ICON[trend.dir]}</span>
+                          {formPrev(trend)}
+                        </>
+                      )}
+                    </span>,
+                    'bg-emerald-50 text-emerald-700 border-emerald-100',
+                    undefined,
+                    plain,
+                  );
+                })}
+                {more(otherNew.length, isNewTrainingsOpen, () => setIsNewTrainingsOpen(o => !o))}
+              </>
+            )}
+            {unseenMilestones.length > 0 && (
+              <>
+                {subHead(t('coachDashboard.milestonesTitle'))}
+                {cap(unseenMilestones, isMilestonesOpen).map(m => (
+                  <React.Fragment key={`${m.student.id}_${m.id}`}>
+                    {renderMiniStudentRow(
+                      m.student,
+                      <span className="text-[#8B6508]">
+                        <span className="material-symbols-outlined text-[14px] align-[-3px]">star</span>{' '}
+                        {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
+                        <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
+                        {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
+                        {m.ts ? ` · ${new Date(m.ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}` : ''}
+                      </span>,
+                      'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
+                      undefined,
+                      { focus: false, plainSub: true, onOpen: () => openMilestone(m) },
+                    )}
+                  </React.Fragment>
+                ))}
+                {more(unseenMilestones.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}
+              </>
+            )}
+            {studentTournaments.length > 0 && (
+              <>
+                {subHead(t('coachDashboard.studentTournamentsTitle'))}
+                {studentTournaments.map(tour => {
+                  const d = eventDate(tour);
+                  return (
+                    <div
+                      key={`${tour.date}|${tour.title}`}
+                      className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
+                    >
+                      <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[42px] px-1.5 py-1 shrink-0">
+                        <span className="block text-[10px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
+                        <span className="block text-[16px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{tour.title}</p>
+                        <p className="text-[12px] font-bold text-[#8B6508] mt-0.5 truncate first-letter:uppercase">
+                          {dayLabel(d)} · {tour.names.join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+          </section>
+          )}
+        </div>
+        );
+      })()}
 
       {/* Zakładka Schüler: przełącznik segmentowy Schüler | Gruppen zamiast
           dwóch zwijanych przycisków pod sekcjami Heute — lista od razu otwarta. */}

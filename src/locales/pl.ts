@@ -297,6 +297,17 @@ export const views = {
     errorAffirm: "Zaznacz zgodę, aby kontynuować.",
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
+  coachToday: {
+    nextEvent: "Najbliższy termin",
+    today: "Dziś",
+    tomorrow: "Jutro",
+    needsYou: "Potrzebuje ciebie",
+    allGood: "Wszystko w porządku – nikt cię teraz nie potrzebuje.",
+    unreadMessage: "Nowa wiadomość",
+    news: "Nowe od ostatniego razu",
+    showAll: "Pokaż wszystkie ({{count}})",
+    showLess: "Pokaż mniej"
+  },
   nav: {
     home: "Ekran główny",
     calendar: "Terminarz",

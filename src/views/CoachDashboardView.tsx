@@ -3,7 +3,7 @@ import { db, auth } from '../firebase';
 import CoachAccountCard from '../components/settings/CoachAccountCard';
 import {
   type CoachGroup, type GroupInvite, MAX_GROUPS, MAX_GROUP_COACHES, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup,
-  subscribeGroupInvites, sendGroupInvite, deleteGroupInvite, acceptGroupInvite, removeGroupCoach,
+  subscribeGroupInvites, sendGroupInvite, deleteGroupInvite, acceptGroupInvite, removeGroupCoach, applyTopicShift,
 } from '../utils/coachGroups';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopic
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
+import { planTopicShift } from '../utils/topicShift';
 import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
 
 import { formatViewerAgeCategory } from '../utils/privateProfile';
@@ -367,6 +368,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [TERMINE] Odwołanie jednego treningu z planu: okienko z powodem.
   const [cancelOcc, setCancelOcc] = useState<{ groupId: string; title: string; date: string; time: string; cancelled: boolean } | null>(null);
   const [cancelNote, setCancelNote] = useState('');
+  // [PRZESUNIĘCIE TEMATÓW] Przy odwołaniu: temat na następny trening, reszta o jeden dalej.
+  const [shiftTopics, setShiftTopics] = useState(true);
   const [termineWeeks, setTermineWeeks] = useState(4);
   // Prywatne terminy obok trenerskich — kolizje widać od razu (pomysł usera 2026-10-26).
   const [showPrivate, setShowPrivate] = useState(() => {
@@ -1239,6 +1242,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   // [TERMINE] Odwołanie / przywrócenie jednego treningu z planu grupy.
+  // Plan po odwołaniu i przesunięcia tematów, które z niego wynikają (podgląd w okienku).
+  const cancelPreview = (() => {
+    if (!cancelOcc || cancelOcc.cancelled) return null;
+    const group = coachGroups.find(g => g.id === cancelOcc.groupId);
+    const sc = normalizeSchedule(group?.schedule);
+    if (!group || !sc) return null;
+    const after: GroupSchedule = { ...sc, cancelled: { ...(sc.cancelled || {}), [occurrenceKey(cancelOcc.date, cancelOcc.time)]: '' } };
+    return { group, moves: planTopicShift(after, group.topics, cancelOcc.date) };
+  })();
+
   const saveCancel = async (restore: boolean) => {
     if (!cancelOcc) return;
     const sc = normalizeSchedule(coachGroups.find(g => g.id === cancelOcc.groupId)?.schedule);
@@ -1246,10 +1259,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const cancelled = { ...(sc.cancelled || {}) };
     const key = occurrenceKey(cancelOcc.date, cancelOcc.time);
     if (restore) delete cancelled[key]; else cancelled[key] = cancelNote.trim().slice(0, 60);
+    const moves = !restore && shiftTopics ? cancelPreview?.moves || [] : [];
     try {
       await updateGroup(cancelOcc.groupId, { schedule: scheduleForSave({ ...sc, cancelled }, dayKeyOf(Date.now())) });
+      if (moves.length && cancelPreview) await applyTopicShift(cancelPreview.group.id, userId, cancelPreview.group.topics, moves);
       setCancelOcc(null);
-      showToast(t(restore ? 'coachTermine.toastRestored' : 'coachTermine.toastCancelled'));
+      showToast(moves.length ? t('coachTermine.toastShifted', { count: moves.length }) : t(restore ? 'coachTermine.toastRestored' : 'coachTermine.toastCancelled'));
     } catch {
       showToast(t('coachDashboard.toastGroupError'));
     }
@@ -2656,7 +2671,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       {it.occ && (
                         <button
                           type="button"
-                          onClick={() => { setCancelNote(''); setCancelOcc({ groupId: it.occ!.groupId, title: it.title, date: it.date, time: it.occ!.time, cancelled: !!it.cancelled }); }}
+                          onClick={() => { setCancelNote(''); setShiftTopics(true); setCancelOcc({ groupId: it.occ!.groupId, title: it.title, date: it.date, time: it.occ!.time, cancelled: !!it.cancelled }); }}
                           aria-label={it.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
                           title={it.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
                           className="w-10 h-10 mr-1 shrink-0 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all"
@@ -2730,7 +2745,45 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] mb-2"
               />
             )}
-            <p className="text-[12px] font-bold text-gray-400 mb-5">{t('coachTermine.cancelInfo')}</p>
+            <p className="text-[12px] font-bold text-gray-400 mb-4">{t('coachTermine.cancelInfo')}</p>
+            {/* [PRZESUNIĘCIE TEMATÓW] Ten trening ma temat: przesunąć go (i kolejne) zamiast zostawić na odwołanym dniu. */}
+            {cancelPreview?.moves && cancelPreview.moves.length > 0 && (
+              <div className={`mb-5 rounded-xl border p-3 transition-colors ${shiftTopics ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={shiftTopics}
+                  onClick={() => setShiftTopics(v => !v)}
+                  className="w-full flex items-start gap-2.5 text-left"
+                >
+                  <span className={`w-10 h-6 mt-0.5 rounded-full shrink-0 relative transition-colors ${shiftTopics ? 'bg-[#0a3a2a]' : 'bg-gray-300'}`}>
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${shiftTopics ? 'left-[18px]' : 'left-0.5'}`} />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-black text-[#0a3a2a] leading-snug">{t('coachTermine.shiftTitle')}</span>
+                    <span className="block text-[11px] font-bold text-gray-500 leading-snug mt-0.5">{t('coachTermine.shiftHint')}</span>
+                  </span>
+                </button>
+                {shiftTopics && (
+                  <ul className="mt-2.5 space-y-1">
+                    {cancelPreview.moves.map(m => {
+                      const fmt = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' });
+                      return (
+                        <li key={m.from} className="text-[12px] font-bold text-[#0a3a2a] flex items-center gap-1 min-w-0">
+                          <span className="shrink-0 text-gray-500">{fmt(m.from)}</span>
+                          <span className="material-symbols-outlined text-[14px] text-emerald-600 shrink-0">arrow_forward</span>
+                          <span className="shrink-0 font-black">{fmt(m.to)}</span>
+                          <span className="truncate text-gray-600">· {cancelPreview.group.topics[m.from]?.text}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
+            {cancelPreview?.moves === null && cancelPreview.group.topics[cancelOcc.date] && (
+              <p className="mb-5 text-[12px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">{t('coachTermine.shiftNoNext')}</p>
+            )}
             <div className="flex gap-2">
               <button onClick={() => setCancelOcc(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">{t('coachDashboard.cancel')}</button>
               <button

@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import type { GroupSchedule } from './groupSchedule';
 import type { GroupTopic, GroupTopicsByDay } from '../components/GroupTopicPanel';
+import { shiftedTopics, type TopicMove } from './topicShift';
 
 export const MAX_GROUPS = 5;
 export const MAX_GROUP_COACHES = 3;
@@ -191,3 +192,27 @@ export async function acceptGroupInvite(invite: GroupInvite, uid: string, myName
 /** Właściciel usuwa współtrenera albo współtrener odchodzi sam (coachId = on). */
 export const removeGroupCoach = (groupId: string, coachId: string) =>
   updateDoc(groupRef(groupId), { coachIds: arrayRemove(coachId), [`coachNames.${coachId}`]: deleteField() });
+
+// ─── [PRZESUNIĘCIE TEMATÓW] zapis planu z utils/topicShift ─────────
+
+/**
+ * Zapis: wpisy tematu u uczniów i termin w kalendarzu trenera dostają nowy
+ * dzień, potem cała mapa tematów grupy jednym zapisem. Błąd u jednego ucznia
+ * nie zatrzymuje reszty (jak przy zwykłej edycji tematu).
+ */
+export async function applyTopicShift(groupId: string, coachId: string, topics: GroupTopicsByDay, moves: TopicMove[]): Promise<void> {
+  if (!moves.length) return;
+  await Promise.all(moves.map(async ({ from, to }) => {
+    const gt: GroupTopic = topics[from];
+    await Promise.all(Object.entries(gt.entryIds || {}).map(async ([sid, eid]) => {
+      try { await updateDoc(doc(db, `users/${sid}/coachLog`, eid), { day: to, editedAt: Date.now() }); }
+      catch (e) { console.error('Przesunięcie tematu: błąd u ucznia', sid, e); }
+    }));
+    if (gt.calendarEventId) {
+      try { await updateDoc(doc(db, 'users', coachId, 'tournaments', gt.calendarEventId), { date: to }); }
+      catch (e) { console.error('Przesunięcie tematu: błąd kalendarza', e); }
+    }
+  }));
+  try { localStorage.removeItem(`grotX_tournaments_${coachId}`); } catch { /* ignore */ }
+  await updateGroup(groupId, { topics: shiftedTopics(topics, moves) });
+}

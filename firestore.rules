@@ -510,11 +510,15 @@ service cloud.firestore {
         && okTopicGroupName(request.resource.data);
 
       // [TEMAT TRENINGU] Autor zmienia temat albo zamyka go (closedAt).
+      // [PRZESUNIĘCIE TEMATÓW 2026-10-27] Też dzień (day) — odwołany trening.
       allow update: if isSignedIn()
         && resource.data.authorId == request.auth.uid
         && resource.data.get('type', '') == 'topic'
         && request.auth.uid in get(/databases/$(database)/documents/users/$(uid)).data.get('coaches', [])
-        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc', 'linkTitles', 'groupName'])
+        && onlyAffects(['text', 'topics', 'editedAt', 'closedAt', 'links', 'desc', 'linkTitles', 'groupName', 'day'])
+        && request.resource.data.get('day', '') is string
+        && (request.resource.data.get('day', '') == resource.data.get('day', '')
+            || request.resource.data.get('day', '').matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'))
         && okTopicLinks(request.resource.data)
         && okTopicDesc(request.resource.data)
         && okTopicLinkTitles(request.resource.data)

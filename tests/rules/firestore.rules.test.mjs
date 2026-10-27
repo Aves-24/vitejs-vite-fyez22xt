@@ -1000,7 +1000,9 @@ test('[TEMAT TRENINGU] trener tworzy/zamyka temat, uczen potwierdza', async () =
   // Autor zamyka i zmienia tekst; nie dotyka ackAt.
   await assertSucceeds(updateDoc(t1(coach1()), { closedAt: Date.now() }));
   await assertSucceeds(updateDoc(t1(coach1()), { text: 'Rotacja', editedAt: Date.now() }));
-  await assertFails(updateDoc(t1(coach1()), { day: '2026-10-16' }));
+  // Dzień wolno przesunąć (odwołany trening, 2026-10-27), ale tylko w formacie RRRR-MM-DD.
+  await assertSucceeds(updateDoc(t1(coach1()), { day: '2026-10-16' }));
+  await assertFails(updateDoc(t1(coach1()), { day: '16.10.' }));
   await assertFails(updateDoc(t1(coach1()), { ackAt: serverTimestamp() }));
 
   // Uczeń: tylko ackAt = czas serwera.
@@ -1300,4 +1302,15 @@ test('groups: współtrener odchodzi sam, właściciel usuwa współtrenera, wł
     await updateDoc(doc(ctx.firestore(), 'groups/g1'), { coachIds: ['coach1', 'coach2'] });
   });
   await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach2'] }));
+});
+
+test('[PRZESUNIECIE TEMATOW] autor zmienia dzien tematu u ucznia, poprawny format; uczen nie', async () => {
+  const base = { authorId: 'coach1', text: 'Temat', type: 'topic', topics: [], day: '2026-10-28', groupId: 'g1' };
+  const l = (db, id) => doc(db, `users/alice/coachLog/${id}`);
+  await assertSucceeds(setDoc(l(coach1(), 'sh1'), base));
+  await assertSucceeds(updateDoc(l(coach1(), 'sh1'), { day: '2026-10-31', editedAt: Date.now() }));
+  await assertFails(updateDoc(l(coach1(), 'sh1'), { day: 'jutro', editedAt: Date.now() }));
+  await assertFails(updateDoc(l(coach1(), 'sh1'), { day: 20261031 }));
+  await assertFails(updateDoc(l(alice(), 'sh1'), { day: '2026-11-04' }));
+  await assertFails(updateDoc(l(bob(), 'sh1'), { day: '2026-11-04' }));
 });

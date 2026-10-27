@@ -2790,7 +2790,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 onClick={() => saveCancel(cancelOcc.cancelled)}
                 className={`flex-1 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 shadow-md ${cancelOcc.cancelled ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-red-500 text-white'}`}
               >
-                {cancelOcc.cancelled ? t('coachTermine.restore') : t('coachTermine.cancel')}
+                {cancelOcc.cancelled ? t('coachTermine.restore')
+                  : shiftTopics && cancelPreview?.moves?.length ? t('coachTermine.cancelAndShift') : t('coachTermine.cancel')}
               </button>
             </div>
           </div>

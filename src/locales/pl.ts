@@ -359,6 +359,7 @@ export const views = {
     restoreTitle: "Przywrócić trening?",
     reasonHint: "Powód (opcjonalnie), np. hala zajęta",
     cancelInfo: "Tylko ten jeden termin – stały plan zostaje.",
+    cancelAndShift: "Odwołaj i przesuń",
     shiftTitle: "Przesuń temat na następny trening",
     shiftHint: "Kolejne tematy przesuną się o jeden trening – aż do pierwszego wolnego.",
     shiftNoNext: "W planie nie ma kolejnego treningu – temat zostaje na tym dniu.",

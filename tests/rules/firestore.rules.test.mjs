@@ -1171,3 +1171,57 @@ test('tournaments: trener nie rusza innych wpisow ucznia ani obcych uczniow', as
   // Uczeń dalej ma pełne prawa do swojego kalendarza (także do kopii).
   await assertSucceeds(deleteDoc(doc(alice(), 'users/alice/tournaments/other')));
 });
+
+// ─── [GRUPY 2026-10-27] groups/{groupId} ───────────────────────────
+
+const groupDoc = (extra = {}) => ({
+  ownerId: 'coach1', coachIds: ['coach1'], name: 'U14', icon: 'groups',
+  memberIds: ['alice'], topics: {}, createdAt: 1, ...extra,
+});
+async function seedGroup() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/coach1'), { displayName: 'Coach', coaches: [], students: ['alice'], isCoach: true });
+    await setDoc(doc(db, 'groups/g1'), groupDoc());
+    await setDoc(doc(db, 'groups/g1/private/training'), { notes: { '2026-10-20': 'gut' } });
+  });
+}
+
+test('groups: trener zakłada grupę, nie-trener nie', async () => {
+  await seedGroup();
+  await assertSucceeds(setDoc(doc(coach1(), 'groups/g2'), groupDoc()));
+  await assertFails(setDoc(doc(bob(), 'groups/g3'), groupDoc({ ownerId: 'bob', coachIds: ['bob'] })));
+});
+
+test('groups: nie da się założyć grupy na kogoś innego ani z obcym trenerem', async () => {
+  await seedGroup();
+  await assertFails(setDoc(doc(coach1(), 'groups/g2'), groupDoc({ ownerId: 'bob', coachIds: ['bob'] })));
+  await assertFails(setDoc(doc(coach1(), 'groups/g2'), groupDoc({ coachIds: ['coach1', 'bob'] })));
+});
+
+test('groups: trener grupy czyta (też zapytaniem po coachIds), uczeń i obcy nie', async () => {
+  await seedGroup();
+  await assertSucceeds(getDoc(doc(coach1(), 'groups/g1')));
+  await assertSucceeds(getDocs(query(collection(coach1(), 'groups'), where('coachIds', 'array-contains', 'coach1'))));
+  await assertFails(getDoc(doc(alice(), 'groups/g1')));
+  await assertFails(getDoc(doc(bob(), 'groups/g1')));
+  await assertFails(getDocs(query(collection(bob(), 'groups'), where('coachIds', 'array-contains', 'coach1'))));
+});
+
+test('groups: trener zmienia nazwę, skład, plan i temat; nie zmieni właściciela ani trenerów', async () => {
+  await seedGroup();
+  await assertSucceeds(updateDoc(doc(coach1(), 'groups/g1'), { name: 'U16', memberIds: [], 'topics.2026-10-28': { text: 'Anker' } }));
+  await assertFails(updateDoc(doc(coach1(), 'groups/g1'), { ownerId: 'bob' }));
+  await assertFails(updateDoc(doc(coach1(), 'groups/g1'), { coachIds: ['coach1', 'bob'] }));
+  await assertFails(updateDoc(doc(bob(), 'groups/g1'), { name: 'Hack' }));
+});
+
+test('groups: usuwa tylko właściciel; historia tylko dla trenerów grupy', async () => {
+  await seedGroup();
+  await assertSucceeds(getDoc(doc(coach1(), 'groups/g1/private/training')));
+  await assertFails(getDoc(doc(alice(), 'groups/g1/private/training')));
+  await assertFails(setDoc(doc(bob(), 'groups/g1/private/training'), { notes: {} }));
+  await assertFails(deleteDoc(doc(bob(), 'groups/g1')));
+  await assertSucceeds(deleteDoc(doc(coach1(), 'groups/g1/private/training')));
+  await assertSucceeds(deleteDoc(doc(coach1(), 'groups/g1')));
+});

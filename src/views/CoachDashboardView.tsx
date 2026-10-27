@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import CoachAccountCard from '../components/settings/CoachAccountCard';
+import { type CoachGroup, MAX_GROUPS, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup } from '../utils/coachGroups';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -17,13 +18,12 @@ import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
-import GroupTopicPanel,{ GroupSectionHeader, type GroupTopic, type GroupTopicsByDay } from '../components/GroupTopicPanel';
+import GroupTopicPanel,{ GroupSectionHeader, type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
 import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
 
-const EMPTY_NOTES: { id: string; text: string; timestamp: number }[] = [];
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
@@ -352,7 +352,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [isSendingMsg, setIsSendingMsg] = useState(false);
 
   // Zarządzanie Grupami i Dziennikiem
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: GroupSchedule}[]>([]);
+  // [GRUPY] Grupy z kolekcji groups/ (na żywo); mapa uczeń → grupy i tematy liczone z nich.
+  const [coachGroups, setCoachGroups] = useState<CoachGroup[]>([]);
   // [HARMONOGRAM] Edytor stałego treningu grupy (id grupy albo null).
   const [scheduleGroupId, setScheduleGroupId] = useState<string | null>(null);
   const [schedSlots, setSchedSlots] = useState<ScheduleSlot[]>([]);
@@ -366,9 +367,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [showPrivate, setShowPrivate] = useState(() => {
     try { return localStorage.getItem('grotX_coachShowPrivate') === '1'; } catch { return false; }
   });
-  const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
-  const [groupNotes, setGroupNotes] = useState<Record<string, {id: string, text: string, timestamp: number}[]>>({});
-  
+  const studentGroupMap = useMemo(() => studentGroupMapOf(coachGroups), [coachGroups]);
+  // Limit grup liczy tylko te, które trener założył (współprowadzone się nie liczą).
+  const ownGroupCount = coachGroups.filter(g => g.ownerId === userId).length;
+
   // Rozwinięta grupa w zakładce GRUPY; 'ALL' = żadna.
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
@@ -379,6 +381,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [TERMINE] Okienko tematu treningu otwarte z terminarza (grupa + dzień).
   const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string } | null>(null);
   const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
+  useEffect(() => {
+    if (!userId) return;
+    return subscribeCoachGroups(userId, groups => {
+      setCoachGroups(groups);
+      setCoachGroupTopics(Object.fromEntries(groups.map(g => [g.id, g.topics])));
+    });
+  }, [userId]);
   // Życzenie usera 2026-09-10: pod przełącznikiem nic, dopóki trener nie
   // wybierze zakładki; ponowny klik zwija.
   // Schüler i Gruppen to osobne zakładki dolnego menu (user 2026-10-26).
@@ -559,17 +568,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         setCoachLimit(effectiveCoachLimit(data));
         setStudentLastChecked(data.studentLastChecked || {});
         
-        setCoachGroups(data.coachGroups || []);
         setSeenMilestones(Array.isArray(data.coachSeenMilestones) ? data.coachSeenMilestones : []);
-        setStudentGroupMap(data.studentGroupMap || {});
-        setGroupNotes(data.groupNotes || {});
-        // [TEMAT TRENINGU] tematy grup po dniach; coachGroupTopic = pierwsza wersja (jeden temat na grupę, 2026-10-15)
-        const byGroup: Record<string, GroupTopicsByDay> = { ...(data.coachGroupTopics || {}) };
-        Object.entries((data.coachGroupTopic || {}) as Record<string, GroupTopic>).forEach(([gid, gt]) => {
-          if (gt?.day && !byGroup[gid]?.[gt.day]) byGroup[gid] = { ...(byGroup[gid] || {}), [gt.day]: gt };
-        });
-        setCoachGroupTopics(byGroup);
-        
+        // Grupy (skład, plan, tematy) przychodzą z groups/ — subskrypcja niżej.
+
         const studentIds = data.students || [];
         
         if (studentIds.length > 0) {
@@ -865,17 +866,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
 
     if (removed.length > 0) {
-      // 2. Sprzątanie z grup. Mapa jest uczeń → grupy, więc wystarczy zdjąć
-      // klucz ucznia (stary kod szukał ucznia w listach grup i nic nie zdejmował).
-      const newMap = { ...studentGroupMap };
-      let mapChanged = false;
-      for (const id of removed) {
-        if (newMap[id]) { delete newMap[id]; mapChanged = true; }
-      }
-      if (mapChanged) {
+      // 2. Sprzątanie ze składów grup.
+      for (const g of coachGroups.filter(x => x.memberIds.some(id => removed.includes(id)))) {
         try {
-          await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
-          setStudentGroupMap(newMap);
+          await updateGroup(g.id, { memberIds: arrayRemove(...removed) });
         } catch (error) {
           console.error("Błąd sprzątania grup:", error);
         }
@@ -1099,19 +1093,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   const handleCreateGroup = async () => {
-    if (!newGroupName.trim() || coachGroups.length >= 5) return;
-    const newGroup = { id: 'group_' + Date.now(), name: newGroupName.trim(), icon: newGroupIcon };
-    const updatedGroups = [...coachGroups, newGroup];
-    
+    if (!newGroupName.trim() || ownGroupCount >= MAX_GROUPS) return;
     try {
-      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
-      setCoachGroups(updatedGroups);
+      const id = await createGroup(userId, newGroupName.trim(), newGroupIcon);
       setIsCreatingGroup(false);
       setNewGroupName('');
       setNewGroupIcon(DEFAULT_GROUP_ICON);
       // Nowa grupa od razu rozwinięta — trener zwykle chce dopisać uczniów.
-      setActiveGroup(newGroup.id);
-      setSettingsGroupId(newGroup.id);
+      setActiveGroup(id);
+      setSettingsGroupId(id);
      
       showToast(t('coachDashboard.toastGroupCreated'));
     } catch (error) {
@@ -1147,14 +1137,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       if (!norm) return;
       schedule = scheduleForSave(norm, dayKeyOf(Date.now()));
     }
-    const updatedGroups = coachGroups.map(g => {
-      if (g.id !== scheduleGroupId) return g;
-      const { schedule: _old, ...rest } = g;
-      return schedule ? { ...rest, schedule } : rest;
-    });
     try {
-      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
-      setCoachGroups(updatedGroups);
+      await updateGroup(scheduleGroupId, { schedule: schedule ?? deleteField() });
       setScheduleGroupId(null);
       showToast(t(remove ? 'coachSchedule.toastRemoved' : 'coachSchedule.toastSaved'));
     } catch {
@@ -1165,18 +1149,13 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [TERMINE] Odwołanie / przywrócenie jednego treningu z planu grupy.
   const saveCancel = async (restore: boolean) => {
     if (!cancelOcc) return;
-    const updatedGroups = coachGroups.map(g => {
-      if (g.id !== cancelOcc.groupId) return g;
-      const sc = normalizeSchedule(g.schedule);
-      if (!sc) return g;
-      const cancelled = { ...(sc.cancelled || {}) };
-      const key = occurrenceKey(cancelOcc.date, cancelOcc.time);
-      if (restore) delete cancelled[key]; else cancelled[key] = cancelNote.trim().slice(0, 60);
-      return { ...g, schedule: scheduleForSave({ ...sc, cancelled }, dayKeyOf(Date.now())) };
-    });
+    const sc = normalizeSchedule(coachGroups.find(g => g.id === cancelOcc.groupId)?.schedule);
+    if (!sc) return;
+    const cancelled = { ...(sc.cancelled || {}) };
+    const key = occurrenceKey(cancelOcc.date, cancelOcc.time);
+    if (restore) delete cancelled[key]; else cancelled[key] = cancelNote.trim().slice(0, 60);
     try {
-      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
-      setCoachGroups(updatedGroups);
+      await updateGroup(cancelOcc.groupId, { schedule: scheduleForSave({ ...sc, cancelled }, dayKeyOf(Date.now())) });
       setCancelOcc(null);
       showToast(t(restore ? 'coachTermine.toastRestored' : 'coachTermine.toastCancelled'));
     } catch {
@@ -1199,12 +1178,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const handleEditGroup = async () => {
     if (!editingGroup || !editGroupName.trim()) return;
-    const updatedGroups = coachGroups.map(g =>
-      g.id === editingGroup.id ? { ...g, name: editGroupName.trim(), icon: editGroupIcon } : g
-    );
     try {
-      await updateDoc(doc(db, 'users', userId), { coachGroups: updatedGroups });
-      setCoachGroups(updatedGroups);
+      await updateGroup(editingGroup.id, { name: editGroupName.trim(), icon: editGroupIcon });
       setEditingGroup(null);
       setEditGroupName('');
       showToast(t('coachDashboard.toastGroupRenamed'));
@@ -1215,13 +1190,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const addPickedToGroup = async () => {
     if (!addToGroupId || addPicked.length === 0) return;
-    const newMap = { ...studentGroupMap };
-    for (const id of addPicked) {
-      newMap[id] = Array.from(new Set([...(newMap[id] || []), addToGroupId]));
-    }
     try {
-      await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
-      setStudentGroupMap(newMap);
+      await updateGroup(addToGroupId, { memberIds: arrayUnion(...addPicked) });
       setAddToGroupId(null);
       setAddPicked([]);
     } catch (e) {
@@ -1231,26 +1201,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   const handleDeleteGroup = async (groupId: string) => {
-    const updatedGroups = coachGroups.filter(g => g.id !== groupId);
-    const newMap = { ...studentGroupMap };
-    Object.keys(newMap).forEach(sid => {
-      if (newMap[sid]) newMap[sid] = newMap[sid].filter(id => id !== groupId);
-    });
-    const newNotes = { ...groupNotes };
-    delete newNotes[groupId];
     try {
-      await updateDoc(doc(db, 'users', userId), {
-        coachGroups: updatedGroups,
-        studentGroupMap: newMap,
-        groupNotes: newNotes,
-        [`coachGroupFocus.${groupId}`]: deleteField(),
-        [`coachGroupTopic.${groupId}`]: deleteField(),
-        [`coachGroupTopics.${groupId}`]: deleteField(),
-      });
-      setCoachGroups(updatedGroups);
-      setStudentGroupMap(newMap);
-      setGroupNotes(newNotes);
-      setCoachGroupTopics(prev => { const next = { ...prev }; delete next[groupId]; return next; });
+      await deleteGroup(groupId);
       setActiveGroup('ALL');
       setSettingsGroupId(null);
       setConfirmDeleteGroup(null);
@@ -1262,10 +1214,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // [EINSTELLUNGEN] Wypisanie jednego ucznia z grupy (skład grupy w ustawieniach).
   const removeFromGroup = async (studentId: string, groupId: string) => {
-    const newMap = { ...studentGroupMap, [studentId]: (studentGroupMap[studentId] || []).filter(g => g !== groupId) };
-    setStudentGroupMap(newMap);
     try {
-      await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
+      await updateGroup(groupId, { memberIds: arrayRemove(studentId) });
     } catch { showToast(t('coachDashboard.toastSaveError')); }
   };
 
@@ -1274,27 +1224,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const toggleGroupForSelected = async (groupId: string) => {
     if (!managingGroupsFor || managingGroupsFor.length === 0) return;
     const allIn = managingGroupsFor.every(id => (studentGroupMap[id] || []).includes(groupId));
-    const newMap = { ...studentGroupMap };
-    for (const id of managingGroupsFor) {
-      const current = newMap[id] || [];
-      newMap[id] = allIn
-        ? current.filter(g => g !== groupId)
-        : Array.from(new Set([...current, groupId]));
-    }
-    setStudentGroupMap(newMap);
-
     try {
-      await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
-    } catch(e) { showToast(t('coachDashboard.toastSaveError')); }
-  };
-
-  // [HISTORIA TRENINGÓW] Stary dziennik grupy przeniesiony do prywatnego
-  // dokumentu trenera — z profilu (czytanego też przez uczniów) znika.
-  const handleLegacyNotesMigrated = async (groupId: string) => {
-    try {
-      await updateDoc(doc(db, 'users', userId), { [`groupNotes.${groupId}`]: deleteField() });
-      setGroupNotes(prev => { const next = { ...prev }; delete next[groupId]; return next; });
-    } catch (e) { console.error('Dziennik grupy: błąd sprzątania', e); }
+      await updateGroup(groupId, { memberIds: allIn ? arrayRemove(...managingGroupsFor) : arrayUnion(...managingGroupsFor) });
+    } catch { showToast(t('coachDashboard.toastSaveError')); }
   };
 
   const isLimitReached = coachLimit > 0 && students.length >= coachLimit;
@@ -1774,7 +1706,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 </div>
               );
             })}
-            {coachGroups.length < 5 ? (
+            {ownGroupCount < MAX_GROUPS ? (
               <button
                 type="button"
                 onClick={() => setIsCreatingGroup(true)}
@@ -2623,8 +2555,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                           coachId={userId}
                           members={members}
                           topics={coachGroupTopics[group.id] || {}}
-                          legacyNotes={groupNotes[group.id] || EMPTY_NOTES}
-                          onLegacyMigrated={() => handleLegacyNotesMigrated(group.id)}
                           onOpenStudent={setSheetStudentId}
                         />
                       )}

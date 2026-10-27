@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getDoc, setDoc } from 'firebase/firestore';
+import { groupTrainingRef } from '../utils/coachGroups';
 import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { CARD_PAD, CARD_SHAPE, EntryRow, TopicChips } from './tagebuch/TagebuchCards';
@@ -12,9 +12,9 @@ import { GroupSectionHeader, loadTopicStatus, TopicMemberList, type GroupTopic, 
 // [HISTORIA TRENINGÓW] (user 2026-10-15) Zastępuje „Dziennik grupy”: minione
 // tematy treningu grupy od najnowszego — kto trenował pod temat, kto
 // przeczytał — i prywatna notatka trenera do każdego treningu („jak poszło”).
-// Notatki leżą w users/{coachId}/private/groupTraining_<groupId> — tylko trener
-// (dokument users/{coachId} czytają też jego uczniowie, więc nie tam).
-// Stare wpisy dziennika grupy (users.groupNotes) przenosimy tu jako `loose`.
+// Notatki leżą w groups/{groupId}/private/training — tylko trenerzy grupy
+// (przeniesione z users/{coachId}/private/groupTraining_<groupId>, 2026-10-27).
+// Stare wpisy dziennika grupy (`loose`) przeniosła migracja grup.
 
 const NOTE_MAX = 500;
 const PAGE = 5;
@@ -22,13 +22,11 @@ const PAGE = 5;
 interface LooseNote { id: string; text: string; timestamp: number }
 interface HistoryDoc { notes?: Record<string, string>; loose?: LooseNote[] }
 
-export default function GroupTrainingHistory({ groupId, coachId, members, topics, legacyNotes, onLegacyMigrated, onOpenStudent, onRepeat, onEdit }: {
+export default function GroupTrainingHistory({ groupId, coachId, members, topics, onOpenStudent, onRepeat, onEdit }: {
   groupId: string;
   coachId: string;
   members: any[];
   topics: GroupTopicsByDay;
-  legacyNotes: LooseNote[];
-  onLegacyMigrated: () => void;
   onOpenStudent?: (studentId: string) => void;
   /** „Powtórz na dziś” przy wpisie (user 2026-10-22); null = dziś już jest temat. */
   onRepeat?: ((gt: GroupTopic) => void) | null;
@@ -45,7 +43,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   const [saving, setSaving] = useState(false);
   // Powtórka czeka na potwierdzenie (user 2026-10-22).
   const [repeatAsk, setRepeatAsk] = useState<GroupTopic | null>(null);
-  const ref = doc(db, 'users', coachId, 'private', `groupTraining_${groupId}`);
+  const ref = groupTrainingRef(groupId);
 
   useEffect(() => {
     let cancelled = false;
@@ -56,17 +54,6 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, coachId]);
 
-  // Stary dziennik grupy → tutaj (raz). Dopiero po zapisie znika z profilu trenera.
-  useEffect(() => {
-    if (!data || legacyNotes.length === 0) return;
-    const known = new Set((data.loose || []).map(n => n.id));
-    const loose = [...(data.loose || []), ...legacyNotes.filter(n => !known.has(n.id))];
-    setDoc(ref, { loose }, { merge: true })
-      .then(() => { setData(d => ({ ...d, loose })); onLegacyMigrated(); })
-      .catch(e => console.error('Historia treningów: błąd przenoszenia dziennika', e));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data === null, legacyNotes]);
-
   const today = dayKeyOf(Date.now());
   const items = useMemo(() => {
     const list: { key: string; ts: number; day?: string; loose?: LooseNote }[] = [];
@@ -74,9 +61,9 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
     Object.keys(topics)
       .filter(d => d < today || (d === today && !!topics[d].closedAt))
       .forEach(d => list.push({ key: d, ts: d === today ? topics[d].closedAt! : new Date(`${d}T12:00:00`).getTime(), day: d }));
-    (data?.loose || legacyNotes).forEach(n => list.push({ key: n.id, ts: n.timestamp, loose: n }));
+    (data?.loose || []).forEach(n => list.push({ key: n.id, ts: n.timestamp, loose: n }));
     return list.sort((a, b) => b.ts - a.ts);
-  }, [topics, data, legacyNotes, today]);
+  }, [topics, data, today]);
 
   const toggle = (day: string) => {
     if (expanded === day) { setExpanded(null); return; }

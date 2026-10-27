@@ -15,6 +15,7 @@ import ParentalConsentGate from './components/ParentalConsentGate';
 import TermsGate from './components/TermsGate';
 import { TERMS_VERSION } from './utils/legalLinks';
 import { registerRestoreSource, takeRestorePoint, updatingText } from './utils/reloadRestore';
+import { migrateLegacyGroups } from './utils/coachGroups';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
 import UpdateBanner from './components/UpdateBanner';
@@ -147,6 +148,7 @@ export default function App() {
   // próbujemy MAX raz na sesję, niezależnie od wyniku. Bez tego optimistic
   // update / server reject Firestore'a tworzy pętlę 50+ błędów.
   const trialFallbackAttemptedRef = useRef(false);
+  const groupsMigrationRef = useRef(false);
   const privateMigrationAttemptedRef = useRef(false);
 
   // --- WAKE LOCK (Globalna blokada gaszenia ekranu) ---
@@ -308,6 +310,14 @@ export default function App() {
         
         setNeedsTerms(data.termsAccepted?.version !== TERMS_VERSION);
         setIsCoach(!!data.isCoach);
+        // [GRUPY] Jednorazowo: grupy z dokumentu trenera → kolekcja groups/.
+        if (data.isCoach && !data.groupsMigrated && !groupsMigrationRef.current) {
+          groupsMigrationRef.current = true;
+          migrateLegacyGroups(user.uid, data).catch(e => {
+            groupsMigrationRef.current = false;
+            console.error('Migracja grup nie powiodła się:', e);
+          });
+        }
         setHasCoach(Array.isArray(data.coaches) && data.coaches.length > 0);
         setUserLevel(data.level || 1);
 

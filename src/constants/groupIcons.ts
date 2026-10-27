@@ -1,6 +1,6 @@
 // Ikony grup trenera (user 2026-10-16): zamiast jednego folderu trener wybiera
 // ikonę pasującą do grupy — początkujący, zaawansowani, mocniejsi, słabsi itp.
-// Nazwy z Material Symbols; zapisane w coachGroups[].icon. Literały stringowe
+// Nazwy z Material Symbols; zapisane w groups/{id}.icon. Literały stringowe
 // trafiają do subsetu czcionki przy `npm run icons:update`.
 export const DEFAULT_GROUP_ICON = 'folder_shared';
 

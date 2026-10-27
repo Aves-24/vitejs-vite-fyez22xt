@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
+import { fetchCoachGroups, groupTrainingRef } from '../utils/coachGroups';
 import { doc, getDoc, getDocFromServer, updateDoc, collection, query, where, orderBy, limit, startAfter, getDocs, setDoc, deleteDoc, deleteField, serverTimestamp, Timestamp, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { settleWrite } from '../utils/offlineWrite';
 import { guestExpiryFields } from '../utils/guestMode';
@@ -84,27 +85,22 @@ function entryKind(it: TimelineItem): EntryKind {
 }
 
 // [PROWADZONY TRENING] Treningi, które użytkownik poprowadził jako trener:
-// zakończone albo minione tematy jego grup (users.coachGroupTopics) z jego
-// prywatną notatką z historii treningów. Tylko jego własne dane.
-async function loadLedTrainings(userId: string, userData: any): Promise<TbLedTraining[]> {
-  const byGroup: Record<string, Record<string, any>> = { ...(userData?.coachGroupTopics || {}) };
-  // Pierwsza wersja (jeden temat na grupę, coachGroupTopic) — jak w panelu trenera.
-  Object.entries(userData?.coachGroupTopic || {}).forEach(([gid, gt]: [string, any]) => {
-    if (gt?.day && !byGroup[gid]?.[gt.day]) byGroup[gid] = { ...(byGroup[gid] || {}), [gt.day]: gt };
-  });
-  const names: Record<string, string> = Object.fromEntries((userData?.coachGroups || []).map((g: any) => [g.id, g.name || '']));
+// zakończone albo minione tematy jego grup (groups/<id>.topics) z prywatną
+// notatką z historii treningów grupy.
+async function loadLedTrainings(userId: string): Promise<TbLedTraining[]> {
+  const groups = await fetchCoachGroups(userId);
   const today = dayKeyOf(Date.now());
   const out: TbLedTraining[] = [];
-  await Promise.all(Object.entries(byGroup).map(async ([gid, days]) => {
-    const done = Object.entries(days || {}).filter(([d, gt]) => d < today || (d === today && gt?.closedAt));
+  await Promise.all(groups.map(async ({ id: gid, name, topics }) => {
+    const done = Object.entries(topics || {}).filter(([d, gt]: [string, any]) => d < today || (d === today && gt?.closedAt));
     if (!done.length) return;
     let notes: Record<string, string> = {};
     try {
-      const snap = await getDoc(doc(db, 'users', userId, 'private', `groupTraining_${gid}`));
+      const snap = await getDoc(groupTrainingRef(gid));
       notes = (snap.exists() && snap.data().notes) || {};
     } catch { /* bez notatek */ }
     done.forEach(([d, gt]) => out.push({
-      id: `${gid}_${d}`, groupName: names[gid] || '', day: d, text: gt.text || '', topic: gt.topic || '',
+      id: `${gid}_${d}`, groupName: name, day: d, text: gt.text || '', topic: gt.topic || '',
       note: notes[d] || '', ts: gt.closedAt || new Date(`${d}T20:00:00`).getTime(),
     }));
   }));
@@ -346,7 +342,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         setCoachCleared(readCoachFocusCleared(userData));
         setFocusDots(userData.focusDots === true);
         setFocusGoal(readFocusGoal(userData));
-        loadLedTrainings(userId, userData).then(setLedTrainings).catch(e => console.error('Tagebuch: błąd prowadzonych treningów', e));
+        if (userData.isCoach) loadLedTrainings(userId).then(setLedTrainings).catch(e => console.error('Tagebuch: błąd prowadzonych treningów', e));
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
           try {

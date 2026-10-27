@@ -720,6 +720,41 @@ service cloud.firestore {
       allow delete: if isSelf(uid) || isAdmin();
     }
 
+    // ─── /groups/{groupId} ──────────────────────────────────────
+    //  [GRUPY 2026-10-27] Grupa treningowa jako osobny dokument (wcześniej
+    //  users.coachGroups). Czytają i zmieniają ją tylko trenerzy z coachIds;
+    //  uczniowie grup nie czytają (nazwa grupy stoi na wpisie tematu).
+    //  Etap 1: coachIds = [właściciel], niezmienne. Etap 2 (zaproszenia
+    //  współtrenerów, max 3) zluzuje tylko regułę zmiany coachIds.
+    function isGroupCoach(groupId) {
+      return isSignedIn()
+        && request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.get('coachIds', []);
+    }
+    function validGroupShape(d) {
+      return d.name is string && d.name.size() > 0 && d.name.size() <= 60
+        && d.memberIds is list && d.memberIds.size() <= 200
+        && d.coachIds is list && d.coachIds.size() >= 1 && d.coachIds.size() <= 3
+        && d.ownerId in d.coachIds;
+    }
+    match /groups/{groupId} {
+      allow read: if isSignedIn() && request.auth.uid in resource.data.get('coachIds', []);
+      allow create: if isSignedIn() && !isAnon()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.coachIds == [request.auth.uid]
+        && validGroupShape(request.resource.data)
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isCoach', false) == true;
+      allow update: if isSignedIn() && request.auth.uid in resource.data.get('coachIds', [])
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.coachIds == resource.data.coachIds
+        && validGroupShape(request.resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.ownerId;
+
+      // Historia treningów grupy (notatki trenerów) — tylko trenerzy grupy.
+      match /private/{docId} {
+        allow read, write: if isGroupCoach(groupId);
+      }
+    }
+
     // ─── /coachInvites/{inviteId}  (doc id = "{coachId}_{studentId}") ─
     match /coachInvites/{inviteId} {
       allow read: if isSignedIn() && (

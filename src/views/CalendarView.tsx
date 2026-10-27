@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
+import { fetchCoachGroups, studentGroupMapOf } from '../utils/coachGroups';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
 import { createPortal } from 'react-dom'; 
@@ -222,11 +223,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               // w formularzu, na kafelkach wydarzeń i w podglądzie.
               setCoachStudentsList(loaded.sort(byStudentName(i18nCore.language)));
             }
-            setCoachGroups(
-              [...(data.coachGroups || [])].sort((a: { name: string }, b: { name: string }) =>
-                (a.name || '').localeCompare(b.name || '', i18nCore.language, { sensitivity: 'base' })),
-            );
-            setStudentGroupMap(data.studentGroupMap || {});
+            // [GRUPY] Grupy (do wyboru adresatów) z kolekcji groups/.
+            const groups = await fetchCoachGroups(userId);
+            if (!isMounted) return;
+            setCoachGroups([...groups].sort((a, b) => a.name.localeCompare(b.name, i18nCore.language, { sensitivity: 'base' })));
+            setStudentGroupMap(studentGroupMapOf(groups));
           }
         }
       } catch (e) { console.error("Błąd sprawdzania profilu:", e); }

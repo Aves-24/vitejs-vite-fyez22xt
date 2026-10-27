@@ -13,6 +13,7 @@ import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { friendlyTargetName } from '../config/targetFaces';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { upcomingOccurrences, dayKeyOfDate } from '../utils/groupSchedule';
+import { fetchCoachGroups } from '../utils/coachGroups';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
@@ -341,7 +342,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const computedIsPremium = boughtPro || promoPro || isTrialActive;
 
         setFirstName(d.firstName || '');
-        setCoachGroupsHome(Array.isArray(d.coachGroups) ? d.coachGroups : []);
+        // [GRUPY] Plan grup do kafelka „jako trener” — z kolekcji groups/.
+        if (d.isCoach) fetchCoachGroups(userId).then(setCoachGroupsHome);
         setUserClub(fullClubName);
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));
         setRawIsPremium(boughtPro);

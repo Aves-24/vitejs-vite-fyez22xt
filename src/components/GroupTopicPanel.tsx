@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { addDoc, collection, deleteDoc, deleteField, doc, getDoc, getDocs, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
+import { updateGroup } from '../utils/coachGroups';
 import TopicPicker from './TopicPicker';
 import TopicLinks, { isYouTube } from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
@@ -12,7 +13,7 @@ import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_GROUP_NAME_MAX, TOPIC_LINK_TITLE_
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
 // dziś albo planuje go na kolejne dni. Technicznie: wpis 'topic' w coachLog
 // każdego członka (utils/focus.ts, sekcja TEMAT TRENINGU) — uczeń widzi go
-// dopiero w jego dniu. Na dokumencie trenera coachGroupTopics.<groupId>.<day>
+// dopiero w jego dniu. W dokumencie grupy groups/<groupId>.topics.<day>
 // zostają tematy grupy z id wpisów — stąd status uczniów, edycja i „Powtórz”
 // (kopia na dziś). Różowy = rola trenera; fiolet zostaje dla ucznia (user 2026-10-15). Zastąpił „fokus grupy”.
 // Każdy temat ma też termin w kalendarzu TRENERA (user 2026-10-15: wgląd
@@ -228,7 +229,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const save = async (day: string, next: GroupTopic | null) => {
     const copy = { ...byDay };
     if (next) copy[day] = next; else delete copy[day];
-    await updateDoc(doc(db, 'users', coachId), { [`coachGroupTopics.${groupId}.${day}`]: next ?? deleteField() });
+    await updateGroup(groupId, { [`topics.${day}`]: next ?? deleteField() });
     onChanged(copy);
   };
 

@@ -1,6 +1,6 @@
 /**
  * [HARMONOGRAM] Stały trening grupy (user 2026-10-26: „trener ma regularnie
- * treningi, np. zawsze w środę o 18”). Leży przy grupie w `users/{coachId}.coachGroups`,
+ * treningi, np. zawsze w środę o 18”). Leży przy grupie w `groups/{groupId}.schedule`,
  * więc nie kosztuje osobnego odczytu. Terminów nie zapisujemy z wyprzedzeniem —
  * liczymy je z szablonu w locie (dziś, następne, poprzedni).
  *

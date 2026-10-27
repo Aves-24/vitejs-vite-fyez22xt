@@ -345,6 +345,7 @@ export const views = {
     restoreTitle: "Training wieder ansetzen?",
     reasonHint: "Grund (optional), z. B. Halle belegt",
     cancelInfo: "Nur dieser eine Termin – der regelmäßige Plan bleibt.",
+    restoreTopicHint: "Bereits verschobene Themen bleiben, wo sie sind. Ein Thema für diesen Tag kannst du neu festlegen.",
     cancelAndShift: "Absagen und verschieben",
     shiftTitle: "Thema auf den nächsten Termin verschieben",
     shiftHint: "Die folgenden Themen rücken je einen Termin weiter – bis zum ersten freien.",

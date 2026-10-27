@@ -2746,6 +2746,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               />
             )}
             <p className="text-[12px] font-bold text-gray-400 mb-4">{t('coachTermine.cancelInfo')}</p>
+            {/* Przywrócenie nie cofa przesuniętych tematów — temat na ten dzień ustawia się od nowa (user 2026-10-27). */}
+            {cancelOcc.cancelled && <p className="text-[12px] font-bold text-gray-500 -mt-2 mb-4">{t('coachTermine.restoreTopicHint')}</p>}
             {/* [PRZESUNIĘCIE TEMATÓW] Ten trening ma temat: przesunąć go (i kolejne) zamiast zostawić na odwołanym dniu. */}
             {cancelPreview?.moves && cancelPreview.moves.length > 0 && (
               <div className={`mb-5 rounded-xl border p-3 transition-colors ${shiftTopics ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-200'}`}>

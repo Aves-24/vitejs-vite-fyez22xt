@@ -345,6 +345,7 @@ export const views = {
     restoreTitle: "Reinstate this training?",
     reasonHint: "Reason (optional), e.g. hall booked",
     cancelInfo: "Only this one session – the regular plan stays.",
+    restoreTopicHint: "Topics already moved stay where they are. You can set a new topic for this day.",
     cancelAndShift: "Cancel and move",
     shiftTitle: "Move the topic to the next session",
     shiftHint: "Following topics move one session later – up to the first free one.",

@@ -2072,15 +2072,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
         return (
           <div className="space-y-4 mb-4">
-            <div className="flex items-center gap-2">
+            {/* Nowy termin — ten sam plusik co w Tagebuch i kalendarzu (user 2026-10-27). */}
+            {typeof document !== 'undefined' && createPortal(
               <button
                 type="button"
                 onClick={() => onNavigate('CALENDAR', 'NEW_TRAINER_EVENT')}
-                className="flex-1 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1 active:scale-95 transition-all shadow-sm"
+                className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] w-12 h-12 rounded-full bg-[#0a3a2a] text-[#fed33e] shadow-lg shadow-black/25 flex items-center justify-center active:scale-90 transition-all"
+                aria-label={t('coachDashboard.newEventBtn')}
               >
-                <span className="material-symbols-outlined text-[18px]">add</span>
-                {t('coachDashboard.newEventBtn')}
-              </button>
+                <span className="material-symbols-outlined text-[26px]">add</span>
+              </button>,
+              document.body,
+            )}
+            <div className="flex items-center justify-end gap-2">
               {/* Prywatne terminy obok trenerskich — mały przełącznik (user 2026-10-26). */}
               <button
                 type="button"

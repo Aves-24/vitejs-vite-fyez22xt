@@ -1787,7 +1787,7 @@ export const views = {
     groupTopicEdit: "Thema bearbeiten",
     groupTopicPlanned: "Geplant",
     groupTopicAdd: "Thema",
-    groupTopicNoneFor: "Für {{day}} gibt es noch kein Thema.",
+    groupTopicAddFor: "Thema für {{day}}",
     groupTabTraining: "Training",
     groupTabHistory: "Verlauf",
     groupTabMembers: "Schüler",

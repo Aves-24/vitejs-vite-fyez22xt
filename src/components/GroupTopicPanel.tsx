@@ -637,14 +637,15 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
       >
         <span className="material-symbols-outlined text-[22px]">add</span>
-        {t('coachDashboard.groupTopicAdd')}
+        {/* Z terminarza na trening bez tematu: od razu „Thema für Mittwoch, 29.10.” (user 2026-10-27). */}
+        {focus && !focusTopic ? t('coachDashboard.groupTopicAddFor', { day: focusLabel }) : t('coachDashboard.groupTopicAdd')}
       </button>
       {members.length === 0 && (
         <p className="text-[11px] font-bold text-gray-500 pl-1 -mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
       )}
 
-      {focus ? (
-        // [TERMINE] Wejście z terminarza na konkretny trening: temat właśnie na ten dzień.
+      {focus && focusTopic ? (
+        // [TERMINE] Wejście z terminarza na trening z tematem: jego karta.
         <section>
           <GroupSectionHeader
             icon="event"
@@ -660,11 +661,7 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               </button>
             ) : undefined}
           />
-          {focusTopic ? (
-            <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>{topicCard(focusTopic, focus)}</div>
-          ) : (
-            <p className="text-[12px] font-bold text-gray-500 pl-1">{t('coachDashboard.groupTopicNoneFor', { day: dayLabel(focus) })}</p>
-          )}
+          <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>{topicCard(focusTopic, focus)}</div>
         </section>
       ) : (shown || todayTopic?.closedAt) ? (
         <section>

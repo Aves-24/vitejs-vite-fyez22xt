@@ -4,15 +4,16 @@
 // users/{uid}/private/groupTraining_<id>. Osobny dokument pozwoli w etapie 2
 // dopuścić do grupy do 3 trenerów (coachIds) bez dzielenia całego profilu.
 //
-//   groups/{id}                  { ownerId, coachIds[], name, icon?, schedule?,
-//                                  memberIds[], topics: { [day]: GroupTopic }, createdAt }
+//   groups/{id}                  { ownerId, coachIds[], coachNames{uid: imię}, name, icon?,
+//                                  schedule?, memberIds[], topics: { [day]: GroupTopic }, createdAt }
 //   groups/{id}/private/training historia treningów (notatki trenera, luźne wpisy)
+//   groupInvites/{gid}_{toId}    zaproszenie współtrenera (etap 2, max 3 trenerów)
 //
 // ID grupy przy migracji zostaje stare („group_<ts>”), bo terminy tematu
 // w kalendarzu trenera wskazują na nie przez trainingTopicGroupId.
 import { db } from '../firebase';
 import {
-  collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
+  arrayRemove, arrayUnion, collection, deleteDoc, deleteField, doc, getDoc, getDocs, onSnapshot, query, setDoc, updateDoc, where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { GroupSchedule } from './groupSchedule';
@@ -25,6 +26,8 @@ export interface CoachGroup {
   id: string;
   ownerId: string;
   coachIds: string[];
+  /** Imiona trenerów grupy — trenerzy nie czytają nawzajem swoich profili. */
+  coachNames: Record<string, string>;
   name: string;
   icon?: string;
   schedule?: GroupSchedule;
@@ -43,6 +46,7 @@ function fromDoc(id: string, d: any): CoachGroup {
     id,
     ownerId: d.ownerId || '',
     coachIds: Array.isArray(d.coachIds) ? d.coachIds : [],
+    coachNames: d.coachNames && typeof d.coachNames === 'object' ? d.coachNames : {},
     name: d.name || '',
     icon: d.icon,
     schedule: d.schedule,
@@ -82,9 +86,9 @@ export function studentGroupMapOf(groups: CoachGroup[]): Record<string, string[]
   return map;
 }
 
-export async function createGroup(uid: string, name: string, icon: string): Promise<string> {
+export async function createGroup(uid: string, name: string, icon: string, coachName: string): Promise<string> {
   const ref = doc(collection(db, 'groups'));
-  await setDoc(ref, { ownerId: uid, coachIds: [uid], name, icon, memberIds: [], topics: {}, createdAt: Date.now() });
+  await setDoc(ref, { ownerId: uid, coachIds: [uid], coachNames: { [uid]: coachName }, name, icon, memberIds: [], topics: {}, createdAt: Date.now() });
   return ref.id;
 }
 
@@ -140,3 +144,50 @@ export async function migrateLegacyGroups(uid: string, data: any): Promise<void>
   }
   await updateDoc(doc(db, 'users', uid), { groupsMigrated: true });
 }
+
+// ─── [GRUPY etap 2] Współtrenerzy ─────────────────────────────────
+
+export interface GroupInvite {
+  id: string;
+  groupId: string;
+  groupName: string;
+  fromId: string;
+  fromName: string;
+  toId: string;
+  toName: string;
+  createdAt: number;
+}
+
+const inviteFrom = (id: string, d: any): GroupInvite => ({
+  id, groupId: d.groupId, groupName: d.groupName || '', fromId: d.fromId, fromName: d.fromName || '',
+  toId: d.toId, toName: d.toName || '', createdAt: d.createdAt || 0,
+});
+
+/** Zaproszenia do mnie ('toId') albo wysłane przeze mnie ('fromId') — na żywo. */
+export function subscribeGroupInvites(uid: string, side: 'toId' | 'fromId', cb: (invites: GroupInvite[]) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, 'groupInvites'), where(side, '==', uid)),
+    snap => cb(snap.docs.map(d => inviteFrom(d.id, d.data())).sort((a, b) => a.createdAt - b.createdAt)),
+    err => { console.error('Zaproszenia do grup: błąd odczytu', err); cb([]); },
+  );
+}
+
+/** Reguły sprawdzają: właściciel grupy, adresat jest trenerem, w grupie < 3 trenerów. */
+export async function sendGroupInvite(group: CoachGroup, fromId: string, fromName: string, toId: string, toName: string): Promise<void> {
+  await setDoc(doc(db, 'groupInvites', `${group.id}_${toId}`), {
+    groupId: group.id, groupName: group.name.slice(0, 60), fromId, fromName: fromName.slice(0, 80),
+    toId, toName: toName.slice(0, 80), createdAt: Date.now(),
+  });
+}
+
+export const deleteGroupInvite = (inviteId: string) => deleteDoc(doc(db, 'groupInvites', inviteId));
+
+/** Przyjęcie: dopisuję siebie do coachIds (reguła wymaga istniejącego zaproszenia), potem sprzątam zaproszenie. */
+export async function acceptGroupInvite(invite: GroupInvite, uid: string, myName: string): Promise<void> {
+  await updateDoc(groupRef(invite.groupId), { coachIds: arrayUnion(uid), [`coachNames.${uid}`]: myName.slice(0, 80) });
+  await deleteGroupInvite(invite.id);
+}
+
+/** Właściciel usuwa współtrenera albo współtrener odchodzi sam (coachId = on). */
+export const removeGroupCoach = (groupId: string, coachId: string) =>
+  updateDoc(groupRef(groupId), { coachIds: arrayRemove(coachId), [`coachNames.${coachId}`]: deleteField() });

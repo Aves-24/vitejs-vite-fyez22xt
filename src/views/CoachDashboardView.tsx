@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db, auth } from '../firebase';
 import CoachAccountCard from '../components/settings/CoachAccountCard';
-import { type CoachGroup, MAX_GROUPS, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup } from '../utils/coachGroups';
+import {
+  type CoachGroup, type GroupInvite, MAX_GROUPS, MAX_GROUP_COACHES, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup,
+  subscribeGroupInvites, sendGroupInvite, deleteGroupInvite, acceptGroupInvite, removeGroupCoach,
+} from '../utils/coachGroups';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -400,8 +403,29 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   // [EINSTELLUNGEN] Rozwinięta grupa w ustawieniach trenera (nazwa, skład, plan, usunięcie).
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
   const [settingsStudentsOpen, setSettingsStudentsOpen] = useState(false);
-  // Imię i nazwisko trenera — do prośby o więcej miejsc (CoachAccountCard).
+  // Imię i nazwisko trenera — do prośby o więcej miejsc (CoachAccountCard) i na grupach.
   const [coachName, setCoachName] = useState('');
+  // [GRUPY etap 2] Zaproszenia współtrenerów: do mnie i wysłane przeze mnie.
+  const [incomingInvites, setIncomingInvites] = useState<GroupInvite[]>([]);
+  const [sentInvites, setSentInvites] = useState<GroupInvite[]>([]);
+  // Skaner w trybie „zaproś trenera do grupy” (id grupy) zamiast „dodaj ucznia” (null).
+  const [scanGroupId, setScanGroupId] = useState<string | null>(null);
+  const scanGroupIdRef = useRef<string | null>(null);
+  // Potwierdzenie: usunięcie współtrenera (przez właściciela) albo odejście z grupy.
+  const [coachToRemove, setCoachToRemove] = useState<{ groupId: string; coachId: string; leave: boolean } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    const offIn = subscribeGroupInvites(userId, 'toId', setIncomingInvites);
+    const offOut = subscribeGroupInvites(userId, 'fromId', setSentInvites);
+    return () => { offIn(); offOut(); };
+  }, [userId]);
+  // Moje imię na grupach aktualne (inni trenerzy grupy nie czytają mojego profilu).
+  useEffect(() => {
+    if (!coachName) return;
+    coachGroups
+      .filter(g => g.coachNames[userId] !== coachName)
+      .forEach(g => updateGroup(g.id, { [`coachNames.${userId}`]: coachName }).catch(() => { /* następnym razem */ }));
+  }, [coachName, coachGroups, userId]);
 
   const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
   const [editGroupName, setEditGroupName] = useState('');
@@ -726,7 +750,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     }
   };
 
-  const startScanner = async () => {
+  // groupId = zaproszenie trenera do tej grupy; bez = dodanie ucznia.
+  const startScanner = async (groupId: string | null = null) => {
+    scanGroupIdRef.current = groupId;
+    setScanGroupId(groupId);
+    setManualStudentId('');
     setCameraError(false);
     setIsScanning(true);
 
@@ -744,7 +772,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const onDecoded = async (decodedText: string) => {
       await stopScanner();
       setIsScanning(false);
-      await handleAddStudent(decodedText);
+      await handleScanned(decodedText);
     };
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
@@ -802,6 +830,61 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   useEffect(() => {
     return () => { stopScanner(); };
   }, []);
+
+  const handleScanned = (id: string) => {
+    const gid = scanGroupIdRef.current;
+    const group = gid ? coachGroups.find(g => g.id === gid) : undefined;
+    return group ? handleInviteCoach(group, id) : handleAddStudent(id);
+  };
+
+  // [GRUPY etap 2] Zaproszenie innego trenera do grupy (kod albo QR jego konta).
+  const handleInviteCoach = async (group: CoachGroup, coachId: string) => {
+    if (!coachId) return;
+    if (coachId === userId) { showToast(t('coachDashboard.toastSelf')); return; }
+    if (group.coachIds.includes(coachId) || sentInvites.some(i => i.id === `${group.id}_${coachId}`)) {
+      showToast(t('coachGroupCoaches.toastAlready'));
+      return;
+    }
+    if (group.coachIds.length + sentInvites.filter(i => i.groupId === group.id).length >= MAX_GROUP_COACHES) {
+      showToast(t('coachGroupCoaches.toastFull', { max: MAX_GROUP_COACHES }));
+      return;
+    }
+    try {
+      const pub = await getPublicProfile(coachId);
+      if (!pub) { showToast(t('coachDashboard.toastNotFound')); return; }
+      await sendGroupInvite(group, userId, coachName, coachId, pub.displayName || '');
+      setManualStudentId('');
+      setIsScanning(false);
+      await stopScanner();
+      showToast(t('coachGroupCoaches.toastInvited', { name: pub.displayName || '' }));
+    } catch (e) {
+      // Reguła odrzuca konto bez trybu trenera.
+      console.error('Zaproszenie trenera:', e);
+      showToast(t('coachGroupCoaches.toastNotCoach'));
+    }
+  };
+
+  const handleAcceptInvite = async (invite: GroupInvite) => {
+    try {
+      await acceptGroupInvite(invite, userId, coachName);
+      showToast(t('coachGroupCoaches.toastJoined', { group: invite.groupName }));
+    } catch (e) {
+      console.error('Przyjęcie zaproszenia do grupy:', e);
+      showToast(t('coachGroupCoaches.toastJoinError'));
+    }
+  };
+
+  const confirmRemoveCoach = async () => {
+    if (!coachToRemove) return;
+    try {
+      await removeGroupCoach(coachToRemove.groupId, coachToRemove.coachId);
+      if (coachToRemove.leave) { setSettingsGroupId(null); setActiveGroup('ALL'); }
+      showToast(t(coachToRemove.leave ? 'coachGroupCoaches.toastLeft' : 'coachGroupCoaches.toastRemoved'));
+    } catch {
+      showToast(t('coachDashboard.toastGroupError'));
+    }
+    setCoachToRemove(null);
+  };
 
   const handleAddStudent = async (studentId: string) => {
     if (!studentId) return;
@@ -1095,7 +1178,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const handleCreateGroup = async () => {
     if (!newGroupName.trim() || ownGroupCount >= MAX_GROUPS) return;
     try {
-      const id = await createGroup(userId, newGroupName.trim(), newGroupIcon);
+      const id = await createGroup(userId, newGroupName.trim(), newGroupIcon, coachName);
       setIsCreatingGroup(false);
       setNewGroupName('');
       setNewGroupIcon(DEFAULT_GROUP_ICON);
@@ -1553,6 +1636,40 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     </button>
   );
 
+  // [GRUPY etap 2] Zaproszenia do współprowadzenia grupy — na Übersicht i w ustawieniach.
+  const renderIncomingInvites = () => incomingInvites.length > 0 && (
+    <div className="space-y-2 mb-4">
+      {incomingInvites.map(inv => (
+        <div key={inv.id} className="bg-white rounded-xl border border-gray-100 border-l-4 border-l-rose-400 shadow-sm p-3.5">
+          <p className="flex items-center gap-1.5 text-[12px] font-black text-rose-500 uppercase tracking-wider">
+            <span className="material-symbols-outlined text-[16px]">mail</span>
+            {t('coachGroupCoaches.inviteTitle')}
+          </p>
+          <p className="text-[14px] font-bold text-[#0a3a2a] mt-1 leading-snug">
+            {t('coachGroupCoaches.inviteText', { from: inv.fromName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }), group: inv.groupName })}
+          </p>
+          <p className="text-[12px] font-bold text-gray-500 mt-1 leading-snug">{t('coachGroupCoaches.inviteInfo')}</p>
+          <div className="flex gap-2 mt-3">
+            <button
+              type="button"
+              onClick={() => handleAcceptInvite(inv)}
+              className="flex-1 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black active:scale-95 transition-all"
+            >
+              {t('coachGroupCoaches.accept')}
+            </button>
+            <button
+              type="button"
+              onClick={() => deleteGroupInvite(inv.id).catch(() => showToast(t('coachDashboard.toastGroupError')))}
+              className="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-600 text-[13px] font-black active:scale-95 transition-all"
+            >
+              {t('coachGroupCoaches.decline')}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderSettings = () => {
     const slotsPct = coachLimit > 0 ? Math.min(100, Math.round((students.length / coachLimit) * 100)) : 0;
     return (
@@ -1571,7 +1688,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             {isLimitReached && <p className="text-[12px] font-bold text-amber-700 mt-2">{t('coachSettings.limitReached')}</p>}
             <button
               type="button"
-              onClick={startScanner}
+              onClick={() => startScanner()}
               disabled={isLimitReached}
               className="w-full mt-3 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-40"
             >
@@ -1637,6 +1754,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         {/* 2. Gruppen: każda grupa rozwija swoje ustawienia */}
         <section>
           {settingsHeading('folder_shared', t('coachSettings.groups'))}
+          {renderIncomingInvites()}
           <div className="space-y-2">
             {coachGroups.map(group => {
               const members = studentsOfGroup(group.id);
@@ -1700,7 +1818,72 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                           </div>
                         )}
                       </div>
-                      {settingsRow('delete', t('coachDashboard.deleteGroupBtn'), null, () => setConfirmDeleteGroup(group.id), { danger: true })}
+                      {/* [GRUPY etap 2] Trenerzy grupy: Haupttrainer + do 2 współtrenerów. */}
+                      {(() => {
+                        const isOwner = group.ownerId === userId;
+                        const pending = sentInvites.filter(i => i.groupId === group.id);
+                        const canInvite = isOwner && group.coachIds.length + pending.length < MAX_GROUP_COACHES;
+                        return (
+                          <div className="px-3 py-2.5">
+                            <div className="flex items-center gap-3">
+                              <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">sports</span>
+                              <span className="flex-1 text-[14px] font-black text-[#0a3a2a]">{t('coachGroupCoaches.title')} ({group.coachIds.length}/{MAX_GROUP_COACHES})</span>
+                              {canInvite && (
+                                <button
+                                  type="button"
+                                  onClick={() => startScanner(group.id)}
+                                  className="shrink-0 h-8 px-2.5 rounded-full bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 text-[#0a3a2a] text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">person_add</span>
+                                  {t('coachGroupCoaches.invite')}
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap gap-1.5 mt-2 pl-8">
+                              {group.coachIds.map(cid => {
+                                const name = cid === userId ? t('coachGroupCoaches.me') : group.coachNames[cid] || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' });
+                                const removable = isOwner && cid !== userId;
+                                return (
+                                  <span key={cid} className={`inline-flex items-center gap-0.5 bg-gray-50 border border-gray-100 rounded-full pl-2.5 ${removable ? 'pr-1' : 'pr-2.5'} py-0.5 text-[12px] font-bold text-[#0a3a2a]`}>
+                                    {name}
+                                    {cid === group.ownerId && <span className="ml-1 text-[10px] font-black text-[#8B6508]">{t('coachGroupCoaches.head')}</span>}
+                                    {removable && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setCoachToRemove({ groupId: group.id, coachId: cid, leave: false })}
+                                        aria-label={t('coachGroupCoaches.remove')}
+                                        className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all"
+                                      >
+                                        <span className="material-symbols-outlined text-[16px]">close</span>
+                                      </button>
+                                    )}
+                                  </span>
+                                );
+                              })}
+                              {pending.map(inv => (
+                                <span key={inv.id} className="inline-flex items-center gap-0.5 border border-dashed border-gray-300 rounded-full pl-2.5 pr-1 py-0.5 text-[12px] font-bold text-gray-500">
+                                  {inv.toName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' })}
+                                  <span className="ml-1 text-[10px] font-black text-gray-400">{t('coachGroupCoaches.pending')}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteGroupInvite(inv.id).catch(() => showToast(t('coachDashboard.toastGroupError')))}
+                                    aria-label={t('coachGroupCoaches.cancelInvite')}
+                                    className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all"
+                                  >
+                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                            {isOwner && group.coachIds.length === 1 && pending.length === 0 && (
+                              <p className="text-[12px] font-bold text-gray-400 mt-1.5 pl-8">{t('coachGroupCoaches.hint')}</p>
+                            )}
+                          </div>
+                        );
+                      })()}
+                      {group.ownerId === userId
+                        ? settingsRow('delete', t('coachDashboard.deleteGroupBtn'), null, () => setConfirmDeleteGroup(group.id), { danger: true })
+                        : settingsRow('logout', t('coachGroupCoaches.leave'), null, () => setCoachToRemove({ groupId: group.id, coachId: userId, leave: true }), { danger: true })}
                     </div>
                   )}
                 </div>
@@ -1752,6 +1935,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           A: dziś jest trening → odprawa: kto przyjdzie, z jakim fokusem i formą.
           B: dziś bez treningu → najbliższy trening i kto dziś sam trenował.
           W obu: co od ostatniego treningu grupy, a nieaktywni tylko jedną linią. */}
+      {section === 'TODAY' && renderIncomingInvites()}
       {section === 'TODAY' && (() => {
         const todayKey = dayKeyOf(nowTick);
         const startOfToday = new Date(nowTick).setHours(0, 0, 0, 0);
@@ -2370,7 +2554,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex justify-between items-center mb-4">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('coachDashboard.addStudentHeader')}</span>
+            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{scanGroupId ? t('coachGroupCoaches.inviteHeader') : t('coachDashboard.addStudentHeader')}</span>
             <button onClick={async () => { await stopScanner(); setIsScanning(false); }} className="bg-red-50 text-red-500 w-8 h-8 rounded-full flex items-center justify-center active:scale-90">
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
@@ -2387,7 +2571,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             <button
               onClick={() => {
                 if(manualStudentId.trim()) {
-                  handleAddStudent(manualStudentId.trim());
+                  handleScanned(manualStudentId.trim());
                 }
               }}
               disabled={!manualStudentId.trim() || isLoading}
@@ -2461,6 +2645,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <p className="flex items-center gap-1 text-[12px] font-bold text-[#0a3a2a] truncate mt-0.5">
                         <span className="material-symbols-outlined text-[14px]">schedule</span>
                         <span className="truncate">{scheduleSummary(group.schedule)}</span>
+                      </p>
+                    )}
+                    {/* [GRUPY etap 2] Współprowadzona grupa: pozostali trenerzy. */}
+                    {group.coachIds.length > 1 && (
+                      <p className="flex items-center gap-1 text-[12px] font-bold text-gray-500 truncate mt-0.5">
+                        <span className="material-symbols-outlined text-[14px]">sports</span>
+                        <span className="truncate">
+                          {t('coachGroupCoaches.with', { names: group.coachIds.filter(c => c !== userId).map(c => group.coachNames[c] || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' })).join(', ') })}
+                        </span>
                       </p>
                     )}
                     {/* Liczba uczniów i puls w jednej linii — dawniej liczba stała osobno po prawej i ściskała nazwę. */}
@@ -3008,6 +3201,40 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       {/* Usunięcie grupy — to samo zabezpieczenie „wybierz 0", co przy
           usuwaniu ucznia (życzenie usera 2026-09-10: jedno kliknięcie było za
           łatwe, a grupa zabiera ze sobą dziennik i przypisania). */}
+      {/* [GRUPY etap 2] Usunięcie współtrenera albo odejście z grupy. */}
+      {coachToRemove && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setCoachToRemove(null)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl text-center" onClick={e => e.stopPropagation()}>
+            <h2 className="text-lg font-black text-[#0a3a2a] mb-1">
+              {coachToRemove.leave ? t('coachGroupCoaches.leaveTitle') : t('coachGroupCoaches.removeTitle')}
+            </h2>
+            <p className="text-[13px] font-black text-red-500 mb-2 break-words">
+              {coachToRemove.leave
+                ? coachGroups.find(g => g.id === coachToRemove.groupId)?.name
+                : coachGroups.find(g => g.id === coachToRemove.groupId)?.coachNames[coachToRemove.coachId]}
+            </p>
+            <p className="text-[12px] font-bold text-gray-500 mb-5 leading-relaxed">
+              {coachToRemove.leave ? t('coachGroupCoaches.leaveDesc') : t('coachGroupCoaches.removeDesc')}
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCoachToRemove(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[12px] active:scale-95 transition-all"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                onClick={confirmRemoveCoach}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black text-[12px] active:scale-95 transition-all"
+              >
+                {coachToRemove.leave ? t('coachGroupCoaches.leave') : t('coachGroupCoaches.remove')}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {confirmDeleteGroup && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setConfirmDeleteGroup(null)}>
           <div className="bg-white rounded-[32px] p-6 w-full max-w-[320px] shadow-2xl relative text-center" onClick={e => e.stopPropagation()}>

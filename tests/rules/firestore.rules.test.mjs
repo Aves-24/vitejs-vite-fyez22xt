@@ -1225,3 +1225,79 @@ test('groups: usuwa tylko właściciel; historia tylko dla trenerów grupy', asy
   await assertSucceeds(deleteDoc(doc(coach1(), 'groups/g1/private/training')));
   await assertSucceeds(deleteDoc(doc(coach1(), 'groups/g1')));
 });
+
+// ─── [GRUPY etap 2] współtrenerzy: groupInvites + coachIds ─────────
+
+const coach2 = () => env.authenticatedContext('coach2').firestore();
+const coach3 = () => env.authenticatedContext('coach3').firestore();
+const coach4 = () => env.authenticatedContext('coach4').firestore();
+const inviteDoc = (to = 'coach2', extra = {}) => ({
+  groupId: 'g1', fromId: 'coach1', toId: to, groupName: 'U14', fromName: 'Coach', toName: 'Zweiter', createdAt: 1, ...extra,
+});
+async function seedCoaches() {
+  await seedGroup();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    for (const c of ['coach2', 'coach3', 'coach4']) {
+      await setDoc(doc(db, `users/${c}`), { displayName: c, coaches: [], students: [], isCoach: true });
+    }
+  });
+}
+
+test('groupInvites: zaprasza tylko właściciel i tylko trenera', async () => {
+  await seedCoaches();
+  await assertSucceeds(setDoc(doc(coach1(), 'groupInvites/g1_coach2'), inviteDoc()));
+  await assertFails(setDoc(doc(coach1(), 'groupInvites/g1_bob'), inviteDoc('bob')));
+  await assertFails(setDoc(doc(coach3(), 'groupInvites/g1_coach4'), inviteDoc('coach4', { fromId: 'coach3' })));
+  await assertFails(setDoc(doc(coach1(), 'groupInvites/g1_coach1'), inviteDoc('coach1')));
+});
+
+test('groupInvites: czyta i usuwa tylko nadawca albo adresat', async () => {
+  await seedCoaches();
+  await assertSucceeds(setDoc(doc(coach1(), 'groupInvites/g1_coach2'), inviteDoc()));
+  await assertSucceeds(getDoc(doc(coach2(), 'groupInvites/g1_coach2')));
+  await assertSucceeds(getDocs(query(collection(coach2(), 'groupInvites'), where('toId', '==', 'coach2'))));
+  await assertFails(getDoc(doc(coach3(), 'groupInvites/g1_coach2')));
+  await assertFails(deleteDoc(doc(coach3(), 'groupInvites/g1_coach2')));
+  await assertSucceeds(deleteDoc(doc(coach2(), 'groupInvites/g1_coach2')));
+});
+
+test('groups: zaproszony dopisuje siebie, bez zaproszenia nikt; max 3 trenerów', async () => {
+  await seedCoaches();
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2'] }));
+  await assertSucceeds(setDoc(doc(coach1(), 'groupInvites/g1_coach2'), inviteDoc()));
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2', 'coach3'] }));
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2'], name: 'Hack' }));
+  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2'], 'coachNames.coach2': 'Zweiter' }));
+  await assertSucceeds(getDoc(doc(coach2(), 'groups/g1')));
+  await assertSucceeds(getDoc(doc(coach2(), 'groups/g1/private/training')));
+  await assertSucceeds(setDoc(doc(coach1(), 'groupInvites/g1_coach3'), inviteDoc('coach3')));
+  await assertSucceeds(updateDoc(doc(coach3(), 'groups/g1'), { coachIds: ['coach1', 'coach2', 'coach3'] }));
+  // pełna grupa: nowego zaproszenia nie da się wysłać ani przyjąć
+  await assertFails(setDoc(doc(coach1(), 'groupInvites/g1_coach4'), inviteDoc('coach4')));
+});
+
+test('groups: współtrener edytuje grupę, ale nie usuwa jej ani nie zmienia trenerów', async () => {
+  await seedCoaches();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'groups/g1'), { coachIds: ['coach1', 'coach2', 'coach3'] });
+  });
+  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { name: 'U15', 'topics.2026-10-30': { text: 'Zielen' } }));
+  await assertFails(deleteDoc(doc(coach2(), 'groups/g1')));
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2'] }));
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach2', 'coach3'] }));
+});
+
+test('groups: współtrener odchodzi sam, właściciel usuwa współtrenera, właściciela nie da się usunąć', async () => {
+  await seedCoaches();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'groups/g1'), { coachIds: ['coach1', 'coach2', 'coach3'] });
+  });
+  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach3'] }));
+  await assertFails(getDoc(doc(coach2(), 'groups/g1')));
+  await assertSucceeds(updateDoc(doc(coach1(), 'groups/g1'), { coachIds: ['coach1'] }));
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'groups/g1'), { coachIds: ['coach1', 'coach2'] });
+  });
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach2'] }));
+});

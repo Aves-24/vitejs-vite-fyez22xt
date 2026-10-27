@@ -21,7 +21,7 @@ import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
-import GroupTopicPanel,{ GroupSectionHeader, type GroupTopicsByDay } from '../components/GroupTopicPanel';
+import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
@@ -299,6 +299,8 @@ async function loadStudentTournaments(coachId: string, students: any[]): Promise
   return data;
 }
 
+type GroupTab = 'TRAINING' | 'HISTORY' | 'MEMBERS';
+
 interface CoachDashboardViewProps {
   userId: string;
   onNavigate: (view: string, tab?: string, extraData?: string, studentId?: string) => void;
@@ -378,7 +380,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [activeGroup, setActiveGroup] = useState<string>('ALL');
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
-  const [isGroupListOpen, setIsGroupListOpen] = useState(false);
+  // [EKRAN GRUPY] Zakładka otwartej grupy (user 2026-10-27), zapamiętana.
+  const [groupTab, setGroupTabState] = useState<GroupTab>(() => {
+    try { const v = localStorage.getItem('grotX_coachGroupTab'); return v === 'HISTORY' || v === 'MEMBERS' ? v : 'TRAINING'; } catch { return 'TRAINING'; }
+  });
+  const setGroupTab = (tab: GroupTab) => {
+    setGroupTabState(tab);
+    try { localStorage.setItem('grotX_coachGroupTab', tab); } catch { /* ignore */ }
+  };
   // [TERMINE] Grupa otwarta z terminarza na konkretny (przyszły) trening.
   const [groupFocusDay, setGroupFocusDay] = useState<{ groupId: string; day: string } | null>(null);
   // [TERMINE] Okienko tematu treningu otwarte z terminarza (grupa + dzień).
@@ -551,9 +560,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const [id, day] = pendingOpenGroupId.split('@');
     if (coachGroups.some(g => g.id === id)) {
       setActiveGroup(id);
-      setIsGroupListOpen(false);
+      if (day) setGroupTabState('TRAINING');
       setGroupFocusDay(day ? { groupId: id, day } : null);
-      setTimeout(() => document.getElementById(`coach-group-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
+      window.scrollTo({ top: 0 });
     }
     onClearPendingGroup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1636,6 +1645,205 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     </button>
   );
 
+  // [EKRAN GRUPY] Otwarta grupa (osobny ekran) i powrót do listy.
+  const openGroup = activeGroup !== 'ALL' ? coachGroups.find(g => g.id === activeGroup) : undefined;
+  const closeGroup = () => { setActiveGroup('ALL'); setGroupFocusDay(null); };
+
+  // Karta grupy: na liście otwiera ekran grupy, na ekranie grupy jest jego nagłówkiem.
+  const renderGroupCard = (group: CoachGroup, isHeader: boolean) => {
+    const members = studentsOfGroup(group.id);
+    // [TEMAT TRENINGU] Na karcie z listy: dzisiejszy albo następny zaplanowany temat.
+    const todayKey = dayKeyOf(Date.now());
+    const nextTopicDay = Object.keys(coachGroupTopics[group.id] || {}).sort().find(d => d >= todayKey);
+    const nextTopic = nextTopicDay ? coachGroupTopics[group.id][nextTopicDay] : undefined;
+    const pulse = groupPulse(members);
+    return (
+      <div
+        key={group.id}
+        role={isHeader ? undefined : 'button'}
+        onClick={isHeader ? undefined : () => { setActiveGroup(group.id); setGroupFocusDay(null); window.scrollTo({ top: 0 }); }}
+        // Otwarta grupa: grubszy pasek, jak dzisiejsze wpisy w dzienniku.
+        style={isHeader ? { borderLeftWidth: 7 } : undefined}
+        className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-2 flex items-center gap-2.5 ${isHeader ? '' : 'cursor-pointer active:scale-[0.99] transition-all'}`}
+      >
+        <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
+        </span>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
+          {/* [HARMONOGRAM] Stały trening od razu pod nazwą (user 2026-10-26: „ma być u góry”). */}
+          {scheduleSummary(group.schedule) && (
+            <p className="flex items-center gap-1 text-[12px] font-bold text-[#0a3a2a] truncate mt-0.5">
+              <span className="material-symbols-outlined text-[14px]">schedule</span>
+              <span className="truncate">{scheduleSummary(group.schedule)}</span>
+            </p>
+          )}
+          {/* [GRUPY etap 2] Współprowadzona grupa: pozostali trenerzy. */}
+          {group.coachIds.length > 1 && (
+            <p className="flex items-center gap-1 text-[12px] font-bold text-gray-500 truncate mt-0.5">
+              <span className="material-symbols-outlined text-[14px]">sports</span>
+              <span className="truncate">
+                {t('coachGroupCoaches.with', { names: group.coachIds.filter(c => c !== userId).map(c => group.coachNames[c] || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' })).join(', ') })}
+              </span>
+            </p>
+          )}
+          {/* Liczba uczniów i puls w jednej linii. */}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            <span className="text-[10px] font-bold text-gray-500">{t('coachDashboard.studentsCount', { count: members.length })}</span>
+            {members.length > 0 && !isLoading && (<>
+              {pulse.total > 0 && (
+                <span
+                  className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
+                    pulse.active === pulse.total ? 'bg-emerald-50 text-emerald-700'
+                      : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
+                  }`}
+                  title={t('coachDashboard.groupPulseActiveHint')}
+                >
+                  {t('coachDashboard.groupPulseActive', { active: pulse.active, total: pulse.total })}
+                </span>
+              )}
+              {pulse.up > 0 && (
+                <span className="flex items-center text-[10px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
+                  <span className="material-symbols-outlined text-[14px]">trending_up</span>{pulse.up}
+                </span>
+              )}
+              {pulse.down > 0 && (
+                <span className="flex items-center text-[10px] font-black text-red-500" title={t('coachDashboard.groupPulseDown')} aria-label={`${t('coachDashboard.groupPulseDown')}: ${pulse.down}`}>
+                  <span className="material-symbols-outlined text-[14px]">trending_down</span>{pulse.down}
+                </span>
+              )}
+              {pulse.inactive > 0 && (
+                <span className="flex items-center gap-0.5 text-[10px] font-black text-amber-600" title={t('coachDashboard.groupPulseInactive')} aria-label={`${t('coachDashboard.groupPulseInactive')}: ${pulse.inactive}`}>
+                  <span className="material-symbols-outlined text-[14px]">person_off</span>{pulse.inactive}
+                </span>
+              )}
+            </>)}
+          </div>
+          {!isHeader && nextTopic && (
+            <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
+              <span className="material-symbols-outlined text-[#0a3a2a] text-[14px]">sports</span>
+              <span className="truncate">
+                <span className="font-black">
+                  {nextTopicDay === todayKey
+                    ? t('coachDashboard.groupTopicToday')
+                    : new Date(`${nextTopicDay}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}:
+                </span> {nextTopic.text}
+              </span>
+            </p>
+          )}
+        </div>
+        {members.length > 0 && (
+          <button
+            onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
+            aria-label={t('coachDashboard.groupMessageBtn')}
+            title={t('coachDashboard.groupMessageBtn')}
+            className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]">mail</span>
+          </button>
+        )}
+        {!isHeader && <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0 mr-1">chevron_right</span>}
+      </div>
+    );
+  };
+
+  // Ekran jednej grupy: nagłówek, menu Training · Verlauf · Schüler i treść zakładki.
+  const renderGroupScreen = (group: CoachGroup) => {
+    const members = studentsOfGroup(group.id);
+    const topics = coachGroupTopics[group.id] || {};
+    const todayKey = dayKeyOf(Date.now());
+    // „+ Thema” domyślnie na najbliższy trening z planu, który nie ma jeszcze tematu.
+    const nextTraining = upcomingOccurrences(group.schedule, todayKey, 8).find(o => !o.cancelled && !topics[o.date])?.date;
+    const tabs: { id: GroupTab; icon: string; label: string }[] = [
+      { id: 'TRAINING', icon: 'sports', label: t('coachDashboard.groupTabTraining') },
+      { id: 'HISTORY', icon: 'history', label: t('coachDashboard.groupTabHistory') },
+      { id: 'MEMBERS', icon: 'groups', label: `${t('coachDashboard.groupTabMembers')} (${members.length})` },
+    ];
+    const panelProps = {
+      groupId: group.id,
+      groupName: group.name,
+      members,
+      coachId: userId,
+      topics,
+      onChanged: (next: GroupTopicsByDay) => handleGroupTopicChanged(group.id, next),
+      showToast,
+      onOpenStudent: setSheetStudentId,
+    };
+    return (
+      <div className="space-y-3">
+        <button
+          type="button"
+          onClick={closeGroup}
+          className="flex items-center gap-1 text-[12px] font-black text-gray-500 active:scale-95 transition-all"
+        >
+          <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+          {t('coachDashboard.backToGroups')}
+        </button>
+        {renderGroupCard(group, true)}
+
+        {/* Stały trening ustawia się w ustawieniach trenera — tu tylko,
+            gdy go brak, krótka podpowiedź z przejściem (user 2026-10-27). */}
+        {!scheduleSummary(group.schedule) && (
+          <button
+            type="button"
+            onClick={() => { setSettingsGroupId(group.id); onNavigate('COACH', 'SETTINGS'); }}
+            className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left border border-dashed border-gray-200 bg-gray-50/50 active:scale-[0.98] transition-all"
+          >
+            <span className="material-symbols-outlined text-gray-400 text-[18px]">schedule</span>
+            <span className="flex-1 min-w-0 text-[12px] font-bold text-gray-500">{t('coachSchedule.setUp')}</span>
+            <span className="material-symbols-outlined text-gray-300 text-[18px]">settings</span>
+          </button>
+        )}
+
+        <div role="tablist" className="flex gap-1 p-1 bg-gray-100 rounded-xl">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              role="tab"
+              aria-selected={groupTab === tab.id}
+              onClick={() => setGroupTab(tab.id)}
+              className={`flex-1 min-w-0 flex items-center justify-center gap-1 py-2 rounded-lg text-[12px] font-black transition-all ${
+                groupTab === tab.id ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-500'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[16px] shrink-0">{tab.icon}</span>
+              <span className="truncate">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {groupTab === 'TRAINING' && (
+          <GroupTopicPanel
+            {...panelProps}
+            part="training"
+            defaultDay={nextTraining}
+            focusDay={groupFocusDay?.groupId === group.id ? groupFocusDay.day : null}
+            onClearFocusDay={() => setGroupFocusDay(null)}
+          />
+        )}
+        {groupTab === 'HISTORY' && (
+          <GroupTopicPanel
+            {...panelProps}
+            part="history"
+            renderHistory={(repeatToday, editTopic) => (
+              <GroupTrainingHistory
+                onRepeat={repeatToday}
+                onEdit={editTopic}
+                groupId={group.id}
+                coachId={userId}
+                members={members}
+                topics={topics}
+                onOpenStudent={setSheetStudentId}
+              />
+            )}
+          />
+        )}
+        {groupTab === 'MEMBERS' && renderStudentList(members, '')}
+      </div>
+    );
+  };
+
   // [GRUPY etap 2] Zaproszenia do współprowadzenia grupy — na Übersicht i w ustawieniach.
   const renderIncomingInvites = () => incomingInvites.length > 0 && (
     <div className="space-y-2 mb-4">
@@ -1926,7 +2134,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         // Nagłówek przyklejony u góry: zakładka trenera zawsze widoczna, też nad kartą ucznia.
         className="-mx-5 mb-4 sticky top-0"
         // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
-        onBack={() => (section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
+        onBack={() => (section === 'GROUPS' && activeGroup !== 'ALL' ? closeGroup()
+          : section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
         title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : section === 'SETTINGS' ? t('coachSettings.title') : t('coachDashboard.subtitle')}
         hideLogo
       />
@@ -2603,172 +2812,22 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
       {section === 'GROUPS' && (
         <div className="space-y-2">
-          {/* [C27] Same grupy. Klik rozwija grupę w miejscu: temat, historia
-              i skład. Nazwa, symbol, skład, stały trening i usunięcie są
-              w ustawieniach trenera (zębatka, user 2026-10-27). */}
-          {coachGroups.length > 0 && (
-            <div className="flex items-center justify-between ml-2 pr-1 mb-1">
-              <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {t('coachDashboard.viewGroups')} ({coachGroups.length})
-              </h2>
-            </div>
-          )}
-
-          {coachGroups.map(group => {
-            const members = studentsOfGroup(group.id);
-            // [TEMAT TRENINGU] Na zwiniętej karcie: dzisiejszy albo następny zaplanowany temat.
-            const todayKey = dayKeyOf(Date.now());
-            const nextTopicDay = Object.keys(coachGroupTopics[group.id] || {}).sort().find(d => d >= todayKey);
-            const nextTopic = nextTopicDay ? coachGroupTopics[group.id][nextTopicDay] : undefined;
-            const isOpen = activeGroup === group.id;
-            const pulse = groupPulse(members);
-            return (
-              // [WIDOK GRUPY] (user 2026-10-23) Karta grupy = sam nagłówek w stylu
-              // dziennika (biała, różowy pasek). Rozwinięta treść stoi POD nią,
-              // nie w niej — koniec „tabelki w tabelce”.
-              <div key={group.id} id={`coach-group-${group.id}`} className={`scroll-mt-4 ${isOpen ? 'pb-3' : ''}`}>
-                <div
-                  role="button"
-                  aria-expanded={isOpen}
-                  onClick={() => { setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false); setGroupFocusDay(null); }}
-                  // Otwarta grupa: grubszy pasek, jak dzisiejsze wpisy w dzienniku.
-                  style={isOpen ? { borderLeftWidth: 7 } : undefined}
-                  className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-2 flex items-center gap-2.5 cursor-pointer active:scale-[0.99] transition-all`}
-                >
-                  <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
-                    {/* [HARMONOGRAM] Stały trening od razu pod nazwą (user 2026-10-26: „ma być u góry”). */}
-                    {scheduleSummary(group.schedule) && (
-                      <p className="flex items-center gap-1 text-[12px] font-bold text-[#0a3a2a] truncate mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">schedule</span>
-                        <span className="truncate">{scheduleSummary(group.schedule)}</span>
-                      </p>
-                    )}
-                    {/* [GRUPY etap 2] Współprowadzona grupa: pozostali trenerzy. */}
-                    {group.coachIds.length > 1 && (
-                      <p className="flex items-center gap-1 text-[12px] font-bold text-gray-500 truncate mt-0.5">
-                        <span className="material-symbols-outlined text-[14px]">sports</span>
-                        <span className="truncate">
-                          {t('coachGroupCoaches.with', { names: group.coachIds.filter(c => c !== userId).map(c => group.coachNames[c] || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' })).join(', ') })}
-                        </span>
-                      </p>
-                    )}
-                    {/* Liczba uczniów i puls w jednej linii — dawniej liczba stała osobno po prawej i ściskała nazwę. */}
-                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                      <span className="text-[10px] font-bold text-gray-500">{t('coachDashboard.studentsCount', { count: members.length })}</span>
-                      {members.length > 0 && !isLoading && (<>
-                        {pulse.total > 0 && (
-                          <span
-                            className={`text-[10px] font-black px-1.5 py-0.5 rounded-md ${
-                              pulse.active === pulse.total ? 'bg-emerald-50 text-emerald-700'
-                                : pulse.active === 0 ? 'bg-red-50 text-red-500' : 'bg-gray-100 text-gray-600'
-                            }`}
-                            title={t('coachDashboard.groupPulseActiveHint')}
-                          >
-                            {t('coachDashboard.groupPulseActive', { active: pulse.active, total: pulse.total })}
-                          </span>
-                        )}
-                        {pulse.up > 0 && (
-                          <span className="flex items-center text-[10px] font-black text-emerald-600" title={t('coachDashboard.groupPulseUp')} aria-label={`${t('coachDashboard.groupPulseUp')}: ${pulse.up}`}>
-                            <span className="material-symbols-outlined text-[14px]">trending_up</span>{pulse.up}
-                          </span>
-                        )}
-                        {pulse.down > 0 && (
-                          <span className="flex items-center text-[10px] font-black text-red-500" title={t('coachDashboard.groupPulseDown')} aria-label={`${t('coachDashboard.groupPulseDown')}: ${pulse.down}`}>
-                            <span className="material-symbols-outlined text-[14px]">trending_down</span>{pulse.down}
-                          </span>
-                        )}
-                        {pulse.inactive > 0 && (
-                          <span className="flex items-center gap-0.5 text-[10px] font-black text-amber-600" title={t('coachDashboard.groupPulseInactive')} aria-label={`${t('coachDashboard.groupPulseInactive')}: ${pulse.inactive}`}>
-                            <span className="material-symbols-outlined text-[14px]">person_off</span>{pulse.inactive}
-                          </span>
-                        )}
-                      </>)}
-                    </div>
-                    {!isOpen && nextTopic && (
-                      <p className="flex items-center gap-1 text-[11px] font-bold text-[#0a3a2a] truncate mt-1">
-                        <span className="material-symbols-outlined text-[#0a3a2a] text-[14px]">sports</span>
-                        <span className="truncate">
-                          <span className="font-black">
-                            {nextTopicDay === todayKey
-                              ? t('coachDashboard.groupTopicToday')
-                              : new Date(`${nextTopicDay}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' })}:
-                          </span> {nextTopic.text}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                  {members.length > 0 && (
-                    <button
-                      onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
-                      aria-label={t('coachDashboard.groupMessageBtn')}
-                      title={t('coachDashboard.groupMessageBtn')}
-                      className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">mail</span>
-                    </button>
-                  )}
-                  <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0 mr-1">{isOpen ? 'expand_less' : 'expand_more'}</span>
+          {/* [EKRAN GRUPY] (user 2026-10-27) Lista to same karty grup; klik otwiera
+              grupę jako osobny ekran z menu Training · Verlauf · Schüler — inne
+              grupy znikają. Nazwa, symbol, skład, stały trening i usunięcie są
+              w ustawieniach trenera (zębatka). */}
+          {openGroup ? renderGroupScreen(openGroup) : (
+            <>
+              {coachGroups.length > 0 && (
+                <div className="flex items-center justify-between ml-2 pr-1 mb-1">
+                  <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                    {t('coachDashboard.viewGroups')} ({coachGroups.length})
+                  </h2>
                 </div>
-
-                {isOpen && (
-                  <div className="pt-1 space-y-3">
-                    {/* Stały trening ustawia się w ustawieniach trenera — tu tylko,
-                        gdy go brak, krótka podpowiedź z przejściem (user 2026-10-27). */}
-                    {!scheduleSummary(group.schedule) && (
-                      <button
-                        type="button"
-                        onClick={() => { setSettingsGroupId(group.id); onNavigate('COACH', 'SETTINGS'); }}
-                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left border border-dashed border-gray-200 bg-gray-50/50 active:scale-[0.98] transition-all"
-                      >
-                        <span className="material-symbols-outlined text-gray-400 text-[18px]">schedule</span>
-                        <span className="flex-1 min-w-0 text-[12px] font-bold text-gray-500">{t('coachSchedule.setUp')}</span>
-                        <span className="material-symbols-outlined text-gray-300 text-[18px]">settings</span>
-                      </button>
-                    )}
-                    <GroupTopicPanel
-                      groupId={group.id}
-                      groupName={group.name}
-                      members={members}
-                      coachId={userId}
-                      topics={coachGroupTopics[group.id] || {}}
-                      onChanged={next => handleGroupTopicChanged(group.id, next)}
-                      showToast={showToast}
-                      onOpenStudent={setSheetStudentId}
-                      focusDay={groupFocusDay?.groupId === group.id ? groupFocusDay.day : null}
-                      onClearFocusDay={() => setGroupFocusDay(null)}
-                      renderHistory={(repeatToday, editTopic) => (
-                        <GroupTrainingHistory
-                          onRepeat={repeatToday}
-                          onEdit={editTopic}
-                          groupId={group.id}
-                          coachId={userId}
-                          members={members}
-                          topics={coachGroupTopics[group.id] || {}}
-                          onOpenStudent={setSheetStudentId}
-                        />
-                      )}
-                    />
-
-                    {/* Skład grupy — zwijany, liczba w nagłówku; dopisywanie w ustawieniach trenera. */}
-                    <section>
-                      <GroupSectionHeader
-                        icon="groups"
-                        label={t('coachDashboard.groupList')}
-                        count={members.length}
-                        open={isGroupListOpen}
-                        onToggle={() => setIsGroupListOpen(o => !o)}
-                      />
-                      {isGroupListOpen && renderStudentList(members, '')}
-                    </section>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+              )}
+              {coachGroups.map(group => renderGroupCard(group, false))}
+            </>
+          )}
 
           {/* Stan pusty — brak grup */}
           {coachGroups.length === 0 && (

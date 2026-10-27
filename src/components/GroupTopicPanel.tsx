@@ -156,7 +156,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, part, defaultDay }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -174,6 +174,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   modalOnly?: boolean;
   autoOpenDay?: string;
   onModalClose?: () => void;
+  /** [GRUPA] Zakładka ekranu grupy: 'training' (temat, zaplanowane) albo 'history' (historia). */
+  part?: 'training' | 'history';
+  /** Dzień, na który „+ Thema” otwiera okienko — najbliższy trening z planu grupy. */
+  defaultDay?: string;
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -209,6 +213,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const shown = todayTopic && !todayTopic.closedAt ? todayTopic : undefined;
   // Planowany temat czekający na potwierdzenie usunięcia (dzień).
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  // „Geplant” zwinięte (user 2026-10-27).
+  const [plannedOpen, setPlannedOpen] = useState(false);
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
   useEffect(() => {
@@ -577,11 +583,66 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   // zamknięciu (zapis albo „Abbrechen”) wracamy do listy.
   if (modalOnly) return <>{modalEl}</>;
 
+  // [GRUPA] Historia ma własną zakładkę; „Powtórz na dziś”, gdy dziś nie ma tematu.
+  if (part === 'history') {
+    return (
+      <>
+        {renderHistory?.(!todayTopic && members.length > 0 && !saving
+          ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '', linkTitles: gt.linkTitles ?? [] })
+          : null, gt => openModal(gt.day, gt))}
+        {modalEl}
+      </>
+    );
+  }
+
+  // „+ Thema” otwiera okienko na dzień z terminarza, najbliższy trening z planu
+  // albo pierwszy wolny dzień — datę i tak można w okienku zmienić.
+  const addDay = focus && !focusTopic ? focus
+    : defaultDay && defaultDay >= today && !byDay[defaultDay] ? defaultDay
+    : firstFreeDay();
+
+  const topicCard = (gt: GroupTopic, day: string) => (
+    <EntryRow
+      icon="sports"
+      iconCls="text-[#0a3a2a]"
+      kind={t('coachDashboard.groupTopicLabel')}
+      kindCls="text-[#0a3a2a]"
+      title={focusTitle(gt, t)}
+      extra={(
+        <button
+          onClick={() => openModal(day, gt)}
+          disabled={saving}
+          aria-label={t('coachDashboard.groupTopicEdit')}
+          title={t('coachDashboard.groupTopicEdit')}
+          className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
+        >
+          <span className="material-symbols-outlined text-[20px]">edit</span>
+        </button>
+      )}
+    >
+      {gt.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{gt.desc}</p>}
+      {gt.text && gt.topic && <TopicChips topics={[gt.topic]} />}
+      <TopicLinks links={gt.links} titles={gt.linkTitles} tone="coach" className="mt-2" />
+    </EntryRow>
+  );
+
   return (
-    // [WIDOK GRUPY] (user 2026-10-23: „tabelka w tabelce i w środku jeszcze
-    // tabelka”) Jeden poziom kart jak w dzienniku: sekcje to sam nagłówek
-    // + odstęp, róż tylko w pasku, ikonce i przycisku głównym.
+    // [EKRAN GRUPY] (user 2026-10-27) Zakładka Training: jeden „+ Thema” na
+    // dowolny dzień, dzisiejszy temat (albo ten z terminarza) i zwinięte „Geplant”.
     <div className="space-y-3">
+      <button
+        type="button"
+        onClick={() => openModal(addDay)}
+        disabled={members.length === 0 || saving}
+        className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+      >
+        <span className="material-symbols-outlined text-[22px]">add</span>
+        {t('coachDashboard.groupTopicAdd')}
+      </button>
+      {members.length === 0 && (
+        <p className="text-[11px] font-bold text-gray-500 pl-1 -mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
+      )}
+
       {focus ? (
         // [TERMINE] Wejście z terminarza na konkretny trening: temat właśnie na ten dzień.
         <section>
@@ -592,148 +653,61 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               <button
                 type="button"
                 onClick={onClearFocusDay}
-                className="h-10 shrink-0 px-3 rounded-xl text-gray-500 flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                aria-label={t('coachDashboard.cancel')}
+                className="w-10 h-10 shrink-0 rounded-xl text-gray-400 flex items-center justify-center active:scale-90 transition-all"
               >
-                <span className="material-symbols-outlined text-[18px]">today</span>
-                {t('coachDashboard.groupTopicTodayHeading')}
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             ) : undefined}
           />
           {focusTopic ? (
-            <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
-              <EntryRow
-                icon="sports"
-                iconCls="text-[#0a3a2a]"
-                kind={t('coachDashboard.groupTopicLabel')}
-                kindCls="text-[#0a3a2a]"
-                title={focusTitle(focusTopic, t)}
-                extra={(
-                  <button
-                    onClick={() => openModal(focus, focusTopic)}
-                    disabled={saving}
-                    aria-label={t('coachDashboard.groupTopicEdit')}
-                    title={t('coachDashboard.groupTopicEdit')}
-                    className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">edit</span>
-                  </button>
-                )}
-              >
-                {focusTopic.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{focusTopic.desc}</p>}
-                {focusTopic.text && focusTopic.topic && <TopicChips topics={[focusTopic.topic]} />}
-                <TopicLinks links={focusTopic.links} titles={focusTopic.linkTitles} tone="coach" className="mt-2" />
-              </EntryRow>
-            </div>
+            <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>{topicCard(focusTopic, focus)}</div>
           ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => openModal(focus)}
-                disabled={members.length === 0 || saving}
-                className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
-              >
-                <span className="material-symbols-outlined text-[22px]">add</span>
-                {t('coachDashboard.groupTopicSetFor', { day: dayLabel(focus) })}
-              </button>
-              {members.length === 0 && (
-                <p className="text-[11px] font-bold text-gray-500 pl-1 mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
-              )}
-            </>
+            <p className="text-[12px] font-bold text-gray-500 pl-1">{t('coachDashboard.groupTopicNoneFor', { day: dayLabel(focus) })}</p>
           )}
         </section>
-      ) : (
-      <section>
-        <GroupSectionHeader icon="today" label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
-
-        {shown ? (
-          <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
-            <EntryRow
-              icon="sports"
-              iconCls="text-[#0a3a2a]"
-              kind={t('coachDashboard.groupTopicLabel')}
-              kindCls="text-[#0a3a2a]"
-              title={focusTitle(shown, t)}
-              extra={(
-                <button
-                  onClick={() => openModal(today, shown)}
-                  disabled={saving}
-                  aria-label={t('coachDashboard.groupTopicEdit')}
-                  title={t('coachDashboard.groupTopicEdit')}
-                  className="w-10 h-10 -mt-2 -mr-2 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-                >
-                  <span className="material-symbols-outlined text-[20px]">edit</span>
-                </button>
-              )}
-            >
-              {shown.desc && <p className="text-[12px] font-medium text-[#333] leading-snug whitespace-pre-wrap break-words mt-1">{shown.desc}</p>}
-              {shown.text && shown.topic && <TopicChips topics={[shown.topic]} />}
-              <TopicLinks links={shown.links} titles={shown.linkTitles} tone="coach" className="mt-2" />
-            </EntryRow>
-
-            {/* Kto ćwiczył pod temat — od razu na karcie, bez kolejnej ramki. */}
-            <div className="mt-2.5 pt-2 border-t border-gray-100 pl-1">
-              <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
-                {t('coachDashboard.groupTopicMembersTrained', { trained: trainedCount, total: Object.keys(shown.entryIds).length })}
-              </p>
-              <TopicMemberList members={members} gt={shown} status={status} onAssign={s => assignOne(shown, s)} saving={saving} onOpenStudent={onOpenStudent} />
+      ) : (shown || todayTopic?.closedAt) ? (
+        <section>
+          <GroupSectionHeader icon="today" label={t('coachDashboard.groupTopicTodayHeading')} count={dayLabel(today)} />
+          {shown ? (
+            <div className={`${CARD_SHAPE} tb-led ${CARD_PAD}`}>
+              {topicCard(shown, today)}
+              {/* Kto ćwiczył pod temat — od razu na karcie, bez kolejnej ramki. */}
+              <div className="mt-2.5 pt-2 border-t border-gray-100 pl-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">
+                  {t('coachDashboard.groupTopicMembersTrained', { trained: trainedCount, total: Object.keys(shown.entryIds).length })}
+                </p>
+                <TopicMemberList members={members} gt={shown} status={status} onAssign={s => assignOne(shown, s)} saving={saving} onOpenStudent={onOpenStudent} />
+              </div>
+              <button
+                onClick={() => close(shown)}
+                disabled={saving}
+                className="mt-2 w-full min-h-[44px] rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
+              >
+                <span className="material-symbols-outlined text-[18px]">sports_score</span>
+                {t('coachDashboard.groupTopicClose')}
+              </button>
             </div>
+          ) : (
+            <p className="flex items-center gap-1.5 text-[12px] font-bold text-[#0a3a2a] pl-1 py-1">
+              <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
+              {t('coachDashboard.groupTopicClosedToday')}
+            </p>
+          )}
+        </section>
+      ) : null}
 
-            <button
-              onClick={() => close(shown)}
-              disabled={saving}
-              className="mt-2 w-full min-h-[44px] rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[11px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
-            >
-              <span className="material-symbols-outlined text-[18px]">sports_score</span>
-              {t('coachDashboard.groupTopicClose')}
-            </button>
-          </div>
-        ) : todayTopic?.closedAt ? (
-          <p className="flex items-center gap-1.5 text-[12px] font-bold text-[#0a3a2a] pl-1 py-1">
-            <span className="material-symbols-outlined text-emerald-600 text-[18px]">check_circle</span>
-            {t('coachDashboard.groupTopicClosedToday')}
-          </p>
-        ) : (
-          // Najczęstsza akcja rano przed treningiem — duży przycisk zamiast małego „+”.
-          <>
-            <button
-              type="button"
-              onClick={() => openModal(firstFreeDay())}
-              disabled={members.length === 0 || saving}
-              className="w-full min-h-[52px] rounded-2xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center gap-2 text-[12px] font-black uppercase tracking-widest shadow-sm active:scale-[0.98] transition-all disabled:opacity-40"
-            >
-              <span className="material-symbols-outlined text-[22px]">add</span>
-              {t('coachDashboard.groupTopicSet')}
-            </button>
-            {members.length === 0 && (
-              <p className="text-[11px] font-bold text-gray-500 pl-1 mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
-            )}
-          </>
-        )}
-      </section>
-      )}
-
-      {/* Zaplanowane na kolejne dni (uczniowie zobaczą je dopiero w ich dniu).
-          „Planen” zawsze tu, gdy dziś już jest temat — dawny „+” w nagłówku. */}
-      {(upcoming.length > 0 || !!todayTopic) && (
+      {/* Zaplanowane na kolejne dni (uczniowie zobaczą je dopiero w ich dniu) — zwinięte. */}
+      {upcoming.length > 0 && (
         <section>
           <GroupSectionHeader
             icon="calendar_month"
             label={t('coachDashboard.groupTopicPlanned')}
-            count={upcoming.length || undefined}
-            action={(
-              <button
-                type="button"
-                onClick={() => openModal(firstFreeDay())}
-                disabled={members.length === 0 || saving}
-                title={t('coachDashboard.groupTopicPlan')}
-                className="h-10 shrink-0 pl-2 pr-3 rounded-xl text-[#0a3a2a] flex items-center gap-1 text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-40"
-              >
-                <span className="material-symbols-outlined text-[20px]">add</span>
-                {t('coachDashboard.groupTopicPlanShort')}
-              </button>
-            )}
+            count={upcoming.length}
+            open={plannedOpen}
+            onToggle={() => setPlannedOpen(o => !o)}
           />
-          {upcoming.length > 0 && (
+          {plannedOpen && (
             <div className="space-y-2">
               {upcoming.map(d => {
                 const gt = byDay[d];
@@ -794,10 +768,6 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
           )}
         </section>
       )}
-
-      {renderHistory?.(!todayTopic && members.length > 0 && !saving
-        ? gt => create(today, { text: gt.text, topic: gt.topic, links: gt.links ?? [], desc: gt.desc ?? '', linkTitles: gt.linkTitles ?? [] })
-        : null, gt => openModal(gt.day, gt))}
 
       {modalEl}
     </div>

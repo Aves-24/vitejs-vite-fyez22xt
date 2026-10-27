@@ -283,6 +283,22 @@ export const views = {
     errorAffirm: "Bitte bestätige die Einwilligung, um fortzufahren.",
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
+  coachSettings: {
+    title: "Einstellungen",
+    students: "Schüler",
+    slots: "Plätze",
+    limitReached: "Alle Plätze belegt – unten unter „Trainermodus“ kannst du mehr anfragen.",
+    addStudent: "Schüler hinzufügen",
+    noGroup: "Keine Gruppe",
+    groups: "Gruppen",
+    nameIcon: "Name & Symbol",
+    members: "Mitglieder",
+    addMember: "Hinzufügen",
+    removeFromGroup: "Aus der Gruppe entfernen",
+    maxGroups: "Maximal 5 Gruppen.",
+    privateHint: "In Termine neben deinen Trainer-Terminen, um Überschneidungen zu sehen.",
+    account: "Trainermodus"
+  },
   coachTermine: {
     list: "Liste",
     month: "Monat",
@@ -1290,6 +1306,8 @@ export const views = {
       btn: "Demnächst verfügbar",
       myTeam: "Meine Trainer",
       commandCenter: "Kommandozentrale",
+      settingsMovedDesc: "Schüler, Gruppen, Plätze und Trainermodus findest du jetzt im Trainer-Panel unter „Einst.“.",
+      openCoachSettings: "Trainer-Einstellungen öffnen",
       slots: "Plätze:",
       confirmRevoke: "Diesen Trainer widerrufen?",
       confirmRevokeDesc: "Diese Operation ist nicht rückgängig zu machen.",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
+import CoachAccountCard from '../components/settings/CoachAccountCard';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { Html5Qrcode } from 'html5-qrcode';
@@ -304,7 +305,7 @@ interface CoachDashboardViewProps {
   pendingOpenGroupId?: string | null;
   onClearPendingGroup?: () => void;
   /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
-  section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS';
+  section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
 }
 
 export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
@@ -387,12 +388,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [newGroupIcon, setNewGroupIcon] = useState(DEFAULT_GROUP_ICON);
   const [managingGroupsFor, setManagingGroupsFor] = useState<string[] | null>(null);
 
-  // Tryb wyboru grup (jak „Wybierz" u uczniów): jedna zaznaczona grupa,
-  // pasek z Zmień nazwę / Nowy wpis / Usuń. Okno nowego wpisu dla grupy.
-  const [isGroupSelecting, setIsGroupSelecting] = useState(false);
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  // Rozwinięte stare wpisy pod polem nowego wpisu (zwinięte = 30 znaków).
-  const exitGroupSelecting = () => { setIsGroupSelecting(false); setSelectedGroupId(null); };
+  // [EINSTELLUNGEN] Rozwinięta grupa w ustawieniach trenera (nazwa, skład, plan, usunięcie).
+  const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
+  // Imię i nazwisko trenera — do prośby o więcej miejsc (CoachAccountCard).
+  const [coachName, setCoachName] = useState('');
 
   const [editingGroup, setEditingGroup] = useState<{ id: string; name: string } | null>(null);
   const [editGroupName, setEditGroupName] = useState('');
@@ -541,7 +540,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     if (section !== 'ATHLETES') setInactiveOnly(false);
     if (section !== 'GROUPS') setGroupFocusDay(null);
     setIsSelecting(false); setSelectedStudents([]);
-    setIsGroupSelecting(false); setSelectedGroupId(null);
   }, [section]);
 
   const showToast = (msg: string) => {
@@ -698,6 +696,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       const data = snap.data();
       // Świeży coachLimit z każdego snapshota — admin może go zmienić w locie.
       setCoachLimit(effectiveCoachLimit(data));
+      setCoachName(`${data.firstName || ''} ${data.lastName || ''}`.trim());
       setPausedStudents(data.coachPausedStudents && typeof data.coachPausedStudents === 'object' ? data.coachPausedStudents : {});
       const ids = (data.students || []) as string[];
       const key = [...ids].sort().join(',');
@@ -1111,6 +1110,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setNewGroupIcon(DEFAULT_GROUP_ICON);
       // Nowa grupa od razu rozwinięta — trener zwykle chce dopisać uczniów.
       setActiveGroup(newGroup.id);
+      setSettingsGroupId(newGroup.id);
      
       showToast(t('coachDashboard.toastGroupCreated'));
     } catch (error) {
@@ -1251,12 +1251,21 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setGroupNotes(newNotes);
       setCoachGroupTopics(prev => { const next = { ...prev }; delete next[groupId]; return next; });
       setActiveGroup('ALL');
-      setSelectedGroupId(null);
+      setSettingsGroupId(null);
       setConfirmDeleteGroup(null);
       showToast(t('coachDashboard.toastGroupDeleted'));
     } catch (e) {
       showToast(t('coachDashboard.toastGroupError'));
     }
+  };
+
+  // [EINSTELLUNGEN] Wypisanie jednego ucznia z grupy (skład grupy w ustawieniach).
+  const removeFromGroup = async (studentId: string, groupId: string) => {
+    const newMap = { ...studentGroupMap, [studentId]: (studentGroupMap[studentId] || []).filter(g => g !== groupId) };
+    setStudentGroupMap(newMap);
+    try {
+      await updateDoc(doc(db, 'users', userId), { studentGroupMap: newMap });
+    } catch { showToast(t('coachDashboard.toastSaveError')); }
   };
 
   // Przypisanie grupy wszystkim zaznaczonym naraz: jeśli wszyscy już w niej
@@ -1499,27 +1508,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           >
             {t('coachDashboard.sendMessageBtn')}
           </button>
-          {/* Dawne menu „⋮" z wiersza — teraz dla wszystkich zaznaczonych */}
-          {coachGroups.length > 0 && (
-            <button
-              onClick={() => setManagingGroupsFor([...selectedStudents])}
-              disabled={selectedStudents.length === 0}
-              aria-label={t('coachDashboard.manageGroups')}
-              title={t('coachDashboard.manageGroups')}
-              className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-white flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-            >
-              <span className="material-symbols-outlined text-[18px]">folder_shared</span>
-            </button>
-          )}
-          <button
-            onClick={() => setStudentsToDelete([...selectedStudents])}
-            disabled={selectedStudents.length === 0}
-            aria-label={t('coachDashboard.removeStudent')}
-            title={t('coachDashboard.removeStudent')}
-            className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-red-300 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-          >
-            <span className="material-symbols-outlined text-[18px]">person_remove</span>
-          </button>
+          {/* Grupy i usuwanie uczniów — w ustawieniach trenera (user 2026-10-27). */}
         </div>
       )}
 
@@ -1601,6 +1590,228 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
+  // Prywatne terminy w Termine — ten sam przełącznik w liście i w ustawieniach.
+  const togglePrivate = () => {
+    const next = !showPrivate;
+    setShowPrivate(next);
+    try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
+  };
+
+  // [EINSTELLUNGEN] Klocki sekcji ustawień: tytuł bloku i wiersz-przycisk.
+  const settingsHeading = (icon: string, label: string) => (
+    <h2 className="flex items-center gap-1.5 text-[12px] font-black text-gray-500 uppercase tracking-wider px-1 mb-1.5">
+      <span className="material-symbols-outlined text-[16px]">{icon}</span>
+      {label}
+    </h2>
+  );
+  const settingsRow = (icon: string, label: string, value: React.ReactNode, onClick: () => void, opts: { danger?: boolean; disabled?: boolean } = {}) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={opts.disabled}
+      className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-50 transition-all disabled:opacity-40"
+    >
+      <span className={`material-symbols-outlined text-[20px] shrink-0 ${opts.danger ? 'text-red-500' : 'text-[#0a3a2a]'}`}>{icon}</span>
+      <span className="flex-1 min-w-0">
+        <span className={`block text-[14px] font-black leading-tight ${opts.danger ? 'text-red-500' : 'text-[#0a3a2a]'}`}>{label}</span>
+        {value && <span className="block text-[12px] font-bold text-gray-500 truncate mt-0.5">{value}</span>}
+      </span>
+      {!opts.danger && <span className="material-symbols-outlined text-gray-300 text-[20px] shrink-0">chevron_right</span>}
+    </button>
+  );
+
+  const renderSettings = () => {
+    const slotsPct = coachLimit > 0 ? Math.min(100, Math.round((students.length / coachLimit) * 100)) : 0;
+    return (
+      <div className="space-y-6 mb-6">
+        {/* 1. Schüler: miejsca, dodawanie, grupy ucznia i usuwanie */}
+        <section>
+          {settingsHeading('group', t('coachSettings.students'))}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3.5 mb-2">
+            <div className="flex items-baseline justify-between">
+              <span className="text-[14px] font-black text-[#0a3a2a]">{t('coachSettings.slots')}</span>
+              <span className="text-[14px] font-black text-[#0a3a2a]">{students.length} / {coachLimit}</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-100 mt-2 overflow-hidden">
+              <div className={`h-full rounded-full ${isLimitReached ? 'bg-amber-500' : 'bg-[#0a3a2a]'}`} style={{ width: `${slotsPct}%` }} />
+            </div>
+            {isLimitReached && <p className="text-[12px] font-bold text-amber-700 mt-2">{t('coachSettings.limitReached')}</p>}
+            <button
+              type="button"
+              onClick={startScanner}
+              disabled={isLimitReached}
+              className="w-full mt-3 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all disabled:opacity-40"
+            >
+              <span className="material-symbols-outlined text-[18px]">person_add</span>
+              {t('coachSettings.addStudent')}
+            </button>
+          </div>
+          {students.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+              {students.map(s => {
+                const groupsOf = (studentGroupMap[s.id] || [])
+                  .map(gid => coachGroups.find(g => g.id === gid)?.name)
+                  .filter(Boolean)
+                  .join(', ');
+                return (
+                  <div key={s.id} className="flex items-center gap-2 pl-3 pr-1 py-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[14px] font-black text-[#0a3a2a] leading-tight truncate">
+                        {s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}
+                      </p>
+                      <p className="text-[12px] font-bold text-gray-500 truncate mt-0.5">{groupsOf || t('coachSettings.noGroup')}</p>
+                    </div>
+                    {coachGroups.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setManagingGroupsFor([s.id])}
+                        aria-label={t('coachDashboard.manageGroups')}
+                        title={t('coachDashboard.manageGroups')}
+                        className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-[#0a3a2a] active:scale-90 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">folder_shared</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setStudentsToDelete([s.id])}
+                      aria-label={t('coachDashboard.removeStudent')}
+                      title={t('coachDashboard.removeStudent')}
+                      className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-red-400 active:scale-90 transition-all"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">person_remove</span>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* 2. Gruppen: każda grupa rozwija swoje ustawienia */}
+        <section>
+          {settingsHeading('folder_shared', t('coachSettings.groups'))}
+          <div className="space-y-2">
+            {coachGroups.map(group => {
+              const members = studentsOfGroup(group.id);
+              const open = settingsGroupId === group.id;
+              return (
+                <div key={group.id} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                  <button
+                    type="button"
+                    aria-expanded={open}
+                    onClick={() => setSettingsGroupId(open ? null : group.id)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-50 transition-all"
+                  >
+                    <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[14px] font-black text-[#0a3a2a] truncate">{group.name}</span>
+                      <span className="block text-[12px] font-bold text-gray-500 truncate">
+                        {[t('coachDashboard.studentsCount', { count: members.length }), scheduleSummary(group.schedule)].filter(Boolean).join(' · ')}
+                      </span>
+                    </span>
+                    <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
+                  </button>
+                  {open && (
+                    <div className="border-t border-gray-100 divide-y divide-gray-50">
+                      {settingsRow('edit', t('coachSettings.nameIcon'), group.name, () => {
+                        setEditingGroup(group); setEditGroupName(group.name); setEditGroupIcon(groupIcon(group));
+                      })}
+                      {settingsRow('schedule', t('coachSchedule.title'), scheduleSummary(group.schedule) || t('coachSchedule.setUp'), () => openScheduleEditor(group))}
+                      <div className="px-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">groups</span>
+                          <span className="flex-1 text-[14px] font-black text-[#0a3a2a]">{t('coachSettings.members')} ({members.length})</span>
+                          {members.length < students.length && (
+                            <button
+                              type="button"
+                              onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
+                              className="shrink-0 h-8 px-2.5 rounded-full bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 text-[#0a3a2a] text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all"
+                            >
+                              <span className="material-symbols-outlined text-[16px]">person_add</span>
+                              {t('coachSettings.addMember')}
+                            </button>
+                          )}
+                        </div>
+                        {members.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2 pl-8">
+                            {members.map(m => (
+                              <span key={m.id} className="inline-flex items-center gap-0.5 bg-gray-50 border border-gray-100 rounded-full pl-2.5 pr-1 py-0.5 text-[12px] font-bold text-[#0a3a2a]">
+                                {m.firstName || t('coachDashboard.defaultStudentName')} {m.lastName || ''}
+                                <button
+                                  type="button"
+                                  onClick={() => removeFromGroup(m.id, group.id)}
+                                  aria-label={t('coachSettings.removeFromGroup')}
+                                  className="w-6 h-6 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all"
+                                >
+                                  <span className="material-symbols-outlined text-[16px]">close</span>
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {settingsRow('delete', t('coachDashboard.deleteGroupBtn'), null, () => setConfirmDeleteGroup(group.id), { danger: true })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {coachGroups.length < 5 ? (
+              <button
+                type="button"
+                onClick={() => setIsCreatingGroup(true)}
+                className="w-full py-2.5 rounded-xl border border-dashed border-gray-300 text-[#0a3a2a] text-[13px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>
+                {t('coachDashboard.newGroupTitle')}
+              </button>
+            ) : (
+              <p className="text-[12px] font-bold text-gray-400 px-1">{t('coachSettings.maxGroups')}</p>
+            )}
+          </div>
+        </section>
+
+        {/* 3. Termine */}
+        <section>
+          {settingsHeading('event_note', t('nav.coachEvents'))}
+          <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showPrivate}
+              onClick={togglePrivate}
+              className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
+            >
+              <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">{showPrivate ? 'visibility' : 'visibility_off'}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[14px] font-black text-[#0a3a2a] leading-tight">{t('coachTermine.showPrivate')}</span>
+                <span className="block text-[12px] font-bold text-gray-500 mt-0.5">{t('coachSettings.privateHint')}</span>
+              </span>
+              <span className={`w-11 h-6 rounded-full shrink-0 relative transition-colors ${showPrivate ? 'bg-[#0a3a2a]' : 'bg-gray-200'}`}>
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${showPrivate ? 'left-[22px]' : 'left-0.5'}`} />
+              </span>
+            </button>
+          </div>
+        </section>
+
+        {/* 4. Trainermodus: więcej miejsc i wyłączenie */}
+        <section>
+          {settingsHeading('sports', t('coachSettings.account'))}
+          <CoachAccountCard
+            userId={userId}
+            userName={coachName}
+            userEmail={auth.currentUser?.email || ''}
+            studentsCount={students.length}
+            onDisabled={() => onNavigate('HOME')}
+          />
+        </section>
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#fcfdfe] px-5 pb-24 relative">
 
@@ -1609,26 +1820,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         className="-mx-5 mb-4 sticky top-0"
         // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
         onBack={() => (section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
-        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : t('coachDashboard.subtitle')}
+        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : section === 'SETTINGS' ? t('coachSettings.title') : t('coachDashboard.subtitle')}
         hideLogo
-        actions={<>
-          <div className="bg-white/10 text-[#fed33e] px-2.5 rounded-xl flex items-center gap-1.5 h-10">
-            <span className="material-symbols-outlined text-sm">groups</span>
-            <span className="text-sm font-black">{students.length}/{coachLimit}</span>
-          </div>
-          <button
-            onClick={() => { startScanner(); }}
-            disabled={isLimitReached}
-            aria-label={t('coachDashboard.addBtn')}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-md transition-all ${
-              isLimitReached
-              ? 'bg-white/10 text-white/30'
-              : 'bg-[#fed33e] text-[#0a3a2a] active:scale-95'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[20px]">person_add</span>
-          </button>
-        </>}
       />
 
       {/* Zakładka Heute — dzień trenera, nie skrzynka zaległości.
@@ -2090,11 +2283,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                 type="button"
                 aria-pressed={showPrivate}
                 title={t('coachTermine.showPrivate')}
-                onClick={() => {
-                  const next = !showPrivate;
-                  setShowPrivate(next);
-                  try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
-                }}
+                onClick={togglePrivate}
                 className={`py-2.5 px-3 rounded-xl text-[13px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
                   showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
                 }`}
@@ -2306,64 +2495,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
       {section === 'GROUPS' && (
         <div className="space-y-2">
-          {/* [C27] Same grupy. Klik rozwija grupę w miejscu: jej uczniowie
-              i dziennik (do czytania). Zmiana nazwy, nowy wpis i usunięcie —
-              przez „Wybierz", tym samym trikiem co u uczniów (życzenie usera
-              2026-09-10); w rozwiniętej grupie tych przycisków już nie ma. */}
+          {/* [C27] Same grupy. Klik rozwija grupę w miejscu: temat, historia
+              i skład. Nazwa, symbol, skład, stały trening i usunięcie są
+              w ustawieniach trenera (zębatka, user 2026-10-27). */}
           {coachGroups.length > 0 && (
             <div className="flex items-center justify-between ml-2 pr-1 mb-1">
               <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
                 {t('coachDashboard.viewGroups')} ({coachGroups.length})
               </h2>
-              {isGroupSelecting ? (
-                <button
-                  onClick={exitGroupSelecting}
-                  className="text-[9px] font-black uppercase text-white bg-[#0a3a2a] px-2.5 py-1 rounded-lg active:scale-95 transition-all"
-                >
-                  {t('coachDashboard.done')}
-                </button>
-              ) : (
-                <button
-                  onClick={() => { setIsGroupSelecting(true); setActiveGroup('ALL'); exitSelecting(); }}
-                  className="text-[9px] font-black uppercase text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
-                >
-                  <span className="material-symbols-outlined text-gray-400 text-[14px]">check_circle</span>
-                  {t('coachDashboard.selectMode')}
-                </button>
-              )}
             </div>
           )}
-
-          {/* Pasek akcji dla zaznaczonej grupy — jak pasek wysyłki u uczniów */}
-          {isGroupSelecting && (() => {
-            const sel = coachGroups.find(g => g.id === selectedGroupId);
-            return (
-              <div className="bg-[#0a3a2a] pl-3 pr-1.5 py-1.5 rounded-xl flex items-center gap-1.5 animate-fade-in">
-                <span className="flex-1 min-w-0 flex items-center gap-1 text-[11px] font-black text-white">
-                  <span className="material-symbols-outlined text-[16px] text-[#fed33e] shrink-0">{sel ? groupIcon(sel) : DEFAULT_GROUP_ICON}</span>
-                  <span className={`truncate ${sel ? '' : 'text-white/50'}`}>{sel ? sel.name : t('coachDashboard.pickGroupHint')}</span>
-                </span>
-                <button
-                  onClick={() => { if (sel) { setEditingGroup(sel); setEditGroupName(sel.name); setEditGroupIcon(groupIcon(sel)); } }}
-                  disabled={!sel}
-                  aria-label={t('coachDashboard.editGroupBtn')}
-                  title={t('coachDashboard.editGroupBtn')}
-                  className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-white flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-                >
-                  <span className="material-symbols-outlined text-[18px]">edit</span>
-                </button>
-                <button
-                  onClick={() => { if (sel) setConfirmDeleteGroup(sel.id); }}
-                  disabled={!sel}
-                  aria-label={t('coachDashboard.deleteGroupBtn')}
-                  title={t('coachDashboard.deleteGroupBtn')}
-                  className="w-8 h-8 shrink-0 rounded-lg bg-white/10 text-red-300 flex items-center justify-center active:scale-90 transition-all disabled:opacity-40"
-                >
-                  <span className="material-symbols-outlined text-[18px]">delete</span>
-                </button>
-              </div>
-            );
-          })()}
 
           {coachGroups.map(group => {
             const members = studentsOfGroup(group.id);
@@ -2371,8 +2512,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             const todayKey = dayKeyOf(Date.now());
             const nextTopicDay = Object.keys(coachGroupTopics[group.id] || {}).sort().find(d => d >= todayKey);
             const nextTopic = nextTopicDay ? coachGroupTopics[group.id][nextTopicDay] : undefined;
-            const isOpen = !isGroupSelecting && activeGroup === group.id;
-            const isPicked = isGroupSelecting && selectedGroupId === group.id;
+            const isOpen = activeGroup === group.id;
             const pulse = groupPulse(members);
             return (
               // [WIDOK GRUPY] (user 2026-10-23) Karta grupy = sam nagłówek w stylu
@@ -2381,30 +2521,15 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <div key={group.id} id={`coach-group-${group.id}`} className={`scroll-mt-4 ${isOpen ? 'pb-3' : ''}`}>
                 <div
                   role="button"
-                  aria-expanded={isGroupSelecting ? undefined : isOpen}
-                  aria-pressed={isGroupSelecting ? isPicked : undefined}
-                  onClick={() => {
-                    // W trybie wyboru klik zaznacza (jedna grupa naraz), poza nim rozwija.
-                    if (isGroupSelecting) { setSelectedGroupId(isPicked ? null : group.id); return; }
-                    setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false); setGroupFocusDay(null);
-                  }}
+                  aria-expanded={isOpen}
+                  onClick={() => { setActiveGroup(isOpen ? 'ALL' : group.id); setIsGroupListOpen(false); setGroupFocusDay(null); }}
                   // Otwarta grupa: grubszy pasek, jak dzisiejsze wpisy w dzienniku.
                   style={isOpen ? { borderLeftWidth: 7 } : undefined}
-                  className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-2 flex items-center gap-2.5 cursor-pointer active:scale-[0.99] transition-all ${
-                    isPicked ? 'ring-2 ring-[#0a3a2a]' : ''
-                  }`}
+                  className={`${CARD_SHAPE} tb-led pl-2 pr-1 py-2 flex items-center gap-2.5 cursor-pointer active:scale-[0.99] transition-all`}
                 >
-                  {isGroupSelecting ? (
-                    <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 transition-all ${
-                      isPicked ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-white text-transparent border-2 border-gray-200'
-                    }`}>
-                      <span className="material-symbols-outlined text-[18px] font-black">check</span>
-                    </div>
-                  ) : (
-                    <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
-                    </span>
-                  )}
+                  <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
+                  </span>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{group.name}</h3>
                     {/* [HARMONOGRAM] Stały trening od razu pod nazwą (user 2026-10-26: „ma być u góry”). */}
@@ -2459,7 +2584,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       </p>
                     )}
                   </div>
-                  {!isGroupSelecting && members.length > 0 && (
+                  {members.length > 0 && (
                     <button
                       onClick={e => { e.stopPropagation(); openGroupMessage(group, members); }}
                       aria-label={t('coachDashboard.groupMessageBtn')}
@@ -2469,30 +2594,24 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       <span className="material-symbols-outlined text-[20px]">mail</span>
                     </button>
                   )}
-                  {!isGroupSelecting && (
-                    <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0 mr-1">{isOpen ? 'expand_less' : 'expand_more'}</span>
-                  )}
+                  <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0 mr-1">{isOpen ? 'expand_less' : 'expand_more'}</span>
                 </div>
 
                 {isOpen && (
                   <div className="pt-1 space-y-3">
-                    {/* [HARMONOGRAM] Stały trening grupy — z niego Heute wie, kiedy jest trening. */}
-                    <button
-                      type="button"
-                      onClick={() => openScheduleEditor(group)}
-                      className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left active:scale-[0.98] transition-all ${
-                        scheduleSummary(group.schedule) ? 'bg-white border border-gray-100 border-l-4 border-l-rose-400 shadow-sm' : 'border border-dashed border-gray-200 bg-gray-50/50'
-                      }`}
-                    >
-                      <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">schedule</span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-[12px] font-bold text-gray-500">{t('coachSchedule.title')}</span>
-                        <span className="block text-[14px] font-black text-[#0a3a2a] truncate">
-                          {scheduleSummary(group.schedule) || t('coachSchedule.setUp')}
-                        </span>
-                      </span>
-                      <span className="material-symbols-outlined text-gray-300 text-[20px]">{scheduleSummary(group.schedule) ? 'edit' : 'add'}</span>
-                    </button>
+                    {/* Stały trening ustawia się w ustawieniach trenera — tu tylko,
+                        gdy go brak, krótka podpowiedź z przejściem (user 2026-10-27). */}
+                    {!scheduleSummary(group.schedule) && (
+                      <button
+                        type="button"
+                        onClick={() => { setSettingsGroupId(group.id); onNavigate('COACH', 'SETTINGS'); }}
+                        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-left border border-dashed border-gray-200 bg-gray-50/50 active:scale-[0.98] transition-all"
+                      >
+                        <span className="material-symbols-outlined text-gray-400 text-[18px]">schedule</span>
+                        <span className="flex-1 min-w-0 text-[12px] font-bold text-gray-500">{t('coachSchedule.setUp')}</span>
+                        <span className="material-symbols-outlined text-gray-300 text-[18px]">settings</span>
+                      </button>
+                    )}
                     <GroupTopicPanel
                       groupId={group.id}
                       groupName={group.name}
@@ -2519,7 +2638,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                       )}
                     />
 
-                    {/* Skład grupy — zwijany, liczba w nagłówku; „dodaj ucznia” obok, nie na dole listy. */}
+                    {/* Skład grupy — zwijany, liczba w nagłówku; dopisywanie w ustawieniach trenera. */}
                     <section>
                       <GroupSectionHeader
                         icon="groups"
@@ -2527,17 +2646,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                         count={members.length}
                         open={isGroupListOpen}
                         onToggle={() => setIsGroupListOpen(o => !o)}
-                        action={members.length < students.length && !isSelecting ? (
-                          <button
-                            type="button"
-                            onClick={() => { setAddPicked([]); setAddToGroupId(group.id); }}
-                            aria-label={t('coachDashboard.addToGroupBtn')}
-                            title={t('coachDashboard.addToGroupBtn')}
-                            className="w-10 h-10 shrink-0 rounded-xl text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">person_add</span>
-                          </button>
-                        ) : undefined}
                       />
                       {isGroupListOpen && renderStudentList(members, '')}
                     </section>
@@ -2553,26 +2661,20 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">folder_off</span>
               <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-4">{t('coachDashboard.noGroups')}</p>
               <button
-                onClick={() => setIsCreatingGroup(true)}
+                onClick={() => { onNavigate('COACH', 'SETTINGS'); setIsCreatingGroup(true); }}
                 className="bg-[#0a3a2a] text-[#fed33e] px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-sm"
               >
                 {t('coachDashboard.createFirstGroup')}
               </button>
             </div>
           )}
-
-          {/* Przycisk dodania nowej grupy */}
-          {coachGroups.length > 0 && coachGroups.length < 5 && (
-            <button
-              onClick={() => setIsCreatingGroup(true)}
-              className="w-full py-2.5 bg-gray-50 text-[#0a3a2a] rounded-2xl font-black text-[10px] uppercase tracking-widest border border-gray-200 flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm"
-            >
-              <span className="material-symbols-outlined text-gray-400 text-sm">add</span>
-              {t('coachDashboard.newGroupTitle')}
-            </button>
-          )}
         </div>
       )}
+
+      {/* [EINSTELLUNGEN] Rzadkie rzeczy trenera w jednym miejscu (zębatka w menu,
+          user 2026-10-27): uczniowie i miejsca, grupy z planem, terminy, konto.
+          Okna (skaner, grupa, plan, usuwanie) to te same co wcześniej. */}
+      {section === 'SETTINGS' && renderSettings()}
 
       {/* Zakładka UCZNIOWIE — sama lista, bez paska grup */}
       {section === 'ATHLETES' && (

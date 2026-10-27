@@ -70,7 +70,7 @@ const RESTORABLE_VIEWS: AppView[] = ['STATS', 'STUDENT_PROFILE', 'COACH', 'MY_CO
 // dolne menu na menu trenera. Na tych widokach tryb zostaje, każdy inny
 // (Home, Tagebuch, trening…) wraca do menu zawodnika.
 const COACH_MODE_VIEWS: AppView[] = ['COACH', 'CALENDAR', 'STATS', 'STUDENT_PROFILE'];
-export type CoachSection = 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS';
+export type CoachSection = 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
 
 // Czytane raz przy ładowaniu modułu — przed pierwszym renderem App.
 const restorePoint = (() => {
@@ -407,7 +407,7 @@ export default function App() {
     }
     // Zakładka trybu trenera: „GROUP” (termin tematu z kalendarza) → Gruppen, „ATHLETES” → Schüler.
     // Bez zakładki (np. powrót z profilu ucznia) trener wraca tam, skąd wyszedł.
-    const nextSection: CoachSection = tab === 'GROUP' || tab === 'GROUPS' ? 'GROUPS' : tab === 'ATHLETES' ? 'ATHLETES' : tab === 'EVENTS' ? 'EVENTS'
+    const nextSection: CoachSection = tab === 'GROUP' || tab === 'GROUPS' ? 'GROUPS' : tab === 'ATHLETES' ? 'ATHLETES' : tab === 'EVENTS' ? 'EVENTS' : tab === 'SETTINGS' ? 'SETTINGS'
       : tab === 'TODAY' || !coachMode ? 'TODAY' : coachSection;
     // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
     // Zakładki trybu trenera też, żeby „wstecz” cofało z Schüler na Heute.
@@ -610,6 +610,8 @@ export default function App() {
         {navButton('coach', 'events', 'event_note', t('nav.coachEvents'), currentView === 'CALENDAR' || (currentView === 'COACH' && coachSection === 'EVENTS'), () => handleNavigate('COACH', 'EVENTS'))}
         {navButton('coach', 'athletes', 'group', t('nav.coachAthletes'), (currentView === 'COACH' && coachSection === 'ATHLETES') || currentView === 'STATS', () => handleNavigate('COACH', 'ATHLETES'))}
         {navButton('coach', 'groups', 'folder_shared', t('nav.coachGroups'), currentView === 'COACH' && coachSection === 'GROUPS', () => handleNavigate('COACH', 'GROUPS'))}
+        {/* Rzadkie rzeczy trenera: uczniowie, grupy, stały trening, konto (user 2026-10-27). */}
+        {navButton('coach', 'settings', 'settings', t('nav.settings'), currentView === 'COACH' && coachSection === 'SETTINGS', () => handleNavigate('COACH', 'SETTINGS'))}
         {navModeSwitch('target', t('nav.archerMode'), 'bg-[#F2C94C] text-[#0a3a2a]', () => handleNavigate('HOME'))}
       </div>
     </>

@@ -799,7 +799,7 @@ export default function SettingsView({
         )}
 
         {activeTab === 'PRO' && <ProSection isPremium={isPremium} trialEndsAt={trialEndsAt} proGiftedAt={proGiftedAt} />}
-        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onCoachModeChange={setIsCoach} onNavigate={onNavigate} userId={userId} userName={`${firstName} ${lastName}`.trim()} userEmail={userEmail} />}
+        {activeTab === 'TRENER' && <CoachSection isCoach={isCoach} studentsCount={studentsCount} coachLimit={coachLimit} myCoachesData={myCoachesData} onShowQR={() => setShowMyQR(true)} onRevokeCoach={handleRevokeCoach} onCoachModeChange={setIsCoach} onNavigate={onNavigate} userId={userId} />}
         {activeTab === 'ZAWODY' && <TournamentSection />}
         {activeTab === 'SHARE' && (
           <div className="flex flex-col items-center justify-center py-6">

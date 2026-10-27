@@ -297,6 +297,22 @@ export const views = {
     errorAffirm: "Zaznacz zgodę, aby kontynuować.",
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
+  coachSettings: {
+    title: "Ustawienia",
+    students: "Uczniowie",
+    slots: "Miejsca",
+    limitReached: "Wszystkie miejsca zajęte – więcej poprosisz niżej, w „Tryb trenera”.",
+    addStudent: "Dodaj ucznia",
+    noGroup: "Bez grupy",
+    groups: "Grupy",
+    nameIcon: "Nazwa i symbol",
+    members: "Członkowie",
+    addMember: "Dodaj",
+    removeFromGroup: "Usuń z grupy",
+    maxGroups: "Maksymalnie 5 grup.",
+    privateHint: "W Terminach obok terminów trenera, żeby widzieć kolizje.",
+    account: "Tryb trenera"
+  },
   coachTermine: {
     list: "Lista",
     month: "Miesiąc",
@@ -1309,6 +1325,8 @@ export const views = {
       btn: "Dostępne wkrótce",
       myTeam: "Moi trenerzy",
       commandCenter: "Centrum Dowodzenia",
+      settingsMovedDesc: "Uczniowie, grupy, miejsca i tryb trenera są teraz w panelu trenera pod „Ustaw.”.",
+      openCoachSettings: "Otwórz ustawienia trenera",
       slots: "Miejsca:",
       confirmRevoke: "Odłączyć tego trenera?",
       confirmRevokeDesc: "Ta operacja jest nieodwracalna.",

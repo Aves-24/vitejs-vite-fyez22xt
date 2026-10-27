@@ -283,6 +283,22 @@ export const views = {
     errorAffirm: "Please tick the consent box to continue.",
     errorSave: "Could not save consent. Please try again."
   },
+  coachSettings: {
+    title: "Settings",
+    students: "Students",
+    slots: "Slots",
+    limitReached: "All slots taken – request more below under “Coach mode”.",
+    addStudent: "Add student",
+    noGroup: "No group",
+    groups: "Groups",
+    nameIcon: "Name & icon",
+    members: "Members",
+    addMember: "Add",
+    removeFromGroup: "Remove from group",
+    maxGroups: "Up to 5 groups.",
+    privateHint: "In Events next to your coach events, to spot clashes.",
+    account: "Coach mode"
+  },
   coachTermine: {
     list: "List",
     month: "Month",
@@ -1290,6 +1306,8 @@ export const views = {
       btn: "Coming soon",
       myTeam: "My coaches",
       commandCenter: "Command Center",
+      settingsMovedDesc: "Students, groups, slots and coach mode now live in the coach panel under “Settings”.",
+      openCoachSettings: "Open coach settings",
       slots: "Slots:",
       confirmRevoke: "Revoke this coach?",
       confirmRevokeDesc: "This operation cannot be undone.",

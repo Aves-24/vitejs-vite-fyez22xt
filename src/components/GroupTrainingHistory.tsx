@@ -34,7 +34,7 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   onEdit?: (gt: GroupTopic) => void;
 }) {
   const { t, i18n } = useTranslation();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [data, setData] = useState<HistoryDoc | null>(null);
   const [shown, setShown] = useState(PAGE);
   const [expanded, setExpanded] = useState<string | null>(null);

@@ -213,8 +213,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   const shown = todayTopic && !todayTopic.closedAt ? todayTopic : undefined;
   // Planowany temat czekający na potwierdzenie usunięcia (dzień).
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
-  // „Geplant” zwinięte (user 2026-10-27).
-  const [plannedOpen, setPlannedOpen] = useState(false);
+  // „Geplant” domyślnie rozwinięte, da się zwinąć (user 2026-10-27).
+  const [plannedOpen, setPlannedOpen] = useState(true);
 
   // Status uczniów: trening pod temat (sesja z trainingTopic.id) albo „Zapoznałem się”.
   useEffect(() => {

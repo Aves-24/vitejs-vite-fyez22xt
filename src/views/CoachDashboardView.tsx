@@ -375,6 +375,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [showPrivate, setShowPrivate] = useState(() => {
     try { return localStorage.getItem('grotX_coachShowPrivate') === '1'; } catch { return false; }
   });
+  // Stałe treningi grup w Termine — domyślnie widoczne, da się ukryć (user 2026-10-27).
+  const [showPlan, setShowPlan] = useState(() => {
+    try { return localStorage.getItem('grotX_coachShowPlan') !== '0'; } catch { return true; }
+  });
   const studentGroupMap = useMemo(() => studentGroupMapOf(coachGroups), [coachGroups]);
   // Limit grup liczy tylko te, które trener założył (współprowadzone się nie liczą).
   const ownGroupCount = coachGroups.filter(g => g.ownerId === userId).length;
@@ -1631,6 +1635,11 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   // Prywatne terminy w Termine (przełącznik „Privat” nad listą).
+  const togglePlan = () => {
+    const next = !showPlan;
+    setShowPlan(next);
+    try { localStorage.setItem('grotX_coachShowPlan', next ? '1' : '0'); } catch { /* ignore */ }
+  };
   const togglePrivate = () => {
     const next = !showPrivate;
     setShowPrivate(next);
@@ -2531,6 +2540,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         for (const g of coachGroups) {
           for (const o of listOccurrences(g.schedule, todayKey, toKey)) {
             planDays.add(`${g.id}|${o.date}`);
+            // Ukryte stałe treningi: dzień zostaje w planDays, więc cień tematu też znika.
+            if (!showPlan) continue;
             const topic = coachGroupTopics[g.id]?.[o.date]?.text;
             items.push({
               key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'border-l-rose-400',
@@ -2610,6 +2621,19 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               document.body,
             )}
             <div className="flex items-center justify-end gap-2">
+              {/* Stałe treningi grup — przełącznik jak „Privat” (user 2026-10-27). */}
+              <button
+                type="button"
+                aria-pressed={showPlan}
+                title={t('coachTermine.showPlan')}
+                onClick={togglePlan}
+                className={`py-2.5 px-3 rounded-xl text-[13px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
+                  showPlan ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[18px]">{showPlan ? 'visibility' : 'visibility_off'}</span>
+                {t('coachTermine.plan')}
+              </button>
               {/* Prywatne terminy obok trenerskich — mały przełącznik (user 2026-10-26). */}
               <button
                 type="button"

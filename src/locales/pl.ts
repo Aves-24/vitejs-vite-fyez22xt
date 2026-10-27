@@ -347,6 +347,8 @@ export const views = {
     list: "Lista",
     month: "Miesiąc",
     showPrivate: "Pokaż moje prywatne terminy",
+    plan: "Treningi",
+    showPlan: "Pokaż stałe treningi grup",
     private: "Prywatne",
     thisWeek: "Ten tydzień",
     nextWeek: "Następny tydzień",

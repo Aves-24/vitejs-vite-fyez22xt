@@ -333,6 +333,8 @@ export const views = {
     list: "List",
     month: "Month",
     showPrivate: "Show my private events",
+    plan: "Training",
+    showPlan: "Show the groups' regular trainings",
     private: "Private",
     thisWeek: "This week",
     nextWeek: "Next week",

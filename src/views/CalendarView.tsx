@@ -137,6 +137,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [archTrainerRec, setArchTrainerRec] = useState<ArchiveState>(initArch());
   const [archTrainerSent, setArchTrainerSent] = useState<ArchiveState>(initArch());
   const [archTodo, setArchTodo] = useState<ArchiveState>(initArch());
+  // Wszystkie archiwa pod jednym zwijanym „Archiv” (user 2026-10-27).
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   // Wyniki dobrane do archiwalnych zawodów (id wydarzenia → dystans i punkty)
   type ArchiveResult = { score: number; distance: string };
@@ -675,30 +677,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       <ViewHeader
         onBack={() => (coachMode ? onNavigate?.('COACH', 'EVENTS') : onNavigate?.('HOME'))}
         title={t('nav.calendar')}
-        actions={
-          <>
-          {/* [TERMINE] Z widoku miesiąca z powrotem do listy terminów trenera. */}
-          {coachMode && (
-            <button
-              onClick={() => onNavigate?.('COACH', 'EVENTS')}
-              className="h-10 px-3 rounded-full bg-white/10 text-white flex items-center gap-1 text-[12px] font-black active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-[20px]">list</span>
-              {t('coachTermine.list')}
-            </button>
-          )}
-          <div className="relative">
-            <div className="absolute inset-0 rounded-full bg-[#fed33e]/30 animate-ping" />
-            <button
-              onClick={handleOpenNewForm}
-              className="relative bg-[#fed33e] text-[#0a3a2a] w-10 h-10 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all z-10"
-            >
-              <span className="material-symbols-outlined text-[22px] leading-none font-bold">add</span>
-            </button>
-          </div>
-          </>
-        }
       />
+
+      {/* Nowy termin — ten sam plusik co w Tagebuch: na dole po prawej,
+          nad dolnym menu (user 2026-10-27). */}
+      {typeof document !== 'undefined' && createPortal(
+        <button
+          onClick={handleOpenNewForm}
+          className="fixed right-[max(1rem,calc((100vw_-_28rem)/2_+_1rem))] bottom-[calc(env(safe-area-inset-bottom)+92px)] z-[60] w-12 h-12 rounded-full bg-[#0a3a2a] text-[#fed33e] shadow-lg shadow-black/25 flex items-center justify-center active:scale-90 transition-all"
+          aria-label={t('calendar.addEvent', '+')}
+        >
+          <span className="material-symbols-outlined text-[26px]">add</span>
+        </button>,
+        document.body,
+      )}
 
       <div className="px-4 mt-4 mb-2 shrink-0">
         <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-2.5 shadow-sm">
@@ -707,7 +699,19 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              <h3 className="font-black text-[#0a3a2a] uppercase tracking-widest text-[10px]">
                 {calendarDate.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
              </h3>
-             <button onClick={nextMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
+             <div className="flex items-center gap-1">
+               <button onClick={nextMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
+               {/* [TERMINE] Z widoku miesiąca z powrotem do listy terminów trenera. */}
+               {coachMode && (
+                 <button
+                   onClick={() => onNavigate?.('COACH', 'EVENTS')}
+                   className="h-7 px-2.5 rounded-full bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 text-[#0a3a2a] flex items-center gap-1 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                 >
+                   <span className="material-symbols-outlined text-[15px]">list</span>
+                   {t('coachTermine.list')}
+                 </button>
+               )}
+             </div>
            </div>
            
            <div className="grid grid-cols-7 gap-1 text-center mb-1">
@@ -1134,12 +1138,27 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
           return (
             <div className="mt-2 space-y-0.5">
-              <div className="text-[8px] font-black text-gray-300 uppercase tracking-widest pl-1 pb-0.5">{t('calendar.history')}</div>
+              <button
+                onClick={() => setArchiveOpen(o => !o)}
+                className="w-full flex items-center justify-between px-3 py-2.5 bg-white border border-gray-100 rounded-xl shadow-sm active:bg-gray-50 transition-all"
+              >
+                <span className="flex items-center gap-2 text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">
+                  <span className="material-symbols-outlined text-[17px] text-gray-400">history</span>
+                  {t('calendar.archive')}
+                </span>
+                <span className="material-symbols-outlined text-gray-400 text-[20px]">
+                  {archiveOpen ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+              {archiveOpen && (
+              <div className="space-y-0.5 pl-2 pt-0.5">
               <ArchiveSection label={t('calendar.archiveTournaments')} icon="emoji_events" state={archTurniej} setter={setArchTurniej} cutoffType="turniej" filterFn={e => e.category === 'Turniej' || !e.category} />
               <ArchiveSection label={t('calendar.archiveCalendar')} icon="calendar_month" state={archInne} setter={setArchInne} cutoffType="other" filterFn={e => e.category === 'Inne' && !e.wasATodo} />
               <ArchiveSection label={t('calendar.archiveTrainerReceived')} icon="school" state={archTrainerRec} setter={setArchTrainerRec} cutoffType="other" filterFn={e => e.category === 'Trener' && !!e.isMirrored} />
               <ArchiveSection label={t('calendar.archiveTrainerSent')} icon="send" state={archTrainerSent} setter={setArchTrainerSent} cutoffType="other" filterFn={e => e.category === 'Trener' && !e.isMirrored} />
               <ArchiveSection label={t('calendar.archiveTodo')} icon="check_circle" state={archTodo} setter={setArchTodo} cutoffType="other" filterFn={e => !!e.wasATodo} />
+              </div>
+              )}
             </div>
           );
         })()}

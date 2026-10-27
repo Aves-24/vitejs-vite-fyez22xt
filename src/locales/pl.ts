@@ -303,6 +303,7 @@ export const views = {
     slots: "Miejsca",
     limitReached: "Wszystkie miejsca zajęte – więcej poprosisz niżej, w „Tryb trenera”.",
     addStudent: "Dodaj ucznia",
+    studentList: "Lista uczniów",
     noGroup: "Bez grupy",
     groups: "Grupy",
     nameIcon: "Nazwa i symbol",

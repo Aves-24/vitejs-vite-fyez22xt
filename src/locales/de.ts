@@ -289,6 +289,7 @@ export const views = {
     slots: "Plätze",
     limitReached: "Alle Plätze belegt – unten unter „Trainermodus“ kannst du mehr anfragen.",
     addStudent: "Schüler hinzufügen",
+    studentList: "Schülerliste",
     noGroup: "Keine Gruppe",
     groups: "Gruppen",
     nameIcon: "Name & Symbol",

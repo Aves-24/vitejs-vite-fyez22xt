@@ -289,6 +289,7 @@ export const views = {
     slots: "Slots",
     limitReached: "All slots taken – request more below under “Coach mode”.",
     addStudent: "Add student",
+    studentList: "Student list",
     noGroup: "No group",
     groups: "Groups",
     nameIcon: "Name & icon",

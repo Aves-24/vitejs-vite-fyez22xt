@@ -390,6 +390,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   // [EINSTELLUNGEN] Rozwinięta grupa w ustawieniach trenera (nazwa, skład, plan, usunięcie).
   const [settingsGroupId, setSettingsGroupId] = useState<string | null>(null);
+  const [settingsStudentsOpen, setSettingsStudentsOpen] = useState(false);
   // Imię i nazwisko trenera — do prośby o więcej miejsc (CoachAccountCard).
   const [coachName, setCoachName] = useState('');
 
@@ -1646,8 +1647,21 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
               {t('coachSettings.addStudent')}
             </button>
           </div>
+          {/* Lista uczniów domyślnie zwinięta (user 2026-10-27). */}
           {students.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
+            <button
+              type="button"
+              aria-expanded={settingsStudentsOpen}
+              onClick={() => setSettingsStudentsOpen(o => !o)}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 bg-white border border-gray-100 shadow-sm text-left active:bg-gray-50 transition-all ${settingsStudentsOpen ? 'rounded-t-xl border-b-0' : 'rounded-xl'}`}
+            >
+              <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">list</span>
+              <span className="flex-1 text-[14px] font-black text-[#0a3a2a]">{t('coachSettings.studentList')} ({students.length})</span>
+              <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0">{settingsStudentsOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+          )}
+          {students.length > 0 && settingsStudentsOpen && (
+            <div className="bg-white rounded-b-xl border border-gray-100 shadow-sm divide-y divide-gray-50">
               {students.map(s => {
                 const groupsOf = (studentGroupMap[s.id] || [])
                   .map(gid => coachGroups.find(g => g.id === gid)?.name)
@@ -1703,7 +1717,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                     onClick={() => setSettingsGroupId(open ? null : group.id)}
                     className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-50 transition-all"
                   >
-                    <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0">
+                    {/* Zielona obwódka 1 px — ikona grupy odznacza się od białej karty (user 2026-10-27). */}
+                    <span className="tb-icon w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border border-[#0a3a2a]">
                       <span className="material-symbols-outlined text-[#0a3a2a] text-[20px]">{groupIcon(group)}</span>
                     </span>
                     <span className="flex-1 min-w-0">

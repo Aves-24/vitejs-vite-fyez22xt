@@ -1591,7 +1591,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     );
   };
 
-  // Prywatne terminy w Termine — ten sam przełącznik w liście i w ustawieniach.
+  // Prywatne terminy w Termine (przełącznik „Privat” nad listą).
   const togglePrivate = () => {
     const next = !showPrivate;
     setShowPrivate(next);
@@ -1789,30 +1789,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           </div>
         </section>
 
-        {/* 3. Termine */}
-        <section>
-          {settingsHeading('event_note', t('nav.coachEvents'))}
-          <div className="bg-white rounded-xl border border-gray-100 shadow-sm">
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showPrivate}
-              onClick={togglePrivate}
-              className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
-            >
-              <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">{showPrivate ? 'visibility' : 'visibility_off'}</span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[14px] font-black text-[#0a3a2a] leading-tight">{t('coachTermine.showPrivate')}</span>
-                <span className="block text-[12px] font-bold text-gray-500 mt-0.5">{t('coachSettings.privateHint')}</span>
-              </span>
-              <span className={`w-11 h-6 rounded-full shrink-0 relative transition-colors ${showPrivate ? 'bg-[#0a3a2a]' : 'bg-gray-200'}`}>
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all ${showPrivate ? 'left-[22px]' : 'left-0.5'}`} />
-              </span>
-            </button>
-          </div>
-        </section>
-
-        {/* 4. Trainermodus: więcej miejsc i wyłączenie */}
+        {/* 3. Trainermodus: więcej miejsc i wyłączenie */}
         <section>
           {settingsHeading('sports', t('coachSettings.account'))}
           <CoachAccountCard

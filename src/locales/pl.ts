@@ -311,7 +311,6 @@ export const views = {
     addMember: "Dodaj",
     removeFromGroup: "Usuń z grupy",
     maxGroups: "Maksymalnie 5 grup.",
-    privateHint: "W Terminach obok terminów trenera, żeby widzieć kolizje.",
     account: "Tryb trenera"
   },
   coachTermine: {

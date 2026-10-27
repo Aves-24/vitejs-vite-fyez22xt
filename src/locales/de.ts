@@ -297,7 +297,6 @@ export const views = {
     addMember: "Hinzufügen",
     removeFromGroup: "Aus der Gruppe entfernen",
     maxGroups: "Maximal 5 Gruppen.",
-    privateHint: "In Termine neben deinen Trainer-Terminen, um Überschneidungen zu sehen.",
     account: "Trainermodus"
   },
   coachTermine: {

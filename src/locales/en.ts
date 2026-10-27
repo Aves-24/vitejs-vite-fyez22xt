@@ -297,7 +297,6 @@ export const views = {
     addMember: "Add",
     removeFromGroup: "Remove from group",
     maxGroups: "Up to 5 groups.",
-    privateHint: "In Events next to your coach events, to spot clashes.",
     account: "Coach mode"
   },
   coachTermine: {

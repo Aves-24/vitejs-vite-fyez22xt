@@ -1834,6 +1834,7 @@ export const views = {
     groupTopicDescPlaceholder: "Co dokładnie robimy, na co zwrócić uwagę…",
     groupTopicRepeatConfirm: "Powtórzyć ten temat na dziś?",
     groupTopicDelete: "Usuń temat",
+    groupTopicDeleteConfirm: "Na pewno usunąć temat? Zniknie też u wszystkich uczniów grupy.",
     groupTopicDay: "Dzień treningu",
     groupTopicDayTaken: "Na ten dzień jest już temat — edytuj go na liście.",
     groupTopicSaveEdit: "Zapisz",

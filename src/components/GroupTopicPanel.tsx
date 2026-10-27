@@ -565,39 +565,26 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1">{t('coachDashboard.groupTopicTitleFetchHint')}</p>
               </div>
             </div>
-            {/* Usunięcie tematu z okienka edycji — z potwierdzeniem, bo znika też u uczniów (user 2026-10-27). */}
-            {modal.edit && byDay[modal.day] && (
-              modalDelAsk ? (
-                <div className="mt-3 shrink-0 bg-red-50 border border-red-100 rounded-xl p-3">
-                  <p className="text-[12px] font-bold text-red-700 leading-snug">{t('coachDashboard.groupTopicDeleteConfirm')}</p>
-                  <div className="flex gap-2 mt-2">
-                    <button onClick={() => setModalDelAsk(false)} className="flex-1 py-2.5 bg-white text-gray-500 border border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
-                      {t('coachDashboard.cancel')}
-                    </button>
-                    <button
-                      onClick={() => { const gt = byDay[modal.day]; setModal(null); remove(gt); }}
-                      disabled={saving}
-                      className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50"
-                    >
-                      {t('coachDashboard.groupTopicDelete')}
-                    </button>
-                  </div>
+            {/* Usunięcie tematu: kosz w rzędzie przycisków, potwierdzenie nad nim —
+                temat znika też u uczniów (user 2026-10-27). */}
+            {modalDelAsk && (
+              <div className="mt-3 shrink-0 bg-red-50 border border-red-100 rounded-xl p-3">
+                <p className="text-[12px] font-bold text-red-700 leading-snug">{t('coachDashboard.groupTopicDeleteConfirm')}</p>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={() => setModalDelAsk(false)} className="flex-1 py-2.5 bg-white text-gray-500 border border-gray-200 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
+                    {t('coachDashboard.cancel')}
+                  </button>
+                  <button
+                    onClick={() => { const gt = byDay[modal.day]; setModal(null); remove(gt); }}
+                    disabled={saving}
+                    className="flex-1 py-2.5 bg-red-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50"
+                  >
+                    {t('coachDashboard.groupTopicDelete')}
+                  </button>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setModalDelAsk(true)}
-                  disabled={saving}
-                  className="mt-3 shrink-0 w-full py-2.5 flex items-center justify-center gap-1.5 text-red-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 disabled:opacity-50"
-                >
-                  <span className="material-symbols-outlined text-[16px]">delete</span>
-                  {t('coachDashboard.groupTopicDelete')}
-                </button>
-              )
+              </div>
             )}
             <div className="flex gap-2 mt-3 shrink-0">
-              <button onClick={() => setModal(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
-                {t('coachDashboard.cancel')}
-              </button>
               <button
                 onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
                 disabled={saving || !text.trim() || linksInvalid || (!modal.edit && (!!byDay[modal.day] || modal.day < today))}
@@ -605,6 +592,20 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
               >
                 {saving ? t('coachDashboard.processing') : modal.edit ? t('coachDashboard.groupTopicSaveEdit') : t('coachDashboard.groupTopicSave', { count: members.length })}
               </button>
+              <button onClick={() => setModal(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95">
+                {t('coachDashboard.cancel')}
+              </button>
+              {modal.edit && byDay[modal.day] && (
+                <button
+                  onClick={() => setModalDelAsk(true)}
+                  disabled={saving}
+                  aria-label={t('coachDashboard.groupTopicDelete')}
+                  title={t('coachDashboard.groupTopicDelete')}
+                  className="w-12 shrink-0 py-3 bg-red-50 text-red-500 border border-red-100 rounded-xl flex items-center justify-center active:scale-95 disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[20px]">delete</span>
+                </button>
+              )}
             </div>
           </div>
         </div>,

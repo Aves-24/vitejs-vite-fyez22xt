@@ -2560,7 +2560,9 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           if (e.trainingTopicGroupId && planDays.has(`${e.trainingTopicGroupId}|${e.date}`)) continue;
           const gid = e.trainingTopicGroupId as string | undefined;
           items.push({
-            key: `ev_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'event', stripe: 'border-l-rose-400',
+            key: `ev_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'event',
+            // Własny termin trenera (np. umówiona wymiana cięciwy) — magenta; temat grupy zostaje różowy jak trening (user 2026-10-27).
+            stripe: gid ? 'border-l-rose-400' : 'border-l-fuchsia-600',
             sub: [e.address, eventRecipients(e)].filter(Boolean).join(' · '),
             // Termin tematu grupy → to samo okienko tematu co w Gruppen.
             onOpen: gid && coachGroupTopics[gid]?.[e.date]

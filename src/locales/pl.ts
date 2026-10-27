@@ -1696,7 +1696,7 @@ export const views = {
     addBtn: "Dodaj",
     allGroups: "Wszyscy",
     addStudentHeader: "Dodaj ucznia",
-    idPlaceholder: "Wklej unikalne ID ucznia...",
+    idPlaceholder: "Wklej ID użytkownika...",
     cameraError: "Aparat jest niedostępny.",
     cameraErrorDesc: "Wpisz ID ucznia ręcznie wyżej",
     orScanQr: "Albo zeskanuj QR",

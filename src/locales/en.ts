@@ -1671,7 +1671,7 @@ export const views = {
     addBtn: "Add",
     allGroups: "All",
     addStudentHeader: "Add student",
-    idPlaceholder: "Paste student's unique ID...",
+    idPlaceholder: "Paste user ID...",
     cameraError: "Camera unavailable.",
     cameraErrorDesc: "Enter student ID manually above",
     orScanQr: "Or scan QR",

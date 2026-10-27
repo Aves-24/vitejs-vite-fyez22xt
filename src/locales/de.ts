@@ -1671,7 +1671,7 @@ export const views = {
     addBtn: "Hinzufügen",
     allGroups: "Alle",
     addStudentHeader: "Schüler hinzufügen",
-    idPlaceholder: "Eindeutige Schüler-ID einfügen...",
+    idPlaceholder: "Benutzer-ID einfügen...",
     cameraError: "Kamera nicht verfügbar.",
     cameraErrorDesc: "Schüler-ID oben manuell eingeben",
     orScanQr: "Oder QR scannen",

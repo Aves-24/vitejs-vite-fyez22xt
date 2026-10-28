@@ -23,6 +23,8 @@ import { DEFAULT_SETUP_ID, resolveActiveSetup } from '../config/equipmentSetups'
 export interface SetupStamp {
   setupId: string;
   bowClass?: string;
+  /** [KOLORY STRZAŁ] Seria wpisana w stałej kolejności kolorów — dots[i] = strzała nr i+1. */
+  arrowColors?: true;
 }
 
 // bowType nie zmienia się w trakcie strzelania — jeden odczyt na użytkownika
@@ -58,6 +60,7 @@ export async function getSetupStamp(userId: string): Promise<SetupStamp> {
     const stamp: SetupStamp = bowClass
       ? { setupId, bowClass }
       : { setupId };
+    if (active?.arrows?.colorOrder) stamp.arrowColors = true;
     cache.set(userId, stamp);
     return stamp;
   } catch {

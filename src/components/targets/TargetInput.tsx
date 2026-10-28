@@ -3,6 +3,7 @@ import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
+import { arrowColorAt } from '../../config/arrowColors';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -40,7 +41,9 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //          tytulu wlasnego
 //   slots  liczba pol w pasku ze strzalami (domyslnie 6) — passa moze miec
 //          inna liczbe strzal niz standardowa serie
-export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed }: any) {
+//   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
+//                strzała jest teraz do wpisania (config/arrowColors.ts)
+export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
   const svgRef = useRef<SVGSVGElement>(null);
   const [zoom] = useState(() => parseFloat(localStorage.getItem('grotx-zoom') || '1'));
   const [isAiming, setIsAiming] = useState(false);
@@ -61,6 +64,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // 300 jednostek, więc dostają ciaśniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
+  // [KOLORY STRZAŁ] Kolor kropki = kolor strzały z tego miejsca w serii.
+  // Ciemna obwódka zawsze, bo biała kropka na bieli i żółta na złocie znikają.
+  const dotColor = (i: number) => (arrowColors && arrowColorAt(i)) || { hex: '#ffffff', text: '#000000' };
+  const nextArrow = arrowColors ? arrowColorAt(currentCoords.length) : null;
 
   useEffect(() => {
     if (isFullscreen) {
@@ -167,8 +174,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 )}
                 {currentCoords.map((d: any, i: number) => (
                   <g key={`lupa-${i}`}>
-                    <circle cx={d.x} cy={d.y} r="3" fill="white" stroke="black" strokeWidth="0.8" />
-                    <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill="black">{i+1}</text>
+                    <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
+                    <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
                   </g>
                 ))}
                 {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
@@ -189,7 +196,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
               {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
                   strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
                   embed (ScoringView), zeby nic tam sie nie zmienilo. */}
-              {Array.from({ length: embed?.slots ?? 6 }, (_, i) => i).map(i => <div key={i} className={`w-6 h-6 flex items-center justify-center text-[9px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}</div>)}
+              {Array.from({ length: embed?.slots ?? 6 }, (_, i) => i).map(i => <div key={i} className={`relative w-6 h-6 flex items-center justify-center text-[9px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
             </div>
             <button onClick={onUndo} className="p-2 bg-white border border-red-100 shadow-md rounded-full active:scale-90 transition-all">
               <span className="material-symbols-outlined text-red-500 font-bold text-xl">undo</span>
@@ -200,7 +207,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             </button>
           </div>
         ) : (
+          <div className="flex items-center gap-1.5 pointer-events-auto">
+          {nextArrow && <NextArrowChip index={currentCoords.length} />}
           <button onClick={onToggleFullscreen} className="p-2 bg-white/90 border border-gray-200 rounded-full shadow-md text-gray-400 active:scale-90 pointer-events-auto transition-all"><span className="material-symbols-outlined text-lg">fullscreen</span></button>
+          </div>
         )}
       </div>
 
@@ -282,7 +292,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           }}
         >
           {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={setSpotFocus} /> : <StandardTarget targetType={targetType} />}
-          {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill="white" stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill="black">{i+1}</text></g>)}
+          {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>
               <circle cx={aimPos.x} cy={aimPos.y} r="14" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="1.5" />
@@ -338,5 +348,30 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         }
       `}</style>
     </div>
+  );
+}
+/** [KOLORY STRZAŁ] Pasek koloru pod polem strzały; następna do wpisania jest grubsza. */
+export function ArrowColorBar({ index, isNext }: { index: number; isNext?: boolean }) {
+  const c = arrowColorAt(index);
+  if (!c) return null;
+  return (
+    <span
+      className={`absolute left-1 right-1 rounded-full pointer-events-none ${isNext ? '-bottom-1 h-1.5' : '-bottom-0.5 h-1'}`}
+      style={{ backgroundColor: c.hex, boxShadow: '0 0 0 1px rgba(10,58,42,0.35)' }}
+    />
+  );
+}
+
+/** [KOLORY STRZAŁ] „Teraz: strzała 2” — kolorowe kółko z numerem nad tarczą. */
+export function NextArrowChip({ index }: { index: number }) {
+  const c = arrowColorAt(index);
+  if (!c) return null;
+  return (
+    <span
+      className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-md border-2 border-[#0a3a2a]"
+      style={{ backgroundColor: c.hex, color: c.text }}
+    >
+      {index + 1}
+    </span>
   );
 }

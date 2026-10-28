@@ -115,6 +115,8 @@ export interface SetupArrows {
   model?: string;
   spine?: string;
   length?: string;
+  /** [KOLORY STRZAŁ] Strzały znaczone kolorami i strzelane w stałej kolejności. Patrz config/arrowColors.ts */
+  colorOrder?: boolean;
 }
 
 export interface SetupSight {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import FieldInfo from './FieldInfo';
+import ArrowColorOrderOption from './ArrowColorOrderOption';
 import {
   EquipmentSetup,
   SetupSubtab,
@@ -233,6 +234,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             {field(t('settings.arrows.model'), active.arrows?.model ?? '', v => patchSection('arrows', { model: v }), t('settings.arrows.modelPh'), 'arrows.model')}
             {field(t('settings.arrows.spine'), active.arrows?.spine ?? '', v => patchSection('arrows', { spine: v }), t('settings.arrows.spinePh'), 'arrows.spine')}
             {field(t('settings.arrows.length'), active.arrows?.length ?? '', v => patchSection('arrows', { length: v }), t('settings.arrows.lengthPh'), 'arrows.length')}
+            {/* [KOLORY STRZAŁ] Dla chętnych — domyślnie wyłączone. */}
+            <ArrowColorOrderOption
+              enabled={!!active.arrows?.colorOrder}
+              onChange={v => patchSection('arrows', { colorOrder: v || undefined })}
+            />
           </div>
         );
 

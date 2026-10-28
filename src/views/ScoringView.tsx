@@ -15,7 +15,7 @@ import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
-import TargetInput from '../components/targets/TargetInput';
+import TargetInput, { ArrowColorBar } from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
 import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
@@ -164,6 +164,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [activeRoundTab, setActiveRoundTab] = useState(1);
   const [activeInputTab, setActiveInputTab] = useState(0); 
   const [isTargetFullscreen, setIsTargetFullscreen] = useState(false);
+  // [KOLORY STRZAŁ] Opcja z aktywnego zestawu — ten sam stempel, który
+  // trafi na sesję przy zapisie, więc ekran i zapis nie mogą się rozjechać.
+  const [arrowColors, setArrowColors] = useState(false);
+  useEffect(() => {
+    if (!userId) return;
+    getSetupStamp(userId).then(st => setArrowColors(!!st.arrowColors));
+  }, [userId]);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [isTimerExpanded, setIsTimerExpanded] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
@@ -761,9 +768,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           isFullscreen={true} 
           onToggleFullscreen={() => setIsTargetFullscreen(false)} 
           currentArrows={inputArrows} 
-          currentCoords={inputCoordinates} 
-          onUndo={undo} 
-          targetType={targetType} 
+          currentCoords={inputCoordinates}
+          onUndo={undo}
+          targetType={targetType}
+          arrowColors={arrowColors}
         />
       )}
 
@@ -908,9 +916,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 isFullscreen={false} 
                 onToggleFullscreen={() => setIsTargetFullscreen(true)} 
                 currentArrows={inputArrows} 
-                currentCoords={inputCoordinates} 
-                onUndo={undo} 
-                targetType={targetType} 
+                currentCoords={inputCoordinates}
+                onUndo={undo}
+                targetType={targetType}
+                arrowColors={arrowColors}
               />
             )}
           </div>
@@ -940,7 +949,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               <div key={idx} className={`flex items-center text-center p-1 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
                 <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
                 <div className="flex-1 grid grid-cols-6 gap-1">
-                  {[0,1,2,3,4,5].map(ai => <div key={ai} className={`h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(currentPassArrows[ai] || '')}`}>{currentPassArrows[ai] || ''}</div>)}
+                  {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,
+                      więc pasek pod polem = kolor strzały; gotowe serie zostają
+                      posortowane od X do M jak zawsze. */}
+                  {[0,1,2,3,4,5].map(ai => <div key={ai} className={`relative h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(currentPassArrows[ai] || '')}`}>{currentPassArrows[ai] || ''}{arrowColors && isCur && <ArrowColorBar index={ai} isNext={ai === inputArrows.length} />}</div>)}
                 </div>
                 <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#cce6dc] text-[#0a3a2a]' : 'bg-[#F9F9F9] text-transparent'}`}>{passSum || ''}</div>
                 <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#0a3a2a] text-white' : 'bg-[#F9F9F9] text-transparent'}`}>{isCur ? '...' : (runSum || '')}</div>

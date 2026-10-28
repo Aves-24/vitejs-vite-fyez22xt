@@ -48,7 +48,8 @@ import {
 const PAGE = 20;
 // Znacznik usuniętego wpisu fokusu w privateNotes (patrz deleteMilestone).
 const MILESTONE_HIDDEN = 'focusMilestoneHidden';
-const COACH_NOTIF_TYPES: NotificationType[] = ['coach_note', 'coach_log', 'coach_plan'];
+const GROUP_TOPICS_KEY = 'tb_groupTopics';
+const COACH_NOTIF_TYPES: NotificationType[] =['coach_note', 'coach_log', 'coach_plan'];
 
 // Filtry (user 2026-10-15): „Wszystko”, „Od trenera” i rodzaje wpisów —
 // każdy w kolorze swoich kart (pasek z lewej, tb-* w tailwind.css).
@@ -149,7 +150,7 @@ const EVENT_STYLE: Record<EventKind, { row: string; icon: string; iconName: stri
 };
 
 type TimelineItem =
-  | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[] }
+  | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[]; nested?: boolean }
   | { kind: 'private'; id: string; ts: number; note: TbPrivateNote }
   | { kind: 'milestone'; id: string; ts: number; milestone: FocusMilestone }
   | { kind: 'coach'; id: string; ts: number; entry: TbCoachEntry }
@@ -278,6 +279,14 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [topicPickOpen, setTopicPickOpen] = useState(false);   // wybór tematu w zwiniętym panelu
+  // Układ osi czasu: treningi pod tematem dnia (domyślnie) albo ściśle chronologicznie.
+  const [groupTopics, setGroupTopics] = useState(() => {
+    try { return localStorage.getItem(GROUP_TOPICS_KEY) !== '0'; } catch { return true; }
+  });
+  const pickGroupTopics = (on: boolean) => {
+    setGroupTopics(on);
+    try { localStorage.setItem(GROUP_TOPICS_KEY, on ? '1' : '0'); } catch { /* prywatny tryb */ }
+  };
   // „Ausklappen” w panelu filtrów — opisy przy ikonach; zapamiętane w telefonie.
   const filtersWideKey = `grotx_tbFiltersWide_${userId}`;
   const [filtersWide, setFiltersWide] = useState(() => {
@@ -927,8 +936,28 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       : filter === 'coach' ? all.filter(fromCoach)
       : all.filter(it => entryKind(it) === filter);
     list.sort((a, b) => b.ts - a.ts);
-    return { items: list, hasMore: sessionsFull || notesFull, cutoff, kindCounts, topicCounts };
-  }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone]);
+    // [GRUPUJ TEMATY] (user 2026-10-28) Treningi z tego samego dnia pod tematem
+    // trenera stoją pod jego kartą; blok liczy się wg najnowszego wpisu w nim,
+    // inne wpisy trafiają nad albo pod blok, nigdy do środka.
+    let items = list;
+    if (groupTopics) {
+      const topicDay = new Map<string, string>();
+      list.forEach(it => { if (it.kind === 'coach' && it.entry.trainingTopic) topicDay.set(it.id, it.entry.trainingTopic.day); });
+      const kids = new Map<string, TimelineItem[]>();
+      const rest: TimelineItem[] = [];
+      list.forEach(it => {
+        const tid = it.kind === 'session' ? it.session.topicId : undefined;
+        if (it.kind === 'session' && tid && topicDay.get(tid) === ymd(new Date(it.ts))) {
+          if (!kids.has(tid)) kids.set(tid, []);
+          kids.get(tid)!.push({ ...it, nested: true });
+        } else rest.push(it);
+      });
+      const blockTs = (it: TimelineItem) => Math.max(it.ts, ...(it.kind === 'coach' ? (kids.get(it.id) || []).map(k => k.ts) : []));
+      rest.sort((a, b) => blockTs(b) - blockTs(a));
+      items = rest.flatMap(it => (it.kind === 'coach' ? [it, ...(kids.get(it.id) || [])] : [it]));
+    }
+    return { items, hasMore: sessionsFull || notesFull, cutoff, kindCounts, topicCounts };
+  }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone, groupTopics]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -1343,6 +1372,11 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                     <span className="flex-1 h-px bg-emerald-200" />
                   </div>
                 )}
+                {/* Trening pod tematem dnia: wcięty, fioletowa linia łączy go z kartą tematu. */}
+                <div className={it.kind === 'session' && it.nested ? 'relative pl-4 !mt-1' : undefined}>
+                {it.kind === 'session' && it.nested && (
+                  <span className="absolute left-1.5 -top-1 bottom-1/2 w-2.5 border-l-2 border-b-2 border-violet-300 rounded-bl-lg" aria-hidden />
+                )}
                 <div
                   id={`tb-${it.id}`}
                   // Dzisiejsze wpisy w pełni, starsze lekko przygaszone (user 2026-10-23: „max 5%”).
@@ -1360,6 +1394,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                         ? { topic: activeFocus.topic, marked: countsForFocusSession(it.session, activeFocus), onToggle: () => toggleSessionFocus(it.session, activeFocus) }
                         : undefined}
                       linkedNotes={it.linked}
+                      underTopic={it.nested}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
                       expanded={expandedIds.has(it.session.id)}
@@ -1404,6 +1439,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                   ) : (
                     <CoachEntryCard entry={it.entry} time={timeOf(it.ts)} isNew={isNew('coach_log', it.entry.id)} />
                   )}
+                </div>
                 </div>
                 {/* Linia zamykająca „Heute” — pod ostatnim dzisiejszym wpisem (user 2026-10-23). */}
                 {isTodayItem(it) && g.items.findIndex((x, i) => i > idx && isTodayItem(x)) === -1 && (
@@ -1496,6 +1532,23 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 {(filtersWide || topicPickOpen) && (
                   <TopicFilter value={topic} onChange={setTopic} counts={topicCounts} customIds={customTopicOptions} />
                 )}
+                {/* [GRUPUJ TEMATY] Układ osi czasu (user 2026-10-28). */}
+                <div className="mt-3 pt-2 border-t border-gray-100">
+                  <span className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5">{t('tagebuch.layout')}</span>
+                  <div className="grid grid-cols-2 gap-1 p-0.5 bg-gray-100 rounded-full">
+                    {([[true, 'tagebuch.layoutGrouped', 'account_tree'], [false, 'tagebuch.layoutChrono', 'schedule']] as const).map(([on, key, icon]) => (
+                      <button
+                        key={key}
+                        onClick={() => pickGroupTopics(on)}
+                        className={`flex items-center justify-center gap-1 py-1.5 rounded-full text-[10px] font-black transition-all ${groupTopics === on ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-500'}`}
+                        aria-pressed={groupTopics === on}
+                      >
+                        <span className="material-symbols-outlined text-[14px]">{icon}</span>
+                        {t(key)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             </>
           )}

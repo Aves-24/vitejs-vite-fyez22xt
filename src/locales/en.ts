@@ -575,6 +575,9 @@ export const views = {
     closeFilters: "Close filters",
     filtersExpand: "Expand",
     filtersCollapse: "Collapse",
+    layout: "Layout",
+    layoutGrouped: "By topic",
+    layoutChrono: "Chronological",
     inviteHide: "Hide"
   },
   home: {

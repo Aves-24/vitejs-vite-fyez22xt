@@ -592,6 +592,9 @@ export const views = {
     closeFilters: "Zamknij filtry",
     filtersExpand: "Rozwiń",
     filtersCollapse: "Zwiń",
+    layout: "Układ",
+    layoutGrouped: "Według tematu",
+    layoutChrono: "Chronologicznie",
     inviteHide: "Ukryj"
   },
   home: {

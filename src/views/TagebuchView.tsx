@@ -21,6 +21,7 @@ import FocusModal from '../components/tagebuch/FocusModal';
 import { TechEditSheet } from '../components/tagebuch/TechEditSheet';
 import { updateTechnicalSession, type TechSessionEdit } from '../utils/techSession';
 import { resolveBattleResult } from '../utils/battleResult';
+import { hasActivePro, freeHistoryStart, FREE_HISTORY_DAYS } from '../utils/proAccess';
 import {
   FOCUS_TEXT_MAX, countFocusSessions, endedFocusSnapshot, focusCompletedAt, focusMilestoneId, readEndedFocus,
   inFocusWindow, sessionFocusRef, newFocusCountFrom, countsForFocusSession, manualSessionFocus,
@@ -279,6 +280,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [topicPickOpen, setTopicPickOpen] = useState(false);   // wybór tematu w zwiniętym panelu
+  // PRO = cała historia; do wczytania profilu traktujemy jak PRO (bez mignięcia karty PRO).
+  const [isPro, setIsPro] = useState(true);
   // Układ osi czasu: treningi pod tematem dnia (domyślnie) albo ściśle chronologicznie.
   const [groupTopics, setGroupTopics] = useState(() => {
     try { return localStorage.getItem(GROUP_TOPICS_KEY) !== '0'; } catch { return true; }
@@ -351,6 +354,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
         setCoachCleared(readCoachFocusCleared(userData));
         setFocusDots(userData.focusDots === true);
         setFocusGoal(readFocusGoal(userData));
+        setIsPro(hasActivePro(userData));
         if (userData.isCoach) loadLedTrainings(userId).then(setLedTrainings).catch(e => console.error('Tagebuch: błąd prowadzonych treningów', e));
         const list: CoachInfo[] = [];
         await Promise.all(coachIds.map(async cid => {
@@ -852,13 +856,22 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // --- OŚ CZASU ---
   // Źródła są stronicowane osobno, więc pokazujemy tylko okres, który wszystkie
   // pełne strony pokrywają — inaczej stare notatki mieszałyby się z lukami w treningach.
-  const { items, hasMore, cutoff, kindCounts, topicCounts } = useMemo(() => {
+  const { items, hasMore, olderHidden, cutoff, kindCounts, topicCounts } = useMemo(() => {
     // Puste źródło (przed wczytaniem albo bez wpisów) niczego nie ucina.
     const sessionsFull = !sessionsDone && sessions.length > 0;
     const notesFull = !notesDone && notes.length > 0;
     let cutoff = 0;
     if (sessionsFull) cutoff = Math.max(cutoff, sessions[sessions.length - 1].ts);
     if (notesFull) cutoff = Math.max(cutoff, notes[notes.length - 1].ts);
+    // [FREE] Własne wpisy tylko z okna FREE_HISTORY_DAYS (decyzja 2026-10-28).
+    // Gdy wczytane strony sięgają już za okno, dalej nie doczytujemy — zamiast
+    // „więcej” karta PRO. Treści od trenera zawsze bez okna.
+    const freeStart = isPro ? 0 : freeHistoryStart().getTime();
+    const pastWindow = (done: boolean, arr: { ts: number }[]) => done || (arr.length > 0 && arr[arr.length - 1].ts < freeStart);
+    const freeEnd = !isPro && pastWindow(sessionsDone, sessions) && pastWindow(notesDone, notes);
+    const olderHidden = freeEnd && (sessions.some(s => s.ts < freeStart) || notes.some(n => n.ts < freeStart));
+    const coachCutoff = freeEnd ? 0 : cutoff;
+    cutoff = Math.max(cutoff, freeStart);
 
     const sessionIds = new Set(sessions.map(s => s.id));
     const bySession: Record<string, TbPrivateNote[]> = {};
@@ -881,7 +894,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       if (n.ts >= cutoff && !n.milestone && !(n.sessionId && sessionIds.has(n.sessionId))) countTopics(n.topics);
     });
     ledTrainings.forEach(e => { if (e.ts >= cutoff && e.topic) countTopics([e.topic]); });
-    coachEntries.forEach(e => { if (e.ts >= cutoff) countTopics(e.topics); });
+    coachEntries.forEach(e => { if (e.ts >= coachCutoff) countTopics(e.topics); });
 
     const all: TimelineItem[] = [];
     sessions.forEach(s => {
@@ -908,7 +921,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       all.push({ kind: 'led', id: e.id, ts: e.ts, entry: e });
     });
     coachEntries.forEach(e => {
-      if (e.ts < cutoff || !hit(e.topics)) return;
+      if (e.ts < coachCutoff || !hit(e.topics)) return;
       all.push({ kind: 'coach', id: e.id, ts: e.ts, entry: e });
     });
     // Zaległe zawody bez wyniku — w dniu (i godzinie) zawodów; bez tematów.
@@ -956,8 +969,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
       rest.sort((a, b) => blockTs(b) - blockTs(a));
       items = rest.flatMap(it => (it.kind === 'coach' ? [it, ...(kids.get(it.id) || [])] : [it]));
     }
-    return { items, hasMore: sessionsFull || notesFull, cutoff, kindCounts, topicCounts };
-  }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone, groupTopics]);
+    return { items, hasMore: !freeEnd && (sessionsFull || notesFull), olderHidden, cutoff, kindCounts, topicCounts };
+  }, [sessions, notes, coachEntries, ledTrainings, missed, skipped, filter, topic, sessionsDone, notesDone, groupTopics, isPro]);
 
   // [C39] Własne tematy trenera (`c:…`) do filtra — tylko te, które faktycznie
   // występują we wczytanych wpisach; wbudowane idą z TRAINING_TOPICS.
@@ -1463,6 +1476,21 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             className="w-full py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest bg-white border border-gray-200 rounded-2xl active:scale-[0.99] transition-all disabled:opacity-50"
           >
             {isLoadingMore ? t('tagebuch.loading') : t('tagebuch.loadMore')}
+          </button>
+        )}
+
+        {/* [FREE] Starsze własne wpisy są schowane, nie skasowane — jak w Rekordach. */}
+        {!isLoading && olderHidden && (
+          <button
+            onClick={() => onNavigate('SETTINGS', 'PRO')}
+            className="w-full bg-[#0a3a2a] rounded-2xl p-3.5 flex items-center gap-3 shadow-lg active:scale-[0.98] transition-all text-left"
+          >
+            <span className="material-symbols-outlined text-[#fed33e] text-[22px] shrink-0">diamond</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-black text-white leading-tight">{t('tagebuch.freeLimitTitle')}</p>
+              <p className="text-[9px] font-bold text-emerald-100/60 leading-tight mt-0.5">{t('tagebuch.freeLimitDesc', { days: FREE_HISTORY_DAYS })}</p>
+            </div>
+            <span className="bg-[#fed33e] text-[#5d4a00] text-[9px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-lg shrink-0">PRO</span>
           </button>
         )}
       </div>

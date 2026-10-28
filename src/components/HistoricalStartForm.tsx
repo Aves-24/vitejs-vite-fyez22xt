@@ -9,6 +9,7 @@ import { DEFAULT_SETUP_ID } from '../utils/setupStamp';
 import { distanceMeters, distanceStamp, distancesForAnySetup, findDistanceEntry } from '../config/distances';
 import { useDistanceCatalog } from '../hooks/useDistanceColors';
 import DistancePicker from './DistancePicker';
+import { freeHistoryStart } from '../utils/proAccess';
 
 interface HistoricalStartFormProps {
   userId: string;
@@ -58,8 +59,8 @@ export default function HistoricalStartForm({ userId, isPremium, knownSeries, on
   const { minDate, maxDate } = useMemo(() => {
     const max = new Date();
     max.setDate(max.getDate() - 1);
-    const min = new Date();
-    min.setFullYear(min.getFullYear() - (isPremium ? 5 : 1));
+    const min = isPremium ? new Date() : freeHistoryStart();
+    if (isPremium) min.setFullYear(min.getFullYear() - 5);
     return { minDate: min.toISOString().split('T')[0], maxDate: max.toISOString().split('T')[0] };
   }, [isPremium]);
 

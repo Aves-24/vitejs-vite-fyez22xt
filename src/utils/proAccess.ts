@@ -24,3 +24,17 @@ export function hasActivePro(
  * przepuszcza max 41 dni; regulamin (public/legal) podaje tę samą liczbę.
  */
 export const TRIAL_DAYS = 40;
+
+/**
+ * Okno historii konta FREE (decyzja usera 2026-10-28): wszędzie tyle samo —
+ * statystyki, kalendarz, rekordy zawodów, dziennik. Starsze wpisy zostają
+ * w bazie, są tylko schowane; po zakupie PRO widać od razu całą historię.
+ * Zapisywanie nigdy nie ma limitu. Treści od trenera — bez okna.
+ */
+export const FREE_HISTORY_DAYS = 90;
+
+/** Początek okna FREE (północ lokalnie, FREE_HISTORY_DAYS dni temu). */
+export function freeHistoryStart(now: number = Date.now()): Date {
+  const d = new Date(now);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() - FREE_HISTORY_DAYS);
+}

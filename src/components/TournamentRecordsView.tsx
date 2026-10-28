@@ -6,6 +6,7 @@ import { seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries'
 import HistoricalStartForm from './HistoricalStartForm';
 import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/distances';
 import { useDistanceColors } from '../hooks/useDistanceColors';
+import { freeHistoryStart } from '../utils/proAccess';
 
 /** [KOLORY] Kropka zestawu przy dystansie; bez koloru (dystans wspólny) nic nie rysuje. */
 const Dot: React.FC<{ hex?: string }> = ({ hex }) =>
@@ -93,10 +94,10 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
       if (cached) { setSessions(cached); setIsLoading(false); return; }
     }
 
-    // Okno historii: free rok wstecz, PRO pięć lat — tak samo jak archiwum
-    // zawodów w Terminarzu.
-    const cutoff = new Date();
-    cutoff.setFullYear(cutoff.getFullYear() - (isPremium ? 5 : 1));
+    // Okno historii: FREE wspólne okno (utils/proAccess), PRO pięć lat —
+    // tak samo jak archiwum zawodów w Terminarzu.
+    const cutoff = isPremium ? new Date() : freeHistoryStart();
+    if (isPremium) cutoff.setFullYear(cutoff.getFullYear() - 5);
 
     try {
       const snap = await getDocs(query(

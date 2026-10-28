@@ -9,7 +9,7 @@ import SessionTrend from '../components/SessionTrend';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
-import { hasActivePro } from '../utils/proAccess';
+import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
@@ -541,7 +541,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const pendingSessionIdRef = useRef(initialSessionId || '');
 
   const todayISO = new Date().toISOString().split('T')[0];
-  const daysToShow = isPremium ? 1095 : 30;
+  const daysToShow = isPremium ? 1095 : FREE_HISTORY_DAYS;
 
   const targetUserId = viewingStudentId || userId;
   // [KOLORY] Kolory zestawów właściciela statystyk (u trenera — ucznia).
@@ -962,7 +962,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                   <NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />
 
                     <div className="space-y-5 mt-4">
-                      {/* FREE (dowolny dzień z okna 30 dni): pogoda, rozbicie X/10/9,
+                      {/* FREE (dowolny dzień z okna FREE_HISTORY_DAYS): pogoda, rozbicie X/10/9,
                           tabela rund, przebieg serii — surowe dane własnej sesji. */}
                       {selectedSession.weather && (
                         <div className="flex gap-3 bg-gray-50/50 p-2 rounded-xl w-max border border-gray-100">

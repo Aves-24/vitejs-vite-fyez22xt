@@ -11,7 +11,7 @@ import ViewHeader from '../components/ViewHeader';
 import { mirrorTrenerEventToStudents, updateMirroredEvent, deleteMirroredEvent } from '../utils/coachCalendarMirror';
 import { collectSeries, seriesKeyFromTitle, sessionDateToISO } from '../utils/tournamentSeries';
 import { guestExpiryFields } from '../utils/guestMode';
-import { hasActivePro } from '../utils/proAccess';
+import { hasActivePro, FREE_HISTORY_DAYS, freeHistoryStart } from '../utils/proAccess';
 import TopicPicker from '../components/TopicPicker';
 import DistancePicker from '../components/DistancePicker';
 import CollapsibleSection from '../components/CollapsibleSection';
@@ -269,14 +269,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     };
   }, [userId]);
 
-  // [PRO] Starsze miesiące (61–730 dni) — jednorazowy odczyt przy przewinięciu
-  // kalendarza wstecz, dopisywany do `olderEvents`.
+  // Starsze miesiące (61 dni – okno planu: FREE_HISTORY_DAYS, PRO 730) —
+  // jednorazowy odczyt przy przewinięciu kalendarza wstecz, dopisywany do `olderEvents`.
   const olderFromRef = useRef(LIVE_CUTOFF);
   useEffect(() => {
-    if (!userId || !isPremium) return;
+    if (!userId) return;
     const monthStart = formatDateStr(calendarDate.getFullYear(), calendarDate.getMonth(), 1);
     const proLimitObj = new Date();
-    proLimitObj.setDate(proLimitObj.getDate() - 730);
+    proLimitObj.setDate(proLimitObj.getDate() - (isPremium ? 730 : FREE_HISTORY_DAYS));
     const from = [monthStart, proLimitObj.toISOString().split('T')[0]].sort()[1];
     const to = olderFromRef.current;
     if (from >= to) return;
@@ -580,12 +580,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const upcomingEvents = events.filter(e => e.date >= todayStr);
 
   const getArchiveCutoff = (type: 'turniej' | 'other') => {
-    const d = new Date();
-    if (type === 'turniej') {
-      if (isPremium) d.setFullYear(d.getFullYear() - 5); else d.setFullYear(d.getFullYear() - 1);
-    } else {
-      if (isPremium) d.setFullYear(d.getFullYear() - 1); else d.setMonth(d.getMonth() - 2);
+    // FREE: jedno okno historii dla wszystkiego (utils/proAccess).
+    if (!isPremium) {
+      const s = freeHistoryStart();
+      return formatDateStr(s.getFullYear(), s.getMonth(), s.getDate());
     }
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - (type === 'turniej' ? 5 : 1));
     return d.toISOString().split('T')[0];
   };
 

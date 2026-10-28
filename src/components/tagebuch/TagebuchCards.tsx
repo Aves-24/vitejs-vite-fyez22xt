@@ -608,7 +608,8 @@ export function TrainingTopicCard({ entry, time, isNew, trained, onAck, autoOpen
       <EntryRow
         icon="sports"
         iconCls="text-violet-600"
-        kind={t('tagebuch.topicLabel')}
+        // Nazwa grupy obok rodzaju (user 2026-10-28); starsze tematy jej nie mają.
+        kind={tt.groupName ? `${t('tagebuch.topicLabel')} · ${tt.groupName}` : t('tagebuch.topicLabel')}
         kindCls="text-violet-700"
         title={entry.text}
         time={time}

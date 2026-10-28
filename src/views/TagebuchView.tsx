@@ -1377,6 +1377,10 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 {it.kind === 'session' && it.nested && (
                   <span className="absolute left-1.5 -top-1 bottom-1/2 w-2.5 border-l-2 border-b-2 border-violet-300 rounded-bl-lg" aria-hidden />
                 )}
+                {/* Kolejny trening w bloku — linia biegnie dalej bez przerwy. */}
+                {it.kind === 'session' && it.nested && (() => { const nx = g.items[idx + 1]; return nx?.kind === 'session' && nx.nested; })() && (
+                  <span className="absolute left-1.5 top-1/2 bottom-0 border-l-2 border-violet-300" aria-hidden />
+                )}
                 <div
                   id={`tb-${it.id}`}
                   // Dzisiejsze wpisy w pełni, starsze lekko przygaszone (user 2026-10-23: „max 5%”).

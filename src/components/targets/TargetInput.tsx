@@ -192,7 +192,6 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             Wszystko zgrupowane po prawej, close oddzielony marginesem. */}
         {isFullscreen ? (
           <div className="flex items-center gap-2 pointer-events-auto ml-auto">
-            {nextArrow && <NextArrowChip index={currentCoords.length} />}
             <div className="flex gap-0.5 bg-white/90 p-1 rounded-xl shadow-sm border border-gray-100">
               {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
                   strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
@@ -279,7 +278,14 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       </div>
 
       <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : ''}`}>
-        <svg 
+        {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy —
+            w pasku u góry wchodziła na lupę (user 2026-10-28). */}
+        {isFullscreen && nextArrow && (
+          <div className="absolute right-3 top-0 z-10 pointer-events-none">
+            <NextArrowChip index={currentCoords.length} />
+          </div>
+        )}
+        <svg
           ref={svgRef} 
           viewBox={is3Spot ? "-20 -40 340 480" : isCompactFace ? (isFullscreen ? "-20 -50 340 410" : "-20 -30 340 360") : (isFullscreen ? "-20 -50 340 390" : "-20 0 340 300")}
           onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} 

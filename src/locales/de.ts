@@ -583,6 +583,9 @@ export const views = {
     inviteHide: "Ausblenden"
   },
   home: {
+    planGetPro: "PRO holen",
+    planDaysLeft: "noch {{count}} Tage",
+    planDaysLeft_one: "noch {{count}} Tag",
     archerRanking: "Bogenschützen-Ranking",
     battleSubtitle: "Herausforderungen · Statistiken · Ranking",
     activeChallenges: "Aktive Herausforderungen",

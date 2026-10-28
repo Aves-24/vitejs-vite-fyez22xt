@@ -583,6 +583,9 @@ export const views = {
     inviteHide: "Hide"
   },
   home: {
+    planGetPro: "Get PRO",
+    planDaysLeft: "{{count}} days left",
+    planDaysLeft_one: "{{count}} day left",
     archerRanking: "Archer Ranking",
     battleSubtitle: "Challenges · Stats · Ranking",
     activeChallenges: "Active challenges",

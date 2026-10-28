@@ -600,6 +600,11 @@ export const views = {
     inviteHide: "Ukryj"
   },
   home: {
+    planGetPro: "Kup PRO",
+    planDaysLeft: "jeszcze {{count}} dni",
+    planDaysLeft_one: "jeszcze {{count}} dzień",
+    planDaysLeft_few: "jeszcze {{count}} dni",
+    planDaysLeft_many: "jeszcze {{count}} dni",
     archerRanking: "Ranking Łucznika",
     battleSubtitle: "Wyzwania · Statystyki · Ranking",
     activeChallenges: "Aktywne wyzwania",

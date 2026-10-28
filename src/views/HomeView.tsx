@@ -27,6 +27,9 @@ import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battl
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
 
+// Ikona plakietki planu pod logo (FREE / PRO / PRO na dni).
+const PLAN_ICON = { free: 'diamond', pro: 'diamond', days: 'hourglass_top' } as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
 // ─────────────────────────────────────────────────────────────────────────────
@@ -195,6 +198,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [rawIsPremium, setRawIsPremium] = useState(false);
   const [trialEndsAt, setTrialEndsAt] = useState<number | null>(null);
   const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
+  // null do wczytania profilu — bez mignięcia „FREE” u kont PRO.
+  const [planBadge, setPlanBadge] = useState<{ kind: 'pro' | 'free' } | { kind: 'days'; days: number } | null>(null);
 
   // THE TARGET SERIES — ranga użytkownika
   // [RANGA] Ranga z handicapu (utils/rankEngine.ts) — jeden obiekt zamiast
@@ -342,6 +347,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setAiAdvice(d.lastCoachAdvice || t('home.aiPlaceholder'));
         setRawIsPremium(boughtPro);
         setIsPremium(computedIsPremium);
+        // Plakietka planu pod logo: stałe PRO / PRO na dni (trial, prezent) / FREE.
+        setPlanBadge(d.isPremium === true || d.isPremiumPromo === true ? { kind: 'pro' }
+          : computedIsPremium ? { kind: 'days', days: Math.max(1, Math.ceil((Number(d.trialEndsAt) - Date.now()) / 86400000)) }
+          : { kind: 'free' });
 
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
         // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
@@ -1117,6 +1126,22 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 12,5px nad baseline; kropka 10px -> dolna krawędź na 7,5px. */}
             <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[7.5px]"></div>
           </div>
+          {/* PLAN (user 2026-10-28): FREE / PRO z licznikiem dni / PRO — klik → zakładka PRO. */}
+          {planBadge && (
+            <button
+              onClick={() => onNavigate?.('SETTINGS', 'PRO')}
+              className={`mt-1.5 inline-flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all ${
+                planBadge.kind === 'free' ? 'bg-white border border-gray-200 text-gray-500' : 'bg-[#0a3a2a] text-[#fed33e]'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[12px]">{PLAN_ICON[planBadge.kind]}</span>
+              {planBadge.kind === 'free' ? (
+                <>FREE<span className="text-[#b8860b] normal-case tracking-normal font-black ml-0.5">· {t('home.planGetPro')}</span></>
+              ) : planBadge.kind === 'days' ? (
+                <>PRO<span className="text-white/80 normal-case tracking-normal font-bold ml-0.5">· {t('home.planDaysLeft', { count: planBadge.days })}</span></>
+              ) : 'PRO'}
+            </button>
+          )}
         </div>
         <div className="flex items-center gap-2">
 

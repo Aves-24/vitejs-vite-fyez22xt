@@ -1,8 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
+import { arrowColorAt } from '../config/arrowColors';
 
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick }: any) {
+// arrowColors — [KOLORY STRZAŁ] sesja wpisana w kolorowej kolejności: kropka = kolor strzały
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors }: any) {
   const { t } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -82,11 +84,12 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             return end.dots?.map((dot: any, dIdx: number) => {
               if (dot.x === null || dot.y === null) return null;
               const radius = isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
+              const ac = arrowColors ? arrowColorAt(dIdx) : null;
               
               return (
                 <circle 
-                  key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill="white" 
-                  fillOpacity={isHighlighted ? 0.8 : 0.2} stroke={isHighlighted ? "#0a3a2a" : "#aaa"} 
+                  key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : 'white'}
+                  fillOpacity={isHighlighted ? (ac ? 1 : 0.8) : 0.2} stroke={isHighlighted ? "#0a3a2a" : "#aaa"} 
                   strokeWidth={isHighlighted ? "1.5" : "0.5"} opacity={isHighlighted ? 1 : 0.3}
                   style={{ transition: 'all 0.3s ease' }}
                 />

@@ -13,6 +13,8 @@ import { isPartialSession, PartialInfo } from '../utils/partialSession';
 const partialOf = (s: PartialInfo): PartialInfo =>
   isPartialSession(s) ? { isPartial: true, endsShot: s.endsShot, endsPlanned: s.endsPlanned } : {};
 import BiomechCard from './BiomechCard';
+import ArrowStatsCard from './stats/ArrowStatsCard';
+import { computeArrowStats } from '../utils/arrowStats';
 import HeatmapTarget from './HeatmapTarget';
 import { calculateSpreadSessions } from '../utils/spread';
 import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
@@ -344,6 +346,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     return { result: calculateSpreadSessions(last3), count: last3.length };
   }, [filteredSessions]);
 
+  // [KOLORY STRZAŁ] Strzały w porównaniu — tylko sesje wpisane w kolorowej kolejności.
+  const arrowStats = useMemo(() => computeArrowStats(filteredSessions as any[]), [filteredSessions]);
+
   // Krzywa wyników dla wybranego dystansu (ostatnie 15 sesji z wynikiem)
   const distCurve = useMemo<CurveSession[]>(() => {
     const getTs = (s: any): number => {
@@ -655,6 +660,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                 subtitle={t('stats.cards.bio.lastTrainings', { count: spread3.count })}
               />
             )}
+
+            {arrowStats && <ArrowStatsCard data={arrowStats} />}
 
             {stats.fhAvg > 0 && stats.shAvg > 0 && (
               <div className="bg-white rounded-[24px] border border-gray-100 p-4 shadow-sm">

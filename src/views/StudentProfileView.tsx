@@ -965,12 +965,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                         <div className="flex gap-2 w-full">
                           {r1Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} />
                             </div>
                           )}
                           {r2Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} />
                             </div>
                           )}
                         </div>

@@ -11,6 +11,7 @@ import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
 import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
 import RoundTargetSummary from '../components/RoundTargetSummary';
+import { arrowColorAt } from '../config/arrowColors';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
@@ -108,7 +109,7 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
   );
 }
 
-function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetType: string, activeEnd: number | null }) {
+function LargeTargetSVG({ ends, targetType, activeEnd, arrowColors }: { ends: any[], targetType: string, activeEnd: number | null, arrowColors?: boolean }) {
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
 
@@ -131,11 +132,13 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
     return end.dots?.map((dot: any, dotIdx: number) => {
       if (dot.x == null || dot.y == null) return null;
       const arrowNumber = dot.order || dotIdx + 1;
+      // [KOLORY STRZAŁ] Kropka w kolorze strzały z tego miejsca serii.
+      const ac = arrowColors ? arrowColorAt(dotIdx) : null;
       return (
         <g key={`${localIdx}-${dotIdx}`} style={{ opacity, transition: 'all 0.3s ease' }}>
-          <circle cx={dot.x} cy={dot.y} r={radius} fill={fillColor} stroke="#0a3a2a" strokeWidth={strokeWidth} />
+          <circle cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : fillColor} stroke="#0a3a2a" strokeWidth={strokeWidth} />
           {isHighlighted && (
-            <text x={dot.x} y={dot.y} fontSize="8" fontWeight="black" textAnchor="middle" dominantBaseline="central" fill="#0a3a2a" style={{ pointerEvents: 'none' }}>{arrowNumber}</text>
+            <text x={dot.x} y={dot.y} fontSize="8" fontWeight="black" textAnchor="middle" dominantBaseline="central" fill={ac ? ac.text : '#0a3a2a'} style={{ pointerEvents: 'none' }}>{arrowNumber}</text>
           )}
         </g>
       );
@@ -167,7 +170,7 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
   );
 }
 
-function TargetZoomModal({ rounds, initial, targetType, onClose, t }: any) {
+function TargetZoomModal({ rounds, initial, targetType, onClose, t, arrowColors }: any) {
   const [roundIdx, setRoundIdx] = useState<number>(initial || 0);
   const [activeEnd, setActiveEnd] = useState<number | null>(null);
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -235,7 +238,7 @@ function TargetZoomModal({ rounds, initial, targetType, onClose, t }: any) {
           <div className="w-full pt-4">
             {showHeatmap
               ? <HeatmapTarget dots={heatDots} targetType={targetType} />
-              : <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} />}
+              : <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} arrowColors={arrowColors} />}
           </div>
         </div>
       </div>
@@ -494,6 +497,8 @@ interface Session {
   id: string; score: number; arrows: number; distance: string; distanceId?: string; distanceLabel?: string; date: string; timestamp: any;
   type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
+  /** [KOLORY STRZAŁ] Seria wpisana w kolejności kolorów — dots[i] = strzała nr i+1. */
+  arrowColors?: boolean;
   isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; scoreArrows?: number; sessionArrows?: number; practiceArrows?: number;
   isPartial?: boolean; endsShot?: number; endsPlanned?: number;
 }
@@ -1026,14 +1031,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       <>
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r1Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r1Hits.x}</span><span>10: {r1Hits.ten}</span><span>9: {r1Hits.nine}</span>
                           </div>
                         </div>
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>
@@ -1100,7 +1105,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         </>
       )}
 
-      {zoomedRoundData && <TargetZoomModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
+      {zoomedRoundData && <TargetZoomModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} arrowColors={!!selectedSession?.arrowColors} />}
 
       {/* PSYCHOLOGICZNY MODAL USUWANIA */}
       {showDeleteModal && typeof document !== 'undefined' && createPortal(

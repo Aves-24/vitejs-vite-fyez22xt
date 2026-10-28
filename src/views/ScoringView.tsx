@@ -16,6 +16,7 @@ import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
 import TargetInput, { ArrowColorBar } from '../components/targets/TargetInput';
+import { arrowColorAt } from '../config/arrowColors';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
 import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
@@ -53,7 +54,7 @@ const getCountryData = (code: string) => {
   return 'globe'; 
 };
 
-function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetType: string, activeEnd: number | null }) {
+function LargeTargetSVG({ ends, targetType, activeEnd, arrowColors }: { ends: any[], targetType: string, activeEnd: number | null, arrowColors?: boolean }) {
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
 
@@ -76,11 +77,13 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
     return end.dots?.map((dot: any, dotIdx: number) => {
       if (dot.x == null || dot.y == null) return null;
       const arrowNumber = dot.order || dotIdx + 1;
+      // [KOLORY STRZAŁ] Kropka w kolorze strzały z tego miejsca serii.
+      const ac = arrowColors ? arrowColorAt(dotIdx) : null;
       return (
         <g key={`${localIdx}-${dotIdx}`} style={{ opacity, transition: 'all 0.3s ease' }}>
-          <circle cx={dot.x} cy={dot.y} r={radius} fill={fillColor} stroke="#0a3a2a" strokeWidth={strokeWidth} />
+          <circle cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : fillColor} stroke="#0a3a2a" strokeWidth={strokeWidth} />
           {isHighlighted && (
-            <text x={dot.x} y={dot.y} fontSize="8" fontWeight="black" textAnchor="middle" dominantBaseline="central" fill="#0a3a2a" style={{ pointerEvents: 'none' }}>{arrowNumber}</text>
+            <text x={dot.x} y={dot.y} fontSize="8" fontWeight="black" textAnchor="middle" dominantBaseline="central" fill={ac ? ac.text : '#0a3a2a'} style={{ pointerEvents: 'none' }}>{arrowNumber}</text>
           )}
         </g>
       );
@@ -112,7 +115,7 @@ function LargeTargetSVG({ ends, targetType, activeEnd }: { ends: any[], targetTy
   );
 }
 
-function TargetZoomModal({ roundTitle, ends, targetType, startIndex, onClose, t }: any) {
+function TargetZoomModal({ roundTitle, ends, targetType, startIndex, onClose, t, arrowColors }: any) {
   const [activeEnd, setActiveEnd] = useState<number | null>(null);
   useEffect(() => { document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = 'auto'; }; }, []);
   if (typeof document === 'undefined') return null;
@@ -135,7 +138,7 @@ function TargetZoomModal({ roundTitle, ends, targetType, startIndex, onClose, t 
         </div>
         <div className="flex-1 w-full flex flex-col items-center justify-start bg-gray-50 rounded-2xl border border-gray-100 p-2 overflow-hidden">
           <div className="w-full pt-4">
-            <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} />
+            <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} arrowColors={arrowColors} />
           </div>
         </div>
       </div>
@@ -1071,8 +1074,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               </div>
 
               <div className="flex gap-2 w-full animate-fade-in-up">
-                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
-                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
+                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
+                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
               </div>
               
               {AI_ENABLED && submittedEnds.length >= 6 && (

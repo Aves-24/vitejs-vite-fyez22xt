@@ -43,17 +43,17 @@ const ArrowsIllustration: React.FC = () => (
 
 /** Kolejność wpisywania: kolorowe kółka połączone strzałkami. */
 const OrderStrip: React.FC = () => (
-  <div className="flex items-center justify-center gap-1 flex-wrap">
+  <div className="flex items-center justify-center gap-0.5">
     {ARROW_COLORS.map((c, i) => (
       <React.Fragment key={c.id}>
         <span
-          className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black border-2 border-[#0a3a2a]"
+          className="w-6 h-6 shrink-0 rounded-full flex items-center justify-center text-[10px] font-black border-2 border-[#0a3a2a]"
           style={{ backgroundColor: c.hex, color: c.text }}
         >
           {i + 1}
         </span>
         {i < ARROW_COLORS.length - 1 && (
-          <span className="material-symbols-outlined text-gray-300 text-[14px]">arrow_forward</span>
+          <span className="material-symbols-outlined text-gray-300 text-[12px]">arrow_forward</span>
         )}
       </React.Fragment>
     ))}

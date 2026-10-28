@@ -192,6 +192,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             Wszystko zgrupowane po prawej, close oddzielony marginesem. */}
         {isFullscreen ? (
           <div className="flex items-center gap-2 pointer-events-auto ml-auto">
+            {nextArrow && <NextArrowChip index={currentCoords.length} />}
             <div className="flex gap-0.5 bg-white/90 p-1 rounded-xl shadow-sm border border-gray-100">
               {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
                   strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez

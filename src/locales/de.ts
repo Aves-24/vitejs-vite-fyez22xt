@@ -1518,7 +1518,7 @@ export const views = {
     loading: "Laden...",
     noSessions: "Keine Trainingseinheiten an diesem Tag",
     unlockDetails: "PRO Historische Details",
-    unlockAnalysis: "Trefferbild, Biomechanik & KI in PRO",
+    unlockAnalysis: "Trefferbild & Biomechanik in PRO",
     unlockBtn: "Freischalten",
     notePlaceholder: "Beschreibe Erkenntnisse, füge Video-Link ein (max. 250 Zeichen)...",
     invalidUrl: "Ungültige URL",

@@ -742,6 +742,15 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
   useEffect(() => { if (scrollRef.current && activeTab === 'DAILY') scrollRef.current.scrollLeft = scrollRef.current.scrollWidth; }, [isLoading, activeTab]);
 
+  // Po każdej porcji: jeśli pasek wciąż stoi przy najstarszym końcu albo wybrany
+  // dzień jest starszy niż to, co mamy, dociągamy dalej bez czekania na scroll.
+  useEffect(() => {
+    if (isLoading || isLoadingMore || !hasMore || activeTab !== 'DAILY') return;
+    const nearOldEnd = (scrollRef.current?.scrollLeft ?? Infinity) < 300;
+    const oldestLoaded = sessions.length > 0 ? toISO(sessions[sessions.length - 1].date) : '';
+    if (nearOldEnd || (oldestLoaded && selectedDate < oldestLoaded)) loadMore();
+  }, [isLoading, isLoadingMore, hasMore, activeTab, sessions, selectedDate]);
+
   const handleDeleteSession = async () => {
     if (!selectedSessionId || !userId) return;
     try {
@@ -832,7 +841,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       {activeTab === 'DAILY' && (
         <>
           <div className={`mb-2 ${isEmbedded ? 'px-0' : 'px-2'}`}>
-            <div ref={scrollRef} className="flex gap-2 overflow-x-auto hide-scrollbar pt-4 pb-2 px-2 snap-x">
+            {/* Starsze treningi dociągamy same, gdy pasek dni zbliża się do lewego
+                (najstarszego) końca — dawny przycisk „załaduj więcej” był pod
+                szczegółami dnia i nie było widać, co zmienia. */}
+            <div
+              ref={scrollRef}
+              onScroll={(e) => { if (e.currentTarget.scrollLeft < 300) loadMore(); }}
+              className="flex gap-2 overflow-x-auto hide-scrollbar pt-4 pb-2 px-2 snap-x"
+            >
               {Array.from({ length: daysToShow }, (_, i) => {
                 const d = new Date(); d.setDate(d.getDate() - i);
                 const dStr = d.toISOString().split('T')[0];
@@ -1052,7 +1068,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       ) : (
                         <div className="mt-4 p-6 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center">
                           <span className="material-symbols-outlined text-[#F2C94C] text-3xl mb-2">diamond</span>
-                          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('stats.unlockAnalysis', { defaultValue: 'Rozrzut na tarczy, biomechanika i AI w PRO' })}</p>
+                          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('stats.unlockAnalysis', { defaultValue: 'Rozrzut na tarczy i biomechanika w PRO' })}</p>
                           <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="mt-3 px-6 py-2 bg-[#0a3a2a] text-[#fed33e] rounded-full text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[12px]">diamond</span>
                             GROT-X PRO
@@ -1074,25 +1090,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                 </div>
               )}
 
-              {hasMore && (
-                <button
-                  onClick={loadMore}
-                  disabled={isLoadingMore}
-                  className="w-full py-3 mt-6 bg-gray-100 text-gray-600 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-gray-150 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isLoadingMore ? (
-                    <>
-                      <span className="material-symbols-outlined text-[14px] animate-spin">loading</span>
-                      Ładowanie...
-                    </>
-                  ) : (
-                    <>
-                      <span className="material-symbols-outlined text-[14px]">expand_more</span>
-                      Załaduj więcej treningów
-                    </>
-                  )}
-                </button>
-              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-20 opacity-20">

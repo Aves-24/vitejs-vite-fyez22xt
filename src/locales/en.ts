@@ -1518,7 +1518,7 @@ export const views = {
     loading: "Loading...",
     noSessions: "No training sessions on this day",
     unlockDetails: "PRO Historical Details",
-    unlockAnalysis: "Target spread, biomechanics & AI in PRO",
+    unlockAnalysis: "Target spread & biomechanics in PRO",
     unlockBtn: "Unlock",
     notePlaceholder: "Describe findings, paste video link (max 250 chars)...",
     invalidUrl: "Invalid URL",

@@ -1394,7 +1394,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                         ? { topic: activeFocus.topic, marked: countsForFocusSession(it.session, activeFocus), onToggle: () => toggleSessionFocus(it.session, activeFocus) }
                         : undefined}
                       linkedNotes={it.linked}
-                      underTopic={it.nested}
                       hasCoach={hasCoach}
                       isNew={isNew('coach_note', it.session.id)}
                       expanded={expandedIds.has(it.session.id)}
@@ -1536,7 +1535,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 <div className="mt-3 pt-2 border-t border-gray-100">
                   <span className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5">{t('tagebuch.layout')}</span>
                   <div className="grid grid-cols-2 gap-1 p-0.5 bg-gray-100 rounded-full">
-                    {([[true, 'tagebuch.layoutGrouped', 'account_tree'], [false, 'tagebuch.layoutChrono', 'schedule']] as const).map(([on, key, icon]) => (
+                    {([[true, 'tagebuch.layoutGrouped', 'sports'], [false, 'tagebuch.layoutChrono', 'schedule']] as const).map(([on, key, icon]) => (
                       <button
                         key={key}
                         onClick={() => pickGroupTopics(on)}

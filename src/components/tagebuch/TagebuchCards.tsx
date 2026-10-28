@@ -951,9 +951,8 @@ function EndsGrid({ sums }: { sums: number[] }) {
 // Karta treningu: zwinięta = wynik i porównanie, rozwinięta (dotknięcie) =
 // serie, notatki, uwaga trenera i akcje. Do statystyk prowadzi osobny
 // przycisk — wcześniej każde dotknięcie wyrzucało z dziennika.
-export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, underTopic, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote, onEditNote, onEditTech }: {
+export function SessionCard({ session, time, insight, focus, expanded, onToggle, linkedNotes, hasCoach, isNew, onOpenStats, onAddNote, onDeleteNote, onEditNote, onEditTech }: {
   session: TbSession;
-  underTopic?: boolean;  // [GRUPUJ TEMATY] stoi pod kartą tematu treningu
   time: string;
   insight?: SessionInsight;
   focus?: { topic: string; marked: boolean; onToggle: () => Promise<void> };
@@ -1015,8 +1014,8 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
         ) : null}
         {insight && !session.isTech && <InsightLine insight={insight} />}
         {/* Temat od trenera, pod który był trening — fiolet = od trenera. */}
-        {/* Pod kartą tematu (grupowanie) przynależność widać po bloku. */}
-        {!underTopic && session.trainingTopic && (session.trainingTopic.text || session.trainingTopic.topic) && (
+        {/* Także pod kartą tematu (grupowanie) — tytuł mówi, czemu trening tam stoi. */}
+        {session.trainingTopic && (session.trainingTopic.text || session.trainingTopic.topic) && (
           <span className="flex items-center gap-1 mt-0.5 min-w-0 text-[10px] font-bold text-violet-700">
             <span className="material-symbols-outlined text-[13px] shrink-0">sports</span>
             <span className="truncate">{session.trainingTopic.text || topicLabel(session.trainingTopic.topic, t)}</span>

@@ -27,6 +27,8 @@ interface Invite {
   studentId: string;
   coachName?: string;
   coachClub?: string;
+  /** [GRUPY etap 3] Prośba współtrenera grupy, do której uczeń już należy. */
+  groupName?: string;
 }
 
 /**
@@ -42,6 +44,7 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
   const { t } = useTranslation();
   const [invites, setInvites] = useState<Invite[]>([]);
   const [busy, setBusy] = useState(false);
+  const [acceptError, setAcceptError] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -69,6 +72,7 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
           studentId: data.studentId,
           coachName,
           coachClub,
+          groupName: typeof data.groupName === 'string' ? data.groupName : undefined,
         });
       }
       setInvites(items);
@@ -79,6 +83,7 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
   }, [userId, t]);
 
   const currentInvite = invites[0];
+  useEffect(() => { setAcceptError(false); }, [currentInvite?.id]);
 
   // [C38] Nowe zaproszenie na ekranie → zamknij otwarte okna z kodem QR.
   useEffect(() => {
@@ -100,7 +105,9 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
       // 3) Skasuj invite (obaj mogą)
       await deleteDoc(doc(db, 'coachInvites', currentInvite.id));
     } catch (e) {
+      // Najczęściej: u trenera nie ma wolnego miejsca (reguła Path E).
       console.error('Accept coach invite failed:', e);
+      setAcceptError(true);
     } finally {
       setBusy(false);
     }
@@ -131,10 +138,12 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
           </div>
         </div>
         <h2 className="text-center text-lg font-black text-[#0a3a2a] mb-2">
-          {t('coachInvite.title', 'Zaproszenie trenera')}
+          {currentInvite.groupName ? t('coachInvite.groupTitle') : t('coachInvite.title', 'Zaproszenie trenera')}
         </h2>
         <p className="text-center text-sm font-bold text-gray-600 mb-1">
-          {t('coachInvite.message', '{{name}} chce Cię obserwować jako trener.', { name: currentInvite.coachName })}
+          {currentInvite.groupName
+            ? t('coachInvite.groupMessage', { name: currentInvite.coachName, group: currentInvite.groupName })
+            : t('coachInvite.message', '{{name}} chce Cię obserwować jako trener.', { name: currentInvite.coachName })}
         </p>
         {currentInvite.coachClub && (
           <p className="text-center text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
@@ -144,6 +153,14 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
         <p className="text-center text-[11px] font-bold text-gray-400 mb-6 leading-relaxed">
           {t('coachInvite.desc', 'Akceptując, udostępniasz trenerowi swoje imię i nazwisko, klub oraz wszystkie sesje strzeleckie i statystyki. Trener nie zobaczy Twojej daty urodzenia ani adresu e-mail. Dostęp możesz cofnąć w każdej chwili w Ustawieniach.')}
         </p>
+        {currentInvite.groupName && (
+          <p className="text-center text-[11px] font-bold text-gray-500 -mt-3 mb-5 leading-relaxed">
+            {t('coachInvite.groupDecline', { name: currentInvite.coachName })}
+          </p>
+        )}
+        {acceptError && (
+          <p className="text-center text-[12px] font-bold text-red-500 mb-4 leading-snug">{t('coachInvite.acceptError')}</p>
+        )}
         <div className="flex gap-2">
           <button
             onClick={handleReject}

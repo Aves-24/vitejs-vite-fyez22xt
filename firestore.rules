@@ -814,7 +814,16 @@ service cloud.firestore {
         && request.resource.data.coachId == request.auth.uid
         && inviteId == request.resource.data.coachId + '_' + request.resource.data.studentId
         && request.resource.data.studentId is string
-        && request.resource.data.studentId != request.auth.uid;
+        && request.resource.data.studentId != request.auth.uid
+        // [GRUPY etap 3] Prośba o zgodę na współtrenera: nazwa grupy na
+        // zaproszeniu tylko od trenera tej grupy i tylko do jej członka
+        // (żeby nie dało się podszyć pod cudzą grupę).
+        && (!request.resource.data.keys().hasAny(['groupId', 'groupName', 'coachName'])
+            || (request.resource.data.groupId is string
+                && request.resource.data.groupName is string && request.resource.data.groupName.size() <= 60
+                && request.resource.data.coachName is string && request.resource.data.coachName.size() <= 80
+                && request.auth.uid in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.coachIds
+                && request.resource.data.studentId in get(/databases/$(database)/documents/groups/$(request.resource.data.groupId)).data.memberIds));
       allow update: if false;
       allow delete: if isSignedIn() && (
         request.auth.uid == resource.data.coachId ||

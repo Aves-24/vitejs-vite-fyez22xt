@@ -313,6 +313,14 @@ export const views = {
     toastRemoved: "Coach removed.",
     toastLeft: "You left the group."
   },
+  coachGroupConsent: {
+    title: "Without consent",
+    hint: "These athletes haven't agreed yet that you can see their data. You only see their name.",
+    pending: "Request open",
+    declined: "No consent",
+    noSlot: "No free slot",
+    unknown: "Athlete"
+  },
   coachSettings: {
     title: "Settings",
     students: "Students",
@@ -2001,6 +2009,10 @@ export const views = {
     accept: "Accept",
     reject: "Reject",
     unknownCoach: "Coach",
+    groupTitle: "New coach in your group",
+    groupMessage: "{{name}} now also coaches your group »{{group}}«.",
+    groupDecline: "If you decline, {{name}} only sees your name in the group – no trainings and no statistics.",
+    acceptError: "Can't accept – the coach has no free slot right now. Please try again later."
   },
   battleInvite: {
     title: "Battle invitation",

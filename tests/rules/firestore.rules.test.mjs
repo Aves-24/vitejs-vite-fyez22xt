@@ -1304,6 +1304,51 @@ test('groups: współtrener odchodzi sam, właściciel usuwa współtrenera, wł
   await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach2'] }));
 });
 
+// ─── [GRUPY etap 3] zgoda ucznia na współtrenera ─────────────────
+
+const consentInvite = (coachId = 'coach2', studentId = 'alice', extra = {}) => ({
+  coachId, studentId, createdAt: 1, groupId: 'g1', groupName: 'U14', coachName: 'Zweiter', ...extra,
+});
+async function seedSharedGroup() {
+  await seedCoaches();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await updateDoc(doc(db, 'groups/g1'), { coachIds: ['coach1', 'coach2'] });
+    await setDoc(doc(db, 'users/alice'), { displayName: 'Alice', coaches: ['coach1'], students: [] });
+  });
+}
+
+test('[etap 3] współtrener prosi członka grupy o zgodę; „Ja” daje zwykłą relację', async () => {
+  await seedSharedGroup();
+  await assertSucceeds(setDoc(doc(coach2(), 'coachInvites/coach2_alice'), consentInvite()));
+  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { 'consentAsked.coach2': ['alice'] }));
+  await assertSucceeds(getDoc(doc(alice(), 'coachInvites/coach2_alice')));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/coach2'), { students: ['alice'] }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { coaches: ['coach1', 'coach2'] }));
+  await assertSucceeds(getDoc(doc(coach2(), 'users/alice')));
+});
+
+test('[etap 3] prośba z grupą tylko od trenera grupy i tylko do jej członka', async () => {
+  await seedSharedGroup();
+  // coach3 nie jest trenerem g1 — nie podszyje się pod grupę
+  await assertFails(setDoc(doc(coach3(), 'coachInvites/coach3_alice'), consentInvite('coach3')));
+  // bob nie jest w składzie g1
+  await assertFails(setDoc(doc(coach2(), 'coachInvites/coach2_bob'), consentInvite('coach2', 'bob')));
+  // za długa nazwa grupy
+  await assertFails(setDoc(doc(coach2(), 'coachInvites/coach2_alice'), consentInvite('coach2', 'alice', { groupName: 'x'.repeat(61) })));
+  // zwykłe zaproszenie bez grupy działa jak dawniej
+  await assertSucceeds(setDoc(doc(coach3(), 'coachInvites/coach3_alice'), { coachId: 'coach3', studentId: 'alice', createdAt: 1 }));
+});
+
+test('[etap 3] bez wolnego miejsca u współtrenera uczeń nie przyjmie prośby', async () => {
+  await seedSharedGroup();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'users/coach2'), { students: ['carol'] });
+  });
+  await assertSucceeds(setDoc(doc(coach2(), 'coachInvites/coach2_alice'), consentInvite()));
+  await assertFails(updateDoc(doc(alice(), 'users/coach2'), { students: ['carol', 'alice'] }));
+});
+
 test('[PRZESUNIECIE TEMATOW] autor zmienia dzien tematu u ucznia, poprawny format; uczen nie', async () => {
   const base = { authorId: 'coach1', text: 'Temat', type: 'topic', topics: [], day: '2026-10-28', groupId: 'g1' };
   const l = (db, id) => doc(db, `users/alice/coachLog/${id}`);

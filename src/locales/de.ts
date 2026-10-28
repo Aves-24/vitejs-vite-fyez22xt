@@ -313,6 +313,14 @@ export const views = {
     toastRemoved: "Trainer entfernt.",
     toastLeft: "Du hast die Gruppe verlassen."
   },
+  coachGroupConsent: {
+    title: "Ohne Freigabe",
+    hint: "Diese Schüler haben noch nicht zugestimmt, dass du ihre Daten siehst. Du siehst nur den Namen.",
+    pending: "Anfrage offen",
+    declined: "Keine Freigabe",
+    noSlot: "Kein Platz frei",
+    unknown: "Schüler"
+  },
   coachSettings: {
     title: "Einstellungen",
     students: "Schüler",
@@ -2001,6 +2009,10 @@ export const views = {
     accept: "Annehmen",
     reject: "Ablehnen",
     unknownCoach: "Trainer",
+    groupTitle: "Neuer Trainer in deiner Gruppe",
+    groupMessage: "{{name}} betreut jetzt auch deine Gruppe »{{group}}«.",
+    groupDecline: "Lehnst du ab, sieht {{name}} nur deinen Namen in der Gruppe – keine Trainings und keine Statistiken.",
+    acceptError: "Annehmen nicht möglich – beim Trainer ist gerade kein Platz frei. Versuche es später noch einmal."
   },
   battleInvite: {
     title: "Duell-Einladung",

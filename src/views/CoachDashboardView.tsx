@@ -4,6 +4,7 @@ import CoachAccountCard from '../components/settings/CoachAccountCard';
 import {
   type CoachGroup, type GroupInvite, MAX_GROUPS, MAX_GROUP_COACHES, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup,
   subscribeGroupInvites, sendGroupInvite, deleteGroupInvite, acceptGroupInvite, removeGroupCoach, applyTopicShift,
+  membersToAsk, consentStatusOf, askGroupConsent, markConsentAsked, subscribePendingStudentInvites,
 } from '../utils/coachGroups';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, onSnapshot, writeBatch, serverTimestamp, orderBy, limit, deleteField } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
@@ -318,6 +319,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
+  // [GRUPY etap 3] Id uczniów prosto z dokumentu trenera (null = jeszcze nie wczytane)
+  // i uczniowie z wysłanym, nieprzyjętym zaproszeniem — do próśb o zgodę.
+  const [myStudentIds, setMyStudentIds] = useState<string[] | null>(null);
+  const [pendingStudentIds, setPendingStudentIds] = useState<Set<string> | null>(null);
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
   // [C37] Uczniowie, których trener jeszcze nie oglądał — źródło zielonej kropki.
   const [newStudentIds, setNewStudentIds] = useState<string[]>([]);
@@ -435,6 +440,41 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const offOut = subscribeGroupInvites(userId, 'fromId', setSentInvites);
     return () => { offIn(); offOut(); };
   }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    return subscribePendingStudentInvites(userId, setPendingStudentIds);
+  }, [userId]);
+
+  // [GRUPY etap 3] Prośby o zgodę: członkowie wspólnych grup, których jeszcze
+  // nie prowadzę, dostają zwykłe zaproszenie trenera z nazwą grupy — tyle,
+  // ile mam wolnych miejsc (oczekujące zaproszenia też zajmą miejsce).
+  const askingConsentRef = useRef(false);
+  useEffect(() => {
+    if (!myStudentIds || !pendingStudentIds || !coachName || coachLimit <= 0 || askingConsentRef.current) return;
+    const toAsk = membersToAsk(coachGroups, userId, new Set(myStudentIds), pendingStudentIds);
+    const free = coachLimit - myStudentIds.length - pendingStudentIds.size;
+    if (toAsk.size === 0 || free <= 0) return;
+    askingConsentRef.current = true;
+    (async () => {
+      for (const [sid, groups] of [...toAsk].slice(0, free)) {
+        try { await askGroupConsent(userId, coachName, sid, groups); }
+        catch (e) { console.error('Prośba o zgodę ucznia:', sid, e); }
+      }
+    })().finally(() => { askingConsentRef.current = false; });
+  }, [coachGroups, myStudentIds, pendingStudentIds, coachLimit, coachName, userId]);
+
+  // Imiona członków grup, których nie prowadzę (z publicznego profilu — users/{id} niedostępny).
+  const [otherMemberNames, setOtherMemberNames] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!myStudentIds) return;
+    const mine = new Set(myStudentIds);
+    const missing = [...new Set(coachGroups.flatMap(g => g.memberIds))]
+      .filter(id => id !== userId && !mine.has(id) && !(id in otherMemberNames));
+    if (missing.length === 0) return;
+    Promise.all(missing.map(async id => [id, (await getPublicProfile(id))?.displayName || ''] as const))
+      .then(rows => setOtherMemberNames(prev => ({ ...prev, ...Object.fromEntries(rows) })));
+  }, [coachGroups, myStudentIds, userId]);
+
   // Moje imię na grupach aktualne (inni trenerzy grupy nie czytają mojego profilu).
   useEffect(() => {
     if (!coachName) return;
@@ -741,6 +781,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
       setCoachName(`${data.firstName || ''} ${data.lastName || ''}`.trim());
       setPausedStudents(data.coachPausedStudents && typeof data.coachPausedStudents === 'object' ? data.coachPausedStudents : {});
       const ids = (data.students || []) as string[];
+      setMyStudentIds(ids);
       const key = [...ids].sort().join(',');
       // Pierwszy snapshot (prevStudentsKey === null) albo zmiana listy studentów → pełny refetch
       if (key !== prevStudentsKey) {
@@ -966,8 +1007,14 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
     if (removed.length > 0) {
       // 2. Sprzątanie ze składów grup.
+      // [GRUPY etap 3] W cudzej wspólnej grupie uczeń zostaje (składem rządzi
+      // Haupttrainer), tylko bez mojej ponownej prośby o zgodę.
       for (const g of coachGroups.filter(x => x.memberIds.some(id => removed.includes(id)))) {
         try {
+          if (g.ownerId !== userId) {
+            await Promise.all(removed.filter(id => g.memberIds.includes(id)).map(id => markConsentAsked(userId, id, [g])));
+            continue;
+          }
           await updateGroup(g.id, { memberIds: arrayRemove(...removed) });
         } catch (error) {
           console.error("Błąd sprzątania grup:", error);
@@ -1772,6 +1819,42 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   // Ekran jednej grupy: nagłówek, menu Training · Verlauf · Schüler i treść zakładki.
+  // [GRUPY etap 3] Członkowie wspólnej grupy, których nie prowadzę: tylko imię i status zgody.
+  const renderMembersWithoutConsent = (group: CoachGroup) => {
+    if (!myStudentIds || group.coachIds.length < 2) return null;
+    const mine = new Set(myStudentIds);
+    const others = group.memberIds.filter(id => id !== userId && !mine.has(id));
+    if (others.length === 0) return null;
+    const pending = pendingStudentIds || new Set<string>();
+    const chip: Record<string, { label: string; cls: string }> = {
+      PENDING: { label: t('coachGroupConsent.pending'), cls: 'bg-amber-50 text-amber-700' },
+      DECLINED: { label: t('coachGroupConsent.declined'), cls: 'bg-gray-100 text-gray-500' },
+      NO_SLOT: { label: t('coachGroupConsent.noSlot'), cls: 'bg-red-50 text-red-500' },
+    };
+    return (
+      <div className="mt-4">
+        <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-2">
+          {t('coachGroupConsent.title')} ({others.length})
+        </h2>
+        <p className="text-[11px] font-bold text-gray-400 mb-2 ml-2 leading-snug">{t('coachGroupConsent.hint')}</p>
+        <div className="space-y-1.5">
+          {others.map(id => {
+            const c = chip[consentStatusOf(group, userId, id, pending)];
+            return (
+              <div key={id} className="flex items-center gap-2 bg-white rounded-xl border border-gray-100 px-3 py-2.5">
+                <span className="material-symbols-outlined text-gray-300 text-[20px]">person</span>
+                <span className="flex-1 min-w-0 truncate text-[13px] font-bold text-gray-500">
+                  {otherMemberNames[id] || t('coachGroupConsent.unknown')}
+                </span>
+                <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${c.cls}`}>{c.label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderGroupScreen = (group: CoachGroup) => {
     const members = studentsOfGroup(group.id);
     const topics = coachGroupTopics[group.id] || {};
@@ -1864,6 +1947,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           />
         )}
         {groupTab === 'MEMBERS' && renderStudentList(members, '')}
+        {groupTab === 'MEMBERS' && renderMembersWithoutConsent(group)}
       </div>
     );
   };

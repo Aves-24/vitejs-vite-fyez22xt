@@ -8,6 +8,7 @@
 //                                  schedule?, memberIds[], topics: { [day]: GroupTopic }, createdAt }
 //   groups/{id}/private/training historia treningów (notatki trenera, luźne wpisy)
 //   groupInvites/{gid}_{toId}    zaproszenie współtrenera (etap 2, max 3 trenerów)
+//   consentAsked{coachId: sid[]} etap 3: komu ten trener wysłał już prośbę o zgodę
 //
 // ID grupy przy migracji zostaje stare („group_<ts>”), bo terminy tematu
 // w kalendarzu trenera wskazują na nie przez trainingTopicGroupId.
@@ -35,6 +36,8 @@ export interface CoachGroup {
   memberIds: string[];
   topics: GroupTopicsByDay;
   createdAt: number;
+  /** [etap 3] Trener → uczniowie grupy, których już poprosił o zgodę (bez ponawiania po „Nein”). */
+  consentAsked: Record<string, string[]>;
 }
 
 export const groupRef = (groupId: string) => doc(db, 'groups', groupId);
@@ -54,6 +57,7 @@ function fromDoc(id: string, d: any): CoachGroup {
     memberIds: Array.isArray(d.memberIds) ? d.memberIds : [],
     topics: d.topics && typeof d.topics === 'object' ? d.topics : {},
     createdAt: typeof d.createdAt === 'number' ? d.createdAt : 0,
+    consentAsked: d.consentAsked && typeof d.consentAsked === 'object' ? d.consentAsked : {},
   };
 }
 
@@ -192,6 +196,57 @@ export async function acceptGroupInvite(invite: GroupInvite, uid: string, myName
 /** Właściciel usuwa współtrenera albo współtrener odchodzi sam (coachId = on). */
 export const removeGroupCoach = (groupId: string, coachId: string) =>
   updateDoc(groupRef(groupId), { coachIds: arrayRemove(coachId), [`coachNames.${coachId}`]: deleteField() });
+
+// ─── [GRUPY etap 3] Zgoda ucznia na współtrenera ──────────────────
+//
+// Każdy trener wspólnej grupy prosi o zgodę tych jej członków, których sam
+// jeszcze nie prowadzi — zwykłym zaproszeniem trenera (coachInvites) z nazwą
+// grupy. „Ja” = zwykła relacja trener↔uczeń (miejsce u tego trenera, dane,
+// wiadomości), „Nein” = tylko imię w składzie. Raz zapytany uczeń trafia do
+// consentAsked i nie dostaje prośby ponownie. Bez wolnego miejsca prośba
+// czeka, aż się zwolni (user: „miejsce to miejsce”).
+
+/** Członkowie wspólnych grup bez relacji ze mną i jeszcze niepytani: uczeń → jego grupy. */
+export function membersToAsk(groups: CoachGroup[], uid: string, myStudents: Set<string>, pending: Set<string>): Map<string, CoachGroup[]> {
+  const out = new Map<string, CoachGroup[]>();
+  for (const g of groups) {
+    if (g.coachIds.length < 2 || !g.coachIds.includes(uid)) continue;
+    const asked = new Set(g.consentAsked[uid] || []);
+    for (const sid of g.memberIds) {
+      if (sid === uid || myStudents.has(sid) || pending.has(sid) || asked.has(sid)) continue;
+      out.set(sid, [...(out.get(sid) || []), g]);
+    }
+  }
+  return out;
+}
+
+/** Status ucznia grupy, którego nie prowadzę: prośba w toku, odmowa/odłączony albo brak miejsca. */
+export type ConsentStatus = 'PENDING' | 'DECLINED' | 'NO_SLOT';
+export function consentStatusOf(group: CoachGroup, uid: string, sid: string, pending: Set<string>): ConsentStatus {
+  if (pending.has(sid)) return 'PENDING';
+  return (group.consentAsked[uid] || []).includes(sid) ? 'DECLINED' : 'NO_SLOT';
+}
+
+/** Prośba o zgodę: zaproszenie trenera z nazwą grupy, potem znacznik w każdej z grup ucznia. */
+export async function askGroupConsent(coachId: string, coachName: string, studentId: string, groups: CoachGroup[]): Promise<void> {
+  await setDoc(doc(db, 'coachInvites', `${coachId}_${studentId}`), {
+    coachId, studentId, createdAt: Date.now(),
+    groupId: groups[0].id, groupName: groups[0].name.slice(0, 60), coachName: coachName.slice(0, 80),
+  });
+  await markConsentAsked(coachId, studentId, groups);
+}
+
+export const markConsentAsked = (coachId: string, studentId: string, groups: CoachGroup[]) =>
+  Promise.all(groups.map(g => updateGroup(g.id, { [`consentAsked.${coachId}`]: arrayUnion(studentId) })));
+
+/** Moje wysłane, nieprzyjęte zaproszenia uczniów (id uczniów) — na żywo. */
+export function subscribePendingStudentInvites(uid: string, cb: (studentIds: Set<string>) => void): Unsubscribe {
+  return onSnapshot(
+    query(collection(db, 'coachInvites'), where('coachId', '==', uid)),
+    snap => cb(new Set(snap.docs.map(d => d.data().studentId as string))),
+    err => { console.error('Zaproszenia uczniów: błąd odczytu', err); cb(new Set()); },
+  );
+}
 
 // ─── [PRZESUNIĘCIE TEMATÓW] zapis planu z utils/topicShift ─────────
 

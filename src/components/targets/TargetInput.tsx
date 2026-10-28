@@ -363,16 +363,21 @@ export function ArrowColorBar({ index, isNext }: { index: number; isNext?: boole
   );
 }
 
-/** [KOLORY STRZAŁ] „Teraz: strzała 2” — kolorowe kółko z numerem nad tarczą. */
+/** [KOLORY STRZAŁ] „Teraz: strzała 2” — miniatura strzały z kolorową opaską nad tarczą. */
 export function NextArrowChip({ index }: { index: number }) {
   const c = arrowColorAt(index);
   if (!c) return null;
+  // Miniatura strzały jak na grafice w (i) — kółko z cyfrą wyglądało jak
+  // licznik powiadomień i drażniło (user 2026-10-28).
   return (
-    <span
-      className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shadow-md border-2 border-[#0a3a2a]"
-      style={{ backgroundColor: c.hex, color: c.text }}
-    >
-      {index + 1}
-    </span>
+    <svg viewBox="0 0 24 60" className="h-11 w-auto shrink-0 drop-shadow-sm" role="img" aria-label={String(index + 1)}>
+      <rect x={10} y={1} width={4} height={5} rx={1.5} fill="#9ca3af" />
+      <path d="M 12 6 L 4 13 L 4 25 L 12 21 Z" fill="#d1d5db" />
+      <path d="M 12 6 L 20 13 L 20 25 L 12 21 Z" fill="#e5e7eb" />
+      <rect x={10.5} y={5} width={3} height={46} rx={1.5} fill="#6b7280" />
+      <rect x={4} y={24} width={16} height={18} rx={3.5} fill={c.hex} stroke="#0a3a2a" strokeWidth={1.5} />
+      <text x={12} y={37.5} textAnchor="middle" fontSize={12} fontWeight={900} fill={c.text}>{index + 1}</text>
+      <path d="M 9 51 L 15 51 L 12 59 Z" fill="#374151" />
+    </svg>
   );
 }

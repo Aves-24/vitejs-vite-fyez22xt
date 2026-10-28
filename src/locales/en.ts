@@ -284,6 +284,7 @@ export const views = {
     errorSave: "Could not save consent. Please try again."
   },
   coachGroupCoaches: {
+    ownerOnlyName: "Only the head coach can change the group's name and icon.",
     title: "Coaches",
     invite: "Invite",
     inviteHeader: "Invite coach",
@@ -314,6 +315,9 @@ export const views = {
     toastLeft: "You left the group."
   },
   coachGroupConsent: {
+    reask: "Ask again",
+    toastAsked: "Request sent again to {{name}}.",
+    toastNoSlot: "No free slot – free a slot or request more slots first.",
     title: "Without consent",
     hint: "These athletes haven't agreed yet that you can see their data. You only see their name.",
     pending: "Request open",

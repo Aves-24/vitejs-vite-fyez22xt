@@ -753,6 +753,10 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid in resource.data.get('coachIds', [])
         && request.resource.data.ownerId == resource.data.ownerId
         && request.resource.data.coachIds == resource.data.coachIds
+        // Nazwę i symbol zmienia tylko Haupttrainer (user 2026-10-28).
+        && (request.auth.uid == resource.data.ownerId
+            || (request.resource.data.name == resource.data.name
+                && request.resource.data.get('icon', null) == resource.data.get('icon', null)))
         && validGroupShape(request.resource.data);
       // Przyjęcie zaproszenia: zaproszony dopisuje SIEBIE na koniec coachIds.
       allow update: if isSignedIn()

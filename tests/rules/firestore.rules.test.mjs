@@ -1284,7 +1284,11 @@ test('groups: współtrener edytuje grupę, ale nie usuwa jej ani nie zmienia tr
   await env.withSecurityRulesDisabled(async (ctx) => {
     await updateDoc(doc(ctx.firestore(), 'groups/g1'), { coachIds: ['coach1', 'coach2', 'coach3'] });
   });
-  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { name: 'U15', 'topics.2026-10-30': { text: 'Zielen' } }));
+  await assertSucceeds(updateDoc(doc(coach2(), 'groups/g1'), { 'topics.2026-10-30': { text: 'Zielen' } }));
+  // Nazwa i symbol — tylko Haupttrainer.
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { name: 'U15' }));
+  await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { icon: 'star' }));
+  await assertSucceeds(updateDoc(doc(coach1(), 'groups/g1'), { name: 'U15', icon: 'star' }));
   await assertFails(deleteDoc(doc(coach2(), 'groups/g1')));
   await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach1', 'coach2'] }));
   await assertFails(updateDoc(doc(coach2(), 'groups/g1'), { coachIds: ['coach2', 'coach3'] }));
@@ -1326,6 +1330,13 @@ test('[etap 3] współtrener prosi członka grupy o zgodę; „Ja” daje zwykł
   await assertSucceeds(updateDoc(doc(alice(), 'users/coach2'), { students: ['alice'] }));
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { coaches: ['coach1', 'coach2'] }));
   await assertSucceeds(getDoc(doc(coach2(), 'users/alice')));
+});
+
+test('[etap 3] po „Ablehnen” współtrener może zapytać ponownie', async () => {
+  await seedSharedGroup();
+  await assertSucceeds(setDoc(doc(coach2(), 'coachInvites/coach2_alice'), consentInvite()));
+  await assertSucceeds(deleteDoc(doc(alice(), 'coachInvites/coach2_alice')));
+  await assertSucceeds(setDoc(doc(coach2(), 'coachInvites/coach2_alice'), consentInvite()));
 });
 
 test('[etap 3] prośba z grupą tylko od trenera grupy i tylko do jej członka', async () => {

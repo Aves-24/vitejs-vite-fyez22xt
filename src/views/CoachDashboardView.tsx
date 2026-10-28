@@ -1819,6 +1819,22 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   };
 
   // Ekran jednej grupy: nagłówek, menu Training · Verlauf · Schüler i treść zakładki.
+  // [GRUPY etap 3] Uczeń mógł się pomylić przy „Ablehnen” — trener pyta jeszcze raz (user 2026-10-28).
+  const reaskConsent = async (sid: string) => {
+    if (!myStudentIds) return;
+    if (coachLimit - myStudentIds.length - (pendingStudentIds?.size || 0) <= 0) {
+      showToast(t('coachGroupConsent.toastNoSlot'));
+      return;
+    }
+    try {
+      await askGroupConsent(userId, coachName, sid, coachGroups.filter(g => g.coachIds.length > 1 && g.memberIds.includes(sid)));
+      showToast(t('coachGroupConsent.toastAsked', { name: otherMemberNames[sid] || t('coachGroupConsent.unknown') }));
+    } catch (e) {
+      console.error('Ponowna prośba o zgodę:', e);
+      showToast(t('coachDashboard.toastError'));
+    }
+  };
+
   // [GRUPY etap 3] Członkowie wspólnej grupy, których nie prowadzę: tylko imię i status zgody.
   const renderMembersWithoutConsent = (group: CoachGroup) => {
     if (!myStudentIds || group.coachIds.length < 2) return null;
@@ -1839,7 +1855,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         <p className="text-[11px] font-bold text-gray-400 mb-2 ml-2 leading-snug">{t('coachGroupConsent.hint')}</p>
         <div className="space-y-1.5">
           {others.map(id => {
-            const c = chip[consentStatusOf(group, userId, id, pending)];
+            const status = consentStatusOf(group, userId, id, pending);
+            const c = chip[status];
             return (
               <div key={id} className="flex items-center gap-2 bg-white rounded-xl border border-gray-100 px-3 py-2.5">
                 <span className="material-symbols-outlined text-gray-300 text-[20px]">person</span>
@@ -1847,6 +1864,17 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   {otherMemberNames[id] || t('coachGroupConsent.unknown')}
                 </span>
                 <span className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md ${c.cls}`}>{c.label}</span>
+                {status === 'DECLINED' && (
+                  <button
+                    type="button"
+                    onClick={() => reaskConsent(id)}
+                    aria-label={t('coachGroupConsent.reask')}
+                    title={t('coachGroupConsent.reask')}
+                    className="shrink-0 w-8 h-8 -mr-1 flex items-center justify-center rounded-lg text-[#0a3a2a] active:scale-90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">forward_to_inbox</span>
+                  </button>
+                )}
               </div>
             );
           })}
@@ -2097,9 +2125,12 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   </button>
                   {open && (
                     <div className="border-t border-gray-100 divide-y divide-gray-50">
-                      {settingsRow('edit', t('coachSettings.nameIcon'), group.name, () => {
-                        setEditingGroup(group); setEditGroupName(group.name); setEditGroupIcon(groupIcon(group));
-                      })}
+                      {/* Nazwę i symbol grupy zmienia tylko Haupttrainer (user 2026-10-28). */}
+                      {group.ownerId === userId
+                        ? settingsRow('edit', t('coachSettings.nameIcon'), group.name, () => {
+                            setEditingGroup(group); setEditGroupName(group.name); setEditGroupIcon(groupIcon(group));
+                          })
+                        : settingsRow('lock', t('coachSettings.nameIcon'), group.name, () => showToast(t('coachGroupCoaches.ownerOnlyName')))}
                       {settingsRow('schedule', t('coachSchedule.title'), scheduleSummary(group.schedule) || t('coachSchedule.setUp'), () => openScheduleEditor(group))}
                       <div className="px-3 py-2.5">
                         <div className="flex items-center gap-3">

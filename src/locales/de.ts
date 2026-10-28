@@ -284,6 +284,7 @@ export const views = {
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
   coachGroupCoaches: {
+    ownerOnlyName: "Name und Symbol der Gruppe ändert nur der Haupttrainer.",
     title: "Trainer",
     invite: "Einladen",
     inviteHeader: "Trainer einladen",
@@ -314,6 +315,9 @@ export const views = {
     toastLeft: "Du hast die Gruppe verlassen."
   },
   coachGroupConsent: {
+    reask: "Erneut fragen",
+    toastAsked: "Anfrage erneut an {{name}} gesendet.",
+    toastNoSlot: "Kein Platz frei – erst einen Platz freimachen oder mehr Plätze anfragen.",
     title: "Ohne Freigabe",
     hint: "Diese Schüler haben noch nicht zugestimmt, dass du ihre Daten siehst. Du siehst nur den Namen.",
     pending: "Anfrage offen",

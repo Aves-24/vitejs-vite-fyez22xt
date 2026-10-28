@@ -298,6 +298,7 @@ export const views = {
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
   coachGroupCoaches: {
+    ownerOnlyName: "Nazwę i symbol grupy zmienia tylko główny trener.",
     title: "Trenerzy",
     invite: "Zaproś",
     inviteHeader: "Zaproś trenera",
@@ -328,6 +329,9 @@ export const views = {
     toastLeft: "Opuściłeś grupę."
   },
   coachGroupConsent: {
+    reask: "Zapytaj ponownie",
+    toastAsked: "Prośba ponownie wysłana do: {{name}}.",
+    toastNoSlot: "Brak wolnego miejsca – najpierw zwolnij miejsce albo poproś o więcej.",
     title: "Bez zgody",
     hint: "Ci uczniowie jeszcze nie zgodzili się, żebyś widział ich dane. Widzisz tylko imię.",
     pending: "Prośba wysłana",

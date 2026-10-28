@@ -2154,6 +2154,7 @@ export const views = {
     markHint: "Play the clip and tap at each shot",
     markDone: "{{done}} of {{total}} marked",
     expertMode: "Expert mode",
+    arrowColors: "Arrow colours",
     simpleHint: "{{seconds}}s delay, landscape, nothing is saved.",
     delayReset: "Back to {{seconds}}s",
     endSeries: "End of end",

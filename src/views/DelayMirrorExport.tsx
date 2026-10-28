@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import DelayMirrorSeriesTarget, { seriesTargetViewBox } from './DelayMirrorSeriesTarget';
 import type { TechShot } from './DelayMirrorSeries';
 import { getFullCodec } from '../utils/mediaCodecs';
+import { mirrorShotColor } from '../utils/mirrorArrowColors';
 
 // Klip z WYPALONA tarcza i znacznikami strzal.
 //
@@ -286,11 +287,18 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
             marked.forEach(s => {
               const px = barX + barW * Math.min(1, (s.tMs as number) / 1000 / dur);
               const on = s.n === activeN;
+              // [KOLORY STRZAŁ] Pin w kolorze strzały; aktywny dostaje złotą obwódkę.
+              const ac = mirrorShotColor(s.n);
               ctx.beginPath();
-              ctx.fillStyle = on ? GOLD : '#ffffff';
+              ctx.fillStyle = ac ? ac.hex : on ? GOLD : '#ffffff';
               ctx.arc(px, barY + barH / 2, on ? pinR * 1.25 : pinR, 0, Math.PI * 2);
               ctx.fill();
-              ctx.fillStyle = '#0a3a2a';
+              if (ac) {
+                ctx.strokeStyle = on ? GOLD : 'rgba(0,0,0,0.5)';
+                ctx.lineWidth = on ? Math.max(2, pinR * 0.3) : 1;
+                ctx.stroke();
+              }
+              ctx.fillStyle = ac ? ac.text : '#0a3a2a';
               ctx.font = `900 ${Math.round(pinR * 1.2)}px system-ui, -apple-system, sans-serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';

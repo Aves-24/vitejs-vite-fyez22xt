@@ -3,6 +3,7 @@ import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../config/tar
 import { StandardTarget } from '../components/targets/StandardTarget';
 import { SpotTarget } from '../components/targets/SpotTarget';
 import type { TechShot } from './DelayMirrorSeries';
+import { mirrorShotColor } from '../utils/mirrorArrowColors';
 
 // Tarcza TYLKO DO ODCZYTU — obok wideo na ekranie podsumowania passy.
 // Osobny plik, bo TargetInput jest pelnoekranowy (`fixed inset-0 z-[99999]`)
@@ -50,6 +51,8 @@ export default function DelayMirrorSeriesTarget({ targetType, shots, className, 
       {is3Spot ? <SpotTarget isVertical={isVertical} preview /> : <StandardTarget targetType={targetType} />}
       {shots.map(s => {
         const active = activeN === s.n;
+        // [KOLORY STRZAŁ] Kolor strzały; aktywna i tak dostaje zieloną obwódkę grubością.
+        const ac = mirrorShotColor(s.n);
         return (
           <g
             key={s.n}
@@ -63,9 +66,9 @@ export default function DelayMirrorSeriesTarget({ targetType, shots, className, 
               cx={s.x}
               cy={s.y}
               r={active ? 8 : 6}
-              fill={active ? '#4ade80' : 'white'}
-              stroke="black"
-              strokeWidth="1.5"
+              fill={ac ? ac.hex : active ? '#4ade80' : 'white'}
+              stroke={ac && active ? '#4ade80' : 'black'}
+              strokeWidth={ac && active ? 3 : 1.5}
             />
             <text
               x={s.x}
@@ -73,7 +76,7 @@ export default function DelayMirrorSeriesTarget({ targetType, shots, className, 
               fontSize={active ? 9 : 7}
               fontWeight="bold"
               textAnchor="middle"
-              fill="black"
+              fill={ac ? ac.text : 'black'}
             >
               {s.n}
             </text>

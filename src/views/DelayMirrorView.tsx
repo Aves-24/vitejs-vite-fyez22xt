@@ -12,6 +12,9 @@ import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { hasActivePro } from '../utils/proAccess';
+import { getSetupStamp } from '../utils/setupStamp';
+import { ARROW_COLORS } from '../config/arrowColors';
+import { readMirrorArrowColors, writeMirrorArrowColors } from '../utils/mirrorArrowColors';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -244,6 +247,21 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   useEffect(() => {
     try { localStorage.setItem(EXPERT_STORAGE_KEY, expert ? '1' : '0'); } catch { /* ignore */ }
   }, [expert]);
+  // [KOLORY STRZAŁ] Kolory strzał w analizie serii. Dopóki user sam nie
+  // przełączy, idziemy za opcją z zestawu (SPRZĘT → STRZAŁY).
+  const [mirrorColors, setMirrorColors] = useState<boolean>(() => !!readMirrorArrowColors());
+  useEffect(() => {
+    const uid = auth.currentUser?.uid;
+    if (readMirrorArrowColors() !== null || !uid) return;
+    getSetupStamp(uid).then(st => {
+      if (readMirrorArrowColors() !== null) return;
+      writeMirrorArrowColors(!!st.arrowColors);
+      setMirrorColors(!!st.arrowColors);
+    });
+  }, []);
+  const toggleMirrorColors = () => {
+    setMirrorColors(v => { writeMirrorArrowColors(!v); return !v; });
+  };
   // Czy klip zbiera dane w tej chwili (REC uzbrojony i nie na pauzie).
   const [clipActive, setClipActive] = useState(false);
   // Czy w tej sesji powstal juz jakikolwiek material do klipu — decyduje,
@@ -1401,6 +1419,31 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     </div>
   );
 
+  // [KOLORY STRZAŁ] Przełącznik — tylko przy nagrywaniu, bo kolory widać
+  // dopiero w analizie serii i powtórce.
+  const arrowColorsBlock = (
+    <button
+      onClick={toggleMirrorColors}
+      role="switch"
+      aria-checked={mirrorColors}
+      className={`w-full flex items-center gap-2.5 rounded-xl px-3 ${_compactExpert ? 'py-1.5' : 'py-2'} border active:scale-95 transition-all ${
+        mirrorColors ? 'bg-[#fed33e]/15 border-[#fed33e]/40' : 'bg-white/5 border-white/15'
+      }`}
+    >
+      <span className="flex gap-0.5 shrink-0">
+        {ARROW_COLORS.map(c => (
+          <span key={c.id} className="w-2.5 h-2.5 rounded-full border border-black/40" style={{ backgroundColor: c.hex, opacity: mirrorColors ? 1 : 0.35 }} />
+        ))}
+      </span>
+      <span className={`flex-1 text-left font-black uppercase tracking-wider ${_compactExpert ? 'text-[10px]' : 'text-[11px]'} ${mirrorColors ? 'text-[#fed33e]' : 'text-white/60'}`}>
+        {t('delayMirror.arrowColors')}
+      </span>
+      <span className={`w-9 h-5 rounded-full p-0.5 transition-all shrink-0 ${mirrorColors ? 'bg-[#fed33e]' : 'bg-white/20'}`}>
+        <span className={`block w-4 h-4 rounded-full bg-white shadow transition-transform ${mirrorColors ? 'translate-x-4' : ''}`} />
+      </span>
+    </button>
+  );
+
   const privacyNote = (
     <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2">
       <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
@@ -1765,6 +1808,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
               {delayBlock}
               {orientationBlock}
               {modeBlock}
+              {clipMode && arrowColorsBlock}
             </>
           )}
 

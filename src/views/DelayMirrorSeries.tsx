@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TargetInput from '../components/targets/TargetInput';
+import { readMirrorArrowColors } from '../utils/mirrorArrowColors';
 import { isSpotFace, DEFAULT_TARGET_FACE } from '../config/targetFaces';
 import { shotDirection } from '../utils/shotDirection';
 
@@ -237,6 +238,8 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
         currentCoords={currentCoords}
         onUndo={undo}
         targetType={targetType}
+        // [KOLORY STRZAŁ] Przełącznik z Expertenmodus lustra (utils/mirrorArrowColors).
+        arrowColors={!!readMirrorArrowColors()}
         embed={{
           // Wyjscie robi wlasny przycisk. Bez tego TargetInput po szostej
           // strzale sam wywoluje onToggleFullscreen i wyrzuca do wyboru tarczy.

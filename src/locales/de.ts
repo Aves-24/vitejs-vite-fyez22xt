@@ -2154,6 +2154,7 @@ export const views = {
     markHint: "Clip abspielen und bei jedem Schuss tippen",
     markDone: "{{done}} von {{total}} markiert",
     expertMode: "Expertenmodus",
+    arrowColors: "Pfeilfarben",
     simpleHint: "{{seconds}} s Verzögerung, quer, nichts wird gespeichert.",
     delayReset: "Zurück auf {{seconds}} s",
     endSeries: "Passe beenden",

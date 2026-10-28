@@ -4,6 +4,7 @@ import DelayMirrorGrid from './DelayMirrorGrid';
 import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
 import DelayMirrorExport from './DelayMirrorExport';
 import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
+import { mirrorShotColor } from '../utils/mirrorArrowColors';
 
 interface Props {
   blob: Blob | null;
@@ -412,15 +413,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               />
               {replayDuration > 0 && shots.filter(s => s.tMs !== null).map(s => {
                 const pct = Math.max(0, Math.min(100, ((s.tMs as number) / 1000 / replayDuration) * 100));
+                // [KOLORY STRZAŁ] Znacznik na osi w kolorze strzały; aktywny tylko rośnie.
+                const ac = mirrorShotColor(s.n);
                 return (
                   <button
                     key={s.n}
                     onClick={() => seekToShot(s.n)}
-                    style={{ left: `${pct}%` }}
+                    style={{ left: `${pct}%`, ...(ac ? { backgroundColor: ac.hex, color: ac.text } : {}) }}
                     title={t('delayMirror.markShotN', { n: s.n })}
                     className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full text-[8px] font-black flex items-center justify-center border border-black/40 shadow transition-all ${
                       activeN === s.n ? 'bg-[#fed33e] text-[#0a3a2a] scale-125' : 'bg-white text-black'
-                    }`}
+                    } ${ac && activeN === s.n ? 'ring-2 ring-[#fed33e]' : ''}`}
                   >
                     {s.n}
                   </button>

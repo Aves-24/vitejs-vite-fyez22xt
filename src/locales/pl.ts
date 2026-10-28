@@ -2195,6 +2195,7 @@ export const views = {
     markHint: "Puść nagranie i stuknij przy każdym strzale",
     markDone: "Zaznaczone {{done}} z {{total}}",
     expertMode: "Tryb ekspercki",
+    arrowColors: "Kolory strzał",
     simpleHint: "{{seconds}} s opóźnienia, poziomo, nic nie zapisujemy.",
     delayReset: "Wróć do {{seconds}} s",
     endSeries: "Koniec serii",

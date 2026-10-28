@@ -180,7 +180,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     return () => { isMountedRef.current = false; };
   }, []);
   const [zoomedRoundData, setZoomedRoundData] = useState<{title: string, ends: any[], startIndex: number} | null>(null);
-  const [isPremium, setIsPremium] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const [sessionNote, setSessionNote] = useState('');
@@ -288,15 +287,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   useEffect(() => {
     if (onUpdateEndIndex) onUpdateEndIndex(submittedEnds.length);
   }, [submittedEnds.length, onUpdateEndIndex]);
-
-  useEffect(() => {
-    if (!userId) return;
-    const fetchPremium = async () => {
-      const pSnap = await getDoc(doc(db, 'users', userId));
-      if (pSnap.exists()) setIsPremium(pSnap.data().isPremium || false);
-    }
-    fetchPremium();
-  }, [userId]);
 
   useEffect(() => {
     if (!userId || !battleId) {

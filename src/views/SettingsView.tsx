@@ -370,7 +370,8 @@ export default function SettingsView({
             setActiveSetupId(data.activeSetupId || DEFAULT_SETUP_ID);
           }
 
-          setIsPremium(data.isPremium || false);
+          // Promocja admina też jest „aktywne” — bez odliczania jak przy trialu.
+          setIsPremium(data.isPremium === true || data.isPremiumPromo === true);
           setHasPro(hasActivePro(data));
           setShowFullName(data.showFullName !== undefined ? data.showFullName : true);
           setShowClub(data.showClub !== undefined ? data.showClub : true);

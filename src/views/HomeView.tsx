@@ -21,7 +21,7 @@ import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
-import { TRIAL_DAYS } from '../utils/proAccess';
+import { TRIAL_DAYS, hasActivePro } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
@@ -331,15 +331,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const fullClubName = parts.length > 0 ? parts.join(' - ') : t('battleLobby.unaffiliated');
 
         const boughtPro = d.isPremium || false;
-        const promoPro = d.isPremiumPromo || false;
-        let trialEndTimestamp: number | null = null;
-        if (d.trialEndsAt) {
-          trialEndTimestamp = new Date(d.trialEndsAt).getTime();
-          setTrialEndsAt(trialEndTimestamp);
-        }
+        if (d.trialEndsAt) setTrialEndsAt(new Date(d.trialEndsAt).getTime());
         setProGiftedAt(typeof d.proGiftedAt === 'number' ? d.proGiftedAt : null);
-        const isTrialActive = trialEndTimestamp ? trialEndTimestamp > Date.now() : false;
-        const computedIsPremium = boughtPro || promoPro || isTrialActive;
+        const computedIsPremium = hasActivePro(d);
 
         setFirstName(d.firstName || '');
         // [GRUPY] Plan grup do kafelka „jako trener” — z kolekcji groups/.

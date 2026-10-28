@@ -11,6 +11,7 @@ import TopicPicker from '../components/TopicPicker';
 import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
+import { hasActivePro } from '../utils/proAccess';
 
 const DEFAULT_DELAY_S = 15;
 const MIN_DELAY_S = 1;
@@ -348,10 +349,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     const unsub = onSnapshot(doc(db, 'users', user.uid), (snap) => {
       if (snap.exists()) {
         const d = snap.data();
-        const bought = d.isPremium || false;
-        const promo = d.isPremiumPromo || false;
-        const trial = d.trialEndsAt ? new Date(d.trialEndsAt).getTime() > Date.now() : false;
-        setIsPremium(bought || promo || trial);
+        setIsPremium(hasActivePro(d));
       }
       setPremiumLoading(false);
     });

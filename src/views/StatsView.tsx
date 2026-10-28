@@ -9,6 +9,7 @@ import SessionTrend from '../components/SessionTrend';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
+import { hasActivePro } from '../utils/proAccess';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
@@ -553,13 +554,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       const uDoc = await getDoc(doc(db, 'users', userId));
       const d = uDoc.data();
       if (d) {
-        const isBought = d.isPremium || false;
-        const isPromo = d.isPremiumPromo || false;
-        let isTrial = false;
-        if (d.trialEndsAt) {
-          isTrial = new Date(d.trialEndsAt).getTime() > Date.now();
-        }
-        setIsPremium(isBought || isPromo || isTrial);
+        setIsPremium(hasActivePro(d));
 
         const pz = d.pfeilzaehler || {};
         const today = new Date();

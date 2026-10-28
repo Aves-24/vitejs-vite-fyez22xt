@@ -6,6 +6,7 @@ import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateD
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
+import { hasActivePro } from '../utils/proAccess';
 import QuickStatsModal from '../components/QuickStatsModal';
 import ViewHeader from '../components/ViewHeader';
 import CoachLogPanel from '../components/CoachLogPanel';
@@ -1064,7 +1065,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     <h2 className="text-base font-black text-white leading-none">{t('studentProfile.fullAnalytics')}</h2>
                   </div>
                 </div>
-                {student.isPremium || student.isPremiumPromo ? (
+                {hasActivePro(student) ? (
                   <span className="relative z-10 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">PRO</span>
                 ) : (
                   <span className="relative z-10 bg-white/10 text-white/50 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">FREE</span>
@@ -1083,7 +1084,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       <QuickStatsModal
         isOpen={isQuickStatsOpen}
         onClose={() => setIsQuickStatsOpen(false)}
-        isPremium={!!(student.isPremium || student.isPremiumPromo)}
+        isPremium={hasActivePro(student)}
         onNavigate={onNavigate}
         userId={studentId}
         initialTab={quickStatsTab}

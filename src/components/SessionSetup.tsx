@@ -15,6 +15,7 @@ import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '..
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
+import { hasActivePro } from '../utils/proAccess';
 
 interface SessionSetupProps {
   userId: string;
@@ -164,11 +165,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         const profileSnap = await getDoc(doc(db, 'users', userId));
         if (profileSnap.exists()) {
           const data = profileSnap.data();
-          let userIsPro = data.isPremium === true || data.isPremiumPromo === true;
-          if (data.trialEndsAt) {
-            const trialEnd = new Date(data.trialEndsAt);
-            if (trialEnd > new Date()) userIsPro = true;
-          }
+          let userIsPro = hasActivePro(data);
           if (ADMIN_IDS.includes(userId)) userIsPro = true;
           setIsPremium(userIsPro);
           // Zestawy są źródłem prawdy; stare, płaskie `bowType` to fallback

@@ -11,6 +11,7 @@ import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
 import { formatRange, targetFitsDistance } from '../config/targetDistanceRanges';
+import { hasActivePro } from '../utils/proAccess';
 
 interface BattleLobbyViewProps {
   userId: string;
@@ -130,13 +131,7 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
       setShowRegion(ud.showRegion !== false);
       setShowNickname(ud.showNickname !== false);
       
-      const isBought = ud.isPremium || false;
-      const isPromo = ud.isPremiumPromo || false;
-      let isTrial = false;
-      if (ud.trialEndsAt) {
-          isTrial = new Date(ud.trialEndsAt).getTime() > Date.now();
-      }
-      const currentUserIsPro = isBought || isPromo || isTrial;
+      const currentUserIsPro = hasActivePro(ud);
 
       setIsPremium(currentUserIsPro);
       setLastWorldBattleAt(ud.lastWorldBattleAt || null);

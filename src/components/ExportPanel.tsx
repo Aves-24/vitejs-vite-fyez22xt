@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { buildSessionPdf } from './export/sessionPdf';
 import { useTranslation } from 'react-i18next'; 
 
 interface ExportPanelProps {
   session: any; 
   isPremium: boolean;
   onTriggerPaywall: () => void;
+  roundSize?: number;   // podział na rundy (krótsze treningi: 6/8/10 serii)
+  targetType?: string;  // tarcza do rysunku (StatsView: displayTargetType)
+  sightHint?: boolean;  // łuk z celownikiem — linijka korekty celownika
 }
 
-export default function ExportPanel({ session, isPremium, onTriggerPaywall }: ExportPanelProps) {
+export default function ExportPanel({ session, isPremium, onTriggerPaywall, roundSize = 6, targetType, sightHint }: ExportPanelProps) {
   const { t, i18n } = useTranslation();
   const [isExporting, setIsExporting] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -51,173 +54,6 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
     }
   };
 
-  // Kalkulator statystyk dla danej rundy/całości
-  const calcStats = (scoresSlice: any[]) => {
-    let score = 0, arrows = 0, x = 0, t10 = 0, t9 = 0;
-    scoresSlice.forEach(end => {
-      (end.arrows || []).forEach((v: string) => {
-        arrows++;
-        if (v === 'X') { x++; t10++; score += 10; }
-        else if (v === '10') { t10++; score += 10; }
-        else if (v === '9') { t9++; score += 9; }
-        else if (v !== 'M' && v) { score += parseInt(v) || 0; }
-      });
-    });
-    return { 
-      score, arrows, x, t10, t9, 
-      avg: arrows > 0 ? (score / arrows).toFixed(2) : "0.00" 
-    };
-  };
-
-  // Budowanie danych tabeli dla jednej rundy (do 6 serii)
-  const generateTableData = (roundScores: any[], startIndex: number) => {
-    let runningTotal = 0;
-    const data: any[] = [];
-    const safeVal = (v: string) => v === 'X' || v === '10' ? 10 : (v === 'M' || !v ? 0 : parseInt(v));
-
-    roundScores.forEach((end, i) => {
-      const arrs = end.arrows || [];
-      const a1 = arrs[0] || ''; const a2 = arrs[1] || ''; const a3 = arrs[2] || '';
-      const a4 = arrs[3] || ''; const a5 = arrs[4] || ''; const a6 = arrs[5] || '';
-      
-      const sum1 = safeVal(a1) + safeVal(a2) + safeVal(a3);
-      const sum2 = safeVal(a4) + safeVal(a5) + safeVal(a6);
-      const endSum = end.total_sum || (sum1 + sum2);
-      runningTotal += endSum;
-      const roundIndex = startIndex + i;
-
-      // Zmniejszony cellPadding i fontSize dla tabeli
-      data.push([
-        { content: String(roundIndex * 6 + 3), styles: { halign: 'center', textColor: [150, 150, 150] } },
-        { content: a1, styles: { halign: 'center' } }, { content: a2, styles: { halign: 'center' } }, { content: a3, styles: { halign: 'center' } },
-        { content: sum1 > 0 ? sum1.toString() : '', styles: { halign: 'center', fontStyle: 'bold' } },
-        { content: endSum.toString(), rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold', fontSize: 8 } },
-        { content: runningTotal.toString(), rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontStyle: 'bold', fontSize: 8 } }
-      ]);
-      
-      data.push([
-        { content: String(roundIndex * 6 + 6), styles: { halign: 'center', textColor: [150, 150, 150] } },
-        { content: a4, styles: { halign: 'center' } }, { content: a5, styles: { halign: 'center' } }, { content: a6, styles: { halign: 'center' } },
-        { content: sum2 > 0 ? sum2.toString() : '', styles: { halign: 'center', fontStyle: 'bold' } }
-      ]);
-    });
-    return data;
-  };
-
-  // --- RYSOWANIE ELEMENTÓW PDF ---
-
-  const drawRoundTable = (doc: any, roundScores: any[], startIndex: number, title: string, startY: number, headColor: [number, number, number]) => {
-    const data = generateTableData(roundScores, startIndex);
-    const textColor: [number, number, number] = headColor[0] > 200 ? [0,0,0] : [255,255,255];
-    
-    autoTable(doc, {
-      startY: startY,
-      theme: 'grid',
-      // Pomniejszono szerokość tabeli o 20% (130 * 0.8 = 104)
-      tableWidth: 104, 
-      margin: { left: 40 },
-      // Zmniejszono czcionkę i padding
-      styles: { font: 'Roboto', cellPadding: 1.2, fontSize: 7, lineColor: [200, 200, 200], lineWidth: 0.1 }, 
-      head: [
-        [{ content: title, colSpan: 7, styles: { halign: 'center', fillColor: [240, 240, 240], textColor: [10, 58, 42], fontStyle: 'bold' } }],
-        [
-          { content: t('export.pdfArrows', 'Strzały'), colSpan: 4, styles: { halign: 'center', fillColor: headColor, textColor: textColor } }, 
-          { content: t('export.pdfSum', 'Suma'), colSpan: 2, styles: { halign: 'center', fillColor: headColor, textColor: textColor } }, 
-          { content: t('export.pdfTotal', 'Wynik'), rowSpan: 2, styles: { valign: 'middle', halign: 'center', fillColor: headColor, textColor: textColor } } 
-        ],
-        [
-          { content: 'Nr.', styles: { halign: 'center', fillColor: headColor, textColor: textColor } },
-          { content: '1', styles: { halign: 'center', fillColor: headColor, textColor: textColor } },
-          { content: '2', styles: { halign: 'center', fillColor: headColor, textColor: textColor } },
-          { content: '3', styles: { halign: 'center', fillColor: headColor, textColor: textColor } },
-          { content: '4', styles: { halign: 'center', fillColor: headColor, textColor: textColor } }, 
-          { content: '5', styles: { halign: 'center', fillColor: headColor, textColor: textColor } }  
-        ]
-      ],
-      body: data
-    });
-    return (doc as any).lastAutoTable.finalY;
-  };
-
-  const drawRoundSummary = (doc: any, y: number, stats: any) => {
-    doc.setDrawColor(220, 220, 220);
-    doc.setFillColor(252, 253, 254);
-    doc.roundedRect(40, y + 2, 104, 13, 2, 2, 'FD'); 
-
-    doc.setFillColor(235, 247, 240);
-    doc.setDrawColor(200, 230, 210);
-    doc.roundedRect(122, y + 3.5, 22, 9.5, 2, 2, 'FD'); 
-
-    doc.setFont('Roboto', 'bold');
-    doc.setFontSize(6); 
-    doc.setTextColor(150, 150, 150);
-    doc.text('X/10/9', 54, y + 7, { align: 'center' }); 
-    doc.text(t('export.pdfAverage', 'Średnia'), 78, y + 7, { align: 'center' }); 
-    doc.text(t('export.pdfArrowsCount', 'Strzały'), 102, y + 7, { align: 'center' }); 
-    
-    doc.setTextColor(10, 58, 42);
-    doc.text(t('export.pdfResult', 'Wynik'), 130, y + 7, { align: 'center' }); 
-
-    doc.setFontSize(9); 
-    doc.setTextColor(0, 0, 0);
-    doc.text(`${stats.x}/${stats.t10}/${stats.t9}`, 54, y + 12, { align: 'center' });
-    doc.text(stats.avg.toString(), 78, y + 12, { align: 'center' });
-    doc.text(stats.arrows.toString(), 102, y + 12, { align: 'center' });
-
-    doc.setFontSize(10); 
-    doc.setTextColor(10, 58, 42);
-    doc.text(stats.score.toString(), 130, y + 12, { align: 'center' });
-
-    return y + 16; 
-  };
-
-  const drawGrandTotal = (doc: any, y: number, stats: any) => {
-    doc.setFillColor(242, 201, 76);
-    // Skorygowana wysokość na 22, aby pomieścić dodane X/10/9
-    doc.roundedRect(40, y + 4, 104, 22, 3, 3, 'F'); 
-
-    doc.setFont('Roboto', 'bold');
-    doc.setFontSize(10); 
-    doc.setTextColor(10, 58, 42);
-    doc.text(t('export.pdfGrandTotal', 'Suma Całkowita'), 45, y + 11); 
-
-    doc.setFontSize(6); 
-    doc.setTextColor(120, 100, 20);
-    doc.text('X/10/9', 45, y + 18); 
-    doc.text(t('export.pdfAverage', 'Średnia'), 75, y + 18); 
-    doc.text(t('export.pdfArrowsCount', 'Strzały'), 100, y + 18); 
-
-    doc.setFontSize(9); 
-    doc.setTextColor(10, 58, 42);
-    doc.text(`${stats.x}/${stats.t10}/${stats.t9}`, 45, y + 23);
-    doc.text(stats.avg.toString(), 75, y + 23);
-    doc.text(stats.arrows.toString(), 100, y + 23);
-
-    doc.setFontSize(24); 
-    // Wynik przesunięty idealnie do prawej strony
-    doc.text(stats.score.toString(), 140, y + 21, { align: 'right' }); 
-
-    return y + 30; 
-  };
-
-  const drawNotesSpace = (doc: any, y: number) => {
-    doc.setDrawColor(200);
-    doc.line(40, y, 144, y); 
-
-    doc.setFontSize(10); 
-    doc.setFont('Roboto', 'bold');
-    doc.setTextColor(10, 58, 42);
-    doc.text(t('export.pdfCoachNotes', 'Notatki z treningu (Twoje uwagi)'), 40, y + 8); 
-    
-    // Rysujemy skondensowane linie pod notatki
-    doc.setDrawColor(230);
-    for (let i = 0; i < 4; i++) {
-        doc.line(40, y + 16 + (i * 8), 144, y + 16 + (i * 8));
-    }
-
-    return y + 50;
-  };
-
   // --- GŁÓWNA FUNKCJA EKSPORTU ---
 
   const handleGeneratePDF = async () => {
@@ -233,45 +69,11 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
       doc.setFont('Roboto', 'normal');
 
       const date = session.date || new Date().toLocaleDateString(i18n.language === 'en' ? 'en-GB' : i18n.language === 'de' ? 'de-DE' : 'pl-PL');
-      const headColor: [number, number, number] = [10, 58, 42];
-
-      // Nagłówek Dokumentu
-      doc.setFontSize(18); 
-      doc.setFont('Roboto', 'bold');
-      doc.setTextColor(10, 58, 42); 
-      doc.text('GROT-X', 40, 22); 
-      
-      doc.setFontSize(10); 
-      doc.setFont('Roboto', 'normal');
-      doc.setTextColor(100);
-      doc.text(t('export.pdfScorecard', 'Karta Wyników'), 40, 30); 
-      doc.text(`${t('export.pdfDate', 'Data')}: ${date}`, 40, 36); 
-
-      let currentY = 40; 
-
-      // === RUNDA 1 ===
-      const r1Scores = session.ends.slice(0, 6);
-      if (r1Scores.length > 0) {
-        const r1Stats = calcStats(r1Scores);
-        currentY = drawRoundTable(doc, r1Scores, 0, `${t('export.pdfRound', 'Runda')} 1`, currentY, headColor); 
-        currentY = drawRoundSummary(doc, currentY, r1Stats); 
-      }
-
-      // === RUNDA 2 ===
-      const r2Scores = session.ends.slice(6, 12);
-      if (r2Scores.length > 0) {
-        const r2Stats = calcStats(r2Scores);
-        currentY = drawRoundTable(doc, r2Scores, 6, `${t('export.pdfRound', 'Runda')} 2`, currentY + 4, headColor); 
-        currentY = drawRoundSummary(doc, currentY, r2Stats);
-      }
-
-      // === SUMA CAŁKOWITA ===
-      const totalStats = calcStats(session.ends);
-      currentY = drawGrandTotal(doc, currentY, totalStats);
-
-      // === DODANIE MIEJSCA NA NOTATKI NA DOLE ===
-      const notesStart = currentY + 6;
-      drawNotesSpace(doc, notesStart);
+      // [PDF 2026-10-29] Układ nowego podsumowania — components/export/sessionPdf.ts
+      buildSessionPdf(doc, session, {
+        t, lang: i18n.language, roundSize, targetType: targetType || session.targetType || 'Full', sightHint,
+        note: session.isNotePublic !== false ? (session.note || '') : '',
+      });
 
       doc.save(`GrotX_Report_${date}.pdf`);
 

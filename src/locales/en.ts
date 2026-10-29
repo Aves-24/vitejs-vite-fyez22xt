@@ -1559,6 +1559,10 @@ export const views = {
     topic_nockpunkt: "Nocking point"
   },
   stats: {
+    locked: {
+      pro: "PRO",
+      hint: "The analysis of this session was free for {{hours}} hours. With GROT-X PRO it stays available, including PDF export."
+    },
     groupTrend: {
       title: "Group size",
       sub: "Last {{count}} sessions · 80% of arrows",

@@ -1559,6 +1559,10 @@ export const views = {
     topic_nockpunkt: "Nockpunkt"
   },
   stats: {
+    locked: {
+      pro: "PRO",
+      hint: "Die Auswertung dieses Trainings war {{hours}} Stunden lang frei. Mit GROT-X PRO bleibt sie dauerhaft sichtbar, auch PDF-Export."
+    },
     groupTrend: {
       title: "Gruppengröße",
       sub: "Letzte {{count}} Trainings · 80 % der Pfeile",

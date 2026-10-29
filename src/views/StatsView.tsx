@@ -8,7 +8,8 @@ import { useTranslation } from 'react-i18next';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
-import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
+import { hasActivePro, FREE_HISTORY_DAYS, FREE_ANALYSIS_HOURS, freeAnalysisOpen } from '../utils/proAccess';
+import LockedCard from '../components/scoring/LockedCard';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
 import TargetCard from '../components/scoring/TargetCard';
@@ -611,7 +612,10 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
   if (isLoading) return <div className="p-10 text-center animate-pulse text-gray-400 mt-20">{t('stats.loading')}</div>;
 
-  const hasFullAccess = isPremium || selectedDate === todayISO;
+  // [FREE 24 h] Pełna analiza: PRO zawsze, FREE przez 24 h od zapisu treningu.
+  // Stare sesje bez czasu — jak dawniej: tylko w dniu treningu.
+  const sessionMs: number | null = selectedSession?.timestamp?.toMillis?.() ?? (selectedSession?.timestamp?.seconds ? selectedSession.timestamp.seconds * 1000 : null);
+  const hasFullAccess = isPremium || (sessionMs ? freeAnalysisOpen(sessionMs) : selectedDate === todayISO);
   
   const currentEnds = selectedSession?.ends || [];
   const roundSize = roundSizeFor(selectedSession);
@@ -841,7 +845,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       )}
 
                       {/* [PODSUMOWANIE] Ten sam układ co po treningu (user 2026-10-29):
-                          Bilanz → tabela serii → Trend z wybraną serią → Trefferbild. */}
+                          Bilanz → tabela serii → Trend z wybraną serią → Trefferbild → eksport.
+                          [FREE 24 h] PRO zawsze; FREE przez 24 h od treningu (proAccess),
+                          potem same zwinięte, zablokowane nagłówki kart. */}
+                      {hasFullAccess ? (
+                      <>
                       {currentEnds.length > 0 && (
                         <SessionBilanz
                           userId={targetUserId}
@@ -852,7 +860,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                           targetType={displayTargetType}
                           bowClass={selectedSession.bowClass}
                           sessionId={selectedSession.id}
-                          beforeTs={selectedSession.timestamp?.toMillis?.() ?? (selectedSession.timestamp?.seconds ? selectedSession.timestamp.seconds * 1000 : undefined)}
+                          beforeTs={sessionMs ?? undefined}
                         />
                       )}
 
@@ -860,10 +868,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
                       <TrendCard ends={currentEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!selectedSession?.arrowColors} storageKey="stats-trend" />
 
-                      {/* PRO (miniony dzień): wizualny rozrzut na tarczy, biomechanika,
-                          AI, eksport. Dziś zostaje darmowe — hasFullAccess === true. */}
-                      {hasFullAccess ? (
-                      <>
                       {/* Jedna duża tarcza jak po treningu; heatmapa w karcie zamiast okienka. */}
                       <TargetCard
                         key={selectedSession.id}
@@ -878,33 +882,37 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       />
                       {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
+                      {/* Eksport: PDF dla każdego w oknie analizy, CSV tylko PRO (ExportPanel). */}
                       {!viewingStudentId && (
-                        <div>
-                          {isPremium || selectedDate === todayISO ? (
-                            <div className="tb-card tb-d1 border rounded-l-md rounded-r-2xl shadow-sm overflow-hidden">
-                               <ExportPanel session={selectedSession} isPremium={isPremium} onTriggerPaywall={() => onNavigate('SETTINGS', 'PRO')} />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => onNavigate('SETTINGS', 'PRO')}
-                              className="w-full py-4 bg-gradient-to-r from-yellow-400 to-[#fed33e] text-[#0a3a2a] rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-md flex items-center justify-center gap-2 active:scale-95 transition-all"
-                            >
-                              <span className="material-symbols-outlined text-[16px]">diamond</span>
-                              GROT-X PRO — {t('export.archivePro', 'Eksport archiwum')}
-                            </button>
-                          )}
+                        <div className="tb-card tb-d1 border rounded-l-md rounded-r-2xl shadow-sm overflow-hidden">
+                          <ExportPanel
+                            session={selectedSession}
+                            isPremium={isPremium}
+                            onTriggerPaywall={() => onNavigate('SETTINGS', 'PRO')}
+                            roundSize={roundSize}
+                            targetType={displayTargetType}
+                            sightHint={sessionHasSight}
+                          />
                         </div>
                       )}
                       </>
                       ) : (
-                        <div className="mt-4 p-6 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200 text-center flex flex-col items-center">
-                          <span className="material-symbols-outlined text-[#F2C94C] text-3xl mb-2">diamond</span>
-                          <p className="text-[11px] text-gray-400 font-bold uppercase tracking-widest">{t('stats.unlockAnalysis', { defaultValue: 'Rozrzut na tarczy i biomechanika w PRO' })}</p>
-                          <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="mt-3 px-6 py-2 bg-[#0a3a2a] text-[#fed33e] rounded-full text-[9px] font-black uppercase tracking-widest shadow-md flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[12px]">diamond</span>
-                            GROT-X PRO
-                          </button>
+                      <>
+                        {/* Po 24 h (FREE): krótka informacja i zwinięte, zablokowane karty. */}
+                        <div className="flex items-start gap-2 px-1">
+                          <span className="material-symbols-outlined text-[16px] text-[#8a6d00] shrink-0">schedule</span>
+                          <p className="text-[11px] font-bold text-gray-500 leading-snug">{t('stats.locked.hint', { hours: FREE_ANALYSIS_HOURS })}</p>
                         </div>
+                        {[
+                          { icon: 'insights', kind: t('scoring.bilanz.title'), stripe: 'tb-d3' },
+                          { icon: 'table_chart', kind: t('stats.cards.detailTable'), stripe: 'tb-d1' },
+                          { icon: 'bar_chart', kind: t('scoring.trendTitle'), stripe: 'tb-d2' },
+                          { icon: 'adjust', kind: t('scoring.targetCard'), stripe: 'tb-d2' },
+                          ...(!viewingStudentId ? [{ icon: 'ios_share', kind: t('export.title', 'Eksport Danych'), stripe: 'tb-d1' }] : []),
+                        ].map(c => (
+                          <LockedCard key={c.kind} icon={c.icon} kind={c.kind} stripe={c.stripe} onUnlock={() => onNavigate('SETTINGS', 'PRO')} />
+                        ))}
+                      </>
                       )}
 
                       {!viewingStudentId && (

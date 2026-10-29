@@ -38,3 +38,16 @@ export function freeHistoryStart(now: number = Date.now()): Date {
   const d = new Date(now);
   return new Date(d.getFullYear(), d.getMonth(), d.getDate() - FREE_HISTORY_DAYS);
 }
+
+/**
+ * [FREE 24 h] Pełna analiza pojedynczego treningu w Statystykach (Bilanz, tabela,
+ * trend, Trefferbild, eksport PDF) jest dla FREE otwarta przez 24 godziny od
+ * zapisu treningu (user 2026-10-29). Potem karty są zwinięte i zablokowane — sam
+ * trening (wynik, notatki, fokus) zostaje widoczny w oknie FREE_HISTORY_DAYS.
+ */
+export const FREE_ANALYSIS_HOURS = 24;
+
+export function freeAnalysisOpen(sessionMs: number | null | undefined, now: number = Date.now()): boolean {
+  if (!sessionMs) return false;
+  return now - sessionMs < FREE_ANALYSIS_HOURS * 3600_000;
+}

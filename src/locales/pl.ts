@@ -1580,6 +1580,10 @@ export const views = {
     topic_nockpunkt: "Punkt nałożenia strzały"
   },
   stats: {
+    locked: {
+      pro: "PRO",
+      hint: "Analiza tego treningu była dostępna przez {{hours}} godziny. Z GROT-X PRO zostaje na stałe, razem z eksportem PDF."
+    },
     groupTrend: {
       title: "Wielkość grupy",
       sub: "Ostatnie {{count}} treningów · 80% strzał",

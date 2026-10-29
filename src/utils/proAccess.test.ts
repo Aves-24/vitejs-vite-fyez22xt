@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hasActivePro, freeHistoryStart, FREE_HISTORY_DAYS } from './proAccess';
+import { hasActivePro, freeHistoryStart, FREE_HISTORY_DAYS, freeAnalysisOpen } from './proAccess';
 
 describe('hasActivePro', () => {
   const now = new Date('2026-10-28T12:00:00').getTime();
@@ -25,5 +25,17 @@ describe('freeHistoryStart', () => {
     expect(s.getFullYear()).toBe(2026);
     expect(s.getMonth()).toBe(6);   // lipiec
     expect(s.getDate()).toBe(30);
+  });
+});
+
+describe('freeAnalysisOpen', () => {
+  const now = new Date('2026-10-29T12:00:00').getTime();
+  it('otwarte przez 24 h od treningu, także przez północ', () => {
+    expect(freeAnalysisOpen(now - 23.9 * 3600_000, now)).toBe(true);
+    expect(freeAnalysisOpen(new Date('2026-10-28T23:00:00').getTime(), now)).toBe(true);
+  });
+  it('po 24 h zamknięte; brak czasu treningu = zamknięte', () => {
+    expect(freeAnalysisOpen(now - 24 * 3600_000, now)).toBe(false);
+    expect(freeAnalysisOpen(null, now)).toBe(false);
   });
 });

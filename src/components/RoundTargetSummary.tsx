@@ -8,7 +8,9 @@ import { directionKey } from '../utils/arrowStats';
 // arrowColors — [KOLORY STRZAŁ] sesja wpisana w kolorowej kolejności: kropka = kolor strzały
 // showGroup — [PODSUMOWANIE TRENINGU] środek grupy i koło z 80% strzał + podpis w cm
 // (wybrana seria, jeśli jest w tej rundzie, inaczej cała runda) — utils/groupStats.ts
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors, showGroup }: any) {
+// colorFilter — [KOLORY STRZAŁ] miejsce strzały w serii (0 = zielona): na tarczy tylko
+// ta strzała ze wszystkich serii, grupa liczona też tylko z niej (ArrowColorFilter)
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors, showGroup, colorFilter = null }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -17,7 +19,9 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
   const isLargeSession = totalArrows > 18;
 
   const localSel = highlightedEnd !== null && highlightedEnd !== undefined ? highlightedEnd - startIndex : -1;
-  const groupEnds = localSel >= 0 && localSel < ends.length ? [ends[localSel]] : ends;
+  const filtering = arrowColors && colorFilter !== null && colorFilter !== undefined;
+  const selEnds = localSel >= 0 && localSel < ends.length ? [ends[localSel]] : ends;
+  const groupEnds = filtering ? selEnds.map((e: any) => ({ dots: e.dots?.[colorFilter] ? [e.dots[colorFilter]] : [] })) : selEnds;
   const group = showGroup ? groupStats(groupEnds, targetType) : null;
   const cm = (v: number) => Math.round(Math.abs(v)).toLocaleString(i18n.language);
   const cross = group?.svg
@@ -40,7 +44,9 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
       <div className="w-full flex justify-between items-center mb-3">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{title}</span>
-          <span className="text-[8px] font-bold text-emerald-500 uppercase mt-1">{totalArrows} {t('common.arrows')}</span>
+          <span className="text-[8px] font-bold text-emerald-500 uppercase mt-1">
+            {filtering ? `${ends.filter((e: any) => e.dots?.[colorFilter]).length} / ${totalArrows}` : totalArrows} {t('common.arrows')}
+          </span>
         </div>
         {onZoomClick && (
           <button 
@@ -59,6 +65,8 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
       <div className="w-full flex-1 flex items-center justify-center min-h-[160px]">
         {/* Zunifikowany viewBox: 3-Spot używa 300x400 (żeby podwójna tarcza ładnie siadła) */}
         <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className="w-full h-auto max-h-[220px] drop-shadow-md">
+          {/* Tarcza przygaszona do 70% (user 2026-10-29) — strzały lepiej widać. */}
+          <g opacity="0.7">
           {isFullFace ? (
             <g>
               <circle cx="150" cy="150" r="150" fill="white" stroke="#333" strokeWidth="1" />
@@ -88,13 +96,17 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               {[66, 200, 333].map(cy => renderSpotCircle(150, cy))}
             </g>
           )}
-          
+          </g>
+
           {ends.map((end: any, idx: number) => {
             const globalIdx = startIndex + idx;
-            const isHighlighted = highlightedEnd === null || highlightedEnd === undefined || highlightedEnd === globalIdx;
-            
+            const endOn = highlightedEnd === null || highlightedEnd === undefined || highlightedEnd === globalIdx;
+
             return end.dots?.map((dot: any, dIdx: number) => {
               if (dot.x === null || dot.y === null) return null;
+              // Filtr koloru: na tarczy zostaje tylko wybrana strzała ze wszystkich serii.
+              if (filtering && dIdx !== colorFilter) return null;
+              const isHighlighted = endOn;
               const radius = isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
               const ac = arrowColors ? arrowColorAt(dIdx) : null;
               

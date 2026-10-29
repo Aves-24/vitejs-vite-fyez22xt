@@ -11,6 +11,7 @@ import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
 import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
 import RoundTargetSummary from '../components/RoundTargetSummary';
+import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
 import { arrowColorAt } from '../config/arrowColors';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
@@ -538,6 +539,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [dailyArrows, setDailyArrows] = useState(0);
   const [dailyPfeilzaehler, setDailyPfeilzaehler] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
+  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
   const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
   // Ręczność łucznika (RH/LH) — decyduje o lustrzanym odbiciu wskazówek lewo/prawo.
   // null = nieustawiona w profilu → pokazujemy prośbę o uzupełnienie.
@@ -742,6 +744,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       const s = allSessions.find(s => s.id === selectedSessionId);
       setSelectedSession(s || null);
       setHighlightedEnd(null);
+      setColorFilter(null);
     }
   }, [selectedSessionId, allSessions]);
 
@@ -1007,7 +1010,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       <RoundDetailTable r1Ends={r1Ends} r2Ends={r2Ends} t={t} />
 
                       <div className="space-y-2 relative">
-                        <SessionTrend submittedEnds={currentEnds} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
+                        <SessionTrend submittedEnds={currentEnds} highlighted={highlightedEnd} roundSize={roundSize} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
                         
                         {previewEnd && (
                           <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
@@ -1029,16 +1032,17 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                           AI, eksport. Dziś zostaje darmowe — hasFullAccess === true. */}
                       {hasFullAccess ? (
                       <>
+                      {selectedSession?.arrowColors && <div className="mb-2"><ArrowColorFilter value={colorFilter} onChange={setColorFilter} /></div>}
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r1Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r1Hits.x}</span><span>10: {r1Hits.ten}</span><span>9: {r1Hits.nine}</span>
                           </div>
                         </div>
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>

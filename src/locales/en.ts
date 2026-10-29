@@ -46,6 +46,9 @@ export const components = {
     trendHint: "Tap a bar",
     trendAvg: "Ø {{avg}} per end",
     shotOrder: "Shooting order",
+    colorFilter: "Arrow",
+    colorFilterAll: "All",
+    colorFilterArrow: "Show only arrow {{n}}",
     bilanz: {
       title: "Summary",
       vsAvgPts: "{{pts}} pts vs. average of last {{count}}",

@@ -46,6 +46,9 @@ export const components = {
     trendHint: "Dotknij słupka",
     trendAvg: "Ø {{avg}} na serię",
     shotOrder: "Kolejność strzał",
+    colorFilter: "Strzała",
+    colorFilterAll: "Wszystkie",
+    colorFilterArrow: "Pokaż tylko strzałę {{n}}",
     bilanz: {
       title: "Bilans",
       vsAvgPts: "{{pts}} pkt do średniej z ostatnich {{count}}",

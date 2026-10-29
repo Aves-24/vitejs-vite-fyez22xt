@@ -46,6 +46,9 @@ export const components = {
     trendHint: "Balken antippen",
     trendAvg: "Ø {{avg}} pro Passe",
     shotOrder: "Reihenfolge der Pfeile",
+    colorFilter: "Pfeil",
+    colorFilterAll: "Alle",
+    colorFilterArrow: "Nur Pfeil {{n}} zeigen",
     bilanz: {
       title: "Bilanz",
       vsAvgPts: "{{pts}} Ringe zum Schnitt der letzten {{count}}",

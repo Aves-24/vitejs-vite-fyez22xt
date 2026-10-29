@@ -12,6 +12,7 @@ import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../u
 import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend';
 import SessionBilanz from '../components/scoring/SessionBilanz';
+import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -176,6 +177,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     getSetupStamp(userId).then(st => setArrowColors(!!st.arrowColors));
   }, [userId]);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
+  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
   const [isTimerExpanded, setIsTimerExpanded] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState<'IDLE' | 'PREP' | 'SHOOT' | 'FINISHED'>('IDLE');
@@ -1113,9 +1115,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 })()}
               </div>
 
+              {arrowColors && <ArrowColorFilter value={colorFilter} onChange={setColorFilter} />}
+
               <div className="flex gap-2 w-full animate-fade-in-up">
-                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
-                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
+                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} colorFilter={colorFilter} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
+                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} colorFilter={colorFilter} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
               </div>
               
               {AI_ENABLED && submittedEnds.length >= 6 && (

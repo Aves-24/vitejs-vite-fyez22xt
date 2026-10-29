@@ -14,6 +14,7 @@ import StudentSharedNotes from '../components/StudentSharedNotes';
 import CoachFocusModal from '../components/CoachFocusModal';
 import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
+import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
@@ -399,6 +400,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // LENIWE WYŚWIETLANIE SZCZEGÓŁOWYCH STATYSTYK SESJI (per session.id)
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
+  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -648,6 +650,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const toggleDetailedStats = () => {
     if (!currentSession) return;
     setHighlightedEnd(null);
+    setColorFilter(null);
     setExpandedSessionIds(prev => {
       const next = new Set(prev);
       if (next.has(currentSession.id)) next.delete(currentSession.id);
@@ -960,17 +963,18 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   )}
                   {isDetailedShown && sessionEnds.length > 0 && (
                     <div className="space-y-2 animate-fade-in">
-                      <SessionTrend submittedEnds={sessionEnds} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
+                      <SessionTrend submittedEnds={sessionEnds} highlighted={highlightedEnd} roundSize={roundSize} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
+                      {currentSession.arrowColors && <ArrowColorFilter value={colorFilter} onChange={setColorFilter} />}
                       {(r1Ends.length > 0 || r2Ends.length > 0) && (
                         <div className="flex gap-2 w-full">
                           {r1Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} colorFilter={colorFilter} />
                             </div>
                           )}
                           {r2Ends.length > 0 && (
                             <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} />
+                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} colorFilter={colorFilter} />
                             </div>
                           )}
                         </div>

@@ -376,15 +376,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
-  // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): dotknięcie pola w tabeli
-  // przełącza znacznik strzały; flaga w rogu pola bieżącej i poprzedniej serii
-  // pokazuje, że tak można (user 2026-10-29: przycisk w pasku był nieintuicyjny).
+  // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): flaga w pasku rundy włącza tryb
+  // oznaczania — wtedy dotknięcie pola w tabeli przełącza znacznik strzały, a
+  // flagi w rogu pól bieżącej i poprzedniej serii pokazują, że tak można.
   // Punkty bez zmian, strzała wypada tylko z analizy.
   const toggleEndBad = (endIdx: number, rawIdx: number) => {
     setSubmittedEnds(prev => prev.map((e, k) => (k === endIdx && e.dots?.length ? { ...e, dots: toggleBad(e.dots, rawIdx) } : e)));
   };
   const hasAnyArrow = inputArrows.length > 0 || submittedEnds.length > 0;
   const [showBadShotInfo, setShowBadShotInfo] = useState(false); // okno (i) przy tabeli serii
+  const [badMode, setBadMode] = useState(false); // tryb oznaczania Fehlschuss (flaga w pasku rundy)
 
   const undo = () => {
     if (inputArrows.length > 0) {
@@ -894,18 +895,27 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mx-2">
         <div className="px-3 py-2 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
           <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
+          {/* [FEHLSCHUSS] Tryb oznaczania (user 2026-10-29): przy strzelaniu tylko flaga
+              i (i); flaga włącza tryb (podpowiedź + flagi na polach), druga wyłącza. */}
           {hasAnyArrow && (
-            <button
-              onClick={() => setShowBadShotInfo(true)}
-              className="flex items-center gap-1 text-white/70 font-bold normal-case active:opacity-60"
-              aria-label={t('scoring.badShot.info.title')}
-            >
-              <span className="material-symbols-outlined text-[13px] text-red-300">flag</span>
-              {t('scoring.badShot.tapHint')}
-              <span className="ml-0.5 w-4 h-4 rounded-full bg-white/15 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[11px] text-white">info</span>
-              </span>
-            </button>
+            <div className="flex items-center gap-1.5 -my-1">
+              <button
+                onClick={() => setBadMode(m => !m)}
+                className={`flex items-center gap-1 h-6 rounded-full transition-all active:scale-95 ${badMode ? 'bg-red-500 text-white pl-1.5 pr-2.5 font-black normal-case' : 'w-6 justify-center bg-white/10'}`}
+                aria-pressed={badMode}
+                aria-label={t('scoring.badShot.tapHint')}
+              >
+                <span className={`material-symbols-outlined text-[14px] ${badMode ? 'text-white' : 'text-red-300'}`}>flag</span>
+                {badMode && <span className="text-[10px]">{t('scoring.badShot.tapHint')}</span>}
+              </button>
+              <button
+                onClick={() => setShowBadShotInfo(true)}
+                className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center active:scale-95"
+                aria-label={t('scoring.badShot.info.title')}
+              >
+                <span className="material-symbols-outlined text-[13px] text-white">info</span>
+              </button>
+            </div>
           )}
         </div>
         <div className="p-2 space-y-1">
@@ -929,7 +939,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                     const rawIdx = isCur ? ai : (end?.rawArrows ? sortedRawIndices(end.rawArrows)[ai] : -1);
                     const bad = isCur ? !!inputCoordinates[ai]?.bad : !!(rawIdx >= 0 && end?.dots?.[rawIdx]?.bad);
                     const val = currentPassArrows[ai] || '';
-                    const canToggle = !!val && (isCur || (rawIdx >= 0 && !!end?.dots?.length));
+                    const canToggle = badMode && !!val && (isCur || (rawIdx >= 0 && !!end?.dots?.length));
                     const onToggle = () => {
                       if (!canToggle) return;
                       if (isCur) setInputCoordinates(c => toggleBad(c, ai));
@@ -948,7 +958,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                         {/* Flaga w rogu (user 2026-10-29): widoczna przy bieżącej i poprzedniej
                             serii (oznaczanie zaraz po strzale, też gdy ruszyła już nowa passa),
                             czerwona przy każdej oznaczonej. Dotknięcie pola przełącza. */}
-                        {canToggle && (bad || isCur || idx === submittedEnds.length - 1) && (
+                        {(bad || (canToggle && (isCur || idx === submittedEnds.length - 1))) && (
                           <span
                             className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center border shadow-sm pointer-events-none transition-colors ${bad ? 'bg-red-500 border-red-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
                             aria-hidden="true"

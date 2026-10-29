@@ -61,7 +61,28 @@ export const components = {
       tapHint: "Tap an arrow = bad shot",
       cell: "Arrow {{v}}: mark as bad shot",
       label: "Bad shots",
-      excluded: "excluded from group and sight"
+      excluded: "excluded from group and sight",
+      info: {
+        title: "What is a bad shot?",
+        what: "An arrow you executed badly: for example plucked, released too early, aimed, aborted and shot anyway, or fought the clicker.",
+        notWhat: "A cleanly executed shot that simply landed poorly is not a bad shot. It belongs to your real group.",
+        howTitle: "How to mark it",
+        how: "Tap the arrow in the table. The grey flag turns red. Tap again to remove the mark.",
+        when: "Flags show on the current and the previous end, so you can still mark after the next end has started. Until you save, every arrow can be tapped.",
+        effectTitle: "What changes",
+        scoreStays: "The score still counts. Your result stays honest.",
+        excludedTitle: "The arrow is left out of:",
+        ex: {
+          group: "the group on the target face (cross, circle, size and offset in cm)",
+          sight: "the sight correction",
+          axis: "the error axis (stretched vertically / horizontally)",
+          arrows: "arrows compared (arrow colours)",
+          trend: "group size in Stats",
+          spread: "biomechanics and spread in Stats"
+        },
+        shown: "On the target face it appears as an empty circle with a red dashed outline; the summary shows how many.",
+        tip: "Mark honestly and sparingly, only real execution errors. Otherwise your group looks better than it is."
+      }
     },
     holdPlain: "Show all arrows in yellow",
     journalAdd: "How did it go? Add a note",

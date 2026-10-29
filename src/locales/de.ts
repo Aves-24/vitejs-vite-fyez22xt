@@ -61,7 +61,28 @@ export const components = {
       tapHint: "Pfeil antippen = Fehlschuss",
       cell: "Pfeil {{v}}: als Fehlschuss markieren",
       label: "Fehlschüsse",
-      excluded: "nicht in Gruppe und Visier"
+      excluded: "nicht in Gruppe und Visier",
+      info: {
+        title: "Was ist ein Fehlschuss?",
+        what: "Ein Pfeil, den du technisch schlecht ausgeführt hast: zum Beispiel gezupft, zu früh gelöst, das Zielen abgebrochen und trotzdem geschossen oder gegen den Klicker gekämpft.",
+        notWhat: "Kein Fehlschuss ist ein sauber ausgeführter Schuss, der nur schlecht getroffen hat. Der gehört zu deiner echten Gruppe.",
+        howTitle: "So markierst du ihn",
+        how: "Tippe in der Tabelle auf den Pfeil. Die graue Flagge wird rot. Nochmal tippen nimmt die Markierung zurück.",
+        when: "Flaggen siehst du in der aktuellen und der vorigen Passe, so kannst du auch nach Beginn der nächsten Passe noch markieren. Bis zum Speichern lässt sich jeder Pfeil antippen.",
+        effectTitle: "Was sich ändert",
+        scoreStays: "Die Ringe zählen weiter. Dein Ergebnis bleibt ehrlich.",
+        excludedTitle: "Nicht berücksichtigt wird der Pfeil bei:",
+        ex: {
+          group: "Gruppe auf der Auflage (Kreuz, Kreis, Größe und Versatz in cm)",
+          sight: "Visierkorrektur",
+          axis: "Fehlerachse (vertikal / horizontal gestreckt)",
+          arrows: "Pfeile im Vergleich (Pfeilfarben)",
+          trend: "Gruppengröße in der Statistik",
+          spread: "Biomechanik und Streuung in der Statistik"
+        },
+        shown: "Auf der Auflage erscheint er als leerer, rot gestrichelter Kreis, in der Bilanz siehst du die Anzahl.",
+        tip: "Markiere ehrlich und sparsam, nur echte Ausführungsfehler. Sonst sieht deine Gruppe besser aus, als sie ist."
+      }
     },
     holdPlain: "Alle Pfeile gelb anzeigen",
     journalAdd: "Wie lief es? Notiz hinzufügen",

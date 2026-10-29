@@ -61,7 +61,28 @@ export const components = {
       tapHint: "Dotknij strzały = zły strzał",
       cell: "Strzała {{v}}: oznacz jako zły strzał",
       label: "Złe strzały",
-      excluded: "poza grupą i celownikiem"
+      excluded: "poza grupą i celownikiem",
+      info: {
+        title: "Co to jest zły strzał?",
+        what: "Strzała oddana z błędem technicznym: na przykład szarpnięcie, za wczesne zwolnienie, przerwane celowanie zakończone strzałem albo walka z klikerem.",
+        notWhat: "Złym strzałem nie jest czysto wykonany strzał, który po prostu gorzej trafił. Taki należy do Twojej prawdziwej grupy.",
+        howTitle: "Jak go oznaczyć",
+        how: "Dotknij strzały w tabeli. Szara flaga zmieni się na czerwoną. Ponowne dotknięcie cofa oznaczenie.",
+        when: "Flagi widać przy bieżącej i poprzedniej serii, więc można oznaczać także po rozpoczęciu kolejnej. Do zapisu treningu da się dotknąć każdą strzałę.",
+        effectTitle: "Co się zmienia",
+        scoreStays: "Punkty liczą się dalej. Wynik zostaje uczciwy.",
+        excludedTitle: "Strzała nie jest brana pod uwagę w:",
+        ex: {
+          group: "grupie na tarczy (krzyżyk, koło, wielkość i przesunięcie w cm)",
+          sight: "korekcie celownika",
+          axis: "osi błędu (grupa rozciągnięta pionowo / poziomo)",
+          arrows: "porównaniu strzał (kolory strzał)",
+          trend: "wielkości grupy w Statystykach",
+          spread: "biomechanice i rozrzucie w Statystykach"
+        },
+        shown: "Na tarczy widać ją jako pustą kropkę z czerwonym przerywanym obrysem, a w Bilansie ich liczbę.",
+        tip: "Oznaczaj uczciwie i oszczędnie, tylko prawdziwe błędy wykonania. Inaczej grupa wyjdzie lepsza, niż jest."
+      }
     },
     holdPlain: "Pokaż wszystkie strzały na żółto",
     journalAdd: "Jak poszło? Dodaj notatkę",

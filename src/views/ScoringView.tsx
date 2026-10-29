@@ -15,6 +15,7 @@ import SessionTrend from '../components/SessionTrend';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
 import SummaryCard from '../components/scoring/SummaryCard';
+import BadShotInfo from '../components/scoring/BadShotInfo';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -383,6 +384,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     setSubmittedEnds(prev => prev.map((e, k) => (k === endIdx && e.dots?.length ? { ...e, dots: toggleBad(e.dots, rawIdx) } : e)));
   };
   const hasAnyArrow = inputArrows.length > 0 || submittedEnds.length > 0;
+  const [showBadShotInfo, setShowBadShotInfo] = useState(false); // okno (i) przy tabeli serii
 
   const undo = () => {
     if (inputArrows.length > 0) {
@@ -893,10 +895,17 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <div className="px-3 py-2 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
           <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
           {hasAnyArrow && (
-            <span className="flex items-center gap-1 text-white/70 font-bold normal-case">
+            <button
+              onClick={() => setShowBadShotInfo(true)}
+              className="flex items-center gap-1 text-white/70 font-bold normal-case active:opacity-60"
+              aria-label={t('scoring.badShot.info.title')}
+            >
               <span className="material-symbols-outlined text-[13px] text-red-300">flag</span>
               {t('scoring.badShot.tapHint')}
-            </span>
+              <span className="ml-0.5 w-4 h-4 rounded-full bg-white/15 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[11px] text-white">info</span>
+              </span>
+            </button>
           )}
         </div>
         <div className="p-2 space-y-1">
@@ -1226,6 +1235,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <button onClick={requestSave} disabled={isSaving || submittedEnds.length === 0} className={`flex-1 py-4 rounded-xl font-black text-[12px] uppercase tracking-widest shadow-md transition-all flex items-center justify-center gap-2 ${isSaving || submittedEnds.length === 0 ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#0a3a2a] text-white active:scale-95'}`}>{isSaving ? t('scoringView.saving', 'Zapisywanie...') : t('scoringView.saveTraining', 'Zapisz trening')}</button>
         <button onClick={() => setShowAbortModal(true)} className="flex-1 py-4 bg-white text-red-500 rounded-xl font-black text-[12px] uppercase border-2 border-red-100 active:scale-95 shadow-sm">{t('scoringView.abort', 'Przerwij')}</button>
       </div>
+
+      {showBadShotInfo && <BadShotInfo onClose={() => setShowBadShotInfo(false)} />}
 
       {showPartialModal && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[200000] flex items-center justify-center p-6 animate-fade-in-up">

@@ -51,6 +51,10 @@ export const components = {
     targetCard: "Obraz trafień",
     viewAll: "Całość",
     journalAdd: "Jak poszło? Dodaj notatkę",
+    sight: {
+      move: "Przestaw celownik {{dir}}",
+      rule: "Zasada: celownik idzie za strzałą."
+    },
     colorFilterArrow: "Pokaż tylko strzałę {{n}}",
     bilanz: {
       title: "Bilans",

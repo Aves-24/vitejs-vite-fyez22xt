@@ -51,6 +51,10 @@ export const components = {
     targetCard: "Trefferbild",
     viewAll: "Gesamt",
     journalAdd: "Wie lief es? Notiz hinzufügen",
+    sight: {
+      move: "Visier {{dir}} verstellen",
+      rule: "Faustregel: Das Visier folgt dem Pfeil."
+    },
     colorFilterArrow: "Nur Pfeil {{n}} zeigen",
     bilanz: {
       title: "Bilanz",

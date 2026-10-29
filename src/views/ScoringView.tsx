@@ -7,7 +7,8 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankFromStored, rankUpBetween } from '../utils/rankEngine';
+import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankBowOf, rankFromStored, rankUpBetween } from '../utils/rankEngine';
+import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend';
@@ -80,9 +81,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // [KOLORY STRZAŁ] Opcja z aktywnego zestawu — ten sam stempel, który
   // trafi na sesję przy zapisie, więc ekran i zapis nie mogą się rozjechać.
   const [arrowColors, setArrowColors] = useState(false);
+  // [KOREKTA CELOWNIKA] Podpowiedź tylko dla łuków z celownikiem (recurve, compound).
+  const [hasSight, setHasSight] = useState(false);
   useEffect(() => {
     if (!userId) return;
-    getSetupStamp(userId).then(st => setArrowColors(!!st.arrowColors));
+    getSetupStamp(userId).then(st => {
+      setArrowColors(!!st.arrowColors);
+      const bow = rankBowOf(st.bowClass);
+      setHasSight(st.bowClass !== BLOWGUN_DISCIPLINE && (bow === 'RECURVE' || bow === 'COMPOUND'));
+    });
   }, [userId]);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarczy
@@ -995,6 +1002,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 arrowColors={arrowColors}
                 colorFilter={colorFilter}
                 showGroup
+                sightHint={hasSight}
               />
             </SummaryCard>
 

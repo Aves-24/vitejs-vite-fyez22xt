@@ -5,6 +5,10 @@ import { arrowColorAt } from '../config/arrowColors';
 import { groupStats, GROUP_CENTER_RINGS } from '../utils/groupStats';
 import { directionKey } from '../utils/arrowStats';
 
+/** Korekta celownika dopiero z tylu strzał i od takiego przesunięcia (w pierścieniach). */
+const SIGHT_MIN_DOTS = 12;
+const SIGHT_MIN_RINGS = 0.5;
+
 // arrowColors — [KOLORY STRZAŁ] sesja wpisana w kolorowej kolejności: kropka = kolor strzały
 // showGroup — [PODSUMOWANIE TRENINGU] środek grupy i koło z 80% strzał + podpis w cm
 // (wybrana seria, jeśli jest w tej rundzie, inaczej cała runda) — utils/groupStats.ts
@@ -12,7 +16,8 @@ import { directionKey } from '../utils/arrowStats';
 // ta strzała ze wszystkich serii, grupa liczona też tylko z niej (ArrowColorFilter)
 // bare — sama tarcza (większa) + podpis grupy, bez ramki i nagłówka: do karty
 // „Trefferbild” po treningu, która ma własny nagłówek i przełącznik rund
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false }: any) {
+// sightHint — łuk z celownikiem (recurve/compound): pod grupą podpowiedź korekty celownika
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -26,6 +31,11 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
   const groupEnds = filtering ? selEnds.map((e: any) => ({ dots: e.dots?.[colorFilter] ? [e.dots[colorFilter]] : [] })) : selEnds;
   const group = showGroup ? groupStats(groupEnds, targetType) : null;
   const cm = (v: number) => Math.round(Math.abs(v)).toLocaleString(i18n.language);
+  // [KOREKTA CELOWNIKA] Tylko gdy łuk ma celownik (sightHint), dla całej rundy
+  // (nie jednej serii ani jednego koloru — za mało strzał), przy wyraźnym
+  // przesunięciu. Zasada: celownik idzie za strzałą (grupa w prawo → celownik w prawo).
+  const showSight = !!sightHint && !!group && !filtering && localSel < 0
+    && group.n >= SIGHT_MIN_DOTS && group.offsetRings >= SIGHT_MIN_RINGS;
   const cross = group?.svg
     ? `M ${group.svg.cx - 7} ${group.svg.cy} H ${group.svg.cx + 7} M ${group.svg.cx} ${group.svg.cy - 7} V ${group.svg.cy + 7}`
     : '';
@@ -140,6 +150,17 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
           </span>
           <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>
+          {showSight && (
+            <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-2">
+              <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">my_location</span>
+              <span className="block min-w-0">
+                <span className="block text-[11px] font-black text-[#0a3a2a]">
+                  {t('scoring.sight.move', { dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
+                </span>
+                <span className="block text-[10px] font-bold text-gray-500">{t('scoring.sight.rule')}</span>
+              </span>
+            </div>
+          )}
         </div>
       )}
     </div>

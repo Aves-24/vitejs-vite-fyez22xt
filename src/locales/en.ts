@@ -51,6 +51,10 @@ export const components = {
     targetCard: "Hit plot",
     viewAll: "All",
     journalAdd: "How did it go? Add a note",
+    sight: {
+      move: "Move your sight {{dir}}",
+      rule: "Rule of thumb: the sight follows the arrow."
+    },
     colorFilterArrow: "Show only arrow {{n}}",
     bilanz: {
       title: "Summary",

@@ -10,7 +10,7 @@ import { directionKey } from '../utils/arrowStats';
 // (wybrana seria, jeśli jest w tej rundzie, inaczej cała runda) — utils/groupStats.ts
 // colorFilter — [KOLORY STRZAŁ] miejsce strzały w serii (0 = zielona): na tarczy tylko
 // ta strzała ze wszystkich serii, grupa liczona też tylko z niej (ArrowColorFilter)
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors, showGroup, colorFilter = null }: any) {
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -48,16 +48,16 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             {filtering ? `${ends.filter((e: any) => e.dots?.[colorFilter]).length} / ${totalArrows}` : totalArrows} {t('common.arrows')}
           </span>
         </div>
-        {onZoomClick && (
-          <button 
+        {onHeatmapClick && (
+          <button
             onClick={(e) => {
               e.stopPropagation();
-              onZoomClick();
-            }} 
-            className="flex items-center gap-1 p-1.5 bg-gray-50 text-gray-500 rounded-lg active:scale-95 transition-all border border-gray-100 hover:bg-gray-100 shadow-sm"
+              onHeatmapClick();
+            }}
+            className="flex items-center justify-center w-8 h-8 bg-gray-50 text-orange-500 rounded-lg active:scale-95 transition-all border border-gray-100 hover:bg-gray-100 shadow-sm"
+            aria-label={t('stats.zoom.heatmap', 'Heatmap')}
           >
-             <span className="material-symbols-outlined text-[14px] text-yellow-500 font-black">diamond</span>
-             <span className="material-symbols-outlined text-[16px]">open_in_full</span>
+            <span className="material-symbols-outlined text-[18px]">local_fire_department</span>
           </button>
         )}
       </div>

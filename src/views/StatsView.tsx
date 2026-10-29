@@ -12,7 +12,6 @@ import { AI_ENABLED } from '../config/features';
 import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
-import { arrowColorAt } from '../config/arrowColors';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
@@ -22,7 +21,6 @@ import BiomechCard from '../components/BiomechCard';
 import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
-import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
 import { isPartialSession, partialLabel, isShortPlanned, roundSizeFor } from '../utils/partialSession';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
@@ -110,137 +108,42 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
   );
 }
 
-function LargeTargetSVG({ ends, targetType, activeEnd, arrowColors }: { ends: any[], targetType: string, activeEnd: number | null, arrowColors?: boolean }) {
-  const isFullFace = isFullFaceType(targetType);
-  const is3Spot = isSpotFace(targetType);
-
-  const renderSpot = (cx: number, cy: number) => (
-    <g key={`${cx}-${cy}`}>
-      <circle cx={cx} cy={cy} r="62.5" fill="#2F80ED" stroke="#333" strokeWidth="0.5" />
-      <circle cx={cx} cy={cy} r="50" fill="#2F80ED" stroke="#333" strokeWidth="0.5" />
-      <circle cx={cx} cy={cy} r="37.5" fill="#EB5757" stroke="#333" strokeWidth="0.5" />
-      <circle cx={cx} cy={cy} r="25" fill="#EB5757" stroke="#333" strokeWidth="0.5" />
-      <circle cx={cx} cy={cy} r="12.5" fill="#F2C94C" stroke="#333" strokeWidth="0.5" />
-      <circle cx={cx} cy={cy} r="6.25" fill="#F2C94C" stroke="#333" strokeWidth="0.5" />
-    </g>
-  );
-
-  const renderDots = (end: any, localIdx: number, isHighlighted: boolean) => {
-    const opacity = isHighlighted ? 1 : 0.15;
-    const radius = isHighlighted ? "7" : "4"; 
-    const strokeWidth = isHighlighted ? "1.5" : "0.5";
-    const fillColor = isHighlighted ? "#fed33e" : "white";
-    return end.dots?.map((dot: any, dotIdx: number) => {
-      if (dot.x == null || dot.y == null) return null;
-      const arrowNumber = dot.order || dotIdx + 1;
-      // [KOLORY STRZAŁ] Kropka w kolorze strzały z tego miejsca serii.
-      const ac = arrowColors ? arrowColorAt(dotIdx) : null;
-      return (
-        <g key={`${localIdx}-${dotIdx}`} style={{ opacity, transition: 'all 0.3s ease' }}>
-          <circle cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : fillColor} stroke="#0a3a2a" strokeWidth={strokeWidth} />
-          {isHighlighted && (
-            <text x={dot.x} y={dot.y} fontSize="8" fontWeight="black" textAnchor="middle" dominantBaseline="central" fill={ac ? ac.text : '#0a3a2a'} style={{ pointerEvents: 'none' }}>{arrowNumber}</text>
-          )}
-        </g>
-      );
-    });
-  };
-
-  return (
-    <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className="w-full h-auto max-h-[55vh]">
-      {isFullFace ? (
-        <g>
-          <circle cx="150" cy="150" r="150" fill="white" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="135" fill="white" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="120" fill="#333" stroke="#fff" strokeWidth="1" /><circle cx="150" cy="150" r="105" fill="#333" stroke="#fff" strokeWidth="1" /><circle cx="150" cy="150" r="90" fill="#2F80ED" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="75" fill="#2F80ED" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="60" fill="#EB5757" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="45" fill="#EB5757" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="30" fill="#F2C94C" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="15" fill="#F2C94C" stroke="#333" strokeWidth="1" /><circle cx="150" cy="150" r="7.5" fill="#F2C94C" stroke="#333" strokeWidth="1" />
-        </g>
-      ) : is3Spot ? (
-        <g>
-          <rect x="5" y="0" width="140" height="400" fill="#e8eaed" rx="8" stroke="#d1d5db" strokeWidth="2" />
-          <rect x="155" y="0" width="140" height="400" fill="#e8eaed" rx="8" stroke="#d1d5db" strokeWidth="2" />
-          {[66, 200, 333].map(cy => renderSpot(75, cy))}
-          {[66, 200, 333].map(cy => renderSpot(225, cy))}
-        </g>
-      ) : (
-        <g>
-          <rect x="75" y="0" width="150" height="400" fill="#e8eaed" rx="8" stroke="#d1d5db" strokeWidth="2" />
-          {[66, 200, 333].map(cy => renderSpot(150, cy))}
-        </g>
-      )}
-      {ends.map((end: any, localIdx: number) => (activeEnd === null || activeEnd === localIdx ? null : renderDots(end, localIdx, false)))}
-      {ends.map((end: any, localIdx: number) => (activeEnd !== null && activeEnd !== localIdx ? null : renderDots(end, localIdx, true)))}
-    </svg>
-  );
-}
-
-function TargetZoomModal({ rounds, initial, targetType, onClose, t, arrowColors }: any) {
+// Heatmapa rundy (2026-10-29): dawne okno „powiększenie z diamencikiem” pokazywało
+// to samo co podsumowanie (większa tarcza + P1–P6), więc zostaje z niego tylko
+// heatmapa — jedyna rzecz, której nie ma na ekranie statystyk.
+function HeatmapModal({ rounds, initial, targetType, onClose, t }: any) {
   const [roundIdx, setRoundIdx] = useState<number>(initial || 0);
-  const [activeEnd, setActiveEnd] = useState<number | null>(null);
-  const [showHeatmap, setShowHeatmap] = useState(false);
-
   const round = rounds[roundIdx] || rounds[0];
-  const ends = round.ends;
-  const startIndex = round.startIndex || 0;
 
-  // Heatmapa dla CAŁEJ rundy — zbieramy wszystkie kropki ze wszystkich serii
-  // (ta sama logika i przestrzeń współrzędnych co w zakładce PRO Progress).
+  // Wszystkie kropki rundy (ta sama przestrzeń współrzędnych co w zakładce PRO Progress).
   const heatDots = useMemo(
-    () => ends.flatMap((end: any) => (end.dots || []).filter((d: any) => d.x != null && d.y != null)),
-    [ends]
+    () => round.ends.flatMap((end: any) => (end.dots || []).filter((d: any) => d.x != null && d.y != null)),
+    [round]
   );
-
-  // Reset wyboru serii przy zmianie rundy (P-numery i sumy się przeliczają).
-  const switchRound = (idx: number) => { setRoundIdx(idx); setActiveEnd(null); };
 
   if (typeof document === 'undefined') return null;
   return createPortal(
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-center justify-center p-4 transition-opacity duration-300" onClick={onClose}>
-      <div className="bg-white rounded-[32px] p-6 w-full max-w-[500px] h-[85vh] shadow-2xl relative flex flex-col items-center border border-gray-100" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-[32px] p-6 w-full max-w-[500px] shadow-2xl relative flex flex-col items-center border border-gray-100" onClick={e => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 text-gray-500 rounded-full active:scale-90 transition-all z-10">
           <span className="material-symbols-outlined font-bold text-xl">close</span>
         </button>
         <div className="text-center mb-3 w-full px-8 mt-2">
-           <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">{t('stats.zoom.title', 'Podgląd Rozrzutu')}</span>
-           <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{round.title}</h3>
+          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">{t('stats.zoom.heatmap', 'Heatmapa')}</span>
+          <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{round.title}</h3>
         </div>
 
         {/* PRZEŁĄCZNIK RUND — zmiana rundy bez zamykania okna */}
         {rounds.length > 1 && (
           <div className="flex gap-1.5 mb-3 shrink-0">
             {rounds.map((r: any, i: number) => (
-              <button key={i} onClick={() => switchRound(i)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95 ${roundIdx === i ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-md' : 'bg-white text-gray-400 border-gray-200'}`}>{r.title}</button>
+              <button key={i} onClick={() => setRoundIdx(i)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95 ${roundIdx === i ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-md' : 'bg-white text-gray-400 border-gray-200'}`}>{r.title}</button>
             ))}
           </div>
         )}
 
-        {/* PRZEŁĄCZNIK HEATMAPY — włącz/wyłącz termowizyjny rozrzut tej rundy */}
-        <button
-          onClick={() => setShowHeatmap(v => !v)}
-          disabled={heatDots.length < 2}
-          className={`mb-3 flex items-center gap-1.5 px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border active:scale-95 disabled:opacity-30 ${showHeatmap ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md' : 'bg-gray-100 text-gray-500 border-gray-200'}`}
-        >
-          <span className="material-symbols-outlined text-[15px]">{showHeatmap ? 'whatshot' : 'local_fire_department'}</span>
-          {t('stats.zoom.heatmap', 'Heatmapa')}
-          <span className={`ml-1 w-7 h-3.5 rounded-full relative transition-colors ${showHeatmap ? 'bg-[#fed33e]' : 'bg-gray-300'}`}>
-            <span className={`absolute top-0.5 w-2.5 h-2.5 rounded-full bg-white transition-all ${showHeatmap ? 'left-[15px]' : 'left-0.5'}`} />
-          </span>
-        </button>
-
-        {!showHeatmap && (
-          <div className="flex gap-1.5 mb-4 justify-center w-full overflow-x-auto hide-scrollbar px-2 shrink-0">
-            <button onClick={() => setActiveEnd(null)} className={`px-3 py-2 rounded-xl text-[10px] font-black transition-all self-start ${activeEnd === null ? 'bg-[#0a3a2a] text-white shadow-md' : 'bg-gray-100 text-gray-500 active:bg-gray-200'}`}>{t('stats.zoom.all', 'WSZYSTKIE')}</button>
-            {ends.map((end: any, i: number) => (
-              <button key={i} onClick={() => setActiveEnd(i)} className={`w-10 py-1.5 rounded-xl text-[10px] font-black transition-all flex flex-col items-center justify-center leading-tight ${activeEnd === i ? 'bg-[#fed33e] text-[#0a3a2a] shadow-md border border-[#e5bd38]' : 'bg-gray-100 text-gray-500 active:bg-gray-200 border border-transparent'}`}>
-                <span>P{startIndex + i + 1}</span>
-                <span className="text-[9px] font-black opacity-70">{end.total_sum ?? end.arrows?.reduce((a: number, v: string) => a + (v === 'X' ? 10 : v === 'M' ? 0 : Number(v) || 0), 0) ?? 0}</span>
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="flex-1 w-full flex flex-col items-center justify-center bg-gray-50 rounded-2xl border border-gray-100 p-2 overflow-hidden">
-          <div className="w-full pt-4">
-            {showHeatmap
-              ? <HeatmapTarget dots={heatDots} targetType={targetType} />
-              : <LargeTargetSVG ends={ends} targetType={targetType} activeEnd={activeEnd} arrowColors={arrowColors} />}
-          </div>
+        <div className="w-full bg-gray-50 rounded-2xl border border-gray-100 p-2 pt-4">
+          <HeatmapTarget dots={heatDots} targetType={targetType} />
         </div>
       </div>
     </div>, document.body
@@ -1035,14 +938,14 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       {selectedSession?.arrowColors && <div className="mb-2"><ArrowColorFilter value={colorFilter} onChange={setColorFilter} /></div>}
                       <div className="grid grid-cols-2 gap-2 mb-4">
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onZoomClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onHeatmapClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r1Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r1Hits.x}</span><span>10: {r1Hits.ten}</span><span>9: {r1Hits.nine}</span>
                           </div>
                         </div>
                         <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onZoomClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
+                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onHeatmapClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
                           <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
                           <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
                             <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>
@@ -1109,7 +1012,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         </>
       )}
 
-      {zoomedRoundData && <TargetZoomModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} arrowColors={!!selectedSession?.arrowColors} />}
+      {zoomedRoundData && <HeatmapModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
 
       {/* PSYCHOLOGICZNY MODAL USUWANIA */}
       {showDeleteModal && typeof document !== 'undefined' && createPortal(

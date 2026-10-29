@@ -13,8 +13,9 @@ export default function ArrowColorFilter({ value, onChange, count = 6 }: {
   const { t } = useTranslation();
   const colors = ARROW_COLORS.slice(0, count);
   return (
-    <div className="flex items-center gap-1.5 bg-white border border-gray-200 rounded-2xl px-2 py-1.5 shadow-sm">
-      <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest pl-1 mr-auto">{t('scoring.colorFilter')}</span>
+    <div className="bg-white border border-gray-200 rounded-2xl px-2.5 pt-2 pb-2 shadow-sm">
+      <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('scoring.colorFilter')}</span>
+      <div className="flex items-center justify-between gap-1">
       <button
         onClick={() => onChange(null)}
         className={`px-2.5 h-7 rounded-full text-[10px] font-black border transition-all active:scale-95 ${value === null ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-white border-gray-200 text-gray-500'}`}
@@ -37,6 +38,7 @@ export default function ArrowColorFilter({ value, onChange, count = 6 }: {
           </button>
         );
       })}
+      </div>
     </div>
   );
 }

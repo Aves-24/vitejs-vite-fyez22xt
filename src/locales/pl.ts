@@ -46,7 +46,7 @@ export const components = {
     trendHint: "Dotknij słupka",
     trendAvg: "Ø {{avg}} na serię",
     shotOrder: "Kolejność strzał",
-    colorFilter: "Strzała",
+    colorFilter: "Kolejność strzelania",
     colorFilterAll: "Wszystkie",
     colorFilterArrow: "Pokaż tylko strzałę {{n}}",
     bilanz: {

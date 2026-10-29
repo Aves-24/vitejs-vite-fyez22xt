@@ -1024,22 +1024,24 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <SummaryCard
               icon="adjust"
               kind={t('scoring.targetCard')}
-              title={`${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
+              title={r2Ends.length > 0 ? `${viewArrows} ${t('common.arrows')}` : `${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
               storageKey="sum-target"
-            >
-              {r2Ends.length > 0 && (
-                <div className="flex bg-gray-50 rounded-xl p-0.5 mb-2">
+              // Przełącznik rund w wierszu nagłówka (user 2026-10-29: kompaktowo).
+              control={r2Ends.length > 0 ? (
+                <div className="flex bg-gray-50 rounded-xl p-0.5 shrink-0">
                   {(['all', 1, 2] as const).map(v => (
                     <button
                       key={String(v)}
                       onClick={() => setTargetView(v)}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+                      className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+                      aria-pressed={targetView === v}
                     >
-                      {v === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${v}`}
+                      {v === 'all' ? t('scoring.viewAll') : `R${v}`}
                     </button>
                   ))}
                 </div>
-              )}
+              ) : undefined}
+            >
               <RoundTargetSummary
                 bare
                 ends={viewEnds}

@@ -63,6 +63,8 @@ export const components = {
       vsAvgAvg: "{{avg}} Ø vs. average of last {{count}}",
       firstHere: "First session here – comparison from the next one",
       rounds: "Rounds",
+      handicap: "Handicap",
+      handicapRef: "recent Ø {{hc}} (lower = better)",
       ends: "Ends",
       steadyHigh: "very consistent",
       steadyMid: "consistent",

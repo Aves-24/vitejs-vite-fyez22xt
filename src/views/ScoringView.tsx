@@ -83,10 +83,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [arrowColors, setArrowColors] = useState(false);
   // [KOREKTA CELOWNIKA] Podpowiedź tylko dla łuków z celownikiem (recurve, compound).
   const [hasSight, setHasSight] = useState(false);
+  const [bowClass, setBowClass] = useState<string | undefined>(undefined);
   useEffect(() => {
     if (!userId) return;
     getSetupStamp(userId).then(st => {
       setArrowColors(!!st.arrowColors);
+      setBowClass(st.bowClass);
       const bow = rankBowOf(st.bowClass);
       setHasSight(st.bowClass !== BLOWGUN_DISCIPLINE && (bow === 'RECURVE' || bow === 'COMPOUND'));
     });
@@ -920,7 +922,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       {/* [PODSUMOWANIE TRENINGU] Bilanz od razu po ostatniej serii, bez rozwijania. */}
       {isTrainingFinished && (
         <div className="mx-2 mt-4 animate-fade-in-up">
-          <SessionBilanz userId={userId} ends={submittedEnds} roundSize={roundSize} distance={distance} distanceId={distanceId} targetType={targetType} />
+          <SessionBilanz userId={userId} ends={submittedEnds} roundSize={roundSize} distance={distance} distanceId={distanceId} targetType={targetType} bowClass={bowClass} />
         </div>
       )}
 
@@ -979,38 +981,39 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             >
               <SessionTrend bare submittedEnds={submittedEnds} highlighted={highlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} onPointClick={pickEnd} />
               {selected && highlightedEnd !== null && (
-                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-start justify-between gap-2 animate-fade-in">
-                  <div className="flex flex-col shrink-0">
+                // Siatka: wynik | strzały | ✕, a pod spodem „Schussreihenfolge” | kolory —
+                // podpis po lewej w tej samej linii co kolory (user 2026-10-29: mniej miejsca).
+                <div key={highlightedEnd} className="mt-3 pt-2.5 border-t border-gray-100 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 tb-fade-in">
+                  <div className="flex flex-col">
                     <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('scoring.series')} {highlightedEnd + 1}</span>
                     <span className="text-lg font-black text-[#0a3a2a] leading-tight">{selected.total_sum} {t('scoringView.pts', 'pkt')}</span>
                   </div>
-                  <div className="flex flex-col items-end gap-1">
-                    <div className="flex gap-1">
-                      {selected.arrows?.map((a: string, i: number) => (
-                        <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
-                      ))}
-                    </div>
-                    {/* [KOLORY STRZAŁ] Wynik posortowany, pod nim kolejność strzelania (user 2026-10-29). */}
-                    {arrowColors && (selected.rawArrows || []).length > 0 && (
-                      <>
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{t('scoring.colorFilter')}</span>
-                        <div className="flex gap-1">
-                          {(selected.rawArrows as string[]).map((a, i) => {
-                            const c = arrowColorAt(i);
-                            return (
-                              <div key={i} className="w-7 flex flex-col items-center">
-                                <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
-                                <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </>
-                    )}
+                  <div className="flex gap-1 justify-end">
+                    {selected.arrows?.map((a: string, i: number) => (
+                      <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
+                    ))}
                   </div>
-                  <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90 shrink-0" aria-label={t('common.close', 'Schließen')}>
+                  <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90" aria-label={t('common.close', 'Schließen')}>
                     <span className="material-symbols-outlined text-sm">close</span>
                   </button>
+                  {/* [KOLORY STRZAŁ] Wynik posortowany, pod nim kolejność strzelania (user 2026-10-29). */}
+                  {arrowColors && (selected.rawArrows || []).length > 0 && (
+                    <>
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-tight">{t('scoring.colorFilter')}</span>
+                      <div className="flex gap-1 justify-end">
+                        {(selected.rawArrows as string[]).map((a, i) => {
+                          const c = arrowColorAt(i);
+                          return (
+                            <div key={i} className="w-7 flex flex-col items-center">
+                              <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
+                              <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <span />
+                    </>
+                  )}
                 </div>
               )}
             </SummaryCard>

@@ -121,26 +121,29 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             return end.dots?.map((dot: any, dIdx: number) => {
               if (dot.x === null || dot.y === null) return null;
               // Filtr koloru: na tarczy zostaje tylko wybrana strzała ze wszystkich serii.
-              if (filtering && dIdx !== colorFilter) return null;
+              // Filtr koloru: pozostałe strzały nie znikają skokowo, tylko gasną
+              // i maleją (to samo przejście co przy zmianie rundy — user 2026-10-29).
+              const hidden = filtering && dIdx !== colorFilter;
               const isHighlighted = endOn;
-              const radius = isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
+              const radius = hidden ? "0" : isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
               const ac = arrowColors && !plainDots ? arrowColorAt(dIdx) : null;
 
               return (
                 <circle
                   key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : plainDots ? '#fed33e' : 'white'}
-                  fillOpacity={isHighlighted ? (ac ? 1 : 0.8) : 0.2} stroke={isHighlighted ? "#0a3a2a" : "#aaa"} 
-                  strokeWidth={isHighlighted ? "1.5" : "0.5"} opacity={isHighlighted ? 1 : 0.3}
-                  style={{ transition: 'all 0.3s ease' }}
+                  fillOpacity={isHighlighted ? (ac ? 1 : 0.8) : 0.2} stroke={isHighlighted ? "#0a3a2a" : "#aaa"}
+                  strokeWidth={isHighlighted ? "1.5" : "0.5"} opacity={hidden ? 0 : isHighlighted ? 1 : 0.3}
+                  style={{ transition: 'all 0.35s ease' }}
                 />
               );
             });
           })}
           {group?.svg && (
             <g pointerEvents="none">
-              <circle cx={group.svg.cx} cy={group.svg.cy} r={Math.max(group.svg.r, 4)} fill="none" stroke="#0a3a2a" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.85" />
-              <path d={cross} stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
-              <path d={cross} stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" />
+              {/* Środek i koło grupy płyną do nowego miejsca przy zmianie serii/rundy/filtra. */}
+              <circle cx={group.svg.cx} cy={group.svg.cy} r={Math.max(group.svg.r, 4)} fill="none" stroke="#0a3a2a" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.85" style={{ transition: 'all 0.4s ease' }} />
+              <path d={cross} stroke="#ffffff" strokeWidth="4" strokeLinecap="round" style={{ transition: 'd 0.4s ease' }} />
+              <path d={cross} stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" style={{ transition: 'd 0.4s ease' }} />
             </g>
           )}
         </svg>

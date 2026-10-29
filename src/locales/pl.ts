@@ -63,6 +63,8 @@ export const components = {
       vsAvgAvg: "{{avg}} Ø do średniej z ostatnich {{count}}",
       firstHere: "Pierwszy trening tutaj – porównanie od następnego",
       rounds: "Rundy",
+      handicap: "Handicap",
+      handicapRef: "ostatnio Ø {{hc}} (niższy = lepszy)",
       ends: "Serie",
       steadyHigh: "bardzo równo",
       steadyMid: "równo",

@@ -44,7 +44,7 @@ export default function SummaryCard({ icon, iconCls = 'text-emerald-600', stripe
         {open && right}
         <span className={`material-symbols-outlined text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>keyboard_arrow_down</span>
       </button>
-      {open && <div className="px-3 pb-3 animate-fade-in">{children}</div>}
+      {open && <div className="px-3 pb-3 tb-fade-in">{children}</div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { getRecentSessions } from '../../lib/recentSessions';
 import { distanceKey } from '../../config/distances';
 import { getStats } from '../../utils/endStats';
+import { handicapOfSession } from '../../utils/rankEngine';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -32,13 +33,14 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
 
 interface Prior { score: number; arrows: number; ts: number }
 
-export default function SessionBilanz({ userId, ends, roundSize, distance, distanceId, targetType }: {
+export default function SessionBilanz({ userId, ends, roundSize, distance, distanceId, targetType, bowClass }: {
   userId: string;
   ends: any[];
   roundSize: number;
   distance: string;
   distanceId?: string | null;
   targetType: string;
+  bowClass?: string; // z zestawu — dmuchawka nie ma handicapu
 }) {
   const { t, i18n } = useTranslation();
   const [prior, setPrior] = useState<Prior[] | null>(null);
@@ -91,6 +93,16 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
     compare = <span className="text-gray-400">{t('scoring.bilanz.firstHere')}</span>;
   }
 
+  // --- Handicap (ten sam model co ranga, utils/rankEngine) ---
+  // Niższy = lepszy. Obok średni handicap z ostatnich treningów na tym samym
+  // dystansie i tarczy — handicap wyrównuje różną liczbę strzał, więc tu
+  // porównujemy też przerwane treningi. Dmuchawka/Field → null, wiersza nie ma.
+  const hc = handicapOfSession({ score: all.score, scoreArrows: all.count, distance, targetType, bowClass });
+  const priorHc = (prior || []).slice(-COMPARE_LAST)
+    .map(p => handicapOfSession({ score: p.score, scoreArrows: p.arrows, distance, targetType, bowClass }))
+    .filter((h): h is number => h !== null);
+  const refHc = priorHc.length ? Math.round(priorHc.reduce((a, b) => a + b, 0) / priorHc.length) : null;
+
   // --- Rundy ---
   const r1 = getStats(ends.slice(0, roundSize));
   const r2 = getStats(ends.slice(roundSize));
@@ -142,6 +154,14 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
                 )}
               </span>
             </Row>
+            {hc !== null && (
+              <Row label={t('scoring.bilanz.handicap')}>
+                <span className="tabular-nums">
+                  <span className={`font-black ${refHc === null || hc === refHc ? 'text-[#0a3a2a]' : hc < refHc ? 'text-emerald-700' : 'text-red-600'}`}>{hc}</span>
+                  {refHc !== null && <span className="text-gray-400"> · {t('scoring.bilanz.handicapRef', { hc: refHc })}</span>}
+                </span>
+              </Row>
+            )}
             {sums.length >= 3 && (
               <Row label={t('scoring.bilanz.ends')}>
                 <span className="tabular-nums">

@@ -58,8 +58,7 @@ export const components = {
       short: { yes: "Fokus zrealizowany", partly: "Fokus częściowo", no: "Fokus niezrealizowany" }
     },
     badShot: {
-      button: "Zły strzał",
-      hint: "Oznacz ostatnią strzałę jako źle wykonaną. Dotknięcie strzały w tabeli też ją oznacza.",
+      tapHint: "Dotknij strzały = zły strzał",
       cell: "Strzała {{v}}: oznacz jako zły strzał",
       label: "Złe strzały",
       excluded: "poza grupą i celownikiem"

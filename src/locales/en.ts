@@ -58,8 +58,7 @@ export const components = {
       short: { yes: "Focus achieved", partly: "Focus partly", no: "Focus not achieved" }
     },
     badShot: {
-      button: "Bad shot",
-      hint: "Mark the last arrow as a badly executed shot. Tapping an arrow in the table marks it too.",
+      tapHint: "Tap an arrow = bad shot",
       cell: "Arrow {{v}}: mark as bad shot",
       label: "Bad shots",
       excluded: "excluded from group and sight"

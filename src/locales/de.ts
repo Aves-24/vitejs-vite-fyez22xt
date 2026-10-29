@@ -58,8 +58,7 @@ export const components = {
       short: { yes: "Fokus umgesetzt", partly: "Fokus teilweise", no: "Fokus nicht umgesetzt" }
     },
     badShot: {
-      button: "Fehlschuss",
-      hint: "Letzten Pfeil als Fehlschuss markieren (schlecht ausgeführt). Tipp auf einen Pfeil in der Tabelle markiert ihn ebenfalls.",
+      tapHint: "Pfeil antippen = Fehlschuss",
       cell: "Pfeil {{v}}: als Fehlschuss markieren",
       label: "Fehlschüsse",
       excluded: "nicht in Gruppe und Visier"

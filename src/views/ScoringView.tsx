@@ -375,20 +375,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
-  // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): przycisk oznacza ostatnio
-  // wpisaną strzałę (po 6. seria zamyka się sama — wtedy ostatnią strzałę
-  // ostatniej serii), a dotknięcie pola w tabeli przełącza znacznik dowolnej
-  // strzały. Punkty bez zmian, strzała wypada tylko z analizy.
+  // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): dotknięcie pola w tabeli
+  // przełącza znacznik strzały; flaga w rogu pola bieżącej i poprzedniej serii
+  // pokazuje, że tak można (user 2026-10-29: przycisk w pasku był nieintuicyjny).
+  // Punkty bez zmian, strzała wypada tylko z analizy.
   const toggleEndBad = (endIdx: number, rawIdx: number) => {
     setSubmittedEnds(prev => prev.map((e, k) => (k === endIdx && e.dots?.length ? { ...e, dots: toggleBad(e.dots, rawIdx) } : e)));
-  };
-  const toggleLastBad = () => {
-    if (inputArrows.length > 0) {
-      setInputCoordinates(c => toggleBad(c, inputArrows.length - 1));
-    } else if (submittedEnds.length > 0) {
-      const li = submittedEnds.length - 1;
-      toggleEndBad(li, (submittedEnds[li].dots?.length || 0) - 1);
-    }
   };
   const hasAnyArrow = inputArrows.length > 0 || submittedEnds.length > 0;
 
@@ -901,14 +893,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <div className="px-3 py-2 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
           <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
           {hasAnyArrow && (
-            <button
-              onClick={toggleLastBad}
-              className="flex items-center gap-1 px-2 py-1 -my-1 rounded-lg bg-white/10 text-white active:scale-95 transition-all"
-              title={t('scoring.badShot.hint')}
-            >
-              <span className="material-symbols-outlined text-[14px] text-red-300">flag</span>
-              <span className="text-[10px] font-black uppercase tracking-widest">{t('scoring.badShot.button')}</span>
-            </button>
+            <span className="flex items-center gap-1 text-white/70 font-bold normal-case">
+              <span className="material-symbols-outlined text-[13px] text-red-300">flag</span>
+              {t('scoring.badShot.tapHint')}
+            </span>
           )}
         </div>
         <div className="p-2 space-y-1">
@@ -948,7 +936,17 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                         className={`relative h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
                       >
                         {val}
-                        {bad && <span className="absolute top-0 right-0 w-0 h-0 border-t-[9px] border-l-[9px] border-t-red-500 border-l-transparent rounded-tr-md" aria-hidden="true" />}
+                        {/* Flaga w rogu (user 2026-10-29): widoczna przy bieżącej i poprzedniej
+                            serii (oznaczanie zaraz po strzale, też gdy ruszyła już nowa passa),
+                            czerwona przy każdej oznaczonej. Dotknięcie pola przełącza. */}
+                        {canToggle && (bad || isCur || idx === submittedEnds.length - 1) && (
+                          <span
+                            className={`absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full flex items-center justify-center border shadow-sm pointer-events-none transition-colors ${bad ? 'bg-red-500 border-red-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
+                            aria-hidden="true"
+                          >
+                            <span className="material-symbols-outlined text-[10px] leading-none">flag</span>
+                          </span>
+                        )}
                         {arrowColors && isCur && <ArrowColorBar index={ai} isNext={ai === inputArrows.length} />}
                       </div>
                     );

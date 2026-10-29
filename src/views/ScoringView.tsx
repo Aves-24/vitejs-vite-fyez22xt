@@ -270,11 +270,22 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   }, [distance, distanceId, targetType]);
 
+  // [RELOAD 2026-10-29] Pierwsze uruchomienie efektu niżej widzi jeszcze pusty
+  // stan (przywrócone serie wchodzą dopiero w następnym renderze) — gdyby tu
+  // kasował, każdy zapis, który nie pasuje do propsów, znikałby przy samym
+  // wejściu na ekran. Nowy trening czyści zapis sam (App.handleStartSession).
+  const persistReadyRef = useRef(false);
+
   useEffect(() => {
     if (inputArrows.length > 0 || submittedEnds.length > 0) {
+      persistReadyRef.current = true;
       localStorage.setItem('grotX_activeSession', JSON.stringify({
         distance,
         distanceId,
+        // Etykieta, pojedynek i strzały próbne — App odtwarza z nich ekran po przeładowaniu.
+        ...(distanceLabel ? { distanceLabel } : {}),
+        ...(battleId ? { battleId } : {}),
+        ...(practiceArrowsProp ? { practiceArrows: practiceArrowsProp } : {}),
         targetType,
         inputArrows,
         inputCoordinates,
@@ -284,11 +295,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(saveIdRef.current ? { saveId: saveIdRef.current } : {}),
       }));
       window.dispatchEvent(new Event('session_state_changed'));
-    } else if (inputArrows.length === 0 && submittedEnds.length === 0) {
+    } else if (persistReadyRef.current) {
+      // Cofnięcie do zera strzał w tym treningu — zapis już niepotrzebny.
       localStorage.removeItem('grotX_activeSession');
       window.dispatchEvent(new Event('session_state_changed'));
+    } else {
+      persistReadyRef.current = true;
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, targetType, activeRoundTab, plannedEnds]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, targetType, activeRoundTab, plannedEnds]);
 
   useEffect(() => {
     if (showStats) setIsStatsExpanded(true);

@@ -73,7 +73,40 @@ const RESTORABLE_VIEWS: AppView[] = ['STATS', 'STUDENT_PROFILE', 'COACH', 'MY_CO
 const COACH_MODE_VIEWS: AppView[] = ['COACH', 'CALENDAR', 'STATS', 'STUDENT_PROFILE'];
 export type CoachSection = 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
 
+// [RELOAD 2026-10-29] Parametry trwającego treningu z grotX_activeSession.
+// Bez tego po przeładowaniu (telefon zabił PWA) „Läuft” otwierał domyślne
+// 70m/'Full', zapis nie pasował do propsów i trening na innym dystansie przepadał.
+interface SavedSessionParams {
+  distance: string;
+  targetType: string;
+  distanceId?: string;
+  distanceLabel?: string;
+  battleId: string | null;
+  practiceArrows: number;
+  plannedEnds?: number;
+}
+function readSavedSession(): SavedSessionParams | null {
+  try {
+    const raw = localStorage.getItem('grotX_activeSession');
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (typeof d?.distance !== 'string' || typeof d?.targetType !== 'string') return null;
+    return {
+      distance: d.distance,
+      targetType: d.targetType,
+      distanceId: d.distanceId || undefined,
+      distanceLabel: d.distanceLabel || undefined,
+      battleId: d.battleId || null,
+      practiceArrows: typeof d.practiceArrows === 'number' ? d.practiceArrows : 0,
+      plannedEnds: typeof d.plannedEnds === 'number' ? d.plannedEnds : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Czytane raz przy ładowaniu modułu — przed pierwszym renderem App.
+const savedSession = readSavedSession();
 const restorePoint = (() => {
   const p = takeRestorePoint();
   return p && (RESTORABLE_VIEWS as string[]).includes(p.view) ? p : null;
@@ -99,15 +132,15 @@ export default function App() {
   const [coachSection, setCoachSection] = useState<CoachSection>('TODAY');
   const [settingsTab, setSettingsTab] = useState<'PROFIL' | 'VISIER' | 'PFEILE' | 'BOGEN' | 'JEZYK' | 'PRO' | 'TRENER' | 'ZAWODY'>(
     (restorePoint?.settingsTab as 'PROFIL') || 'PROFIL');
-  const [sessionDistance, setSessionDistance] = useState<string>('70m');
-  const [sessionTargetType, setSessionTargetType] = useState<string>('Full');
-  const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(0);
-  const [sessionPlannedEnds, setSessionPlannedEnds] = useState<number | undefined>(undefined);
+  const [sessionDistance, setSessionDistance] = useState<string>(savedSession?.distance || '70m');
+  const [sessionTargetType, setSessionTargetType] = useState<string>(savedSession?.targetType || 'Full');
+  const [sessionPracticeArrows, setSessionPracticeArrows] = useState<number>(savedSession?.practiceArrows || 0);
+  const [sessionPlannedEnds, setSessionPlannedEnds] = useState<number | undefined>(savedSession?.plannedEnds);
   // [C25] Tożsamość dystansu jedzie OBOK napisu z metrami. Napis zostaje
   // niezmieniony ("18m"), bo karmi handicap i historię; `id` decyduje o tym,
   // do którego kubełka statystyk trafi sesja, a etykieta o tym, co user widzi.
-  const [sessionDistanceId, setSessionDistanceId] = useState<string | undefined>(undefined);
-  const [sessionDistanceLabel, setSessionDistanceLabel] = useState<string | undefined>(undefined);
+  const [sessionDistanceId, setSessionDistanceId] = useState<string | undefined>(savedSession?.distanceId);
+  const [sessionDistanceLabel, setSessionDistanceLabel] = useState<string | undefined>(savedSession?.distanceLabel);
   
   const [focusedEventId, setFocusedEventId] = useState<string | null>(null);
   // Pulpit trenera → kalendarz z otwartym formularzem kategorii Trener.
@@ -133,7 +166,7 @@ export default function App() {
   // NOWE: trzymamy userClub w App.tsx żeby przekazać do AnnouncementsView
   const [userClub, setUserClub] = useState<string>('');
 
-  const [activeBattleId, setActiveBattleId] = useState<string | null>(null);
+  const [activeBattleId, setActiveBattleId] = useState<string | null>(savedSession?.battleId ?? null);
   const [pendingMessageSenderId, setPendingMessageSenderId] = useState<string | null>(null);
   // Termin tematu treningu w kalendarzu → panel trenera z rozwiniętą grupą.
   const [pendingOpenGroupId, setPendingOpenGroupId] = useState<string | null>(null);
@@ -645,7 +678,21 @@ export default function App() {
             <div className="absolute top-0 right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-white z-20 animate-pulse shadow-sm"></div>
           )}
           <button
-            onClick={() => hasActiveSession ? handleNavigate('SCORING') : handleNavigate('SETUP')}
+            onClick={() => {
+              if (!hasActiveSession) { handleNavigate('SETUP'); return; }
+              // Wznowienie zawsze z parametrami zapisanego treningu, nie z ostatnich w pamięci.
+              const saved = readSavedSession();
+              if (saved) {
+                setSessionDistance(saved.distance);
+                setSessionTargetType(saved.targetType);
+                setSessionDistanceId(saved.distanceId);
+                setSessionDistanceLabel(saved.distanceLabel);
+                setSessionPracticeArrows(saved.practiceArrows);
+                setSessionPlannedEnds(saved.plannedEnds);
+                setActiveBattleId(saved.battleId);
+              }
+              handleNavigate('SCORING');
+            }}
             className={`w-16 h-16 ${hasActiveSession ? 'bg-red-500 shadow-red-500/30' : 'bg-[#F2C94C] shadow-[#F2C94C]/30'} rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden`}
           >
               <div className="absolute inset-0 pointer-events-none">

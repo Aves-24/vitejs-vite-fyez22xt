@@ -50,6 +50,13 @@ export const components = {
     colorFilterAll: "All",
     targetCard: "Hit plot",
     viewAll: "All",
+    focusResult: {
+      title: "Focus achieved?",
+      yes: "Yes",
+      partly: "Partly",
+      no: "No",
+      short: { yes: "Focus achieved", partly: "Focus partly", no: "Focus not achieved" }
+    },
     holdPlain: "Show all arrows in yellow",
     journalAdd: "How did it go? Add a note",
     sight: {
@@ -75,7 +82,9 @@ export const components = {
       title: "Group",
       centered: "Centered",
       offset: "{{cm}} cm {{dir}}",
-      size: "⌀ {{cm}} cm (80% of arrows)"
+      size: "⌀ {{cm}} cm (80% of arrows)",
+      axis: { vert: "Stretched vertically", horiz: "Stretched horizontally" },
+      axisHint: { vert: "check draw force, opening or anchor", horiz: "check wind or fingers on the string" }
     }
   },
   timer: {

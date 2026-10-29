@@ -50,6 +50,13 @@ export const components = {
     colorFilterAll: "Alle",
     targetCard: "Trefferbild",
     viewAll: "Gesamt",
+    focusResult: {
+      title: "Fokus umgesetzt?",
+      yes: "Ja",
+      partly: "Teilweise",
+      no: "Nein",
+      short: { yes: "Fokus umgesetzt", partly: "Fokus teilweise", no: "Fokus nicht umgesetzt" }
+    },
     holdPlain: "Alle Pfeile gelb anzeigen",
     journalAdd: "Wie lief es? Notiz hinzufügen",
     sight: {
@@ -75,7 +82,9 @@ export const components = {
       title: "Gruppe",
       centered: "Sitzt mittig",
       offset: "{{cm}} cm {{dir}}",
-      size: "⌀ {{cm}} cm (80 % der Pfeile)"
+      size: "⌀ {{cm}} cm (80 % der Pfeile)",
+      axis: { vert: "Vertikal gestreckt", horiz: "Horizontal gestreckt" },
+      axisHint: { vert: "Kraft, Öffnen oder Anker prüfen", horiz: "Wind oder Finger an der Sehne prüfen" }
     }
   },
   timer: {

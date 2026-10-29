@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { isFocusResult } from '../components/scoring/FocusResultChip';
 import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import { fetchCoachGroups, groupTrainingRef } from '../utils/coachGroups';
@@ -501,6 +502,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             snaps: sessionFocusRef(data, 0).snaps,
             ...(data.focusChoice === true ? { decided: true } : {}),
             focuses: readSessionFocuses(data),
+            ...(isFocusResult(data.focusResult) ? { focusResult: data.focusResult } : {}),
             ...(sessionTopicId(data) ? { topicId: sessionTopicId(data), trainingTopic: { text: String(data.trainingTopic.text || ''), topic: String(data.trainingTopic.topic || '') } } : {}),
             topics: data.topics || [],
             coachTopics: data.coachTopics || [],

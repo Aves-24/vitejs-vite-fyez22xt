@@ -36,7 +36,17 @@ export interface GroupStats {
   diameterCm: number;
   /** Do rysowania na pełnej tarczy (układ 300×300); na spotach null. */
   svg: { cx: number; cy: number; r: number } | null;
+  /**
+   * Oś błędu (trener 2026-10-29): grupa wyraźnie wydłużona w pionie (siła,
+   * otwarcie, zakotwiczenie) albo w poziomie (wiatr, palce na cięciwie).
+   * Ten sam próg 1,3 co spread.ts; null przy okrągłej grupie lub < 12 strzał.
+   */
+  axis: 'vert' | 'horiz' | null;
 }
+
+/** Oś błędu dopiero od tylu strzał — przy jednej serii to szum. */
+export const GROUP_AXIS_MIN_DOTS = 12;
+const AXIS_RATIO = 1.3;
 
 export function groupStats(ends: Array<{ dots?: Array<{ x: number | null; y: number | null }> }>, targetType: string): GroupStats | null {
   const offs: Array<[number, number]> = [];
@@ -53,6 +63,13 @@ export function groupStats(ends: Array<{ dots?: Array<{ x: number | null; y: num
   const radii = offs.map(([x, y]) => Math.hypot(x - mx, y - my)).sort((a, b) => a - b);
   const r = radii[Math.max(0, Math.ceil(radii.length * COVER) - 1)];
 
+  const sx = Math.sqrt(offs.reduce((s, [x]) => s + (x - mx) ** 2, 0) / offs.length);
+  const sy = Math.sqrt(offs.reduce((s, [, y]) => s + (y - my) ** 2, 0) / offs.length);
+  const axis = offs.length < GROUP_AXIS_MIN_DOTS ? null
+    : sy > sx * AXIS_RATIO ? 'vert'
+    : sx > sy * AXIS_RATIO ? 'horiz'
+    : null;
+
   const { unit, cm } = ringScale(targetType);
   const toCm = (v: number) => (v / unit) * cm;
   return {
@@ -62,5 +79,6 @@ export function groupStats(ends: Array<{ dots?: Array<{ x: number | null; y: num
     offsetRings: Math.hypot(mx, my) / unit,
     diameterCm: toCm(2 * r),
     svg: isFullFace(targetType) ? { cx: 150 + mx, cy: 150 + my, r } : null,
+    axis,
   };
 }

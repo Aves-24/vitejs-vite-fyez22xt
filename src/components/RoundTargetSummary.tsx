@@ -8,6 +8,8 @@ import { directionKey } from '../utils/arrowStats';
 /** Korekta celownika dopiero z tylu strzał i od takiego przesunięcia (w pierścieniach). */
 const SIGHT_MIN_DOTS = 12;
 const SIGHT_MIN_RINGS = 0.5;
+/** Ikona osi błędu grupy (pion / poziom). */
+const AXIS_ICON = { vert: 'height', horiz: 'width' } as const;
 
 // arrowColors — [KOLORY STRZAŁ] sesja wpisana w kolorowej kolejności: kropka = kolor strzały
 // showGroup — [PODSUMOWANIE TRENINGU] środek grupy i koło z 80% strzał + podpis w cm
@@ -158,6 +160,13 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
           </span>
           <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>
+          {/* Oś błędu (trener 2026-10-29) — nie przy pojedynczej serii ani filtrze koloru. */}
+          {group.axis && localSel < 0 && !filtering && (
+            <span className="flex items-center gap-1 mt-1 text-[#0a3a2a]">
+              <span className="material-symbols-outlined text-[14px] text-amber-600">{AXIS_ICON[group.axis]}</span>
+              <span><span className="font-black">{t(`scoring.group.axis.${group.axis}`)}</span> · {t(`scoring.group.axisHint.${group.axis}`)}</span>
+            </span>
+          )}
           {showSight && (
             <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-2">
               <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">my_location</span>

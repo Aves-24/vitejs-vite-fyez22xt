@@ -125,7 +125,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [focusChoice, setFocusChoice] = useFocusChoice(focusState, userId);
   // [TEMAT TRENINGU] W nagłówku to, co jest na górze karty (fokus albo temat dnia).
   const headerFocus = displayPair(focusState).main;
-  
+  // [FOKUS UMGESETZT] Trener 2026-10-29: po treningu krótkie „Ja / Teilweise / Nein”
+  // dla fokusu, pod który idzie ten trening (pierwszy wybrany). Bez odpowiedzi
+  // pole nie trafia na sesję.
+  const questionFocus = sessionFocusFields(focusState, chosenFocusTopics(focusState, focusChoice), focusChoice).focus ?? null;
+  const [focusResult, setFocusResult] = useState<'yes' | 'partly' | 'no' | null>(null);
+
   const [isStatsExpanded, setIsStatsExpanded] = useState(false);
   const [activeBattle, setActiveBattle] = useState<any>(null);
   const [battleParticipants, setBattleParticipants] = useState<any[]>([]);
@@ -565,6 +570,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         isNotePublic: isNotePublic,
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
         ...focusFields,
+        ...(focusResult && focusFields.focus ? { focusResult } : {}),
         ends: submittedEnds,
         // Przerwany ALBO z gory krotszy trening: suma nieporownywalna z 12 seriami.
         // Krotszy ukonczony ma endsShot === endsPlanned (patrz isShortPlanned).
@@ -1078,6 +1084,42 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             {AI_ENABLED && submittedEnds.length >= 6 && (
               <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />
             )}
+          </div>
+        );
+      })()}
+
+      {/* [FOKUS UMGESETZT] Po ostatniej serii, gdy trening idzie pod fokus. */}
+      {isTrainingFinished && questionFocus && (() => {
+        const pal = focusPalette({ fromCoach: questionFocus.fromCoach });
+        return (
+          <div className="mx-2 mt-3">
+            <div className={`tb-card ${questionFocus.fromCoach ? 'tb-focus-coach' : 'tb-focus'} border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5`}>
+              <div className="flex items-center gap-2.5">
+                <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                  <span className={`material-symbols-outlined text-[18px] ${pal.pillIcon}`}>{focusIcon({})}</span>
+                </span>
+                <span className="block min-w-0 flex-1">
+                  <span className={`block text-[9px] font-black uppercase tracking-widest leading-tight ${pal.label}`}>{t('scoring.focusResult.title')}</span>
+                  <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] line-clamp-2">{focusTitle(questionFocus, t)}</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+                {(['yes', 'partly', 'no'] as const).map(v => {
+                  const on = focusResult === v;
+                  const onCls = v === 'yes' ? 'bg-emerald-600 border-emerald-600 text-white' : v === 'partly' ? 'bg-amber-400 border-amber-400 text-[#0a3a2a]' : 'bg-red-500 border-red-500 text-white';
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setFocusResult(on ? null : v)}
+                      className={`py-2 rounded-xl text-[11px] font-black uppercase tracking-widest border transition-all active:scale-95 ${on ? onCls : 'bg-white border-gray-200 text-gray-500'}`}
+                      aria-pressed={on}
+                    >
+                      {t(`scoring.focusResult.${v}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         );
       })()}

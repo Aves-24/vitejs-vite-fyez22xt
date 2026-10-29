@@ -6,6 +6,7 @@ import TopicPicker from '../TopicPicker';
 import type { SessionInsight } from './sessionInsights';
 import { topicLabel } from '../../constants/trainingTopics';
 import TopicLinks from '../TopicLinks';
+import FocusResultChip, { type FocusResult } from '../scoring/FocusResultChip';
 import { isTopicOpen, type FocusMilestone, type FocusSnapRef, type SessionFocus, type TrainingTopic } from '../../utils/focus';
 
 // --- TYPY WPISÓW OSI CZASU ---
@@ -48,6 +49,7 @@ export interface TbSession {
   decided?: boolean;
   focuses: SessionFocus[]; // pełne migawki — przełącznik w dzienniku zapisuje listę z powrotem
   topicId?: string;      // [TEMAT TRENINGU] trening pod ten temat (id wpisu 'topic')
+  focusResult?: FocusResult; // [FOKUS UMGESETZT] odpowiedź przy zapisie (trener 2026-10-29)
   trainingTopic?: { text: string; topic: string };
   // [ARENA] Trening z bitwy: tryb i wynik (place po zakończeniu gry, live = trwa).
   battle?: { id: string; mode: string; place?: number; players?: number; live?: boolean };
@@ -1002,6 +1004,7 @@ export function SessionCard({ session, time, insight, focus, expanded, onToggle,
           <InsightBadge insight={insight} />
         </span>
         <span className="block text-[10px] font-bold truncate text-gray-500 mt-0.5">{stats}</span>
+        {session.focusResult && <span className="block mt-1"><FocusResultChip value={session.focusResult} /></span>}
         {/* [ARENA] Miejsce po zakończeniu gry, wcześniej „gra trwa”. */}
         {session.battle?.place ? (
           <span className="flex items-center gap-1 mt-0.5 text-[10px] font-black text-fuchsia-700">

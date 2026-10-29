@@ -24,6 +24,16 @@ describe('groupStats', () => {
     expect(g.diameterCm).toBeLessThan(6.1);
   });
 
+  it('oś błędu: grupa wydłużona w pionie / w poziomie / okrągła', () => {
+    const line = (f: (k: number) => [number, number]) => [{ dots: Array.from({ length: 12 }, (_, k) => dot(...f(k))) }];
+    expect(groupStats(line(k => [((k % 3) - 1) * 0.2, (k - 5.5) * 0.2]), '122cm')!.axis).toBe('vert');
+    expect(groupStats(line(k => [(k - 5.5) * 0.2, ((k % 3) - 1) * 0.2]), '122cm')!.axis).toBe('horiz');
+    const ring = Array.from({ length: 12 }, (_, k) => dot(Math.cos(k * Math.PI / 6), Math.sin(k * Math.PI / 6)));
+    expect(groupStats([{ dots: ring }], '122cm')!.axis).toBeNull();
+    // za mało strzał — bez osi, nawet przy wydłużonej grupie
+    expect(groupStats([{ dots: [dot(0, -1), dot(0, 0), dot(0, 1), dot(0.1, 0.5)] }], '122cm')!.axis).toBeNull();
+  });
+
   it('spot: każda kropka względem swojego spotu, bez rysunku', () => {
     // Dwa spoty (75,66) i (225,200), obie strzały 1 pierścień (12,5) w lewo.
     const g = groupStats([{ dots: [{ x: 62.5, y: 66 }, { x: 212.5, y: 200 }, { x: 62.5, y: 333 }] }], '3-Spot')!;

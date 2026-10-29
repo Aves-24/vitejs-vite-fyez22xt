@@ -50,6 +50,13 @@ export const components = {
     colorFilterAll: "Wszystkie",
     targetCard: "Obraz trafień",
     viewAll: "Całość",
+    focusResult: {
+      title: "Fokus zrealizowany?",
+      yes: "Tak",
+      partly: "Częściowo",
+      no: "Nie",
+      short: { yes: "Fokus zrealizowany", partly: "Fokus częściowo", no: "Fokus niezrealizowany" }
+    },
     holdPlain: "Pokaż wszystkie strzały na żółto",
     journalAdd: "Jak poszło? Dodaj notatkę",
     sight: {
@@ -75,7 +82,9 @@ export const components = {
       title: "Grupa",
       centered: "W środku",
       offset: "{{cm}} cm {{dir}}",
-      size: "⌀ {{cm}} cm (80% strzał)"
+      size: "⌀ {{cm}} cm (80% strzał)",
+      axis: { vert: "Rozciągnięta pionowo", horiz: "Rozciągnięta poziomo" },
+      axisHint: { vert: "sprawdź siłę, otwarcie lub zakotwiczenie", horiz: "sprawdź wiatr lub palce na cięciwie" }
     }
   },
   timer: {

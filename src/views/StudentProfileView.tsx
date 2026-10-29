@@ -15,6 +15,7 @@ import CoachFocusModal from '../components/CoachFocusModal';
 import SessionTrend from '../components/SessionTrend';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
+import FocusResultChip, { isFocusResult } from '../components/scoring/FocusResultChip';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
@@ -963,6 +964,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   )}
                   {isDetailedShown && sessionEnds.length > 0 && (
                     <div className="space-y-2 animate-fade-in">
+                      {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
+                      {isFocusResult(currentSession.focusResult) && <FocusResultChip value={currentSession.focusResult} />}
                       <SessionTrend submittedEnds={sessionEnds} highlighted={highlightedEnd} roundSize={roundSize} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
                       {currentSession.arrowColors && <ArrowColorFilter value={colorFilter} onChange={setColorFilter} />}
                       {(r1Ends.length > 0 || r2Ends.length > 0) && (

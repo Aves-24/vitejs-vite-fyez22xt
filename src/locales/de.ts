@@ -43,7 +43,27 @@ export const components = {
     total: "Gesamt",
     zoom: "Scheibenansicht vergrößern",
     trendTitle: "Trainings-Trend",
-    trendHint: "Balken zum Hervorheben anklicken"
+    trendHint: "Balken antippen",
+    trendAvg: "Ø {{avg}} pro Passe",
+    shotOrder: "Reihenfolge der Pfeile",
+    bilanz: {
+      title: "Bilanz",
+      vsAvgPts: "{{pts}} Ringe zum Schnitt der letzten {{count}}",
+      vsAvgAvg: "{{avg}} Ø zum Schnitt der letzten {{count}}",
+      firstHere: "Erstes Training hier – Vergleich ab dem nächsten",
+      rounds: "Runden",
+      ends: "Passen",
+      steadyHigh: "sehr gleichmäßig",
+      steadyMid: "gleichmäßig",
+      steadyLow: "schwankend",
+      hits: "Trefferbild"
+    },
+    group: {
+      title: "Gruppe",
+      centered: "Sitzt mittig",
+      offset: "{{cm}} cm {{dir}}",
+      size: "⌀ {{cm}} cm (80 % der Pfeile)"
+    }
   },
   timer: {
     ready: "Bereit",

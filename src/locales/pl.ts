@@ -43,7 +43,27 @@ export const components = {
     total: "Suma",
     zoom: "Powiększ widok tarczy",
     trendTitle: "Trend Sesji",
-    trendHint: "Kliknij słupek by podświetlić"
+    trendHint: "Dotknij słupka",
+    trendAvg: "Ø {{avg}} na serię",
+    shotOrder: "Kolejność strzał",
+    bilanz: {
+      title: "Bilans",
+      vsAvgPts: "{{pts}} pkt do średniej z ostatnich {{count}}",
+      vsAvgAvg: "{{avg}} Ø do średniej z ostatnich {{count}}",
+      firstHere: "Pierwszy trening tutaj – porównanie od następnego",
+      rounds: "Rundy",
+      ends: "Serie",
+      steadyHigh: "bardzo równo",
+      steadyMid: "równo",
+      steadyLow: "nierówno",
+      hits: "Rozkład trafień"
+    },
+    group: {
+      title: "Grupa",
+      centered: "W środku",
+      offset: "{{cm}} cm {{dir}}",
+      size: "⌀ {{cm}} cm (80% strzał)"
+    }
   },
   timer: {
     ready: "Gotowy",

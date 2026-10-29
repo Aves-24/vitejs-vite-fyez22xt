@@ -2,15 +2,27 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
 import { arrowColorAt } from '../config/arrowColors';
+import { groupStats, GROUP_CENTER_RINGS } from '../utils/groupStats';
+import { directionKey } from '../utils/arrowStats';
 
 // arrowColors — [KOLORY STRZAŁ] sesja wpisana w kolorowej kolejności: kropka = kolor strzały
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors }: any) {
-  const { t } = useTranslation();
+// showGroup — [PODSUMOWANIE TRENINGU] środek grupy i koło z 80% strzał + podpis w cm
+// (wybrana seria, jeśli jest w tej rundzie, inaczej cała runda) — utils/groupStats.ts
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onZoomClick, arrowColors, showGroup }: any) {
+  const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
 
   const totalArrows = ends.reduce((acc: number, end: any) => acc + (end.dots?.length || 0), 0);
   const isLargeSession = totalArrows > 18;
+
+  const localSel = highlightedEnd !== null && highlightedEnd !== undefined ? highlightedEnd - startIndex : -1;
+  const groupEnds = localSel >= 0 && localSel < ends.length ? [ends[localSel]] : ends;
+  const group = showGroup ? groupStats(groupEnds, targetType) : null;
+  const cm = (v: number) => Math.round(Math.abs(v)).toLocaleString(i18n.language);
+  const cross = group?.svg
+    ? `M ${group.svg.cx - 7} ${group.svg.cy} H ${group.svg.cx + 7} M ${group.svg.cx} ${group.svg.cy - 7} V ${group.svg.cy + 7}`
+    : '';
 
   const renderSpotCircle = (cx: number, cy: number) => (
     <g key={`spot-${cx}-${cy}`}>
@@ -96,8 +108,26 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               );
             });
           })}
+          {group?.svg && (
+            <g pointerEvents="none">
+              <circle cx={group.svg.cx} cy={group.svg.cy} r={Math.max(group.svg.r, 4)} fill="none" stroke="#0a3a2a" strokeWidth="1.5" strokeDasharray="5 4" opacity="0.85" />
+              <path d={cross} stroke="#ffffff" strokeWidth="4" strokeLinecap="round" />
+              <path d={cross} stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" />
+            </g>
+          )}
         </svg>
       </div>
+      {group && (
+        <div className="w-full mt-2 pt-2 border-t border-gray-100 text-[10px] font-bold text-gray-500 leading-snug">
+          <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('scoring.group.title')}</span>
+          <span className="block text-[#0a3a2a] font-black">
+            {group.offsetRings < GROUP_CENTER_RINGS
+              ? t('scoring.group.centered')
+              : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
+          </span>
+          <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>
+        </div>
+      )}
     </div>
   );
 }

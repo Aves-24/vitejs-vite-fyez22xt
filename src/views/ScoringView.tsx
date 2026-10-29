@@ -10,7 +10,8 @@ import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/batt
 import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankFromStored, rankUpBetween } from '../utils/rankEngine';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
-import SessionTrend from '../components/SessionTrend'; 
+import SessionTrend from '../components/SessionTrend';
+import SessionBilanz from '../components/scoring/SessionBilanz';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -984,6 +985,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <span className="text-5xl font-black text-[#725b00]">{globalStats.score}</span>
       </div>
 
+      {/* [PODSUMOWANIE TRENINGU] Bilanz od razu po ostatniej serii, bez rozwijania. */}
+      {isTrainingFinished && (
+        <div className="mx-2 mt-4 animate-fade-in-up">
+          <SessionBilanz userId={userId} ends={submittedEnds} roundSize={roundSize} distance={distance} distanceId={distanceId} targetType={targetType} />
+        </div>
+      )}
+
       {/* NOWA SEKCJA NOTATEK - DZIENNIK TRENINGOWY */}
       {submittedEnds.length > 0 && (
         <div className="mx-2 mt-4 mb-2">
@@ -1045,7 +1053,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           <div className={`transition-all duration-500 overflow-hidden ${isStatsExpanded ? 'max-h-[2000px] opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'}`}>
             <div className="space-y-4">
               <div className="animate-fade-in-up space-y-2">
-                <SessionTrend submittedEnds={submittedEnds} onPointClick={(idx: number) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
+                <SessionTrend submittedEnds={submittedEnds} highlighted={highlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} onPointClick={(idx: number) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
                 {highlightedEnd !== null && submittedEnds[highlightedEnd] && (() => {
                   const end = submittedEnds[highlightedEnd];
                   const getArrowBg = (val: string) => {
@@ -1056,26 +1064,44 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                     if (val === 'M') return 'bg-purple-900 text-white shadow-sm';
                     return 'bg-gray-100 text-gray-400';
                   };
+                  // [KOLORY STRZAŁ] Wynik zostaje posortowany (user 2026-10-29), pod nim
+                  // kolejność strzelania: kolor strzały i jej wartość z rawArrows.
+                  const order: string[] = arrowColors ? (end.rawArrows || []) : [];
                   return (
-                    <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
-                      <div className="flex flex-col">
-                        <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series')} {highlightedEnd + 1}</span>
-                        <span className="text-lg font-black text-[#0a3a2a]">{end.total_sum} {t('scoringView.pts', 'pkt')}</span>
+                    <div className="tb-card tb-d4 border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-2 py-2.5 flex items-center justify-between gap-2 animate-fade-in">
+                      <div className="flex flex-col shrink-0">
+                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('scoring.series')} {highlightedEnd + 1}</span>
+                        <span className="text-lg font-black text-[#0a3a2a] leading-tight">{end.total_sum} {t('scoringView.pts', 'pkt')}</span>
                       </div>
-                      <div className="flex gap-1">
-                        {end.arrows?.map((a: string, i: number) => (
-                          <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
-                        ))}
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex gap-1">
+                          {end.arrows?.map((a: string, i: number) => (
+                            <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
+                          ))}
+                        </div>
+                        {order.length > 0 && (
+                          <div className="flex gap-1" aria-label={t('scoring.shotOrder')}>
+                            {order.map((a: string, i: number) => {
+                              const c = arrowColorAt(i);
+                              return (
+                                <div key={i} className="w-7 flex flex-col items-center">
+                                  <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
+                                  <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
-                      <button onClick={() => setHighlightedEnd(null)} className="text-emerald-400 active:scale-90"><span className="material-symbols-outlined text-sm">close</span></button>
+                      <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90 shrink-0"><span className="material-symbols-outlined text-sm">close</span></button>
                     </div>
                   );
                 })()}
               </div>
 
               <div className="flex gap-2 w-full animate-fade-in-up">
-                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
-                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
+                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 1`, ends:r1Ends, startIndex:0})} /></div>}
+                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} showGroup onZoomClick={() => setZoomedRoundData({title: `${t('scoringView.round', 'Runda')} 2`, ends:r2Ends, startIndex:roundSize})} /></div>}
               </div>
               
               {AI_ENABLED && submittedEnds.length >= 6 && (

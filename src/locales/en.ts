@@ -43,7 +43,27 @@ export const components = {
     total: "Total",
     zoom: "Zoom target view",
     trendTitle: "Session Trend",
-    trendHint: "Click bar to highlight"
+    trendHint: "Tap a bar",
+    trendAvg: "Ø {{avg}} per end",
+    shotOrder: "Shooting order",
+    bilanz: {
+      title: "Summary",
+      vsAvgPts: "{{pts}} pts vs. average of last {{count}}",
+      vsAvgAvg: "{{avg}} Ø vs. average of last {{count}}",
+      firstHere: "First session here – comparison from the next one",
+      rounds: "Rounds",
+      ends: "Ends",
+      steadyHigh: "very consistent",
+      steadyMid: "consistent",
+      steadyLow: "uneven",
+      hits: "Hit distribution"
+    },
+    group: {
+      title: "Group",
+      centered: "Centered",
+      offset: "{{cm}} cm {{dir}}",
+      size: "⌀ {{cm}} cm (80% of arrows)"
+    }
   },
   timer: {
     ready: "Ready",

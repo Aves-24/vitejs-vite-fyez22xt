@@ -370,13 +370,13 @@ export function ArrowColorBar({ index, isNext }: { index: number; isNext?: boole
 }
 
 /** [KOLORY STRZAŁ] „Teraz: strzała 2” — miniatura strzały z kolorową opaską nad tarczą. */
-export function NextArrowChip({ index }: { index: number }) {
+export function NextArrowChip({ index, className = 'h-11' }: { index: number; className?: string }) {
   const c = arrowColorAt(index);
   if (!c) return null;
   // Miniatura strzały jak na grafice w (i) — kółko z cyfrą wyglądało jak
   // licznik powiadomień i drażniło (user 2026-10-28).
   return (
-    <svg viewBox="0 0 24 60" className="h-11 w-auto shrink-0 drop-shadow-sm" role="img" aria-label={String(index + 1)}>
+    <svg viewBox="0 0 24 60" className={`${className} w-auto shrink-0 drop-shadow-sm`} role="img" aria-label={String(index + 1)}>
       <rect x={10} y={1} width={4} height={5} rx={1.5} fill="#9ca3af" />
       <path d="M 12 6 L 4 13 L 4 25 L 12 21 Z" fill="#d1d5db" />
       <path d="M 12 6 L 20 13 L 20 25 L 12 21 Z" fill="#e5e7eb" />

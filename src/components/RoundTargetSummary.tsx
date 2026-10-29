@@ -17,7 +17,9 @@ const SIGHT_MIN_RINGS = 0.5;
 // bare — sama tarcza (większa) + podpis grupy, bez ramki i nagłówka: do karty
 // „Trefferbild” po treningu, która ma własny nagłówek i przełącznik rund
 // sightHint — łuk z celownikiem (recurve/compound): pod grupą podpowiedź korekty celownika
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false }: any) {
+// plainDots — wszystkie kropki na żółto (przytrzymany przycisk: kolory strzał chwilowo off)
+// aside — kolumna obok tarczy (pionowy filtr strzał); overlay — przycisk w rogu tarczy
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside, overlay }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -74,7 +76,9 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
         )}
       </div>}
 
-      <div className="w-full flex-1 flex items-center justify-center min-h-[160px]">
+      <div className="w-full flex items-center gap-1.5">
+      <div className="relative flex-1 min-w-0 flex items-center justify-center min-h-[160px]">
+        {overlay}
         {/* Zunifikowany viewBox: 3-Spot używa 300x400 (żeby podwójna tarcza ładnie siadła) */}
         <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className={`w-full h-auto drop-shadow-md ${bare ? 'max-h-[380px]' : 'max-h-[220px]'}`}>
           {/* Tarcza przygaszona do 70% (user 2026-10-29) — strzały lepiej widać. */}
@@ -120,11 +124,11 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               if (filtering && dIdx !== colorFilter) return null;
               const isHighlighted = endOn;
               const radius = isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
-              const ac = arrowColors ? arrowColorAt(dIdx) : null;
-              
+              const ac = arrowColors && !plainDots ? arrowColorAt(dIdx) : null;
+
               return (
-                <circle 
-                  key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : 'white'}
+                <circle
+                  key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : plainDots ? '#fed33e' : 'white'}
                   fillOpacity={isHighlighted ? (ac ? 1 : 0.8) : 0.2} stroke={isHighlighted ? "#0a3a2a" : "#aaa"} 
                   strokeWidth={isHighlighted ? "1.5" : "0.5"} opacity={isHighlighted ? 1 : 0.3}
                   style={{ transition: 'all 0.3s ease' }}
@@ -140,6 +144,8 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             </g>
           )}
         </svg>
+      </div>
+      {aside && <div className="shrink-0">{aside}</div>}
       </div>
       {group && (
         <div className="w-full mt-2 pt-2 border-t border-gray-100 text-[10px] font-bold text-gray-500 leading-snug">

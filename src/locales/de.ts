@@ -50,6 +50,7 @@ export const components = {
     colorFilterAll: "Alle",
     targetCard: "Trefferbild",
     viewAll: "Gesamt",
+    holdPlain: "Gedrückt halten: alle Pfeile gelb",
     journalAdd: "Wie lief es? Notiz hinzufügen",
     sight: {
       move: "Visier {{dir}} verstellen",

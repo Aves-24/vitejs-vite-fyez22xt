@@ -50,6 +50,7 @@ export const components = {
     colorFilterAll: "Wszystkie",
     targetCard: "Obraz trafień",
     viewAll: "Całość",
+    holdPlain: "Przytrzymaj: wszystkie strzały na żółto",
     journalAdd: "Jak poszło? Dodaj notatkę",
     sight: {
       move: "Przestaw celownik {{dir}}",

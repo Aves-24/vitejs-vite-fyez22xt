@@ -94,6 +94,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarczy
   const [targetView, setTargetView] = useState<'all' | 1 | 2>('all'); // karta Trefferbild: obie rundy albo jedna
+  const [plainDots, setPlainDots] = useState(false); // przytrzymany przycisk: kropki bez kolorów strzał
   const [isTimerExpanded, setIsTimerExpanded] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState<'IDLE' | 'PREP' | 'SHOOT' | 'FINISHED'>('IDLE');
@@ -968,44 +969,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         };
         return (
           <div className="mx-2 mt-4 space-y-3 animate-fade-in-up">
-            {/* TREFFERBILD — jedna duża tarcza zamiast dwóch małych (lepiej czytelna na telefonie) */}
-            <SummaryCard
-              icon="adjust"
-              kind={t('scoring.targetCard')}
-              title={`${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
-              storageKey="sum-target"
-            >
-              {r2Ends.length > 0 && (
-                <div className="flex bg-gray-50 rounded-xl p-0.5 mb-2">
-                  {(['all', 1, 2] as const).map(v => (
-                    <button
-                      key={String(v)}
-                      onClick={() => setTargetView(v)}
-                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
-                    >
-                      {v === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${v}`}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {arrowColors && (
-                <div className="mb-2 pb-2 border-b border-gray-100">
-                  <ArrowColorFilter value={colorFilter} onChange={setColorFilter} bare />
-                </div>
-              )}
-              <RoundTargetSummary
-                bare
-                ends={viewEnds}
-                highlightedEnd={highlightedEnd}
-                startIndex={viewStart}
-                targetType={targetType}
-                arrowColors={arrowColors}
-                colorFilter={colorFilter}
-                showGroup
-                sightHint={hasSight}
-              />
-            </SummaryCard>
-
             {/* TREND + wybrana seria w jednej karcie */}
             <SummaryCard
               icon="bar_chart"
@@ -1050,6 +1013,61 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   </button>
                 </div>
               )}
+            </SummaryCard>
+
+            {/* TREFFERBILD — jedna duża tarcza zamiast dwóch małych (lepiej czytelna na telefonie).
+                Kolory strzał: kolumna miniatur po prawej (filtr), w rogu tarczy przycisk
+                „przytrzymaj = wszystkie żółte”, bo sześć kolorów naraz bywa za pstrokate. */}
+            <SummaryCard
+              icon="adjust"
+              kind={t('scoring.targetCard')}
+              title={`${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
+              storageKey="sum-target"
+            >
+              {r2Ends.length > 0 && (
+                <div className="flex bg-gray-50 rounded-xl p-0.5 mb-2">
+                  {(['all', 1, 2] as const).map(v => (
+                    <button
+                      key={String(v)}
+                      onClick={() => setTargetView(v)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+                    >
+                      {v === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${v}`}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {arrowColors && (
+                <span className="block text-right text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('scoring.colorFilter')}</span>
+              )}
+              <RoundTargetSummary
+                bare
+                ends={viewEnds}
+                highlightedEnd={highlightedEnd}
+                startIndex={viewStart}
+                targetType={targetType}
+                arrowColors={arrowColors}
+                colorFilter={colorFilter}
+                showGroup
+                sightHint={hasSight}
+                plainDots={plainDots}
+                aside={arrowColors ? <ArrowColorFilter value={colorFilter} onChange={setColorFilter} vertical /> : undefined}
+                overlay={arrowColors ? (
+                  <button
+                    onPointerDown={() => setPlainDots(true)}
+                    onPointerUp={() => setPlainDots(false)}
+                    onPointerLeave={() => setPlainDots(false)}
+                    onPointerCancel={() => setPlainDots(false)}
+                    onContextMenu={e => e.preventDefault()}
+                    className={`absolute top-0 right-0 z-10 w-9 h-9 rounded-full flex items-center justify-center border shadow-sm select-none transition-colors ${plainDots ? 'bg-[#fed33e] border-[#e5bd38] text-[#0a3a2a]' : 'bg-white border-gray-200 text-gray-500'}`}
+                    style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
+                    aria-label={t('scoring.holdPlain')}
+                    title={t('scoring.holdPlain')}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">contrast</span>
+                  </button>
+                ) : undefined}
+              />
             </SummaryCard>
 
             {AI_ENABLED && submittedEnds.length >= 6 && (

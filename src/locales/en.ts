@@ -50,7 +50,7 @@ export const components = {
     colorFilterAll: "All",
     targetCard: "Hit plot",
     viewAll: "All",
-    holdPlain: "Hold: all arrows yellow",
+    holdPlain: "Show all arrows in yellow",
     journalAdd: "How did it go? Add a note",
     sight: {
       move: "Move your sight {{dir}}",

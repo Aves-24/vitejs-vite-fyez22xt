@@ -18,8 +18,8 @@ const SIGHT_MIN_RINGS = 0.5;
 // „Trefferbild” po treningu, która ma własny nagłówek i przełącznik rund
 // sightHint — łuk z celownikiem (recurve/compound): pod grupą podpowiedź korekty celownika
 // plainDots — wszystkie kropki na żółto (przytrzymany przycisk: kolory strzał chwilowo off)
-// aside — kolumna obok tarczy (pionowy filtr strzał); overlay — przycisk w rogu tarczy
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside, overlay }: any) {
+// aside — kolumna obok tarczy (pionowy filtr strzał z przełącznikiem „wszystkie żółte”)
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -78,7 +78,6 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
 
       <div className="w-full flex items-center gap-1.5">
       <div className="relative flex-1 min-w-0 flex items-center justify-center min-h-[160px]">
-        {overlay}
         {/* Zunifikowany viewBox: 3-Spot używa 300x400 (żeby podwójna tarcza ładnie siadła) */}
         <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className={`w-full h-auto drop-shadow-md ${bare ? 'max-h-[380px]' : 'max-h-[220px]'}`}>
           {/* Tarcza przygaszona do 70% (user 2026-10-29) — strzały lepiej widać. */}

@@ -1040,9 +1040,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   ))}
                 </div>
               )}
-              {arrowColors && (
-                <span className="block text-right text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('scoring.colorFilter')}</span>
-              )}
               <RoundTargetSummary
                 bare
                 ends={viewEnds}
@@ -1054,21 +1051,24 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 showGroup
                 sightHint={hasSight}
                 plainDots={plainDots}
-                aside={arrowColors ? <ArrowColorFilter value={colorFilter} onChange={setColorFilter} vertical /> : undefined}
-                overlay={arrowColors ? (
-                  <button
-                    onPointerDown={() => setPlainDots(true)}
-                    onPointerUp={() => setPlainDots(false)}
-                    onPointerLeave={() => setPlainDots(false)}
-                    onPointerCancel={() => setPlainDots(false)}
-                    onContextMenu={e => e.preventDefault()}
-                    className={`absolute top-0 right-0 z-10 w-9 h-9 rounded-full flex items-center justify-center border shadow-sm select-none transition-colors ${plainDots ? 'bg-[#fed33e] border-[#e5bd38] text-[#0a3a2a]' : 'bg-white border-gray-200 text-gray-500'}`}
-                    style={{ touchAction: 'none', WebkitTouchCallout: 'none' }}
-                    aria-label={t('scoring.holdPlain')}
-                    title={t('scoring.holdPlain')}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">contrast</span>
-                  </button>
+                aside={arrowColors ? (
+                  <ArrowColorFilter
+                    value={colorFilter}
+                    onChange={setColorFilter}
+                    vertical
+                    top={
+                      // Włącz/wyłącz (user 2026-10-29: zamiast przytrzymania) — wszystkie kropki żółte.
+                      <button
+                        onClick={() => setPlainDots(v => !v)}
+                        className={`w-9 h-9 mb-1 rounded-full flex items-center justify-center border shadow-sm transition-colors ${plainDots ? 'bg-[#fed33e] border-[#e5bd38] text-[#0a3a2a]' : 'bg-white border-gray-200 text-gray-500'}`}
+                        aria-pressed={plainDots}
+                        aria-label={t('scoring.holdPlain')}
+                        title={t('scoring.holdPlain')}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">contrast</span>
+                      </button>
+                    }
+                  />
                 ) : undefined}
               />
             </SummaryCard>

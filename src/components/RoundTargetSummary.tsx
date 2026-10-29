@@ -1,9 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
 import { arrowColorAt } from '../config/arrowColors';
 import { groupStats, GROUP_CENTER_RINGS } from '../utils/groupStats';
 import { directionKey } from '../utils/arrowStats';
+import GroupInfo from './scoring/GroupInfo';
+
+// Małe (i) przy linijce grupy — otwiera GroupInfo (dawne podpowiedzi Biomechanik).
+function InfoDot({ onClick, label }: { onClick: () => void; label: string }) {
+  return (
+    <button onClick={onClick} className="w-5 h-5 shrink-0 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90" aria-label={label}>
+      <span className="material-symbols-outlined text-[13px]">info</span>
+    </button>
+  );
+}
 
 /** Korekta celownika dopiero z tylu strzał i od takiego przesunięcia (w pierścieniach). */
 const SIGHT_MIN_DOTS = 12;
@@ -23,6 +33,7 @@ const AXIS_ICON = { vert: 'height', horiz: 'width' } as const;
 // aside — kolumna obok tarczy (pionowy filtr strzał z przełącznikiem „wszystkie żółte”)
 export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside }: any) {
   const { t, i18n } = useTranslation();
+  const [info, setInfo] = useState<null | 'axis' | 'offset'>(null);
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
 
@@ -167,10 +178,11 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
       {group && (
         <div className="w-full mt-2 pt-2 border-t border-gray-100 text-[10px] font-bold text-gray-500 leading-snug">
           <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('scoring.group.title')}</span>
-          <span className="block text-[#0a3a2a] font-black">
+          <span className="flex items-center gap-1.5 text-[#0a3a2a] font-black">
             {group.offsetRings < GROUP_CENTER_RINGS
               ? t('scoring.group.centered')
               : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
+            {group.offsetRings >= GROUP_CENTER_RINGS && <InfoDot onClick={() => setInfo('offset')} label={t('scoring.group.offsetInfo.title')} />}
           </span>
           <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>
           {/* Oś błędu (trener 2026-10-29) — nie przy pojedynczej serii ani filtrze koloru. */}
@@ -178,8 +190,10 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             <span className="flex items-center gap-1 mt-1 text-[#0a3a2a]">
               <span className="material-symbols-outlined text-[14px] text-amber-600">{AXIS_ICON[group.axis]}</span>
               <span><span className="font-black">{t(`scoring.group.axis.${group.axis}`)}</span> · {t(`scoring.group.axisHint.${group.axis}`)}</span>
+              <InfoDot onClick={() => setInfo('axis')} label={t('stats.cards.bio.errorTitle')} />
             </span>
           )}
+          {info && <GroupInfo mode={info} axis={group.axis} onClose={() => setInfo(null)} />}
           {showSight && (
             <div className="mt-2 flex items-start gap-2 bg-emerald-50 border border-emerald-100 rounded-xl px-2.5 py-2">
               <span className="material-symbols-outlined text-[18px] text-emerald-600 shrink-0">my_location</span>

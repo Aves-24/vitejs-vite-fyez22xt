@@ -111,7 +111,13 @@ export const components = {
       offset: "{{cm}} cm {{dir}}",
       size: "⌀ {{cm}} cm (80% strzał)",
       axis: { vert: "Rozciągnięta pionowo", horiz: "Rozciągnięta poziomo" },
-      axisHint: { vert: "sprawdź siłę, otwarcie lub zakotwiczenie", horiz: "sprawdź wiatr lub palce na cięciwie" }
+      axisHint: { vert: "sprawdź siłę, otwarcie lub zakotwiczenie", horiz: "sprawdź wiatr lub palce na cięciwie" },
+      offsetInfo: {
+        title: "Przesunięcie grupy",
+        single: "Środek Twojej grupy leży obok środka tarczy. W pojedynczym treningu to prawie zawsze sprawa ustawienia celownika, a nie techniki: jeśli grupa jest ciasna, ale przesunięta, źle ustawiony jest tylko celownik.",
+        multi: "Jeśli grupa przez kilka treningów mimo dobrze ustawionego celownika ucieka stale w tę samą stronę, przyczyna może leżeć w technice. Pokazuje to karta „Biomechanika i Rozrzut” w Pro Progress z ostatnich treningów, ze wskazówkami dopasowanymi do ręki.",
+        howMeasured: "Mierzony jest środek grupy (mediana), pojedyncza dzika strzała go nie przesuwa. Strzały oznaczone jako złe się nie liczą."
+      }
     }
   },
   timer: {

@@ -19,8 +19,6 @@ import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
 import TechSessionCard from '../components/TechSessionCard';
 import { SessionFocusCard } from '../components/tagebuch/FocusCard';
-import BiomechCard from '../components/BiomechCard';
-import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 import { isPartialSession, partialLabel, isShortPlanned, roundSizeFor } from '../utils/partialSession';
 
@@ -390,9 +388,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [dailyArrows, setDailyArrows] = useState(0);
   const [dailyPfeilzaehler, setDailyPfeilzaehler] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
-  // Ręczność łucznika (RH/LH) — decyduje o lustrzanym odbiciu wskazówek lewo/prawo.
-  // null = nieustawiona w profilu → pokazujemy prośbę o uzupełnienie.
-  const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pendingSessionIdRef = useRef(initialSessionId || '');
 
@@ -417,17 +412,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         const todayKey = `${today.getFullYear()}_${String(today.getMonth() + 1).padStart(2, '0')}_${String(today.getDate()).padStart(2, '0')}`;
         setDailyPfeilzaehler(pz[todayKey] || 0);
       }
-
-      // Ręczność: gdy oglądamy własne staty czytamy z `userId`, przy podglądzie
-      // ucznia (trener) z jego profilu — wskazówki kierunkowe są dla łucznika.
-      if (viewingStudentId) {
-        try {
-          const sDoc = await getDoc(doc(db, 'users', viewingStudentId));
-          setHandedness((sDoc.data()?.handedness as 'RH' | 'LH') || null);
-        } catch { setHandedness(null); }
-      } else {
-        setHandedness((d?.handedness as 'RH' | 'LH') || null);
-      }
+      // Ręczność (RH/LH) czytała tu karta Biomechanik — przy pojedynczym treningu
+      // zastąpił ją Trefferbild (2026-10-29), karta została tylko w Pro Progress.
     };
 
     fetchProfile();
@@ -638,7 +624,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       ? selectedSession.targetType
       : distanceMeters(selectedSession?.distance) === 18 ? '3-Spot' : 'Full';
 
-  const spreadData = calculateSpread(currentEnds, displayTargetType);
   // [KOREKTA CELOWNIKA] Łuk z sesji (stempel zestawu) — celownik tylko recurve/compound.
   const sessionHasSight = selectedSession?.bowClass !== BLOWGUN_DISCIPLINE
     && ['RECURVE', 'COMPOUND'].includes(rankBowOf(selectedSession?.bowClass));
@@ -878,10 +863,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         heatmap
                         storageKey="stats-target"
                       />
-                      {spreadData && (
-                        <BiomechCard spread={spreadData} handedness={handedness} onNavigate={onNavigate} />
-                      )}
-
                       {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
                       {!viewingStudentId && (

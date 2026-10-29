@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SpreadResult } from '../utils/spread';
+import SummaryCard from './scoring/SummaryCard';
 
 interface Props {
   spread: SpreadResult;
@@ -13,20 +14,15 @@ interface Props {
 
 // Karta biomechaniki: kierunek grupowania + dominujący błąd, z modalami (i)
 // zawierającymi wskazówki coachingowe dopasowane do ręki łucznika.
-// Współdzielona przez pojedynczą sesję (StatsView) i agregat 3 treningów (ProStats).
+// Tylko agregat ostatnich treningów (Pro Progress) — przy pojedynczym treningu
+// te podpowiedzi są w Trefferbild (GroupInfo), 2026-10-29.
 export default function BiomechCard({ spread, handedness, onNavigate, subtitle }: Props) {
   const { t } = useTranslation();
   const [bioInfo, setBioInfo] = useState<null | 'tendency' | 'error'>(null);
 
   return (
-    <div className="bg-white dark:bg-[#1a201d] rounded-2xl border border-gray-100 p-4 shadow-sm mt-4">
-      <div className="flex justify-between items-center mb-3">
-        <div className="min-w-0">
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.biomechanics')}</h3>
-          {subtitle && <span className="text-[9px] font-bold text-gray-300 dark:text-gray-500">{subtitle}</span>}
-        </div>
-        <span className="material-symbols-outlined text-gray-300 text-sm">troubleshoot</span>
-      </div>
+    // Styl kart dziennika (2026-10-29), zwijana jak karty po treningu.
+    <SummaryCard icon="troubleshoot" iconCls="text-indigo-500" stripe="tb-private" kind={t('stats.cards.biomechanics')} kindCls="text-indigo-600" title={subtitle} storageKey="pro-bio">
       <div className="grid grid-cols-2 gap-2">
         <div className="relative bg-indigo-50 rounded-xl p-3 pr-8 border border-indigo-100">
           <button onClick={() => setBioInfo('tendency')} aria-label="info"
@@ -126,6 +122,6 @@ export default function BiomechCard({ spread, handedness, onNavigate, subtitle }
         })(),
         document.body
       )}
-    </div>
+    </SummaryCard>
   );
 }

@@ -111,7 +111,13 @@ export const components = {
       offset: "{{cm}} cm {{dir}}",
       size: "⌀ {{cm}} cm (80% of arrows)",
       axis: { vert: "Stretched vertically", horiz: "Stretched horizontally" },
-      axisHint: { vert: "check draw force, opening or anchor", horiz: "check wind or fingers on the string" }
+      axisHint: { vert: "check draw force, opening or anchor", horiz: "check wind or fingers on the string" },
+      offsetInfo: {
+        title: "Group offset",
+        single: "The centre of your group is off the centre of the target. In a single session this is almost always a sight setting, not technique: if the group is tight but shifted, only the sight is off.",
+        multi: "If the group keeps drifting the same way over several sessions even with a correctly set sight, the cause may be technique. The “Biomechanics & Shot Grouping” card in Pro Progress shows this over your recent sessions, with tips for your shooting hand.",
+        howMeasured: "We measure the centre of the group (median), so a single stray arrow does not move it. Arrows marked as bad shots are not counted."
+      }
     }
   },
   timer: {

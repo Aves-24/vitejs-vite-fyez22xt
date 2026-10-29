@@ -1,4 +1,4 @@
-import { isSpotFace } from '../config/targetFaces';
+import { isSpotFace, resolveTargetFace } from '../config/targetFaces';
 
 // Analiza rozrzutu grupy: kierunek grupowania (środek) + dominujący błąd (kształt).
 // Współdzielone przez StatsView (pojedyncza sesja) i ProStatsView (ostatnie 3 treningi).
@@ -25,57 +25,48 @@ export function centerFor(targetType: string, x: number, y: number): { cX: numbe
   return { cX: 150, cY: 150 };
 }
 
+/** Szerokość pierścienia w jednostkach SVG — jak ringScale (arrowStats), bez importu w kółko. */
+const ringUnit = (targetType: string): number =>
+  isSpotFace(targetType) ? 12.5 : (resolveTargetFace(targetType).scoringRingStep || 15);
+
+/** Do środka (w pierścieniach) grupa jest „Mitte” — jak GROUP_CENTER_RINGS w groupStats. */
+const CENTER_RINGS = 0.3;
+const AXIS_RATIO = 1.3;
+
+const median = (v: number[]): number => {
+  const s = [...v].sort((a, b) => a - b);
+  const m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+
+// Przesunięcia w pierścieniach (x w prawo, y w dół).
 function fromOffsets(dxArr: number[], dyArr: number[]): SpreadResult | null {
   if (dxArr.length === 0) return null;
-  const avgDx = dxArr.reduce((a, b) => a + b, 0) / dxArr.length;
-  const avgDy = dyArr.reduce((a, b) => a + b, 0) / dyArr.length;
-  const varX = dxArr.reduce((a, b) => a + Math.pow(b - avgDx, 2), 0) / dxArr.length;
-  const varY = dyArr.reduce((a, b) => a + Math.pow(b - avgDy, 2), 0) / dyArr.length;
-  const stdX = Math.sqrt(varX);
-  const stdY = Math.sqrt(varY);
+  const mx = median(dxArr);
+  const my = median(dyArr);
+  const sx = Math.sqrt(dxArr.reduce((a, b) => a + (b - mx) ** 2, 0) / dxArr.length);
+  const sy = Math.sqrt(dyArr.reduce((a, b) => a + (b - my) ** 2, 0) / dyArr.length);
 
-  let hKey = 'stats.pro.zones.center';
-  if (avgDx > 5) hKey = 'stats.pro.zones.right';
-  if (avgDx < -5) hKey = 'stats.pro.zones.left';
-
-  let vKey = 'stats.pro.zones.center';
-  if (avgDy > 5) vKey = 'stats.pro.zones.down';
-  if (avgDy < -5) vKey = 'stats.pro.zones.up';
-
-  let errorKey = 'stats.pro.zones.symm';
-  if (stdX > stdY * 1.3) errorKey = 'stats.pro.zones.horiz';
-  if (stdY > stdX * 1.3) errorKey = 'stats.pro.zones.vert';
-
+  const hKey = Math.abs(mx) < CENTER_RINGS ? 'stats.pro.zones.center' : mx > 0 ? 'stats.pro.zones.right' : 'stats.pro.zones.left';
+  const vKey = Math.abs(my) < CENTER_RINGS ? 'stats.pro.zones.center' : my > 0 ? 'stats.pro.zones.down' : 'stats.pro.zones.up';
+  const errorKey = sx > sy * AXIS_RATIO ? 'stats.pro.zones.horiz' : sy > sx * AXIS_RATIO ? 'stats.pro.zones.vert' : 'stats.pro.zones.symm';
   return { hKey, vKey, errorKey };
 }
 
-// Pojedyncza sesja: jeden typ tarczy dla wszystkich serii.
-export function calculateSpread(ends: any[], targetType: string): SpreadResult | null {
-  const dxArr: number[] = [];
-  const dyArr: number[] = [];
-  ends.forEach(end => {
-    end.dots?.forEach((dot: any) => {
-      if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined || dot.bad) return;
-      const { cX, cY } = centerFor(targetType, dot.x, dot.y);
-      dxArr.push(dot.x - cX);
-      dyArr.push(dot.y - cY);
-    });
-  });
-  return fromOffsets(dxArr, dyArr);
-}
-
-// Wiele sesji (np. ostatnie 3 treningi): każdą centrujemy względem JEJ typu tarczy.
+// Wiele sesji (np. ostatnie 3 treningi): każdą centrujemy względem JEJ typu tarczy
+// i przeliczamy na pierścienie tej tarczy, żeby 122 cm i 3-Spot dało się zsumować.
 export function calculateSpreadSessions(sessions: Array<{ ends?: any[]; targetType?: string }>): SpreadResult | null {
   const dxArr: number[] = [];
   const dyArr: number[] = [];
   sessions.forEach(session => {
     const targetType = session.targetType || 'Full';
+    const unit = ringUnit(targetType);
     session.ends?.forEach((end: any) => {
       end.dots?.forEach((dot: any) => {
         if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined || dot.bad) return;
         const { cX, cY } = centerFor(targetType, dot.x, dot.y);
-        dxArr.push(dot.x - cX);
-        dyArr.push(dot.y - cY);
+        dxArr.push((dot.x - cX) / unit);
+        dyArr.push((dot.y - cY) / unit);
       });
     });
   });

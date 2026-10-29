@@ -111,7 +111,13 @@ export const components = {
       offset: "{{cm}} cm {{dir}}",
       size: "⌀ {{cm}} cm (80 % der Pfeile)",
       axis: { vert: "Vertikal gestreckt", horiz: "Horizontal gestreckt" },
-      axisHint: { vert: "Kraft, Öffnen oder Anker prüfen", horiz: "Wind oder Finger an der Sehne prüfen" }
+      axisHint: { vert: "Kraft, Öffnen oder Anker prüfen", horiz: "Wind oder Finger an der Sehne prüfen" },
+      offsetInfo: {
+        title: "Gruppenversatz",
+        single: "Die Mitte deiner Gruppe liegt neben der Scheibenmitte. In einem einzelnen Training ist das fast immer eine Frage der Visiereinstellung, nicht der Technik: Ist die Gruppe eng, aber verschoben, stimmt nur das Visier nicht.",
+        multi: "Wandert die Gruppe über mehrere Trainings trotz korrekt eingestelltem Visier immer in dieselbe Richtung, kann die Ursache in der Technik liegen. Das zeigt die Karte „Biomechanik & Streuung“ in Pro Progress über die letzten Trainings, mit Tipps passend zu deiner Schießhand.",
+        howMeasured: "Gemessen wird die Mitte der Gruppe (Median), ein einzelner Ausreißer verschiebt sie nicht. Als Fehlschuss markierte Pfeile zählen nicht mit."
+      }
     }
   },
   timer: {

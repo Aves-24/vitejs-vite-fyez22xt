@@ -13,6 +13,7 @@ import { guestExpiryFields } from '../utils/guestMode';
 import SessionTrend from '../components/SessionTrend';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
+import SummaryCard from '../components/scoring/SummaryCard';
 import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
@@ -68,7 +69,7 @@ const getFlagEmoji = (countryCode: string) => {
 };
 
 export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
   const [submittedEnds, setSubmittedEnds] = useState<any[]>([]); 
@@ -84,7 +85,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     getSetupStamp(userId).then(st => setArrowColors(!!st.arrowColors));
   }, [userId]);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
-  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
+  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarczy
+  const [targetView, setTargetView] = useState<'all' | 1 | 2>('all'); // karta Trefferbild: obie rundy albo jedna
   const [isTimerExpanded, setIsTimerExpanded] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState<'IDLE' | 'PREP' | 'SHOOT' | 'FINISHED'>('IDLE');
@@ -914,50 +916,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         </div>
       )}
 
-      {/* NOWA SEKCJA NOTATEK - DZIENNIK TRENINGOWY */}
-      {submittedEnds.length > 0 && (
-        <div className="mx-2 mt-4 mb-2">
-          <div className="bg-gradient-to-br from-emerald-50 to-white border border-emerald-100 rounded-2xl p-4 shadow-sm">
-            <label className="flex items-center gap-1.5 text-[11px] font-black text-emerald-800 uppercase tracking-widest mb-3">
-              <span className="material-symbols-outlined text-[18px] text-emerald-600">edit_note</span>
-              {t('scoringView.trainingJournal', 'Dziennik Treningowy')}
-            </label>
-            <div className="relative mb-3">
-              <textarea
-                maxLength={100}
-                value={sessionNote}
-                onChange={(e) => setSessionNote(e.target.value)}
-                placeholder={t('scoringView.notePlaceholder', 'Opisz swoje odczucia: wiatr, zmęczenie, zmiany w sprzęcie...')}
-                className="w-full bg-white/60 backdrop-blur-sm border border-emerald-200/50 rounded-xl p-3 text-sm font-bold text-[#0a3a2a] placeholder:text-emerald-700/40 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 h-20 resize-none transition-all"
-              />
-              <div className={`absolute bottom-2 right-3 text-[9px] font-black uppercase tracking-tighter transition-colors ${sessionNote.length >= 90 ? 'text-red-500' : 'text-emerald-600/50'}`}>
-                {sessionNote.length}/100
-              </div>
-            </div>
-            
-            <label className="flex items-center gap-2 cursor-pointer group w-max">
-              <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${isNotePublic ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-gray-300 text-transparent'}`}>
-                <span className="material-symbols-outlined text-[14px] font-bold">check</span>
-              </div>
-              <input 
-                type="checkbox" 
-                className="hidden" 
-                checked={isNotePublic} 
-                onChange={(e) => setIsNotePublic(e.target.checked)} 
-              />
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 group-hover:text-emerald-600 transition-colors">
-                {t('scoringView.shareWithCoach', 'Udostępnij notatkę trenerowi')}
-              </span>
-            </label>
-
-          </div>
-        </div>
-      )}
-
-      {/* ROZWIJANY PANEL STATYSTYK / AI COACH */}
-      {submittedEnds.length > 0 && (
+      {/* [PODSUMOWANIE TRENINGU] Analiza w zwijanych kartach dziennika (2026-10-29).
+          Między rundami i po ostatniej serii karty stoją od razu; w trakcie
+          strzelania chowa je przycisk „Pokaż statystyki”. */}
+      {submittedEnds.length > 0 && !showStats && (
         <div className="mx-2 mt-2">
-          <button 
+          <button
             onClick={() => setIsStatsExpanded(!isStatsExpanded)}
             className="w-full flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm active:scale-[0.98] transition-all"
           >
@@ -971,70 +935,163 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               keyboard_arrow_down
             </span>
           </button>
+        </div>
+      )}
 
-          <div className={`transition-all duration-500 overflow-hidden ${isStatsExpanded ? 'max-h-[2000px] opacity-100 mt-2' : 'max-h-0 opacity-0 pointer-events-none'}`}>
-            <div className="space-y-4">
-              <div className="animate-fade-in-up space-y-2">
-                <SessionTrend submittedEnds={submittedEnds} highlighted={highlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} onPointClick={(idx: number) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
-                {highlightedEnd !== null && submittedEnds[highlightedEnd] && (() => {
-                  const end = submittedEnds[highlightedEnd];
-                  const getArrowBg = (val: string) => {
-                    if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] shadow-sm';
-                    if (['8', '7'].includes(val)) return 'bg-[#EB5757] text-white shadow-sm';
-                    if (['6', '5'].includes(val)) return 'bg-[#2F80ED] text-white shadow-sm';
-                    if (['4', '3'].includes(val)) return 'bg-[#333] text-white shadow-sm';
-                    if (val === 'M') return 'bg-purple-900 text-white shadow-sm';
-                    return 'bg-gray-100 text-gray-400';
-                  };
-                  // [KOLORY STRZAŁ] Wynik zostaje posortowany (user 2026-10-29), pod nim
-                  // kolejność strzelania: kolor strzały i jej wartość z rawArrows.
-                  const order: string[] = arrowColors ? (end.rawArrows || []) : [];
-                  return (
-                    <div className="tb-card tb-d4 border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-2 py-2.5 flex items-center justify-between gap-2 animate-fade-in">
-                      <div className="flex flex-col shrink-0">
-                        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('scoring.series')} {highlightedEnd + 1}</span>
-                        <span className="text-lg font-black text-[#0a3a2a] leading-tight">{end.total_sum} {t('scoringView.pts', 'pkt')}</span>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex gap-1">
-                          {end.arrows?.map((a: string, i: number) => (
-                            <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
-                          ))}
-                        </div>
-                        {order.length > 0 && (
-                          <div className="flex gap-1" aria-label={t('scoring.shotOrder')}>
-                            {order.map((a: string, i: number) => {
-                              const c = arrowColorAt(i);
-                              return (
-                                <div key={i} className="w-7 flex flex-col items-center">
-                                  <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
-                                  <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-                      <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90 shrink-0"><span className="material-symbols-outlined text-sm">close</span></button>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {arrowColors && <ArrowColorFilter value={colorFilter} onChange={setColorFilter} />}
-
-              <div className="flex gap-2 w-full animate-fade-in-up">
-                {r1Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={targetType} arrowColors={arrowColors} colorFilter={colorFilter} showGroup /></div>}
-                {r2Ends.length > 0 && <div className="flex-1"><RoundTargetSummary title={`${t('scoringView.round', 'Runda')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={targetType} arrowColors={arrowColors} colorFilter={colorFilter} showGroup /></div>}
-              </div>
-              
-              {AI_ENABLED && submittedEnds.length >= 6 && (
-                <div className="animate-fade-in-up">
-                  <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />
+      {submittedEnds.length > 0 && (showStats || isStatsExpanded) && (() => {
+        const viewEnds = targetView === 1 ? r1Ends : targetView === 2 ? r2Ends : submittedEnds;
+        const viewStart = targetView === 2 ? roundSize : 0;
+        const viewArrows = viewEnds.reduce((acc: number, e: any) => acc + (e.arrows?.length || 0), 0);
+        const viewLabel = targetView === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${targetView}`;
+        const selected = highlightedEnd !== null ? submittedEnds[highlightedEnd] : null;
+        const getArrowBg = (val: string) => {
+          if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] shadow-sm';
+          if (['8', '7'].includes(val)) return 'bg-[#EB5757] text-white shadow-sm';
+          if (['6', '5'].includes(val)) return 'bg-[#2F80ED] text-white shadow-sm';
+          if (['4', '3'].includes(val)) return 'bg-[#333] text-white shadow-sm';
+          if (val === 'M') return 'bg-purple-900 text-white shadow-sm';
+          return 'bg-gray-100 text-gray-400';
+        };
+        // Wybór serii z innej rundy przełącza tarczę na tę rundę — inaczej
+        // podświetlenie trafiałoby w pustkę.
+        const pickEnd = (idx: number) => {
+          const next = highlightedEnd === idx ? null : idx;
+          setHighlightedEnd(next);
+          if (next !== null && targetView !== 'all') setTargetView(next < roundSize ? 1 : 2);
+        };
+        return (
+          <div className="mx-2 mt-4 space-y-3 animate-fade-in-up">
+            {/* TREFFERBILD — jedna duża tarcza zamiast dwóch małych (lepiej czytelna na telefonie) */}
+            <SummaryCard
+              icon="adjust"
+              kind={t('scoring.targetCard')}
+              title={`${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
+              storageKey="sum-target"
+            >
+              {r2Ends.length > 0 && (
+                <div className="flex bg-gray-50 rounded-xl p-0.5 mb-2">
+                  {(['all', 1, 2] as const).map(v => (
+                    <button
+                      key={String(v)}
+                      onClick={() => setTargetView(v)}
+                      className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+                    >
+                      {v === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${v}`}
+                    </button>
+                  ))}
                 </div>
               )}
-            </div>
+              {arrowColors && (
+                <div className="mb-2 pb-2 border-b border-gray-100">
+                  <ArrowColorFilter value={colorFilter} onChange={setColorFilter} bare />
+                </div>
+              )}
+              <RoundTargetSummary
+                bare
+                ends={viewEnds}
+                highlightedEnd={highlightedEnd}
+                startIndex={viewStart}
+                targetType={targetType}
+                arrowColors={arrowColors}
+                colorFilter={colorFilter}
+                showGroup
+              />
+            </SummaryCard>
+
+            {/* TREND + wybrana seria w jednej karcie */}
+            <SummaryCard
+              icon="bar_chart"
+              kind={t('scoring.trendTitle')}
+              title={t('scoring.trendAvg', { avg: (submittedEnds.reduce((a: number, e: any) => a + (e.total_sum || 0), 0) / submittedEnds.length).toLocaleString(i18n.language, { maximumFractionDigits: 1 }) })}
+              right={<span className="text-[9px] font-bold text-gray-400 mr-1">{t('scoring.trendHint')}</span>}
+              storageKey="sum-trend"
+            >
+              <SessionTrend bare submittedEnds={submittedEnds} highlighted={highlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} onPointClick={pickEnd} />
+              {selected && highlightedEnd !== null && (
+                <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-start justify-between gap-2 animate-fade-in">
+                  <div className="flex flex-col shrink-0">
+                    <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('scoring.series')} {highlightedEnd + 1}</span>
+                    <span className="text-lg font-black text-[#0a3a2a] leading-tight">{selected.total_sum} {t('scoringView.pts', 'pkt')}</span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="flex gap-1">
+                      {selected.arrows?.map((a: string, i: number) => (
+                        <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
+                      ))}
+                    </div>
+                    {/* [KOLORY STRZAŁ] Wynik posortowany, pod nim kolejność strzelania (user 2026-10-29). */}
+                    {arrowColors && (selected.rawArrows || []).length > 0 && (
+                      <>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{t('scoring.colorFilter')}</span>
+                        <div className="flex gap-1">
+                          {(selected.rawArrows as string[]).map((a, i) => {
+                            const c = arrowColorAt(i);
+                            return (
+                              <div key={i} className="w-7 flex flex-col items-center">
+                                <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
+                                <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                  <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90 shrink-0" aria-label={t('common.close', 'Schließen')}>
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                </div>
+              )}
+            </SummaryCard>
+
+            {AI_ENABLED && submittedEnds.length >= 6 && (
+              <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />
+            )}
           </div>
+        );
+      })()}
+
+      {/* DZIENNIK — zwinięty, ale z wyraźnym zaproszeniem do notatki; tuż nad zapisem. */}
+      {submittedEnds.length > 0 && (
+        <div className="mx-2 mt-3">
+          <SummaryCard
+            icon="edit_note"
+            iconCls="text-indigo-500"
+            stripe="tb-private"
+            kind={t('scoringView.trainingJournal', 'Dziennik Treningowy')}
+            kindCls="text-indigo-600"
+            title={sessionNote
+              ? <span className="font-bold text-gray-600">„{sessionNote}”</span>
+              : <span className="text-indigo-700">{t('scoring.journalAdd')}</span>}
+            defaultOpen={false}
+          >
+            <div className="relative mb-3">
+              <textarea
+                maxLength={100}
+                value={sessionNote}
+                onChange={(e) => setSessionNote(e.target.value)}
+                placeholder={t('scoringView.notePlaceholder', 'Opisz swoje odczucia: wiatr, zmęczenie, zmiany w sprzęcie...')}
+                className="w-full bg-gray-50 border border-gray-100 focus:border-indigo-300 focus:bg-white rounded-xl p-3 text-sm font-bold text-[#0a3a2a] placeholder:text-gray-400 outline-none h-20 resize-none transition-colors"
+              />
+              <div className={`absolute bottom-2 right-3 text-[9px] font-black uppercase tracking-tighter transition-colors ${sessionNote.length >= 90 ? 'text-red-500' : 'text-gray-400'}`}>
+                {sessionNote.length}/100
+              </div>
+            </div>
+            <label className="flex items-center gap-2 cursor-pointer group w-max">
+              <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${isNotePublic ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-gray-300 text-transparent'}`}>
+                <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+              </div>
+              <input
+                type="checkbox"
+                className="hidden"
+                checked={isNotePublic}
+                onChange={(e) => setIsNotePublic(e.target.checked)}
+              />
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-800 group-hover:text-emerald-600 transition-colors">
+                {t('scoringView.shareWithCoach', 'Udostępnij notatkę trenerowi')}
+              </span>
+            </label>
+          </SummaryCard>
         </div>
       )}
 

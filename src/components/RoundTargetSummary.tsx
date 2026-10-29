@@ -10,7 +10,9 @@ import { directionKey } from '../utils/arrowStats';
 // (wybrana seria, jeśli jest w tej rundzie, inaczej cała runda) — utils/groupStats.ts
 // colorFilter — [KOLORY STRZAŁ] miejsce strzały w serii (0 = zielona): na tarczy tylko
 // ta strzała ze wszystkich serii, grupa liczona też tylko z niej (ArrowColorFilter)
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null }: any) {
+// bare — sama tarcza (większa) + podpis grupy, bez ramki i nagłówka: do karty
+// „Trefferbild” po treningu, która ma własny nagłówek i przełącznik rund
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false }: any) {
   const { t, i18n } = useTranslation();
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
@@ -40,8 +42,8 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
   );
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 p-3 shadow-sm relative flex flex-col items-center h-full">
-      <div className="w-full flex justify-between items-center mb-3">
+    <div className={bare ? 'relative flex flex-col items-center w-full' : 'bg-white rounded-2xl border border-gray-100 p-3 shadow-sm relative flex flex-col items-center h-full'}>
+      {!bare && <div className="w-full flex justify-between items-center mb-3">
         <div className="flex flex-col">
           <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none">{title}</span>
           <span className="text-[8px] font-bold text-emerald-500 uppercase mt-1">
@@ -60,11 +62,11 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
             <span className="material-symbols-outlined text-[18px]">local_fire_department</span>
           </button>
         )}
-      </div>
-      
+      </div>}
+
       <div className="w-full flex-1 flex items-center justify-center min-h-[160px]">
         {/* Zunifikowany viewBox: 3-Spot używa 300x400 (żeby podwójna tarcza ładnie siadła) */}
-        <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className="w-full h-auto max-h-[220px] drop-shadow-md">
+        <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className={`w-full h-auto drop-shadow-md ${bare ? 'max-h-[380px]' : 'max-h-[220px]'}`}>
           {/* Tarcza przygaszona do 70% (user 2026-10-29) — strzały lepiej widać. */}
           <g opacity="0.7">
           {isFullFace ? (

@@ -5,15 +5,16 @@ import { ARROW_COLORS } from '../../config/arrowColors';
 // [KOLORY STRZAŁ] Filtr nad tarczami rund (user 2026-10-29): dotknięcie np. zielonej
 // pokazuje na tarczach tylko pierwsze strzały ze wszystkich serii. Drugie
 // dotknięcie tej samej albo „Alle” wraca do wszystkich. Wartość = miejsce w serii.
-export default function ArrowColorFilter({ value, onChange, count = 6 }: {
+export default function ArrowColorFilter({ value, onChange, count = 6, bare = false }: {
   value: number | null;
   onChange: (v: number | null) => void;
   count?: number; // strzał w serii — 3-strzałowe serie pokazują 3 kolory
+  bare?: boolean; // wewnątrz innej karty (Trefferbild po treningu) — bez własnej ramki
 }) {
   const { t } = useTranslation();
   const colors = ARROW_COLORS.slice(0, count);
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl px-2.5 pt-2 pb-2 shadow-sm">
+    <div className={bare ? 'w-full' : 'bg-white border border-gray-200 rounded-2xl px-2.5 pt-2 pb-2 shadow-sm'}>
       <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('scoring.colorFilter')}</span>
       <div className="flex items-center justify-between gap-1">
       <button

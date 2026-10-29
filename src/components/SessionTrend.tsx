@@ -5,12 +5,13 @@ import { useTranslation } from 'react-i18next';
 // 48–55 wyglądały jak równy płot — teraz skala biegnie od najsłabszej do
 // najlepszej serii TEGO treningu, nad słupkiem jest wynik, przerywana linia to
 // średnia, a między rundami jest przerwa. Wygląd jak karty dziennika (tb-card).
-export default function SessionTrend({ submittedEnds, onPointClick, highlighted = null, roundSize, plannedEnds = 12 }: {
+export default function SessionTrend({ submittedEnds, onPointClick, highlighted = null, roundSize, plannedEnds = 12, bare = false }: {
   submittedEnds: any[];
   onPointClick?: (idx: number) => void;
   highlighted?: number | null;
   roundSize?: number;   // przerwa przed pierwszą serią drugiej rundy
   plannedEnds?: number; // puste miejsca do końca treningu
+  bare?: boolean;       // same słupki — nagłówek daje zwijana karta (SummaryCard)
 }) {
   const { t, i18n } = useTranslation();
   if (!submittedEnds || submittedEnds.length === 0) return null;
@@ -28,14 +29,14 @@ export default function SessionTrend({ submittedEnds, onPointClick, highlighted 
   const fmt = (v: number) => v.toLocaleString(i18n.language, { maximumFractionDigits: 1 });
 
   return (
-    <div className="tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 w-full">
-      <div className="flex items-start justify-between gap-2 mb-1">
+    <div className={bare ? 'w-full' : 'tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 w-full'}>
+      {!bare && <div className="flex items-start justify-between gap-2 mb-1">
         <span className="block min-w-0">
           <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700">{t('scoring.trendTitle')}</span>
           <span className="block text-[13px] font-black leading-snug text-[#0a3a2a]">{t('scoring.trendAvg', { avg: fmt(avg) })}</span>
         </span>
         <span className="shrink-0 text-[9px] font-bold text-gray-400 text-right leading-tight mt-0.5">{t('scoring.trendHint')}</span>
-      </div>
+      </div>}
 
       <div className="relative">
         {/* Linia średniej — w tym samym układzie co słupki (h-28, bez podpisów). */}

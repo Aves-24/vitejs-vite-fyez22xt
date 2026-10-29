@@ -48,6 +48,9 @@ export const components = {
     shotOrder: "Kolejność strzał",
     colorFilter: "Kolejność strzelania",
     colorFilterAll: "Wszystkie",
+    targetCard: "Obraz trafień",
+    viewAll: "Całość",
+    journalAdd: "Jak poszło? Dodaj notatkę",
     colorFilterArrow: "Pokaż tylko strzałę {{n}}",
     bilanz: {
       title: "Bilans",

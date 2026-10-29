@@ -48,6 +48,9 @@ export const components = {
     shotOrder: "Reihenfolge der Pfeile",
     colorFilter: "Schussreihenfolge",
     colorFilterAll: "Alle",
+    targetCard: "Trefferbild",
+    viewAll: "Gesamt",
+    journalAdd: "Wie lief es? Notiz hinzufügen",
     colorFilterArrow: "Nur Pfeil {{n}} zeigen",
     bilanz: {
       title: "Bilanz",
@@ -59,7 +62,7 @@ export const components = {
       steadyHigh: "sehr gleichmäßig",
       steadyMid: "gleichmäßig",
       steadyLow: "schwankend",
-      hits: "Trefferbild"
+      hits: "Ringverteilung"
     },
     group: {
       title: "Gruppe",

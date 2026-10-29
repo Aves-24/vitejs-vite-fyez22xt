@@ -48,6 +48,9 @@ export const components = {
     shotOrder: "Shooting order",
     colorFilter: "Shooting order",
     colorFilterAll: "All",
+    targetCard: "Hit plot",
+    viewAll: "All",
+    journalAdd: "How did it go? Add a note",
     colorFilterArrow: "Show only arrow {{n}}",
     bilanz: {
       title: "Summary",

@@ -4,6 +4,7 @@ import { getRecentSessions } from '../../lib/recentSessions';
 import { distanceKey } from '../../config/distances';
 import { getStats } from '../../utils/endStats';
 import { handicapOfSession } from '../../utils/rankEngine';
+import { countBad } from '../../utils/badShots';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -103,6 +104,9 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
     .filter((h): h is number => h !== null);
   const refHc = priorHc.length ? Math.round(priorHc.reduce((a, b) => a + b, 0) / priorHc.length) : null;
 
+  // [FEHLSCHUSS] Oznaczone złe strzały — punkty zostają, wypadają z analizy.
+  const badCount = countBad(ends);
+
   // --- Rundy ---
   const r1 = getStats(ends.slice(0, roundSize));
   const r2 = getStats(ends.slice(roundSize));
@@ -159,6 +163,15 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
                 <span className="tabular-nums">
                   <span className={`font-black ${refHc === null || hc === refHc ? 'text-[#0a3a2a]' : hc < refHc ? 'text-emerald-700' : 'text-red-600'}`}>{hc}</span>
                   {refHc !== null && <span className="text-gray-400"> · {t('scoring.bilanz.handicapRef', { hc: refHc })}</span>}
+                </span>
+              </Row>
+            )}
+            {badCount > 0 && (
+              <Row label={t('scoring.badShot.label')}>
+                <span className="flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-red-500">flag</span>
+                  <span className="font-black text-[#0a3a2a] tabular-nums">{badCount}</span>
+                  <span className="text-gray-400"> · {t('scoring.badShot.excluded')}</span>
                 </span>
               </Row>
             )}

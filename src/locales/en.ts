@@ -57,6 +57,13 @@ export const components = {
       no: "No",
       short: { yes: "Focus achieved", partly: "Focus partly", no: "Focus not achieved" }
     },
+    badShot: {
+      button: "Bad shot",
+      hint: "Mark the last arrow as a badly executed shot. Tapping an arrow in the table marks it too.",
+      cell: "Arrow {{v}}: mark as bad shot",
+      label: "Bad shots",
+      excluded: "excluded from group and sight"
+    },
     holdPlain: "Show all arrows in yellow",
     journalAdd: "How did it go? Add a note",
     sight: {

@@ -30,6 +30,7 @@ import { isSpotFace, friendlyTargetName } from '../config/targetFaces';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
 import { getStats } from '../utils/endStats';
+import { toggleBad, sortedRawIndices } from '../utils/badShots';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -374,6 +375,23 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
+  // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): przycisk oznacza ostatnio
+  // wpisaną strzałę (po 6. seria zamyka się sama — wtedy ostatnią strzałę
+  // ostatniej serii), a dotknięcie pola w tabeli przełącza znacznik dowolnej
+  // strzały. Punkty bez zmian, strzała wypada tylko z analizy.
+  const toggleEndBad = (endIdx: number, rawIdx: number) => {
+    setSubmittedEnds(prev => prev.map((e, k) => (k === endIdx && e.dots?.length ? { ...e, dots: toggleBad(e.dots, rawIdx) } : e)));
+  };
+  const toggleLastBad = () => {
+    if (inputArrows.length > 0) {
+      setInputCoordinates(c => toggleBad(c, inputArrows.length - 1));
+    } else if (submittedEnds.length > 0) {
+      const li = submittedEnds.length - 1;
+      toggleEndBad(li, (submittedEnds[li].dots?.length || 0) - 1);
+    }
+  };
+  const hasAnyArrow = inputArrows.length > 0 || submittedEnds.length > 0;
+
   const undo = () => {
     if (inputArrows.length > 0) {
       setInputArrows(p => p.slice(0, -1));
@@ -397,7 +415,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         const safeCoordinates = inputCoordinates.map(coord => ({
           x: coord?.x ?? null,
           y: coord?.y ?? null,
-          spotId: coord?.spotId ?? null
+          spotId: coord?.spotId ?? null,
+          ...(coord?.bad ? { bad: true } : {}), // [FEHLSCHUSS] utils/badShots
         }));
 
         const newEnd = {
@@ -419,7 +438,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       }, 600); 
     }
     return () => clearTimeout(timeoutId);
-  }, [inputArrows, submittedEnds.length, onRoundTwoStart, roundSize]); 
+    // inputCoordinates w zależnościach: oznaczenie 6. strzały jako Fehlschuss
+    // w tych 600 ms musi trafić do zamykanej serii (inaczej zostaje stary stan).
+  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize]);
 
   const r1Ends = submittedEnds.slice(0, roundSize);
   const r2Ends = submittedEnds.slice(roundSize, plannedEnds);
@@ -879,6 +900,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mx-2">
         <div className="px-3 py-2 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
           <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
+          {hasAnyArrow && (
+            <button
+              onClick={toggleLastBad}
+              className="flex items-center gap-1 px-2 py-1 -my-1 rounded-lg bg-white/10 text-white active:scale-95 transition-all"
+              title={t('scoring.badShot.hint')}
+            >
+              <span className="material-symbols-outlined text-[14px] text-red-300">flag</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">{t('scoring.badShot.button')}</span>
+            </button>
+          )}
         </div>
         <div className="p-2 space-y-1">
           {Array.from({ length: roundSize }, (_, i) => i).map(i => {
@@ -896,7 +927,32 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                   {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,
                       więc pasek pod polem = kolor strzały; gotowe serie zostają
                       posortowane od X do M jak zawsze. */}
-                  {[0,1,2,3,4,5].map(ai => <div key={ai} className={`relative h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(currentPassArrows[ai] || '')}`}>{currentPassArrows[ai] || ''}{arrowColors && isCur && <ArrowColorBar index={ai} isNext={ai === inputArrows.length} />}</div>)}
+                  {[0,1,2,3,4,5].map(ai => {
+                    // [FEHLSCHUSS] Gotowa seria jest posortowana — pole ai to strzała rawArrows[order[ai]].
+                    const rawIdx = isCur ? ai : (end?.rawArrows ? sortedRawIndices(end.rawArrows)[ai] : -1);
+                    const bad = isCur ? !!inputCoordinates[ai]?.bad : !!(rawIdx >= 0 && end?.dots?.[rawIdx]?.bad);
+                    const val = currentPassArrows[ai] || '';
+                    const canToggle = !!val && (isCur || (rawIdx >= 0 && !!end?.dots?.length));
+                    const onToggle = () => {
+                      if (!canToggle) return;
+                      if (isCur) setInputCoordinates(c => toggleBad(c, ai));
+                      else toggleEndBad(idx, rawIdx);
+                    };
+                    return (
+                      <div
+                        key={ai}
+                        onClick={onToggle}
+                        role={canToggle ? 'button' : undefined}
+                        aria-pressed={canToggle ? bad : undefined}
+                        aria-label={canToggle ? t('scoring.badShot.cell', { v: val }) : undefined}
+                        className={`relative h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
+                      >
+                        {val}
+                        {bad && <span className="absolute top-0 right-0 w-0 h-0 border-t-[9px] border-l-[9px] border-t-red-500 border-l-transparent rounded-tr-md" aria-hidden="true" />}
+                        {arrowColors && isCur && <ArrowColorBar index={ai} isNext={ai === inputArrows.length} />}
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#cce6dc] text-[#0a3a2a]' : 'bg-[#F9F9F9] text-transparent'}`}>{passSum || ''}</div>
                 <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#0a3a2a] text-white' : 'bg-[#F9F9F9] text-transparent'}`}>{isCur ? '...' : (runSum || '')}</div>

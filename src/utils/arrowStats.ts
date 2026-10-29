@@ -52,7 +52,7 @@ export interface ArrowStatsResult {
 interface SessionLike {
   arrowColors?: boolean;
   targetType?: string;
-  ends?: Array<{ rawArrows?: string[]; arrows?: string[]; dots?: Array<{ x: number | null; y: number | null; spotId?: string | null }> }>;
+  ends?: Array<{ rawArrows?: string[]; arrows?: string[]; dots?: Array<{ x: number | null; y: number | null; spotId?: string | null; bad?: boolean }> }>;
 }
 
 const valueOf = (v?: string): number | null => {
@@ -115,7 +115,8 @@ export function computeArrowStats(sessions: SessionLike[]): ArrowStatsResult | n
       // pudło poza tarczą rozwaliłoby środek serii.
       const pts: Array<{ i: number; x: number; y: number }> = [];
       (end.dots || []).forEach((d, i) => {
-        if (i >= acc.length || d?.x == null || d?.y == null || raw[i] === 'M') return;
+        // [FEHLSCHUSS] Oznaczony zły strzał mówi o wykonaniu, nie o strzale — pomijamy.
+        if (i >= acc.length || d?.x == null || d?.y == null || raw[i] === 'M' || d.bad) return;
         const { cX, cY } = isSpotFace(s.targetType)
           ? spotCenter(d.spotId, d.x, d.y, s.targetType)
           : { cX: 150, cY: 150 };

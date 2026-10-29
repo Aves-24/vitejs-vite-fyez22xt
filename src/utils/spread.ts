@@ -55,7 +55,7 @@ export function calculateSpread(ends: any[], targetType: string): SpreadResult |
   const dyArr: number[] = [];
   ends.forEach(end => {
     end.dots?.forEach((dot: any) => {
-      if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined) return;
+      if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined || dot.bad) return;
       const { cX, cY } = centerFor(targetType, dot.x, dot.y);
       dxArr.push(dot.x - cX);
       dyArr.push(dot.y - cY);
@@ -72,7 +72,7 @@ export function calculateSpreadSessions(sessions: Array<{ ends?: any[]; targetTy
     const targetType = session.targetType || 'Full';
     session.ends?.forEach((end: any) => {
       end.dots?.forEach((dot: any) => {
-        if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined) return;
+        if (dot.x === null || dot.y === null || dot.x === undefined || dot.y === undefined || dot.bad) return;
         const { cX, cY } = centerFor(targetType, dot.x, dot.y);
         dxArr.push(dot.x - cX);
         dyArr.push(dot.y - cY);

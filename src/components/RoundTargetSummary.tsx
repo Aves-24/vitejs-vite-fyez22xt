@@ -129,6 +129,19 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               const radius = hidden ? "0" : isHighlighted ? (isLargeSession ? "4.5" : "6") : "3.5";
               const ac = arrowColors && !plainDots ? arrowColorAt(dIdx) : null;
 
+              // [FEHLSCHUSS] Oznaczony zły strzał: pusty środek, czerwony przerywany
+              // obrys — widać go, ale nie liczy się do grupy (utils/badShots).
+              if (dot.bad) {
+                return (
+                  <circle
+                    key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill="none"
+                    stroke="#dc2626" strokeWidth={isHighlighted ? "1.8" : "0.8"} strokeDasharray="2.5 1.5"
+                    opacity={hidden ? 0 : isHighlighted ? 1 : 0.35}
+                    style={{ transition: 'all 0.35s ease' }}
+                  />
+                );
+              }
+
               return (
                 <circle
                   key={`${idx}-${dIdx}`} cx={dot.x} cy={dot.y} r={radius} fill={ac ? ac.hex : plainDots ? '#fed33e' : 'white'}

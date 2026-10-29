@@ -48,10 +48,11 @@ export interface GroupStats {
 export const GROUP_AXIS_MIN_DOTS = 12;
 const AXIS_RATIO = 1.3;
 
-export function groupStats(ends: Array<{ dots?: Array<{ x: number | null; y: number | null }> }>, targetType: string): GroupStats | null {
+export function groupStats(ends: Array<{ dots?: Array<{ x: number | null; y: number | null; bad?: boolean }> }>, targetType: string): GroupStats | null {
   const offs: Array<[number, number]> = [];
   ends.forEach(end => end.dots?.forEach(d => {
-    if (d?.x == null || d?.y == null) return;
+    // [FEHLSCHUSS] Oznaczony zły strzał nie należy do grupy (utils/badShots).
+    if (d?.x == null || d?.y == null || d.bad) return;
     const { cX, cY } = centerFor(targetType, d.x, d.y);
     offs.push([d.x - cX, d.y - cY]);
   }));

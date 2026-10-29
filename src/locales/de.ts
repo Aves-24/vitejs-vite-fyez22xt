@@ -57,6 +57,13 @@ export const components = {
       no: "Nein",
       short: { yes: "Fokus umgesetzt", partly: "Fokus teilweise", no: "Fokus nicht umgesetzt" }
     },
+    badShot: {
+      button: "Fehlschuss",
+      hint: "Letzten Pfeil als Fehlschuss markieren (schlecht ausgeführt). Tipp auf einen Pfeil in der Tabelle markiert ihn ebenfalls.",
+      cell: "Pfeil {{v}}: als Fehlschuss markieren",
+      label: "Fehlschüsse",
+      excluded: "nicht in Gruppe und Visier"
+    },
     holdPlain: "Alle Pfeile gelb anzeigen",
     journalAdd: "Wie lief es? Notiz hinzufügen",
     sight: {

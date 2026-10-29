@@ -1533,6 +1533,15 @@ export const views = {
     topic_nockpunkt: "Nockpunkt"
   },
   stats: {
+    groupTrend: {
+      title: "Gruppengröße",
+      sub: "Letzte {{count}} Trainings · 80 % der Pfeile",
+      smaller: "{{cm}} cm kleiner",
+      larger: "{{cm}} cm größer",
+      lastHint: "Letztes Training, verglichen mit Ø {{avg}} cm davor. Kleiner ist besser.",
+      offset: "Versatz {{cm}} cm",
+      open: "Öffnen"
+    },
     arrowColors: {
       title: "Pfeile im Vergleich",
       sub: "aus {{count}} Trainings in Farbreihenfolge",

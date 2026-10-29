@@ -1554,6 +1554,15 @@ export const views = {
     topic_nockpunkt: "Punkt nałożenia strzały"
   },
   stats: {
+    groupTrend: {
+      title: "Wielkość grupy",
+      sub: "Ostatnie {{count}} treningów · 80% strzał",
+      smaller: "o {{cm}} cm mniejsza",
+      larger: "o {{cm}} cm większa",
+      lastHint: "Ostatni trening na tle średniej Ø {{avg}} cm z wcześniejszych. Mniejsza = lepiej.",
+      offset: "przesunięcie {{cm}} cm",
+      open: "Otwórz"
+    },
     arrowColors: {
       title: "Strzały w porównaniu",
       sub: "z {{count}} treningów w kolorowej kolejności",

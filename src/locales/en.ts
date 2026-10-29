@@ -1533,6 +1533,15 @@ export const views = {
     topic_nockpunkt: "Nocking point"
   },
   stats: {
+    groupTrend: {
+      title: "Group size",
+      sub: "Last {{count}} sessions · 80% of arrows",
+      smaller: "{{cm}} cm smaller",
+      larger: "{{cm}} cm larger",
+      lastHint: "Latest session vs. Ø {{avg}} cm before. Smaller is better.",
+      offset: "offset {{cm}} cm",
+      open: "Open"
+    },
     arrowColors: {
       title: "Arrows compared",
       sub: "from {{count}} sessions in colour order",

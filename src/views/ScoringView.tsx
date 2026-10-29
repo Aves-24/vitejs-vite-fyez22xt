@@ -11,17 +11,15 @@ import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankBowOf, rankFromStor
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
-import SessionTrend from '../components/SessionTrend';
 import SessionBilanz from '../components/scoring/SessionBilanz';
-import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
 import SummaryCard from '../components/scoring/SummaryCard';
+import TrendCard from '../components/scoring/TrendCard';
+import TargetCard from '../components/scoring/TargetCard';
 import BadShotInfo from '../components/scoring/BadShotInfo';
-import RoundTargetSummary from '../components/RoundTargetSummary';
 import Timer from '../components/Timer';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
 import TargetInput, { ArrowColorBar } from '../components/targets/TargetInput';
-import { arrowColorAt } from '../config/arrowColors';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
 import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
@@ -72,7 +70,7 @@ const getFlagEmoji = (countryCode: string) => {
 };
 
 export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
   const [submittedEnds, setSubmittedEnds] = useState<any[]>([]); 
@@ -96,9 +94,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     });
   }, [userId]);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
-  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarczy
-  const [targetView, setTargetView] = useState<'all' | 1 | 2>('all'); // karta Trefferbild: obie rundy albo jedna
-  const [plainDots, setPlainDots] = useState(false); // przytrzymany przycisk: kropki bez kolorów strzał
   const [isTimerExpanded, setIsTimerExpanded] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerMode, setTimerMode] = useState<'IDLE' | 'PREP' | 'SHOOT' | 'FINISHED'>('IDLE');
@@ -1028,131 +1023,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       )}
 
       {submittedEnds.length > 0 && (showStats || isStatsExpanded) && (() => {
-        const viewEnds = targetView === 1 ? r1Ends : targetView === 2 ? r2Ends : submittedEnds;
-        const viewStart = targetView === 2 ? roundSize : 0;
-        const viewArrows = viewEnds.reduce((acc: number, e: any) => acc + (e.arrows?.length || 0), 0);
-        const viewLabel = targetView === 'all' ? t('scoring.viewAll') : `${t('scoringView.round', 'Runda')} ${targetView}`;
-        const selected = highlightedEnd !== null ? submittedEnds[highlightedEnd] : null;
-        const getArrowBg = (val: string) => {
-          if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] shadow-sm';
-          if (['8', '7'].includes(val)) return 'bg-[#EB5757] text-white shadow-sm';
-          if (['6', '5'].includes(val)) return 'bg-[#2F80ED] text-white shadow-sm';
-          if (['4', '3'].includes(val)) return 'bg-[#333] text-white shadow-sm';
-          if (val === 'M') return 'bg-purple-900 text-white shadow-sm';
-          return 'bg-gray-100 text-gray-400';
-        };
-        // Wybór serii z innej rundy przełącza tarczę na tę rundę — inaczej
-        // podświetlenie trafiałoby w pustkę.
-        const pickEnd = (idx: number) => {
-          const next = highlightedEnd === idx ? null : idx;
-          setHighlightedEnd(next);
-          if (next !== null && targetView !== 'all') setTargetView(next < roundSize ? 1 : 2);
-        };
         return (
           <div className="mx-2 mt-4 space-y-3 animate-fade-in-up">
-            {/* TREND + wybrana seria w jednej karcie */}
-            <SummaryCard
-              icon="bar_chart"
-              kind={t('scoring.trendTitle')}
-              title={t('scoring.trendAvg', { avg: (submittedEnds.reduce((a: number, e: any) => a + (e.total_sum || 0), 0) / submittedEnds.length).toLocaleString(i18n.language, { maximumFractionDigits: 1 }) })}
-              right={<span className="text-[9px] font-bold text-gray-400 mr-1">{t('scoring.trendHint')}</span>}
-              storageKey="sum-trend"
-            >
-              <SessionTrend bare submittedEnds={submittedEnds} highlighted={highlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} onPointClick={pickEnd} />
-              {selected && highlightedEnd !== null && (
-                // Siatka: wynik | strzały | ✕, a pod spodem „Schussreihenfolge” | kolory —
-                // podpis po lewej w tej samej linii co kolory (user 2026-10-29: mniej miejsca).
-                <div key={highlightedEnd} className="mt-3 pt-2.5 border-t border-gray-100 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 tb-fade-in">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('scoring.series')} {highlightedEnd + 1}</span>
-                    <span className="text-lg font-black text-[#0a3a2a] leading-tight">{selected.total_sum} {t('scoringView.pts', 'pkt')}</span>
-                  </div>
-                  <div className="flex gap-1 justify-end">
-                    {selected.arrows?.map((a: string, i: number) => (
-                      <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
-                    ))}
-                  </div>
-                  <button onClick={() => setHighlightedEnd(null)} className="text-gray-400 active:scale-90" aria-label={t('common.close', 'Schließen')}>
-                    <span className="material-symbols-outlined text-sm">close</span>
-                  </button>
-                  {/* [KOLORY STRZAŁ] Wynik posortowany, pod nim kolejność strzelania (user 2026-10-29). */}
-                  {arrowColors && (selected.rawArrows || []).length > 0 && (
-                    <>
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-wider leading-tight">{t('scoring.colorFilter')}</span>
-                      <div className="flex gap-1 justify-end">
-                        {(selected.rawArrows as string[]).map((a, i) => {
-                          const c = arrowColorAt(i);
-                          return (
-                            <div key={i} className="w-7 flex flex-col items-center">
-                              <span className="w-3 h-3 rounded-full border border-gray-300" style={{ backgroundColor: c?.hex || '#e5e7eb' }} />
-                              <span className="text-[9px] font-black text-gray-500 tabular-nums leading-tight">{a}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <span />
-                    </>
-                  )}
-                </div>
-              )}
-            </SummaryCard>
-
-            {/* TREFFERBILD — jedna duża tarcza zamiast dwóch małych (lepiej czytelna na telefonie).
-                Kolory strzał: kolumna miniatur po prawej (filtr), w rogu tarczy przycisk
-                „przytrzymaj = wszystkie żółte”, bo sześć kolorów naraz bywa za pstrokate. */}
-            <SummaryCard
-              icon="adjust"
-              kind={t('scoring.targetCard')}
-              title={r2Ends.length > 0 ? `${viewArrows} ${t('common.arrows')}` : `${viewLabel} · ${viewArrows} ${t('common.arrows')}`}
-              storageKey="sum-target"
-              // Przełącznik rund w wierszu nagłówka (user 2026-10-29: kompaktowo).
-              control={r2Ends.length > 0 ? (
-                <div className="flex bg-gray-50 rounded-xl p-0.5 shrink-0">
-                  {(['all', 1, 2] as const).map(v => (
-                    <button
-                      key={String(v)}
-                      onClick={() => setTargetView(v)}
-                      className={`px-2 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${targetView === v ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
-                      aria-pressed={targetView === v}
-                    >
-                      {v === 'all' ? t('scoring.viewAll') : `R${v}`}
-                    </button>
-                  ))}
-                </div>
-              ) : undefined}
-            >
-              <RoundTargetSummary
-                bare
-                ends={viewEnds}
-                highlightedEnd={highlightedEnd}
-                startIndex={viewStart}
-                targetType={targetType}
-                arrowColors={arrowColors}
-                colorFilter={colorFilter}
-                showGroup
-                sightHint={hasSight}
-                plainDots={plainDots}
-                aside={arrowColors ? (
-                  <ArrowColorFilter
-                    value={colorFilter}
-                    onChange={setColorFilter}
-                    vertical
-                    top={
-                      // Włącz/wyłącz (user 2026-10-29: zamiast przytrzymania) — wszystkie kropki żółte.
-                      <button
-                        onClick={() => setPlainDots(v => !v)}
-                        className={`w-9 h-9 mb-1 rounded-full flex items-center justify-center border shadow-sm transition-colors ${plainDots ? 'bg-[#fed33e] border-[#e5bd38] text-[#0a3a2a]' : 'bg-white border-gray-200 text-gray-500'}`}
-                        aria-pressed={plainDots}
-                        aria-label={t('scoring.holdPlain')}
-                        title={t('scoring.holdPlain')}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">contrast</span>
-                      </button>
-                    }
-                  />
-                ) : undefined}
-              />
-            </SummaryCard>
+            {/* TREND + wybrana seria, potem TREFFERBILD — wspólne karty z Statystykami (components/scoring). */}
+            <TrendCard ends={submittedEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} arrowColors={arrowColors} />
+            <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} />
 
             {AI_ENABLED && submittedEnds.length >= 6 && (
               <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />

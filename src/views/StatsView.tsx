@@ -5,38 +5,27 @@ import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, startAfter, doc, getDoc, getDocs, deleteDoc, updateDoc, onSnapshot, QueryDocumentSnapshot, Timestamp } from 'firebase/firestore';
 import { readPrivateSessionNote, sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { useTranslation } from 'react-i18next';
-import SessionTrend from '../components/SessionTrend';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
 import { hasActivePro, FREE_HISTORY_DAYS } from '../utils/proAccess';
-import RoundTargetSummary from '../components/RoundTargetSummary';
-import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
+import SessionBilanz from '../components/scoring/SessionBilanz';
+import TrendCard from '../components/scoring/TrendCard';
+import TargetCard from '../components/scoring/TargetCard';
+import { rankBowOf } from '../utils/rankEngine';
+import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import ProStatsView from '../components/ProStatsView';
 import TournamentRecordsView from '../components/TournamentRecordsView';
 import ExportPanel from '../components/ExportPanel';
 import TechSessionCard from '../components/TechSessionCard';
 import { SessionFocusCard } from '../components/tagebuch/FocusCard';
 import BiomechCard from '../components/BiomechCard';
-import HeatmapTarget from '../components/HeatmapTarget';
 import { calculateSpread } from '../utils/spread';
 import { createPortal } from 'react-dom';
 import { isPartialSession, partialLabel, isShortPlanned, roundSizeFor } from '../utils/partialSession';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
-
-const calculateHits = (ends: any[]) => {
-  let x = 0, ten = 0, nine = 0;
-  ends.forEach(end => {
-    end.arrows?.forEach((a: string) => {
-      if (a === 'X') { x++; ten++; }
-      else if (a === '10') ten++;
-      else if (a === '9') nine++;
-    });
-  });
-  return { x, ten, nine };
-};
 
 const getArrowBg = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] shadow-sm';
@@ -105,48 +94,6 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
         </div>
       )}
     </div>
-  );
-}
-
-// Heatmapa rundy (2026-10-29): dawne okno „powiększenie z diamencikiem” pokazywało
-// to samo co podsumowanie (większa tarcza + P1–P6), więc zostaje z niego tylko
-// heatmapa — jedyna rzecz, której nie ma na ekranie statystyk.
-function HeatmapModal({ rounds, initial, targetType, onClose, t }: any) {
-  const [roundIdx, setRoundIdx] = useState<number>(initial || 0);
-  const round = rounds[roundIdx] || rounds[0];
-
-  // Wszystkie kropki rundy (ta sama przestrzeń współrzędnych co w zakładce PRO Progress).
-  const heatDots = useMemo(
-    () => round.ends.flatMap((end: any) => (end.dots || []).filter((d: any) => d.x != null && d.y != null)),
-    [round]
-  );
-
-  if (typeof document === 'undefined') return null;
-  return createPortal(
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-center justify-center p-4 transition-opacity duration-300" onClick={onClose}>
-      <div className="bg-white rounded-[32px] p-6 w-full max-w-[500px] shadow-2xl relative flex flex-col items-center border border-gray-100" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 text-gray-500 rounded-full active:scale-90 transition-all z-10">
-          <span className="material-symbols-outlined font-bold text-xl">close</span>
-        </button>
-        <div className="text-center mb-3 w-full px-8 mt-2">
-          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-1 block">{t('stats.zoom.heatmap', 'Heatmapa')}</span>
-          <h3 className="text-xl font-black text-[#0a3a2a] leading-tight block">{round.title}</h3>
-        </div>
-
-        {/* PRZEŁĄCZNIK RUND — zmiana rundy bez zamykania okna */}
-        {rounds.length > 1 && (
-          <div className="flex gap-1.5 mb-3 shrink-0">
-            {rounds.map((r: any, i: number) => (
-              <button key={i} onClick={() => setRoundIdx(i)} className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border active:scale-95 ${roundIdx === i ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-md' : 'bg-white text-gray-400 border-gray-200'}`}>{r.title}</button>
-            ))}
-          </div>
-        )}
-
-        <div className="w-full bg-gray-50 rounded-2xl border border-gray-100 p-2 pt-4">
-          <HeatmapTarget dots={heatDots} targetType={targetType} />
-        </div>
-      </div>
-    </div>, document.body
   );
 }
 
@@ -401,6 +348,7 @@ interface Session {
   id: string; score: number; arrows: number; distance: string; distanceId?: string; distanceLabel?: string; date: string; timestamp: any;
   type?: 'Trening' | 'Turniej' | 'Arena' | 'TECHNICAL' | 'WORLD_BATTLE'; worldResult?: 'WIN' | 'LOSS'; tournamentName?: string;
   note?: string; coachNote?: string; editCount?: number; targetType?: string; ends?: any[]; weather?: any;
+  bowClass?: string; // [ZESTAWY] klasa łuku ze stempla — celownik, handicap
   /** [KOLORY STRZAŁ] Seria wpisana w kolejności kolorów — dots[i] = strzała nr i+1. */
   arrowColors?: boolean;
   isNotePublic?: boolean; totalArrows?: number; shotArrows?: number; scoreArrows?: number; sessionArrows?: number; practiceArrows?: number;
@@ -442,8 +390,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
   const [dailyArrows, setDailyArrows] = useState(0);
   const [dailyPfeilzaehler, setDailyPfeilzaehler] = useState(0);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
-  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
-  const [zoomedRoundData, setZoomedRoundData] = useState<any>(null);
   // Ręczność łucznika (RH/LH) — decyduje o lustrzanym odbiciu wskazówek lewo/prawo.
   // null = nieustawiona w profilu → pokazujemy prośbę o uzupełnienie.
   const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
@@ -647,7 +593,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       const s = allSessions.find(s => s.id === selectedSessionId);
       setSelectedSession(s || null);
       setHighlightedEnd(null);
-      setColorFilter(null);
     }
   }, [selectedSessionId, allSessions]);
 
@@ -693,12 +638,11 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
       ? selectedSession.targetType
       : distanceMeters(selectedSession?.distance) === 18 ? '3-Spot' : 'Full';
 
-  const r1Hits = calculateHits(r1Ends);
-  const r2Hits = calculateHits(r2Ends);
-  const totalHits = calculateHits(currentEnds);
   const spreadData = calculateSpread(currentEnds, displayTargetType);
+  // [KOREKTA CELOWNIKA] Łuk z sesji (stempel zestawu) — celownik tylko recurve/compound.
+  const sessionHasSight = selectedSession?.bowClass !== BLOWGUN_DISCIPLINE
+    && ['RECURVE', 'COMPOUND'].includes(rankBowOf(selectedSession?.bowClass));
 
-  const previewEnd = highlightedEnd !== null ? currentEnds[highlightedEnd] : null;
 
   return (
     <div className={`flex flex-col overflow-x-hidden ${isEmbedded ? 'w-full pb-10' : 'h-full bg-[#fcfdfe] pb-32 max-w-md mx-auto'}`}>
@@ -898,61 +842,42 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         </div>
                       )}
 
-                      <div className="bg-[#0a3a2a] rounded-2xl p-4 text-white shadow-md relative overflow-hidden">
-                        <div className="flex justify-between items-center mb-3 border-b border-white/10 pb-2">
-                          <span className="text-[10px] font-black uppercase tracking-widest">{t('stats.cards.hitStats')}</span>
-                          <span className="text-[10px] font-bold text-emerald-400">{t('stats.cards.total')}</span>
-                        </div>
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div><p className="text-[8px] font-bold text-[#fed33e] uppercase">Inner X</p><p className="text-xl font-black">{totalHits.x}</p></div>
-                          <div><p className="text-[8px] font-bold text-emerald-400 uppercase">{t('stats.cards.tenSum')}</p><p className="text-xl font-black">{totalHits.ten}</p></div>
-                          <div><p className="text-[8px] font-bold text-gray-300 uppercase">{t('stats.cards.nineSum')}</p><p className="text-xl font-black">{totalHits.nine}</p></div>
-                        </div>
-                      </div>
+                      {/* [PODSUMOWANIE] Ten sam układ co po treningu (user 2026-10-29):
+                          Bilanz → tabela serii → Trend z wybraną serią → Trefferbild. */}
+                      {currentEnds.length > 0 && (
+                        <SessionBilanz
+                          userId={targetUserId}
+                          ends={currentEnds}
+                          roundSize={roundSize}
+                          distance={selectedSession.distance || ''}
+                          distanceId={selectedSession.distanceId}
+                          targetType={displayTargetType}
+                          bowClass={selectedSession.bowClass}
+                          sessionId={selectedSession.id}
+                          beforeTs={selectedSession.timestamp?.toMillis?.() ?? (selectedSession.timestamp?.seconds ? selectedSession.timestamp.seconds * 1000 : undefined)}
+                        />
+                      )}
 
                       <RoundDetailTable r1Ends={r1Ends} r2Ends={r2Ends} t={t} />
 
-                      <div className="space-y-2 relative">
-                        <SessionTrend submittedEnds={currentEnds} highlighted={highlightedEnd} roundSize={roundSize} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
-                        
-                        {previewEnd && (
-                          <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-3 flex items-center justify-between animate-fade-in">
-                             <div className="flex flex-col">
-                               <span className="text-[9px] font-black text-emerald-700 uppercase">{t('scoring.series')} {highlightedEnd! + 1}</span>
-                               <span className="text-lg font-black text-[#0a3a2a]">{previewEnd.total_sum} {t('scoringView.pts')}</span>
-                             </div>
-                             <div className="flex gap-1">
-                               {previewEnd.arrows?.map((a: string, i: number) => (
-                                 <div key={i} className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-black ${getArrowBg(a)}`}>{a}</div>
-                               ))}
-                             </div>
-                             <button onClick={() => setHighlightedEnd(null)} className="text-emerald-400 active:scale-90"><span className="material-symbols-outlined text-sm">close</span></button>
-                          </div>
-                        )}
-                      </div>
+                      <TrendCard ends={currentEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!selectedSession?.arrowColors} storageKey="stats-trend" />
 
                       {/* PRO (miniony dzień): wizualny rozrzut na tarczy, biomechanika,
                           AI, eksport. Dziś zostaje darmowe — hasFullAccess === true. */}
                       {hasFullAccess ? (
                       <>
-                      {selectedSession?.arrowColors && <div className="mb-2"><ArrowColorFilter value={colorFilter} onChange={setColorFilter} /></div>}
-                      <div className="grid grid-cols-2 gap-2 mb-4">
-                        <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onHeatmapClick={() => setZoomedRoundData({initial: 0, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, ...(r2Ends.length > 0 ? [{title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}] : [])]})} />
-                          <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r1Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
-                          <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
-                            <span>X: {r1Hits.x}</span><span>10: {r1Hits.ten}</span><span>9: {r1Hits.nine}</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2 flex flex-col">
-                          <RoundTargetSummary title={`${t('scoring.round')} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={displayTargetType} arrowColors={!!selectedSession?.arrowColors} colorFilter={colorFilter} onHeatmapClick={() => setZoomedRoundData({initial: 1, targetType: displayTargetType, t:t, rounds: [{title:`${t('scoring.round')} 1`, ends:r1Ends, startIndex:0}, {title:`${t('scoring.round')} 2`, ends:r2Ends, startIndex: r1Ends.length}]})} />
-                          <div className="text-[9px] font-black text-emerald-600 uppercase text-center mb-1">{r2Ends.reduce((acc, end) => acc + (end.arrows?.length || 0), 0)} {t('scoringView.arrows')}</div>
-                          <div className="bg-gray-50 rounded-xl p-2 text-[9px] font-bold flex justify-around border border-gray-100">
-                            <span>X: {r2Hits.x}</span><span>10: {r2Hits.ten}</span><span>9: {r2Hits.nine}</span>
-                          </div>
-                        </div>
-                      </div>
-
+                      {/* Jedna duża tarcza jak po treningu; heatmapa w karcie zamiast okienka. */}
+                      <TargetCard
+                        key={selectedSession.id}
+                        ends={currentEnds}
+                        roundSize={roundSize}
+                        targetType={displayTargetType}
+                        arrowColors={!!selectedSession?.arrowColors}
+                        highlightedEnd={highlightedEnd}
+                        sightHint={sessionHasSight}
+                        heatmap
+                        storageKey="stats-target"
+                      />
                       {spreadData && (
                         <BiomechCard spread={spreadData} handedness={handedness} onNavigate={onNavigate} />
                       )}
@@ -1012,7 +937,6 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         </>
       )}
 
-      {zoomedRoundData && <HeatmapModal rounds={zoomedRoundData.rounds} initial={zoomedRoundData.initial} targetType={zoomedRoundData.targetType} onClose={() => setZoomedRoundData(null)} t={zoomedRoundData.t} />}
 
       {/* PSYCHOLOGICZNY MODAL USUWANIA */}
       {showDeleteModal && typeof document !== 'undefined' && createPortal(

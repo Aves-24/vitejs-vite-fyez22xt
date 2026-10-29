@@ -34,7 +34,7 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
 
 interface Prior { score: number; arrows: number; ts: number }
 
-export default function SessionBilanz({ userId, ends, roundSize, distance, distanceId, targetType, bowClass }: {
+export default function SessionBilanz({ userId, ends, roundSize, distance, distanceId, targetType, bowClass, sessionId, beforeTs }: {
   userId: string;
   ends: any[];
   roundSize: number;
@@ -42,6 +42,10 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   distanceId?: string | null;
   targetType: string;
   bowClass?: string; // z zestawu — dmuchawka nie ma handicapu
+  // Statystyki: oglądany trening już jest w historii — porównujemy tylko z
+  // wcześniejszymi (beforeTs) i bez niego samego (sessionId).
+  sessionId?: string;
+  beforeTs?: number;
 }) {
   const { t, i18n } = useTranslation();
   const [prior, setPrior] = useState<Prior[] | null>(null);
@@ -54,15 +58,15 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
       .then(list => {
         if (!alive) return;
         setPrior(list
-          .filter(s => s.type !== 'TECHNICAL' && !s.isPartial && (s.score || 0) > 0
+          .filter(s => s.id !== sessionId && s.type !== 'TECHNICAL' && !s.isPartial && (s.score || 0) > 0
             && distanceKey({ distanceId: s.distanceId, distance: s.distance }) === key && (s.targetType || 'Full') === (targetType || 'Full'))
           .map(s => ({ score: s.score, arrows: s.scoreArrows || s.sessionArrows || s.arrows || 0, ts: s.timestamp?.toMillis?.() || 0 }))
-          .filter(s => s.arrows > 0)
+          .filter(s => s.arrows > 0 && (beforeTs === undefined || s.ts < beforeTs))
           .sort((a, b) => a.ts - b.ts));
       })
       .catch(() => alive && setPrior([]));
     return () => { alive = false; };
-  }, [userId, distance, distanceId, targetType]);
+  }, [userId, distance, distanceId, targetType, sessionId, beforeTs]);
 
   const num = (v: number, digits: number) =>
     v.toLocaleString(i18n.language, { minimumFractionDigits: digits, maximumFractionDigits: digits });

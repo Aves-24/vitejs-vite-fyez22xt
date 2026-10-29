@@ -77,16 +77,17 @@ function RoundDetailTable({ r1Ends, r2Ends, t }: { r1Ends: any[], r2Ends: any[],
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-4 py-3 active:bg-gray-50 transition-colors">
-        <span className="text-[10px] font-black uppercase tracking-widest text-[#0a3a2a] flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[15px] text-emerald-600">table_chart</span>
-          {t('stats.cards.detailTable')}
+    // Styl kart dziennika (2026-10-29), zwinięta jak dotąd.
+    <div className="tb-card tb-d1 border rounded-l-md rounded-r-2xl shadow-sm overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 text-left active:opacity-60" aria-expanded={open}>
+        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[18px] text-emerald-600">table_chart</span>
         </span>
-        <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>expand_more</span>
+        <span className="flex-1 min-w-0 text-[9px] font-black uppercase tracking-widest text-emerald-700">{t('stats.cards.detailTable')}</span>
+        <span className={`material-symbols-outlined text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>keyboard_arrow_down</span>
       </button>
       {open && (
-        <div className="px-3 pb-3 pt-1 flex flex-col gap-4 animate-fade-in">
+        <div className="px-3 pb-3 pt-1 flex flex-col gap-4 tb-fade-in">
           {renderDurchgang(r1Ends, 0, 0)}
           {r2Ends.length > 0 && renderDurchgang(r2Ends, 1, r1Ends.length)}
         </div>
@@ -252,11 +253,14 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
   if (!showStudentNote && !session.coachNote) return null;
 
   return (
-    <div className="flex flex-col gap-2 w-full mt-2 mb-4">
+    // Styl kart dziennika (2026-10-29): notatka ucznia fioletowa (prywatne notatki),
+    // wskazówka trenera pomarańczowa (wpisy trenera) — słownik kolorów.
+    <div className="flex flex-col gap-3 w-full">
        {showStudentNote && (
-         <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4 relative shadow-sm">
+         <div className="tb-card tb-private border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 relative">
             <div className="flex justify-between items-center mb-2.5">
-              <span className="text-[10px] font-black text-emerald-700 uppercase tracking-widest flex items-center gap-1">
+              <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-1">
+                 <span className="material-symbols-outlined text-[16px] text-indigo-500">edit_note</span>
                  {viewingStudentId ? t('stats.studentFindings') : t('stats.yourNotes')}
                  {!viewingStudentId && ownNote && (
                     <span className="material-symbols-outlined text-[12px] opacity-60" title={session.isNotePublic !== false ? t('stats.sharedWithCoach') : t('stats.private')}>
@@ -266,7 +270,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
                  {canEdit && !isEditing ? <span className="text-[8px] opacity-50 ml-1">{t('stats.noteEditsLeft', { count: 2 - edits })}</span> : ''}
               </span>
               {canEdit && !isEditing && (
-                <button onClick={() => setIsEditing(true)} className="text-emerald-500 hover:text-emerald-700 active:scale-90 transition-all bg-white rounded-md p-1 shadow-sm border border-emerald-100">
+                <button onClick={() => setIsEditing(true)} className="text-indigo-500 active:scale-90 transition-all bg-white rounded-lg p-1 shadow-sm border border-gray-200">
                   <span className="material-symbols-outlined text-[14px] block">edit</span>
                 </button>
               )}
@@ -312,7 +316,7 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
                 {ownNote ? (
                   <>{renderWithLinks(ownNote)}</>
                 ) : (
-                  <span className="text-emerald-600/50 font-medium text-[12px] italic">{t('stats.noNote', 'Brak notatki. Pamiętaj, by zostawiać wnioski.')}</span>
+                  <span className="text-gray-400 font-medium text-[12px] italic">{t('stats.noNote', 'Brak notatki. Pamiętaj, by zostawiać wnioski.')}</span>
                 )}
                 {/* Trener odhaczył „Widziałem” w karcie ucznia (bez odpowiedzi). */}
                 {!viewingStudentId && session.note && session.isNotePublic !== false && session.coachSeenAt && !session.coachNote && (
@@ -327,10 +331,10 @@ function NoteModule({ session, userId, viewingStudentId }: any) {
        )}
 
        {session.coachNote && (
-         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 relative mt-2 shadow-sm">
+         <div className="tb-card tb-coach border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 relative">
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="material-symbols-outlined text-[16px] text-blue-500">sports</span>
-              <span className="text-[10px] font-black text-blue-700 uppercase tracking-widest">{t('stats.coachTip', 'Wskazówka Trenera')}</span>
+              <span className="material-symbols-outlined text-[16px] text-amber-500">sports</span>
+              <span className="text-[9px] font-black text-amber-700 uppercase tracking-widest">{t('stats.coachTip', 'Wskazówka Trenera')}</span>
             </div>
             {/* POWIĘKSZONA CZCIONKA TRENERA, AKTYWNE LINKI */}
             <div className="text-[14px] text-[#0a3a2a] font-medium leading-relaxed">
@@ -773,51 +777,60 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                   noteComponent={<NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />}
                 />
               ) : (
-                <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 relative overflow-hidden">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                         <div className={`w-2 h-2 rounded-full ${selectedSession.type === 'Turniej' ? 'bg-[#0a3a2a]' : selectedSession.type === 'Arena' ? 'bg-blue-500' : selectedSession.type === 'WORLD_BATTLE' ? 'bg-emerald-500' : 'bg-[#fed33e]'}`}></div>
-                         <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                           {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : t('stats.sessionInfo.typeSolo')}
-                         </span>
-                      </div>
-                      <h2 className="text-xl font-black text-[#0a3a2a] leading-tight truncate max-w-[200px]">
-                        {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
-                      </h2>
-                      <p className="text-[10px] text-gray-300 font-bold uppercase flex items-center gap-1">
-                        {selectedSession.date} •
-                        {/* [KOLORY] Kropka zestawu — odróżnia czerwone „18m" od niebieskiego. */}
-                        {distanceColors.has(distanceKey(selectedSession)) && (
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(distanceKey(selectedSession)) }} />
+                // Styl kart dziennika (2026-10-29): bez wielkiej białej ramki — każda
+                // sekcja to osobna karta z paskiem; nagłówek jak karta treningu w dzienniku.
+                <div className="space-y-3">
+                  <div className={`tb-card ${selectedSession.type === 'Turniej' ? 'tb-tourney' : 'tb-d2'} border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-3`}>
+                    <div className="flex items-start gap-2.5">
+                      <span className={`${selectedSession.type === 'Turniej' ? 'tb-tourney-icon' : 'tb-icon'} w-8 h-8 rounded-lg flex items-center justify-center shrink-0`}>
+                        <span className={`material-symbols-outlined text-[18px] ${selectedSession.type === 'Turniej' ? 'tb-tourney-accent' : selectedSession.type === 'Arena' || selectedSession.type === 'WORLD_BATTLE' ? 'text-fuchsia-600' : 'text-emerald-600'}`}>{selectedSession.type === 'Turniej' ? 'emoji_events' : selectedSession.type === 'Arena' || selectedSession.type === 'WORLD_BATTLE' ? 'shield' : 'target'}</span>
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="block min-w-0">
+                            <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700">
+                              {selectedSession.type === 'Turniej' ? t('stats.sessionInfo.tournament') : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') : t('stats.sessionInfo.typeSolo')}
+                            </span>
+                            <span className="block text-[15px] font-black leading-snug text-[#0a3a2a] truncate">
+                              {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
+                            </span>
+                          </span>
+                          <span className="shrink-0 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">{displayTargetType || t('stats.sessionInfo.dynamic')}</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
+                          {selectedSession.date} •
+                          {/* [KOLORY] Kropka zestawu — odróżnia czerwone „18m" od niebieskiego. */}
+                          {distanceColors.has(distanceKey(selectedSession)) && (
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(distanceKey(selectedSession)) }} />
+                          )}
+                          {sessionDistanceLabel(selectedSession)}
+                        </p>
+                        {/* [C31] Niepełny trening — suma nie wchodzi do krzywych i średnich „na trening". */}
+                        {isPartialSession(selectedSession) && (
+                          <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
+                            <span className="material-symbols-outlined text-[12px]">hourglass_top</span>
+                            {isShortPlanned(selectedSession)
+                              ? t('stats.shortBadge', { count: selectedSession.endsPlanned })
+                              : t('stats.partialBadge', { label: partialLabel(selectedSession) })}
+                          </span>
                         )}
-                        {sessionDistanceLabel(selectedSession)}
-                      </p>
-                      {/* [C31] Niepełny trening — suma nie wchodzi do krzywych i średnich „na trening". */}
-                      {isPartialSession(selectedSession) && (
-                        <span className="inline-flex items-center gap-1 mt-1 text-[9px] font-black text-amber-700 bg-amber-100 rounded-full px-2 py-0.5 uppercase tracking-wide">
-                          <span className="material-symbols-outlined text-[12px]">hourglass_top</span>
-                          {isShortPlanned(selectedSession)
-                            ? t('stats.shortBadge', { count: selectedSession.endsPlanned })
-                            : t('stats.partialBadge', { label: partialLabel(selectedSession) })}
-                        </span>
-                      )}
+                        {/* Wynik, średnia i strzały dnia w jednym wierszu, bez szarych kafli. */}
+                        <div className="grid grid-cols-3 mt-2.5 pt-2.5 border-t border-gray-100 text-center">
+                          <div><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.score')}</span><span className="text-xl font-black text-[#0a3a2a] tabular-nums">{selectedSession.score || 0}</span></div>
+                          <div className="border-x border-gray-100"><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.average')}</span><span className="text-xl font-black text-[#0a3a2a] tabular-nums">{((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1)).toFixed(2)}</span></div>
+                          <div><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.dailyArrows', 'Strzały dzisiaj')}</span><span className="text-xl font-black text-emerald-600 tabular-nums">{dailyArrows}</span></div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-[9px] font-black uppercase">{displayTargetType || t('stats.sessionInfo.dynamic')}</div>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 mb-4">
-                    <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.score')}</span><span className="text-2xl font-black text-[#0a3a2a]">{selectedSession.score || 0}</span></div>
-                    <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.average')}</span><span className="text-2xl font-black text-[#0a3a2a]">{((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1)).toFixed(2)}</span></div>
-                    <div className="bg-gray-50 rounded-2xl py-3 px-1 text-center border border-gray-100/50"><span className="block text-[8px] font-black text-gray-400 uppercase mb-0.5">{t('stats.cards.dailyArrows', 'Strzały dzisiaj')}</span><span className="text-2xl font-black text-emerald-600">{dailyArrows}</span></div>
-                  </div>
 
                   {/* [FOKUS] Migawka z chwili treningu — patrz utils/focus.ts */}
-                  <div className="mb-4 empty:hidden"><SessionFocusCard session={selectedSession} /></div>
+                  <div className="empty:hidden"><SessionFocusCard session={selectedSession} /></div>
 
                   <NoteModule session={selectedSession} userId={userId} viewingStudentId={viewingStudentId} />
 
-                    <div className="space-y-5 mt-4">
+                    <div className="space-y-3">
                       {/* FREE (dowolny dzień z okna FREE_HISTORY_DAYS): pogoda, rozbicie X/10/9,
                           tabela rund, przebieg serii — surowe dane własnej sesji. */}
                       {selectedSession.weather && (
@@ -866,9 +879,9 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
                       {!viewingStudentId && (
-                        <div className="mt-6">
+                        <div>
                           {isPremium || selectedDate === todayISO ? (
-                            <div className="bg-white border border-gray-100 rounded-[24px] shadow-sm overflow-hidden">
+                            <div className="tb-card tb-d1 border rounded-l-md rounded-r-2xl shadow-sm overflow-hidden">
                                <ExportPanel session={selectedSession} isPremium={isPremium} onTriggerPaywall={() => onNavigate('SETTINGS', 'PRO')} />
                             </div>
                           ) : (
@@ -897,7 +910,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       {!viewingStudentId && (
                         <button
                           onClick={() => setShowDeleteModal(true)}
-                          className="mt-4 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all border border-red-100"
+                          className="mt-2 w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-50 text-red-500 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all border border-red-100"
                         >
                           <span className="material-symbols-outlined text-[16px]">delete</span>
                           {t('stats.deleteSession', 'Usuń ten trening')}

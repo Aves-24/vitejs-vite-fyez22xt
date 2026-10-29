@@ -319,16 +319,19 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall }: Ex
   };
 
   return (
-    <div className="mx-2 mt-4 space-y-2 pb-2 relative">
+    <div className="pl-2 pr-3 pt-2.5 pb-3 space-y-2.5 relative">
       {toastMessage && createPortal(
         <div className={`fixed top-14 left-1/2 -translate-x-1/2 z-[500000] text-white px-6 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest shadow-2xl animate-fade-in-up flex items-center gap-2 whitespace-nowrap ${toastIsError ? 'bg-red-700' : 'bg-[#0a3a2a]'}`}>
           <span className={`material-symbols-outlined text-sm ${toastIsError ? 'text-red-200' : 'text-emerald-400'}`}>{toastIsError ? 'error' : 'check_circle'}</span>
           {toastMessage}
         </div>, document.body
       )}
-      <div className="flex items-center gap-1.5 px-1 mb-1">
-        <span className="material-symbols-outlined text-[14px] text-gray-400">ios_share</span>
-        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{t('export.title', 'Eksport Danych')}</span>
+      {/* Nagłówek jak karty dziennika (2026-10-29) — panel siedzi w tb-card w StatsView. */}
+      <div className="flex items-center gap-2.5">
+        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[18px] text-emerald-600">ios_share</span>
+        </span>
+        <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">{t('export.title', 'Eksport Danych')}</span>
       </div>
       
       <div className="grid grid-cols-2 gap-2">

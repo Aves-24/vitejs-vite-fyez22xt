@@ -513,6 +513,21 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     fetchStudentData();
   }, [studentId]);
 
+  // Okno Ergebniskurve: przy profilu z cache (bez nowego treningu) lista nie
+  // była wczytana i okno pokazywało „Brak danych” — doczytujemy ją przy
+  // otwarciu tym samym zapytaniem co pełny fetch (15 ostatnich).
+  useEffect(() => {
+    if (!showTrendModal || !studentId || allModalSessions.length > 0) return;
+    let cancelled = false;
+    getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)))
+      .then(snap => {
+        if (cancelled) return;
+        setAllModalSessions(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter((s: any) => s.type !== 'TECHNICAL'));
+      })
+      .catch(e => console.error('Błąd wczytania listy Ergebniskurve:', e));
+    return () => { cancelled = true; };
+  }, [showTrendModal, studentId, allModalSessions.length]);
+
   // Leniwe słupki 12-tygodniowe dla QuickStats ucznia — liczone dopiero przy
   // otwarciu modala, ze wspólnego źródła (cache IndexedDB + dedup w pamięci).
   useEffect(() => {

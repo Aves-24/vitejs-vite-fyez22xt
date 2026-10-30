@@ -2084,6 +2084,7 @@ export const views = {
     pauseReminder: "Pauza od miesiąca — sprawdź",
   },
   coachSheet: {
+    curveNeedsTwo: "Krzywa od 2 treningów",
     secWaiting: "Czeka na Ciebie",
     secNow: "Aktualnie",
     studentWroteKind: "{{name}} pisze",

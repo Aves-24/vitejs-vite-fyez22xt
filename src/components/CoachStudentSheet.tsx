@@ -648,9 +648,17 @@ function Signal({ warn, children }: { warn: boolean; children: React.ReactNode }
 }
 
 function Sparkline({ values }: { values: number[] }) {
+  const { t } = useTranslation();
   const w = 120, h = 34, pad = 4;
+  // Jeden trening na dystansie — bez krzywej: zaokrąglona średnia i dopisek
+  // (user 2026-10-30: pokazywała się surowa liczba z wieloma miejscami po przecinku).
   if (values.length < 2) {
-    return <div className="w-[120px] h-[34px] flex items-center justify-center text-[15px] font-black text-[#0a3a2a]">{values[0]}</div>;
+    return (
+      <div className="w-[120px] h-[34px] shrink-0 flex flex-col items-center justify-center leading-tight">
+        <span className="text-[15px] font-black text-[#0a3a2a] tabular-nums">Ø {(values[0] ?? 0).toFixed(1)}</span>
+        <span className="text-[8px] font-bold text-gray-400">{t('coachSheet.curveNeedsTwo')}</span>
+      </div>
+    );
   }
   const min = Math.min(...values), max = Math.max(...values);
   const span = max - min || 1;

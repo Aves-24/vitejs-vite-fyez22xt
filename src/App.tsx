@@ -313,7 +313,10 @@ export default function App() {
         // idzie w języku usera, więc czekamy na paczkę tłumaczeń.
         whenTranslationsReady().then(() => syncMaintenanceReminders(
           user.uid, data.setups, data.maintenanceDone,
-          id => i18n.t(`maintenance.tasks.${id}.title`),
+          // Jedna czynność = jej nazwa; kilka = „Wartung (3 Aufgaben)”.
+          ids => ids.length === 1
+            ? i18n.t(`maintenance.tasks.${ids[0]}.title`)
+            : i18n.t('maintenance.calendar.groupTitle', { count: ids.length }),
         )).catch(e => console.warn('[WARTUNG] Synchronizacja przypomnień nie wyszła:', e));
         if (data.userDistances && data.userDistances.length > 0) {
           // [C25] Konta sprzed C25 mają dystanse BEZ `id`. Nadajemy je raz

@@ -307,15 +307,16 @@ export const components = {
     },
     calendar: {
       dueBy: "Wartung · fällig bis {{date}}",
-      howTo: "Anleitung: so geht's",
+      groupTitle: "Wartung ({{count}} Aufgaben)",
+      allDone: "Alles erledigt",
       skip: "Diesmal überspringen",
     },
     tasks: {
       howItWorks: {
         title: "So funktioniert der Wartungsplan",
         why: "Schrauben lockern sich durch die Vibration bei jedem Schuss, die Sehne trocknet aus und dehnt sich. Kleine Kontrollen in festen Abständen verhindern, dass du es erst auf dem Turnier merkst.",
-        how: "1. Schalte die Arbeiten ein, an die du erinnert werden willst.\n2. Wähle das Datum der ersten Erinnerung und wie oft sie sich wiederholen soll.\n3. Tippe unten auf „Speichern“.\n4. 3 Wochen vor dem Termin erscheint die Aufgabe im Kalender unter „To-do“ (ohne Datum) und auf dem Home-Bildschirm.\n5. Wenn du fertig bist, hake sie im Kalender ab. Der nächste Termin wird ab dem Tag gerechnet, an dem du sie erledigt hast.",
-        warn: "„Diesmal überspringen“ im Kalender zählt wie erledigt: Der nächste Termin kommt erst nach dem eingestellten Abstand.",
+        how: "1. Schalte die Arbeiten ein, an die du erinnert werden willst.\n2. Wähle das Datum der ersten Erinnerung und wie oft sie sich wiederholen soll.\n3. Tippe unten auf „Speichern & Aktualisieren“.\n4. 3 Wochen vor dem Termin erscheint die Arbeit im Kalender unter „To-do“ (ohne Datum) und auf dem Home-Bildschirm. Alle fälligen Arbeiten eines Setups stehen in EINEM Eintrag.\n5. Öffne den Eintrag und hake jede Arbeit einzeln ab, sobald sie erledigt ist. Der nächste Termin wird ab dem Tag gerechnet, an dem du sie erledigt hast.",
+        warn: "„Diesmal überspringen“ im Kalender zählt für alle noch offenen Arbeiten des Eintrags wie erledigt: Der nächste Termin kommt erst nach dem eingestellten Abstand.",
         tip: "Jedes Setup hat seinen eigenen Plan. Bei jeder Arbeit findest du über (i) eine genaue Anleitung – auch direkt aus dem Kalendereintrag.",
       },
       stringWax: {

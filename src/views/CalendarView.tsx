@@ -20,7 +20,8 @@ import {
   distancesForAnySetup, distanceColorMap,
 } from '../config/distances';
 import { EquipmentSetup } from '../config/equipmentSetups';
-import { markMaintenanceDone, MaintenanceRef } from '../utils/maintenanceSync';
+import { completeGroupItems, MaintenanceGroup } from '../utils/maintenanceSync';
+import { openItems } from '../utils/maintenanceSchedule';
 import MaintenanceInfo from '../components/settings/MaintenanceInfo';
 import { topicLabel } from '../constants/trainingTopics';
 import { groupIcon } from '../constants/groupIcons';
@@ -49,7 +50,7 @@ interface Event {
   /** [TEMAT TRENINGU] Termin założony z panelu grupy — id grupy trenera. */
   trainingTopicGroupId?: string;
   /** [WARTUNG] Przypomnienie o konserwacji sprzętu (maintenanceSync.ts). */
-  maintenance?: MaintenanceRef;
+  maintenanceGroup?: MaintenanceGroup;
 }
 
 interface CoachStudent {
@@ -455,19 +456,24 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return '';
   };
 
+  // [WARTUNG] Tytuł wpisu konserwacji — ten sam wzór co w App.tsx.
+  const maintenanceTitle = (ids: string[]) => ids.length === 1
+    ? t(`maintenance.tasks.${ids[0]}.title`)
+    : t('maintenance.calendar.groupTitle', { count: ids.length });
+
   const markTodoComplete = async (id: string) => {
     try {
-      const mnt = todoEvents.find(e => e.id === id)?.maintenance;
+      // [WARTUNG] Wpis zbiorczy: „erledigt” odhacza wszystkie czynności naraz.
+      const mg = todoEvents.find(e => e.id === id)?.maintenanceGroup;
+      if (mg) {
+        await completeGroupItems(userId, id, mg, openItems(mg.items).map(i => i.taskId), todayStr, maintenanceTitle);
+        return;
+      }
       await updateDoc(doc(db, 'users', userId, 'tournaments', id), {
         todo: false,
         date: todayStr,
         wasATodo: true,
       });
-      // [WARTUNG] Data wykonania dopiero PO odhaczeniu: jej zapis budzi
-      // synchronizację (App.tsx), która skasowałaby jeszcze otwarty wpis,
-      // zamiast zostawić go w archiwum. Gdyby ten zapis padł, synchronizacja
-      // nie wskrzesi wpisu — dokument o tym id już istnieje.
-      if (mnt) await markMaintenanceDone(userId, mnt, todayStr);
       localStorage.removeItem(`grotX_todos_${userId}`);
       localStorage.removeItem(`grotX_tournaments_${userId}`);
     } catch (error) {
@@ -566,8 +572,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         }
         // [WARTUNG] Usunięte przypomnienie = „tym razem pomijam”. Bez daty
         // wykonania synchronizacja założyłaby je od nowa przy następnym starcie.
-        const mnt = todoEvents.find(e => e.id === showDeleteConfirm)?.maintenance;
-        if (mnt) await markMaintenanceDone(userId, mnt, todayStr);
+        const mg = todoEvents.find(e => e.id === showDeleteConfirm)?.maintenanceGroup;
+        if (mg) await completeGroupItems(userId, showDeleteConfirm, mg, openItems(mg.items).map(i => i.taskId), todayStr, maintenanceTitle);
         await deleteDoc(doc(db, 'users', userId, 'tournaments', showDeleteConfirm));
         setOlderEvents(prev => prev.filter(e => e.id !== showDeleteConfirm));
         localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -874,14 +880,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <div className="space-y-1">
                 {todoEvents.map(event => renderEventRow(event, {
                   stripe: 'border-l-emerald-400',
-                  label: event.maintenance
-                    ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenance.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
+                  label: event.maintenanceGroup
+                    ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
                     : t('calendar.todoSection'),
                   sub: event.note || undefined,
                   right: (
                     <button
                       type="button"
-                      onClick={() => markTodoComplete(event.id)}
+                      // [WARTUNG] Lista czynności — ptaszek otwiera ją, a nie odhacza wszystko w ciemno.
+                      onClick={() => (event.maintenanceGroup ? setViewingEvent(event) : markTodoComplete(event.id))}
                       className="w-10 h-10 mr-1 shrink-0 rounded-full bg-emerald-500 text-white flex items-center justify-center active:scale-90 transition-all"
                     >
                       <span className="material-symbols-outlined text-[20px]">check</span>
@@ -1537,8 +1544,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   <div className="flex flex-col">
                     <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-0.5">{t('calendar.modalDateTime')}</span>
                     <span className="text-sm font-black text-[#0a3a2a]">
-                      {viewingEvent.maintenance
-                        ? t('maintenance.calendar.dueBy', { date: new Date(`${viewingEvent.maintenance.due}T12:00:00`).toLocaleDateString(currentLocale) })
+                      {viewingEvent.maintenanceGroup
+                        ? t('maintenance.calendar.dueBy', { date: new Date(`${viewingEvent.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale) })
                         : viewingEvent.todo ? t('calendar.todoSection') : `${new Date(viewingEvent.date).toLocaleDateString(currentLocale)} • ${viewingEvent.time || '--:--'}`}
                     </span>
                   </div>
@@ -1620,22 +1627,40 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 )}
              </div>
 
-             {/* [WARTUNG] Instrukcja „co i jak” prosto z przypomnienia. */}
-             {viewingEvent.maintenance && (
-               <MaintenanceInfo
-                 taskId={viewingEvent.maintenance.taskId}
-                 discipline={userSetups.find(s => s.id === viewingEvent.maintenance!.setupId)?.discipline}
-                 trigger={open => (
-                   <button
-                     onClick={open}
-                     className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-[#0a3a2a]/5 text-[#0a3a2a] border border-[#0a3a2a]/10 active:scale-95 transition-all flex items-center justify-center gap-2"
-                   >
-                     <span className="material-symbols-outlined text-[16px]">info</span>
-                     {t('maintenance.calendar.howTo')}
-                   </button>
-                 )}
-               />
-             )}
+             {/* [WARTUNG] Lista czynności wpisu zbiorczego: każda z ptaszkiem i (i).
+                 Stan na żywo z nasłuchu — `viewingEvent` to kopia z chwili otwarcia. */}
+             {viewingEvent.maintenanceGroup && (() => {
+               const mg = (todoEvents.find(e => e.id === viewingEvent.id) ?? viewingEvent).maintenanceGroup!;
+               const discipline = userSetups.find(s => s.id === mg.setupId)?.discipline;
+               const left = openItems(mg.items);
+               return (
+                 <div className="mb-3 space-y-1.5">
+                   {mg.items.map(item => (
+                     <div
+                       key={item.taskId}
+                       className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 ${item.done ? 'bg-gray-50 border-gray-100' : 'bg-white border-emerald-200'}`}
+                     >
+                       <button
+                         type="button"
+                         disabled={!!item.done}
+                         onClick={async () => {
+                           await completeGroupItems(userId, viewingEvent.id, mg, [item.taskId], todayStr, maintenanceTitle);
+                           if (left.length === 1) closeViewingModal();
+                         }}
+                         aria-label={t('calendar.todoDone')}
+                         className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all active:scale-90 ${item.done ? 'bg-emerald-500 text-white' : 'border-2 border-emerald-400 text-transparent'}`}
+                       >
+                         <span className="material-symbols-outlined text-[16px]">check</span>
+                       </button>
+                       <span className={`flex-1 min-w-0 text-[13px] font-black leading-tight ${item.done ? 'text-gray-400 line-through' : 'text-[#0a3a2a]'}`}>
+                         {t(`maintenance.tasks.${item.taskId}.title`)}
+                       </span>
+                       <MaintenanceInfo taskId={item.taskId} discipline={discipline} />
+                     </div>
+                   ))}
+                 </div>
+               );
+             })()}
 
              {viewingEvent.todo && (
                <button
@@ -1643,14 +1668,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-emerald-500 text-white active:scale-95 transition-all flex items-center justify-center gap-2"
                >
                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                 {t('calendar.todoDone')}
+                 {viewingEvent.maintenanceGroup ? t('maintenance.calendar.allDone') : t('calendar.todoDone')}
                </button>
              )}
 
              <div className="flex gap-2">
                {/* [WARTUNG] Przypomnienie zmienia się w Ustawieniach (data, rytm) —
                    edycja tutaj rozjechałaby się z planem. */}
-               {!viewingEvent.maintenance && (
+               {!viewingEvent.maintenanceGroup && (
                <button
                   onClick={handleEditViewing}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
@@ -1662,7 +1687,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   onClick={() => handleDeleteEvent(viewingEvent.id)}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
                 >
-                  {viewingEvent.maintenance ? t('maintenance.calendar.skip') : t('calendar.modalDelete')}
+                  {viewingEvent.maintenanceGroup ? t('maintenance.calendar.skip') : t('calendar.modalDelete')}
                </button>
              </div>
           </div>

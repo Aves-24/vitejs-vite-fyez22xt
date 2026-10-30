@@ -1,5 +1,5 @@
 import { EquipmentSetup, MaintenanceRule } from '../config/equipmentSetups';
-import { MAINTENANCE_LEAD_DAYS, tasksForDiscipline } from '../config/maintenanceTasks';
+import { MAINTENANCE_LEAD_DAYS, MAINTENANCE_TASKS, tasksForDiscipline } from '../config/maintenanceTasks';
 
 /**
  * [WARTUNG] Czysta logika terminów konserwacji — bez Firestore, żeby dało się
@@ -100,3 +100,48 @@ export function dueReminders(
   }
   return out;
 }
+
+/**
+ * [WARTUNG] Czynność w zbiorczym wpisie kalendarza (decyzja usera 2026-10-30:
+ * „jeden wpis”, a nie osobne todo na każdą czynność). `done` = odhaczona
+ * w tym wpisie — zostaje widoczna z ptaszkiem, dopóki wpis jest otwarty.
+ */
+export interface GroupItem {
+  taskId: string;
+  due: string;
+  done?: string;
+}
+
+const taskOrder = (id: string) => {
+  const i = MAINTENANCE_TASKS.findIndex(t => t.id === id);
+  return i < 0 ? MAINTENANCE_TASKS.length : i;
+};
+
+/**
+ * Nowa lista czynności otwartego wpisu zestawu:
+ *  - odhaczone zostają (user widzi, co już zrobił),
+ *  - nieodhaczone, których nie ma już w `wanted` (wyłączone, przesunięte), wypadają,
+ *  - nowe z `wanted` dochodzą do TEGO SAMEGO wpisu, zamiast tworzyć drugi.
+ */
+export function mergeGroupItems(existing: GroupItem[], wanted: DueReminder[]): GroupItem[] {
+  const out: GroupItem[] = existing.filter(i => i.done);
+  const doneIds = new Set(out.map(i => i.taskId));
+  for (const r of wanted) {
+    if (doneIds.has(r.taskId)) continue;
+    out.push({ taskId: r.taskId, due: r.due });
+  }
+  return out.sort((a, b) => taskOrder(a.taskId) - taskOrder(b.taskId));
+}
+
+export const openItems = (items: GroupItem[]) => items.filter(i => !i.done);
+
+/** Termin wpisu = najwcześniejszy z jeszcze nieodhaczonych. */
+export function groupDue(items: GroupItem[]): string | null {
+  const open = openItems(items).map(i => i.due).sort();
+  return open[0] ?? null;
+}
+
+/** Porównanie bez kolejności pól — czy zapis do bazy w ogóle jest potrzebny. */
+export const sameItems = (a: GroupItem[], b: GroupItem[]) =>
+  JSON.stringify(a.map(i => [i.taskId, i.due, i.done ?? null])) ===
+  JSON.stringify(b.map(i => [i.taskId, i.due, i.done ?? null]));

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { addMonths, nextDue, dueReminders, reminderDocId, doneKey } from './maintenanceSchedule';
+import { addMonths, nextDue, dueReminders, reminderDocId, doneKey, mergeGroupItems, openItems, groupDue } from './maintenanceSchedule';
 import { EquipmentSetup } from '../config/equipmentSetups';
 
 const recurve = (maintenance: EquipmentSetup['maintenance']): EquipmentSetup => ({
@@ -62,5 +62,31 @@ describe('dueReminders', () => {
     // Peep jest tylko dla compoundu.
     const s = [recurve({ peep: { on: true, start: '2026-11-01', every: 1 } })];
     expect(dueReminders(s, {}, '2026-11-20')).toHaveLength(0);
+  });
+});
+
+describe('mergeGroupItems', () => {
+  const r = (taskId: string, due: string) => ({ docId: '', setupId: 'default', setupName: '', taskId, due });
+
+  it('nowe czynności dochodzą do jednego wpisu, w kolejności katalogu', () => {
+    const items = mergeGroupItems([{ taskId: 'arrows', due: '2026-11-01' }], [r('arrows', '2026-11-01'), r('stringWax', '2026-11-05')]);
+    expect(items.map(i => i.taskId)).toEqual(['stringWax', 'arrows']);
+  });
+
+  it('odhaczone zostają, wyłączone nieodhaczone wypadają', () => {
+    const items = mergeGroupItems(
+      [{ taskId: 'stringWax', due: '2026-11-01', done: '2026-11-02' }, { taskId: 'arrows', due: '2026-11-01' }],
+      [],
+    );
+    expect(items).toEqual([{ taskId: 'stringWax', due: '2026-11-01', done: '2026-11-02' }]);
+    expect(openItems(items)).toHaveLength(0);
+  });
+
+  it('termin wpisu = najwcześniejszy nieodhaczony', () => {
+    expect(groupDue([
+      { taskId: 'a', due: '2026-11-01', done: '2026-11-01' },
+      { taskId: 'b', due: '2026-11-20' },
+      { taskId: 'c', due: '2026-11-10' },
+    ])).toBe('2026-11-10');
   });
 });

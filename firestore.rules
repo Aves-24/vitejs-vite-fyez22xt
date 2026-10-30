@@ -497,6 +497,9 @@ service cloud.firestore {
         && request.resource.data.get('type', '') in ['observation', 'tip', 'goal', 'flag', 'topic']
         // [DWA FOKUSY] liczba treningów fokusu trenera — na wpisie
         && request.resource.data.get('goal', 1) in [1, 2, 3, 4, 5]
+        // [WPIS DO TRENINGU 2026-10-30] opcjonalna migawka treningu, którego dotyczy wpis
+        && request.resource.data.get('sessionRef', {}) is map
+        && request.resource.data.get('sessionRef', {}).size() <= 6
         // [TEMAT TRENINGU 2026-10-15] dzień treningu 'YYYY-MM-DD'; bez
         // zamknięcia i potwierdzenia ucznia przy tworzeniu.
         && (request.resource.data.get('type', '') != 'topic'
@@ -573,7 +576,9 @@ service cloud.firestore {
     match /users/{uid}/coachStudentNotes/{noteId} {
       allow read, delete: if isSelf(uid) || isAdmin();
       allow create: if isSelf(uid)
-        && request.resource.data.keys().hasOnly(['studentId', 'title', 'text', 'topics', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['studentId', 'title', 'text', 'topics', 'createdAt', 'sessionRef'])
+        && request.resource.data.get('sessionRef', {}) is map
+        && request.resource.data.get('sessionRef', {}).size() <= 6
         && request.resource.data.studentId is string
         && request.resource.data.studentId.size() > 0
         && request.resource.data.text is string

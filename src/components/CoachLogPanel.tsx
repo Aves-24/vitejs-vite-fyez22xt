@@ -7,7 +7,7 @@ import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
 import { buildCoachLogNotification } from '../utils/notificationTypes';
 import TopicPicker from './TopicPicker';
-import type { TbCoachEntry } from './tagebuch/TagebuchCards';
+import { sessionRefOf, readSessionRef, type TbCoachEntry, type CoachEntrySessionRef } from './tagebuch/TagebuchCards';
 
 // [PROFIL B, oś czasu — 2026-10-30] Dziennik trenera nie ma już własnej listy:
 // wpisy leżą na wspólnej osi czasu profilu ucznia (zakładka Tagebuch) w tych
@@ -32,7 +32,7 @@ const MAX_TEXT = 300;
 const MAX_PRIVATE = 1000;
 
 // ─── PRYWATNE NOTATKI TRENERA O UCZNIU ─────────────────────────────
-export interface CoachPrivateNote { id: string; title: string; text: string; topics: string[]; ts: number }
+export interface CoachPrivateNote { id: string; title: string; text: string; topics: string[]; ts: number; sessionRef?: CoachEntrySessionRef }
 
 const privateCol = (coachId: string) => collection(db, `users/${coachId}/coachStudentNotes`);
 
@@ -43,7 +43,7 @@ export async function loadCoachPrivateNotes(coachId: string, studentId: string):
     const data = d.data();
     const c = data.createdAt;
     const ts = c?.toMillis ? c.toMillis() : (typeof c === 'number' ? c : Date.now());
-    return { id: d.id, title: data.title || '', text: data.text || '', topics: data.topics || [], ts };
+    return { id: d.id, title: data.title || '', text: data.text || '', topics: data.topics || [], ts, ...readSessionRef(data) };
   }).sort((a, b) => b.ts - a.ts);
 }
 
@@ -76,9 +76,11 @@ export async function deleteCoachLogEntry(studentId: string, entryId: string): P
   await deleteDoc(doc(db, `users/${studentId}/coachLog/${entryId}`));
 }
 
-export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel }: {
+export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel, sessions = [] }: {
   studentId: string;
   studentName?: string;
+  // [WPIS DO TRENINGU] ostatnie treningi ucznia do wyboru (najnowszy pierwszy)
+  sessions?: any[];
   currentUserId: string;
   onSaved: (entry: TbCoachEntry & { authorId: string }) => void;
   onSavedPrivate: (note: CoachPrivateNote) => void;
@@ -90,6 +92,8 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
   const [type, setType] = useState<EntryType>('observation');
   const [logTopics, setLogTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // Domyślnie najnowszy trening — wpis zwykle dotyczy tego, co uczeń właśnie strzelał.
+  const [refId, setRefId] = useState<string | null>(sessions[0]?.id ?? null);
   const voice = useVoiceInput({
     onResult: (result) => setText(prev => (prev + ' ' + result).trim().slice(0, MAX_PRIVATE)),
     append: true,
@@ -112,6 +116,9 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
 
   const isPrivate = type === 'private';
   const max = isPrivate ? MAX_PRIVATE : MAX_TEXT;
+  const picked = sessions.find(x => x.id === refId);
+  const sessionRef = picked ? sessionRefOf(picked) : null;
+  const refFields = sessionRef ? { sessionRef } : {};
 
   // --- ZAPIS NOWEGO WPISU ---
   const handleSave = async () => {
@@ -120,8 +127,8 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
     setIsSaving(true);
     if (isPrivate) {
       try {
-        const ref = await addDoc(privateCol(currentUserId), { studentId, title: '', text: cleanText, topics: logTopics, createdAt: serverTimestamp() });
-        onSavedPrivate({ id: ref.id, title: '', text: cleanText, topics: logTopics, ts: Date.now() });
+        const ref = await addDoc(privateCol(currentUserId), { studentId, title: '', text: cleanText, topics: logTopics, ...refFields, createdAt: serverTimestamp() });
+        onSavedPrivate({ id: ref.id, title: '', text: cleanText, topics: logTopics, ts: Date.now(), ...refFields });
       } catch (e) {
         console.error('CoachLog: błąd zapisu prywatnej notatki', e);
       }
@@ -138,9 +145,10 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
         topics: logTopics,
         // [DWA FOKUSY] fokus trenera ma własną liczbę treningów (zmiana w panelu fokusu)
         ...(type === 'goal' ? { goal: FOCUS_GOAL_DEFAULT } : {}),
+        ...refFields,
         createdAt: serverTimestamp(),
       });
-      onSaved({ id: docRef.id, authorId: currentUserId, authorName: name, text: cleanText, type, topics: logTopics, ts: Date.now() });
+      onSaved({ id: docRef.id, authorId: currentUserId, authorName: name, text: cleanText, type, topics: logTopics, ts: Date.now(), ...refFields });
 
       // Powiadomienie u ucznia (dzwonek na Home) — trener dodał wpis w Tagebuch.
       // Idempotentne po id wpisu; best-effort.
@@ -157,6 +165,32 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
       <p className="text-[10px] font-semibold text-gray-500 leading-snug">
         {t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })}
       </p>
+
+      {/* [WPIS DO TRENINGU] Do czego odnosi się wpis (user 2026-10-30). */}
+      {sessions.length > 0 && (
+        <div>
+          <span className="block text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 ml-0.5">{t('coachLog.refLabel')}</span>
+          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+            {sessions.slice(0, 10).map(x => {
+              const on = refId === x.id;
+              const isTech = x.type === 'TECHNICAL';
+              const isTourney = x.type === 'Turniej';
+              return (
+                <button key={x.id} onClick={() => setRefId(x.id)}
+                  className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-xl border text-[10px] font-black transition-all ${on ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-white border-gray-200 text-gray-600'}`}>
+                  <span className={`material-symbols-outlined text-[13px] ${on ? 'text-[#fed33e]' : isTech ? 'text-sky-500' : isTourney ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{isTech ? 'fitness_center' : isTourney ? 'emoji_events' : 'target'}</span>
+                  {(x.date || '').split('.').slice(0, 2).join('.')}
+                  <span className={on ? 'text-white/70' : 'text-gray-400'}>{isTech ? `${x.totalArrows || x.arrows || 0}` : `${x.distance || ''} · ${x.score ?? 0}`}</span>
+                </button>
+              );
+            })}
+            <button onClick={() => setRefId(null)}
+              className={`shrink-0 px-2.5 py-1.5 rounded-xl border text-[10px] font-black transition-all ${refId === null ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-white border-gray-200 text-gray-600'}`}>
+              {t('coachLog.refNone')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Wybór typu wpisu */}
       <div className="grid grid-cols-5 gap-1">

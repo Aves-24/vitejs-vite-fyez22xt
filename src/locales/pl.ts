@@ -270,7 +270,7 @@ export const components = {
   coachLog: {
     title: "Dziennik trenera",
     subtitle: "Widoczny dla wszystkich trenerów",
-    addBtn: "Wpis ogólny",
+    addBtn: "Nowy wpis",
     typeObservation: "Obserwacja",
     typeTip: "Wskazówka",
     typeGoal: "Fokus",
@@ -278,6 +278,8 @@ export const components = {
     typePrivate: "TYLKO DLA MNIE",
     privateHint: "Widzisz tylko Ty — nie uczeń i nie inni trenerzy.",
     visibleTo: "Widzi {{name}} i wszyscy trenerzy ucznia.",
+    refLabel: "Dotyczy",
+    refNone: "Ogólny",
     placeholder: "Napisz wpis dla pozostałych trenerów…",
     cancel: "Anuluj",
     save: "Zapisz",
@@ -289,7 +291,7 @@ export const components = {
     deleteDesc: "Tej operacji nie można cofnąć.",
     delete: "Usuń",
     defaultCoachName: "Trener",
-    hint: "Wpis ogólny: rozwój przez kilka treningów — nad czym pracujecie, na czym jest fokus. Do jednego treningu piszesz „Komentarz do treningu” w karcie treningu.",
+    hint: "Wybierz u góry, którego treningu dotyczy wpis — albo „Ogólny” dla rozwoju przez kilka treningów.",
     focusGoalLabel: "Ile treningów?",
     focusHint: "Liczbą lekcji i zakończeniem fokusu zarządzasz w panelu fokusu — kliknij pasek „Fokus” w profilu ucznia."
   }
@@ -587,6 +589,7 @@ export const views = {
     noteShort: "Notatka",
     coachNote: "Uwaga trenera",
     coachEntry: "Wpis trenera",
+    refersTo: "do:",
     inviteTitle: "Trenujesz z trenerem?",
     inviteDesc: "Połącz się, a uwagi trenera pojawią się właśnie tutaj.",
     inviteBtn: "Połącz z trenerem",

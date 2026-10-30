@@ -1392,3 +1392,13 @@ test('[PRYWATNE NOTATKI TRENERA] tylko trener czyta i pisze swoje wpisy o uczniu
   await assertFails(deleteDoc(ref(alice(), 'coach1', 'n1')));
   await assertSucceeds(deleteDoc(ref(coach1(), 'coach1', 'n1')));
 });
+
+test('[WPIS DO TRENINGU] trener przypina wpis do treningu migawka sessionRef; nie-mapa odrzucona', async () => {
+  const base = { authorId: 'coach1', text: 'Kotwica nisko', type: 'observation', topics: [] };
+  const ref = { id: 's1', date: '30.10.2026', type: 'Trening', distance: '70m', score: 607 };
+  await assertSucceeds(setDoc(doc(coach1(), 'users/alice/coachLog/r1'), { ...base, sessionRef: ref }));
+  await assertFails(setDoc(doc(coach1(), 'users/alice/coachLog/r2'), { ...base, sessionRef: 's1' }));
+  // prywatna notatka trenera też może wskazać trening
+  await assertSucceeds(setDoc(doc(coach1(), 'users/coach1/coachStudentNotes/p1'), { studentId: 'alice', title: '', text: 'x', topics: [], sessionRef: ref, createdAt: serverTimestamp() }));
+  await assertFails(setDoc(doc(coach1(), 'users/coach1/coachStudentNotes/p2'), { studentId: 'alice', title: '', text: 'x', topics: [], sessionRef: 'zle', createdAt: serverTimestamp() }));
+});

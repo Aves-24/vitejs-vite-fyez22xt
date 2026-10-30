@@ -256,7 +256,7 @@ export const components = {
   coachLog: {
     title: "Trainer-Tagebuch",
     subtitle: "Sichtbar für alle Trainer",
-    addBtn: "Allgemeiner Eintrag",
+    addBtn: "Neuer Eintrag",
     typeObservation: "Beobachtung",
     typeTip: "Tipp",
     typeGoal: "Fokus",
@@ -264,6 +264,8 @@ export const components = {
     typePrivate: "NUR FÜR MICH",
     privateHint: "Siehst nur du — nicht der Schüler, nicht andere Trainer.",
     visibleTo: "Sieht {{name}} und alle Trainer von {{name}}.",
+    refLabel: "Bezieht sich auf",
+    refNone: "Allgemein",
     placeholder: "Schreibe einen Eintrag für die anderen Trainer…",
     cancel: "Abbrechen",
     save: "Speichern",
@@ -275,7 +277,7 @@ export const components = {
     deleteDesc: "Diese Aktion kann nicht rückgängig gemacht werden.",
     delete: "Löschen",
     defaultCoachName: "Trainer",
-    hint: "Allgemeiner Eintrag: die Entwicklung über mehrere Trainings — woran ihr arbeitet, worauf der Fokus liegt. Zu einem einzelnen Training schreibst du den „Kommentar zum Training“ in der Trainingskarte.",
+    hint: "Wähle oben, zu welchem Training der Eintrag gehört — oder „Allgemein“ für die Entwicklung über mehrere Trainings.",
     focusGoalLabel: "Wie viele Trainings?",
     focusHint: "Die Anzahl Einheiten und das vorzeitige Beenden verwaltest du im Fokus-Panel — tippe auf den „Fokus“-Balken im Schülerprofil."
   }
@@ -573,6 +575,7 @@ export const views = {
     noteShort: "Notiz",
     coachNote: "Anmerkung vom Trainer",
     coachEntry: "Trainer-Eintrag",
+    refersTo: "zu:",
     inviteTitle: "Trainierst du mit Trainer?",
     inviteDesc: "Verbinde dich, dann erscheinen Trainer-Anmerkungen direkt hier.",
     inviteBtn: "Trainer verbinden",

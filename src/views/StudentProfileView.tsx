@@ -30,7 +30,7 @@ import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus, readSessionFocus, type SessionFocus } from '../utils/focus';
 import { FocusStrip, FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
-import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
+import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, SessionRefLine, readSessionRef, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
@@ -421,6 +421,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
           type: data.type || 'observation',
           topics: data.topics || [],
           ts: toMillisAny(data.createdAt),
+          ...readSessionRef(data),
         };
       });
       setSessions(prev => (after ? [...prev, ...page] : page));
@@ -452,6 +453,14 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
 
   const updateNote = (id: string, note: string, editCount: number) =>
     setSessions(prev => prev.map(x => (x.id === id ? { ...x, coachNote: note, coachEditCount: editCount } : x)));
+
+  // Odnośnik z wpisu → rozwinięty trening na osi (jeśli jest we wczytanej porcji).
+  const openSession = (id: string) => {
+    if (!sessions.some(x => x.id === id)) return;
+    setFilter('all');
+    setOpenId(id);
+    setTimeout(() => document.getElementById(`tl-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  };
 
   const handleDelete = async (id: string) => {
     try {
@@ -508,6 +517,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
         <CoachLogComposer
           studentId={studentId}
           studentName={studentName}
+          sessions={sessions}
           currentUserId={coachId}
           onCancel={() => setAdding(false)}
           onSaved={entry => { setCoachEntries(prev => [entry, ...prev]); setAdding(false); onCoachLogChange(); }}
@@ -536,7 +546,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
             <React.Fragment key={item.key}>
               {header}
               <div className="relative">
-                <CoachEntryCard entry={item.entry} time={fmtDay(item.ts)} isNew={false} footer={<SeenBy name={studentName} />} />
+                <CoachEntryCard entry={item.entry} time={fmtDay(item.ts)} isNew={false} footer={<SeenBy name={studentName} />} onOpenSession={openSession} />
                 {own && (
                   <button onClick={() => setConfirmDelete(item.entry.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
                     <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -560,6 +570,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
                   title={n.title || undefined}
                   time={fmtDay(item.ts)}
                 >
+                  {n.sessionRef && <SessionRefLine sref={n.sessionRef} onOpen={() => openSession(n.sessionRef!.id)} />}
                   <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1 pr-6">{n.text}</p>
                   {n.topics.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">

@@ -35,6 +35,7 @@ import {
 import {
   NoteComposer, SessionCard, CoachEntryCard, TrainingTopicCard, LedTrainingCard, MissedTournamentCard, SkippedTournamentCard, NoteSheet, PrivateNoteCard, NewBadge,
   SESSION_NOTE_MAX,
+  readSessionRef,
   type TbSession, type TbPrivateNote, type TbCoachEntry, type TbLedTraining,
 } from '../components/tagebuch/TagebuchCards';
 
@@ -403,6 +404,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             authorName: data.authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
             topics: data.topics || [],
             ts: toMs(data.createdAt),
+            ...readSessionRef(data),
             ...(data.type === 'topic' ? topicTimelineFields(d.id, data) : {}),
           };
         // [TEMAT TRENINGU] Zaplanowany na kolejne dni — uczeń zobaczy go w jego dniu.

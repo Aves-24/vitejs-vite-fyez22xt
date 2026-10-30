@@ -256,7 +256,7 @@ export const components = {
   coachLog: {
     title: "Coach Diary",
     subtitle: "Visible to all coaches",
-    addBtn: "General entry",
+    addBtn: "New entry",
     typeObservation: "Observation",
     typeTip: "Tip",
     typeGoal: "Focus",
@@ -264,6 +264,8 @@ export const components = {
     typePrivate: "ONLY ME",
     privateHint: "Only you see this — not the student, not other coaches.",
     visibleTo: "Visible to {{name}} and all of {{name}}'s coaches.",
+    refLabel: "Refers to",
+    refNone: "General",
     placeholder: "Write an entry for the other coaches…",
     cancel: "Cancel",
     save: "Save",
@@ -275,7 +277,7 @@ export const components = {
     deleteDesc: "This action cannot be undone.",
     delete: "Delete",
     defaultCoachName: "Coach",
-    hint: "General entry: progress over several trainings — what you work on, where the focus is. For a single training, write the \"Comment on the training\" in the training card.",
+    hint: "Pick above which training the entry belongs to — or “General” for progress over several trainings.",
     focusGoalLabel: "How many sessions?",
     focusHint: "Manage the session count and ending the focus early from the focus panel — tap the “Focus” bar in the student profile."
   }
@@ -573,6 +575,7 @@ export const views = {
     noteShort: "Note",
     coachNote: "Coach note",
     coachEntry: "Coach entry",
+    refersTo: "re:",
     inviteTitle: "Training with a coach?",
     inviteDesc: "Connect, and your coach's notes will show up right here.",
     inviteBtn: "Connect a coach",

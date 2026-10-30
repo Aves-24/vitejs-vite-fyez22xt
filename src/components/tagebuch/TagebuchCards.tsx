@@ -68,6 +68,60 @@ export interface TbCoachEntry {
   topics: string[];
   ts: number;
   trainingTopic?: TrainingTopic;   // tylko type === 'topic'
+  sessionRef?: CoachEntrySessionRef; // trening, którego dotyczy wpis (brak = ogólny)
+}
+
+// [WPIS DO TRENINGU 2026-10-30] Migawka treningu, do którego trener przypiął wpis
+// (user: „nie wiem, do jakiego treningu odnosi się wpis”). Migawka, bo uczeń FREE
+// może już nie widzieć starego treningu, a podpis ma zostać czytelny.
+export interface CoachEntrySessionRef {
+  id: string;
+  date: string;
+  type: string;        // 'Trening' | 'Turniej' | 'TECHNICAL' | …
+  distance?: string;
+  score?: number;
+  arrows?: number;
+}
+
+export function readSessionRef(data: any): { sessionRef?: CoachEntrySessionRef } {
+  const r = data?.sessionRef;
+  if (!r || typeof r.id !== 'string' || typeof r.date !== 'string') return {};
+  return { sessionRef: {
+    id: r.id, date: r.date, type: typeof r.type === 'string' ? r.type : 'Trening',
+    ...(typeof r.distance === 'string' ? { distance: r.distance } : {}),
+    ...(typeof r.score === 'number' ? { score: r.score } : {}),
+    ...(typeof r.arrows === 'number' ? { arrows: r.arrows } : {}),
+  } };
+}
+
+export function sessionRefOf(s: any): CoachEntrySessionRef {
+  return {
+    id: s.id, date: s.date || '', type: s.type || 'Trening',
+    ...(s.type !== 'TECHNICAL' && s.distance ? { distance: s.distance } : {}),
+    ...(s.type !== 'TECHNICAL' && typeof s.score === 'number' ? { score: s.score } : {}),
+    ...(s.type === 'TECHNICAL' ? { arrows: s.totalArrows || s.arrows || 0 } : {}),
+  };
+}
+
+/** „Training · 28.10.2026 · 70m · 607” — ikona i kolor wg rodzaju treningu. */
+export function SessionRefLine({ sref, onOpen }: { sref: CoachEntrySessionRef; onOpen?: () => void }) {
+  const { t } = useTranslation();
+  const isTech = sref.type === 'TECHNICAL';
+  const isTourney = sref.type === 'Turniej';
+  const label = isTech ? t('stats.techSessionType') : isTourney ? t('stats.sessionInfo.tournament') : t('stats.sessionInfo.solo');
+  const parts = [label, sref.date, ...(sref.distance ? [sref.distance] : []),
+    ...(typeof sref.score === 'number' ? [String(sref.score)] : []),
+    ...(typeof sref.arrows === 'number' ? [`${sref.arrows} ${t('common.arrows')}`] : [])];
+  const cls = `mt-1 inline-flex items-center gap-1 max-w-full rounded-full border px-2 py-0.5 text-[10px] font-black ${isTech ? 'bg-sky-50 border-sky-100 text-sky-700' : isTourney ? 'bg-[#0a3a2a] border-[#0a3a2a] text-[#fed33e]' : 'bg-emerald-50 border-emerald-100 text-emerald-800'}`;
+  const body = (
+    <>
+      <span className="material-symbols-outlined text-[13px] shrink-0">{isTech ? 'fitness_center' : isTourney ? 'emoji_events' : 'target'}</span>
+      <span className="truncate">{t('tagebuch.refersTo')} {parts.join(' · ')}</span>
+    </>
+  );
+  return onOpen
+    ? <button onClick={onOpen} className={`${cls} active:opacity-60`}>{body}</button>
+    : <span className={cls}>{body}</span>;
 }
 
 export const SESSION_NOTE_MAX = 250;   // jak w StatsView/NoteModule
@@ -536,7 +590,7 @@ export function NoteSheet({ onSave, onClose, initial, canShare = false, standalo
 
 // --- WPIS TRENERA (coachLog) ---
 // `footer` — dopisek pod treścią (u trenera: kto widzi wpis); u ucznia brak.
-export function CoachEntryCard({ entry, time, isNew, footer }: { entry: TbCoachEntry; time: string; isNew: boolean; footer?: React.ReactNode }) {
+export function CoachEntryCard({ entry, time, isNew, footer, onOpenSession }: { entry: TbCoachEntry; time: string; isNew: boolean; footer?: React.ReactNode; onOpenSession?: (id: string) => void }) {
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
@@ -551,6 +605,9 @@ export function CoachEntryCard({ entry, time, isNew, footer }: { entry: TbCoachE
         time={time}
         extra={isNew ? <NewBadge /> : undefined}
       >
+        {entry.sessionRef && (
+          <SessionRefLine sref={entry.sessionRef} onOpen={onOpenSession ? () => onOpenSession(entry.sessionRef!.id) : undefined} />
+        )}
         <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1">{entry.text}</p>
         <TopicChips topics={entry.topics} />
         {footer}

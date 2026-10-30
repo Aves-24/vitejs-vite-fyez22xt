@@ -44,6 +44,14 @@ function spCacheSet(key: string, data: unknown): void {
   } catch { /* ignore */ }
 }
 
+// Znacznik czasu sesji w ms (Timestamp z Firestore, {seconds} z cache albo liczba).
+const sessionMillis = (s: any): number => {
+  const ts = s?.timestamp;
+  return ts?.toMillis ? ts.toMillis() : ts?.seconds ? ts.seconds * 1000 : (typeof ts === 'number' ? ts : 0);
+};
+// Punkt na Ergebniskurve: pełny trening z wynikiem (bez technicznych i niepełnych).
+const isCurveSession = (s: any) => s.type !== 'TECHNICAL' && !isPartialSession(s) && (s.arrows || 0) > 0;
+
 // --- FUNKCJA POMOCNICZA DO OBLICZANIA TRAFIEŃ ---
 const calculateHits = (ends: any[]) => {
   let x = 0, ten = 0, nine = 0;
@@ -350,7 +358,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [recentSessions, setRecentSessions] = useState<any[]>([]);
   const [allModalSessions, setAllModalSessions] = useState<any[]>([]);
   const [currentSessionIndex, setCurrentSessionIndex] = useState(0);
-  const [recentTechSessions, setRecentTechSessions] = useState<any[]>([]);
 
   const [dailyArrows, setDailyArrows] = useState(0);
   const [monthlyArrows, setMonthlyArrows] = useState(0);
@@ -360,9 +367,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [avgPoints3, setAvgPoints3] = useState(0);
   const [avgArrowsMonth, setAvgArrowsMonth] = useState(0);
   const [avgPointsMonth, setAvgPointsMonth] = useState(0);
-  const [sparkline, setSparkline] = useState<number[]>([]);
-  // id treningów krzywej (ta sama kolejność) — zaznaczenie treningu wybranego w karuzeli
-  const [sparklineIds, setSparklineIds] = useState<string[]>([]);
 
   const [trendFilterType, setTrendFilterType] = useState<string>('');
   const [trendFilterDist, setTrendFilterDist] = useState<string>('');
@@ -419,16 +423,13 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const rawTs = studentData?.lastSessionTimestamp;
       const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
 
-      const cacheKey = `grotX_studentProfile_v5_${studentId}`;
+      const cacheKey = `grotX_studentProfile_v6_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
 
       if (cached && cached.lastSessionTimestamp === lastTs) {
         // Nic się nie zmieniło — używamy cache, 0 dodatkowych odczytów
         setUpcomingTournaments(cached.tournaments);
         setRecentSessions(cached.recentSessions);
-        setRecentTechSessions(cached.recentTechSessions || []);
-        setSparkline(cached.sparkline);
-        setSparklineIds(cached.sparklineIds || []);
         setDailyArrows(cached.dailyArrows);
         setMonthlyArrows(cached.monthlyArrows);
         setYearlyArrows(cached.yearlyArrows);
@@ -454,7 +455,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
-      let recentSessions: any[] = [], sparkline: number[] = [], sparklineIds: string[] = [], techSessions: any[] = [];
+      let recentSessions: any[] = [];
       let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
       // Miesiąc — sumy na sesję (sesje z wynikiem, bez technicznych)
       let monthCount = 0, monthArrowsSum = 0, monthScoreSum = 0;
@@ -462,14 +463,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       if (!snap.empty) {
         const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
-        recentSessions = nonTech.slice(0, 3);
-        // [C31] Trend i średnie „na trening" bez niepełnych treningów.
-        const curve = nonTech.filter((s: any) => !isPartialSession(s)).slice(0, 5).reverse().filter((s: any) => s.arrows > 0);
-        sparkline = curve.map((s: any) => s.score);
-        sparklineIds = curve.map((s: any) => s.id);
+        // [OŚ CZASU] (user 2026-10-30) 5 ostatnich pełnych treningów z wynikiem
+        // (krzywa — [C31] bez niepełnych) plus wszystko pomiędzy nimi: treningi
+        // techniczne i niepełne. Karuzela „Letzte Trainings” idzie po tej osi
+        // chronologicznie, krzywa zaznacza na niej każde zdarzenie.
+        const curve = nonTech.filter(isCurveSession).slice(0, 5);
+        const cutoff = curve.length ? sessionMillis(curve[curve.length - 1]) : -Infinity;
+        recentSessions = curve.length ? all.filter((s: any) => sessionMillis(s) >= cutoff) : all.slice(0, 5);
         setAllModalSessions(nonTech);
-        techSessions = all.filter((s: any) => s.type === 'TECHNICAL').slice(0, 3);
-        setRecentTechSessions(techSessions);
         all.forEach((s: any) => {
           const ts: number = s.timestamp?.toMillis ? s.timestamp.toMillis() : (s.timestamp || 0);
           const arrows = s.arrows || 0;
@@ -496,8 +497,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.score || 0), 0) / last3NonTech.length)
         : 0;
       setRecentSessions(recentSessions);
-      setSparkline(sparkline);
-      setSparklineIds(sparklineIds);
       setDailyArrows(dayTotal);
       setMonthlyArrows(monthTotal);
       setYearlyArrows(yearTotal);
@@ -507,7 +506,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setAvgArrowsMonth(avgArrowsMonthVal);
       setAvgPointsMonth(avgPointsMonthVal);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, sparklineIds, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgArrows3: avgArrows3Val, avgPoints3: avgPoints3Val, avgArrowsMonth: avgArrowsMonthVal, avgPointsMonth: avgPointsMonthVal });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgArrows3: avgArrows3Val, avgPoints3: avgPoints3Val, avgArrowsMonth: avgArrowsMonthVal, avgPointsMonth: avgPointsMonthVal });
     };
 
     fetchStudentData();
@@ -651,18 +650,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     setRecentSessions(updatedSessions);
   };
 
-  const handleUpdateTechSessionNote = (sessionId: string, newNote: string, editCount: number) => {
-    setRecentTechSessions(prev => prev.map(s =>
-      s.id === sessionId ? { ...s, coachNote: newNote, coachEditCount: editCount } : s
-    ));
-  };
-
   if (!student) return <div className="p-10 text-center">{t('studentProfile.loading')}</div>;
 
   const nextTournament = upcomingTournaments.length > 0 ? upcomingTournaments[0] : null;
   const additionalTournamentsCount = upcomingTournaments.length - 1;
 
   const currentSession = recentSessions.length > 0 ? recentSessions[currentSessionIndex] : null;
+  const isTechSession = currentSession?.type === 'TECHNICAL';
+  const lastScored = recentSessions.find((s: any) => s.type !== 'TECHNICAL') || null;
   const sessionHits = currentSession ? calculateHits(currentSession.ends) : { x: 0, ten: 0, nine: 0 };
   const sessionAvg = currentSession && currentSession.arrows > 0 ? (currentSession.score / currentSession.arrows).toFixed(2) : '0.00';
   const sessionEnds: any[] = currentSession?.ends || [];
@@ -854,47 +849,56 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                       <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{avg14Days}</span>
                     </button>
                     <button
-                      onClick={() => { if (recentSessions.length > 0) { setCurrentSessionIndex(0); setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80); } }}
+                      onClick={() => { if (lastScored) { setCurrentSessionIndex(recentSessions.indexOf(lastScored)); setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80); } }}
                       className={tile}
                     >
                       <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
-                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{recentSessions.length > 0 ? recentSessions[0].score : '–'}</span>
+                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{lastScored ? lastScored.score : '–'}</span>
                     </button>
                   </div>
 
                   {/* Ergebniskurve — klik otwiera okno z filtrami i listą wyników */}
-                  {sparkline.length >= 2 && (() => {
-                    const W = 200, H = 36, pad = 5;
-                    const minS = Math.min(...sparkline);
-                    const maxS = Math.max(...sparkline);
-                    const lastS = sparkline[sparkline.length - 1];
+                  {(() => {
+                    // Oś czasu od najstarszego: każde zdarzenie ma swoje miejsce na osi X,
+                    // linia łączy tylko pełne treningi z wynikiem.
+                    const tl = [...recentSessions].reverse();
+                    const scored = tl.map((sess, i) => ({ sess, i })).filter(({ sess }) => isCurveSession(sess));
+                    if (scored.length < 2) return null;
+                    const W = 200, H = 36, pad = 5, base = H - 1;
+                    const vals = scored.map(({ sess }) => sess.score || 0);
+                    const minS = Math.min(...vals);
+                    const maxS = Math.max(...vals);
+                    const lastS = vals[vals.length - 1];
                     const range = maxS - minS || 1;
-                    const maxIdx = sparkline.indexOf(maxS);
-                    const minIdx = sparkline.lastIndexOf(minS);
-                    const pts = sparkline.map((sc, i) => ({
-                      x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
-                      y: H - pad - ((sc - minS) / range) * (H - pad * 2),
-                    }));
-                    // Trening wybrany w „Letzte Trainings” (user 2026-10-30) — obwódka + wynik
-                    // nad punktem. Niepełny trening nie wchodzi do krzywej, więc bez znacznika.
-                    const selIdx = currentSession ? sparklineIds.indexOf(currentSession.id) : -1;
-                    const sel = selIdx >= 0 ? pts[selIdx] : null;
+                    const maxIdx = scored[vals.indexOf(maxS)].i;
+                    const minIdx = scored[vals.lastIndexOf(minS)].i;
+                    const lastIdx = scored[scored.length - 1].i;
+                    const xOf = (i: number) => pad + (i / Math.max(tl.length - 1, 1)) * (W - pad * 2);
+                    const yOf = (sc: number) => H - pad - 3 - ((sc - minS) / range) * (H - pad * 2 - 3);
+                    // Trening wybrany w „Letzte Trainings” — obwódka (+ wynik nad punktem).
+                    const selIdx = currentSession ? tl.length - 1 - currentSessionIndex : -1;
+                    const selSess = selIdx >= 0 ? tl[selIdx] : null;
+                    const selOnCurve = !!selSess && isCurveSession(selSess);
+                    const sel = selSess ? { x: xOf(selIdx), y: selOnCurve ? yOf(selSess.score || 0) : base } : null;
                     return (
                       <button onClick={() => setShowTrendModal(true)} className="w-full mt-2 pt-2 border-t border-gray-100 flex items-center gap-2 text-left active:opacity-60">
                         <span className="flex-1 min-w-0">
                           <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.trendTitle', { defaultValue: 'Ergebniskurve' })}</span>
                           <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
-                            <polyline points={pts.map(pt => `${pt.x},${pt.y}`).join(' ')} fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
-                            {pts.map((pt, i) => {
-                              const isMax = i === maxIdx, isMin = i === minIdx, isLast = i === pts.length - 1;
+                            <polyline points={scored.map(({ sess, i }) => `${xOf(i)},${yOf(sess.score || 0)}`).join(' ')} fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+                            {tl.map((sess, i) => {
+                              // Trening techniczny: błękitny kwadracik na osi; niepełny: pusta bursztynowa kropka.
+                              if (sess.type === 'TECHNICAL') return <rect key={i} x={xOf(i) - 2.5} y={base - 2.5} width={5} height={5} rx={1.5} fill="#38bdf8" />;
+                              if (!isCurveSession(sess)) return <circle key={i} cx={xOf(i)} cy={base} r={2.5} fill="none" stroke="#d97706" strokeWidth="1.2" />;
+                              const isMax = i === maxIdx, isMin = i === minIdx, isLast = i === lastIdx;
                               const color = isMax ? '#10b981' : isMin ? '#ef4444' : isLast ? '#0a3a2a' : '#9ca3af';
-                              return <circle key={i} cx={pt.x} cy={pt.y} r={isMax || isMin ? 4 : isLast ? 3.5 : 2} fill={color} opacity={isMax || isMin || isLast ? 1 : 0.5} />;
+                              return <circle key={i} cx={xOf(i)} cy={yOf(sess.score || 0)} r={isMax || isMin ? 4 : isLast ? 3.5 : 2} fill={color} opacity={isMax || isMin || isLast ? 1 : 0.5} />;
                             })}
                             {sel && (
                               <g className="tb-fade-in" key={selIdx}>
-                                <line x1={sel.x} y1={sel.y + 6} x2={sel.x} y2={H} stroke="#0a3a2a" strokeWidth="1" strokeDasharray="2 2" opacity="0.35" />
-                                <circle cx={sel.x} cy={sel.y} r={6.5} fill="none" stroke="#0a3a2a" strokeWidth="1.5" />
-                                <text x={Math.min(Math.max(sel.x, 10), W - 10)} y={sel.y - 9} fontSize="9" fontWeight="900" textAnchor="middle" fill="#0a3a2a">{sparkline[selIdx]}</text>
+                                {selOnCurve && <line x1={sel.x} y1={sel.y + 6} x2={sel.x} y2={H} stroke="#0a3a2a" strokeWidth="1" strokeDasharray="2 2" opacity="0.35" />}
+                                <circle cx={sel.x} cy={sel.y} r={6.5} fill="none" stroke={selSess?.type === 'TECHNICAL' ? '#0284c7' : '#0a3a2a'} strokeWidth="1.5" />
+                                {selOnCurve && <text x={Math.min(Math.max(sel.x, 10), W - 10)} y={sel.y - 9} fontSize="9" fontWeight="900" textAnchor="middle" fill="#0a3a2a">{selSess?.score}</text>}
                               </g>
                             )}
                           </svg>
@@ -911,16 +915,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               );
             })()}
 
-            {/* OSTATNIE TRENINGI (karuzela 3 ostatnich) — w etapie 2 zastąpi ją zakładka „Trainings” */}
+            {/* OSTATNIE TRENINGI — karuzela po osi czasu krzywej (5 wyników + technika pomiędzy);
+                w etapie 2 dojdzie pełna lista w zakładce „Trainings” */}
             {currentSession ? (
-              <div ref={sessionSectionRef} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm ${currentSession.type === 'Turniej' ? 'tb-tourney' : 'tb-d2'} pl-2 pr-3 py-2.5 space-y-2.5 scroll-mt-3`}>
+              <div ref={sessionSectionRef} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm ${isTechSession ? 'tb-tech' : currentSession.type === 'Turniej' ? 'tb-tourney' : 'tb-d2'} pl-2 pr-3 py-2.5 space-y-2.5 scroll-mt-3`}>
                 <div className="flex items-center gap-2.5">
                   <span className={`${currentSession.type === 'Turniej' ? 'tb-tourney-icon' : 'tb-icon'} w-8 h-8 rounded-lg flex items-center justify-center shrink-0`}>
-                    <span className={`material-symbols-outlined text-[18px] ${currentSession.type === 'Turniej' ? 'tb-tourney-accent' : 'text-emerald-600'}`}>{currentSession.type === 'Turniej' ? 'emoji_events' : 'target'}</span>
+                    <span className={`material-symbols-outlined text-[18px] ${isTechSession ? 'text-sky-500' : currentSession.type === 'Turniej' ? 'tb-tourney-accent' : 'text-emerald-600'}`}>{isTechSession ? 'fitness_center' : currentSession.type === 'Turniej' ? 'emoji_events' : 'target'}</span>
                   </span>
                   <span className="flex-1 min-w-0">
-                    <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700 truncate">{t('studentProfile.lastTrainings')}</span>
-                    <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{currentSession.date} · {currentSession.distance}</span>
+                    <span className={`block text-[9px] font-black uppercase tracking-widest leading-tight truncate ${isTechSession ? 'text-sky-600' : 'text-emerald-700'}`}>{isTechSession ? t('stats.techSessionType') : t('studentProfile.lastTrainings')}</span>
+                    <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{currentSession.date}{!isTechSession && currentSession.distance ? ` · ${currentSession.distance}` : ''}</span>
                   </span>
                   <span className="flex items-center gap-0.5 shrink-0">
                     <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[#0a3a2a] active:scale-90 disabled:opacity-25 transition-all" aria-label="‹">
@@ -933,11 +938,18 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 </div>
                 {recentSessions.length > 1 && (
                   <div className="flex items-center justify-center gap-1">
-                    {recentSessions.map((_, i) => (
-                      <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#0a3a2a]' : 'w-1.5 h-1.5 bg-gray-200'}`} />
+                    {recentSessions.map((sess, i) => ({ sess, i })).reverse().map(({ sess, i }) => (
+                      <button key={sess.id || i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? `w-3.5 h-1.5 ${sess.type === 'TECHNICAL' ? 'bg-sky-500' : 'bg-[#0a3a2a]'}` : `w-1.5 h-1.5 ${sess.type === 'TECHNICAL' ? 'bg-sky-200' : 'bg-gray-200'}`}`} />
                     ))}
                   </div>
                 )}
+                {isTechSession ? (
+                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                    <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full text-[10px] font-black">
+                      {currentSession.totalArrows || currentSession.arrows || 0} {t('common.arrows')}
+                    </span>
+                  </div>
+                ) : (<>
                 <div className="grid grid-cols-5 text-center pt-2 border-t border-gray-100">
                   <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{currentSession.score}{isPartialSession(currentSession) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(currentSession)}</span>}</p></div>
                   <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionAvg}</p></div>
@@ -992,6 +1004,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     />
                   </div>
                 )}
+                </>)}
                 <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
                   <p className="text-[11px] font-bold text-[#333] italic leading-snug">{(currentSession.isNotePublic !== false && currentSession.note) || t('studentProfile.noStudentNote')}</p>
@@ -1006,36 +1019,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 <span className="text-[11px] font-bold text-gray-500">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
               </div>
             )}
-
-            {/* TRENINGI TECHNICZNE — sky jak w dzienniku */}
-            {recentTechSessions.map(session => (
-              <div key={session.id} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-tech pl-2 pr-3 py-2.5 space-y-2`}>
-                <div className="flex items-center gap-2.5">
-                  <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[18px] text-sky-500">fitness_center</span>
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-sky-600">{t('stats.techSessionType')}</span>
-                    <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{session.date}</span>
-                  </span>
-                  <span className="shrink-0 bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full text-[10px] font-black">
-                    {session.totalArrows || 0} {t('common.arrows')}
-                  </span>
-                </div>
-                {session.note && session.isNotePublic !== false && (
-                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
-                    <p className="text-[11px] font-bold text-[#333] italic leading-snug">"{session.note}"</p>
-                  </div>
-                )}
-                <CoachNoteModule
-                  session={session}
-                  studentId={studentId}
-                  coachId={coachId}
-                  onSaveSuccess={(note, editCount) => handleUpdateTechSessionNote(session.id, note, editCount)}
-                />
-              </div>
-            ))}
 
             {/* SPRZĘT — zwijana karta zamiast ikonki 🔧 w nagłówku */}
             <SummaryCard icon="build" stripe="tb-d1" kind={t('studentProfile.hardwareTitle')} title={t('studentProfile.hardwareSubtitle')} storageKey="coach-equipment" defaultOpen={false}>

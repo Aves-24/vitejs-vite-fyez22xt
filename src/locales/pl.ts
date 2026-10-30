@@ -1693,11 +1693,11 @@ export const views = {
     studentFindings: "Wniosek Ucznia",
     sharedWithCoach: "Udostępniono trenerowi",
     private: "Prywatna",
-    techSessionType: "Sesja bez tarczy",
+    techSessionType: "Trening techniczny",
     techSessionTitle: "Trening Techniczny",
     sessionFocus: "Fokus tego treningu",
     techHistory: "Historia Techniki",
-    techHistoryDesc: "Ostatnie 3 sesje bez tarczy",
+    techHistoryDesc: "Ostatnie 3 treningi techniczne",
     noSessionNotes: "Brak notatek z tego treningu.",
     sessionInfo: {
       solo: "Sesja Treningowa",

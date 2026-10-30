@@ -1668,11 +1668,11 @@ export const views = {
     studentFindings: "Student's Findings",
     sharedWithCoach: "Shared with coach",
     private: "Private",
-    techSessionType: "Off-target session",
+    techSessionType: "Technical training",
     techSessionTitle: "Technical Training",
     sessionFocus: "Focus of this session",
     techHistory: "Technique History",
-    techHistoryDesc: "Last 3 off-target sessions",
+    techHistoryDesc: "Last 3 technical trainings",
     noSessionNotes: "No notes for this session.",
     sessionInfo: {
       solo: "Training Session",

@@ -1668,11 +1668,11 @@ export const views = {
     studentFindings: "Erkenntnisse des Schülers",
     sharedWithCoach: "Mit Trainer geteilt",
     private: "Privat",
-    techSessionType: "Einheit ohne Scheibe",
+    techSessionType: "Technisches Training",
     techSessionTitle: "Technisches Training",
     sessionFocus: "Fokus dieses Trainings",
     techHistory: "Technik-Historie",
-    techHistoryDesc: "Letzte 3 Einheiten ohne Scheibe",
+    techHistoryDesc: "Letzte 3 technische Trainings",
     noSessionNotes: "Keine Notizen für dieses Training.",
     sessionInfo: {
       solo: "Trainingseinheit",

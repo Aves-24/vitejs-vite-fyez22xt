@@ -2104,6 +2104,8 @@ export const views = {
     focusPart_sessions: "treningi",
     focusLabel: "Fokus",
     focusDoneLabel: "Zakończony fokus",
+    focusLastDone: "Ostatni zakończony fokus",
+    focusSetNew: "Ustaw nowy fokus",
     focusNone: "Brak fokusu · dodaj wpis „Fokus” w Dzienniku",
     focusModalTitle: "Fokus ucznia",
     focusModalCurrentLabel: "Aktualny fokus",

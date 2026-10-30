@@ -28,8 +28,8 @@ import TopicPicker from '../components/TopicPicker';
 import StudentEquipmentCard from '../components/StudentEquipmentCard';
 import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
-import { useActiveFocus } from '../utils/focus';
-import { FocusStrip } from '../components/tagebuch/FocusCard';
+import { useActiveFocus, readSessionFocus, type SessionFocus } from '../utils/focus';
+import { FocusStrip, FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
@@ -726,6 +726,31 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [focusNonce, setFocusNonce] = useState(0);
   const focusState = useActiveFocus(studentId, true, focusNonce);
   const [showFocusModal, setShowFocusModal] = useState(false);
+  // [OSTATNI FOKUS] Bez aktywnego fokusu: ostatni zakończony, szara karta jak
+  // u ucznia w dzienniku (user 2026-10-30). Źródła: własny fokus ucznia
+  // (focus.cleared), fokus trenera zakończony przez ucznia (coachFocusCleared)
+  // i ostatni „Ziel” zakończony przez trenera (coachLog: endedAt + ended).
+  const [lastFocus, setLastFocus] = useState<(SessionFocus & { endedAt: number }) | null>(null);
+  useEffect(() => {
+    if (!student || !focusState || focusState.focus) { setLastFocus(null); return; }
+    let cancelled = false;
+    const picks: (SessionFocus & { endedAt: number })[] = [];
+    const own = student.focus;
+    const ownEnded = own?.cleared ? readSessionFocus({ focus: own.ended }) : null;
+    if (ownEnded) picks.push({ ...ownEnded, endedAt: own.setAt || 0 });
+    const cc = student.coachFocusCleared;
+    const ccEnded = cc ? readSessionFocus({ focus: cc.ended }) : null;
+    if (ccEnded) picks.push({ ...ccEnded, endedAt: cc.setAt || 0 });
+    getDocs(query(collection(db, `users/${studentId}/coachLog`), where('type', '==', 'goal'), orderBy('createdAt', 'desc'), limit(1)))
+      .then(snap => {
+        const d = snap.docs[0]?.data();
+        const g = d && typeof d.endedAt === 'number' ? readSessionFocus({ focus: d.ended }) : null;
+        if (g) picks.push({ ...g, endedAt: d!.endedAt });
+      })
+      .catch(e => console.error('Ostatni fokus (cel trenera):', e))
+      .finally(() => { if (!cancelled) setLastFocus(picks.sort((a, b) => b.endedAt - a.endedAt)[0] || null); });
+    return () => { cancelled = true; };
+  }, [student, focusState, studentId]);
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
@@ -993,6 +1018,26 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               label={focusState.dots && focusState.count >= focusState.goal ? t('studentProfile.focusDoneLabel') : t('studentProfile.focusLabel')}
               sourceLabel=""
             />
+          </button>
+        ) : focusState && lastFocus ? (
+          // Szara karta ostatniego fokusu (jak „Dein zuletzt abgeschlossener Fokus” u ucznia).
+          <button onClick={() => setShowFocusModal(true)} className="mt-3 w-full flex items-start gap-3 bg-white/[0.06] border border-white/10 rounded-2xl px-3.5 py-2.5 text-left active:scale-[0.99] transition-all">
+            <span className="w-8 h-8 rounded-full bg-white/10 text-white/50 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[18px]">center_focus_strong</span>
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block text-[9px] font-black uppercase tracking-widest text-white/50 truncate">
+                {t('studentProfile.focusLastDone')}{lastFocus.fromCoach ? ` · ${t('tagebuch.focusFromCoach')}${lastFocus.authorName ? ` ${lastFocus.authorName}` : ''}` : ''}
+              </span>
+              <span className="block text-[13px] font-black text-white/70 leading-snug truncate">{focusTitle(lastFocus, t)}</span>
+              <span className="flex items-center gap-2 mt-1 flex-wrap">
+                {lastFocus.step !== undefined && lastFocus.goal ? <FocusDots count={lastFocus.step} goal={lastFocus.goal} small muted /> : null}
+                <span className="text-[10px] font-bold text-white/40">
+                  {new Date(lastFocus.since).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} – {new Date(lastFocus.endedAt).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
+                </span>
+              </span>
+              <span className="inline-block mt-1.5 bg-[#fed33e] text-[#0a3a2a] text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg">{t('studentProfile.focusSetNew')}</span>
+            </span>
           </button>
         ) : focusState && (
           <button onClick={() => setShowFocusModal(true)} className="mt-3 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2 text-left">

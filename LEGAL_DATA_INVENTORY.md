@@ -26,6 +26,7 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 9b | Prośba o miejsca trenerskie (C36) | `coachRequests/{id}` | imię, e-mail, liczba uczniów, status | art. 6(1)(b) | TYLKO admin (+właściciel); max 6 mies. (`expiresAt`/TTL), kasowane z kontem |
 | 10 | Turnieje, kalendarz | `users/{uid}/tournaments` | planowanie | art. 6(1)(b) | właściciel, admin, trenerzy |
 | 11 | Wiadomości trener↔uczeń | `users/{coachId}/studentMessages` | komunikacja | art. 6(1)(a) — relacja za zgodą | obie strony relacji, admin |
+| 11a | Prywatne notatki trenera o uczniu (2026-10-30, zastępują mapę `privateStudentNotes`) | `users/{coachId}/coachStudentNotes` | ciągłość szkolenia, notatki trenera | art. 6(1)(f) — uzasadniony interes trenera | TYLKO trener-autor (+admin) — uczeń NIE; kasowane z kontem trenera, NIE z kontem ucznia (dane w przestrzeni trenera) |
 | 12 | Dziennik trenerski | `users/{uid}/coachLog` | ciągłość szkolenia | art. 6(1)(a) | uczeń, wszyscy jego trenerzy, admin |
 | 13 | XP/level/handicap | `users/{uid}`, `world_stats` | gamifikacja, ranking | art. 6(1)(b) | leaderboard: wszyscy zalogowani |
 | 14 | Wyniki battles (live) | `battles/{id}` | pojedynki online | art. 6(1)(b) | wszyscy zalogowani (do zawężenia) |

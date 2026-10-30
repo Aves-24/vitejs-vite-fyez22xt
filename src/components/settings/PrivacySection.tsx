@@ -23,6 +23,8 @@ interface PrivacySectionProps {
 const OWNED_SUBCOLLECTIONS = [
   'sessions', 'techShots', 'coachLog', 'dailyStats', 'scores',
   'tournaments', 'privateNotes', 'sessionNotes', 'notifications', 'studentMessages',
+  // [PRYWATNE NOTATKI TRENERA 2026-10-30] wpisy trenera „nur für mich” o uczniach
+  'coachStudentNotes',
 ];
 
 const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {

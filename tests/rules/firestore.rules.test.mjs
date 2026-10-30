@@ -1370,3 +1370,25 @@ test('[PRZESUNIECIE TEMATOW] autor zmienia dzien tematu u ucznia, poprawny forma
   await assertFails(updateDoc(l(alice(), 'sh1'), { day: '2026-11-04' }));
   await assertFails(updateDoc(l(bob(), 'sh1'), { day: '2026-11-04' }));
 });
+
+test('[PRYWATNE NOTATKI TRENERA] tylko trener czyta i pisze swoje wpisy o uczniu', async () => {
+  const note = (extra = {}) => ({ studentId: 'alice', title: 'Langzeitziel', text: 'Kader 2027', topics: [], createdAt: serverTimestamp(), ...extra });
+  const ref = (db, uid, id) => doc(db, `users/${uid}/coachStudentNotes/${id}`);
+  await assertSucceeds(setDoc(ref(coach1(), 'coach1', 'n1'), note()));
+  await assertSucceeds(getDoc(ref(coach1(), 'coach1', 'n1')));
+  await assertSucceeds(getDocs(query(collection(coach1(), 'users/coach1/coachStudentNotes'), where('studentId', '==', 'alice'))));
+  // uczeń i obcy nie czytają notatek trenera
+  await assertFails(getDoc(ref(alice(), 'coach1', 'n1')));
+  await assertFails(getDoc(ref(bob(), 'coach1', 'n1')));
+  // nikt nie pisze w cudzej przestrzeni
+  await assertFails(setDoc(ref(alice(), 'coach1', 'n2'), note()));
+  // walidacja: pusty tekst, za długi, dodatkowe pole, zmyślona data
+  await assertFails(setDoc(ref(coach1(), 'coach1', 'n3'), note({ text: '' })));
+  await assertFails(setDoc(ref(coach1(), 'coach1', 'n4'), note({ text: 'x'.repeat(1001) })));
+  await assertFails(setDoc(ref(coach1(), 'coach1', 'n5'), note({ shared: true })));
+  await assertFails(setDoc(ref(coach1(), 'coach1', 'n6'), note({ createdAt: 1 })));
+  // bez edycji; usuwa tylko właściciel
+  await assertFails(updateDoc(ref(coach1(), 'coach1', 'n1'), { text: 'inaczej' }));
+  await assertFails(deleteDoc(ref(alice(), 'coach1', 'n1')));
+  await assertSucceeds(deleteDoc(ref(coach1(), 'coach1', 'n1')));
+});

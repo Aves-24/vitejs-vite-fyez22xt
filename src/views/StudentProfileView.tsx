@@ -10,7 +10,7 @@ import { hasActivePro, freeAnalysisOpen, freeHistoryStart, FREE_HISTORY_DAYS, FR
 import LockedCard from '../components/scoring/LockedCard';
 import QuickStatsModal from '../components/QuickStatsModal';
 import ViewHeader from '../components/ViewHeader';
-import { CoachLogComposer, deleteCoachLogEntry } from '../components/CoachLogPanel';
+import { CoachLogComposer, deleteCoachLogEntry, loadCoachPrivateNotes, deleteCoachPrivateNote, migrateLegacyPrivateNotes, type CoachPrivateNote } from '../components/CoachLogPanel';
 import { loadSharedNotes, SharedNoteCard, type SharedNote } from '../components/StudentSharedNotes';
 import CoachFocusModal from '../components/CoachFocusModal';
 import SessionBilanz from '../components/scoring/SessionBilanz';
@@ -227,127 +227,6 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
   );
 }
 
-// --- MIKRO-KOMPONENT POUFNEJ NOTATKI (Teraz 3 sekcje x 200 znaków!) ---
-function PrivateNoteModal({ coachId, studentId, initialNotes, onClose, onSaveSuccess }: any) {
-  const { t } = useTranslation();
-  const [notes, setNotes] = useState<string[]>(initialNotes || ['', '', '']);
-  const [isSaving, setIsSaving] = useState(false);
-  const [recordingNoteIndex, setRecordingNoteIndex] = useState<number | null>(null);
-  const voice = useVoiceInput({
-    onResult: (result) => {
-      if (recordingNoteIndex !== null) {
-        setNotes(prev => {
-          const newNotes = [...prev];
-          newNotes[recordingNoteIndex] = (newNotes[recordingNoteIndex] + ' ' + result).trim().slice(0, 200);
-          return newNotes;
-        });
-      }
-    },
-    append: true,
-  });
-
-  const labels = [
-    { title: t('studentProfile.privateNoteLabel0'), icon: 'flag' },
-    { title: t('studentProfile.privateNoteLabel1'), icon: 'model_training' },
-    { title: t('studentProfile.privateNoteLabel2'), icon: 'notes' }
-  ];
-
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const cleanNotes = notes.map(n => n.trim().slice(0, 200));
-      await updateDoc(doc(db, 'users', coachId), {
-        [`privateStudentNotes.${studentId}`]: cleanNotes
-      });
-      onSaveSuccess(cleanNotes);
-      onClose(); // Automatycznie zamyka modal po udanym zapisie
-    } catch(e) {
-      console.error("Błąd zapisu prywatnej notatki:", e);
-    }
-    setIsSaving(false);
-  };
-
-  return createPortal(
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
-       <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-         <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full active:scale-90 transition-all">
-           <span className="material-symbols-outlined">close</span>
-         </button>
-         
-         <div className="flex items-center gap-3 mb-2 mt-2 shrink-0">
-           <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center shrink-0">
-             <span className="material-symbols-outlined text-yellow-600">lock</span>
-           </div>
-           <div>
-             <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.privateNoteTitle')}</h2>
-             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t('studentProfile.privateNoteSubtitle')}</p>
-           </div>
-         </div>
-         <p className="text-[10px] text-gray-500 font-medium mb-4 leading-tight shrink-0">{t('studentProfile.privateNoteDesc')}</p>
-         
-         <div className="overflow-y-auto flex-1 space-y-3 pr-2 pb-4 hide-scrollbar">
-            {notes.map((text, idx) => (
-               <div key={idx} className="bg-gray-50 border border-gray-100 rounded-xl p-3">
-                 <div className="flex justify-between items-center mb-2">
-                   <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest flex items-center gap-1.5">
-                     <span className="material-symbols-outlined text-[14px] text-yellow-600">{labels[idx].icon}</span>
-                     {labels[idx].title}
-                   </span>
-                   <span className={`text-[9px] font-bold ${text.length >= 200 ? 'text-red-500' : 'text-gray-400'}`}>{text.length}/200</span>
-                 </div>
-                 <div className="relative">
-                   <textarea
-                     value={text}
-                     onChange={e => {
-                       const newNotes = [...notes];
-                       newNotes[idx] = e.target.value.slice(0, 200);
-                       setNotes(newNotes);
-                     }}
-                     placeholder={t('studentProfile.privateNotePlaceholder')}
-                     className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[11px] font-bold text-[#333] outline-none focus:border-yellow-500 resize-none h-[72px] pr-9"
-                     maxLength={200}
-                   />
-                   {voice.isSupported && (
-                     <button
-                       onClick={() => {
-                         setRecordingNoteIndex(recordingNoteIndex === idx ? null : idx);
-                         if (recordingNoteIndex !== idx) {
-                           voice.startListening();
-                         } else {
-                           voice.stopListening();
-                         }
-                       }}
-                       className={`absolute right-1.5 top-1.5 p-1.5 rounded transition-all ${
-                         recordingNoteIndex === idx && voice.isListening
-                           ? 'bg-red-500 text-white scale-105 animate-pulse'
-                           : 'bg-[#fed33e] text-[#0a3a2a] hover:shadow-md active:scale-95'
-                       }`}
-                       title={recordingNoteIndex === idx && voice.isListening ? 'Stop recording' : 'Record voice'}
-                     >
-                       <span className="material-symbols-outlined text-[14px]">
-                         {recordingNoteIndex === idx && voice.isListening ? 'mic' : 'mic_none'}
-                       </span>
-                     </button>
-                   )}
-                 </div>
-               </div>
-            ))}
-         </div>
-
-         <div className="pt-2 shrink-0">
-           <button
-             onClick={handleSave}
-             disabled={isSaving}
-             className="w-full bg-[#0a3a2a] text-[#fed33e] px-5 py-4 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-md disabled:opacity-50"
-           >
-             {isSaving ? t('studentProfile.privateNoteSaving') : t('studentProfile.privateNoteSave')}
-           </button>
-         </div>
-       </div>
-    </div>, document.body
-  );
-}
-
 // --- SZCZEGÓŁY TRENINGU ---
 // Wspólne dla karuzeli w „Aktuell” i listy „Trainings” (profil B, etap 2):
 // liczby treningu, rozwijane Bilanz → Trend → Trefferbild, notatka ucznia
@@ -481,6 +360,8 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
   const [sessions, setSessions] = useState<any[]>([]);
   const [coachEntries, setCoachEntries] = useState<CoachLogItem[]>([]);
   const [shared, setShared] = useState<SharedNote[]>([]);
+  // [PRYWATNE NOTATKI TRENERA] wpisy „nur für dich” (users/{coach}/coachStudentNotes)
+  const [privateNotes, setPrivateNotes] = useState<CoachPrivateNote[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
   // Dolna granica wczytanego okresu (ms); 0 = wszystko wczytane.
   const [loadedFrom, setLoadedFrom] = useState<number>(Infinity);
@@ -539,6 +420,13 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
     setOpenId(null);
     load(null, Infinity);
     loadSharedNotes(studentId).then(setShared).catch(e => console.error('Udostępnione wpisy ucznia:', e));
+    // Stare 3 pola (mapa w profilu trenera) → wpisy na osi, raz; potem wczytanie.
+    const labels = [0, 1, 2].map(i => t(`studentProfile.privateNoteLabel${i}`));
+    migrateLegacyPrivateNotes(coachId, studentId, labels)
+      .catch(e => console.error('Przeniesienie prywatnych notatek:', e))
+      .then(() => loadCoachPrivateNotes(coachId, studentId))
+      .then(setPrivateNotes)
+      .catch(e => console.error('Prywatne notatki trenera:', e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, pro]);
 
@@ -547,21 +435,30 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteCoachLogEntry(studentId, id);
-      setCoachEntries(prev => prev.filter(e => e.id !== id));
-      onCoachLogChange();
+      if (privateNotes.some(n => n.id === id)) {
+        await deleteCoachPrivateNote(coachId, id);
+        setPrivateNotes(prev => prev.filter(n => n.id !== id));
+      } else {
+        await deleteCoachLogEntry(studentId, id);
+        setCoachEntries(prev => prev.filter(e => e.id !== id));
+        onCoachLogChange();
+      }
     } catch (e) {
       console.error('CoachLog: błąd usuwania', e);
     }
     setConfirmDelete(null);
   };
 
-  type Item = { key: string; ts: number; kind: 'session'; sess: any } | { key: string; ts: number; kind: 'coach'; entry: CoachLogItem } | { key: string; ts: number; kind: 'shared'; note: SharedNote };
+  type Item = { key: string; ts: number; kind: 'session'; sess: any } | { key: string; ts: number; kind: 'coach'; entry: CoachLogItem } | { key: string; ts: number; kind: 'shared'; note: SharedNote } | { key: string; ts: number; kind: 'private'; note: CoachPrivateNote };
   const items: Item[] = [
     ...(filter !== 'notes' ? sessions.map(sess => ({ key: `s-${sess.id}`, ts: sessionMillis(sess), kind: 'session' as const, sess })) : []),
     ...(filter !== 'trainings' ? coachEntries.map(entry => ({ key: `c-${entry.id}`, ts: entry.ts, kind: 'coach' as const, entry })) : []),
     ...(filter !== 'trainings'
       ? shared.filter(n => n.ts >= Math.max(loadedFrom, freeStart)).map(note => ({ key: `n-${note.id}`, ts: note.ts, kind: 'shared' as const, note }))
+      : []),
+    // Własne wpisy trenera — bez okna FREE, tylko w już wczytanym okresie.
+    ...(filter !== 'trainings'
+      ? privateNotes.filter(n => n.ts >= loadedFrom).map(note => ({ key: `p-${note.id}`, ts: note.ts, kind: 'private' as const, note }))
       : []),
   ].sort((a, b) => b.ts - a.ts);
 
@@ -593,6 +490,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
           currentUserId={coachId}
           onCancel={() => setAdding(false)}
           onSaved={entry => { setCoachEntries(prev => [entry, ...prev]); setAdding(false); onCoachLogChange(); }}
+          onSavedPrivate={note => { setPrivateNotes(prev => [note, ...prev]); setAdding(false); }}
         />
       )}
 
@@ -623,6 +521,36 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
                     <span className="material-symbols-outlined text-[16px]">delete</span>
                   </button>
                 )}
+              </div>
+            </React.Fragment>
+          );
+        }
+        if (item.kind === 'private') {
+          const n = item.note;
+          return (
+            <React.Fragment key={item.key}>
+              {header}
+              <div className={`${CARD_SHAPE} tb-private ${CARD_PAD} relative`}>
+                <EntryRow
+                  icon="lock"
+                  iconCls="text-indigo-500"
+                  kind={t('studentProfile.privateKind')}
+                  kindCls="text-indigo-600"
+                  title={n.title || undefined}
+                  time={fmtDay(item.ts)}
+                >
+                  <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1 pr-6">{n.text}</p>
+                  {n.topics.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {n.topics.map(id => (
+                        <span key={id} className="border px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-50 text-indigo-600 border-indigo-100">{topicLabel(id, t)}</span>
+                      ))}
+                    </div>
+                  )}
+                </EntryRow>
+                <button onClick={() => setConfirmDelete(n.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                </button>
               </div>
             </React.Fragment>
           );
@@ -760,9 +688,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
   const [showTournamentsModal, setShowTournamentsModal] = useState(false);
 
-  // [ZMIANA] Stany dla nowej, wielopolowej notatki
-  const [privateNotes, setPrivateNotes] = useState<string[]>(['', '', '']);
-  const [showPrivateNoteModal, setShowPrivateNoteModal] = useState(false);
 
   // TABS
   const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
@@ -984,27 +909,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     return () => { cancelled = true; };
   }, [isQuickStatsOpen, studentId]);
 
-  useEffect(() => {
-    const fetchPrivateNote = async () => {
-      if (!coachId || !studentId) return;
-      const cDoc = await getDoc(doc(db, 'users', coachId));
-      if (cDoc.exists()) {
-        const notes = cDoc.data().privateStudentNotes || {};
-        const studentNoteData = notes[studentId];
-        
-        // Kompatybilność wsteczna - jeśli stara notatka była pojedynczym stringiem
-        if (Array.isArray(studentNoteData)) {
-          setPrivateNotes([studentNoteData[0] || '', studentNoteData[1] || '', studentNoteData[2] || '']);
-        } else if (typeof studentNoteData === 'string') {
-          setPrivateNotes([studentNoteData, '', '']);
-        } else {
-          setPrivateNotes(['', '', '']);
-        }
-      }
-    };
-    fetchPrivateNote();
-  }, [coachId, studentId]);
-
   const getDaysUntil = (dateStr: string) => {
     const diff = new Date(dateStr).getTime() - new Date().getTime();
     const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
@@ -1029,7 +933,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const currentSession = recentSessions.length > 0 ? recentSessions[currentSessionIndex] : null;
   const isTechSession = currentSession?.type === 'TECHNICAL';
   const lastScored = recentSessions.find((s: any) => s.type !== 'TECHNICAL') || null;
-  const hasAnyPrivateNote = privateNotes.some(n => n.trim().length > 0);
 
   return (
     // data-view: znacznik widoku (diagnostyka/testy; przy okazji C47 — zmiana
@@ -1324,20 +1227,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               <StudentEquipmentCard student={student} />
             </SummaryCard>
 
-            {/* PRYWATNE NOTATKI — zamiast żółtej ikonki 👤; w etapie 3 trafią do „Notizen” */}
-            <button onClick={() => setShowPrivateNoteModal(true)} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-private w-full pl-2 pr-3 py-2.5 flex items-center gap-2.5 text-left active:opacity-60`}>
-              <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[18px] text-indigo-500">lock</span>
-              </span>
-              <span className="flex-1 min-w-0">
-                <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-indigo-600">{t('studentProfile.privateNoteTitle')}</span>
-                <span className={`block text-[12px] leading-snug truncate ${hasAnyPrivateNote ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-400'}`}>
-                  {privateNotes.find(n => n.trim()) || t('studentProfile.privateNoteEmpty')}
-                </span>
-              </span>
-              <span className="material-symbols-outlined text-gray-400 shrink-0">chevron_right</span>
-            </button>
-
           </div>
         )}
 
@@ -1550,17 +1439,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         </div>,
         document.body
-      )}
-
-      {/* MODAL POUFNEJ NOTATKI TRENERA (Teraz Rozbudowany!) */}
-      {showPrivateNoteModal && (
-         <PrivateNoteModal 
-            coachId={coachId} 
-            studentId={studentId} 
-            initialNotes={privateNotes} 
-            onClose={() => setShowPrivateNoteModal(false)}
-            onSaveSuccess={(n: string[]) => setPrivateNotes(n)}
-         />
       )}
 
       {/* MODAL Z LISTĄ TURNIEJÓW */}

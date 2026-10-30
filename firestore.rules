@@ -565,6 +565,27 @@ service cloud.firestore {
         || isAdmin();
     }
 
+    // ─── /users/{uid}/coachStudentNotes/{noteId} ────────────────
+    //  [PRYWATNE NOTATKI TRENERA 2026-10-30] Wpisy trenera o uczniu „tylko dla
+    //  mnie” na osi czasu profilu ucznia — zastępują mapę privateStudentNotes
+    //  w users/{coach}. uid = trener; uczeń i inni trenerzy nie mają dostępu.
+    //  Bez edycji (jak notatki w dzienniku ucznia): nowy wpis albo usunięcie.
+    match /users/{uid}/coachStudentNotes/{noteId} {
+      allow read, delete: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['studentId', 'title', 'text', 'topics', 'createdAt'])
+        && request.resource.data.studentId is string
+        && request.resource.data.studentId.size() > 0
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 1000
+        && request.resource.data.get('title', '') is string
+        && request.resource.data.get('title', '').size() <= 120
+        && request.resource.data.get('topics', []) is list
+        && request.resource.data.get('topics', []).size() <= 20
+        && request.resource.data.createdAt == request.time;
+    }
+
     // ─── /users/{uid}/studentMessages/{studentId} ───────────────
     //  1-to-1 thread stored under coach's namespace (uid = coachId).
     //  Coach owns the document. Student may read/write replies only if

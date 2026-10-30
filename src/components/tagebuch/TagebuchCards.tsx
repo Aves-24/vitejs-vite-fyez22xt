@@ -535,7 +535,8 @@ export function NoteSheet({ onSave, onClose, initial, canShare = false, standalo
 }
 
 // --- WPIS TRENERA (coachLog) ---
-export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; time: string; isNew: boolean }) {
+// `footer` — dopisek pod treścią (u trenera: kto widzi wpis); u ucznia brak.
+export function CoachEntryCard({ entry, time, isNew, footer }: { entry: TbCoachEntry; time: string; isNew: boolean; footer?: React.ReactNode }) {
   const { t } = useTranslation();
   const cfg = COACH_ENTRY_TYPES[entry.type] || COACH_ENTRY_TYPES.observation;
   return (
@@ -552,6 +553,7 @@ export function CoachEntryCard({ entry, time, isNew }: { entry: TbCoachEntry; ti
       >
         <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1">{entry.text}</p>
         <TopicChips topics={entry.topics} />
+        {footer}
       </EntryRow>
     </div>
   );

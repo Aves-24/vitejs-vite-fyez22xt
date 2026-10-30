@@ -76,8 +76,19 @@ const calculateHits = (ends: any[]) => {
   return { x, ten, nine };
 };
 
+// Kto widzi wpis / komentarz (user 2026-10-30: „nie wiem, czy widzi to uczeń”).
+function SeenBy({ name, onlyMe = false }: { name: string; onlyMe?: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <p className={`flex items-center gap-1 mt-1.5 text-[9px] font-black uppercase tracking-widest ${onlyMe ? 'text-indigo-500' : 'text-gray-400'}`}>
+      <span className="material-symbols-outlined text-[13px]">{onlyMe ? 'lock' : 'visibility'}</span>
+      {onlyMe ? t('studentProfile.seenOnlyYou') : t('studentProfile.seenByStudent', { name })}
+    </p>
+  );
+}
+
 // --- MIKRO-KOMPONENT NOTATKI TRENERA W SESJI ---
-function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { session: any, studentId: string, coachId: string, onSaveSuccess: (note: string, editCount: number) => void }) {
+function CoachNoteModule({ session, studentId, coachId, onSaveSuccess, studentName = '' }: { session: any, studentId: string, coachId: string, onSaveSuccess: (note: string, editCount: number) => void, studentName?: string }) {
   const { t } = useTranslation();
   const edits = session.coachEditCount || 0;
   const canEdit = edits < 2;
@@ -213,6 +224,7 @@ function CoachNoteModule({ session, studentId, coachId, onSaveSuccess }: { sessi
            <p className="text-[11px] text-[#0a3a2a] font-bold italic leading-snug">
              {session.coachNote ? `"${session.coachNote}"` : <span className="text-blue-600/50 font-medium">{t('studentProfile.coachNoteEmpty')}</span>}
            </p>
+           {session.coachNote && studentName && <SeenBy name={studentName} />}
            {coachTopics.length > 0 && (
              <div className="flex flex-wrap gap-1 mt-2">
                {coachTopics.filter(isKnownTopic).map(id => (
@@ -328,7 +340,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
         <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
         <p className="text-[11px] font-bold text-[#333] italic leading-snug">{(session.isNotePublic !== false && session.note) || t('studentProfile.noStudentNote')}</p>
       </div>
-      <CoachNoteModule session={session} studentId={studentId} coachId={coachId} onSaveSuccess={onNoteSaved} />
+      <CoachNoteModule session={session} studentId={studentId} coachId={coachId} onSaveSuccess={onNoteSaved} studentName={studentName} />
     </>
   );
 }
@@ -481,20 +493,21 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
         {([['all', t('studentProfile.filterAll')], ['trainings', t('studentProfile.filterTrainings')], ['notes', t('studentProfile.filterNotes')]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setFilter(key)} className={chip(filter === key)}>{label}</button>
         ))}
-        <span className="flex-1" />
-        {!adding && (
-          <button
-            onClick={() => setAdding(true)}
-            className="bg-[#0a3a2a] text-[#fed33e] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1 shrink-0"
-          >
-            <span className="material-symbols-outlined text-[14px]">add</span>
-            {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
-          </button>
-        )}
       </div>
+      {/* Nowy wpis ogólny — pełna szerokość (długi napis nie mieści się obok filtrów). */}
+      {!adding && (
+        <button
+          onClick={() => setAdding(true)}
+          className="w-full bg-[#0a3a2a] text-[#fed33e] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-[16px]">add</span>
+          {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
+        </button>
+      )}
       {adding && (
         <CoachLogComposer
           studentId={studentId}
+          studentName={studentName}
           currentUserId={coachId}
           onCancel={() => setAdding(false)}
           onSaved={entry => { setCoachEntries(prev => [entry, ...prev]); setAdding(false); onCoachLogChange(); }}
@@ -507,7 +520,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
           <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[18px] text-gray-400">history_edu</span>
           </span>
-          <span className="text-[11px] font-bold text-gray-500">{filter === 'notes' ? t('coachLog.empty', { defaultValue: 'Noch keine Einträge' }) : t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
+          <span className="text-[11px] font-bold text-gray-500 leading-snug">{filter === 'notes' ? t('studentProfile.entriesEmpty', { name: studentName }) : t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
         </div>
       )}
 
@@ -523,7 +536,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
             <React.Fragment key={item.key}>
               {header}
               <div className="relative">
-                <CoachEntryCard entry={item.entry} time={fmtDay(item.ts)} isNew={false} />
+                <CoachEntryCard entry={item.entry} time={fmtDay(item.ts)} isNew={false} footer={<SeenBy name={studentName} />} />
                 {own && (
                   <button onClick={() => setConfirmDelete(item.entry.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
                     <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -555,6 +568,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
                       ))}
                     </div>
                   )}
+                  <SeenBy name={studentName} onlyMe />
                 </EntryRow>
                 <button onClick={() => setConfirmDelete(n.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
                   <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -1206,12 +1220,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     <span className={`block text-[9px] font-black uppercase tracking-widest leading-tight truncate ${isTechSession ? 'text-sky-600' : 'text-emerald-700'}`}>{isTechSession ? t('stats.techSessionType') : t('studentProfile.lastTrainings')}</span>
                     <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{currentSession.date}{!isTechSession && currentSession.distance ? ` · ${currentSession.distance}` : ''}</span>
                   </span>
-                  <span className="flex items-center gap-0.5 shrink-0">
-                    <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[#0a3a2a] active:scale-90 disabled:opacity-25 transition-all" aria-label="‹">
-                      <span className="material-symbols-outlined text-[13px]">arrow_back_ios_new</span>
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-10 h-10 rounded-full bg-[#0a3a2a] shadow-md flex items-center justify-center text-[#fed33e] active:scale-90 disabled:opacity-20 disabled:shadow-none transition-all" aria-label="‹">
+                      <span className="material-symbols-outlined text-[18px]">arrow_back_ios_new</span>
                     </button>
-                    <button onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))} disabled={currentSessionIndex === 0} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[#0a3a2a] active:scale-90 disabled:opacity-25 transition-all" aria-label="›">
-                      <span className="material-symbols-outlined text-[13px]">arrow_forward_ios</span>
+                    <button onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))} disabled={currentSessionIndex === 0} className="w-10 h-10 rounded-full bg-[#0a3a2a] shadow-md flex items-center justify-center text-[#fed33e] active:scale-90 disabled:opacity-20 disabled:shadow-none transition-all" aria-label="›">
+                      <span className="material-symbols-outlined text-[18px]">arrow_forward_ios</span>
                     </button>
                   </span>
                 </div>

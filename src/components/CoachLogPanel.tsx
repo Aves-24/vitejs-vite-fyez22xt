@@ -76,8 +76,9 @@ export async function deleteCoachLogEntry(studentId: string, entryId: string): P
   await deleteDoc(doc(db, `users/${studentId}/coachLog/${entryId}`));
 }
 
-export function CoachLogComposer({ studentId, currentUserId, onSaved, onSavedPrivate, onCancel }: {
+export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel }: {
   studentId: string;
+  studentName?: string;
   currentUserId: string;
   onSaved: (entry: TbCoachEntry & { authorId: string }) => void;
   onSavedPrivate: (note: CoachPrivateNote) => void;
@@ -181,10 +182,16 @@ export function CoachLogComposer({ studentId, currentUserId, onSaved, onSavedPri
       {/* Liczbą lekcji, podglądem obecnego fokusu i zakończeniem przed
           czasem zarządza CoachFocusModal (klik na pasek fokusu w profilu
           ucznia) — tu tylko treść wpisu, jak przy innych typach. */}
-      {isPrivate && (
+      {/* Kto zobaczy wpis — przed zapisem (user 2026-10-30). */}
+      {isPrivate ? (
         <p className="text-[9px] font-semibold text-indigo-600 leading-snug px-0.5 flex items-start gap-1">
           <span className="material-symbols-outlined text-[13px] shrink-0">lock</span>
           {t('coachLog.privateHint')}
+        </p>
+      ) : (
+        <p className="text-[9px] font-semibold text-gray-500 leading-snug px-0.5 flex items-start gap-1">
+          <span className="material-symbols-outlined text-[13px] shrink-0">visibility</span>
+          {t('coachLog.visibleTo', { name: studentName })}
         </p>
       )}
       {type === 'goal' && (

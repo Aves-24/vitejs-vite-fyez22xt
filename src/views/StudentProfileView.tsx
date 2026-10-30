@@ -2,11 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { isPartialSession, partialLabel, roundSizeFor } from '../utils/partialSession';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, startAfter, type QueryDocumentSnapshot } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, startAfter, Timestamp, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
-import { hasActivePro } from '../utils/proAccess';
+import { hasActivePro, freeAnalysisOpen, freeHistoryStart, FREE_HISTORY_DAYS, FREE_ANALYSIS_HOURS } from '../utils/proAccess';
+import LockedCard from '../components/scoring/LockedCard';
 import QuickStatsModal from '../components/QuickStatsModal';
 import ViewHeader from '../components/ViewHeader';
 import CoachLogPanel from '../components/CoachLogPanel';
@@ -52,6 +53,13 @@ const sessionMillis = (s: any): number => {
 };
 // Punkt na Ergebniskurve: pełny trening z wynikiem (bez technicznych i niepełnych).
 const isCurveSession = (s: any) => s.type !== 'TECHNICAL' && !isPartialSession(s) && (s.arrows || 0) > 0;
+
+// [FREE/PRO] Uczeń FREE: trener widzi treningi tylko z okna FREE_HISTORY_DAYS.
+const inFreeWindow = (list: any[], student: any): any[] => {
+  if (hasActivePro(student)) return list;
+  const start = freeHistoryStart().getTime();
+  return list.filter(s => sessionMillis(s) >= start);
+};
 
 // --- FUNKCJA POMOCNICZA DO OBLICZANIA TRAFIEŃ ---
 const calculateHits = (ends: any[]) => {
@@ -344,9 +352,12 @@ function PrivateNoteModal({ coachId, studentId, initialNotes, onClose, onSaveSuc
 // Wspólne dla karuzeli w „Aktuell” i listy „Trainings” (profil B, etap 2):
 // liczby treningu, rozwijane Bilanz → Trend → Trefferbild, notatka ucznia
 // i notatka trenera. Trening techniczny: liczba strzał + notatki.
-function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: any; studentId: string; coachId: string; onNoteSaved: (note: string, editCount: number) => void }) {
+// [FREE/PRO] Trener widzi to samo co uczeń (user 2026-10-30): uczeń PRO (też trial)
+// — wszystko; uczeń FREE — analiza treningu tylko 24 h od zapisu, jak w jego Statystykach.
+function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentName }: { session: any; studentId: string; coachId: string; onNoteSaved: (note: string, editCount: number) => void; pro: boolean; studentName: string }) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [showLockHint, setShowLockHint] = useState(false);
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
   const isTech = session.type === 'TECHNICAL';
   const ends: any[] = session.ends || [];
@@ -359,6 +370,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: 
     : distanceMeters(session.distance) === 18 ? '3-Spot' : 'Full';
   const hasSight = session.bowClass !== BLOWGUN_DISCIPLINE && ['RECURVE', 'COMPOUND'].includes(rankBowOf(session.bowClass));
   const ms = sessionMillis(session);
+  const analysisOpen = pro || freeAnalysisOpen(ms);
 
   return (
     <>
@@ -377,7 +389,15 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: 
             <div><p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">10</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{hits.ten}</p></div>
             <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">9</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{hits.nine}</p></div>
           </div>
-          {ends.length > 0 && (
+          {ends.length > 0 && !analysisOpen && (
+            <>
+              <LockedCard icon="analytics" kind={t('studentProfile.showDetailedStats')} stripe="tb-skipped" onUnlock={() => setShowLockHint(v => !v)} />
+              {showLockHint && (
+                <p className="text-[10px] font-bold text-gray-500 leading-snug px-1 tb-fade-in">{t('studentProfile.freeAnalysisHint', { name: studentName, hours: FREE_ANALYSIS_HOURS })}</p>
+              )}
+            </>
+          )}
+          {ends.length > 0 && analysisOpen && (
             <button
               onClick={() => { setHighlightedEnd(null); setOpen(o => !o); }}
               className="w-full flex items-center justify-between px-2.5 py-2 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
@@ -393,7 +413,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: 
               </span>
             </button>
           )}
-          {open && ends.length > 0 && (
+          {open && analysisOpen && ends.length > 0 && (
             <div className="space-y-3 tb-fade-in">
               {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
               {isFocusResult(session.focusResult) && <FocusResultChip value={session.focusResult} />}
@@ -439,7 +459,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: 
 // kolejne dopiero po „Mehr laden” (odczyty Firestore tylko na żądanie).
 const TRAININGS_PAGE = 20;
 
-function StudentTrainingsList({ studentId, coachId }: { studentId: string; coachId: string }) {
+function StudentTrainingsList({ studentId, coachId, pro, studentName }: { studentId: string; coachId: string; pro: boolean; studentName: string }) {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<any[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
@@ -451,9 +471,11 @@ function StudentTrainingsList({ studentId, coachId }: { studentId: string; coach
     setLoading(true);
     try {
       const base = collection(db, `users/${studentId}/sessions`);
+      // [FREE/PRO] Uczeń FREE: tylko okno historii FREE_HISTORY_DAYS, jak u niego.
+      const win = pro ? [] : [where('timestamp', '>=', Timestamp.fromDate(freeHistoryStart()))];
       const snap = await getDocs(after
-        ? query(base, orderBy('timestamp', 'desc'), startAfter(after), limit(TRAININGS_PAGE))
-        : query(base, orderBy('timestamp', 'desc'), limit(TRAININGS_PAGE)));
+        ? query(base, ...win, orderBy('timestamp', 'desc'), startAfter(after), limit(TRAININGS_PAGE))
+        : query(base, ...win, orderBy('timestamp', 'desc'), limit(TRAININGS_PAGE)));
       const page = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setItems(prev => (after ? [...prev, ...page] : page));
       setCursor(snap.docs[snap.docs.length - 1] || after);
@@ -469,7 +491,7 @@ function StudentTrainingsList({ studentId, coachId }: { studentId: string; coach
     setOpenId(null);
     load(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [studentId]);
+  }, [studentId, pro]);
 
   const updateNote = (id: string, note: string, editCount: number) =>
     setItems(prev => prev.map(x => (x.id === id ? { ...x, coachNote: note, coachEditCount: editCount } : x)));
@@ -525,7 +547,7 @@ function StudentTrainingsList({ studentId, coachId }: { studentId: string; coach
               </button>
               {open && (
                 <div className="mt-2 space-y-2.5 tb-fade-in">
-                  <SessionDetail session={sess} studentId={studentId} coachId={coachId} onNoteSaved={(n, c) => updateNote(sess.id, n, c)} />
+                  <SessionDetail session={sess} studentId={studentId} coachId={coachId} onNoteSaved={(n, c) => updateNote(sess.id, n, c)} pro={pro} studentName={studentName} />
                 </div>
               )}
             </div>
@@ -540,6 +562,12 @@ function StudentTrainingsList({ studentId, coachId }: { studentId: string; coach
         >
           {loading ? t('studentProfile.loading') : t('studentProfile.loadMore')}
         </button>
+      )}
+      {!pro && !loading && !hasMore && (
+        <p className="flex items-start gap-1.5 px-1 pt-1 text-[10px] font-bold text-gray-500 leading-snug">
+          <span className="material-symbols-outlined text-[14px] text-gray-400 shrink-0">lock</span>
+          {t('studentProfile.freeWindowHint', { name: studentName, days: FREE_HISTORY_DAYS })}
+        </p>
       )}
     </div>
   );
@@ -631,7 +659,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       if (cached && cached.lastSessionTimestamp === lastTs) {
         // Nic się nie zmieniło — używamy cache, 0 dodatkowych odczytów
         setUpcomingTournaments(cached.tournaments);
-        setRecentSessions(cached.recentSessions);
+        setRecentSessions(inFreeWindow(cached.recentSessions, studentData));
         setDailyArrows(cached.dailyArrows);
         setMonthlyArrows(cached.monthlyArrows);
         setYearlyArrows(cached.yearlyArrows);
@@ -698,7 +726,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const avgPoints3Val = last3NonTech.length
         ? Math.round(last3NonTech.reduce((acc: number, s: any) => acc + (s.score || 0), 0) / last3NonTech.length)
         : 0;
-      setRecentSessions(recentSessions);
+      setRecentSessions(inFreeWindow(recentSessions, studentData));
       setDailyArrows(dayTotal);
       setMonthlyArrows(monthTotal);
       setYearlyArrows(yearTotal);
@@ -857,6 +885,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const nextTournament = upcomingTournaments.length > 0 ? upcomingTournaments[0] : null;
   const additionalTournamentsCount = upcomingTournaments.length - 1;
 
+  const studentPro = hasActivePro(student);
   const currentSession = recentSessions.length > 0 ? recentSessions[currentSessionIndex] : null;
   const isTechSession = currentSession?.type === 'TECHNICAL';
   const lastScored = recentSessions.find((s: any) => s.type !== 'TECHNICAL') || null;
@@ -956,6 +985,23 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       {/* ─── TAB CONTENT ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto pb-32">
+
+        {/* [FREE/PRO] Informacja dla trenera (user 2026-10-30): widok ograniczony,
+            bo uczeń nie ma GROT-X PRO — trener widzi to samo co uczeń FREE. */}
+        {!studentPro && (
+          <div className="px-4 pt-3">
+            <div className="tb-card tb-skipped border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 flex items-center gap-2.5">
+              <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[18px] text-gray-500">lock</span>
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-gray-500">{t('studentProfile.limitedViewKind')}</span>
+                <span className="block text-[11px] font-bold leading-snug text-[#0a3a2a]">{t('studentProfile.limitedViewText', { name: student.firstName || '', days: FREE_HISTORY_DAYS, hours: FREE_ANALYSIS_HOURS })}</span>
+              </span>
+              <span className="shrink-0 bg-[#0a3a2a] text-[#fed33e] rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest">FREE</span>
+            </div>
+          </div>
+        )}
 
         {/* ══ TAB 1: AKTUELL ═══════════════════════════════════
             [PROFIL B, etap 1 — 2026-10-30] Odpowiada na „co u niego teraz?”.
@@ -1123,7 +1169,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     ))}
                   </div>
                 )}
-                <SessionDetail key={currentSession.id} session={currentSession} studentId={studentId} coachId={coachId} onNoteSaved={handleUpdateSessionNote} />
+                <SessionDetail key={currentSession.id} session={currentSession} studentId={studentId} coachId={coachId} onNoteSaved={handleUpdateSessionNote} pro={studentPro} studentName={student.firstName || ''} />
               </div>
             ) : (
               <div className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-skipped pl-2 pr-3 py-2.5 flex items-center gap-2.5`}>
@@ -1159,7 +1205,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TRAININGS ══════════════════════════════════ */}
         {activeTab === 'trainings' && (
           <div className="px-4 pt-3">
-            <StudentTrainingsList studentId={studentId} coachId={coachId} />
+            <StudentTrainingsList studentId={studentId} coachId={coachId} pro={studentPro} studentName={student.firstName || ''} />
           </div>
         )}
 
@@ -1339,7 +1385,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                   )}
 
                   <div className="space-y-1.5">
-                    {[...filtered].slice(0, 10).map((sess, i) => {
+                    {/* Jak u ucznia na Home: FREE widzi 4 wpisy listy, PRO 10. */}
+                    {[...filtered].slice(0, studentPro ? 10 : 4).map((sess, i) => {
                       const isTurniej = sess.type === 'Turniej';
                       const isArena = sess.type === 'Arena';
                       const dotColor = isTurniej ? 'bg-[#0a3a2a]' : isArena ? 'bg-blue-500' : 'bg-[#fed33e]';

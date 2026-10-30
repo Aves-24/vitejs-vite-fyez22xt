@@ -3,7 +3,6 @@ import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/dis
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
-import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
 import { getRecentSessions } from '../lib/recentSessions';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
 import { isPartialSession, PartialInfo } from '../utils/partialSession';
@@ -22,6 +21,8 @@ import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
 import { isFullFace as isFullFaceType } from '../config/targetFaces';
 import { useDistanceColors } from '../hooks/useDistanceColors';
 import SummaryCard from './scoring/SummaryCard';
+import OverviewSection from './stats/OverviewCards';
+import { rankFromStored, rankBowOf, type RankBow } from '../utils/rankEngine';
 
 interface Session {
   id: string;
@@ -81,6 +82,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
   // Ręczność łucznika dla wskazówek biomechaniki (lustro lewo/prawo dla LH)
   const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
+  // [ÜBERBLICK] Łuk do krzywej handicapu — ten sam co ranga na profilu.
+  const [rankBow, setRankBow] = useState<RankBow>('RECURVE');
+  const [profileBowClass, setProfileBowClass] = useState<string | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -88,6 +92,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       .then(s => {
         if (!alive) return;
         setHandedness((s.data()?.handedness as 'RH' | 'LH') || null);
+        const d = s.data();
+        setProfileBowClass(d?.bowClass || null);
+        setRankBow(rankFromStored(d).bow || rankBowOf(d?.bowClass));
       })
       .catch(() => { if (alive) setHandedness(null); });
     return () => { alive = false; };
@@ -167,8 +174,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
     });
     const all = Array.from(buckets.values());
     const regular = all.filter(b => !b.isTech).sort((a, b) => b.meters - a.meters);
-    const tech = all.filter(b => b.isTech);
-    return [...regular, ...tech];
+    // [ÜBERBLICK 2026-10-30] TECH nie jest dystansem — treningi techniczne są w Überblick.
+    return regular;
   }, [sessions]);
 
   useEffect(() => {
@@ -420,6 +427,18 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
           pytań trenera: Technik → Ergebnis → Belastung → Pfeile → Trefferbild.
           Usunięte: przegląd wszystkich dystansów (jest w Aktuell/QuickStats),
           „Estymowany wynik 720”, druga krzywa wyników. */}
+      {/* ── ÜBERBLICK (wszystkie dystanse): rytm, handicap, strzały/tydzień, tematy techniki */}
+      <OverviewSection
+        sessions={sessions}
+        isPremium={isPremium}
+        months={hasFullHistory ? 6 : 3}
+        bow={rankBow}
+        fallbackBowClass={profileBowClass}
+        lock={null}
+        sectionLabel={<Section icon="insights" label={t('stats.overview.title')} />}
+      />
+
+      {distances.length > 0 && <Section icon="filter_center_focus" label={t('stats.overview.perDistance')} />}
       {distances.length > 0 && (
         <div className="space-y-2">
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
@@ -485,10 +504,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       )}
 
       {stats ? (
-        selectedBucket?.isTech ? (
-          // WIDOK TRENINGU TECHNICZNEGO — tylko PRO
-          isPremium ? <TechProHistory sessions={filteredSessions} /> : <ProLockCard />
-        ) : (
+        (
           <>
             {/* ── TECHNIK: ⌀ grupy w czasie = główny wskaźnik postępu technicznego (trener 2026-10-29) */}
             {isPremium && (groupPoints.length > 0 || (spread3.result && spread3.count > 0)) && (

@@ -151,7 +151,7 @@ export function EntryRow({ icon, iconCls, kind, kindCls, title, titleCls, meta, 
 }
 
 // Zieleń paska rośnie z dystansem: do 18 m, 20–30, 40–50, 60–70, 90 m.
-function distanceTier(meters: number): string {
+export function distanceTier(meters: number): string {
   if (!meters) return 'tb-d2';
   if (meters <= 18) return 'tb-d1';
   if (meters <= 30) return 'tb-d2';

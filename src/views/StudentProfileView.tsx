@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { isPartialSession, partialLabel, roundSizeFor } from '../utils/partialSession';
 import { db } from '../firebase';
 import { getRecentSessions } from '../lib/recentSessions';
-import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, startAfter, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import StatsView from './StatsView';
@@ -28,6 +28,7 @@ import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
+import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier } from '../components/tagebuch/TagebuchCards';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
@@ -339,6 +340,211 @@ function PrivateNoteModal({ coachId, studentId, initialNotes, onClose, onSaveSuc
   );
 }
 
+// --- SZCZEGÓŁY TRENINGU ---
+// Wspólne dla karuzeli w „Aktuell” i listy „Trainings” (profil B, etap 2):
+// liczby treningu, rozwijane Bilanz → Trend → Trefferbild, notatka ucznia
+// i notatka trenera. Trening techniczny: liczba strzał + notatki.
+function SessionDetail({ session, studentId, coachId, onNoteSaved }: { session: any; studentId: string; coachId: string; onNoteSaved: (note: string, editCount: number) => void }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
+  const isTech = session.type === 'TECHNICAL';
+  const ends: any[] = session.ends || [];
+  const hits = calculateHits(ends);
+  const avg = session.arrows > 0 ? (session.score / session.arrows).toFixed(2) : '0.00';
+  const roundSize = roundSizeFor(session);
+  // Jak w StatsView: tarcza z dystansu, gdy sesja ma tylko „Full”; podpowiedź celownika recurve/compound.
+  const targetType = session.targetType && session.targetType !== 'Full'
+    ? session.targetType
+    : distanceMeters(session.distance) === 18 ? '3-Spot' : 'Full';
+  const hasSight = session.bowClass !== BLOWGUN_DISCIPLINE && ['RECURVE', 'COMPOUND'].includes(rankBowOf(session.bowClass));
+  const ms = sessionMillis(session);
+
+  return (
+    <>
+      {isTech ? (
+        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+          <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full text-[10px] font-black">
+            {session.totalArrows || session.arrows || 0} {t('common.arrows')}
+          </span>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-5 text-center pt-2 border-t border-gray-100">
+            <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{session.score}{isPartialSession(session) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(session)}</span>}</p></div>
+            <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{avg}</p></div>
+            <div className="border-l border-gray-100"><p className="text-[8px] font-black text-[#b8860b] uppercase tracking-widest">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{hits.x}</p></div>
+            <div><p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">10</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{hits.ten}</p></div>
+            <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">9</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{hits.nine}</p></div>
+          </div>
+          {ends.length > 0 && (
+            <button
+              onClick={() => { setHighlightedEnd(null); setOpen(o => !o); }}
+              className="w-full flex items-center justify-between px-2.5 py-2 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600 text-[16px]">analytics</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
+                  {open ? t('studentProfile.hideDetailedStats') : t('studentProfile.showDetailedStats')}
+                </span>
+              </span>
+              <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>
+                keyboard_arrow_down
+              </span>
+            </button>
+          )}
+          {open && ends.length > 0 && (
+            <div className="space-y-3 tb-fade-in">
+              {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
+              {isFocusResult(session.focusResult) && <FocusResultChip value={session.focusResult} />}
+              {/* [PODSUMOWANIE] Ten sam układ co po treningu i w Statystykach (2026-10-30). */}
+              <SessionBilanz
+                userId={studentId}
+                ends={ends}
+                roundSize={roundSize}
+                distance={session.distance || ''}
+                distanceId={session.distanceId}
+                targetType={targetType}
+                bowClass={session.bowClass}
+                sessionId={session.id}
+                beforeTs={ms || undefined}
+              />
+              <TrendCard ends={ends} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!session.arrowColors} storageKey="coach-trend" />
+              <TargetCard
+                ends={ends}
+                roundSize={roundSize}
+                targetType={targetType}
+                arrowColors={!!session.arrowColors}
+                highlightedEnd={highlightedEnd}
+                sightHint={hasSight}
+                heatmap
+                storageKey="coach-target"
+              />
+            </div>
+          )}
+        </>
+      )}
+      <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
+        <p className="text-[11px] font-bold text-[#333] italic leading-snug">{(session.isNotePublic !== false && session.note) || t('studentProfile.noStudentNote')}</p>
+      </div>
+      <CoachNoteModule session={session} studentId={studentId} coachId={coachId} onSaveSuccess={onNoteSaved} />
+    </>
+  );
+}
+
+// --- ZAKŁADKA „TRAININGS” ---
+// [PROFIL B, etap 2 — 2026-10-30] Wszystkie treningi ucznia (z technicznymi)
+// jako karty dziennika, od najnowszego, z nagłówkami miesięcy. Po 20 naraz —
+// kolejne dopiero po „Mehr laden” (odczyty Firestore tylko na żądanie).
+const TRAININGS_PAGE = 20;
+
+function StudentTrainingsList({ studentId, coachId }: { studentId: string; coachId: string }) {
+  const { t, i18n } = useTranslation();
+  const [items, setItems] = useState<any[]>([]);
+  const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const load = async (after: QueryDocumentSnapshot | null) => {
+    setLoading(true);
+    try {
+      const base = collection(db, `users/${studentId}/sessions`);
+      const snap = await getDocs(after
+        ? query(base, orderBy('timestamp', 'desc'), startAfter(after), limit(TRAININGS_PAGE))
+        : query(base, orderBy('timestamp', 'desc'), limit(TRAININGS_PAGE)));
+      const page = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setItems(prev => (after ? [...prev, ...page] : page));
+      setCursor(snap.docs[snap.docs.length - 1] || after);
+      setHasMore(snap.docs.length === TRAININGS_PAGE);
+    } catch (e) {
+      console.error('Błąd wczytania listy treningów ucznia:', e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    setItems([]);
+    setOpenId(null);
+    load(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [studentId]);
+
+  const updateNote = (id: string, note: string, editCount: number) =>
+    setItems(prev => prev.map(x => (x.id === id ? { ...x, coachNote: note, coachEditCount: editCount } : x)));
+
+  if (!loading && items.length === 0) {
+    return (
+      <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD} flex items-center gap-2.5`}>
+        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[18px] text-gray-400">sports_score</span>
+        </span>
+        <span className="text-[11px] font-bold text-gray-500">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
+      </div>
+    );
+  }
+
+  let lastMonth = '';
+  return (
+    <div className="space-y-2">
+      {items.map(sess => {
+        const ms = sessionMillis(sess);
+        const month = ms ? new Date(ms).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }) : '';
+        const showMonth = month !== lastMonth;
+        lastMonth = month;
+        const isTech = sess.type === 'TECHNICAL';
+        const isTourney = sess.type === 'Turniej';
+        const stripe = isTech ? 'tb-tech' : isTourney ? 'tb-tourney' : distanceTier(distanceMeters(sess.distance) || 0);
+        const open = openId === sess.id;
+        const hasStudentNote = sess.isNotePublic !== false && !!sess.note;
+        return (
+          <React.Fragment key={sess.id}>
+            {showMonth && month && (
+              <p className="pt-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{month}</p>
+            )}
+            <div className={`${CARD_SHAPE} ${stripe} ${CARD_PAD}`}>
+              <button onClick={() => setOpenId(open ? null : sess.id)} className="w-full text-left active:opacity-60" aria-expanded={open}>
+                <EntryRow
+                  icon={isTech ? 'fitness_center' : isTourney ? 'emoji_events' : 'target'}
+                  iconCls={isTech ? 'text-sky-500' : isTourney ? 'text-[#0a3a2a]' : 'text-emerald-600'}
+                  kind={isTech ? t('stats.techSessionType') : isTourney ? t('stats.sessionInfo.tournament') : t('stats.sessionInfo.solo')}
+                  kindCls={isTech ? 'text-sky-600' : 'text-emerald-700'}
+                  title={isTech
+                    ? `${sess.totalArrows || sess.arrows || 0} ${t('common.arrows')}`
+                    : <>{sess.score || 0}{isTourney && (sess.tournamentName || sess.title) ? <span className="font-bold text-gray-500"> · {sess.tournamentName || sess.title}</span> : null}</>}
+                  meta={<>{sess.date}{!isTech && sess.distance ? ` · ${sess.distance}` : ''}{isPartialSession(sess) && <span className="ml-1.5 text-amber-700">{partialLabel(sess)}</span>}</>}
+                  extra={
+                    <span className="flex items-center gap-1 shrink-0">
+                      {hasStudentNote && <span className="material-symbols-outlined text-[15px] text-gray-400">chat</span>}
+                      {sess.coachNote && <span className="material-symbols-outlined text-[15px] text-amber-500">sports</span>}
+                      <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${open ? 'rotate-180' : ''}`}>expand_more</span>
+                    </span>
+                  }
+                />
+              </button>
+              {open && (
+                <div className="mt-2 space-y-2.5 tb-fade-in">
+                  <SessionDetail session={sess} studentId={studentId} coachId={coachId} onNoteSaved={(n, c) => updateNote(sess.id, n, c)} />
+                </div>
+              )}
+            </div>
+          </React.Fragment>
+        );
+      })}
+      {(loading || hasMore) && (
+        <button
+          onClick={() => !loading && load(cursor)}
+          disabled={loading}
+          className="w-full py-3 rounded-2xl bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all disabled:opacity-50"
+        >
+          {loading ? t('studentProfile.loading') : t('studentProfile.loadMore')}
+        </button>
+      )}
+    </div>
+  );
+}
+
 interface StudentProfileViewProps {
   coachId: string;
   studentId: string;
@@ -391,7 +597,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [showPrivateNoteModal, setShowPrivateNoteModal] = useState(false);
 
   // TABS
-  const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'trainings' | 'diary' | 'analytics'>('overview');
 
   // Fokus ucznia widziany oczami trenera — ten sam wynik co u ucznia na Home
   // (własny fokus vs najnowszy „Ziel" z dziennika trenerskiego, wygrywa
@@ -405,10 +611,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
-
-  // LENIWE WYŚWIETLANIE SZCZEGÓŁOWYCH STATYSTYK SESJI (per session.id)
-  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
-  const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -658,29 +860,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const currentSession = recentSessions.length > 0 ? recentSessions[currentSessionIndex] : null;
   const isTechSession = currentSession?.type === 'TECHNICAL';
   const lastScored = recentSessions.find((s: any) => s.type !== 'TECHNICAL') || null;
-  const sessionHits = currentSession ? calculateHits(currentSession.ends) : { x: 0, ten: 0, nine: 0 };
-  const sessionAvg = currentSession && currentSession.arrows > 0 ? (currentSession.score / currentSession.arrows).toFixed(2) : '0.00';
-  const sessionEnds: any[] = currentSession?.ends || [];
-  const roundSize = roundSizeFor(currentSession);
-  // Jak w StatsView: tarcza z dystansu, gdy sesja ma tylko „Full”; podpowiedź celownika recurve/compound.
-  const displayTargetType = currentSession?.targetType && currentSession.targetType !== 'Full'
-    ? currentSession.targetType
-    : distanceMeters(currentSession?.distance) === 18 ? '3-Spot' : 'Full';
-  const sessionHasSight = currentSession?.bowClass !== BLOWGUN_DISCIPLINE
-    && ['RECURVE', 'COMPOUND'].includes(rankBowOf(currentSession?.bowClass));
-  const sessionMs: number | null = currentSession?.timestamp?.toMillis?.() ?? (currentSession?.timestamp?.seconds ? currentSession.timestamp.seconds * 1000 : null);
-  const isDetailedShown = !!(currentSession && expandedSessionIds.has(currentSession.id));
-  const toggleDetailedStats = () => {
-    if (!currentSession) return;
-    setHighlightedEnd(null);
-    setExpandedSessionIds(prev => {
-      const next = new Set(prev);
-      if (next.has(currentSession.id)) next.delete(currentSession.id);
-      else next.add(currentSession.id);
-      return next;
-    });
-  };
-
   const hasAnyPrivateNote = privateNotes.some(n => n.trim().length > 0);
 
   return (
@@ -749,7 +928,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       <div className="bg-white shrink-0 z-10 px-3 pt-3 pb-2">
         <div className="bg-gray-50 rounded-2xl p-1 flex relative">
           {[
-            { key: 'overview',   icon: 'space_dashboard', label: t('studentProfile.tabOverview',   { defaultValue: 'Überblick' }) },
+            { key: 'overview',   icon: 'space_dashboard', label: t('studentProfile.tabOverview',   { defaultValue: 'Aktuell' }) },
+            { key: 'trainings',  icon: 'target',          label: t('studentProfile.tabTrainings',  { defaultValue: 'Trainings' }) },
             { key: 'diary',      icon: 'edit_note',       label: t('studentProfile.tabDiary',      { defaultValue: 'Tagebuch' }) },
             { key: 'analytics',  icon: 'monitoring',      label: t('studentProfile.tabAnalytics',  { defaultValue: 'Analytik' }) },
           ].map(tab => {
@@ -758,16 +938,16 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as any)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl transition-all duration-200 ${
+                className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive
                     ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
                     : 'text-gray-500 active:scale-95'
                 }`}
               >
-                <span className={`material-symbols-outlined text-[18px] ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`} style={isActive ? { fontVariationSettings: '"FILL" 1' } : {}}>
+                <span className={`material-symbols-outlined text-[16px] shrink-0 ${isActive ? 'text-[#fed33e]' : 'text-gray-400'}`} style={isActive ? { fontVariationSettings: '"FILL" 1' } : {}}>
                   {tab.icon}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
+                <span className="text-[9px] font-black uppercase tracking-wide truncate">{tab.label}</span>
               </button>
             );
           })}
@@ -777,7 +957,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       {/* ─── TAB CONTENT ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto pb-32">
 
-        {/* ══ TAB 1: JETZT ═════════════════════════════════════
+        {/* ══ TAB 1: AKTUELL ═══════════════════════════════════
             [PROFIL B, etap 1 — 2026-10-30] Odpowiada na „co u niego teraz?”.
             Wszystko jako karty dziennika (pasek z lewej, ikonka, mała etykieta
             + pogrubiony tytuł), kolory ze słownika: zawody ciemnozielone,
@@ -943,73 +1123,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     ))}
                   </div>
                 )}
-                {isTechSession ? (
-                  <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                    <span className="bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full text-[10px] font-black">
-                      {currentSession.totalArrows || currentSession.arrows || 0} {t('common.arrows')}
-                    </span>
-                  </div>
-                ) : (<>
-                <div className="grid grid-cols-5 text-center pt-2 border-t border-gray-100">
-                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{currentSession.score}{isPartialSession(currentSession) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(currentSession)}</span>}</p></div>
-                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionAvg}</p></div>
-                  <div className="border-l border-gray-100"><p className="text-[8px] font-black text-[#b8860b] uppercase tracking-widest">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.x}</p></div>
-                  <div><p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">10</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.ten}</p></div>
-                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">9</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.nine}</p></div>
-                </div>
-                {sessionEnds.length > 0 && (
-                  <button
-                    onClick={toggleDetailedStats}
-                    className="w-full flex items-center justify-between px-2.5 py-2 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-emerald-600 text-[16px]">analytics</span>
-                      <span className="text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
-                        {isDetailedShown ? t('studentProfile.hideDetailedStats') : t('studentProfile.showDetailedStats')}
-                      </span>
-                    </span>
-                    <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${isDetailedShown ? 'rotate-180' : ''}`}>
-                      keyboard_arrow_down
-                    </span>
-                  </button>
-                )}
-                {isDetailedShown && sessionEnds.length > 0 && (
-                  <div className="space-y-3 tb-fade-in">
-                    {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
-                    {isFocusResult(currentSession.focusResult) && <FocusResultChip value={currentSession.focusResult} />}
-                    {/* [PODSUMOWANIE] Ten sam układ co po treningu i w Statystykach (2026-10-30):
-                        Bilanz → Trend z wybraną serią → Trefferbild z heatmapą i (i). */}
-                    <SessionBilanz
-                      userId={studentId}
-                      ends={sessionEnds}
-                      roundSize={roundSize}
-                      distance={currentSession.distance || ''}
-                      distanceId={currentSession.distanceId}
-                      targetType={displayTargetType}
-                      bowClass={currentSession.bowClass}
-                      sessionId={currentSession.id}
-                      beforeTs={sessionMs ?? undefined}
-                    />
-                    <TrendCard ends={sessionEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!currentSession.arrowColors} storageKey="coach-trend" />
-                    <TargetCard
-                      key={currentSession.id}
-                      ends={sessionEnds}
-                      roundSize={roundSize}
-                      targetType={displayTargetType}
-                      arrowColors={!!currentSession.arrowColors}
-                      highlightedEnd={highlightedEnd}
-                      sightHint={sessionHasSight}
-                      heatmap
-                      storageKey="coach-target"
-                    />
-                  </div>
-                )}
-                </>)}
-                <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
-                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
-                  <p className="text-[11px] font-bold text-[#333] italic leading-snug">{(currentSession.isNotePublic !== false && currentSession.note) || t('studentProfile.noStudentNote')}</p>
-                </div>
-                <CoachNoteModule session={currentSession} studentId={studentId} coachId={coachId} onSaveSuccess={handleUpdateSessionNote} />
+                <SessionDetail key={currentSession.id} session={currentSession} studentId={studentId} coachId={coachId} onNoteSaved={handleUpdateSessionNote} />
               </div>
             ) : (
               <div className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-skipped pl-2 pr-3 py-2.5 flex items-center gap-2.5`}>
@@ -1042,7 +1156,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         )}
 
-        {/* ══ TAB 2: TRAINER-TAGEBUCH ═══════════════════════════ */}
+        {/* ══ TAB 2: TRAININGS ══════════════════════════════════ */}
+        {activeTab === 'trainings' && (
+          <div className="px-4 pt-3">
+            <StudentTrainingsList studentId={studentId} coachId={coachId} />
+          </div>
+        )}
+
+        {/* ══ TAB 3: TRAINER-TAGEBUCH ═══════════════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-5 pt-3">
             {/* Wpisy, które uczeń sam udostępnił z własnego dziennika (user 2026-10-23). */}
@@ -1051,7 +1172,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         )}
 
-        {/* ══ TAB 3: ANALYTIK ═══════════════════════════════════ */}
+        {/* ══ TAB 4: ANALYTIK ═══════════════════════════════════ */}
         {activeTab === 'analytics' && (
           <div>
             <div className="px-5 pt-3 pb-2">

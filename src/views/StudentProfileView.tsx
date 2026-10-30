@@ -361,6 +361,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [avgArrowsMonth, setAvgArrowsMonth] = useState(0);
   const [avgPointsMonth, setAvgPointsMonth] = useState(0);
   const [sparkline, setSparkline] = useState<number[]>([]);
+  // id treningów krzywej (ta sama kolejność) — zaznaczenie treningu wybranego w karuzeli
+  const [sparklineIds, setSparklineIds] = useState<string[]>([]);
 
   const [trendFilterType, setTrendFilterType] = useState<string>('');
   const [trendFilterDist, setTrendFilterDist] = useState<string>('');
@@ -417,7 +419,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       const rawTs = studentData?.lastSessionTimestamp;
       const lastTs: number = rawTs?.toMillis ? rawTs.toMillis() : (rawTs?.seconds ? rawTs.seconds * 1000 : (rawTs || 0));
 
-      const cacheKey = `grotX_studentProfile_v4_${studentId}`;
+      const cacheKey = `grotX_studentProfile_v5_${studentId}`;
       const cached = spCacheGet<any>(cacheKey);
 
       if (cached && cached.lastSessionTimestamp === lastTs) {
@@ -426,6 +428,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         setRecentSessions(cached.recentSessions);
         setRecentTechSessions(cached.recentTechSessions || []);
         setSparkline(cached.sparkline);
+        setSparklineIds(cached.sparklineIds || []);
         setDailyArrows(cached.dailyArrows);
         setMonthlyArrows(cached.monthlyArrows);
         setYearlyArrows(cached.yearlyArrows);
@@ -451,7 +454,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
       const snap = await getDocs(query(collection(db, `users/${studentId}/sessions`), orderBy('timestamp', 'desc'), limit(15)));
 
-      let recentSessions: any[] = [], sparkline: number[] = [], techSessions: any[] = [];
+      let recentSessions: any[] = [], sparkline: number[] = [], sparklineIds: string[] = [], techSessions: any[] = [];
       let dayTotal = 0, monthTotal = 0, yearTotal = 0, tScore14 = 0, tArrows14 = 0;
       // Miesiąc — sumy na sesję (sesje z wynikiem, bez technicznych)
       let monthCount = 0, monthArrowsSum = 0, monthScoreSum = 0;
@@ -461,7 +464,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         const nonTech = all.filter((s: any) => s.type !== 'TECHNICAL');
         recentSessions = nonTech.slice(0, 3);
         // [C31] Trend i średnie „na trening" bez niepełnych treningów.
-        sparkline = nonTech.filter((s: any) => !isPartialSession(s)).slice(0, 5).reverse().filter((s: any) => s.arrows > 0).map((s: any) => s.score);
+        const curve = nonTech.filter((s: any) => !isPartialSession(s)).slice(0, 5).reverse().filter((s: any) => s.arrows > 0);
+        sparkline = curve.map((s: any) => s.score);
+        sparklineIds = curve.map((s: any) => s.id);
         setAllModalSessions(nonTech);
         techSessions = all.filter((s: any) => s.type === 'TECHNICAL').slice(0, 3);
         setRecentTechSessions(techSessions);
@@ -492,6 +497,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         : 0;
       setRecentSessions(recentSessions);
       setSparkline(sparkline);
+      setSparklineIds(sparklineIds);
       setDailyArrows(dayTotal);
       setMonthlyArrows(monthTotal);
       setYearlyArrows(yearTotal);
@@ -501,7 +507,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       setAvgArrowsMonth(avgArrowsMonthVal);
       setAvgPointsMonth(avgPointsMonthVal);
 
-      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgArrows3: avgArrows3Val, avgPoints3: avgPoints3Val, avgArrowsMonth: avgArrowsMonthVal, avgPointsMonth: avgPointsMonthVal });
+      spCacheSet(cacheKey, { lastSessionTimestamp: lastTs, tournaments, recentSessions, recentTechSessions: techSessions, sparkline, sparklineIds, dailyArrows: dayTotal, monthlyArrows: monthTotal, yearlyArrows: yearTotal, avg14Days, avgArrows3: avgArrows3Val, avgPoints3: avgPoints3Val, avgArrowsMonth: avgArrowsMonthVal, avgPointsMonth: avgPointsMonthVal });
     };
 
     fetchStudentData();
@@ -854,6 +860,10 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                       x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
                       y: H - pad - ((sc - minS) / range) * (H - pad * 2),
                     }));
+                    // Trening wybrany w „Letzte Trainings” (user 2026-10-30) — obwódka + wynik
+                    // nad punktem. Niepełny trening nie wchodzi do krzywej, więc bez znacznika.
+                    const selIdx = currentSession ? sparklineIds.indexOf(currentSession.id) : -1;
+                    const sel = selIdx >= 0 ? pts[selIdx] : null;
                     return (
                       <button onClick={() => setShowTrendModal(true)} className="w-full mt-2 pt-2 border-t border-gray-100 flex items-center gap-2 text-left active:opacity-60">
                         <span className="flex-1 min-w-0">
@@ -865,6 +875,13 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                               const color = isMax ? '#10b981' : isMin ? '#ef4444' : isLast ? '#0a3a2a' : '#9ca3af';
                               return <circle key={i} cx={pt.x} cy={pt.y} r={isMax || isMin ? 4 : isLast ? 3.5 : 2} fill={color} opacity={isMax || isMin || isLast ? 1 : 0.5} />;
                             })}
+                            {sel && (
+                              <g className="tb-fade-in" key={selIdx}>
+                                <line x1={sel.x} y1={sel.y + 6} x2={sel.x} y2={H} stroke="#0a3a2a" strokeWidth="1" strokeDasharray="2 2" opacity="0.35" />
+                                <circle cx={sel.x} cy={sel.y} r={6.5} fill="none" stroke="#0a3a2a" strokeWidth="1.5" />
+                                <text x={Math.min(Math.max(sel.x, 10), W - 10)} y={sel.y - 9} fontSize="9" fontWeight="900" textAnchor="middle" fill="#0a3a2a">{sparkline[selIdx]}</text>
+                              </g>
+                            )}
                           </svg>
                         </span>
                         <span className="w-14 flex flex-col items-end gap-1 shrink-0">

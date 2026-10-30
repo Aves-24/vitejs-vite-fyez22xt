@@ -2778,25 +2778,39 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   const isToday = it.date === todayKey;
                   const first = it.key === firstKey;
                   return (
-                    <div key={it.key} className={`flex items-center bg-white rounded-xl border border-gray-100 border-l-4 ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
+                    // [TERMINE 2026-10-30] Karta jak w dzienniku: tytuł do 2 linii (bez ucinania
+                    // w pół słowa), godzina i opis w osobnej linii pod nim (user: „brzydko ucina”).
+                    <div key={it.key} className={`flex items-center bg-white rounded-l-md rounded-r-2xl border border-gray-100 border-l-[5px] ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
                       <button
                         type="button"
                         onClick={it.onOpen}
                         disabled={!it.onOpen}
-                        className={`flex-1 min-w-0 flex items-center gap-3 px-3 text-left active:scale-[0.99] transition-all ${first ? 'py-3.5' : 'py-2.5'}`}
+                        className={`flex-1 min-w-0 flex items-start gap-3 pl-2 pr-3 text-left active:scale-[0.99] transition-all ${first ? 'py-3' : 'py-2.5'}`}
                       >
-                        <div className={`${first ? 'w-14' : 'w-11'} text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
-                          <span className={`block ${first ? 'text-[11px]' : 'text-[10px]'} font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}</span>
-                          <span className={`block ${first ? 'text-[22px]' : 'text-[17px]'} font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
+                        <div className={`${first ? 'w-12' : 'w-11'} text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-gray-50'}`}>
+                          <span className={`block text-[10px] font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace('.', '')}</span>
+                          <span className={`block ${first ? 'text-[20px]' : 'text-[17px]'} font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className={`${first ? 'text-[16px]' : 'text-[14px]'} font-black text-[#0a3a2a] leading-tight truncate ${it.cancelled ? 'line-through' : ''}`}>
-                            {it.title}{it.time && <span className="font-bold text-gray-500"> · {it.time}</span>}
-                          </p>
-                          {it.sub && <p className={`${first ? 'text-[13px]' : 'text-[12px]'} font-bold truncate mt-0.5 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>{it.sub}</p>}
+                          <div className="flex items-start gap-1.5">
+                            <p className={`flex-1 min-w-0 ${first ? 'text-[15px]' : 'text-[14px]'} font-black text-[#0a3a2a] leading-snug line-clamp-2 break-words ${it.cancelled ? 'line-through' : ''}`}>
+                              {it.title}
+                            </p>
+                            {it.kind === 'plan' && !it.cancelled && <span className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 shrink-0">{t('coachTermine.planTag')}</span>}
+                            {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">emoji_events</span>}
+                          </div>
+                          {(it.time || it.sub) && (
+                            <p className={`text-[12px] font-bold mt-0.5 leading-snug flex items-start gap-1 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>
+                              {it.time && (
+                                <span className="shrink-0 inline-flex items-center gap-0.5 text-gray-500">
+                                  <span className="material-symbols-outlined text-[13px]">schedule</span>{it.time}
+                                </span>
+                              )}
+                              {it.time && it.sub && <span className="shrink-0 text-gray-300">·</span>}
+                              {it.sub && <span className="min-w-0 line-clamp-2 break-words">{it.sub}</span>}
+                            </p>
+                          )}
                         </div>
-                        {it.kind === 'plan' && !it.cancelled && <span className="text-[10px] font-black text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 shrink-0">{t('coachTermine.planTag')}</span>}
-                        {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">emoji_events</span>}
                       </button>
                       {it.occ && (
                         <button

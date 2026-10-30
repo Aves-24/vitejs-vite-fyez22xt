@@ -67,8 +67,8 @@ export function asBowType(d?: string | null): BowType | null {
  */
 export function visibleSubtabsFor(discipline?: string | null): SetupSubtab[] {
   return isBlowgun(discipline)
-    ? ['blowgun', 'arrows', 'maintenance']
-    : ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization', 'maintenance'];
+    ? ['blowgun', 'arrows']
+    : ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization'];
 }
 
 /** Ile zestawów wolno trzymać. */
@@ -84,7 +84,7 @@ export function setupLimitFor(isPremium: boolean): number {
  * Dla dmuchawki część z nich znika — patrz `SUBTABS_HIDDEN_FOR_BLOWGUN`.
  */
 export const SETUP_SUBTABS = [
-  'archer', 'blowgun', 'bow', 'string', 'arrows', 'sight', 'stabilization', 'maintenance',
+  'archer', 'blowgun', 'bow', 'string', 'arrows', 'sight', 'stabilization',
 ] as const;
 export type SetupSubtab = typeof SETUP_SUBTABS[number];
 

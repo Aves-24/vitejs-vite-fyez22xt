@@ -300,6 +300,9 @@ export const components = {
       next: "Nächster Termin: {{date}}",
       inCalendar: "steht im Kalender",
       visibleFrom: "im Kalender ab {{date}}",
+      button: "Wartung",
+      saveHint: "Zum Speichern unten auf „Speichern & Aktualisieren“ tippen.",
+      done: "Fertig",
       lastDone: "Zuletzt erledigt: {{date}}",
     },
     calendar: {
@@ -1373,8 +1376,7 @@ export const views = {
         string: "SEHNE",
         arrows: "PFEILE",
         sight: "VISIER",
-        stabilization: "STABILISATION",
-        maintenance: "WARTUNG"
+        stabilization: "STABILISATION"
       },
       info: {
         aria: "Info zum Feld",

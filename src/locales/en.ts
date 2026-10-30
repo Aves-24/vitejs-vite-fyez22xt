@@ -300,6 +300,9 @@ export const components = {
       next: "Next due: {{date}}",
       inCalendar: "in your calendar",
       visibleFrom: "in calendar from {{date}}",
+      button: "Maintenance",
+      saveHint: "To save, tap “Save & Update” at the bottom of the page.",
+      done: "Done",
       lastDone: "Last done: {{date}}",
     },
     calendar: {
@@ -1373,8 +1376,7 @@ export const views = {
         string: "STRING",
         arrows: "ARROWS",
         sight: "SIGHT",
-        stabilization: "STABILISERS",
-        maintenance: "MAINTENANCE"
+        stabilization: "STABILISERS"
       },
       info: {
         aria: "About this field",

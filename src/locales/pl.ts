@@ -314,6 +314,9 @@ export const components = {
       next: "Następny termin: {{date}}",
       inCalendar: "jest w kalendarzu",
       visibleFrom: "w kalendarzu od {{date}}",
+      button: "Konserwacja",
+      saveHint: "Aby zapisać, kliknij na dole „Zapisz i Aktualizuj”.",
+      done: "Gotowe",
       lastDone: "Ostatnio zrobione: {{date}}",
     },
     calendar: {
@@ -1394,8 +1397,7 @@ export const views = {
         string: "CIĘCIWA",
         arrows: "STRZAŁY",
         sight: "CELOWNIK",
-        stabilization: "STABILIZACJA",
-        maintenance: "KONSERWACJA"
+        stabilization: "STABILIZACJA"
       },
       info: {
         aria: "Informacja o polu",

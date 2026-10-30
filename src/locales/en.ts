@@ -2066,6 +2066,7 @@ export const views = {
     focusPart_goal: "coach goals",
     focusPart_sessions: "sessions",
     focusLabel: "Focus",
+    focusDoneLabel: "Completed focus",
     focusNone: "No focus · add a “Focus” entry in the Diary",
     focusModalTitle: "Student's focus",
     focusModalCurrentLabel: "Current focus",

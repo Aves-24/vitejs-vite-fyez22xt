@@ -34,6 +34,9 @@ interface TournamentRecordsViewProps {
   userId: string;
   isPremium: boolean;
   onNavigate?: (view: string, tab?: string) => void;
+  // Trener w profilu ucznia (user 2026-10-30): tylko podgląd — bez dopisywania
+  // startów, zmiany nazwy serii i zajawki PRO (dane i zakup należą do ucznia).
+  readOnly?: boolean;
 }
 
 const CACHE_KEY = (uid: string, premium: boolean) => `grotX_records_${uid}_${premium ? 'pro' : 'free'}`;
@@ -75,7 +78,7 @@ const avgPerArrow = (s: RecordSession): number => {
   return arrows > 0 ? (s.score || 0) / arrows : 0;
 };
 
-export default function TournamentRecordsView({ userId, isPremium, onNavigate }: TournamentRecordsViewProps) {
+export default function TournamentRecordsView({ userId, isPremium, onNavigate, readOnly = false }: TournamentRecordsViewProps) {
   const { t, i18n } = useTranslation();
   const [sessions, setSessions] = useState<RecordSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -350,13 +353,13 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
                         </p>
                       </div>
                     </button>
-                    <button
+                    {!readOnly && <button
                       onClick={() => { setRenamingKey(ser.key); setRenameValue(ser.name); }}
                       className="p-1.5 rounded-lg text-gray-300 active:bg-gray-100 active:scale-90 transition-all shrink-0"
                       aria-label={t('stats.records.rename.title')}
                     >
                       <span className="material-symbols-outlined text-[16px]">edit</span>
-                    </button>
+                    </button>}
                     <button
                       onClick={() => setOpenSeries(isOpen ? null : ser.key)}
                       className="text-gray-300 shrink-0 active:scale-90 transition-transform"
@@ -405,7 +408,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
       </div>
 
       {/* POPRAWKA NAZWY SERII */}
-      {renamingKey && (() => {
+      {renamingKey && !readOnly && (() => {
         const affected = seriesSessions(renamingKey);
         const merges = titleMergesInto(renameValue, renamingKey);
         return (
@@ -449,15 +452,15 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
       })()}
 
       {/* DOPISANIE STARTU Z PRZESZŁOŚCI */}
-      <button
+      {!readOnly && <button
         onClick={() => setShowAddForm(true)}
         className="w-full py-3 bg-gray-50 border border-gray-100 text-gray-500 font-black text-[10px] uppercase tracking-widest rounded-2xl active:bg-gray-100 transition-all flex items-center justify-center gap-1.5"
       >
         <span className="material-symbols-outlined text-[15px] text-gray-300">add_circle</span>
         {t('stats.records.form.openBtn')}
-      </button>
+      </button>}
 
-      {showAddForm && (
+      {showAddForm && !readOnly && (
         <HistoricalStartForm
           userId={userId}
           isPremium={isPremium}
@@ -468,7 +471,7 @@ export default function TournamentRecordsView({ userId, isPremium, onNavigate }:
       )}
 
       {/* ZAJAWKA PRO */}
-      {!isPremium && (
+      {!isPremium && !readOnly && (
         <button
           onClick={() => onNavigate?.('SETTINGS', 'PRO')}
           className="w-full bg-[#0a3a2a] rounded-[20px] p-3.5 flex items-center gap-3 shadow-lg active:scale-[0.98] transition-all text-left"

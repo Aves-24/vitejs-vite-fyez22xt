@@ -989,7 +989,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               dots={focusState.dots}
               goal={focusState.goal}
               count={focusState.count}
-              label={t('studentProfile.focusLabel')}
+              // Komplet kropek = fokus zakończony, jak w dzienniku ucznia (user 2026-10-30).
+              label={focusState.dots && focusState.count >= focusState.goal ? t('studentProfile.focusDoneLabel') : t('studentProfile.focusLabel')}
               sourceLabel=""
             />
           </button>
@@ -1292,6 +1293,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               <TournamentRecordsView
                 userId={studentId}
                 isPremium={studentPro}
+                readOnly
                 onNavigate={(view: string, tab?: string) => { if (view !== 'SETTINGS') onNavigate(view, tab); }}
               />
             )}

@@ -2066,6 +2066,7 @@ export const views = {
     focusPart_goal: "Trainerziele",
     focusPart_sessions: "Trainingseinheiten",
     focusLabel: "Fokus",
+    focusDoneLabel: "Abgeschlossener Fokus",
     focusNone: "Kein Fokus · Eintrag „Fokus“ im Tagebuch anlegen",
     focusModalTitle: "Fokus des Schülers",
     focusModalCurrentLabel: "Aktueller Fokus",

@@ -284,6 +284,14 @@ export default function SettingsView({
     toastTimeoutRef.current = setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // [WARTUNG] „Fertig” w planie konserwacji zapisuje od razu — nikt nie
+  // pamiętałby o „Speichern” na dole strony (user 2026-10-30). Tylko zestawy:
+  // reszta niezapisanych zmian profilu czeka na zwykły przycisk.
+  const persistSetups = async (next: EquipmentSetup[]) => {
+    await setDoc(doc(db, 'users', userId), { setups: sanitizeSetups(next), ...guestExpiryFields() }, { merge: true });
+    showToast(t('settings.successSave'));
+  };
+
   useEffect(() => { if (initialTab) setActiveTab(initialTab as SettingsTab); }, [initialTab]);
   // Functional update: start wizard only from step 0. Prevents Firestore's
   // optimistic-then-rejected onSnapshot cycle from resetting wizardStep to 1
@@ -773,6 +781,7 @@ export default function SettingsView({
             onSetupsChange={setSetups}
             onActiveSetupChange={setActiveSetupId}
             maintenanceDone={maintenanceDone}
+            onPersistSetups={persistSetups}
           />
         )}
 

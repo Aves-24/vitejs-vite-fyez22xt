@@ -301,7 +301,7 @@ export const components = {
       inCalendar: "steht im Kalender",
       visibleFrom: "im Kalender ab {{date}}",
       button: "Wartung",
-      saveHint: "Zum Speichern unten auf „Speichern & Aktualisieren“ tippen.",
+      saving: "Speichern…",
       done: "Fertig",
       lastDone: "Zuletzt erledigt: {{date}}",
     },
@@ -315,7 +315,7 @@ export const components = {
       howItWorks: {
         title: "So funktioniert der Wartungsplan",
         why: "Schrauben lockern sich durch die Vibration bei jedem Schuss, die Sehne trocknet aus und dehnt sich. Kleine Kontrollen in festen Abständen verhindern, dass du es erst auf dem Turnier merkst.",
-        how: "1. Schalte die Arbeiten ein, an die du erinnert werden willst.\n2. Wähle das Datum der ersten Erinnerung und wie oft sie sich wiederholen soll.\n3. Tippe unten auf „Speichern & Aktualisieren“.\n4. 3 Wochen vor dem Termin erscheint die Arbeit im Kalender unter „To-do“ (ohne Datum) und auf dem Home-Bildschirm. Alle fälligen Arbeiten eines Setups stehen in EINEM Eintrag.\n5. Öffne den Eintrag und hake jede Arbeit einzeln ab, sobald sie erledigt ist. Der nächste Termin wird ab dem Tag gerechnet, an dem du sie erledigt hast.",
+        how: "1. Schalte die Arbeiten ein, an die du erinnert werden willst.\n2. Wähle das Datum der ersten Erinnerung und wie oft sie sich wiederholen soll.\n3. Tippe auf „Fertig“ – der Plan wird sofort gespeichert.\n4. 3 Wochen vor dem Termin erscheint die Arbeit im Kalender unter „To-do“ (ohne Datum) und auf dem Home-Bildschirm. Alle fälligen Arbeiten eines Setups stehen in EINEM Eintrag.\n5. Öffne den Eintrag und hake jede Arbeit einzeln ab, sobald sie erledigt ist. Der nächste Termin wird ab dem Tag gerechnet, an dem du sie erledigt hast.",
         warn: "„Diesmal überspringen“ im Kalender zählt für alle noch offenen Arbeiten des Eintrags wie erledigt: Der nächste Termin kommt erst nach dem eingestellten Abstand.",
         tip: "Jedes Setup hat seinen eigenen Plan. Bei jeder Arbeit findest du über (i) eine genaue Anleitung – auch direkt aus dem Kalendereintrag.",
       },

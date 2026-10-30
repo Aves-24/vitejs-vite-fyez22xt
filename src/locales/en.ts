@@ -301,7 +301,7 @@ export const components = {
       inCalendar: "in your calendar",
       visibleFrom: "in calendar from {{date}}",
       button: "Maintenance",
-      saveHint: "To save, tap “Save & Update” at the bottom of the page.",
+      saving: "Saving…",
       done: "Done",
       lastDone: "Last done: {{date}}",
     },
@@ -315,7 +315,7 @@ export const components = {
       howItWorks: {
         title: "How the maintenance plan works",
         why: "Screws loosen from the vibration of every shot, the string dries out and stretches. Short checks at fixed intervals mean you won't find out at a tournament.",
-        how: "1. Turn on the jobs you want to be reminded about.\n2. Pick the date of the first reminder and how often it repeats.\n3. Tap “Save & Update” at the bottom.\n4. 3 weeks before the due date the job appears in your calendar under “To-do” (no date) and on the home screen. All due jobs of one setup are in ONE entry.\n5. Open the entry and tick off each job once it's done. The next due date counts from the day you did it.",
+        how: "1. Turn on the jobs you want to be reminded about.\n2. Pick the date of the first reminder and how often it repeats.\n3. Tap “Done” – the plan is saved right away.\n4. 3 weeks before the due date the job appears in your calendar under “To-do” (no date) and on the home screen. All due jobs of one setup are in ONE entry.\n5. Open the entry and tick off each job once it's done. The next due date counts from the day you did it.",
         warn: "“Skip this time” in the calendar counts as done for all jobs still open in the entry: the next reminder only comes after the set interval.",
         tip: "Each setup has its own plan. Every job has detailed instructions under (i) – also straight from the calendar entry.",
       },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import FieldInfo from './FieldInfo';
@@ -44,10 +44,12 @@ interface EquipmentSectionProps {
   onActiveSetupChange: (id: string) => void;
   /** [WARTUNG] users/{uid}.maintenanceDone — daty wykonania czynności. */
   maintenanceDone?: Record<string, string>;
+  /** [WARTUNG] Zapis zestawów od razu po zamknięciu planu konserwacji. */
+  onPersistSetups?: (setups: EquipmentSetup[]) => Promise<void>;
 }
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({
-  setups, activeSetupId, isPremium, onSetupsChange, onActiveSetupChange, maintenanceDone,
+  setups, activeSetupId, isPremium, onSetupsChange, onActiveSetupChange, maintenanceDone, onPersistSetups,
 }) => {
   const { t } = useTranslation();
   const [subtab, setSubtab] = useState<SetupSubtab>('archer');
@@ -56,6 +58,9 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   // [WARTUNG] Plan konserwacji w osobnym oknie, otwierany kluczem przy nazwie
   // zestawu — jako ostatnia podzakładka był „totalnie schowany” (user 2026-10-30).
   const [showMaintenance, setShowMaintenance] = useState(false);
+  const [savingMaintenance, setSavingMaintenance] = useState(false);
+  // Stan planu w chwili otwarcia — zapis tylko, gdy coś się zmieniło.
+  const maintenanceAtOpen = useRef('');
 
   const limit = setupLimitFor(isPremium);
   const active = setups.find(s => s.id === activeSetupId) ?? setups[0];
@@ -139,6 +144,28 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
   const setupToDelete = setups.find(s => s.id === confirmDeleteId) ?? null;
   const maintenanceCount = Object.values(active.maintenance ?? {}).filter(r => r.on).length;
+
+  const openMaintenance = () => {
+    maintenanceAtOpen.current = JSON.stringify(active.maintenance ?? {});
+    setShowMaintenance(true);
+  };
+
+  const closeMaintenance = async () => {
+    if (savingMaintenance) return;
+    if (onPersistSetups && JSON.stringify(active.maintenance ?? {}) !== maintenanceAtOpen.current) {
+      setSavingMaintenance(true);
+      try {
+        await onPersistSetups(setups);
+      } catch (e) {
+        // Okno zostaje otwarte — zmiany nie przepadają, user spróbuje ponownie.
+        console.error('[WARTUNG] Zapis planu nie wyszedł:', e);
+        setSavingMaintenance(false);
+        return;
+      }
+      setSavingMaintenance(false);
+    }
+    setShowMaintenance(false);
+  };
 
   /** Etykieta pola z opcjonalną ikoną (i) — ikona sama zniknie, gdy nie ma opisu. */
   const fieldLabel = (label: string, infoField?: string) => (
@@ -325,7 +352,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               className="flex-1 min-w-0 bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold text-[#333] outline-none focus:border-emerald-500 transition-all"
             />
             <button
-              onClick={() => setShowMaintenance(true)}
+              onClick={openMaintenance}
               aria-label={t('maintenance.section.title')}
               className="relative px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 active:scale-95 transition-all flex items-center gap-1"
             >
@@ -439,12 +466,12 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
       </div>
 
-      {/* [WARTUNG] Plan konserwacji aktywnego zestawu. Zapis jak reszta
-          ustawień — przyciskiem „Speichern” na dole strony. */}
+      {/* [WARTUNG] Plan konserwacji aktywnego zestawu. Zamknięcie okna (Fertig,
+          krzyżyk, tło) zapisuje zmiany od razu — bez „Speichern” na dole. */}
       {showMaintenance && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[300000] bg-black/50 backdrop-blur-sm flex items-start justify-center px-4 pt-10 overflow-y-auto animate-fade-in"
-          onClick={() => setShowMaintenance(false)}
+          onClick={closeMaintenance}
         >
           <div
             className="bg-white rounded-[32px] w-full max-w-md p-5 shadow-2xl mb-10"
@@ -454,7 +481,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(activeColor) }} />
               <p className="flex-1 min-w-0 text-[11px] font-black text-gray-400 uppercase tracking-widest truncate">{active.name}</p>
               <button
-                onClick={() => setShowMaintenance(false)}
+                onClick={closeMaintenance}
                 aria-label={t('maintenance.info.close')}
                 className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:scale-90 transition-all"
               >
@@ -466,12 +493,12 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               done={maintenanceDone ?? {}}
               onChange={maintenance => patchActive({ maintenance })}
             />
-            <p className="text-[10px] font-bold text-gray-400 text-center mt-4">{t('maintenance.section.saveHint')}</p>
             <button
-              onClick={() => setShowMaintenance(false)}
-              className="w-full mt-2 py-3 rounded-2xl bg-[#0a3a2a] text-white text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all"
+              onClick={closeMaintenance}
+              disabled={savingMaintenance}
+              className="w-full mt-4 py-3 rounded-2xl bg-[#0a3a2a] text-white text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all disabled:opacity-60"
             >
-              {t('maintenance.section.done')}
+              {savingMaintenance ? t('maintenance.section.saving') : t('maintenance.section.done')}
             </button>
           </div>
         </div>,

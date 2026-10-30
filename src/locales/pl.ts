@@ -315,7 +315,7 @@ export const components = {
       inCalendar: "jest w kalendarzu",
       visibleFrom: "w kalendarzu od {{date}}",
       button: "Konserwacja",
-      saveHint: "Aby zapisać, kliknij na dole „Zapisz i Aktualizuj”.",
+      saving: "Zapisuję…",
       done: "Gotowe",
       lastDone: "Ostatnio zrobione: {{date}}",
     },
@@ -329,7 +329,7 @@ export const components = {
       howItWorks: {
         title: "Jak działa plan konserwacji",
         why: "Śruby luzują się od drgań przy każdym strzale, cięciwa wysycha i się wyciąga. Krótkie kontrole w stałych odstępach sprawiają, że nie odkryjesz tego dopiero na zawodach.",
-        how: "1. Włącz czynności, o których chcesz dostawać przypomnienia.\n2. Wybierz datę pierwszego przypomnienia i jak często ma się powtarzać.\n3. Na dole kliknij „Zapisz i Aktualizuj”.\n4. 3 tygodnie przed terminem czynność pojawi się w kalendarzu jako „To-do” (bez daty) i na ekranie głównym. Wszystkie czynności jednego zestawu są w JEDNYM wpisie.\n5. Otwórz wpis i odhaczaj każdą czynność osobno, gdy ją zrobisz. Następny termin liczy się od dnia, w którym ją zrobiłeś.",
+        how: "1. Włącz czynności, o których chcesz dostawać przypomnienia.\n2. Wybierz datę pierwszego przypomnienia i jak często ma się powtarzać.\n3. Kliknij „Gotowe” – plan zapisze się od razu.\n4. 3 tygodnie przed terminem czynność pojawi się w kalendarzu jako „To-do” (bez daty) i na ekranie głównym. Wszystkie czynności jednego zestawu są w JEDNYM wpisie.\n5. Otwórz wpis i odhaczaj każdą czynność osobno, gdy ją zrobisz. Następny termin liczy się od dnia, w którym ją zrobiłeś.",
         warn: "„Tym razem pomiń” w kalendarzu liczy się jak zrobione dla wszystkich jeszcze otwartych czynności wpisu: następny termin przyjdzie dopiero po ustawionym odstępie.",
         tip: "Każdy zestaw ma swój plan. Przy każdej czynności pod (i) znajdziesz dokładną instrukcję – także prosto z wpisu w kalendarzu.",
       },

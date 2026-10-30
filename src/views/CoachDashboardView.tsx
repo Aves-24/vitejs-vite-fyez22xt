@@ -24,7 +24,6 @@ import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
 import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
-import { rankFromStored } from '../utils/rankEngine';
 import { dayKeyOf } from '../utils/focus';
 import { planTopicShift } from '../utils/topicShift';
 import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
@@ -1057,9 +1056,10 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const getTimeSinceLastActivity = (timestamp: number) => {
     if (!timestamp) return t('coachDashboard.noTrainings');
 
-    const now = Date.now();
-    const diffTime = Math.abs(now - timestamp);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Dni kalendarzowe, nie pełne doby (user 2026-10-30: trening wczoraj
+    // wieczorem pokazywał się jako „heute”, bo minęło mniej niż 24 h).
+    const midnight = (ts: number) => new Date(ts).setHours(0, 0, 0, 0);
+    const diffDays = Math.max(0, Math.round((midnight(Date.now()) - midnight(timestamp)) / DAY_MS));
 
     if (diffDays === 0) return t('coachDashboard.today');
     if (diffDays === 1) return t('coachDashboard.yesterday');
@@ -1405,8 +1405,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
     const lastChecked = studentLastChecked[student.id] || 0;
     const hasNewActivity = lastActivity > lastChecked;
     const initials = `${student.firstName?.[0] || ''}${student.lastName?.[0] || ''}`.toUpperCase();
-    // [RANGA] Mała odznaka rangi z handicapu przy inicjałach (user 2026-10-22).
-    const studentRank = rankFromStored(student);
     const isSelected = selectedStudents.includes(student.id);
     const trend = formCompare[student.id]?.dir;
     const isNewStudent = highlightStudentIds.includes(student.id);
@@ -1445,15 +1443,6 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
               {hasNewActivity && (
                  <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full animate-pulse shadow-sm"></div>
-              )}
-              {studentRank.handicap !== null && (
-                <div
-                  className="absolute -bottom-1 -right-1 w-[18px] h-[18px] rounded-full flex items-center justify-center shadow-sm"
-                  style={{ background: studentRank.color, border: `1.5px solid ${studentRank.border}`, boxShadow: '0 0 0 1.5px #fff' }}
-                  title={studentRank.rankName}
-                >
-                  <span className="text-[9px] font-black leading-none" style={{ color: studentRank.textColor }}>{studentRank.level}</span>
-                </div>
               )}
             </div>
             )}

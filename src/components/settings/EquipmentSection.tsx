@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import FieldInfo from './FieldInfo';
 import ArrowColorOrderOption from './ArrowColorOrderOption';
+import MaintenanceSection from './MaintenanceSection';
 import {
   EquipmentSetup,
   SetupSubtab,
@@ -41,10 +42,12 @@ interface EquipmentSectionProps {
   isPremium: boolean;
   onSetupsChange: (next: EquipmentSetup[]) => void;
   onActiveSetupChange: (id: string) => void;
+  /** [WARTUNG] users/{uid}.maintenanceDone — daty wykonania czynności. */
+  maintenanceDone?: Record<string, string>;
 }
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({
-  setups, activeSetupId, isPremium, onSetupsChange, onActiveSetupChange,
+  setups, activeSetupId, isPremium, onSetupsChange, onActiveSetupChange, maintenanceDone,
 }) => {
   const { t } = useTranslation();
   const [subtab, setSubtab] = useState<SetupSubtab>('archer');
@@ -247,6 +250,15 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           <div className="space-y-3">
             {field(t('settings.bow.sight'), active.sight?.model ?? '', v => patchSection('sight', { model: v }), t('settings.bow.sightPh'), 'sight.model')}
           </div>
+        );
+
+      case 'maintenance':
+        return (
+          <MaintenanceSection
+            setup={active}
+            done={maintenanceDone ?? {}}
+            onChange={maintenance => patchActive({ maintenance })}
+          />
         );
 
       case 'stabilization':

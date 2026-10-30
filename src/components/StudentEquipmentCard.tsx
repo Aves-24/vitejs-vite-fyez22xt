@@ -82,6 +82,8 @@ export default function StudentEquipmentCard({ student }: { student: any }) {
         ];
         case 'sight': return [[t('settings.bow.sight'), s.sight?.model]];
         case 'stabilization': return [[t('settings.bow.stabilizers'), s.stabilization?.description]];
+        // [WARTUNG] Plan konserwacji to sprawa ucznia — trener widzi tylko notatkę.
+        case 'maintenance': return [];
       }
     })();
     return rows

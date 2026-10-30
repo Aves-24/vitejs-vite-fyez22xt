@@ -400,16 +400,23 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     if (!userId) return;
     let cancelled = false;
     const cacheKey = `grotX_todos_${userId}`;
-    const cached = cacheGet<any[]>(cacheKey);
-    if (cached) { setTodoItems(cached); return; }
-    getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true)))
+    const load = () => getDocs(query(collection(db, `users/${userId}/tournaments`), where('todo', '==', true)))
       .then(snap => {
         if (cancelled) return;
         const todos = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         setTodoItems(todos);
         cacheSet(cacheKey, todos, CACHE_TTL.TODOS);
       });
-    return () => { cancelled = true; };
+    // [WARTUNG] Przypomnienie o konserwacji dopisane w tle (App.tsx) — od razu na Home.
+    const onTodosChanged = () => { load(); };
+    window.addEventListener('grotx-todos-changed', onTodosChanged);
+    const cached = cacheGet<any[]>(cacheKey);
+    if (cached) setTodoItems(cached);
+    else load();
+    return () => {
+      cancelled = true;
+      window.removeEventListener('grotx-todos-changed', onTodosChanged);
+    };
   }, [userId]);
 
 

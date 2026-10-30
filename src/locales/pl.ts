@@ -294,7 +294,195 @@ export const components = {
     hint: "Wybierz u góry, którego treningu dotyczy wpis — albo „Ogólny” dla rozwoju przez kilka treningów.",
     focusGoalLabel: "Ile treningów?",
     focusHint: "Liczbą lekcji i zakończeniem fokusu zarządzasz w panelu fokusu — kliknij pasek „Fokus” w profilu ucznia."
-  }
+  },
+  maintenance: {
+    info: {
+      aria: "Pokaż instrukcję",
+      why: "Po co",
+      how: "Jak to zrobić",
+      warn: "Uwaga",
+      tip: "Wskazówka",
+      close: "Rozumiem",
+    },
+    section: {
+      title: "Plan konserwacji",
+      hint: "Włącz to, o czym chcesz dostawać przypomnienia. Aktywne: {{count}}",
+      suggested: "Propozycja: co {{count}} mies.",
+      start: "Pierwsze przypomnienie",
+      every: "Powtarzaj",
+      months: "co {{count}} mies.",
+      next: "Następny termin: {{date}}",
+      inCalendar: "jest w kalendarzu",
+      visibleFrom: "w kalendarzu od {{date}}",
+      lastDone: "Ostatnio zrobione: {{date}}",
+    },
+    calendar: {
+      dueBy: "Konserwacja · do {{date}}",
+      howTo: "Instrukcja: jak to zrobić",
+      skip: "Tym razem pomiń",
+    },
+    tasks: {
+      howItWorks: {
+        title: "Jak działa plan konserwacji",
+        why: "Śruby luzują się od drgań przy każdym strzale, cięciwa wysycha i się wyciąga. Krótkie kontrole w stałych odstępach sprawiają, że nie odkryjesz tego dopiero na zawodach.",
+        how: "1. Włącz czynności, o których chcesz dostawać przypomnienia.\n2. Wybierz datę pierwszego przypomnienia i jak często ma się powtarzać.\n3. Na dole kliknij „Zapisz”.\n4. 3 tygodnie przed terminem zadanie pojawi się w kalendarzu jako „To-do” (bez daty) i na ekranie głównym.\n5. Gdy skończysz, odhacz je w kalendarzu. Następny termin liczy się od dnia, w którym je zrobiłeś.",
+        warn: "„Tym razem pomiń” w kalendarzu liczy się jak zrobione: następny termin przyjdzie dopiero po ustawionym odstępie.",
+        tip: "Każdy zestaw ma swój plan. Przy każdej czynności pod (i) znajdziesz dokładną instrukcję – także prosto z wpisu w kalendarzu.",
+      },
+      stringWax: {
+        title: "Woskowanie cięciwy",
+        why: "Wosk chroni włókna przed tarciem, wilgocią i wysychaniem. Sucha cięciwa szybciej się przeciera i może pęknąć.",
+        how: "1. Nałóż cienką warstwę wosku – tylko na odcinki BEZ owijki (między owijką środkową a końcówkami).\n2. Wetrzyj palcami albo kawałkiem skóry, szybko, aż wosk się rozgrzeje i wniknie między włókna.\n3. Zetrzyj nadmiar – nie mogą zostać grudki.",
+        how_compound: "1. Nałóż cienką warstwę wosku na cięciwę I kable – tylko na odcinki bez owijki.\n2. Wetrzyj palcami albo kawałkiem skóry, szybko, aż wosk się rozgrzeje i wniknie między włókna.\n3. Zetrzyj nadmiar – nie mogą zostać grudki.\nNie woskuj okolic peepa – zacznie się obracać.",
+        warn: "Nie woskuj owijki środkowej (tam, gdzie siedzi nock) – nock zacznie inaczej trzymać, a owijka może się zsuwać. Po deszczu najpierw wysusz cięciwę, dopiero potem woskuj.",
+        tip: "Woskuj wcześniej, gdy włókna są matowe, szorstkie albo widać na nich biały „meszek”.",
+      },
+      stringCheck: {
+        title: "Kontrola cięciwy i owijek",
+        why: "Uszkodzona cięciwa może pęknąć przy strzale – to może zniszczyć ramiona i zranić.",
+        how: "1. Przesuń palcami po całej cięciwie i obejrzyj ją w dobrym świetle.\n2. Szukaj przetartych lub zerwanych włókien.\n3. Sprawdź, czy owijka się nie rozchodzi, nie luzuje i nie jest zgnieciona w miejscu nocka.\n4. Obejrzyj pętle na końcach (przetarcia).\n5. Sprawdź, czy nock zatrzaskuje się jak zwykle: wyraźny „klik”, strzała nie spada, ale nie siedzi za ciasno.",
+        warn: "Zerwane włókno = nie strzelać, wymienić cięciwę.",
+      },
+      braceTiller: {
+        title: "Wysokość cięciwy i tiller",
+        why: "Cięciwa się wyciąga, szczególnie nowa. Inna wysokość zmienia lot strzały i dźwięk strzału.",
+        how: "1. Zmierz Bracemeterem odległość od najgłębszego punktu uchwytu do cięciwy.\n2. Zmierz tiller: odległość od cięciwy do nasady górnego i dolnego ramienia.\n3. Porównaj z zapisanymi wartościami.\nKorekta: wysokość ustawiasz skręcaniem cięciwy (więcej skrętów = wyżej). Tiller – śrubami ramion, tylko jeśli wiesz, co robisz, albo z trenerem.",
+        how_trad: "1. Zmierz Bracemeterem odległość od najgłębszego punktu uchwytu do cięciwy.\n2. Zmierz tiller: odległość od cięciwy do nasady górnego i dolnego ramienia.\n3. Porównaj z zapisanymi wartościami albo z zaleceniem producenta.\nKorekta: wysokość ustawiasz skręcaniem cięciwy (więcej skrętów = wyżej).",
+        tip: "Zapisz swoje wartości w notatce zestawu – bez nich nie masz z czym porównać.",
+      },
+      nockingPoint: {
+        title: "Punkt siodełka",
+        why: "Nawet 1 mm przesunięcia zmienia strojenie i grupy na tarczy.",
+        how: "1. Zmierz Bracemeterem wysokość punktu nad podstawką.\n2. Porównaj z zapisaną wartością.\n3. Sprawdź, czy punkt (owijka albo mosiężny zacisk) trzyma mocno i nie jest przetarty.",
+        warn: "Wymień punkt, zanim się rozpadnie – nie czekaj, aż spadnie na treningu albo zawodach.",
+      },
+      limbBolts: {
+        title: "Śruby ramion",
+        why: "Luźne ramiona zmieniają siłę naciągu i tiller, a łuk może się uszkodzić.",
+        how: "Sprawdź, czy śruby ramion i ewentualne śruby blokujące są dokręcone. Z wyczuciem – pewnie, ale bez siły.",
+        how_compound: "Sprawdź tylko, czy śruby ramion same się nie luzują. NIE kręć nimi – to zmienia siłę naciągu i strojenie.",
+        how_trad: "Tylko przy łukach składanych: sprawdź, czy śruby lub złącza ramion są dokręcone. Z wyczuciem – pewnie, ale bez siły.",
+        warn: "Nie przekręcaj śrub regulacji siły, jeśli nie chcesz jej zmieniać – to zmienia siłę naciągu i tiller. Jeśli śruba ciągle sama się luzuje, powiedz trenerowi albo w sklepie.",
+      },
+      limbsCheck: {
+        title: "Kontrola ramion",
+        why: "Uszkodzone ramię może pęknąć przy naciągu.",
+        how: "Obejrzyj oba ramiona z obu stron, szczególnie przy nasadzie i na końcach, gdzie leży cięciwa. Szukaj:\n• pęknięć, odprysków, rys w lakierze\n• rozwarstwienia (warstwy się rozchodzą)\n• skręcenia (cięciwa nie idzie środkiem ramion)",
+        warn: "Z uszkodzonym ramieniem NIE strzelać.",
+        tip: "Przechowuj łuk ze zdjętą cięciwą, nie opieraj go na jednym ramieniu i nie zostawiaj w gorącym samochodzie.",
+      },
+      sight: {
+        title: "Kontrola celownika",
+        why: "Drgania przy każdym strzale luzują śruby. Luźny celownik = grupy „pływają” bez powodu.",
+        how: "1. Sprawdź po kolei: mocowanie do majdanu, ramię celownika, blok/przesuw, tunel albo pin. Nic nie może się ruszać.\n2. Sprawdź, czy skala się nie przesunęła i czy ustawienia na Twoich dystansach się zgadzają.",
+        warn: "Gwinty są często w aluminium – dokręcaj z wyczuciem, za mocno = zerwany gwint.",
+        tip: "Zapisz ustawienia celownika na każdym dystansie albo zrób zdjęcie skali.",
+      },
+      stabilizers: {
+        title: "Kontrola stabilizatorów",
+        why: "Luźne gwinty zmieniają zachowanie łuku przy strzale i mogą się uszkodzić.",
+        how: "Dokręć stabilizator długi, V-bar, boczne, przedłużki i ciężarki. Sprawdź, czy tłumiki nie pękły.",
+        how_barebow: "Dokręć ciężarki na majdanie i ewentualne tłumiki. Sprawdź, czy tłumiki nie pękły.",
+        tip: "Luźny gwint słychać często jako „brzęk” przy strzale – dobry sygnał, żeby sprawdzić.",
+      },
+      restButton: {
+        title: "Podstawka i button",
+        why: "Podstawka i button prowadzą strzałę przy wypuszczeniu – drobne błędy od razu widać w grupie.",
+        how: "1. Podstawka: nie odkleja się, ramię nie jest wygięte, strzała leży stabilnie.\n2. Button: wciśnij końcówkę – ma chodzić płynnie, bez zacinania. Kontrnakrętka dokręcona.\n3. Środek strzały ma wypadać na środku końcówki buttona.",
+        how_compound: "1. Podstawka: mocno zamontowana, nic się nie rusza, strzała leży stabilnie.\n2. Przy podstawce opadającej: linka/kabel cały, podstawka czysto się podnosi i opada.\n3. Dokręć śruby podstawki.",
+        warn: "Piasek i kurz zacinają button – wyczyść go suchą szmatką. Nie zmieniaj twardości sprężyny bez powodu (to strojenie).",
+      },
+      clicker: {
+        title: "Kontrola klickera",
+        how: "Blaszka nie jest wygięta ani pęknięta, śruba mocująca dokręcona, pozycja się nie przesunęła. Klicker ma lekko dociskać strzałę, ale nie wciskać buttona.",
+      },
+      arrows: {
+        title: "Kontrola strzał",
+        why: "Uszkodzona strzała leci inaczej – a pęknięty karbon może się rozpaść przy strzale i zranić rękę.",
+        how: "Sprawdź każdą strzałę:\n• Lotki: nie odklejone, nie pęknięte, nie pogniecione\n• Nocki: nie pęknięte, ustawione prosto, dobrze trzymają cięciwę\n• Groty: dobrze osadzone, nie luźne\n• Brzechwa: delikatnie zegnij karbonową strzałę i obróć ją przy uchu – trzeszczenie = pęknięcie",
+        how_trad: "Sprawdź każdą strzałę:\n• Lotki z piór: wyczesz, zniszczone wymień\n• Nocki: nie pęknięte, ustawione prosto, dobrze trzymają cięciwę\n• Groty: dobrze osadzone, nie luźne\n• Drewniana brzechwa: obróć na dłoni (prosta?), szukaj pęknięć przy nocku",
+        warn: "Strzał z pękniętą brzechwą albo nockiem NIE wolno strzelać.",
+        tip: "Ponumeruj strzały – łatwiej znaleźć tę, która ciągle „ucieka”.",
+      },
+      tab: {
+        title: "Kontrola taba / rękawicy",
+        how: "1. Skóra nie jest przetarta i nie ma głębokich rowków od cięciwy.\n2. Śruby płytki dokręcone, przekładka między palcami cała.\n3. Skóra nie powinna wystawać za daleko za palce – w razie potrzeby przytnij ją równo.",
+        tip: "Zużytą skórę wymień na taką samą – inna skóra = inne wypuszczenie.",
+      },
+      peep: {
+        title: "Kontrola peepa",
+        how: "Peep siedzi mocno, nie przesuwa się w górę/dół i nie obraca się przy pełnym naciągu.",
+        warn: "Obracający się peep to często znak, że cięciwa się wyciągnęła – sprawdź też synchronizację kół.",
+      },
+      timing: {
+        title: "Synchronizacja kół",
+        why: "Gdy koła nie są zsynchronizowane, zmienia się naciąg, siła i lot strzały.",
+        how: "1. Wiele kół ma znaczniki – sprawdź, czy cięciwa i kable leżą na znacznikach.\n2. Sprawdź, czy draw stopy przy pełnym naciągu dotykają w tym samym momencie.",
+        warn: "Jeśli się nie zgadza – do sklepu. Do regulacji potrzebna jest prasa do łuku.",
+      },
+      dLoop: {
+        title: "Kontrola D-loopa",
+        how: "Pętla nie jest przetarta ani spłaszczona, węzły się nie przesuwają.",
+        warn: "Zużyty D-loop wymień od razu – jeśli pęknie przy naciągu, strzał pójdzie w niekontrolowany sposób.",
+      },
+      release: {
+        title: "Kontrola release'a",
+        how: "Spust działa płynnie, szczęka/hak się nie zacina, śruby dokręcone, pasek nie jest przetarty.",
+      },
+      cams: {
+        title: "Koła i osie",
+        how: "Koła bez pęknięć i zadziorów, cięciwa i kable idą czysto w rowku, osie są czyste.",
+        warn: "Nie smaruj samodzielnie, jeśli producent wyraźnie tego nie zaleca.",
+      },
+      gripShelf: {
+        title: "Uchwyt i półka",
+        how: "Skórzany uchwyt się nie odkleja, futerko/podkładka na półce nie jest wytarta.",
+        tip: "Wytartą podkładkę wymień – inaczej strzała zacznie „skakać”.",
+      },
+      woodCare: {
+        title: "Konserwacja drewna",
+        how: "Sprawdź lakier na majdanie i ramionach. Zarysowania zabezpiecz woskiem lub olejem zalecanym przez producenta. Chroń drewno przed wilgocią i upałem.",
+      },
+      boreClean: {
+        title: "Czyszczenie lufy",
+        why: "Oddech zostawia w lufie wilgoć – brud i wilgoć spowalniają strzałkę i psują celność.",
+        how: "Przeciągnij przez lufę suchą szmatkę albo wycior, potem zostaw lufę otwartą do wyschnięcia.",
+        warn: "Bez agresywnych środków czyszczących.",
+      },
+      mouthpiece: {
+        title: "Czyszczenie ustnika",
+        how: "Umyj ciepłą wodą, sprawdź pęknięcia i czy dobrze przylega. Zużyty ustnik wymień.",
+        tip: "Ze względów higienicznych nie pożyczaj ustnika.",
+      },
+      darts: {
+        title: "Kontrola strzałek",
+        how: "Stożki nie są zgniecione, igły proste i dobrze osadzone.",
+        warn: "Zgięte strzałki odrzuć – lecą krzywo i niszczą tarczę.",
+      },
+      joints: {
+        title: "Połączenia i osprzęt",
+        how: "Przy lufie składanej: połączenia ciasne, bez luzu. Celownik i osłony dobrze zamocowane.",
+      },
+      spares: {
+        title: "Zestaw zapasowy",
+        how: "Sprawdź, czy w torbie jest: zapasowa cięciwa, nocki, punkt siodełka, podstawka, imbusy, wosk, Bracemeter, zapasowy tab.",
+        how_blowgun: "Sprawdź, czy w torbie są: zapasowe strzałki, zapasowy ustnik, wycior albo szmatka.",
+        tip: "Przed każdymi zawodami warto szybko zajrzeć do torby.",
+      },
+      stringReplace: {
+        title: "Wymiana cięciwy",
+        why: "Cięciwa z czasem się wyciąga i słabnie – nawet jeśli wygląda dobrze.",
+        how: "Nową cięciwę załóż z tymi samymi parametrami (długość, liczba skrętów). Przez pierwsze ok. 100 strzałów cięciwa się „układa” – potem jeszcze raz sprawdź wysokość i punkt siodełka.",
+        how_compound: "Cięciwę i kable wymieniaj RAZEM – rozciągają się różnie. Potrzebna jest prasa do łuku, więc zwykle w sklepie. Potem sprawdź synchronizację kół.",
+        tip: "Miej zawsze zapasową, wstrzelaną cięciwę – na zawodach obowiązkowo.",
+      },
+      proService: {
+        title: "Przegląd w sklepie",
+        why: "Raz w roku warto oddać łuk do sprawdzenia fachowcowi – zobaczy rzeczy, których nie widać w domu.",
+        how: "Przynieś cały łuk z cięciwą i powiedz, co zauważyłeś (dźwięki, pływające grupy, śruby, które się luzują).",
+      },
+    },
+  },
 };
 
 export const views = {
@@ -1206,7 +1394,8 @@ export const views = {
         string: "CIĘCIWA",
         arrows: "STRZAŁY",
         sight: "CELOWNIK",
-        stabilization: "STABILIZACJA"
+        stabilization: "STABILIZACJA",
+        maintenance: "KONSERWACJA"
       },
       info: {
         aria: "Informacja o polu",

@@ -280,7 +280,195 @@ export const components = {
     hint: "Wähle oben, zu welchem Training der Eintrag gehört — oder „Allgemein“ für die Entwicklung über mehrere Trainings.",
     focusGoalLabel: "Wie viele Trainings?",
     focusHint: "Die Anzahl Einheiten und das vorzeitige Beenden verwaltest du im Fokus-Panel — tippe auf den „Fokus“-Balken im Schülerprofil."
-  }
+  },
+  maintenance: {
+    info: {
+      aria: "Anleitung anzeigen",
+      why: "Wozu",
+      how: "So geht's",
+      warn: "Achtung",
+      tip: "Tipp",
+      close: "Verstanden",
+    },
+    section: {
+      title: "Wartungsplan",
+      hint: "Schalte ein, woran du erinnert werden willst. Aktiv: {{count}}",
+      suggested: "Vorschlag: alle {{count}} Mon.",
+      start: "Erste Erinnerung",
+      every: "Wiederholen",
+      months: "alle {{count}} Mon.",
+      next: "Nächster Termin: {{date}}",
+      inCalendar: "steht im Kalender",
+      visibleFrom: "im Kalender ab {{date}}",
+      lastDone: "Zuletzt erledigt: {{date}}",
+    },
+    calendar: {
+      dueBy: "Wartung · fällig bis {{date}}",
+      howTo: "Anleitung: so geht's",
+      skip: "Diesmal überspringen",
+    },
+    tasks: {
+      howItWorks: {
+        title: "So funktioniert der Wartungsplan",
+        why: "Schrauben lockern sich durch die Vibration bei jedem Schuss, die Sehne trocknet aus und dehnt sich. Kleine Kontrollen in festen Abständen verhindern, dass du es erst auf dem Turnier merkst.",
+        how: "1. Schalte die Arbeiten ein, an die du erinnert werden willst.\n2. Wähle das Datum der ersten Erinnerung und wie oft sie sich wiederholen soll.\n3. Tippe unten auf „Speichern“.\n4. 3 Wochen vor dem Termin erscheint die Aufgabe im Kalender unter „To-do“ (ohne Datum) und auf dem Home-Bildschirm.\n5. Wenn du fertig bist, hake sie im Kalender ab. Der nächste Termin wird ab dem Tag gerechnet, an dem du sie erledigt hast.",
+        warn: "„Diesmal überspringen“ im Kalender zählt wie erledigt: Der nächste Termin kommt erst nach dem eingestellten Abstand.",
+        tip: "Jedes Setup hat seinen eigenen Plan. Bei jeder Arbeit findest du über (i) eine genaue Anleitung – auch direkt aus dem Kalendereintrag.",
+      },
+      stringWax: {
+        title: "Sehne wachsen",
+        why: "Wachs schützt die Fasern vor Reibung, Feuchtigkeit und Austrocknen. Eine trockene Sehne scheuert schneller durch und kann reißen.",
+        how: "1. Trage eine dünne Schicht Wachs auf – nur auf die Teile OHNE Wicklung (zwischen Mittelwicklung und den Enden).\n2. Mit den Fingern oder einem Stück Leder zügig einreiben, bis das Wachs warm wird und zwischen die Fasern zieht.\n3. Überschuss abwischen – es dürfen keine Klümpchen bleiben.",
+        how_compound: "1. Trage eine dünne Schicht Wachs auf Sehne UND Kabel auf – nur auf die Teile ohne Wicklung.\n2. Mit den Fingern oder einem Stück Leder zügig einreiben, bis das Wachs warm wird und zwischen die Fasern zieht.\n3. Überschuss abwischen – es dürfen keine Klümpchen bleiben.\nRund um den Peep kein Wachs auftragen – sonst fängt er an, sich zu drehen.",
+        warn: "Die Mittelwicklung (wo die Nocke sitzt) nicht wachsen – die Nocke hält dann anders und die Wicklung kann verrutschen. Nach Regen die Sehne erst trocknen lassen, dann wachsen.",
+        tip: "Früher wachsen, wenn die Fasern matt oder rau aussehen oder weißer Flaum auf der Sehne zu sehen ist.",
+      },
+      stringCheck: {
+        title: "Sehne & Wicklungen prüfen",
+        why: "Eine beschädigte Sehne kann beim Schuss reißen – das kann die Wurfarme zerstören und dich verletzen.",
+        how: "1. Fahre mit den Fingern über die ganze Sehne und schau sie bei gutem Licht an.\n2. Suche nach aufgescheuerten oder gerissenen Fasern.\n3. Prüfe, ob sich eine Wicklung öffnet, lockert oder an der Nockstelle platt gedrückt ist.\n4. Schau dir die Schlaufen an den Enden an (Scheuerstellen).\n5. Prüfe, ob die Nocke wie gewohnt einrastet: deutliches „Klick“, der Pfeil fällt nicht ab, sitzt aber nicht zu stramm.",
+        warn: "Gerissene Faser = nicht mehr schießen, Sehne tauschen.",
+      },
+      braceTiller: {
+        title: "Standhöhe & Tiller messen",
+        why: "Die Sehne dehnt sich, besonders eine neue. Eine andere Standhöhe verändert den Pfeilflug und den Schussklang.",
+        how: "1. Miss mit dem Bracemeter den Abstand vom tiefsten Punkt des Griffs bis zur Sehne.\n2. Miss den Tiller: Abstand von der Sehne zum Ansatz des oberen und des unteren Wurfarms.\n3. Vergleiche mit deinen notierten Werten.\nKorrektur: Die Standhöhe stellst du über das Eindrehen der Sehne ein (mehr Drehungen = höher). Den Tiller über die Wurfarmschrauben – nur wenn du weißt, was du tust, oder mit deinem Trainer.",
+        how_trad: "1. Miss mit dem Bracemeter den Abstand vom tiefsten Punkt des Griffs bis zur Sehne.\n2. Miss den Tiller: Abstand von der Sehne zum Ansatz des oberen und des unteren Wurfarms.\n3. Vergleiche mit deinen notierten Werten oder der Angabe des Bogenbauers.\nKorrektur: Die Standhöhe stellst du über das Eindrehen der Sehne ein (mehr Drehungen = höher).",
+        tip: "Notiere deine Werte in der Notiz des Setups – ohne sie hast du nichts zum Vergleichen.",
+      },
+      nockingPoint: {
+        title: "Nockpunkt prüfen",
+        why: "Schon 1 mm Verschiebung verändert die Abstimmung und deine Gruppen auf der Scheibe.",
+        how: "1. Miss mit dem Bracemeter die Höhe des Nockpunkts über der Pfeilauflage.\n2. Vergleiche mit deinem notierten Wert.\n3. Prüfe, ob der Nockpunkt (Wicklung oder Messing-Klemme) fest sitzt und nicht aufgescheuert ist.",
+        warn: "Tausche den Nockpunkt, bevor er sich auflöst – warte nicht, bis er im Training oder auf dem Turnier abfällt.",
+      },
+      limbBolts: {
+        title: "Wurfarmschrauben prüfen",
+        why: "Lockere Wurfarme verändern Zuggewicht und Tiller und können den Bogen beschädigen.",
+        how: "Prüfe, ob die Wurfarmschrauben und eventuelle Sicherungsschrauben fest sind. Mit Gefühl anziehen – fest, aber nicht mit Gewalt.",
+        how_compound: "Prüfe nur, ob sich die Wurfarmschrauben nicht von selbst lösen. NICHT verstellen – das ändert Zuggewicht und Abstimmung.",
+        how_trad: "Nur bei zerlegbaren Bögen: Prüfe, ob die Schrauben bzw. Verbindungen der Wurfarme fest sind. Mit Gefühl anziehen – fest, aber nicht mit Gewalt.",
+        warn: "Drehe nicht an den Schrauben für die Zuggewichtsverstellung, wenn du das nicht willst – das ändert Zuggewicht und Tiller. Löst sich eine Schraube immer wieder von selbst, sag es deinem Trainer oder im Fachgeschäft.",
+      },
+      limbsCheck: {
+        title: "Wurfarme kontrollieren",
+        why: "Ein beschädigter Wurfarm kann beim Auszug brechen.",
+        how: "Schau beide Wurfarme von beiden Seiten an, besonders am Ansatz und an den Enden, wo die Sehne liegt. Suche nach:\n• Rissen, Absplitterungen, Kratzern im Lack\n• Delamination (die Schichten lösen sich)\n• Verdrehung (die Sehne läuft nicht mittig über die Wurfarme)",
+        warn: "Mit einem beschädigten Wurfarm NICHT schießen.",
+        tip: "Bogen ohne Sehne lagern, nicht auf einem Wurfarm abstellen und nicht im heißen Auto liegen lassen.",
+      },
+      sight: {
+        title: "Visier prüfen",
+        why: "Die Vibration bei jedem Schuss lockert Schrauben. Ein lockeres Visier = Gruppen „wandern“ ohne Grund.",
+        how: "1. Prüfe der Reihe nach: Befestigung am Mittelteil, Visierausleger, Block/Schlitten, Tunnel oder Pin. Nichts darf wackeln.\n2. Prüfe, ob die Skala nicht verrutscht ist und deine Einstellungen für die Entfernungen stimmen.",
+        warn: "Die Gewinde sind oft aus Aluminium – mit Gefühl anziehen, zu fest = Gewinde kaputt.",
+        tip: "Notiere deine Visiereinstellungen für jede Entfernung oder mach ein Foto der Skala.",
+      },
+      stabilizers: {
+        title: "Stabilisatoren prüfen",
+        why: "Lockere Gewinde verändern das Verhalten des Bogens beim Schuss und können beschädigt werden.",
+        how: "Ziehe Langstab, V-Bar, Seitenstäbe, Verlängerungen und Gewichte nach. Prüfe die Dämpfer auf Risse.",
+        how_barebow: "Ziehe die Gewichte am Mittelteil und eventuelle Dämpfer nach. Prüfe die Dämpfer auf Risse.",
+        tip: "Ein lockeres Gewinde hört man oft als „Klirren“ beim Schuss – ein gutes Zeichen, nachzusehen.",
+      },
+      restButton: {
+        title: "Pfeilauflage & Button prüfen",
+        why: "Pfeilauflage und Button führen den Pfeil beim Abschuss – kleine Fehler hier wirken sich direkt auf die Gruppe aus.",
+        how: "1. Pfeilauflage: löst sich nicht, der Arm ist nicht verbogen, der Pfeil liegt stabil.\n2. Button: Spitze eindrücken – sie muss gleichmäßig laufen, ohne zu haken. Kontermutter fest.\n3. Die Pfeilmitte soll auf der Mitte der Buttonspitze liegen.",
+        how_compound: "1. Pfeilauflage: fest montiert, nichts wackelt, der Pfeil liegt stabil.\n2. Bei einer Fallauflage: Schnur bzw. Kabel intakt, die Auflage klappt sauber hoch und fällt sauber weg.\n3. Schrauben der Auflage nachziehen.",
+        warn: "Sand und Staub lassen den Button haken – mit einem trockenen Tuch reinigen. Die Federhärte nicht ohne Grund verstellen (das ist Abstimmung).",
+      },
+      clicker: {
+        title: "Klicker prüfen",
+        how: "Das Blättchen ist nicht verbogen oder gebrochen, die Befestigungsschraube ist fest, die Position hat sich nicht verschoben. Der Klicker soll leicht am Pfeil anliegen, aber den Button nicht eindrücken.",
+      },
+      arrows: {
+        title: "Pfeile prüfen",
+        why: "Ein beschädigter Pfeil fliegt anders – und ein gebrochener Carbonpfeil kann beim Schuss splittern und die Hand verletzen.",
+        how: "Prüfe jeden Pfeil:\n• Federn/Vanes: nicht abgelöst, nicht gerissen, nicht zerknittert\n• Nocken: nicht gebrochen, gerade, halten gut auf der Sehne\n• Spitzen: fest, nicht locker\n• Schaft: Carbonpfeil leicht biegen und am Ohr drehen – Knistern = Riss",
+        how_trad: "Prüfe jeden Pfeil:\n• Naturfedern: auskämmen, beschädigte ersetzen\n• Nocken: nicht gebrochen, gerade, halten gut auf der Sehne\n• Spitzen: fest, nicht locker\n• Holzschaft: auf der Hand rollen (gerade?), auf Risse am Nockende achten",
+        warn: "Pfeile mit gerissenem Schaft oder gebrochener Nocke NICHT schießen.",
+        tip: "Nummeriere deine Pfeile – so findest du leichter den, der immer „ausreißt“.",
+      },
+      tab: {
+        title: "Tab / Handschuh prüfen",
+        how: "1. Das Leder ist nicht durchgescheuert und hat keine tiefen Rillen von der Sehne.\n2. Schrauben der Platte fest, Fingerspreizer intakt.\n3. Das Leder soll nicht zu weit über die Finger hinausstehen – bei Bedarf gerade nachschneiden.",
+        tip: "Abgenutztes Leder durch das gleiche Leder ersetzen – anderes Leder = anderes Lösen.",
+      },
+      peep: {
+        title: "Peep prüfen",
+        how: "Der Peep sitzt fest, rutscht nicht nach oben oder unten und dreht sich im Vollauszug nicht.",
+        warn: "Ein Peep, der sich dreht, ist oft ein Zeichen, dass sich die Sehne gedehnt hat – prüfe auch das Timing.",
+      },
+      timing: {
+        title: "Timing prüfen",
+        why: "Sind die Cams nicht synchron, ändern sich Auszug, Zuggewicht und Pfeilflug.",
+        how: "1. Viele Cams haben Markierungen – prüfe, ob Sehne und Kabel auf den Markierungen liegen.\n2. Prüfe, ob die Draw Stops im Vollauszug gleichzeitig anschlagen.",
+        warn: "Stimmt das Timing nicht – ab ins Fachgeschäft. Zum Einstellen braucht man eine Bogenpresse.",
+      },
+      dLoop: {
+        title: "D-Loop prüfen",
+        how: "Die Schlaufe ist nicht aufgescheuert oder platt, die Knoten verrutschen nicht.",
+        warn: "Einen abgenutzten D-Loop sofort tauschen – reißt er im Auszug, löst sich der Schuss unkontrolliert.",
+      },
+      release: {
+        title: "Release prüfen",
+        how: "Der Auslöser arbeitet gleichmäßig, Backe/Haken hakt nicht, Schrauben sind fest, das Band ist nicht aufgescheuert.",
+      },
+      cams: {
+        title: "Cams & Achsen prüfen",
+        how: "Die Cams haben keine Risse oder Grate, Sehne und Kabel laufen sauber in der Rille, die Achsen sind sauber.",
+        warn: "Nicht selbst schmieren, wenn der Hersteller es nicht ausdrücklich empfiehlt.",
+      },
+      gripShelf: {
+        title: "Griff & Pfeilablage prüfen",
+        how: "Der Ledergriff löst sich nicht, das Fell/Polster auf der Pfeilablage ist nicht abgewetzt.",
+        tip: "Ein abgewetztes Polster tauschen – sonst fängt der Pfeil an zu „springen“.",
+      },
+      woodCare: {
+        title: "Holz pflegen",
+        how: "Prüfe den Lack an Mittelteil und Wurfarmen. Kratzer mit dem vom Hersteller empfohlenen Wachs oder Öl schützen. Holz vor Feuchtigkeit und Hitze schützen.",
+      },
+      boreClean: {
+        title: "Rohr reinigen",
+        why: "Der Atem hinterlässt Feuchtigkeit im Rohr – Schmutz und Feuchtigkeit bremsen den Pfeil und verschlechtern die Präzision.",
+        how: "Ein trockenes Tuch oder einen Wischer durch das Rohr ziehen, dann das Rohr offen trocknen lassen.",
+        warn: "Keine scharfen Reinigungsmittel verwenden.",
+      },
+      mouthpiece: {
+        title: "Mundstück reinigen",
+        how: "Mit warmem Wasser waschen, auf Risse prüfen und ob es gut abdichtet. Abgenutztes Mundstück ersetzen.",
+        tip: "Aus hygienischen Gründen das Mundstück nicht verleihen.",
+      },
+      darts: {
+        title: "Blasrohrpfeile prüfen",
+        how: "Die Kegel sind nicht zerdrückt, die Nadeln gerade und fest.",
+        warn: "Verbogene Pfeile aussortieren – sie fliegen schief und beschädigen die Scheibe.",
+      },
+      joints: {
+        title: "Verbindungen prüfen",
+        how: "Bei einem teilbaren Rohr: Verbindungen eng, ohne Spiel. Visier und Schutzkappen fest montiert.",
+      },
+      spares: {
+        title: "Ersatzteile prüfen",
+        how: "Prüfe, ob in der Tasche ist: Ersatzsehne, Nocken, Nockpunkt, Pfeilauflage, Inbusschlüssel, Wachs, Bracemeter, Ersatz-Tab.",
+        how_blowgun: "Prüfe, ob in der Tasche ist: Ersatzpfeile, Ersatzmundstück, Wischer bzw. Reinigungstuch.",
+        tip: "Vor jedem Turnier lohnt sich ein kurzer Blick in die Tasche.",
+      },
+      stringReplace: {
+        title: "Sehne erneuern",
+        why: "Eine Sehne dehnt sich mit der Zeit und wird schwächer – auch wenn sie noch gut aussieht.",
+        how: "Die neue Sehne mit denselben Werten aufziehen (Länge, Anzahl der Drehungen). In den ersten ca. 100 Schüssen setzt sich die Sehne – danach Standhöhe und Nockpunkt noch einmal prüfen.",
+        how_compound: "Sehne und Kabel ZUSAMMEN tauschen – sie dehnen sich unterschiedlich. Dafür braucht man eine Bogenpresse, also meist im Fachgeschäft. Danach das Timing prüfen lassen.",
+        tip: "Hab immer eine eingeschossene Ersatzsehne dabei – auf Turnieren Pflicht.",
+      },
+      proService: {
+        title: "Inspektion im Fachgeschäft",
+        why: "Einmal im Jahr lohnt es sich, den Bogen von einem Fachmann prüfen zu lassen – er sieht Dinge, die man zu Hause nicht sieht.",
+        how: "Bring den kompletten Bogen mit Sehne mit und sag, was dir aufgefallen ist (Geräusche, wandernde Gruppen, Schrauben, die sich lösen).",
+      },
+    },
+  },
 };
 
 export const views = {
@@ -1185,7 +1373,8 @@ export const views = {
         string: "SEHNE",
         arrows: "PFEILE",
         sight: "VISIER",
-        stabilization: "STABILISATION"
+        stabilization: "STABILISATION",
+        maintenance: "WARTUNG"
       },
       info: {
         aria: "Info zum Feld",

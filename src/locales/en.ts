@@ -280,7 +280,195 @@ export const components = {
     hint: "Pick above which training the entry belongs to — or “General” for progress over several trainings.",
     focusGoalLabel: "How many sessions?",
     focusHint: "Manage the session count and ending the focus early from the focus panel — tap the “Focus” bar in the student profile."
-  }
+  },
+  maintenance: {
+    info: {
+      aria: "Show instructions",
+      why: "Why",
+      how: "How to do it",
+      warn: "Caution",
+      tip: "Tip",
+      close: "Got it",
+    },
+    section: {
+      title: "Maintenance plan",
+      hint: "Turn on what you want to be reminded about. Active: {{count}}",
+      suggested: "Suggested: every {{count}} mo.",
+      start: "First reminder",
+      every: "Repeat",
+      months: "every {{count}} mo.",
+      next: "Next due: {{date}}",
+      inCalendar: "in your calendar",
+      visibleFrom: "in calendar from {{date}}",
+      lastDone: "Last done: {{date}}",
+    },
+    calendar: {
+      dueBy: "Maintenance · due by {{date}}",
+      howTo: "Instructions: how to do it",
+      skip: "Skip this time",
+    },
+    tasks: {
+      howItWorks: {
+        title: "How the maintenance plan works",
+        why: "Screws loosen from the vibration of every shot, the string dries out and stretches. Short checks at fixed intervals mean you won't find out at a tournament.",
+        how: "1. Turn on the jobs you want to be reminded about.\n2. Pick the date of the first reminder and how often it repeats.\n3. Tap “Save” at the bottom.\n4. 3 weeks before the due date the job appears in your calendar under “To-do” (no date) and on the home screen.\n5. When you're done, tick it off in the calendar. The next due date counts from the day you did it.",
+        warn: "“Skip this time” in the calendar counts as done: the next reminder only comes after the set interval.",
+        tip: "Each setup has its own plan. Every job has detailed instructions under (i) – also straight from the calendar entry.",
+      },
+      stringWax: {
+        title: "Wax the string",
+        why: "Wax protects the fibres from friction, moisture and drying out. A dry string frays faster and can break.",
+        how: "1. Apply a thin layer of wax – only on the parts WITHOUT serving (between the centre serving and the ends).\n2. Rub it in quickly with your fingers or a piece of leather until the wax warms up and works in between the fibres.\n3. Wipe off the excess – no lumps should remain.",
+        how_compound: "1. Apply a thin layer of wax to the string AND cables – only on the parts without serving.\n2. Rub it in quickly with your fingers or a piece of leather until the wax warms up and works in between the fibres.\n3. Wipe off the excess – no lumps should remain.\nKeep wax away from the peep – it will start to rotate.",
+        warn: "Don't wax the centre serving (where the nock sits) – the nock will hold differently and the serving may slip. After rain, let the string dry first, then wax.",
+        tip: "Wax earlier if the fibres look dull or rough, or you see white fuzz on the string.",
+      },
+      stringCheck: {
+        title: "Check string & servings",
+        why: "A damaged string can break on the shot – that can wreck the limbs and injure you.",
+        how: "1. Run your fingers along the whole string and look at it in good light.\n2. Look for frayed or broken strands.\n3. Check whether a serving is separating, loose or flattened at the nocking point.\n4. Check the loops at the ends for wear.\n5. Check that the nock clicks on as usual: a clear “click”, the arrow doesn't fall off, but isn't too tight.",
+        warn: "Broken strand = stop shooting, replace the string.",
+      },
+      braceTiller: {
+        title: "Measure brace height & tiller",
+        why: "Strings stretch, especially new ones. A different brace height changes arrow flight and the sound of the shot.",
+        how: "1. Use a bracemeter to measure from the deepest point of the grip to the string.\n2. Measure the tiller: distance from the string to the base of the upper and lower limb.\n3. Compare with your noted values.\nAdjusting: brace height is set by twisting the string (more twists = higher). Tiller via the limb bolts – only if you know what you're doing, or with your coach.",
+        how_trad: "1. Use a bracemeter to measure from the deepest point of the grip to the string.\n2. Measure the tiller: distance from the string to the base of the upper and lower limb.\n3. Compare with your noted values or the bowyer's recommendation.\nAdjusting: brace height is set by twisting the string (more twists = higher).",
+        tip: "Write your values in the setup note – without them there's nothing to compare against.",
+      },
+      nockingPoint: {
+        title: "Check nocking point",
+        why: "Even 1 mm of movement changes the tuning and your groups on the target.",
+        how: "1. Use a bracemeter to measure the height of the nocking point above the rest.\n2. Compare with your noted value.\n3. Check that the nocking point (tied or brass clamp) is tight and not frayed.",
+        warn: "Replace the nocking point before it falls apart – don't wait for it to drop off in training or at a tournament.",
+      },
+      limbBolts: {
+        title: "Check limb bolts",
+        why: "Loose limbs change draw weight and tiller and can damage the bow.",
+        how: "Check that the limb bolts and any locking screws are tight. Tighten with feel – snug, not forced.",
+        how_compound: "Only check that the limb bolts aren't backing out by themselves. Do NOT turn them – that changes draw weight and tuning.",
+        how_trad: "Takedown bows only: check that the limb bolts or fittings are tight. Tighten with feel – snug, not forced.",
+        warn: "Don't turn the draw-weight bolts unless you mean to – that changes draw weight and tiller. If a bolt keeps loosening, tell your coach or a pro shop.",
+      },
+      limbsCheck: {
+        title: "Inspect limbs",
+        why: "A damaged limb can break at full draw.",
+        how: "Look at both limbs from both sides, especially at the base and at the tips where the string sits. Look for:\n• cracks, chips, scratches in the finish\n• delamination (the layers separating)\n• twist (the string doesn't run down the middle of the limbs)",
+        warn: "Do NOT shoot with a damaged limb.",
+        tip: "Store the bow unstrung, don't stand it on one limb and don't leave it in a hot car.",
+      },
+      sight: {
+        title: "Check sight",
+        why: "Vibration from every shot loosens screws. A loose sight = groups “wander” for no reason.",
+        how: "1. Check in turn: mounting to the riser, sight bar, block/slider, aperture or pin. Nothing may wobble.\n2. Check that the scale hasn't slipped and your marks for each distance are still right.",
+        warn: "Threads are often aluminium – tighten with feel, too tight = stripped thread.",
+        tip: "Write down your sight marks for each distance or take a photo of the scale.",
+      },
+      stabilizers: {
+        title: "Check stabilizers",
+        why: "Loose threads change how the bow behaves on the shot and can get damaged.",
+        how: "Tighten the long rod, V-bar, side rods, extenders and weights. Check the dampers for cracks.",
+        how_barebow: "Tighten the riser weights and any dampers. Check the dampers for cracks.",
+        tip: "A loose thread often “rattles” on the shot – a good sign to check.",
+      },
+      restButton: {
+        title: "Check rest & button",
+        why: "The rest and button guide the arrow on release – small faults show up straight away in your group.",
+        how: "1. Rest: not peeling off, the arm isn't bent, the arrow sits steady.\n2. Button: press the tip – it must move smoothly without sticking. Lock nut tight.\n3. The centre of the arrow should line up with the centre of the button tip.",
+        how_compound: "1. Rest: firmly mounted, nothing wobbles, the arrow sits steady.\n2. Drop-away rest: cord/cable intact, the rest rises and drops cleanly.\n3. Tighten the rest screws.",
+        warn: "Sand and dust make the button stick – clean it with a dry cloth. Don't change the spring tension without a reason (that's tuning).",
+      },
+      clicker: {
+        title: "Check clicker",
+        how: "The blade isn't bent or cracked, the mounting screw is tight, the position hasn't moved. The clicker should rest lightly on the arrow without pushing the button in.",
+      },
+      arrows: {
+        title: "Check arrows",
+        why: "A damaged arrow flies differently – and a cracked carbon arrow can shatter on the shot and injure your hand.",
+        how: "Check every arrow:\n• Vanes/fletchings: not peeling, not torn, not crumpled\n• Nocks: not cracked, straight, hold the string well\n• Points: seated firmly, not loose\n• Shaft: gently flex a carbon arrow and twist it next to your ear – crackling = crack",
+        how_trad: "Check every arrow:\n• Feathers: brush them out, replace damaged ones\n• Nocks: not cracked, straight, hold the string well\n• Points: seated firmly, not loose\n• Wooden shaft: roll it on your hand (straight?), look for cracks near the nock",
+        warn: "Do NOT shoot arrows with a cracked shaft or nock.",
+        tip: "Number your arrows – it's easier to find the one that keeps “flying out”.",
+      },
+      tab: {
+        title: "Check tab / glove",
+        how: "1. The leather isn't worn through and has no deep grooves from the string.\n2. Plate screws tight, finger spacer intact.\n3. The leather shouldn't stick out too far past your fingers – trim it evenly if needed.",
+        tip: "Replace worn leather with the same leather – different leather = different release.",
+      },
+      peep: {
+        title: "Check peep",
+        how: "The peep is tight, doesn't slide up or down and doesn't rotate at full draw.",
+        warn: "A rotating peep is often a sign that the string has stretched – check the timing too.",
+      },
+      timing: {
+        title: "Check timing",
+        why: "If the cams are out of sync, draw length, draw weight and arrow flight change.",
+        how: "1. Many cams have timing marks – check that string and cables sit on the marks.\n2. Check that the draw stops hit at the same time at full draw.",
+        warn: "If the timing is off – take it to a pro shop. Adjusting it needs a bow press.",
+      },
+      dLoop: {
+        title: "Check D-loop",
+        how: "The loop isn't frayed or flattened, the knots don't slip.",
+        warn: "Replace a worn D-loop right away – if it breaks at full draw, the shot goes off uncontrolled.",
+      },
+      release: {
+        title: "Check release",
+        how: "The trigger works smoothly, jaw/hook doesn't stick, screws are tight, the strap isn't frayed.",
+      },
+      cams: {
+        title: "Check cams & axles",
+        how: "Cams have no cracks or burrs, string and cables run cleanly in the groove, axles are clean.",
+        warn: "Don't lubricate yourself unless the manufacturer explicitly recommends it.",
+      },
+      gripShelf: {
+        title: "Check grip & shelf",
+        how: "The leather grip isn't coming loose, the fur/pad on the shelf isn't worn.",
+        tip: "Replace a worn pad – otherwise the arrow starts to “jump”.",
+      },
+      woodCare: {
+        title: "Wood care",
+        how: "Check the finish on riser and limbs. Protect scratches with the wax or oil recommended by the bowyer. Keep wood away from moisture and heat.",
+      },
+      boreClean: {
+        title: "Clean the barrel",
+        why: "Your breath leaves moisture in the barrel – dirt and moisture slow the dart and hurt accuracy.",
+        how: "Pull a dry cloth or cleaning rod through the barrel, then leave it open to dry.",
+        warn: "No harsh cleaning agents.",
+      },
+      mouthpiece: {
+        title: "Clean the mouthpiece",
+        how: "Wash it with warm water, check for cracks and that it seals well. Replace a worn mouthpiece.",
+        tip: "For hygiene reasons, don't lend your mouthpiece.",
+      },
+      darts: {
+        title: "Check darts",
+        how: "The cones aren't crushed, the needles are straight and firmly seated.",
+        warn: "Sort out bent darts – they fly crooked and damage the target.",
+      },
+      joints: {
+        title: "Check joints & fittings",
+        how: "For a take-apart barrel: joints tight, no play. Sight and caps firmly mounted.",
+      },
+      spares: {
+        title: "Check spare parts",
+        how: "Check that your bag has: spare string, nocks, nocking point, rest, Allen keys, wax, bracemeter, spare tab.",
+        how_blowgun: "Check that your bag has: spare darts, spare mouthpiece, cleaning rod or cloth.",
+        tip: "A quick look in your bag before every tournament is worth it.",
+      },
+      stringReplace: {
+        title: "Replace the string",
+        why: "A string stretches and weakens over time – even if it still looks fine.",
+        how: "Fit the new string with the same values (length, number of twists). Over the first ~100 shots the string settles in – then check brace height and nocking point again.",
+        how_compound: "Replace string and cables TOGETHER – they stretch differently. It needs a bow press, so usually at a pro shop. Have the timing checked afterwards.",
+        tip: "Always have a shot-in spare string with you – a must at tournaments.",
+      },
+      proService: {
+        title: "Pro shop inspection",
+        why: "Once a year it's worth having a pro check your bow – they'll spot things you can't see at home.",
+        how: "Bring the complete bow with string and say what you've noticed (noises, wandering groups, screws that keep loosening).",
+      },
+    },
+  },
 };
 
 export const views = {
@@ -1185,7 +1373,8 @@ export const views = {
         string: "STRING",
         arrows: "ARROWS",
         sight: "SIGHT",
-        stabilization: "STABILISERS"
+        stabilization: "STABILISERS",
+        maintenance: "MAINTENANCE"
       },
       info: {
         aria: "About this field",

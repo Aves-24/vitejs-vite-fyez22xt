@@ -29,6 +29,8 @@ import { lazyWithRetry } from './utils/lazyWithRetry';
 import { migrateArrowModel } from './utils/migrateArrowModel';
 import { migratePrivateSessionNotes } from './utils/privateSessionNote';
 import { syncPublicProfile } from './utils/publicProfile';
+import { syncMaintenanceReminders } from './utils/maintenanceSync';
+import i18n from './i18n';
 import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
 import { TRIAL_DAYS } from './utils/proAccess';
@@ -111,6 +113,22 @@ const restorePoint = (() => {
   const p = takeRestorePoint();
   return p && (RESTORABLE_VIEWS as string[]).includes(p.view) ? p : null;
 })();
+
+/** [WARTUNG] Czeka, aż paczka tłumaczeń bieżącego języka jest w pamięci. */
+const MAINTENANCE_PROBE_KEY = 'maintenance.tasks.stringWax.title';
+function whenTranslationsReady(): Promise<void> {
+  if (i18n.exists(MAINTENANCE_PROBE_KEY)) return Promise.resolve();
+  return new Promise(resolve => {
+    const check = () => {
+      if (!i18n.exists(MAINTENANCE_PROBE_KEY)) return;
+      i18n.off('loaded', check);
+      i18n.off('languageChanged', check);
+      resolve();
+    };
+    i18n.on('loaded', check);
+    i18n.on('languageChanged', check);
+  });
+}
 
 export default function App() {
   const { t } = useTranslation();
@@ -291,6 +309,12 @@ export default function App() {
         // czytelny dla obcych; popupy zaproszeń i lobby czytają profiles_public.
         // Zapis tylko przy realnej zmianie treści (cache w syncPublicProfile).
         syncPublicProfile(user.uid, data).catch(() => {});
+        // [WARTUNG] Przypomnienia o konserwacji → todo w kalendarzu. Tytuł wpisu
+        // idzie w języku usera, więc czekamy na paczkę tłumaczeń.
+        whenTranslationsReady().then(() => syncMaintenanceReminders(
+          user.uid, data.setups, data.maintenanceDone,
+          id => i18n.t(`maintenance.tasks.${id}.title`),
+        )).catch(e => console.warn('[WARTUNG] Synchronizacja przypomnień nie wyszła:', e));
         if (data.userDistances && data.userDistances.length > 0) {
           // [C25] Konta sprzed C25 mają dystanse BEZ `id`. Nadajemy je raz
           // i od razu utrwalamy — inaczej każde wejście do aplikacji zgadywałoby

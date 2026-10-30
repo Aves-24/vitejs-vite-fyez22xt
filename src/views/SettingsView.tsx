@@ -200,6 +200,8 @@ export default function SettingsView({
   // [ZESTAWY] Sprzęt należy teraz do zestawu. Stare płaskie pola wyżej zostają
   // nietknięte — nic ich jeszcze nie kasuje, więc powrót jest bezkosztowy.
   const [setups, setSetups] = useState<EquipmentSetup[]>([]);
+  // [WARTUNG] Daty wykonania konserwacji — tylko do odczytu, zapisuje je kalendarz.
+  const [maintenanceDone, setMaintenanceDone] = useState<Record<string, string>>({});
   const [activeSetupId, setActiveSetupId] = useState<string>(DEFAULT_SETUP_ID);
 
   // Dyscyplina aktywnego zestawu. Stare, płaskie `bowType` to fallback dla
@@ -369,6 +371,7 @@ export default function SettingsView({
             setSetups(data.setups as EquipmentSetup[]);
             setActiveSetupId(data.activeSetupId || DEFAULT_SETUP_ID);
           }
+          setMaintenanceDone(data.maintenanceDone || {});
 
           // Promocja admina też jest „aktywne” — bez odliczania jak przy trialu.
           setIsPremium(data.isPremium === true || data.isPremiumPromo === true);
@@ -769,6 +772,7 @@ export default function SettingsView({
             isPremium={hasPro}
             onSetupsChange={setSetups}
             onActiveSetupChange={setActiveSetupId}
+            maintenanceDone={maintenanceDone}
           />
         )}
 

@@ -67,8 +67,8 @@ export function asBowType(d?: string | null): BowType | null {
  */
 export function visibleSubtabsFor(discipline?: string | null): SetupSubtab[] {
   return isBlowgun(discipline)
-    ? ['blowgun', 'arrows']
-    : ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization'];
+    ? ['blowgun', 'arrows', 'maintenance']
+    : ['archer', 'bow', 'string', 'arrows', 'sight', 'stabilization', 'maintenance'];
 }
 
 /** Ile zestawów wolno trzymać. */
@@ -84,7 +84,7 @@ export function setupLimitFor(isPremium: boolean): number {
  * Dla dmuchawki część z nich znika — patrz `SUBTABS_HIDDEN_FOR_BLOWGUN`.
  */
 export const SETUP_SUBTABS = [
-  'archer', 'blowgun', 'bow', 'string', 'arrows', 'sight', 'stabilization',
+  'archer', 'blowgun', 'bow', 'string', 'arrows', 'sight', 'stabilization', 'maintenance',
 ] as const;
 export type SetupSubtab = typeof SETUP_SUBTABS[number];
 
@@ -121,6 +121,21 @@ export interface SetupArrows {
 
 export interface SetupSight {
   model?: string;
+}
+
+/**
+ * [WARTUNG] Ustawienie jednej czynności konserwacji (klucz = id z `maintenanceTasks.ts`).
+ *
+ * Data ostatniego wykonania NIE siedzi tutaj, tylko w `users/{uid}.maintenanceDone`:
+ * „erledigt” klika się w kalendarzu, a Ustawienia zapisują całą tablicę
+ * zestawów naraz — otwarte Ustawienia nadpisałyby świeżą datę starą kopią.
+ */
+export interface MaintenanceRule {
+  on: boolean;
+  /** Pierwszy termin, YYYY-MM-DD. */
+  start: string;
+  /** Rytm w miesiącach. */
+  every: number;
 }
 
 export interface SetupStabilization {
@@ -210,6 +225,8 @@ export interface EquipmentSetup {
   arrows?: SetupArrows;
   sight?: SetupSight;
   stabilization?: SetupStabilization;
+  /** [WARTUNG] Przypomnienia o konserwacji, per czynność. */
+  maintenance?: Record<string, MaintenanceRule>;
   /**
    * Notatka OSOBNA dla każdej podzakładki, limit 100 znaków.
    * Tak było ustalone w TODO i tego chce user — jedna wspólna notatka na

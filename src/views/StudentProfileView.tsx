@@ -1331,6 +1331,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
               <ProStatsView
                 userId={studentId}
                 isPremium={studentPro}
+                lockedHint={studentPro ? undefined : t('studentProfile.freeProgressHint', { name: student.firstName || '' })}
                 onNavigate={(view, tab) => { if (view !== 'SETTINGS') onNavigate(view, tab); }}
                 onOpenSession={(sessionId) => { setFocusSessionId(sessionId); setActiveTab('diary'); }}
               />

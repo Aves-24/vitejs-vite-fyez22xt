@@ -1761,6 +1761,13 @@ export const views = {
       }
     },
     pro: {
+      secTechnik: "Technika",
+      secErgebnis: "Wynik",
+      secBelastung: "Obciążenie",
+      secPfeile: "Strzały",
+      secTrefferbild: "Obraz trafień",
+      bestForm: "Rekord i forma",
+      lockedAll: "Technika (wielkość grupy, biomechanika), obciążenie, strzały i obraz trafień są w GROT-X PRO.",
       loading: "Analizowanie danych historycznych...",
       noData: "Brak danych do analizy",
       last12weeks: "Statystyki z ostatnich 12 tyg.",
@@ -2150,6 +2157,7 @@ export const views = {
     limitedViewText: "{{name}} nie ma GROT-X PRO. Widzisz to, co {{name}}: treningi z ostatnich {{days}} dni, analizę {{hours}} h po treningu.",
     freeAnalysisHint: "{{name}} ma FREE: analiza treningu jest widoczna {{hours}} godziny po treningu — dla {{name}} i dla Ciebie. Z PRO zostaje widoczna zawsze.",
     freeWindowHint: "{{name}} ma FREE: widać treningi z ostatnich {{days}} dni. Starsze z PRO.",
+    freeProgressHint: "{{name}} nie ma GROT-X PRO — technikę, obciążenie, strzały i obraz trafień zobaczysz, gdy {{name}} będzie mieć PRO.",
     formCard: "Forma",
     handicap: "Handicap",
     lastTrainings: "Ostatnie treningi",

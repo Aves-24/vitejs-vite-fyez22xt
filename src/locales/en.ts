@@ -1734,6 +1734,13 @@ export const views = {
       }
     },
     pro: {
+      secTechnik: "Technique",
+      secErgebnis: "Score",
+      secBelastung: "Workload",
+      secPfeile: "Arrows",
+      secTrefferbild: "Hit pattern",
+      bestForm: "Best & form",
+      lockedAll: "Technique (group size, biomechanics), workload, arrows and hit pattern come with GROT-X PRO.",
       loading: "Analyzing historical data...",
       noData: "No data to analyze",
       last12weeks: "Stats from last 12 weeks",
@@ -2113,6 +2120,7 @@ export const views = {
     limitedViewText: "{{name}} doesn't have GROT-X PRO. You see what {{name}} sees: trainings from the last {{days}} days, analysis for {{hours}} h after a session.",
     freeAnalysisHint: "{{name}} is on FREE: a training's analysis is visible for {{hours}} hours after the session — for {{name}} and for you. With PRO it stays visible.",
     freeWindowHint: "{{name}} is on FREE: trainings from the last {{days}} days are visible. Older ones with PRO.",
+    freeProgressHint: "{{name}} doesn't have GROT-X PRO — technique, workload, arrows and hit pattern appear once {{name}} has PRO.",
     formCard: "Form",
     handicap: "Handicap",
     lastTrainings: "Recent trainings",

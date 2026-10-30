@@ -1734,6 +1734,13 @@ export const views = {
       }
     },
     pro: {
+      secTechnik: "Technik",
+      secErgebnis: "Ergebnis",
+      secBelastung: "Belastung",
+      secPfeile: "Pfeile",
+      secTrefferbild: "Trefferbild",
+      bestForm: "Bestleistung & Form",
+      lockedAll: "Technik (Gruppengröße, Biomechanik), Belastung, Pfeile und Trefferbild gibt es mit GROT-X PRO.",
       loading: "Historische Daten werden analysiert...",
       noData: "Keine Daten zur Analyse vorhanden",
       last12weeks: "Statistiken der letzten 12 Wo.",
@@ -2113,6 +2120,7 @@ export const views = {
     limitedViewText: "{{name}} hat kein GROT-X PRO. Du siehst, was {{name}} sieht: Trainings der letzten {{days}} Tage, Auswertung {{hours}} h nach dem Training.",
     freeAnalysisHint: "{{name}} hat FREE: Die Auswertung eines Trainings ist {{hours}} Stunden nach dem Training sichtbar — für {{name}} und für dich. Mit PRO bleibt sie immer sichtbar.",
     freeWindowHint: "{{name}} hat FREE: Sichtbar sind die Trainings der letzten {{days}} Tage. Ältere Trainings mit PRO.",
+    freeProgressHint: "{{name}} hat kein GROT-X PRO — Technik, Belastung, Pfeile und Trefferbild siehst du erst, wenn {{name}} PRO hat.",
     formCard: "Form",
     handicap: "Handicap",
     lastTrainings: "Letzte Trainings",

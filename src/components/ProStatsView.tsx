@@ -5,7 +5,6 @@ import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebas
 import { useTranslation } from 'react-i18next';
 import TechProHistory from './TechProHistory'; // <--- DODANY IMPORT
 import { getRecentSessions } from '../lib/recentSessions';
-import RingePraezisionPanel from './stats/RingePraezisionPanel';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
 import { isPartialSession, PartialInfo } from '../utils/partialSession';
 
@@ -22,6 +21,7 @@ import { calculateSpreadSessions } from '../utils/spread';
 import { getScaleColor, getWeekLabelKW } from '../lib/statsChart';
 import { isFullFace as isFullFaceType } from '../config/targetFaces';
 import { useDistanceColors } from '../hooks/useDistanceColors';
+import SummaryCard from './scoring/SummaryCard';
 
 interface Session {
   id: string;
@@ -44,6 +44,8 @@ interface ProStatsViewProps {
   onNavigate: (view: string, tab?: string) => void;
   // Otwiera szczegóły sesji (zakładka DZIENNIK w StatsView)
   onOpenSession?: (sessionId: string, date: string) => void;
+  // Trener w profilu ucznia FREE: zamiast przycisku zakupu sam opis (zakup należy do ucznia).
+  lockedHint?: string;
 }
 
 const PRO_STATS_CACHE_KEY = (uid: string) => `grotX_proStats_${uid}`;
@@ -66,7 +68,7 @@ function proStatsCacheSet(uid: string, sessions: Session[], full: boolean): void
   } catch { /* ignore quota errors */ }
 }
 
-export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession }: ProStatsViewProps) {
+export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession, lockedHint }: ProStatsViewProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   // [C25] Trzyma KLUCZ kubelka (`distanceId`), nie napis z metrami.
@@ -79,9 +81,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
   // Ręczność łucznika dla wskazówek biomechaniki (lustro lewo/prawo dla LH)
   const [handedness, setHandedness] = useState<'RH' | 'LH' | null>(null);
-  // Pfeilzähler — strzały zapisane na profilu bez sesji (np. próbne);
-  // doliczane do słupków tygodniowych, żeby zgadzały się z licznikami na Home
-  const [pfeilzaehler, setPfeilzaehler] = useState<Record<string, number>>({});
 
   useEffect(() => {
     let alive = true;
@@ -89,7 +88,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       .then(s => {
         if (!alive) return;
         setHandedness((s.data()?.handedness as 'RH' | 'LH') || null);
-        setPfeilzaehler((s.data()?.pfeilzaehler as Record<string, number>) || {});
       })
       .catch(() => { if (alive) setHandedness(null); });
     return () => { alive = false; };
@@ -182,7 +180,6 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   const selectedBucket = distances.find(b => b.key === selectedDistance);
   // [KOLORY] Kropka zestawu przy kubełku — inaczej dwa gołe „18m" są nie do odróżnienia.
   const distanceColors = useDistanceColors(userId);
-  const selectedHex = distanceColors.get(selectedDistance);
   const sessionsByDistance = useMemo(() => sessions.filter(s => distanceKey(s) === selectedDistance), [sessions, selectedDistance]);
 
   const availableTypes = useMemo(() => {
@@ -378,99 +375,32 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
       .slice(-15);
   }, [filteredSessions]);
 
-  // PRZEGLĄD GLOBALNY (wszystkie dystanse) — liczony z już wczytanych sesji,
-  // więc 0 dodatkowych odczytów Firestore. Daje trenerowi szybki obraz formy.
-  const overview = useMemo(() => {
-    const getTs = (s: any): number => {
-      const ts = s.timestamp;
-      if (!ts) return 0;
-      if (typeof ts === 'number') return ts;
-      if (typeof ts.toMillis === 'function') return ts.toMillis();
-      if (ts.seconds) return ts.seconds * 1000;
-      return 0;
-    };
-    const now = Date.now();
-    const startOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
-    const mean = (arr: number[]) => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : 0;
-
-    // Sesje z wynikiem, bez technicznych — do średnich i krzywej
-    const scored: CurveSession[] = sessions
-      .filter(s => s.type !== 'TECHNICAL' && (s.score || 0) > 0)
-      .map(s => ({
-        score: s.score || 0,
-        arrows: s.arrows || s.totalArrows || 0,
-        ts: getTs(s),
-        date: s.date || '',
-        distance: s.distance || '',
-        type: s.type || 'Trening',
-        title: (s as any).title || (s as any).tournamentName || '',
-        ...partialOf(s as PartialInfo),
-      } as CurveSession & { arrows: number }))
-      .sort((a, b) => (a.ts || 0) - (b.ts || 0));
-
-    // [C31] Średnie „na trening" tylko z pełnych treningów.
-    const full = (scored as Array<CurveSession & { arrows: number }>).filter(s => !isPartialSession(s));
-    const last3 = full.slice(-3);
-    const monthScored = full.filter(s => (s.ts || 0) >= startOfMonth);
-
-    // Słupki 12-tygodniowe (globalne) — strzały (wszystkie) + punkty/strzałę (bez TECH)
-    const weeklyArrows = Array(12).fill(0);
-    const wScore = Array(12).fill(0);
-    const wScoreArrows = Array(12).fill(0);
-    const wSessions = Array(12).fill(0);
-    const wFullScore = Array(12).fill(0);
-    sessions.forEach(s => {
-      const ts = getTs(s);
-      const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
-      if (diffWeeks < 12) {
-        const idx = 11 - diffWeeks;
-        const arr = s.arrows || s.totalArrows || 0;
-        const scoreArr = (s as any).scoreArrows ?? s.arrows ?? 0;
-        weeklyArrows[idx] += arr;
-        if (s.type !== 'TECHNICAL' && scoreArr > 0 && (s.score || 0) > 0) {
-          wScore[idx] += (s.score || 0); wScoreArrows[idx] += scoreArr;
-          if (!isPartialSession(s as PartialInfo)) { wSessions[idx]++; wFullScore[idx] += (s.score || 0); }
-        }
-      }
-    });
-    // Pfeilzähler (klucze dzienne YYYY_MM_DD) — dolicz do słupków strzał;
-    // średniej pkt/strzałę nie zmienia, bo te strzały nie mają punktacji
-    Object.entries(pfeilzaehler).forEach(([key, val]) => {
-      const parts = key.split('_');
-      if (parts.length !== 3) return;
-      const ts = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])).getTime();
-      const diffWeeks = Math.floor(Math.max(0, now - ts) / (1000 * 60 * 60 * 24 * 7));
-      if (diffWeeks < 12) weeklyArrows[11 - diffWeeks] += (Number(val) || 0);
-    });
-
-    const weeklyPoints = wScore.map((sc, i) => wScoreArrows[i] > 0 ? sc / wScoreArrows[i] : 0);
-
-    return {
-      avgArrows3: mean(last3.map(s => s.arrows)),
-      avgPoints3: mean(last3.map(s => s.score)),
-      avgArrowsMonth: mean(monthScored.map(s => s.arrows)),
-      avgPointsMonth: mean(monthScored.map(s => s.score)),
-      weeklyArrows,
-      weeklyPoints,
-      weeklySessionAvg: wFullScore.map((sc, i) => wSessions[i] > 0 ? Math.round(sc / wSessions[i]) : 0),
-      recent: scored.slice(-15) as CurveSession[],
-    };
-  }, [sessions, pfeilzaehler]);
-
-  // Karta-brama PRO: zastępuje głębsze panele (mapa rozrzutu, biomechanika,
-  // wytrzymałość, strefy, objętość, krzywa per dystans) dla użytkownika FREE.
+  // Jedna karta PRO zamiast kilku kłódek (user 2026-10-30): FREE widzi wybór
+  // dystansu i sekcję „Ergebnis”; Technik, Belastung, Pfeile i Trefferbild — PRO.
   const ProLockCard = () => (
-    <div className="flex flex-col items-center justify-center py-10 px-6 bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-200 text-center">
-      <div className="w-16 h-16 bg-gradient-to-br from-amber-300 to-amber-500 rounded-full flex items-center justify-center shadow-md mb-4">
-        <span className="material-symbols-outlined text-white text-3xl">diamond</span>
+    <div className="tb-card tb-skipped border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-3 flex items-start gap-2.5">
+      <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+        <span className="material-symbols-outlined text-[18px] text-[#b8860b]">diamond</span>
+      </span>
+      <div className="flex-1 min-w-0">
+        <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-gray-500">GROT-X PRO</span>
+        <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug mt-0.5">{lockedHint || t('stats.pro.lockedAll')}</p>
+        {!lockedHint && (
+          <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="mt-2 px-3 py-1.5 bg-[#0a3a2a] text-[#fed33e] rounded-lg font-black uppercase text-[9px] tracking-widest active:scale-95 transition-all inline-flex items-center gap-1.5">
+            <span className="material-symbols-outlined text-[13px]">diamond</span>
+            {t('stats.pro.btnUnlock', 'Odblokuj GROT-X PRO')}
+          </button>
+        )}
       </div>
-      <h2 className="text-lg font-black text-[#0a3a2a] tracking-tighter uppercase leading-tight mb-1">GROT-X PRO</h2>
-      <p className="text-[11px] text-gray-500 font-bold mb-5 px-2">{t('stats.pro.unlockDesc', 'Odblokuj mapę rozrzutu, wykresy formy, wskaźnik zmęczenia i pełne dane.')}</p>
-      <button onClick={() => onNavigate('SETTINGS', 'PRO')} className="w-full max-w-[240px] py-3 bg-[#0a3a2a] text-[#fed33e] rounded-2xl font-black uppercase text-[10px] tracking-widest active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2">
-        <span className="material-symbols-outlined text-[14px]">diamond</span>
-        {t('stats.pro.btnUnlock', 'Odblokuj GROT-X PRO')}
-      </button>
     </div>
+  );
+
+  // Nagłówek sekcji — jak nagłówki miesięcy w dzienniku.
+  const Section = ({ icon, label }: { icon: string; label: string }) => (
+    <p className="flex items-center gap-1.5 pt-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+      <span className="material-symbols-outlined text-[15px] text-gray-400">{icon}</span>
+      {label}
+    </p>
   );
 
   if (isLoading) return <div className="p-10 text-center animate-pulse text-gray-400 mt-20">{t('stats.pro.loading', 'Wczytywanie...')}</div>;
@@ -483,108 +413,58 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
   );
 
   return (
-    <div className="animate-fade-in-up space-y-4 px-4 pb-10">
+    <div className="animate-fade-in-up space-y-3 px-4 pb-10">
 
-      {/* PRZEGLĄD GLOBALNY — widoczny też dla trenera przeglądającego ucznia */}
-      {overview.recent.length > 0 && (
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 mt-1">
-            <span className="material-symbols-outlined text-emerald-500 text-[18px]">insights</span>
-            <h2 className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('stats.pro.overviewTitle', 'Przegląd')}</h2>
-          </div>
-          <RingePraezisionPanel
-            avgArrows3={overview.avgArrows3}
-            avgPoints3={overview.avgPoints3}
-            avgArrowsMonth={overview.avgArrowsMonth}
-            avgPointsMonth={overview.avgPointsMonth}
-            weeklyArrows={overview.weeklyArrows}
-            weeklyPoints={overview.weeklyPoints}
-            weeklySessionAvg={overview.weeklySessionAvg}
-            locked={!isPremium}
-            onUnlock={() => onNavigate('SETTINGS', 'PRO')}
-          />
-          <ErgebniskurvePanel sessions={overview.recent} scopeLabel={t('stats.pro.allDistances', 'Wszystkie dystanse')} isPremium={isPremium} onUnlock={() => onNavigate('SETTINGS', 'PRO')} />
-          <div className="h-px bg-gray-100 my-2" />
-        </div>
-      )}
-
-      {/* PANEL ANALIZY DYSTANSU — nagłówek sekcji + filtry w jednej karcie.
-          Wszystko poniżej tej karty dotyczy wybranego dystansu/typów. */}
+      {/* [PRO PROGRESS 2026-10-30] Jeden wybór dystansu na górze — wszystko niżej
+          dotyczy tego dystansu (user: dwa poziomy filtrów myliły). Sekcje według
+          pytań trenera: Technik → Ergebnis → Belastung → Pfeile → Trefferbild.
+          Usunięte: przegląd wszystkich dystansów (jest w Aktuell/QuickStats),
+          „Estymowany wynik 720”, druga krzywa wyników. */}
       {distances.length > 0 && (
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#0a3a2a] flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[#fed33e] text-[18px]">filter_center_focus</span>
-              </div>
-              <div className="min-w-0">
-                <h2 className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest leading-none">{t('stats.pro.distAnalysisTitle', 'Analiza dystansu')}</h2>
-                <p className="text-[8px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">{t('stats.pro.distAnalysisSub', 'Dane poniżej dotyczą wyboru')}</p>
-              </div>
-            </div>
-            <div className="bg-[#fed33e] text-[#0a3a2a] px-4 py-2 rounded-2xl shadow-sm shrink-0 flex items-center gap-1.5">
-              {selectedHex && <span className="w-2.5 h-2.5 rounded-full shrink-0 ring-2 ring-white/70" style={{ backgroundColor: selectedHex }} />}
-              <span className="text-sm font-black uppercase tracking-tighter leading-none">{selectedBucket?.label || selectedDistance}</span>
-            </div>
+        <div className="space-y-2">
+          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+            {distances.map(bucket => {
+              const dist = bucket.key;
+              const isTech = bucket.isTech;
+              const on = selectedDistance === dist;
+              return (
+                <button key={dist} onClick={() => setSelectedDistance(dist)}
+                  className={`px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border flex items-center gap-1 ${
+                    on ? (isTech ? 'bg-sky-500 text-white border-sky-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md') : 'bg-white text-gray-500 border-gray-200'
+                  }`}>
+                  {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
+                  {distanceColors.has(dist) && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(dist) }} />}
+                  {bucket.label}
+                </button>
+              );
+            })}
           </div>
-
-          <div>
-            <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2 ml-1">{t('stats.pro.distLabel', 'Dystans')}</span>
-            <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-              {distances.map(bucket => {
-                const dist = bucket.key;
-                const isTech = bucket.isTech;
-                return (
-                  <button key={dist} onClick={() => setSelectedDistance(dist)}
-                    className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 flex items-center gap-1 ${
-                      selectedDistance === dist
-                      ? (isTech ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' : 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md')
-                      : 'bg-gray-50 text-gray-400 border-gray-100'
-                    }`}>
-                    {isTech && <span className="material-symbols-outlined text-[12px]">fitness_center</span>}
-                    {distanceColors.has(dist) && <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: distanceColors.get(dist) }} />}
-                    {bucket.label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
           {availableTypes.length > 1 && (
-            <div>
-              <span className="text-[8px] font-black text-gray-400 uppercase tracking-[0.2em] block mb-2 ml-1">{t('stats.pro.typeLabel', 'Typ treningu')}</span>
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                {availableTypes.map(type => {
-                  const isActive = selectedTypes.has(type);
-                  const typeLabel =
-                    type === 'Turniej' ? t('stats.sessionInfo.tournament') :
-                    type === 'Arena' ? t('stats.sessionInfo.arena') :
-                    type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') :
-                    type === 'TECHNICAL' ? 'TECH' :
-                    t('stats.sessionInfo.typeSolo');
-                  const typeColor = isActive
-                    ? type === 'Turniej' ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
-                    : type === 'Arena' ? 'bg-blue-500 text-white border-blue-500'
-                    : type === 'WORLD_BATTLE' ? 'bg-emerald-500 text-white border-emerald-500'
-                    : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
-                    : 'bg-gray-50 text-gray-400 border-gray-100';
-                  return (
-                    <button
-                      key={type}
-                      onClick={() => {
-                        setSelectedTypes(prev => {
-                          const next = new Set(prev);
-                          if (next.has(type)) next.delete(type); else next.add(type);
-                          return next;
-                        });
-                      }}
-                      className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${typeColor}`}
-                    >
-                      {typeLabel}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-1">
+              {availableTypes.map(type => {
+                const isActive = selectedTypes.has(type);
+                const typeLabel =
+                  type === 'Turniej' ? t('stats.sessionInfo.tournament') :
+                  type === 'Arena' ? t('stats.sessionInfo.arena') :
+                  type === 'WORLD_BATTLE' ? t('stats.sessionInfo.worldBattle') :
+                  type === 'TECHNICAL' ? 'TECH' :
+                  t('stats.sessionInfo.typeSolo');
+                return (
+                  <button
+                    key={type}
+                    onClick={() => {
+                      setSelectedTypes(prev => {
+                        const next = new Set(prev);
+                        if (next.has(type)) next.delete(type); else next.add(type);
+                        return next;
+                      });
+                    }}
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border ${isActive ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}
+                  >
+                    {typeLabel}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
@@ -592,8 +472,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
 
       {/* Baner „cała historia" — tylko PRO (ładuje do 500 sesji z Firestore) */}
       {isPremium && !hasFullHistory && (
-        <div className="flex items-center justify-between bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-          <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">{t('stats.pro.last12weeks', 'Statystyki z ostatnich 12 tyg.')}</p>
+        <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-2xl px-3 py-2">
+          <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest">{t('stats.pro.last12weeks', 'Statystyki z ostatnich 12 tyg.')}</p>
           <button
             onClick={loadFullHistory}
             disabled={isLoadingAll}
@@ -609,137 +489,52 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
           // WIDOK TRENINGU TECHNICZNEGO — tylko PRO
           isPremium ? <TechProHistory sessions={filteredSessions} /> : <ProLockCard />
         ) : (
-          // KLASYCZNY WIDOK PRO DLA NORMALNYCH DYSTANSÓW
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-gradient-to-br from-amber-400 to-amber-500 rounded-[24px] p-5 text-white shadow-md relative overflow-hidden flex flex-col justify-center">
-                <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[80px] text-white/20 rotate-12">trophy</span>
-                <span className="block text-[9px] font-black uppercase tracking-widest text-amber-900 mb-1 relative z-10">{t('stats.pro.pb', 'Rekord Życiowy')}</span>
-                <span className="text-4xl font-black leading-none tracking-tighter relative z-10">{stats.maxScore}</span>
-                <div className="relative z-10 mt-1">
-                  <span className="block text-[8px] font-bold text-amber-900/80 uppercase">{stats.maxScoreArrows} {t('stats.pro.arrows', 'Strzał')}</span>
-                  <span className="block text-[8px] font-bold text-amber-900/80 uppercase">{stats.maxScoreDate}</span>
-                </div>
-              </div>
+            {/* ── TECHNIK: ⌀ grupy w czasie = główny wskaźnik postępu technicznego (trener 2026-10-29) */}
+            {isPremium && (groupPoints.length > 0 || (spread3.result && spread3.count > 0)) && (
+              <>
+                <Section icon="adjust" label={t('stats.pro.secTechnik')} />
+                <GroupTrendCard points={groupPoints} onOpenSession={onOpenSession} />
+                {spread3.result && spread3.count > 0 && (
+                  <BiomechCard
+                    spread={spread3.result}
+                    handedness={handedness}
+                    onNavigate={onNavigate}
+                    subtitle={t('stats.cards.bio.lastTrainings', { count: spread3.count })}
+                  />
+                )}
+              </>
+            )}
 
-              <div className="space-y-3">
-                <div className="bg-white rounded-[20px] p-4 border border-gray-100 shadow-sm flex flex-col justify-center">
-                  <span className="block text-[8px] font-black uppercase tracking-widest text-gray-400 mb-0.5">{t('stats.pro.estScore720', 'Estymowany Wynik (720)')}</span>
-                  <span className="text-2xl font-black text-[#0a3a2a] leading-none tracking-tighter">
-                    {Math.round(stats.allTimeAvg * 72)} <span className="text-[10px] text-gray-400">/ 720</span>
+            {/* ── ERGEBNIS (też FREE): rekord, trend formy, krzywa */}
+            <Section icon="trophy" label={t('stats.pro.secErgebnis')} />
+            <SummaryCard icon="emoji_events" iconCls="text-[#b8860b]" stripe="tb-mark" kind={t('stats.pro.bestForm')} title={`${stats.maxScore} · ${stats.maxScoreDate}`} storageKey="pro-best">
+              <div className="grid grid-cols-2 text-center pt-1">
+                <div>
+                  <span className="block text-[8px] font-black uppercase tracking-widest text-gray-400">{t('stats.pro.pb', 'Rekord Życiowy')}</span>
+                  <span className="text-2xl font-black text-[#0a3a2a] tabular-nums leading-tight">{stats.maxScore}</span>
+                  <span className="block text-[9px] font-bold text-gray-400">{stats.maxScoreArrows} {t('stats.pro.arrows', 'Strzał')} · {stats.maxScoreDate}</span>
+                </div>
+                <div className="border-l border-gray-100">
+                  <span className="block text-[8px] font-black uppercase tracking-widest text-gray-400">{t('stats.pro.formTrend', 'Trend Formy')}</span>
+                  <span className={`inline-flex items-center gap-1 text-2xl font-black tabular-nums leading-tight ${stats.formTrend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                    <span className="material-symbols-outlined text-[18px]">{stats.formTrend >= 0 ? 'trending_up' : 'trending_down'}</span>
+                    {stats.formTrend > 0 ? '+' : ''}{stats.formTrend.toFixed(2)}
                   </span>
-                </div>
-                <div className={`rounded-[20px] p-4 border shadow-sm flex flex-col justify-center ${stats.formTrend >= 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-100'}`}>
-                  <span className={`block text-[8px] font-black uppercase tracking-widest mb-0.5 ${stats.formTrend >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{t('stats.pro.formTrend', 'Trend Formy')}</span>
-                  <div className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[16px] font-bold" style={{ color: stats.formTrend >= 0 ? '#059669' : '#dc2626' }}>
-                      {stats.formTrend >= 0 ? 'trending_up' : 'trending_down'}
-                    </span>
-                    <span className={`text-xl font-black leading-none tracking-tighter ${stats.formTrend >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                      {stats.formTrend > 0 ? '+' : ''}{stats.formTrend.toFixed(2)}
-                    </span>
-                    <span className="text-[8px] font-bold opacity-60">{t('stats.pro.unitPtsArrow', 'Pkt/Strzałę')}</span>
-                  </div>
+                  <span className="block text-[9px] font-bold text-gray-400">{t('stats.pro.unitPtsArrow', 'Pkt/Strzałę')}</span>
                 </div>
               </div>
-            </div>
+            </SummaryCard>
+            {distCurve.length > 0 && (
+              <ErgebniskurvePanel sessions={distCurve} scopeLabel={selectedBucket?.label || ''} isPremium={isPremium} onUnlock={() => onNavigate('SETTINGS', 'PRO')} />
+            )}
 
-            {/* Poniżej — głęboka analiza tylko dla PRO. FREE widzi kartę-bramę. */}
             {!isPremium ? <ProLockCard /> : (
             <>
-            {heatmapData.sessions.length > 0 && (
-              <HeatmapSection
-                sessions={heatmapData.sessions}
-                targetType={heatmapData.targetType}
-                distance={selectedBucket?.m || ''}
-                onOpenSession={onOpenSession}
-              />
-            )}
-
-            {spread3.result && spread3.count > 0 && (
-              <BiomechCard
-                spread={spread3.result}
-                handedness={handedness}
-                onNavigate={onNavigate}
-                subtitle={t('stats.cards.bio.lastTrainings', { count: spread3.count })}
-              />
-            )}
-
-            <GroupTrendCard points={groupPoints} onOpenSession={onOpenSession} />
-
-            {arrowStats && <ArrowStatsCard data={arrowStats} />}
-
-            {stats.fhAvg > 0 && stats.shAvg > 0 && (
-              <div className="bg-white rounded-[24px] border border-gray-100 p-4 shadow-sm">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.enduranceTitle', 'Wskaźnik Wytrzymałości')}</h3>
-                    <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">{t('stats.pro.enduranceSub', { count: stats.enduranceCount, defaultValue: 'Z {{count}} ostatnich sesji' })}</p>
-                  </div>
-                  <span className="material-symbols-outlined text-gray-300 text-sm">battery_charging_full</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-center flex-1">
-                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.firstHalf', 'I Połowa (Śr.)')}</span>
-                     <span className="text-lg font-black text-[#0a3a2a]">{stats.fhAvg.toFixed(2)}</span>
-                  </div>
-                  <div className="w-[1px] h-8 bg-gray-100"></div>
-                  <div className="text-center flex-1">
-                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.secondHalf', 'II Połowa (Śr.)')}</span>
-                     <span className="text-lg font-black text-[#0a3a2a]">{stats.shAvg.toFixed(2)}</span>
-                  </div>
-                  <div className="w-[1px] h-8 bg-gray-100"></div>
-                  <div className="text-center flex-1">
-                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.decline', 'Spadek')}</span>
-                     <span className={`text-lg font-black ${stats.fatigueDrop < -0.3 ? 'text-red-500' : stats.fatigueDrop > 0 ? 'text-emerald-500' : 'text-gray-500'}`}>
-                       {stats.fatigueDrop > 0 ? '+' : ''}{stats.fatigueDrop.toFixed(2)}
-                     </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {stats.totalArrowsWithDetails > 0 && (
-              <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 relative overflow-hidden">
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.zonesTitle', 'Rozkład Trafień')}</span>
-                  <div className="flex items-center gap-1.5 bg-[#fed33e]/20 px-2 py-1 rounded-md border border-[#fed33e]/50">
-                    <span className="material-symbols-outlined text-[#725b00] text-[10px]">diamond</span>
-                    <span className="text-[9px] font-black text-[#725b00] uppercase tracking-widest">
-                      Golden Ratio: {((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="w-full h-8 flex rounded-full overflow-hidden mb-2 shadow-inner">
-                  {stats.zones.gold > 0 && <div style={{ width: `${(stats.zones.gold / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#F2C94C] h-full transition-all"></div>}
-                  {stats.zones.red > 0 && <div style={{ width: `${(stats.zones.red / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#EB5757] h-full transition-all"></div>}
-                  {stats.zones.blue > 0 && <div style={{ width: `${(stats.zones.blue / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#2F80ED] h-full transition-all"></div>}
-                  {stats.zones.black > 0 && <div style={{ width: `${(stats.zones.black / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#333333] h-full transition-all"></div>}
-                  {stats.zones.white > 0 && <div style={{ width: `${(stats.zones.white / stats.totalArrowsWithDetails) * 100}%` }} className="bg-gray-200 h-full transition-all"></div>}
-                  {stats.zones.miss > 0 && <div style={{ width: `${(stats.zones.miss / stats.totalArrowsWithDetails) * 100}%` }} className="bg-purple-900 h-full transition-all"></div>}
-                </div>
-                
-                <div className="grid grid-cols-3 gap-y-2 mt-3">
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#F2C94C]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.gold', 'Złote')} ({((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#EB5757]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.red', 'Czerw.')} ({((stats.zones.red / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#2F80ED]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.blue', 'Nieb.')} ({((stats.zones.blue / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#333333]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.black', 'Czarne')} ({((stats.zones.black / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.white', 'Białe')} ({((stats.zones.white / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-900"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.miss', 'Pudła')} ({((stats.zones.miss / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                </div>
-              </div>
-            )}
-
-            {/* WYKRES OBJĘTOŚCI — strzały tygodniowo dla WYBRANEGO dystansu,
-                ten sam styl co słupki w przeglądzie globalnym */}
-            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')} · {selectedBucket?.label || ''}</span>
-                <span className="material-symbols-outlined text-gray-300 text-sm">bar_chart</span>
-              </div>
-
-              {stats.hasVolumeData ? (
+              {/* ── BELASTUNG: strzały na tydzień + zmęczenie */}
+              <Section icon="bar_chart" label={t('stats.pro.secBelastung')} />
+              <SummaryCard icon="bar_chart" stripe="tb-d1" kind={t('stats.pro.weeklyArrowsShort', 'Strzały / tydzień (12 tyg.)')} title={t('stats.pro.totalDistArrows', 'Łącznie na tym dystansie: {{count}} strzał', { count: stats.totalArrows })} storageKey="pro-volume">
+                              {stats.hasVolumeData ? (
                 <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-5 pt-12 border border-gray-100">
                   <div className="flex items-end justify-between gap-1 w-full h-32 relative">
                     {stats.weeklyVolume.map((val: number, i: number) => {
@@ -768,16 +563,67 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">{t('stats.pro.tooFewSessions', 'Zbyt mało danych. Zapisz więcej treningów.')}</span>
                 </div>
               )}
-            </div>
+              </SummaryCard>
+              {stats.fhAvg > 0 && stats.shAvg > 0 && (
+                <SummaryCard icon="battery_charging_full" stripe="tb-d1" kind={t('stats.pro.enduranceTitle', 'Wskaźnik Wytrzymałości')} title={t('stats.pro.enduranceSub', { count: stats.enduranceCount, defaultValue: 'Z {{count}} ostatnich sesji' })} storageKey="pro-endurance">
+                                  <div className="flex items-center justify-between">
+                  <div className="text-center flex-1">
+                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.firstHalf', 'I Połowa (Śr.)')}</span>
+                     <span className="text-lg font-black text-[#0a3a2a]">{stats.fhAvg.toFixed(2)}</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-gray-100"></div>
+                  <div className="text-center flex-1">
+                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.secondHalf', 'II Połowa (Śr.)')}</span>
+                     <span className="text-lg font-black text-[#0a3a2a]">{stats.shAvg.toFixed(2)}</span>
+                  </div>
+                  <div className="w-[1px] h-8 bg-gray-100"></div>
+                  <div className="text-center flex-1">
+                     <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.decline', 'Spadek')}</span>
+                     <span className={`text-lg font-black ${stats.fatigueDrop < -0.3 ? 'text-red-500' : stats.fatigueDrop > 0 ? 'text-emerald-500' : 'text-gray-500'}`}>
+                       {stats.fatigueDrop > 0 ? '+' : ''}{stats.fatigueDrop.toFixed(2)}
+                     </span>
+                  </div>
+                </div>
+                </SummaryCard>
+              )}
 
-            {/* KRZYWA WYNIKÓW dla wybranego dystansu — ta sama co w przeglądzie */}
-            {distCurve.length > 0 && (
-              <ErgebniskurvePanel sessions={distCurve} scopeLabel={selectedBucket?.label || ''} />
-            )}
+              {/* ── PFEILE: strzały w porównaniu (kolory) + rozkład trafień */}
+              {(arrowStats || stats.totalArrowsWithDetails > 0) && <Section icon="scatter_plot" label={t('stats.pro.secPfeile')} />}
+              {arrowStats && <ArrowStatsCard data={arrowStats} />}
+              {stats.totalArrowsWithDetails > 0 && (
+                <SummaryCard icon="track_changes" stripe="tb-d2" kind={t('stats.pro.zonesTitle', 'Rozkład Trafień')} title={`${t('stats.pro.zones.gold', 'Złote')}: ${((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(0)}%`} storageKey="pro-zones">
+                                  <div className="w-full h-8 flex rounded-full overflow-hidden mb-2 shadow-inner">
+                  {stats.zones.gold > 0 && <div style={{ width: `${(stats.zones.gold / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#F2C94C] h-full transition-all"></div>}
+                  {stats.zones.red > 0 && <div style={{ width: `${(stats.zones.red / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#EB5757] h-full transition-all"></div>}
+                  {stats.zones.blue > 0 && <div style={{ width: `${(stats.zones.blue / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#2F80ED] h-full transition-all"></div>}
+                  {stats.zones.black > 0 && <div style={{ width: `${(stats.zones.black / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#333333] h-full transition-all"></div>}
+                  {stats.zones.white > 0 && <div style={{ width: `${(stats.zones.white / stats.totalArrowsWithDetails) * 100}%` }} className="bg-gray-200 h-full transition-all"></div>}
+                  {stats.zones.miss > 0 && <div style={{ width: `${(stats.zones.miss / stats.totalArrowsWithDetails) * 100}%` }} className="bg-purple-900 h-full transition-all"></div>}
+                </div>
+                
+                <div className="grid grid-cols-3 gap-y-2 mt-3">
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#F2C94C]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.gold', 'Złote')} ({((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#EB5757]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.red', 'Czerw.')} ({((stats.zones.red / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#2F80ED]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.blue', 'Nieb.')} ({((stats.zones.blue / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#333333]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.black', 'Czarne')} ({((stats.zones.black / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.white', 'Białe')} ({((stats.zones.white / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-900"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.miss', 'Pudła')} ({((stats.zones.miss / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                </div>
+                </SummaryCard>
+              )}
 
-            <div className="text-center">
-              <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{t('stats.pro.totalDistArrows', 'Łącznie na tym dystansie: {{count}} strzał', { count: stats.totalArrows })}</span>
-            </div>
+              {/* ── TREFFERBILD: heatmapa z przewijaniem treningów */}
+              {heatmapData.sessions.length > 0 && (
+                <>
+                  <Section icon="radar" label={t('stats.pro.secTrefferbild')} />
+                  <HeatmapSection
+                    sessions={heatmapData.sessions}
+                    targetType={heatmapData.targetType}
+                    distance={selectedBucket?.m || ''}
+                    onOpenSession={onOpenSession}
+                  />
+                </>
+              )}
             </>
             )}
           </>
@@ -933,14 +779,8 @@ function HeatmapSection({ sessions, targetType, distance, onOpenSession }: {
     : `${Math.min(aggN, sessions.length)} ${t('stats.pro.sessions', 'sesji')} • ${activeDots.length} ${t('stats.pro.arrowsCount', 'strzał')}`;
 
   return (
-    <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5 relative overflow-hidden">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">{t('stats.pro.heatmapTitle', 'Heatmapa Rozrzutu')}</h3>
-          <p className="text-[8px] font-bold text-gray-400 uppercase mt-0.5">{subtitle}</p>
-        </div>
-        <span className="material-symbols-outlined text-emerald-100 text-3xl">radar</span>
-      </div>
+    // Styl kart dziennika (PRO Progress 2026-10-30), zwijana.
+    <SummaryCard icon="radar" iconCls="text-orange-500" stripe="tb-d3" kind={t('stats.pro.heatmapTitle', 'Heatmapa Rozrzutu')} title={subtitle} storageKey="pro-heatmap">
 
       {/* STEROWNIK: agregaty + play + numerowany scrubber treningów */}
       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
@@ -1049,7 +889,7 @@ function HeatmapSection({ sessions, targetType, distance, onOpenSession }: {
           </div>
         </div>
       )}
-    </div>
+    </SummaryCard>
   );
 }
 

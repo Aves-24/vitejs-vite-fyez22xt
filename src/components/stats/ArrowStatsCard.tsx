@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ARROW_COLORS } from '../../config/arrowColors';
 import { ArrowStatsResult, ARROW_MIN_ENDS, directionKey } from '../../utils/arrowStats';
+import SummaryCard from '../scoring/SummaryCard';
 
 /**
  * [KOLORY STRZAŁ] Karta „Strzały w porównaniu” (PRO, etap 2).
@@ -31,20 +32,21 @@ export default function ArrowStatsCard({ data }: Props) {
   const dirLabel = (dx: number, dy: number) => t(`stats.arrowColors.dir.${directionKey(dx, dy)}`);
 
   return (
-    <div className="bg-white rounded-[24px] border border-gray-100 p-4 shadow-sm">
-      <div className="flex justify-between items-start mb-3">
-        <div>
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.arrowColors.title')}</h3>
-          <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">
-            {t('stats.arrowColors.sub', { count: data.sessions })}
-          </p>
-        </div>
-        <div className="flex gap-0.5">
+    // Styl kart dziennika (PRO Progress 2026-10-30), zwijana.
+    <SummaryCard
+      icon="scatter_plot"
+      stripe="tb-d2"
+      kind={t('stats.arrowColors.title')}
+      title={t('stats.arrowColors.sub', { count: data.sessions })}
+      storageKey="pro-arrows"
+      right={
+        <span className="flex gap-0.5 shrink-0">
           {ARROW_COLORS.map(c => (
             <span key={c.id} className="w-2 h-2 rounded-full border border-[#0a3a2a]/40" style={{ backgroundColor: c.hex }} />
           ))}
-        </div>
-      </div>
+        </span>
+      }
+    >
 
       {suspects.map(a => (
         <div key={a.index} className="mb-3 bg-red-50 border border-red-100 rounded-2xl p-3 flex gap-2.5 items-start">
@@ -123,6 +125,6 @@ export default function ArrowStatsCard({ data }: Props) {
         <p className="mt-3 text-[10px] font-bold text-gray-400 leading-relaxed">{t('stats.arrowColors.noPositions')}</p>
       )}
       <p className="mt-2 text-[9px] font-bold text-gray-300 leading-relaxed">{t('stats.arrowColors.firstArrowNote')}</p>
-    </div>
+    </SummaryCard>
   );
 }

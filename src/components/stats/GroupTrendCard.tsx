@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { GroupTrendPoint } from '../../utils/groupTrend';
+import SummaryCard from '../scoring/SummaryCard';
 
 /**
  * [GRUPA W CZASIE] Karta „Gruppengröße” (PRO) — średnica grupy (80% strzał)
@@ -30,14 +31,8 @@ export default function GroupTrendCard({ points, onOpenSession }: {
   const picked = sel !== null ? points[sel] : null;
 
   return (
-    <div className="bg-white rounded-[24px] border border-gray-100 p-4 shadow-sm">
-      <div className="flex justify-between items-start mb-1">
-        <div>
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('stats.groupTrend.title')}</h3>
-          <p className="text-[8px] font-bold text-gray-300 uppercase tracking-widest mt-0.5">{t('stats.groupTrend.sub', { count: points.length })}</p>
-        </div>
-        <span className="material-symbols-outlined text-emerald-600 text-[20px]">adjust</span>
-      </div>
+    // Styl kart dziennika (PRO Progress 2026-10-30), zwijana.
+    <SummaryCard icon="adjust" stripe="tb-d3" kind={t('stats.groupTrend.title')} title={t('stats.groupTrend.sub', { count: points.length })} storageKey="pro-group">
 
       {/* Wynik ostatniego treningu i porównanie ze średnią wcześniejszych. */}
       <div className="flex items-baseline gap-2 mt-2">
@@ -101,6 +96,6 @@ export default function GroupTrendCard({ points, onOpenSession }: {
           )}
         </div>
       )}
-    </div>
+    </SummaryCard>
   );
 }

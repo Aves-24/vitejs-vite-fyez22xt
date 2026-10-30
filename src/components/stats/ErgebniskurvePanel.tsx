@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isPartialSession, partialLabel, PartialInfo } from '../../utils/partialSession';
+import SummaryCard from '../scoring/SummaryCard';
 
 // Krzywa wyników (Ergebniskurve) + lista ostatnich sesji z filtrami typ/dystans.
 // Prezentacyjny — dane (lista sesji) podaje rodzic. Używany w przeglądzie ProStats.
@@ -40,19 +41,8 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel,
   const minIdx = scores.lastIndexOf(minS);
 
   return (
-    <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest block leading-none mb-0.5">{t('home.trendModal.subtitle')}</span>
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('home.trendModal.title')}</h3>
-        </div>
-        <div className="flex items-center gap-2">
-          {scopeLabel && (
-            <span className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">{scopeLabel}</span>
-          )}
-          <span className="material-symbols-outlined text-emerald-100 text-3xl">show_chart</span>
-        </div>
-      </div>
+    // Styl kart dziennika (PRO Progress 2026-10-30), zwijana.
+    <SummaryCard icon="show_chart" stripe="tb-d2" kind={t('home.trendModal.title')} title={scopeLabel || t('home.trendModal.subtitle')} storageKey="pro-curve">
 
       {scores.length >= 1 ? (
         <div className="bg-[#0a3a2a] rounded-2xl p-4 mb-4">
@@ -153,6 +143,6 @@ export default function ErgebniskurvePanel({ sessions, onSelectDate, scopeLabel,
           </button>
         )}
       </div>
-    </div>
+    </SummaryCard>
   );
 }

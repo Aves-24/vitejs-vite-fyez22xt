@@ -5,7 +5,8 @@ import { getRecentSessions } from '../lib/recentSessions';
 import { doc, getDoc, collection, query, where, orderBy, limit, getDocs, updateDoc, startAfter, Timestamp, type QueryDocumentSnapshot } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
-import StatsView from './StatsView';
+import ProStatsView from '../components/ProStatsView';
+import TournamentRecordsView from '../components/TournamentRecordsView';
 import { hasActivePro, freeAnalysisOpen, freeHistoryStart, FREE_HISTORY_DAYS, FREE_ANALYSIS_HOURS } from '../utils/proAccess';
 import LockedCard from '../components/scoring/LockedCard';
 import QuickStatsModal from '../components/QuickStatsModal';
@@ -349,12 +350,13 @@ type CoachLogItem = TbCoachEntry & { authorId: string };
 const toMillisAny = (v: any): number =>
   v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : (typeof v === 'number' ? v : 0);
 
-function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChange }: {
+function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChange, focusSessionId }: {
   studentId: string;
   coachId: string;
   pro: boolean;
   studentName: string;
   onCoachLogChange: () => void; // nowy/usunięty „Ziel” może zmienić fokus
+  focusSessionId?: string | null; // trening kliknięty w Analytik — rozwinąć i przewinąć
 }) {
   const { t, i18n } = useTranslation();
   const [sessions, setSessions] = useState<any[]>([]);
@@ -369,6 +371,12 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [filter, setFilter] = useState<TimelineFilter>('all');
+  useEffect(() => {
+    if (!focusSessionId || !sessions.some(x => x.id === focusSessionId)) return;
+    setFilter('all');
+    setOpenId(focusSessionId);
+    setTimeout(() => document.getElementById(`tl-${focusSessionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+  }, [focusSessionId, sessions]);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const freeStart = pro ? 0 : freeHistoryStart().getTime();
@@ -573,7 +581,7 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
         return (
           <React.Fragment key={item.key}>
             {header}
-            <div className={`${CARD_SHAPE} ${stripe} ${CARD_PAD}`}>
+            <div id={`tl-${sess.id}`} className={`${CARD_SHAPE} ${stripe} ${CARD_PAD} scroll-mt-3`}>
               <button onClick={() => setOpenId(open ? null : sess.id)} className="w-full text-left active:opacity-60" aria-expanded={open}>
                 <EntryRow
                   icon={isTech ? 'fitness_center' : isTourney ? 'emoji_events' : 'target'}
@@ -691,6 +699,9 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   // TABS
   const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
+  // [ANALYTIK] Długi okres: Fortschritt (PRO Progress) i Rekorde; trening z wykresu → Tagebuch.
+  const [analyticsTab, setAnalyticsTab] = useState<'progress' | 'records'>('progress');
+  const [focusSessionId, setFocusSessionId] = useState<string | null>(null);
 
   // Fokus ucznia widziany oczami trenera — ten sam wynik co u ucznia na Home
   // (własny fokus vs najnowszy „Ziel" z dziennika trenerskiego, wygrywa
@@ -1008,7 +1019,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             return (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => { setFocusSessionId(null); setActiveTab(tab.key as any); }}
                 className={`flex-1 min-w-0 flex items-center justify-center gap-1 px-1 py-2.5 rounded-xl transition-all duration-200 ${
                   isActive
                     ? 'bg-[#0a3a2a] text-[#fed33e] shadow-md'
@@ -1233,36 +1244,43 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         {/* ══ TAB 2: TAGEBUCH — wspólna oś czasu ════════════════ */}
         {activeTab === 'diary' && (
           <div className="px-4 pt-3">
-            <StudentTimeline studentId={studentId} coachId={coachId} pro={studentPro} studentName={student.firstName || ''} onCoachLogChange={() => setFocusNonce(n => n + 1)} />
+            <StudentTimeline studentId={studentId} coachId={coachId} pro={studentPro} studentName={student.firstName || ''} onCoachLogChange={() => setFocusNonce(n => n + 1)} focusSessionId={focusSessionId} />
           </div>
         )}
 
-        {/* ══ TAB 3: ANALYTIK ═══════════════════════════════════ */}
+        {/* ══ TAB 3: ANALYTIK ═══════════════════════════════════
+            [PROFIL B, etap 4 — 2026-10-30] Tylko długi okres: PRO Progress
+            (krzywa, Ringe/Präzision, Gruppengröße, strzały, technika) i Rekorde
+            zawodów. Pojedynczy trening jest w Tagebuch — bez drugiego wyboru dnia.
+            [FREE/PRO] isPremium = PRO ucznia: FREE widzi to samo co uczeń. Przycisk
+            „odblokuj” nie prowadzi trenera do jego własnego zakupu PRO. */}
         {activeTab === 'analytics' && (
-          <div>
-            <div className="px-5 pt-3 pb-2">
-              <div className="bg-[#0a3a2a] rounded-[20px] px-4 py-3 flex items-center justify-between overflow-hidden relative">
-                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full border-[12px] border-white/5 pointer-events-none" />
-                <div className="absolute right-10 -bottom-4 w-14 h-14 rounded-full border-[8px] border-white/5 pointer-events-none" />
-                <div className="flex items-center gap-3 relative z-10">
-                  <div className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center shrink-0">
-                    <span className="material-symbols-outlined text-[#0a3a2a] text-[18px]">analytics</span>
-                  </div>
-                  <div>
-                    <p className="text-[8px] font-black text-emerald-400 uppercase tracking-widest leading-none mb-0.5">{student.firstName} {student.lastName}</p>
-                    <h2 className="text-base font-black text-white leading-none">{t('studentProfile.fullAnalytics')}</h2>
-                  </div>
-                </div>
-                {hasActivePro(student) ? (
-                  <span className="relative z-10 bg-[#fed33e] text-[#0a3a2a] text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">PRO</span>
-                ) : (
-                  <span className="relative z-10 bg-white/10 text-white/50 text-[8px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">FREE</span>
-                )}
-              </div>
+          <div className="px-4 pt-3">
+            <div className="flex bg-gray-100 p-1 rounded-xl mb-2 shadow-inner">
+              {([['progress', t('stats.tabPro')], ['records', t('stats.tabRecords')]] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setAnalyticsTab(key)}
+                  className={`flex-1 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${analyticsTab === key ? 'bg-white text-[#0a3a2a] shadow-sm' : 'text-gray-400'}`}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            <div className="bg-white shadow-sm border-t border-gray-100 overflow-hidden relative min-h-[600px] px-5 pt-4">
-              <StatsView userId={studentId} viewingStudentId={studentId} onNavigate={onNavigate} isEmbedded={true} />
-            </div>
+            {analyticsTab === 'progress' ? (
+              <ProStatsView
+                userId={studentId}
+                isPremium={studentPro}
+                onNavigate={(view, tab) => { if (view !== 'SETTINGS') onNavigate(view, tab); }}
+                onOpenSession={(sessionId) => { setFocusSessionId(sessionId); setActiveTab('diary'); }}
+              />
+            ) : (
+              <TournamentRecordsView
+                userId={studentId}
+                isPremium={studentPro}
+                onNavigate={(view: string, tab?: string) => { if (view !== 'SETTINGS') onNavigate(view, tab); }}
+              />
+            )}
           </div>
         )}
 

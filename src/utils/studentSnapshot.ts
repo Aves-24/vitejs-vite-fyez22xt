@@ -36,8 +36,10 @@ export interface StudentSnapshot {
   sessionsPrev: number;        // to samo w poprzednich 14 dniach
   arrows: number;              // strzały (sesje + licznik) w 14 dniach
   arrowsPrev: number;
-  distance: string | null;     // główny dystans (najczęstszy z wynikiem)
+  distance: string | null;     // wybrany dystans (domyślnie ostatniego treningu z wynikiem)
   distanceLabel: string | null;
+  // Dystanse z wynikiem w 28 dniach, od ostatnio strzelanego — pigułki w karcie.
+  distances: { distance: string; label: string }[];
   // Do 5 ostatnich treningów na głównym dystansie, najstarszy pierwszy. Wykres
   // idzie po średniej na strzałę — suma 36 i 72 strzał nie jest porównywalna
   // (user 2026-09-18: 173 obok 541 wyglądało jak skok formy).
@@ -49,7 +51,7 @@ export interface StudentSnapshot {
   misses: number;              // pudła (M) w tych samych treningach
   roundDiff: number | null;    // śr. (runda 2 − runda 1) z ostatnich 3 pełnych treningów
   roundN: number;              // z ilu treningów liczona roundDiff
-  endRange: [number, number] | null; // najsłabsza i najlepsza seria ostatniego treningu
+  endRange: [number, number] | null; // najsłabsza i najlepsza seria ostatniego treningu na wybranym dystansie
   note: SnapSession | null;    // ostatnia notatka udostępniona trenerowi
 }
 
@@ -75,7 +77,7 @@ function sessionArrows(s: SnapSession): number {
   return s.arrows || s.scoreArrows || 0;
 }
 
-export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string, number> | undefined, now = Date.now()): StudentSnapshot {
+export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string, number> | undefined, now = Date.now(), pickDistance?: string | null): StudentSnapshot {
   const sessions = [...sessionsIn].sort((a, b) => a.ts - b.ts);
   const today = dayStart(now);
   const from = today - (SNAPSHOT_DAYS - 1) * DAY;          // początek bieżących 14 dni
@@ -103,11 +105,14 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
   const arrows = cur.reduce((n, s) => n + sessionArrows(s), 0) + counterSum(from);
   const arrowsPrev = prev.reduce((n, s) => n + sessionArrows(s), 0) + counterSum(prevFrom);
 
-  // Główny dystans: najczęstszy z wynikiem w całym oknie 28 dni.
+  // Dystans: wybrany w karcie, inaczej dystans OSTATNIEGO treningu z wynikiem
+  // (user 2026-10-30: „najczęstszy” chował świeży trening na innym dystansie).
   const scored = sessions.filter(hasScore);
-  const freq = new Map<string, number>();
-  scored.forEach(s => s.distance && freq.set(s.distance, (freq.get(s.distance) || 0) + 1));
-  const distance = [...freq.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  const distances: { distance: string; label: string }[] = [];
+  for (const s of [...scored].reverse()) {
+    if (s.distance && !distances.some(d => d.distance === s.distance)) distances.push({ distance: s.distance, label: s.distanceLabel || s.distance });
+  }
+  const distance = (pickDistance && distances.some(d => d.distance === pickDistance) ? pickDistance : distances[0]?.distance) ?? null;
   const onDist = scored.filter(s => s.distance === distance);
   const distanceLabel = onDist.length ? (onDist[onDist.length - 1].distanceLabel || distance) : null;
 
@@ -137,7 +142,7 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
       }, 0) / full.length
     : null;
 
-  const lastScored = scored[scored.length - 1];
+  const lastScored = onDist[onDist.length - 1];
   const sums = (lastScored?.ends || []).map(endSum);
   const endRange: [number, number] | null = sums.length >= 2 ? [Math.min(...sums), Math.max(...sums)] : null;
 
@@ -153,6 +158,7 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
     arrowsPrev,
     distance,
     distanceLabel,
+    distances,
     recent: onDist.slice(-5).map(s => ({
       score: s.score || 0,
       arrows: s.scoreArrows || 0,

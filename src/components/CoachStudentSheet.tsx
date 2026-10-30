@@ -69,6 +69,8 @@ export default function CoachStudentSheet({
 }) {
   const { t, i18n } = useTranslation();
   const [snap, setSnap] = useState<StudentSnapshot | null>(null);
+  // Surowe sesje z 28 dni — przeliczenie karty po wyborze innego dystansu bez nowego odczytu.
+  const [rawSessions, setRawSessions] = useState<SnapSession[]>([]);
   const [failed, setFailed] = useState(false);
   const [nextStart, setNextStart] = useState<NextStart | null>(null);
   const [reply, setReply] = useState('');
@@ -92,6 +94,7 @@ export default function CoachStudentSheet({
       .then(qs => {
         if (!alive) return;
         const list: SnapSession[] = qs.docs.map(d => ({ id: d.id, ...(d.data() as any), ts: toMs(d.data().timestamp) }));
+        setRawSessions(list);
         setSnap(buildSnapshot(list, student.pfeilzaehler));
         const ev: DayItem[] = [];
         for (const s of list as any[]) {
@@ -222,6 +225,8 @@ export default function CoachStudentSheet({
     </p>
   );
   const firstName = student.firstName || t('coachDashboard.defaultStudentName');
+  // Pigułka dystansu w „Ergebnisse” — liczby i krzywa tylko dla tego dystansu (notatka zostaje).
+  const pickDistance = (d: string) => setSnap(s => s ? { ...buildSnapshot(rawSessions, student.pfeilzaehler, Date.now(), d), note: s.note } : s);
   const noteIsTech = !!snap?.note && (snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH');
 
   return createPortal(
@@ -551,6 +556,20 @@ export default function CoachStudentSheet({
               <>
                 <Section icon="show_chart" label={t('coachSheet.results', { distance: snap.distanceLabel || '' })} />
                 <div className={`${CARD_SHAPE} tb-d2 ${CARD_PAD}`}>
+                  {/* [DYSTANS] Domyślnie ostatnio strzelany; pigułki, gdy było ich kilka (user 2026-10-30). */}
+                  {snap.distances.length > 1 && (
+                    <div className="flex gap-1.5 overflow-x-auto hide-scrollbar pb-2 mb-2 border-b border-gray-100">
+                      {snap.distances.map(d => (
+                        <button
+                          key={d.distance}
+                          onClick={() => pickDistance(d.distance)}
+                          className={`shrink-0 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all ${snap.distance === d.distance ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                        >
+                          {d.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3">
                     <Sparkline values={snap.recent.map(r => r.avg)} />
                     <div className="text-[11px] font-bold text-[#0a3a2a] leading-snug min-w-0">

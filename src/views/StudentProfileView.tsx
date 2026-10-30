@@ -10,8 +10,8 @@ import { hasActivePro, freeAnalysisOpen, freeHistoryStart, FREE_HISTORY_DAYS, FR
 import LockedCard from '../components/scoring/LockedCard';
 import QuickStatsModal from '../components/QuickStatsModal';
 import ViewHeader from '../components/ViewHeader';
-import CoachLogPanel from '../components/CoachLogPanel';
-import StudentSharedNotes from '../components/StudentSharedNotes';
+import { CoachLogComposer, deleteCoachLogEntry } from '../components/CoachLogPanel';
+import { loadSharedNotes, SharedNoteCard, type SharedNote } from '../components/StudentSharedNotes';
 import CoachFocusModal from '../components/CoachFocusModal';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
@@ -29,7 +29,7 @@ import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
-import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier } from '../components/tagebuch/TagebuchCards';
+import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
@@ -453,78 +453,198 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
   );
 }
 
-// --- ZAKŁADKA „TRAININGS” ---
-// [PROFIL B, etap 2 — 2026-10-30] Wszystkie treningi ucznia (z technicznymi)
-// jako karty dziennika, od najnowszego, z nagłówkami miesięcy. Po 20 naraz —
-// kolejne dopiero po „Mehr laden” (odczyty Firestore tylko na żądanie).
-const TRAININGS_PAGE = 20;
+// --- ZAKŁADKA „TAGEBUCH” — WSPÓLNA OŚ CZASU ---
+// [PROFIL B — 2026-10-30] Trainings i dziennik trenera połączone (user): treningi
+// (z technicznymi), wpisy trenera i wpisy udostępnione przez ucznia na jednej osi,
+// od najnowszego, z nagłówkami miesięcy — jak dziennik ucznia, te same karty.
+// Odczyty porcjami po datach: 20 treningów, do tego wpisy trenera z tego samego
+// okresu (zapytanie z zakresem createdAt); „Mehr laden” = następny okres.
+// Udostępnione wpisy ucznia: jedno zapytanie (≤ 50), dzielone na okresy w pamięci.
+// [FREE/PRO] Uczeń FREE: treningi i jego wpisy tylko z FREE_HISTORY_DAYS;
+// wpisy trenera zawsze bez okna (zasada „treści od trenera bez okna”).
+const TIMELINE_PAGE = 20;
 
-function StudentTrainingsList({ studentId, coachId, pro, studentName }: { studentId: string; coachId: string; pro: boolean; studentName: string }) {
+type TimelineFilter = 'all' | 'trainings' | 'notes';
+type CoachLogItem = TbCoachEntry & { authorId: string };
+
+const toMillisAny = (v: any): number =>
+  v?.toMillis ? v.toMillis() : v?.seconds ? v.seconds * 1000 : (typeof v === 'number' ? v : 0);
+
+function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChange }: {
+  studentId: string;
+  coachId: string;
+  pro: boolean;
+  studentName: string;
+  onCoachLogChange: () => void; // nowy/usunięty „Ziel” może zmienić fokus
+}) {
   const { t, i18n } = useTranslation();
-  const [items, setItems] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<any[]>([]);
+  const [coachEntries, setCoachEntries] = useState<CoachLogItem[]>([]);
+  const [shared, setShared] = useState<SharedNote[]>([]);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot | null>(null);
+  // Dolna granica wczytanego okresu (ms); 0 = wszystko wczytane.
+  const [loadedFrom, setLoadedFrom] = useState<number>(Infinity);
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<TimelineFilter>('all');
+  const [adding, setAdding] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const freeStart = pro ? 0 : freeHistoryStart().getTime();
 
-  const load = async (after: QueryDocumentSnapshot | null) => {
+  const load = async (after: QueryDocumentSnapshot | null, upper: number) => {
     setLoading(true);
     try {
       const base = collection(db, `users/${studentId}/sessions`);
-      // [FREE/PRO] Uczeń FREE: tylko okno historii FREE_HISTORY_DAYS, jak u niego.
       const win = pro ? [] : [where('timestamp', '>=', Timestamp.fromDate(freeHistoryStart()))];
       const snap = await getDocs(after
-        ? query(base, ...win, orderBy('timestamp', 'desc'), startAfter(after), limit(TRAININGS_PAGE))
-        : query(base, ...win, orderBy('timestamp', 'desc'), limit(TRAININGS_PAGE)));
+        ? query(base, ...win, orderBy('timestamp', 'desc'), startAfter(after), limit(TIMELINE_PAGE))
+        : query(base, ...win, orderBy('timestamp', 'desc'), limit(TIMELINE_PAGE)));
       const page = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      setItems(prev => (after ? [...prev, ...page] : page));
+      const more = snap.docs.length === TIMELINE_PAGE;
+      // Okres tej porcji: do najstarszego treningu; ostatnia porcja — do początku.
+      const lower = more ? sessionMillis(page[page.length - 1]) : 0;
+      const log = collection(db, `users/${studentId}/coachLog`);
+      const range = [
+        ...(lower > 0 ? [where('createdAt', '>=', Timestamp.fromMillis(lower))] : []),
+        ...(Number.isFinite(upper) ? [where('createdAt', '<', Timestamp.fromMillis(upper))] : []),
+      ];
+      const logSnap = await getDocs(query(log, ...range, orderBy('createdAt', 'desc')));
+      const entries: CoachLogItem[] = logSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          authorId: data.authorId || '',
+          authorName: data.authorName || t('coachLog.defaultCoachName', { defaultValue: 'Trainer' }),
+          text: data.text || '',
+          type: data.type || 'observation',
+          topics: data.topics || [],
+          ts: toMillisAny(data.createdAt),
+        };
+      });
+      setSessions(prev => (after ? [...prev, ...page] : page));
+      setCoachEntries(prev => (after ? [...prev, ...entries] : entries));
       setCursor(snap.docs[snap.docs.length - 1] || after);
-      setHasMore(snap.docs.length === TRAININGS_PAGE);
+      setLoadedFrom(lower);
+      setHasMore(more);
     } catch (e) {
-      console.error('Błąd wczytania listy treningów ucznia:', e);
+      console.error('Błąd wczytania osi czasu ucznia:', e);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    setItems([]);
+    setSessions([]);
+    setCoachEntries([]);
     setOpenId(null);
-    load(null);
+    load(null, Infinity);
+    loadSharedNotes(studentId).then(setShared).catch(e => console.error('Udostępnione wpisy ucznia:', e));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId, pro]);
 
   const updateNote = (id: string, note: string, editCount: number) =>
-    setItems(prev => prev.map(x => (x.id === id ? { ...x, coachNote: note, coachEditCount: editCount } : x)));
+    setSessions(prev => prev.map(x => (x.id === id ? { ...x, coachNote: note, coachEditCount: editCount } : x)));
 
-  if (!loading && items.length === 0) {
-    return (
-      <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD} flex items-center gap-2.5`}>
-        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-[18px] text-gray-400">sports_score</span>
-        </span>
-        <span className="text-[11px] font-bold text-gray-500">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
-      </div>
-    );
-  }
+  const handleDelete = async (id: string) => {
+    try {
+      await deleteCoachLogEntry(studentId, id);
+      setCoachEntries(prev => prev.filter(e => e.id !== id));
+      onCoachLogChange();
+    } catch (e) {
+      console.error('CoachLog: błąd usuwania', e);
+    }
+    setConfirmDelete(null);
+  };
+
+  type Item = { key: string; ts: number; kind: 'session'; sess: any } | { key: string; ts: number; kind: 'coach'; entry: CoachLogItem } | { key: string; ts: number; kind: 'shared'; note: SharedNote };
+  const items: Item[] = [
+    ...(filter !== 'notes' ? sessions.map(sess => ({ key: `s-${sess.id}`, ts: sessionMillis(sess), kind: 'session' as const, sess })) : []),
+    ...(filter !== 'trainings' ? coachEntries.map(entry => ({ key: `c-${entry.id}`, ts: entry.ts, kind: 'coach' as const, entry })) : []),
+    ...(filter !== 'trainings'
+      ? shared.filter(n => n.ts >= Math.max(loadedFrom, freeStart)).map(note => ({ key: `n-${note.id}`, ts: note.ts, kind: 'shared' as const, note }))
+      : []),
+  ].sort((a, b) => b.ts - a.ts);
+
+  const fmtDay = (ms: number) => (ms ? new Date(ms).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' }) : '');
+  const chip = (on: boolean) => `px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`;
 
   let lastMonth = '';
   return (
     <div className="space-y-2">
-      {items.map(sess => {
-        const ms = sessionMillis(sess);
-        const month = ms ? new Date(ms).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }) : '';
+      {/* Filtry + nowy wpis trenera */}
+      <div className="flex items-center gap-1.5">
+        {([['all', t('studentProfile.filterAll')], ['trainings', t('studentProfile.filterTrainings')], ['notes', t('studentProfile.filterNotes')]] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setFilter(key)} className={chip(filter === key)}>{label}</button>
+        ))}
+        <span className="flex-1" />
+        {!adding && (
+          <button
+            onClick={() => setAdding(true)}
+            className="bg-[#0a3a2a] text-[#fed33e] px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1 shrink-0"
+          >
+            <span className="material-symbols-outlined text-[14px]">add</span>
+            {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
+          </button>
+        )}
+      </div>
+      {adding && (
+        <CoachLogComposer
+          studentId={studentId}
+          currentUserId={coachId}
+          onCancel={() => setAdding(false)}
+          onSaved={entry => { setCoachEntries(prev => [entry, ...prev]); setAdding(false); onCoachLogChange(); }}
+        />
+      )}
+
+      {!loading && items.length === 0 && (
+        <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD} flex items-center gap-2.5`}>
+          <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[18px] text-gray-400">history_edu</span>
+          </span>
+          <span className="text-[11px] font-bold text-gray-500">{filter === 'notes' ? t('coachLog.empty', { defaultValue: 'Noch keine Einträge' }) : t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
+        </div>
+      )}
+
+      {items.map(item => {
+        const month = item.ts ? new Date(item.ts).toLocaleDateString(i18n.language, { month: 'long', year: 'numeric' }) : '';
         const showMonth = month !== lastMonth;
         lastMonth = month;
+        const header = showMonth && month ? <p className="pt-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{month}</p> : null;
+
+        if (item.kind === 'coach') {
+          const own = item.entry.authorId === coachId;
+          return (
+            <React.Fragment key={item.key}>
+              {header}
+              <div className="relative">
+                <CoachEntryCard entry={item.entry} time={fmtDay(item.ts)} isNew={false} />
+                {own && (
+                  <button onClick={() => setConfirmDelete(item.entry.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
+                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                  </button>
+                )}
+              </div>
+            </React.Fragment>
+          );
+        }
+        if (item.kind === 'shared') {
+          return (
+            <React.Fragment key={item.key}>
+              {header}
+              <SharedNoteCard note={item.note} time={fmtDay(item.ts)} />
+            </React.Fragment>
+          );
+        }
+
+        const sess = item.sess;
         const isTech = sess.type === 'TECHNICAL';
         const isTourney = sess.type === 'Turniej';
         const stripe = isTech ? 'tb-tech' : isTourney ? 'tb-tourney' : distanceTier(distanceMeters(sess.distance) || 0);
         const open = openId === sess.id;
         const hasStudentNote = sess.isNotePublic !== false && !!sess.note;
         return (
-          <React.Fragment key={sess.id}>
-            {showMonth && month && (
-              <p className="pt-2 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400">{month}</p>
-            )}
+          <React.Fragment key={item.key}>
+            {header}
             <div className={`${CARD_SHAPE} ${stripe} ${CARD_PAD}`}>
               <button onClick={() => setOpenId(open ? null : sess.id)} className="w-full text-left active:opacity-60" aria-expanded={open}>
                 <EntryRow
@@ -535,7 +655,8 @@ function StudentTrainingsList({ studentId, coachId, pro, studentName }: { studen
                   title={isTech
                     ? `${sess.totalArrows || sess.arrows || 0} ${t('common.arrows')}`
                     : <>{sess.score || 0}{isTourney && (sess.tournamentName || sess.title) ? <span className="font-bold text-gray-500"> · {sess.tournamentName || sess.title}</span> : null}</>}
-                  meta={<>{sess.date}{!isTech && sess.distance ? ` · ${sess.distance}` : ''}{isPartialSession(sess) && <span className="ml-1.5 text-amber-700">{partialLabel(sess)}</span>}</>}
+                  meta={<>{!isTech && sess.distance ? sess.distance : ''}{isPartialSession(sess) && <span className="ml-1.5 text-amber-700">{partialLabel(sess)}</span>}</>}
+                  time={fmtDay(item.ts)}
                   extra={
                     <span className="flex items-center gap-1 shrink-0">
                       {hasStudentNote && <span className="material-symbols-outlined text-[15px] text-gray-400">chat</span>}
@@ -554,9 +675,10 @@ function StudentTrainingsList({ studentId, coachId, pro, studentName }: { studen
           </React.Fragment>
         );
       })}
+
       {(loading || hasMore) && (
         <button
-          onClick={() => !loading && load(cursor)}
+          onClick={() => !loading && load(cursor, loadedFrom)}
           disabled={loading}
           className="w-full py-3 rounded-2xl bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-[#0a3a2a] active:scale-95 transition-all disabled:opacity-50"
         >
@@ -568,6 +690,24 @@ function StudentTrainingsList({ studentId, coachId, pro, studentName }: { studen
           <span className="material-symbols-outlined text-[14px] text-gray-400 shrink-0">lock</span>
           {t('studentProfile.freeWindowHint', { name: studentName, days: FREE_HISTORY_DAYS })}
         </p>
+      )}
+
+      {/* Potwierdzenie usunięcia wpisu trenera */}
+      {confirmDelete && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6 tb-fade-in" onClick={() => setConfirmDelete(null)}>
+          <div className="bg-white rounded-[24px] p-6 max-w-sm w-full text-center shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
+              <span className="material-symbols-outlined text-red-500">delete</span>
+            </div>
+            <h3 className="text-base font-black text-[#0a3a2a] mb-2">{t('coachLog.deleteTitle', { defaultValue: 'Eintrag löschen?' })}</h3>
+            <p className="text-[11px] font-bold text-gray-500 mb-5 leading-relaxed">{t('coachLog.deleteDesc', { defaultValue: 'Diese Aktion kann nicht rückgängig gemacht werden.' })}</p>
+            <div className="flex gap-2">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[10px] tracking-widest">{t('coachLog.cancel', { defaultValue: 'Abbrechen' })}</button>
+              <button onClick={() => handleDelete(confirmDelete)} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black uppercase text-[10px] tracking-widest">{t('coachLog.delete', { defaultValue: 'Löschen' })}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -625,7 +765,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const [showPrivateNoteModal, setShowPrivateNoteModal] = useState(false);
 
   // TABS
-  const [activeTab, setActiveTab] = useState<'overview' | 'trainings' | 'diary' | 'analytics'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
 
   // Fokus ucznia widziany oczami trenera — ten sam wynik co u ucznia na Home
   // (własny fokus vs najnowszy „Ziel" z dziennika trenerskiego, wygrywa
@@ -958,7 +1098,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
         <div className="bg-gray-50 rounded-2xl p-1 flex relative">
           {[
             { key: 'overview',   icon: 'space_dashboard', label: t('studentProfile.tabOverview',   { defaultValue: 'Aktuell' }) },
-            { key: 'trainings',  icon: 'target',          label: t('studentProfile.tabTrainings',  { defaultValue: 'Trainings' }) },
             { key: 'diary',      icon: 'edit_note',       label: t('studentProfile.tabDiary',      { defaultValue: 'Tagebuch' }) },
             { key: 'analytics',  icon: 'monitoring',      label: t('studentProfile.tabAnalytics',  { defaultValue: 'Analytik' }) },
           ].map(tab => {
@@ -1202,23 +1341,14 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           </div>
         )}
 
-        {/* ══ TAB 2: TRAININGS ══════════════════════════════════ */}
-        {activeTab === 'trainings' && (
-          <div className="px-4 pt-3">
-            <StudentTrainingsList studentId={studentId} coachId={coachId} pro={studentPro} studentName={student.firstName || ''} />
-          </div>
-        )}
-
-        {/* ══ TAB 3: TRAINER-TAGEBUCH ═══════════════════════════ */}
+        {/* ══ TAB 2: TAGEBUCH — wspólna oś czasu ════════════════ */}
         {activeTab === 'diary' && (
-          <div className="px-5 pt-3">
-            {/* Wpisy, które uczeń sam udostępnił z własnego dziennika (user 2026-10-23). */}
-            <StudentSharedNotes studentId={studentId} />
-            <CoachLogPanel studentId={studentId} currentUserId={coachId} onChange={() => setFocusNonce(n => n + 1)} />
+          <div className="px-4 pt-3">
+            <StudentTimeline studentId={studentId} coachId={coachId} pro={studentPro} studentName={student.firstName || ''} onCoachLogChange={() => setFocusNonce(n => n + 1)} />
           </div>
         )}
 
-        {/* ══ TAB 4: ANALYTIK ═══════════════════════════════════ */}
+        {/* ══ TAB 3: ANALYTIK ═══════════════════════════════════ */}
         {activeTab === 'analytics' && (
           <div>
             <div className="px-5 pt-3 pb-2">

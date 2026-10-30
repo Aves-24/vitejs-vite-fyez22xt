@@ -310,6 +310,13 @@ export const components = {
       groupTitle: "Maintenance ({{count}} tasks)",
       allDone: "All done",
       skip: "Skip this time",
+      legend: "Maintenance",
+      tickHint: "Tick off what you have done and tap Save. You can do the rest later – the entry stays open.",
+      saveTicks: "Save {{count}} done",
+      close: "Close",
+    },
+    home: {
+      dueBy: "due {{date}}",
     },
     tasks: {
       howItWorks: {

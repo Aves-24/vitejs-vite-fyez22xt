@@ -53,6 +53,13 @@ interface Event {
   maintenanceGroup?: MaintenanceGroup;
 }
 
+/**
+ * [WARTUNG] Brąz — kolor konserwacji sprzętu (drewno, warsztat). Nowy w słowniku
+ * kolorów 2026-10-30: żaden inny typ terminu go nie używa.
+ */
+const MAINTENANCE_BG = 'bg-[#8B5E3C]';
+const MAINTENANCE_STRIPE = 'border-l-[#8B5E3C]';
+
 interface CoachStudent {
   id: string;
   firstName: string;
@@ -461,6 +468,27 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     ? t(`maintenance.tasks.${ids[0]}.title`)
     : t('maintenance.calendar.groupTitle', { count: ids.length });
 
+  // [WARTUNG] Ptaszki zaznaczone w oknie, jeszcze niezapisane. „Speichern”
+  // zapisuje tylko je — reszta zostaje otwarta na później (user 2026-10-30:
+  // „zrobię 5 punktów dziś, resztę jutro”).
+  const [pendingTicks, setPendingTicks] = useState<string[]>([]);
+  const [savingTicks, setSavingTicks] = useState(false);
+  const viewingId = viewingEvent?.id;
+  useEffect(() => { setPendingTicks([]); }, [viewingId]);
+
+  const saveTicks = async (id: string, group: MaintenanceGroup) => {
+    if (pendingTicks.length === 0) { closeViewingModal(); return; }
+    setSavingTicks(true);
+    try {
+      await completeGroupItems(userId, id, group, pendingTicks, todayStr, maintenanceTitle);
+      closeViewingModal();
+    } catch (e) {
+      console.error('[WARTUNG] Zapis ptaszków nie wyszedł:', e);
+    } finally {
+      setSavingTicks(false);
+    }
+  };
+
   const markTodoComplete = async (id: string) => {
     try {
       // [WARTUNG] Wpis zbiorczy: „erledigt” odhacza wszystkie czynności naraz.
@@ -668,7 +696,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
 
   const upcomingTournaments = upcomingEvents.filter(e => e.category === 'Turniej' || !e.category);
-  const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne');
+  // [WARTUNG] Zrobiony wpis konserwacji to nie „nadchodzący termin” — siedzi w archiwum (Aufgaben).
+  const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne' && !e.maintenanceGroup);
   const upcomingTrainerReceived = upcomingEvents.filter(e => e.category === 'Trener' && e.isMirrored);
   const upcomingTrainerSent = upcomingEvents.filter(e => e.category === 'Trener' && !e.isMirrored);
 
@@ -801,15 +830,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              {Array.from({ length: getDaysInMonth(calendarDate.getFullYear(), calendarDate.getMonth()) }).map((_, i) => {
                 const day = i + 1;
                 const dateStr = formatDateStr(calendarDate.getFullYear(), calendarDate.getMonth(), day);
-                const dayEvents = events.filter(e => e.date === dateStr);
+                // [WARTUNG] Otwarty wpis konserwacji nie ma daty (todo) — w siatce stoi na swoim terminie.
+                const dayEvents = [
+                  ...events.filter(e => e.date === dateStr),
+                  ...todoEvents.filter(e => e.maintenanceGroup?.due === dateStr),
+                ];
                 
                 const hasTournament = dayEvents.some(e => e.category === 'Turniej' || !e.category);
-                const hasOther = dayEvents.some(e => e.category === 'Inne');
+                const hasOther = dayEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
+                const hasMaintenance = dayEvents.some(e => e.maintenanceGroup);
                 const hasOwnTrainer = dayEvents.some(e => e.category === 'Trener' && !e.isMirrored);
                 const hasMirroredTrainer = dayEvents.some(e => e.category === 'Trener' && e.isMirrored);
                 const hasTrainer = hasOwnTrainer || hasMirroredTrainer;
                 const isToday = dateStr === todayStr;
-                const typeCount = [hasTournament, hasOther, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
+                const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
                   return (
@@ -821,6 +855,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <div className="w-full h-full rounded-[10px] overflow-hidden flex flex-col relative">
                         {hasTournament && <div className="bg-[#0a3a2a] flex-1" />}
                         {hasOther && <div className="bg-blue-900 flex-1" />}
+                        {hasMaintenance && <div className={`${MAINTENANCE_BG} flex-1`} />}
                         {hasOwnTrainer && <div className="bg-rose-500 flex-1" />}
                         {hasMirroredTrainer && <div className="bg-violet-500 flex-1" />}
                         <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[11px] drop-shadow">
@@ -839,6 +874,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   textClass = "text-white font-black";
                 } else if (hasOther) {
                   bgClass = "bg-blue-900 shadow-sm";
+                  textClass = "text-white font-black";
+                } else if (hasMaintenance) {
+                  bgClass = `${MAINTENANCE_BG} shadow-sm`;
                   textClass = "text-white font-black";
                 } else if (hasOwnTrainer) {
                   bgClass = "bg-rose-500 shadow-sm";
@@ -879,7 +917,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {todoEvents.length > 0 && (
               <div className="space-y-1">
                 {todoEvents.map(event => renderEventRow(event, {
-                  stripe: 'border-l-emerald-400',
+                  stripe: event.maintenanceGroup ? MAINTENANCE_STRIPE : 'border-l-emerald-400',
                   label: event.maintenanceGroup
                     ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
                     : t('calendar.todoSection'),
@@ -1132,6 +1170,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-900 flex-shrink-0" />
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendOther', 'Inne')}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={`w-3 h-3 rounded-full ${MAINTENANCE_BG} flex-shrink-0`} />
+              <span className="text-[10px] font-bold text-gray-500">{t('maintenance.calendar.legend')}</span>
             </div>
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-violet-500 flex-shrink-0" />
@@ -1444,8 +1486,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              
              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700') : 'bg-blue-100 text-blue-900'}`}>
-                    {viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${sessionDistanceLabel(viewingEvent)}` : ''}
+                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.maintenanceGroup ? `${MAINTENANCE_BG} text-white` : viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700') : 'bg-blue-100 text-blue-900'}`}>
+                    {viewingEvent.maintenanceGroup ? t('maintenance.calendar.legend') : viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${sessionDistanceLabel(viewingEvent)}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
@@ -1632,64 +1674,92 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              {viewingEvent.maintenanceGroup && (() => {
                const mg = (todoEvents.find(e => e.id === viewingEvent.id) ?? viewingEvent).maintenanceGroup!;
                const discipline = userSetups.find(s => s.id === mg.setupId)?.discipline;
-               const left = openItems(mg.items);
                return (
-                 <div className="mb-3 space-y-1.5">
-                   {mg.items.map(item => (
-                     <div
-                       key={item.taskId}
-                       className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 ${item.done ? 'bg-gray-50 border-gray-100' : 'bg-white border-emerald-200'}`}
-                     >
-                       <button
-                         type="button"
-                         disabled={!!item.done}
-                         onClick={async () => {
-                           await completeGroupItems(userId, viewingEvent.id, mg, [item.taskId], todayStr, maintenanceTitle);
-                           if (left.length === 1) closeViewingModal();
-                         }}
-                         aria-label={t('calendar.todoDone')}
-                         className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all active:scale-90 ${item.done ? 'bg-emerald-500 text-white' : 'border-2 border-emerald-400 text-transparent'}`}
-                       >
-                         <span className="material-symbols-outlined text-[16px]">check</span>
-                       </button>
-                       <span className={`flex-1 min-w-0 text-[13px] font-black leading-tight ${item.done ? 'text-gray-400 line-through' : 'text-[#0a3a2a]'}`}>
-                         {t(`maintenance.tasks.${item.taskId}.title`)}
-                       </span>
-                       <MaintenanceInfo taskId={item.taskId} discipline={discipline} />
-                     </div>
-                   ))}
-                 </div>
+                 <>
+                   <p className="text-[10px] font-bold text-gray-500 leading-snug mb-2 px-1">{t('maintenance.calendar.tickHint')}</p>
+                   <div className="mb-3 space-y-1.5">
+                     {mg.items.map(item => {
+                       const pending = pendingTicks.includes(item.taskId);
+                       const ticked = !!item.done || pending;
+                       return (
+                         <div
+                           key={item.taskId}
+                           className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 ${item.done ? 'bg-gray-50 border-gray-100' : pending ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-[#8B5E3C]/30'}`}
+                         >
+                           <button
+                             type="button"
+                             disabled={!!item.done}
+                             onClick={() => setPendingTicks(prev => (pending ? prev.filter(x => x !== item.taskId) : [...prev, item.taskId]))}
+                             aria-pressed={ticked}
+                             aria-label={t('calendar.todoDone')}
+                             className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all active:scale-90 ${ticked ? 'bg-emerald-500 text-white' : 'border-2 border-[#8B5E3C]/50 text-transparent'}`}
+                           >
+                             <span className="material-symbols-outlined text-[16px]">check</span>
+                           </button>
+                           <span className={`flex-1 min-w-0 text-[13px] font-black leading-tight ${item.done ? 'text-gray-400 line-through' : 'text-[#0a3a2a]'}`}>
+                             {t(`maintenance.tasks.${item.taskId}.title`)}
+                           </span>
+                           <MaintenanceInfo taskId={item.taskId} discipline={discipline} />
+                         </div>
+                       );
+                     })}
+                   </div>
+                   <button
+                     onClick={() => saveTicks(viewingEvent.id, mg)}
+                     disabled={savingTicks}
+                     className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-[#0a3a2a] text-white active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                   >
+                     <span className="material-symbols-outlined text-[16px]">{pendingTicks.length > 0 ? 'check_circle' : 'close'}</span>
+                     {pendingTicks.length > 0
+                       ? t('maintenance.calendar.saveTicks', { count: pendingTicks.length })
+                       : t('maintenance.calendar.close')}
+                   </button>
+                 </>
                );
              })()}
 
-             {viewingEvent.todo && (
+             {viewingEvent.todo && !viewingEvent.maintenanceGroup && (
                <button
                  onClick={() => { markTodoComplete(viewingEvent.id); closeViewingModal(); }}
                  className="w-full mb-2 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-emerald-500 text-white active:scale-95 transition-all flex items-center justify-center gap-2"
                >
                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                 {viewingEvent.maintenanceGroup ? t('maintenance.calendar.allDone') : t('calendar.todoDone')}
+                 {t('calendar.todoDone')}
                </button>
              )}
 
+             {/* [WARTUNG] Skróty dla całego wpisu — celowo drugorzędne, pod „Speichern”. */}
+             {viewingEvent.maintenanceGroup ? (
+               <div className="flex gap-2">
+                 <button
+                   onClick={() => { markTodoComplete(viewingEvent.id); closeViewingModal(); }}
+                   className="flex-1 py-2.5 rounded-[14px] font-black text-[9px] uppercase tracking-widest bg-white text-emerald-700 border border-emerald-200 active:scale-95 transition-all"
+                 >
+                   {t('maintenance.calendar.allDone')}
+                 </button>
+                 <button
+                   onClick={() => handleDeleteEvent(viewingEvent.id)}
+                   className="flex-1 py-2.5 rounded-[14px] font-black text-[9px] uppercase tracking-widest bg-white text-red-400 border border-red-100 active:scale-95 transition-all"
+                 >
+                   {t('maintenance.calendar.skip')}
+                 </button>
+               </div>
+             ) : (
              <div className="flex gap-2">
-               {/* [WARTUNG] Przypomnienie zmienia się w Ustawieniach (data, rytm) —
-                   edycja tutaj rozjechałaby się z planem. */}
-               {!viewingEvent.maintenanceGroup && (
                <button
                   onClick={handleEditViewing}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
                 >
                   {t('calendar.modalEdit')}
                </button>
-               )}
                <button
                   onClick={() => handleDeleteEvent(viewingEvent.id)}
                   className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
                 >
-                  {viewingEvent.maintenanceGroup ? t('maintenance.calendar.skip') : t('calendar.modalDelete')}
+                  {t('calendar.modalDelete')}
                </button>
              </div>
+             )}
           </div>
         </div>
       )}

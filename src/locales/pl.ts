@@ -324,6 +324,13 @@ export const components = {
       groupTitle: "Konserwacja ({{count}} czynności)",
       allDone: "Wszystko zrobione",
       skip: "Tym razem pomiń",
+      legend: "Konserwacja",
+      tickHint: "Odhacz, co zrobiłeś, i kliknij Zapisz. Resztę możesz zrobić później – wpis zostaje otwarty.",
+      saveTicks: "Zapisz zrobione ({{count}})",
+      close: "Zamknij",
+    },
+    home: {
+      dueBy: "do {{date}}",
     },
     tasks: {
       howItWorks: {

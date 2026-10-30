@@ -108,7 +108,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // [HARMONOGRAM] Grupy trenera ze stałym planem — do kafelka „jako trener”.
   const [coachGroupsHome, setCoachGroupsHome] = useState<any[]>([]);
   const [nextTrainerReceived, setNextTrainerReceived] = useState<any | null>(null);
-  const [todoItems, setTodoItems] = useState<any[]>([]);
+  const [allTodoItems, setTodoItems] = useState<any[]>([]);
+  // [WARTUNG] Przypomnienia o konserwacji mają własny, wąski pasek (brąz) —
+  // w dużej karcie „Zu erledigen” zajmowały pół ekranu (user 2026-10-30).
+  const todoItems = allTodoItems.filter(i => !i.maintenanceGroup);
+  const maintenanceItems = allTodoItems.filter(i => i.maintenanceGroup);
   const [isLoading, setIsLoading] = useState(true);
   const [realLastSession, setRealLastSession] = useState<any | null>(null);
   
@@ -386,7 +390,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
       // Dzisiejsze zawody z wpisanym wynikiem nie są już „następne” (jak w Tagebuch).
       setNextTournament(all.find((e: any) => (e.category === 'Turniej' || !e.category) && !e.hasScore && !e.skipped) || null);
-      setNextOtherEvent(all.find((e: any) => e.category === 'Inne') || null);
+      setNextOtherEvent(all.find((e: any) => e.category === 'Inne' && !e.maintenanceGroup) || null);
       setNextTrainerSent(all.find((e: any) => e.category === 'Trener' && !e.isMirrored) || null);
       setNextTrainerReceived(all.find((e: any) => e.category === 'Trener' && e.isMirrored) || null);
       setIsLoading(false);
@@ -1215,6 +1219,26 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </div>
           </div>
         )}
+
+        {/* [WARTUNG] Konserwacja sprzętu — jeden wąski pasek na zestaw, kolor brąz. */}
+        {!isLoading && maintenanceItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onGoToCalendar(item.id)}
+            className="w-full mt-2 flex items-center gap-2 pl-2 pr-2 py-1.5 rounded-full shadow-sm border border-[#8B5E3C] bg-[#8B5E3C] text-white active:scale-[0.98] transition-all"
+          >
+            <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[14px]">build</span>
+            </span>
+            <span className="flex-1 min-w-0 truncate text-left text-[11px] font-black">
+              {item.title}{item.note ? <span className="font-bold opacity-70"> · {item.note}</span> : null}
+            </span>
+            <span className="shrink-0 text-[9px] font-black uppercase tracking-widest opacity-80">
+              {t('maintenance.home.dueBy', { date: shortDate(item.maintenanceGroup.due) })}
+            </span>
+            <span className="material-symbols-outlined text-[16px] shrink-0 opacity-80">chevron_right</span>
+          </button>
+        ))}
 
         {/* KALENDARZ PRYWATNY / TO-DO */}
         {!isLoading && (todoItems.length > 0 || nextOtherEvent) && isCollapsed('calendar') && collapsedBar(

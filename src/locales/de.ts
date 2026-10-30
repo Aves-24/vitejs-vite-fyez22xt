@@ -310,6 +310,13 @@ export const components = {
       groupTitle: "Wartung ({{count}} Aufgaben)",
       allDone: "Alles erledigt",
       skip: "Diesmal überspringen",
+      legend: "Wartung",
+      tickHint: "Hake ab, was du erledigt hast, und tippe auf Speichern. Den Rest kannst du später machen – der Eintrag bleibt offen.",
+      saveTicks: "{{count}} erledigt – speichern",
+      close: "Schließen",
+    },
+    home: {
+      dueBy: "bis {{date}}",
     },
     tasks: {
       howItWorks: {

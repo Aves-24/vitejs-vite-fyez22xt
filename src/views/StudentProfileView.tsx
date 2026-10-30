@@ -12,9 +12,11 @@ import ViewHeader from '../components/ViewHeader';
 import CoachLogPanel from '../components/CoachLogPanel';
 import StudentSharedNotes from '../components/StudentSharedNotes';
 import CoachFocusModal from '../components/CoachFocusModal';
-import SessionTrend from '../components/SessionTrend';
-import RoundTargetSummary from '../components/RoundTargetSummary';
-import ArrowColorFilter from '../components/scoring/ArrowColorFilter';
+import SessionBilanz from '../components/scoring/SessionBilanz';
+import TrendCard from '../components/scoring/TrendCard';
+import TargetCard from '../components/scoring/TargetCard';
+import { distanceMeters } from '../config/distances';
+import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import FocusResultChip, { isFocusResult } from '../components/scoring/FocusResultChip';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { createNotification } from '../services/notificationService';
@@ -25,7 +27,7 @@ import { isKnownTopic, topicLabel } from '../constants/trainingTopics';
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
-import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend } from '../utils/rankEngine';
+import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -401,7 +403,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // LENIWE WYŚWIETLANIE SZCZEGÓŁOWYCH STATYSTYK SESJI (per session.id)
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<string>>(new Set());
   const [highlightedEnd, setHighlightedEnd] = useState<number | null>(null);
-  const [colorFilter, setColorFilter] = useState<number | null>(null); // [KOLORY STRZAŁ] filtr tarcz rund
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -645,13 +646,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const sessionAvg = currentSession && currentSession.arrows > 0 ? (currentSession.score / currentSession.arrows).toFixed(2) : '0.00';
   const sessionEnds: any[] = currentSession?.ends || [];
   const roundSize = roundSizeFor(currentSession);
-  const r1Ends = sessionEnds.slice(0, roundSize);
-  const r2Ends = sessionEnds.slice(roundSize, roundSize * 2);
+  // Jak w StatsView: tarcza z dystansu, gdy sesja ma tylko „Full”; podpowiedź celownika recurve/compound.
+  const displayTargetType = currentSession?.targetType && currentSession.targetType !== 'Full'
+    ? currentSession.targetType
+    : distanceMeters(currentSession?.distance) === 18 ? '3-Spot' : 'Full';
+  const sessionHasSight = currentSession?.bowClass !== BLOWGUN_DISCIPLINE
+    && ['RECURVE', 'COMPOUND'].includes(rankBowOf(currentSession?.bowClass));
+  const sessionMs: number | null = currentSession?.timestamp?.toMillis?.() ?? (currentSession?.timestamp?.seconds ? currentSession.timestamp.seconds * 1000 : null);
   const isDetailedShown = !!(currentSession && expandedSessionIds.has(currentSession.id));
   const toggleDetailedStats = () => {
     if (!currentSession) return;
     setHighlightedEnd(null);
-    setColorFilter(null);
     setExpandedSessionIds(prev => {
       const next = new Set(prev);
       if (next.has(currentSession.id)) next.delete(currentSession.id);
@@ -966,22 +971,31 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                     <div className="space-y-2 animate-fade-in">
                       {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
                       {isFocusResult(currentSession.focusResult) && <FocusResultChip value={currentSession.focusResult} />}
-                      <SessionTrend submittedEnds={sessionEnds} highlighted={highlightedEnd} roundSize={roundSize} onPointClick={(idx) => setHighlightedEnd(highlightedEnd === idx ? null : idx)} />
-                      {currentSession.arrowColors && <ArrowColorFilter value={colorFilter} onChange={setColorFilter} />}
-                      {(r1Ends.length > 0 || r2Ends.length > 0) && (
-                        <div className="flex gap-2 w-full">
-                          {r1Ends.length > 0 && (
-                            <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 1`} ends={r1Ends} highlightedEnd={highlightedEnd} startIndex={0} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} colorFilter={colorFilter} />
-                            </div>
-                          )}
-                          {r2Ends.length > 0 && (
-                            <div className="flex-1">
-                              <RoundTargetSummary title={`${t('scoringView.round', { defaultValue: 'Runda' })} 2`} ends={r2Ends} highlightedEnd={highlightedEnd} startIndex={roundSize} targetType={currentSession.targetType} arrowColors={!!currentSession.arrowColors} colorFilter={colorFilter} />
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      {/* [PODSUMOWANIE] Ten sam układ co po treningu i w Statystykach (2026-10-30):
+                          Bilanz → Trend z wybraną serią → Trefferbild z heatmapą i (i). */}
+                      <SessionBilanz
+                        userId={studentId}
+                        ends={sessionEnds}
+                        roundSize={roundSize}
+                        distance={currentSession.distance || ''}
+                        distanceId={currentSession.distanceId}
+                        targetType={displayTargetType}
+                        bowClass={currentSession.bowClass}
+                        sessionId={currentSession.id}
+                        beforeTs={sessionMs ?? undefined}
+                      />
+                      <TrendCard ends={sessionEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!currentSession.arrowColors} storageKey="coach-trend" />
+                      <TargetCard
+                        key={currentSession.id}
+                        ends={sessionEnds}
+                        roundSize={roundSize}
+                        targetType={displayTargetType}
+                        arrowColors={!!currentSession.arrowColors}
+                        highlightedEnd={highlightedEnd}
+                        sightHint={sessionHasSight}
+                        heatmap
+                        storageKey="coach-target"
+                      />
                     </div>
                   )}
                   <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">

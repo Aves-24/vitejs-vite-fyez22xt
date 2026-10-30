@@ -8,6 +8,7 @@ import type { FocusState } from '../utils/focus';
 import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
 import { createNotification } from '../services/notificationService';
+import { CARD_SHAPE, CARD_PAD, EntryRow, SessionRefLine, sessionRefOf } from './tagebuch/TagebuchCards';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
 
 // [KARTA UCZNIA] Wysuwana od dołu karta po tapnięciu ucznia w panelu trenera
@@ -202,14 +203,6 @@ export default function CoachStudentSheet({
     setSaving(false);
   };
 
-  // Którego treningu dotyczy notatka: „Trening techniczny” albo „70m · 312/36”.
-  const noteSessionLabel = (n: SnapSession) => {
-    if (n.type === 'TECHNICAL' || n.distance === 'TECH') return t('coachSheet.techTraining');
-    const parts = [n.distanceLabel || n.distance || ''];
-    if ((n.score || 0) > 0) parts.push(t('coachSheet.scoreOf', { score: n.score, arrows: n.scoreArrows || n.arrows || 0 }));
-    return parts.filter(Boolean).join(' · ');
-  };
-
   const fmtDate = (ts: number) => new Date(ts).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
   const delta = (cur: number, prev: number, pct = false) => {
     if (!prev && !cur) return null;
@@ -219,7 +212,17 @@ export default function CoachStudentSheet({
   };
   const daysTo = (iso: string) => Math.round((new Date(iso + 'T00:00:00').getTime() - new Date().setHours(0, 0, 0, 0)) / 864e5);
 
-  const sectionLabel = 'text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1.5';
+  // [PODGLĄD UCZNIA 2026-10-30] Karty w stylu dziennika, w kolejności pytań
+  // trenera (user: „totalny chaos”): najpierw co czeka na mnie (notatka ucznia),
+  // potem fokus i najbliższy start, potem ostatnie 14 dni i wyniki.
+  const Section = ({ icon, label }: { icon: string; label: string }) => (
+    <p className="flex items-center gap-1.5 pt-3 pb-1 px-1 text-[10px] font-black uppercase tracking-widest text-gray-400">
+      <span className="material-symbols-outlined text-[15px] text-gray-400">{icon}</span>
+      {label}
+    </p>
+  );
+  const firstName = student.firstName || t('coachDashboard.defaultStudentName');
+  const noteIsTech = !!snap?.note && (snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH');
 
   return createPortal(
     // Karta zaczyna się tuż pod nagłówkiem panelu (72 px + notch), żeby było
@@ -230,12 +233,12 @@ export default function CoachStudentSheet({
       onClick={onClose}
     >
       <div
-        className="bg-white w-full max-w-md rounded-[28px] px-4 pt-4 pb-6 max-h-full overflow-y-auto hide-scrollbar shadow-2xl animate-fade-in"
+        className="bg-[#fcfdfe] w-full max-w-md rounded-[28px] px-3 pt-4 pb-5 max-h-full overflow-y-auto hide-scrollbar shadow-2xl animate-fade-in"
         onClick={e => e.stopPropagation()}
       >
 
         {/* NAGŁÓWEK */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 px-1">
           <div className="w-11 h-11 bg-[#fed33e]/20 text-[#8B6508] border border-[#fed33e]/50 rounded-full flex items-center justify-center shrink-0 font-black text-[13px]">
             {initials || <span className="material-symbols-outlined text-[20px]">person</span>}
           </div>
@@ -259,48 +262,198 @@ export default function CoachStudentSheet({
           </button>
         </div>
 
-        {/* [PAUZA] Stan i koniec pauzy. Włącza się przyciskiem na dole karty
-            (user 2026-10-14: przycisk w sekcji „bez treningu" robił zamieszanie). */}
+        {/* [PAUZA] Stan i koniec pauzy. */}
         {pause && (
-          <div className={`mt-3 rounded-xl px-3 py-2 border ${pauseReminder ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
-            <p className={`text-[11px] font-bold leading-snug ${pauseReminder ? 'text-amber-800' : 'text-gray-600'}`}>
-              <span className="material-symbols-outlined text-[14px] align-[-3px] mr-1">pause_circle</span>
-              {pauseReminder ? t('coachSheet.pauseReminderText') : t('coachSheet.pausedSince', { date: fmtDate(pause.at) })}
-            </p>
-            <div className="flex gap-2 mt-2">
-              {pauseReminder && (
-                <button onClick={onKeepPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-600 border border-gray-200 active:scale-95 transition-all">
-                  {t('coachSheet.pauseKeep')}
+          <div className={`${CARD_SHAPE} tb-skipped ${CARD_PAD} mt-3`}>
+            <EntryRow
+              icon="pause_circle"
+              iconCls={pauseReminder ? 'text-amber-600' : 'text-gray-500'}
+              kind={t('coachSheet.pauseStart')}
+              kindCls={pauseReminder ? 'text-amber-700' : 'text-gray-500'}
+              title={pauseReminder ? t('coachSheet.pauseReminderText') : t('coachSheet.pausedSince', { date: fmtDate(pause.at) })}
+            >
+              <div className="flex gap-2 mt-2">
+                {pauseReminder && (
+                  <button onClick={onKeepPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-white text-gray-600 border border-gray-200 active:scale-95 transition-all">
+                    {t('coachSheet.pauseKeep')}
+                  </button>
+                )}
+                <button onClick={onEndPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-[#0a3a2a] text-white active:scale-95 transition-all">
+                  {t('coachSheet.pauseEnd')}
                 </button>
-              )}
-              <button onClick={onEndPause} className="flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest bg-[#0a3a2a] text-white active:scale-95 transition-all">
-                {t('coachSheet.pauseEnd')}
-              </button>
-            </div>
+              </div>
+            </EntryRow>
           </div>
         )}
 
-        {failed && <p className="text-[11px] font-bold text-red-500 mt-4">{t('coachSheet.loadError')}</p>}
+        {failed && <p className="text-[11px] font-bold text-red-500 mt-4 px-1">{t('coachSheet.loadError')}</p>}
         {!snap && !failed && (
           <div className="py-8 flex justify-center">
             <span className="material-symbols-outlined text-[24px] text-gray-300 animate-spin">progress_activity</span>
           </div>
         )}
 
+        {/* ── 1. CZEKA NA CIEBIE: ostatnia notatka ucznia + odpowiedź (komentarz do treningu) */}
+        {snap?.note && (
+          <>
+            <Section icon="chat" label={t('coachSheet.secWaiting')} />
+            <div className={`${CARD_SHAPE} ${noteIsTech ? 'tb-tech' : 'tb-d2'} ${CARD_PAD}`}>
+              <EntryRow
+                icon="chat"
+                iconCls={noteIsTech ? 'text-sky-500' : 'text-emerald-600'}
+                kind={t('coachSheet.studentWroteKind', { name: firstName })}
+                kindCls={noteIsTech ? 'text-sky-600' : 'text-emerald-700'}
+                time={fmtDate(snap.note.ts)}
+              >
+                {/* Którego treningu dotyczy (user 2026-09-18) */}
+                <SessionRefLine sref={sessionRefOf(snap.note)} />
+                <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words mt-1.5">„{snap.note.note}”</p>
+
+                {snap.note.coachNote && !editing ? (
+                  <div className="mt-2 bg-amber-50 border border-amber-100 rounded-xl px-2.5 py-2 flex items-start gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-amber-700">{t('coachSheet.yourReply')}</p>
+                      <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">{snap.note.coachNote}</p>
+                    </div>
+                    <button
+                      onClick={() => { setReply(snap.note!.coachNote || ''); setEditing(true); }}
+                      className="w-8 h-8 shrink-0 rounded-lg bg-white border border-amber-100 text-amber-700 flex items-center justify-center active:scale-90 transition-all"
+                      aria-label={t('common.edit')}
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit</span>
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {snap.note.coachSeenAt && !editing && (
+                      <p className="flex items-center gap-1 text-[10px] font-black text-emerald-700 mt-2">
+                        <span className="material-symbols-outlined text-[14px]">done_all</span>
+                        {t('coachSheet.seenDone')}
+                      </p>
+                    )}
+                    <div className="flex gap-1.5 mt-2">
+                      <input
+                        value={reply}
+                        onChange={e => setReply(e.target.value.slice(0, COACH_NOTE_MAX))}
+                        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendReply(); } }}
+                        maxLength={COACH_NOTE_MAX}
+                        placeholder={t('coachSheet.replyPlaceholder')}
+                        className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold text-[#0a3a2a] outline-none focus:border-[#0a3a2a]"
+                      />
+                      <button
+                        onClick={sendReply}
+                        disabled={saving || !reply.trim()}
+                        className="w-10 shrink-0 rounded-xl bg-[#0a3a2a] text-[#fed33e] flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all"
+                        aria-label={t('coachSheet.send')}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{editing ? 'check' : 'send'}</span>
+                      </button>
+                      {editing && (
+                        <button
+                          onClick={() => { setEditing(false); setReply(''); }}
+                          className="w-10 shrink-0 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"
+                          aria-label={t('common.cancel')}
+                        >
+                          <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between gap-2 mt-1">
+                      <p className="text-[9px] font-bold text-gray-400 leading-snug">{t('coachSheet.replyHint')}</p>
+                      {!editing && !snap.note.coachSeenAt && (
+                        <button
+                          onClick={markSeen}
+                          disabled={saving}
+                          className="shrink-0 flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-2.5 py-1 text-[10px] font-black disabled:opacity-40 active:scale-95 transition-all"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">check</span>
+                          {t('coachSheet.markSeen')}
+                        </button>
+                      )}
+                    </div>
+                    {saveError && <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachSheet.saveError')}</p>}
+                  </>
+                )}
+              </EntryRow>
+            </div>
+          </>
+        )}
+
+        {/* ── 2. AKTUELL: fokus, najbliższy start, kamienie milowe */}
+        {(focusState?.focus || nextStart || milestones.length > 0) && (
+          <Section icon="flag" label={t('coachSheet.secNow')} />
+        )}
+        <div className="space-y-2">
+          {focusState?.focus && (
+            <div className={`${CARD_SHAPE} ${focusState.focus.fromCoach ? 'tb-focus-coach' : 'tb-focus'} ${CARD_PAD}`}>
+              <EntryRow
+                icon="center_focus_strong"
+                iconCls={focusState.focus.fromCoach ? 'text-sky-500' : 'text-amber-600'}
+                kind={focusState.dots && focusState.count >= focusState.goal ? t('coachSheet.focusDoneOf', { name: firstName }) : t('coachSheet.focusOf', { name: firstName })}
+                kindCls={focusState.focus.fromCoach ? 'text-sky-700' : 'text-amber-700'}
+                title={focusTitle(focusState.focus, t)}
+                meta={focusState.focus.text && focusState.focus.topic ? topicLabel(focusState.focus.topic, t) : undefined}
+              >
+                {focusState.dots && (
+                  <div className="flex items-center gap-2 mt-1">
+                    <FocusDots count={focusState.count} goal={focusState.goal} small light />
+                    <FocusProgressText count={focusState.count} goal={focusState.goal} light />
+                  </div>
+                )}
+              </EntryRow>
+            </div>
+          )}
+          {nextStart && (
+            <div className={`${CARD_SHAPE} tb-tourney ${CARD_PAD}`}>
+              <EntryRow
+                icon="emoji_events"
+                iconCls="text-[#0a3a2a]"
+                kind={t('studentProfile.nextGoal')}
+                kindCls="text-emerald-700"
+                title={nextStart.title}
+                meta={`${new Date(nextStart.date + 'T12:00:00').toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · ${daysTo(nextStart.date) <= 0 ? t('coachSheet.today') : daysTo(nextStart.date) === 1 ? t('coachSheet.tomorrow') : t('coachSheet.inDays', { count: daysTo(nextStart.date) })}`}
+              />
+            </div>
+          )}
+          {[...milestones].sort((a, b) => b.ts - a.ts).map(m => (
+            <div key={m.id} className={`${CARD_SHAPE} tb-mark ${CARD_PAD}`}>
+              <EntryRow icon="star" iconCls="text-[#b8860b]" kind={t('tagebuch.kindMilestone')} kindCls="text-[#a07400]" title={m.title || m.text} time={fmtDate(m.ts)}>
+                {m.title && m.text && <p className="text-[11px] font-medium text-gray-600 leading-snug break-words line-clamp-3 mt-0.5">{m.text}</p>}
+              </EntryRow>
+            </div>
+          ))}
+        </div>
+
         {snap && (
           <>
-            {/* 1. OSTATNIE 14 DNI */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between">
-                <p className={sectionLabel}>{t('coachSheet.last14')}</p>
-                {/* Legenda tylko kolorów, które faktycznie są na pasku. */}
-                <p className="flex items-center gap-2 text-[9px] font-bold text-gray-400 mb-1.5">
-                  {snap.days.includes('score') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#1f6e53]" />{t('coachSheet.legendScore')}</span>}
-                  {snap.days.includes('practice') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>}
-                </p>
+            {/* ── 3. OSTATNIE 14 DNI: pasek dni + liczby vs 14 dni wcześniej */}
+            <Section icon="calendar_month" label={t('coachSheet.last14')} />
+            <div className={`${CARD_SHAPE} tb-d1 ${CARD_PAD}`}>
+              {/* Liczby na górze: od razu widać, ile trenował. */}
+              <div className="grid grid-cols-3 text-center">
+                <div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('coachSheet.sessions')}</p>
+                  <p className="text-[16px] font-black text-[#0a3a2a] leading-tight tabular-nums">{snap.sessions} {delta(snap.sessions, snap.sessionsPrev)}</p>
+                </div>
+                <div className="border-x border-gray-100">
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('coachSheet.arrows')}</p>
+                  <p className="text-[16px] font-black text-[#0a3a2a] leading-tight tabular-nums">{snap.arrows} {delta(snap.arrows, snap.arrowsPrev, true)}</p>
+                </div>
+                <div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest truncate px-1">{t('coachSheet.avgArrow', { distance: snap.distanceLabel || '' })}</p>
+                  <p className="text-[16px] font-black text-[#0a3a2a] leading-tight tabular-nums">
+                    {snap.avgArrow !== null ? snap.avgArrow.toFixed(1) : '–'}{' '}
+                    {snap.avgArrow !== null && snap.avgArrowPrev !== null && Math.abs(snap.avgArrow - snap.avgArrowPrev) >= 0.05 && (
+                      <span className={`text-[10px] font-black ${snap.avgArrow > snap.avgArrowPrev ? 'text-emerald-600' : 'text-orange-500'}`}>
+                        {snap.avgArrow > snap.avgArrowPrev ? '+' : ''}{(snap.avgArrow - snap.avgArrowPrev).toFixed(1)}
+                      </span>
+                    )}
+                  </p>
+                </div>
               </div>
-              {/* Znaczniki nad dniem: kamień milowy, zawody, fokus, temat, notatka —
-                  po 14 dniach same wypadają z paska (user 2026-10-23). */}
+              <p className="text-[9px] font-bold text-gray-400 text-center mt-1 mb-3">{t('coachSheet.tilesCaption')}</p>
+
+              {/* Znaczniki nad dniem: kamień milowy, zawody, fokus, temat, notatka. */}
               {(() => {
                 const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
                 const dayOf = (ts: number) => Math.round((new Date(ts).setHours(0, 0, 0, 0) - day0) / 86400000);
@@ -326,24 +479,42 @@ export default function CoachStudentSheet({
                     onClick={() => setPickedDay(d => (d === i ? null : i))}
                     aria-pressed={pickedDay === i}
                     aria-label={fmtDate(new Date(snap.fromTs).setHours(0, 0, 0, 0) + i * 86400000)}
-                    className={`flex-1 h-5 rounded-[3px] flex items-center justify-center text-[8px] font-black text-white transition-all ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'} ${pickedDay === i ? 'ring-2 ring-[#fed33e] ring-offset-1' : ''}`}
+                    className={`flex-1 h-6 rounded-[4px] flex items-center justify-center text-[8px] font-black text-white transition-all ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'} ${pickedDay === i ? 'ring-2 ring-[#fed33e] ring-offset-1' : ''}`}
                   >
                     {snap.dayCounts[i] > 1 ? snap.dayCounts[i] : ''}
                   </button>
                 ))}
               </div>
-              <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-0.5 mb-2">
+              <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-0.5">
                 <span>{fmtDate(snap.fromTs)}</span>
-                {pickedDay === null && <span className="text-gray-300">{t('coachSheet.dayHint')}</span>}
                 <span>{t('coachSheet.today')}</span>
               </div>
+
+              {/* Legenda: kolory pól + znaczniki — tylko to, co jest na pasku. */}
+              {(() => {
+                const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
+                const present = MARKS.filter(mk => marks.some(m => m.kind === mk.kind && m.ts >= day0));
+                return (
+                  <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[9px] font-bold text-gray-400 mt-2">
+                    {snap.days.includes('score') && <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-[#1f6e53]" />{t('coachSheet.legendScore')}</span>}
+                    {snap.days.includes('practice') && <span className="inline-flex items-center gap-1"><span className="w-2 h-2 rounded-sm bg-sky-400" />{t('coachSheet.legendPractice')}</span>}
+                    {present.map(mk => (
+                      <span key={mk.kind} className="inline-flex items-center gap-0.5">
+                        <span className={`material-symbols-outlined text-[12px] ${mk.cls}`}>{mk.icon}</span>{t(mk.labelKey)}
+                      </span>
+                    ))}
+                  </p>
+                );
+              })()}
+              {pickedDay === null && <p className="text-[9px] font-bold text-gray-300 mt-1">{t('coachSheet.dayHint')}</p>}
+
               {pickedDay !== null && (() => {
                 const dayStart = new Date(new Date(snap.fromTs).setHours(0, 0, 0, 0) + pickedDay * 86400000 + 43200000).setHours(0, 0, 0, 0);
                 const list = items
                   .filter(it => new Date(it.ts).setHours(0, 0, 0, 0) === dayStart)
                   .sort((a, b) => a.ts - b.ts);
                 return (
-                  <div className="mb-2 rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-2">
+                  <div className="mt-2 rounded-xl bg-gray-50 border border-gray-100 px-2.5 py-2 tb-fade-in">
                     <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-1">
                       {new Date(dayStart).toLocaleDateString(i18n.language, { weekday: 'long', day: 'numeric', month: 'short' })}
                     </p>
@@ -373,222 +544,65 @@ export default function CoachStudentSheet({
                   </div>
                 );
               })()}
-              {/* Legenda znaczników — tylko te, które są na pasku. */}
-              {(() => {
-                const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
-                const present = MARKS.filter(mk => marks.some(m => m.kind === mk.kind && m.ts >= day0));
-                if (!present.length) return null;
-                return (
-                  <p className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[9px] font-bold text-gray-400 -mt-1 mb-2">
-                    {present.map(mk => (
-                      <span key={mk.kind} className="inline-flex items-center gap-0.5">
-                        <span className={`material-symbols-outlined text-[12px] ${mk.cls}`}>{mk.icon}</span>{t(mk.labelKey)}
-                      </span>
-                    ))}
-                  </p>
-                );
-              })()}
-              {milestones.length > 0 && (
-                <div className="mb-2 space-y-1">
-                  {[...milestones].sort((a, b) => b.ts - a.ts).map(m => (
-                    <div key={m.id} className="flex items-start gap-2 rounded-xl bg-[#fed33e]/15 border border-[#fed33e]/40 px-2.5 py-1.5">
-                      <span className="material-symbols-outlined text-[16px] text-[#b8860b] shrink-0 mt-px">star</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{m.title || m.text}</p>
-                        {m.title && m.text && <p className="text-[11px] font-medium text-gray-600 leading-snug break-words line-clamp-3">{m.text}</p>}
-                      </div>
-                      <span className="text-[9px] font-bold text-[#8B6508] shrink-0 mt-0.5">{fmtDate(m.ts)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-[9px] font-bold text-gray-400 mb-1">{t('coachSheet.tilesCaption')}</p>
-              <div className="grid grid-cols-3 gap-1.5">
-                <div className="bg-gray-50 rounded-xl px-2.5 py-1.5">
-                  <p className="text-[9px] font-bold text-gray-400">{t('coachSheet.sessions')}</p>
-                  <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{snap.sessions} {delta(snap.sessions, snap.sessionsPrev)}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl px-2.5 py-1.5">
-                  <p className="text-[9px] font-bold text-gray-400">{t('coachSheet.arrows')}</p>
-                  <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">{snap.arrows} {delta(snap.arrows, snap.arrowsPrev, true)}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl px-2.5 py-1.5">
-                  <p className="text-[9px] font-bold text-gray-400 truncate">{t('coachSheet.avgArrow', { distance: snap.distanceLabel || '' })}</p>
-                  <p className="text-[15px] font-black text-[#0a3a2a] leading-tight">
-                    {snap.avgArrow !== null ? snap.avgArrow.toFixed(1) : '–'}{' '}
-                    {snap.avgArrow !== null && snap.avgArrowPrev !== null && Math.abs(snap.avgArrow - snap.avgArrowPrev) >= 0.05 && (
-                      <span className={`text-[10px] font-black ${snap.avgArrow > snap.avgArrowPrev ? 'text-emerald-600' : 'text-orange-500'}`}>
-                        {snap.avgArrow > snap.avgArrowPrev ? '+' : ''}{(snap.avgArrow - snap.avgArrowPrev).toFixed(1)}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
             </div>
 
-            {/* 2 + 3. WYNIKI I SYGNAŁY — po średniej na strzałę, bo 36 i 72 strzały
-                się nie porównują (user 2026-09-18). */}
+            {/* ── 4. WYNIKI na głównym dystansie — po średniej na strzałę (36 i 72 strzały się nie porównują) */}
             {snap.recent.length > 0 && (
-              <div className="mt-4">
-                <p className={sectionLabel}>{t('coachSheet.results', { distance: snap.distanceLabel || '' })}</p>
-                <div className="flex items-center gap-3">
-                  <Sparkline values={snap.recent.map(r => r.avg)} />
-                  <div className="text-[11px] font-bold text-[#0a3a2a] leading-snug min-w-0">
-                    <p>{t('coachSheet.lastAvg', { list: snap.recent.slice(-3).map(r => r.avg.toFixed(1)).join(' · ') })}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {t('coachSheet.lastScores', { list: snap.recent.slice(-3).map(r => t('coachSheet.scoreOf', { score: r.score, arrows: r.arrows })).join(' · ') })}
-                    </p>
-                    {snap.goldOf > 0 && (
-                      <p>
-                        {t('coachSheet.gold', { count: snap.gold, of: snap.goldOf })}
-                        {' · '}
-                        <span className={snap.misses > 0 ? 'text-red-600' : ''}>{t('coachSheet.misses', { count: snap.misses })}</span>
+              <>
+                <Section icon="show_chart" label={t('coachSheet.results', { distance: snap.distanceLabel || '' })} />
+                <div className={`${CARD_SHAPE} tb-d2 ${CARD_PAD}`}>
+                  <div className="flex items-center gap-3">
+                    <Sparkline values={snap.recent.map(r => r.avg)} />
+                    <div className="text-[11px] font-bold text-[#0a3a2a] leading-snug min-w-0">
+                      <p>{t('coachSheet.lastAvg', { list: snap.recent.slice(-3).map(r => r.avg.toFixed(1)).join(' · ') })}</p>
+                      <p className="text-[10px] text-gray-400">
+                        {t('coachSheet.lastScores', { list: snap.recent.slice(-3).map(r => t('coachSheet.scoreOf', { score: r.score, arrows: r.arrows })).join(' · ') })}
                       </p>
-                    )}
+                      {snap.goldOf > 0 && (
+                        <p>
+                          {t('coachSheet.gold', { count: snap.gold, of: snap.goldOf })}
+                          {' · '}
+                          <span className={snap.misses > 0 ? 'text-red-600' : ''}>{t('coachSheet.misses', { count: snap.misses })}</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="mt-2 space-y-1">
-                  {snap.roundDiff !== null && Math.abs(snap.roundDiff) >= 5 && (
-                    <Signal warn={snap.roundDiff < 0}>
-                      {snap.roundDiff < 0
-                        ? t('coachSheet.round2Weaker', { count: Math.abs(snap.roundDiff) })
-                        : t('coachSheet.round2Stronger', { count: snap.roundDiff })}
-                      {' '}{t('coachSheet.fromLast', { count: snap.roundN })}
-                    </Signal>
+                  {((snap.roundDiff !== null && Math.abs(snap.roundDiff) >= 5) || snap.endRange) && (
+                    <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+                      {snap.roundDiff !== null && Math.abs(snap.roundDiff) >= 5 && (
+                        <Signal warn={snap.roundDiff < 0}>
+                          {snap.roundDiff < 0
+                            ? t('coachSheet.round2Weaker', { count: Math.abs(snap.roundDiff) })
+                            : t('coachSheet.round2Stronger', { count: snap.roundDiff })}
+                          {' '}{t('coachSheet.fromLast', { count: snap.roundN })}
+                        </Signal>
+                      )}
+                      {snap.endRange && (
+                        <Signal warn={snap.endRange[1] - snap.endRange[0] >= 12}>
+                          {t('coachSheet.endRange', { min: snap.endRange[0], max: snap.endRange[1] })}
+                        </Signal>
+                      )}
+                    </div>
                   )}
-                  {snap.endRange && (
-                    <Signal warn={snap.endRange[1] - snap.endRange[0] >= 12}>
-                      {t('coachSheet.endRange', { min: snap.endRange[0], max: snap.endRange[1] })}
-                    </Signal>
-                  )}
                 </div>
-              </div>
+              </>
             )}
             {snap.sessions === 0 && snap.recent.length === 0 && (
-              <p className="text-[11px] font-bold text-gray-400 mt-4">{t('coachSheet.noData')}</p>
+              <p className="text-[11px] font-bold text-gray-400 mt-3 px-1">{t('coachSheet.noData')}</p>
             )}
           </>
         )}
 
-        {/* 4. FOKUS — z nagłówkiem jak reszta sekcji, prostokątny kafel (user
-            2026-09-18: pigułka tu nie pasowała). */}
-        {focusState?.focus && (
-          <div className="mt-4">
-            <p className={sectionLabel}>{t('tagebuch.focusLabel')}</p>
-            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 flex items-start gap-2">
-              <span className="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-px">center_focus_strong</span>
-              <div className="flex-1 min-w-0">
-                <p className="text-[12px] font-black text-[#0a3a2a] leading-snug break-words">{focusTitle(focusState.focus, t)}</p>
-                {focusState.focus.text && focusState.focus.topic && (
-                  <p className="text-[10px] font-bold text-amber-700">{topicLabel(focusState.focus.topic, t)}</p>
-                )}
-                {focusState.dots && (
-                  <div className="flex items-center gap-2 mt-1">
-                    <FocusDots count={focusState.count} goal={focusState.goal} small light />
-                    <FocusProgressText count={focusState.count} goal={focusState.goal} light />
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 5. NAJBLIŻSZY START */}
-        {nextStart && (
-          <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-[#0a3a2a]">
-            <span className="material-symbols-outlined text-[18px] text-[#1f6e53]">emoji_events</span>
-            <span className="truncate">{nextStart.title}</span>
-            <span className="text-gray-400 shrink-0">
-              · {daysTo(nextStart.date) <= 0 ? t('coachSheet.today') : daysTo(nextStart.date) === 1 ? t('coachSheet.tomorrow') : t('coachSheet.inDays', { count: daysTo(nextStart.date) })}
-            </span>
-          </div>
-        )}
-
-        {/* 6. UCZEŃ NAPISAŁ + ODPOWIEDŹ JAKO NOTATKA TRENERA PRZY TYM TRENINGU */}
-        {snap?.note && (
-          <div className="mt-4">
-            <p className={sectionLabel}>{t('coachSheet.studentWrote', { date: fmtDate(snap.note.ts) })}</p>
-            <div className="bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-              {/* Którego treningu dotyczy (user 2026-09-18) */}
-              {noteSessionLabel(snap.note) && (
-                <p className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest mb-0.5 ${snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH' ? 'text-sky-700' : 'text-emerald-700'}`}>
-                  <span className="material-symbols-outlined text-[12px]">{snap.note.type === 'TECHNICAL' || snap.note.distance === 'TECH' ? 'fitness_center' : 'target'}</span>
-                  {noteSessionLabel(snap.note)}
-                </p>
-              )}
-              <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">„{snap.note.note}”</p>
-            </div>
-            {snap.note.coachNote && !editing ? (
-              <div className="mt-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 flex items-start gap-2">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-black uppercase tracking-widest text-blue-700">{t('coachSheet.yourReply')}</p>
-                  <p className="text-[12px] font-bold text-[#0a3a2a] leading-snug break-words">{snap.note.coachNote}</p>
-                </div>
-                <button
-                  onClick={() => { setReply(snap.note!.coachNote || ''); setEditing(true); }}
-                  className="w-8 h-8 shrink-0 rounded-lg bg-white border border-blue-100 text-blue-700 flex items-center justify-center active:scale-90 transition-all"
-                  aria-label={t('common.edit')}
-                >
-                  <span className="material-symbols-outlined text-[16px]">edit</span>
-                </button>
-              </div>
-            ) : (
-              <>
-                {snap.note.coachSeenAt && !editing && (
-                  <p className="flex items-center gap-1 text-[10px] font-black text-emerald-700 mt-1.5">
-                    <span className="material-symbols-outlined text-[14px]">done_all</span>
-                    {t('coachSheet.seenDone')}
-                  </p>
-                )}
-                <div className="flex gap-1.5 mt-1.5">
-                  <input
-                    value={reply}
-                    onChange={e => setReply(e.target.value.slice(0, COACH_NOTE_MAX))}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendReply(); } }}
-                    maxLength={COACH_NOTE_MAX}
-                    placeholder={t('coachSheet.replyPlaceholder')}
-                    className="flex-1 min-w-0 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold text-[#0a3a2a] outline-none focus:border-blue-400"
-                  />
-                  <button
-                    onClick={sendReply}
-                    disabled={saving || !reply.trim()}
-                    className="w-10 shrink-0 rounded-xl bg-[#1f6e53] text-white flex items-center justify-center disabled:opacity-40 active:scale-90 transition-all"
-                    aria-label={t('coachSheet.send')}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{editing ? 'check' : 'send'}</span>
-                  </button>
-                  {editing && (
-                    <button
-                      onClick={() => { setEditing(false); setReply(''); }}
-                      className="w-10 shrink-0 rounded-xl bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"
-                      aria-label={t('common.cancel')}
-                    >
-                      <span className="material-symbols-outlined text-[18px]">close</span>
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center justify-between gap-2 mt-1">
-                  <p className="text-[9px] font-bold text-gray-400">{t('coachSheet.replyHint')}</p>
-                  {!editing && !snap.note.coachSeenAt && (
-                    <button
-                      onClick={markSeen}
-                      disabled={saving}
-                      className="shrink-0 flex items-center gap-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full px-2.5 py-1 text-[10px] font-black disabled:opacity-40 active:scale-95 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[14px]">check</span>
-                      {t('coachSheet.markSeen')}
-                    </button>
-                  )}
-                </div>
-                {saveError && <p className="text-[10px] font-bold text-red-500 mt-1">{t('coachSheet.saveError')}</p>}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* PAUZA — np. choroba, kontuzja, wyjazd */}
+        {/* ── PEŁNY PROFIL + PAUZA */}
+        <button
+          onClick={onOpenProfile}
+          className="mt-5 w-full py-3 rounded-2xl bg-[#0a3a2a] text-[#fed33e] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
+        >
+          {t('coachSheet.fullProfile')}
+          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+        </button>
         {!pause && (
-          <div className="mt-5">
+          <div className="mt-2">
             <button
               onClick={onStartPause}
               className="w-full py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
@@ -599,15 +613,6 @@ export default function CoachStudentSheet({
             <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1 px-1">{t('coachSheet.pauseStartHint')}</p>
           </div>
         )}
-
-        {/* 7. PEŁNY PROFIL */}
-        <button
-          onClick={onOpenProfile}
-          className="mt-5 w-full py-3 rounded-2xl bg-[#0a3a2a] text-white text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-        >
-          {t('coachSheet.fullProfile')}
-          <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-        </button>
       </div>
     </div>,
     document.body,

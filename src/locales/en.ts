@@ -2047,6 +2047,11 @@ export const views = {
     pauseReminder: "Paused for a month — check in",
   },
   coachSheet: {
+    secWaiting: "Waiting for you",
+    secNow: "Current",
+    studentWroteKind: "{{name}} writes",
+    focusOf: "{{name}}'s focus",
+    focusDoneOf: "{{name}}'s completed focus",
     close: "Close",
     chat: "Messages",
     loadError: "Couldn't load sessions.",

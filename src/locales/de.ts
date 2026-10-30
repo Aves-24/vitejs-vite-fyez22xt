@@ -2047,6 +2047,11 @@ export const views = {
     pauseReminder: "Pause seit einem Monat — prüfen",
   },
   coachSheet: {
+    secWaiting: "Wartet auf dich",
+    secNow: "Aktuell",
+    studentWroteKind: "{{name}} schreibt",
+    focusOf: "Fokus von {{name}}",
+    focusDoneOf: "Abgeschlossener Fokus von {{name}}",
     close: "Schließen",
     chat: "Nachrichten",
     loadError: "Trainings konnten nicht geladen werden.",

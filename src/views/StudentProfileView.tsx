@@ -15,6 +15,7 @@ import CoachFocusModal from '../components/CoachFocusModal';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
 import TargetCard from '../components/scoring/TargetCard';
+import SummaryCard from '../components/scoring/SummaryCard';
 import { distanceMeters } from '../config/distances';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import FocusResultChip, { isFocusResult } from '../components/scoring/FocusResultChip';
@@ -382,7 +383,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   // [ZMIANA] Stany dla nowej, wielopolowej notatki
   const [privateNotes, setPrivateNotes] = useState<string[]>(['', '', '']);
   const [showPrivateNoteModal, setShowPrivateNoteModal] = useState(false);
-  const [showHardwareModal, setShowHardwareModal] = useState(false);
 
   // TABS
   const [activeTab, setActiveTab] = useState<'overview' | 'diary' | 'analytics'>('overview');
@@ -680,143 +680,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
           <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-0.5 truncate">{formatViewerAgeCategory(student.ageCategory, student.ageCategoryPL, i18n.language, t)}</p>
         )}
         hideLogo
-        actions={<>
-          <button onClick={() => setShowHardwareModal(true)} className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white shadow-sm active:scale-90 transition-all border border-white/10">
-            <span className="material-symbols-outlined text-[22px]">build</span>
-          </button>
-          <button onClick={() => setShowPrivateNoteModal(true)} className="w-10 h-10 bg-[#fed33e] rounded-2xl flex items-center justify-center text-[#0a3a2a] shadow-sm active:scale-90 transition-all relative">
-            <span className="material-symbols-outlined text-2xl">person</span>
-            {hasAnyPrivateNote && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></span>}
-          </button>
-        </>}
       >
 
-        {/* STATYSTYKI — rząd 1: 3 kafelki */}
-        <div className="flex gap-2 mt-3">
-          <button
-            onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }}
-            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
-          >
-            <span className="material-symbols-outlined text-emerald-400 text-[15px] mb-0.5">bolt</span>
-            <p className="text-base font-black text-white leading-none">{monthlyArrows}</p>
-            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.arrowsMonth')}</span>
-          </button>
-
-          <button
-            onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }}
-            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
-          >
-            <span className="material-symbols-outlined text-[#fed33e] text-[15px] mb-0.5">target</span>
-            <p className="text-base font-black text-[#fed33e] leading-none">{avg14Days}</p>
-            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.avg14days')}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              if (recentSessions.length > 0) {
-                setActiveTab('overview');
-                setCurrentSessionIndex(0);
-                setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
-              }
-            }}
-            className="flex-1 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-2.5 py-2 flex flex-col active:scale-[0.97] transition-all"
-          >
-            <span className="material-symbols-outlined text-white/60 text-[15px] mb-0.5">trophy</span>
-            <p className="text-base font-black text-white leading-none">{recentSessions.length > 0 ? recentSessions[0].score : '--'}</p>
-            <span className="text-[7px] font-bold text-emerald-300/70 uppercase tracking-widest mt-0.5 leading-none">{t('studentProfile.lastScore')}</span>
-          </button>
-        </div>
-
-        {/* STATYSTYKI — rząd 2: Ergebniskurve pełna szerokość */}
-        <button
-          onClick={() => sparkline.length >= 2 && setShowTrendModal(true)}
-          className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 pt-2 pb-2.5 flex flex-col active:scale-[0.97] transition-all"
-        >
-          <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest mb-1.5">Ergebniskurve</span>
-          <div className="flex items-center w-full gap-0">
-            {sparkline.length >= 2 ? (() => {
-              const W = 200, H = 36, pad = 5;
-              const minS = Math.min(...sparkline);
-              const maxS = Math.max(...sparkline);
-              const lastS = sparkline[sparkline.length - 1];
-              const range = maxS - minS || 1;
-              const maxIdx = sparkline.indexOf(maxS);
-              const minIdx = sparkline.lastIndexOf(minS);
-              const pts = sparkline.map((s, i) => ({
-                x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
-                y: H - pad - ((s - minS) / range) * (H - pad * 2),
-              }));
-              const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
-              return (
-                <>
-                  {/* 75% wykres */}
-                  <div className="w-3/4 min-w-0">
-                    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
-                      <polyline points={polyline} fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.25" />
-                      {pts.map((p, i) => {
-                        const isMax = i === maxIdx;
-                        const isMin = i === minIdx;
-                        const isLast = i === pts.length - 1;
-                        const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : 'white';
-                        const r = (isMax || isMin) ? 4 : isLast ? 3.5 : 2;
-                        const op = (isMax || isMin || isLast) ? 1 : 0.2;
-                        return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={op} />;
-                      })}
-                    </svg>
-                  </div>
-                  {/* 25% legenda */}
-                  <div className="w-1/4 flex flex-col items-end justify-center gap-[7px] pl-2">
-                    <span className="flex items-center gap-1 text-[11px] font-black text-emerald-400 leading-none"><span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />{maxS}</span>
-                    <span className="flex items-center gap-1 text-[11px] font-black text-red-400 leading-none"><span className="w-2 h-2 rounded-full bg-red-400 shrink-0" />{minS}</span>
-                    <span className="flex items-center gap-1 text-[11px] font-black text-[#fed33e] leading-none"><span className="w-2 h-2 rounded-full bg-[#fed33e] shrink-0" />{lastS}</span>
-                  </div>
-                </>
-              );
-            })() : (
-              <span className="material-symbols-outlined text-white/20 text-xl">monitoring</span>
-            )}
-          </div>
-        </button>
-
-        {/* [RANGA] Ranga ucznia z handicapu — odznaka w kolorze i forma słowami,
-            bez gołych liczb handicapu (trener ich nie czytał, user 2026-09-10). */}
-        {(() => {
-          const r = rankFromStored(student);
-          const trend = rankTrend(student);
-          return (
-            <div className="w-full mt-2 bg-white/[0.07] backdrop-blur-sm rounded-2xl px-3.5 py-2.5 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-sm"
-                style={{ background: r.color, border: `2.5px solid ${r.border}`, opacity: r.handicap === null ? 0.4 : 1 }}>
-                <span className="text-sm font-black" style={{ color: r.textColor }}>{r.level}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-[8px] font-bold text-emerald-300/80 uppercase tracking-widest block leading-none mb-1">{t('studentProfile.rankLabel')}</span>
-                {r.handicap === null ? (
-                  <p className="text-[11px] font-black text-white/60 leading-tight">{t('home.rankPending', { count: r.sessions, total: MIN_SESSIONS_FOR_RANK })}</p>
-                ) : (
-                  <p className="text-[13px] font-black text-white leading-tight truncate">
-                    {r.rankName}
-                    {r.bow && <span className="text-[9px] font-bold text-white/50 ml-1.5">{t(RANK_BOW_LABEL[r.bow])}</span>}
-                  </p>
-                )}
-              </div>
-              {trend && (
-                <span className={`flex items-center gap-1 text-[10px] font-black shrink-0 ${trend === 'up' ? 'text-emerald-400' : trend === 'down' ? 'text-red-400' : 'text-white/50'}`}>
-                  <span className="material-symbols-outlined text-[16px]">{RANK_TREND_ICON[trend]}</span>
-                  {t(`studentProfile.rankTrend_${trend}`)}
-                </span>
-              )}
-            </div>
-          );
-        })()}
-        {/* STATYSTYKI — rząd 3: fokus ucznia (user 2026-09-16: pod
-            Ergebniskurve, w nagłówku). Ten sam wynik co u ucznia na Home:
+        {/* [PROFIL B, etap 1] W nagłówku zostaje tylko fokus — widoczny na każdej
+            zakładce; liczby, krzywa i handicap przeszły do karty „Form” w „Jetzt”.
+            Fokus ucznia (user 2026-09-16: w nagłówku). Ten sam wynik co u ucznia na Home:
             własny fokus vs najnowszy „Cel" z dziennika trenerskiego. Bez
             dopisku o autorze (user 2026-09-17: nieważne kto ustawił).
             Klikalne (user 2026-09-17): otwiera CoachFocusModal — zmiana
             liczby lekcji, nowy fokus, zakończenie przed czasem, daty treningów. */}
         {focusState?.focus ? (
-          <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full text-left">
+          <button onClick={() => setShowFocusModal(true)} className="mt-3 w-full text-left">
             <FocusStrip
               variant="glass"
               focus={focusState.focus}
@@ -828,7 +702,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
             />
           </button>
         ) : focusState && (
-          <button onClick={() => setShowFocusModal(true)} className="mt-2 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2 text-left">
+          <button onClick={() => setShowFocusModal(true)} className="mt-3 w-full flex items-center gap-3 border border-dashed border-white/15 rounded-2xl px-3.5 py-2 text-left">
             <span className="material-symbols-outlined text-[22px] text-white/25 shrink-0">center_focus_strong</span>
             <div className="flex-1 min-w-0">
               <p className="text-[9px] font-black uppercase tracking-widest text-emerald-300/60 truncate">{t('studentProfile.focusLabel')}</p>
@@ -887,176 +761,268 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
       {/* ─── TAB CONTENT ─────────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto pb-32">
 
-        {/* ══ TAB 1: ÜBERBLICK ══════════════════════════════════ */}
+        {/* ══ TAB 1: JETZT ═════════════════════════════════════
+            [PROFIL B, etap 1 — 2026-10-30] Odpowiada na „co u niego teraz?”.
+            Wszystko jako karty dziennika (pasek z lewej, ikonka, mała etykieta
+            + pogrubiony tytuł), kolory ze słownika: zawody ciemnozielone,
+            trening zielony, technika sky, prywatna notatka indygo. */}
         {activeTab === 'overview' && (
-          <div className="px-5 pt-3 space-y-2">
+          <div className="px-4 pt-3 space-y-3">
 
-            {/* NASTĘPNY CEL UCZNIA */}
+            {/* NAJBLIŻSZE ZAWODY */}
             {nextTournament && (
-              <div
+              <button
                 onClick={() => { if (additionalTournamentsCount > 0) setShowTournamentsModal(true); }}
-                className={`bg-[#fed33e] rounded-[20px] p-3.5 flex items-center gap-3 relative overflow-hidden ${additionalTournamentsCount > 0 ? 'cursor-pointer active:scale-[0.98] transition-all' : ''}`}
+                className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-tourney w-full pl-2 pr-3 py-2.5 flex items-center gap-2.5 text-left ${additionalTournamentsCount > 0 ? 'active:opacity-60' : 'cursor-default'}`}
               >
-                <div className="absolute -right-5 -top-5 w-28 h-28 rounded-full border-[14px] border-black/5 pointer-events-none" />
-                <div className="w-10 h-10 bg-[#0a3a2a] rounded-xl flex items-center justify-center shrink-0">
-                  <span className="material-symbols-outlined text-[#fed33e] text-[20px]">emoji_events</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-[8px] font-black text-[#0a3a2a]/50 uppercase tracking-widest block mb-0.5">{t('studentProfile.nextGoal')}</span>
-                  <h3 className="font-black text-[#0a3a2a] text-[13px] leading-tight truncate">{nextTournament.title}</h3>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <span className="material-symbols-outlined text-[#0a3a2a]/50 text-[11px]">calendar_today</span>
-                    <p className="text-[10px] font-bold text-[#0a3a2a]/60">
-                      {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
-                    </p>
-                  </div>
-                </div>
+                <span className="tb-tourney-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px] tb-tourney-accent">emoji_events</span>
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700">{t('studentProfile.nextGoal')}</span>
+                  <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{nextTournament.title}</span>
+                  <span className="block text-[10px] font-bold text-gray-500 mt-0.5">
+                    {new Date(nextTournament.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })} · {getDaysUntil(nextTournament.date)}
+                  </span>
+                </span>
                 {additionalTournamentsCount > 0 && (
-                  <div className="shrink-0 bg-[#0a3a2a] text-[#fed33e] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px] z-10">
+                  <span className="shrink-0 bg-[#0a3a2a] text-[#fed33e] w-7 h-7 rounded-full flex items-center justify-center font-black text-[10px]">
                     +{additionalTournamentsCount}
-                  </div>
+                  </span>
                 )}
-              </div>
+              </button>
             )}
 
-            {/* SEKCJA OSTATNIEGO TRENINGU I NOTATEK (KARUZELA) */}
-            {currentSession ? (
-              <div ref={sessionSectionRef} className="bg-[#0a3a2a] rounded-[20px] overflow-hidden">
-                <div className="px-3 py-2.5 flex items-center gap-2">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest">{currentSession.date} · </span>
-                    <span className="text-[8px] font-black text-white uppercase tracking-widest">{currentSession.distance} · {currentSession.targetType}</span>
+            {/* FORMA: handicap (zamiast odznaki rangi), 3 liczby, krzywa wyników */}
+            {(() => {
+              const r = rankFromStored(student);
+              const trend = rankTrend(student);
+              const tile = 'flex flex-col items-center py-1.5 rounded-xl active:bg-gray-50 transition-colors';
+              return (
+                <div className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-d2 pl-2 pr-3 py-2.5`}>
+                  <div className="flex items-center gap-2.5">
+                    <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[18px] text-emerald-600">monitoring</span>
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700">{t('studentProfile.formCard')}</span>
+                      {r.handicap === null ? (
+                        <span className="block text-[12px] font-bold leading-snug text-gray-500 truncate">{t('home.rankPending', { count: r.sessions, total: MIN_SESSIONS_FOR_RANK })}</span>
+                      ) : (
+                        <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">
+                          {t('studentProfile.handicap')} {r.handicap}
+                          {r.bow && <span className="text-[10px] font-bold text-gray-400 ml-1.5">{t(RANK_BOW_LABEL[r.bow])}</span>}
+                        </span>
+                      )}
+                    </span>
+                    {trend && (
+                      <span className={`flex items-center gap-1 text-[10px] font-black shrink-0 ${trend === 'up' ? 'text-emerald-600' : trend === 'down' ? 'text-red-500' : 'text-gray-400'}`}>
+                        <span className="material-symbols-outlined text-[16px]">{RANK_TREND_ICON[trend]}</span>
+                        {t(`studentProfile.rankTrend_${trend}`)}
+                      </span>
+                    )}
                   </div>
-                  {recentSessions.length > 1 && (
-                    <div className="flex items-center gap-1 shrink-0">
-                      {recentSessions.map((_, i) => (
-                        <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#fed33e]' : 'w-1.5 h-1.5 bg-white/25'}`} />
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-0.5 shrink-0">
-                    <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all">
+
+                  <div className="grid grid-cols-3 mt-2.5 pt-2 border-t border-gray-100 text-center">
+                    <button onClick={() => { setQuickStatsTab('ARROWS'); setIsQuickStatsOpen(true); }} className={tile}>
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.arrowsMonth')}</span>
+                      <span className="text-lg font-black text-emerald-600 tabular-nums leading-tight">{monthlyArrows}</span>
+                    </button>
+                    <button onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }} className={`${tile} border-x border-gray-100 rounded-none`}>
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
+                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{avg14Days}</span>
+                    </button>
+                    <button
+                      onClick={() => { if (recentSessions.length > 0) { setCurrentSessionIndex(0); setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80); } }}
+                      className={tile}
+                    >
+                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.lastScore')}</span>
+                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{recentSessions.length > 0 ? recentSessions[0].score : '–'}</span>
+                    </button>
+                  </div>
+
+                  {/* Ergebniskurve — klik otwiera okno z filtrami i listą wyników */}
+                  {sparkline.length >= 2 && (() => {
+                    const W = 200, H = 36, pad = 5;
+                    const minS = Math.min(...sparkline);
+                    const maxS = Math.max(...sparkline);
+                    const lastS = sparkline[sparkline.length - 1];
+                    const range = maxS - minS || 1;
+                    const maxIdx = sparkline.indexOf(maxS);
+                    const minIdx = sparkline.lastIndexOf(minS);
+                    const pts = sparkline.map((sc, i) => ({
+                      x: pad + (i / (sparkline.length - 1)) * (W - pad * 2),
+                      y: H - pad - ((sc - minS) / range) * (H - pad * 2),
+                    }));
+                    return (
+                      <button onClick={() => setShowTrendModal(true)} className="w-full mt-2 pt-2 border-t border-gray-100 flex items-center gap-2 text-left active:opacity-60">
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.trendTitle', { defaultValue: 'Ergebniskurve' })}</span>
+                          <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ overflow: 'visible' }}>
+                            <polyline points={pts.map(pt => `${pt.x},${pt.y}`).join(' ')} fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.5" />
+                            {pts.map((pt, i) => {
+                              const isMax = i === maxIdx, isMin = i === minIdx, isLast = i === pts.length - 1;
+                              const color = isMax ? '#10b981' : isMin ? '#ef4444' : isLast ? '#0a3a2a' : '#9ca3af';
+                              return <circle key={i} cx={pt.x} cy={pt.y} r={isMax || isMin ? 4 : isLast ? 3.5 : 2} fill={color} opacity={isMax || isMin || isLast ? 1 : 0.5} />;
+                            })}
+                          </svg>
+                        </span>
+                        <span className="w-14 flex flex-col items-end gap-1 shrink-0">
+                          <span className="flex items-center gap-1 text-[11px] font-black text-emerald-600 leading-none"><span className="w-2 h-2 rounded-full bg-emerald-500" />{maxS}</span>
+                          <span className="flex items-center gap-1 text-[11px] font-black text-red-500 leading-none"><span className="w-2 h-2 rounded-full bg-red-500" />{minS}</span>
+                          <span className="flex items-center gap-1 text-[11px] font-black text-[#0a3a2a] leading-none"><span className="w-2 h-2 rounded-full bg-[#0a3a2a]" />{lastS}</span>
+                        </span>
+                      </button>
+                    );
+                  })()}
+                </div>
+              );
+            })()}
+
+            {/* OSTATNIE TRENINGI (karuzela 3 ostatnich) — w etapie 2 zastąpi ją zakładka „Trainings” */}
+            {currentSession ? (
+              <div ref={sessionSectionRef} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm ${currentSession.type === 'Turniej' ? 'tb-tourney' : 'tb-d2'} pl-2 pr-3 py-2.5 space-y-2.5 scroll-mt-3`}>
+                <div className="flex items-center gap-2.5">
+                  <span className={`${currentSession.type === 'Turniej' ? 'tb-tourney-icon' : 'tb-icon'} w-8 h-8 rounded-lg flex items-center justify-center shrink-0`}>
+                    <span className={`material-symbols-outlined text-[18px] ${currentSession.type === 'Turniej' ? 'tb-tourney-accent' : 'text-emerald-600'}`}>{currentSession.type === 'Turniej' ? 'emoji_events' : 'target'}</span>
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-emerald-700 truncate">{t('studentProfile.lastTrainings')}</span>
+                    <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{currentSession.date} · {currentSession.distance}</span>
+                  </span>
+                  <span className="flex items-center gap-0.5 shrink-0">
+                    <button onClick={() => setCurrentSessionIndex(Math.min(recentSessions.length - 1, currentSessionIndex + 1))} disabled={currentSessionIndex === recentSessions.length - 1} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[#0a3a2a] active:scale-90 disabled:opacity-25 transition-all" aria-label="‹">
                       <span className="material-symbols-outlined text-[13px]">arrow_back_ios_new</span>
                     </button>
-                    <button onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))} disabled={currentSessionIndex === 0} className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-90 disabled:opacity-25 transition-all">
+                    <button onClick={() => setCurrentSessionIndex(Math.max(0, currentSessionIndex - 1))} disabled={currentSessionIndex === 0} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center text-[#0a3a2a] active:scale-90 disabled:opacity-25 transition-all" aria-label="›">
                       <span className="material-symbols-outlined text-[13px]">arrow_forward_ios</span>
                     </button>
-                  </div>
+                  </span>
                 </div>
-                <div className="mx-2.5 mb-2.5 bg-white rounded-[14px] p-3 space-y-2.5">
-                  <div className="grid grid-cols-5 text-center pb-2.5 border-b border-gray-50">
-                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a]">{currentSession.score}{isPartialSession(currentSession) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(currentSession)}</span>}</p></div>
-                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionAvg}</p></div>
-                    <div className="border-l border-gray-100 pl-1"><p className="text-[8px] font-bold text-[#b8860b] uppercase">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.x}</p></div>
-                    <div><p className="text-[8px] font-bold text-emerald-500 uppercase">10</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.ten}</p></div>
-                    <div><p className="text-[8px] font-bold text-gray-400 uppercase">9</p><p className="text-sm font-black text-[#0a3a2a]">{sessionHits.nine}</p></div>
+                {recentSessions.length > 1 && (
+                  <div className="flex items-center justify-center gap-1">
+                    {recentSessions.map((_, i) => (
+                      <button key={i} onClick={() => setCurrentSessionIndex(i)} className={`rounded-full transition-all ${i === currentSessionIndex ? 'w-3.5 h-1.5 bg-[#0a3a2a]' : 'w-1.5 h-1.5 bg-gray-200'}`} />
+                    ))}
                   </div>
-                  {sessionEnds.length > 0 && (
-                    <button
-                      onClick={toggleDetailedStats}
-                      className="w-full flex items-center justify-between p-2.5 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-emerald-600 text-[16px]">analytics</span>
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
-                          {isDetailedShown ? t('studentProfile.hideDetailedStats') : t('studentProfile.showDetailedStats')}
-                        </span>
-                      </div>
-                      <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${isDetailedShown ? 'rotate-180' : ''}`}>
-                        keyboard_arrow_down
+                )}
+                <div className="grid grid-cols-5 text-center pt-2 border-t border-gray-100">
+                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsScore')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{currentSession.score}{isPartialSession(currentSession) && <span className="block text-[8px] font-black text-amber-700">{partialLabel(currentSession)}</span>}</p></div>
+                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.statsAvg')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionAvg}</p></div>
+                  <div className="border-l border-gray-100"><p className="text-[8px] font-black text-[#b8860b] uppercase tracking-widest">{t('studentProfile.statsInnerX')}</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.x}</p></div>
+                  <div><p className="text-[8px] font-black text-emerald-600 uppercase tracking-widest">10</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.ten}</p></div>
+                  <div><p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">9</p><p className="text-sm font-black text-[#0a3a2a] tabular-nums">{sessionHits.nine}</p></div>
+                </div>
+                {sessionEnds.length > 0 && (
+                  <button
+                    onClick={toggleDetailedStats}
+                    className="w-full flex items-center justify-between px-2.5 py-2 bg-gray-50 border border-gray-100 rounded-xl active:scale-[0.98] transition-all"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-emerald-600 text-[16px]">analytics</span>
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[#0a3a2a]">
+                        {isDetailedShown ? t('studentProfile.hideDetailedStats') : t('studentProfile.showDetailedStats')}
                       </span>
-                    </button>
-                  )}
-                  {isDetailedShown && sessionEnds.length > 0 && (
-                    <div className="space-y-2 animate-fade-in">
-                      {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
-                      {isFocusResult(currentSession.focusResult) && <FocusResultChip value={currentSession.focusResult} />}
-                      {/* [PODSUMOWANIE] Ten sam układ co po treningu i w Statystykach (2026-10-30):
-                          Bilanz → Trend z wybraną serią → Trefferbild z heatmapą i (i). */}
-                      <SessionBilanz
-                        userId={studentId}
-                        ends={sessionEnds}
-                        roundSize={roundSize}
-                        distance={currentSession.distance || ''}
-                        distanceId={currentSession.distanceId}
-                        targetType={displayTargetType}
-                        bowClass={currentSession.bowClass}
-                        sessionId={currentSession.id}
-                        beforeTs={sessionMs ?? undefined}
-                      />
-                      <TrendCard ends={sessionEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!currentSession.arrowColors} storageKey="coach-trend" />
-                      <TargetCard
-                        key={currentSession.id}
-                        ends={sessionEnds}
-                        roundSize={roundSize}
-                        targetType={displayTargetType}
-                        arrowColors={!!currentSession.arrowColors}
-                        highlightedEnd={highlightedEnd}
-                        sightHint={sessionHasSight}
-                        heatmap
-                        storageKey="coach-target"
-                      />
-                    </div>
-                  )}
-                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 relative">
-                    <span className="material-symbols-outlined absolute -top-2.5 -left-1.5 text-gray-200 text-2xl rotate-12 pointer-events-none">format_quote</span>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 relative z-10">{t('studentProfile.studentNoteLabel')}</p>
-                    <p className="text-[11px] font-bold text-[#333] italic relative z-10 leading-snug">{(currentSession.isNotePublic !== false && currentSession.note) || t('studentProfile.noStudentNote')}</p>
+                    </span>
+                    <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform duration-300 ${isDetailedShown ? 'rotate-180' : ''}`}>
+                      keyboard_arrow_down
+                    </span>
+                  </button>
+                )}
+                {isDetailedShown && sessionEnds.length > 0 && (
+                  <div className="space-y-3 tb-fade-in">
+                    {/* [FOKUS UMGESETZT] Samoocena ucznia przy zapisie (trener 2026-10-29). */}
+                    {isFocusResult(currentSession.focusResult) && <FocusResultChip value={currentSession.focusResult} />}
+                    {/* [PODSUMOWANIE] Ten sam układ co po treningu i w Statystykach (2026-10-30):
+                        Bilanz → Trend z wybraną serią → Trefferbild z heatmapą i (i). */}
+                    <SessionBilanz
+                      userId={studentId}
+                      ends={sessionEnds}
+                      roundSize={roundSize}
+                      distance={currentSession.distance || ''}
+                      distanceId={currentSession.distanceId}
+                      targetType={displayTargetType}
+                      bowClass={currentSession.bowClass}
+                      sessionId={currentSession.id}
+                      beforeTs={sessionMs ?? undefined}
+                    />
+                    <TrendCard ends={sessionEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!currentSession.arrowColors} storageKey="coach-trend" />
+                    <TargetCard
+                      key={currentSession.id}
+                      ends={sessionEnds}
+                      roundSize={roundSize}
+                      targetType={displayTargetType}
+                      arrowColors={!!currentSession.arrowColors}
+                      highlightedEnd={highlightedEnd}
+                      sightHint={sessionHasSight}
+                      heatmap
+                      storageKey="coach-target"
+                    />
                   </div>
-                  <CoachNoteModule session={currentSession} studentId={studentId} coachId={coachId} onSaveSuccess={handleUpdateSessionNote} />
+                )}
+                <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                  <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
+                  <p className="text-[11px] font-bold text-[#333] italic leading-snug">{(currentSession.isNotePublic !== false && currentSession.note) || t('studentProfile.noStudentNote')}</p>
                 </div>
+                <CoachNoteModule session={currentSession} studentId={studentId} coachId={coachId} onSaveSuccess={handleUpdateSessionNote} />
               </div>
             ) : (
-              <div className="bg-gray-50 rounded-[20px] p-8 text-center border border-dashed border-gray-200">
-                <span className="material-symbols-outlined text-gray-200 text-4xl mb-2 block">sports_score</span>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</p>
+              <div className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-skipped pl-2 pr-3 py-2.5 flex items-center gap-2.5`}>
+                <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[18px] text-gray-400">sports_score</span>
+                </span>
+                <span className="text-[11px] font-bold text-gray-500">{t('studentProfile.noSessions', { defaultValue: 'Noch keine Trainingseinheiten' })}</span>
               </div>
             )}
 
-            {/* SESJE TECHNICZNE UCZNIA */}
-            {recentTechSessions.length > 0 && (
-              <div className="space-y-2 pt-1">
-                <div className="flex items-center gap-1.5 px-1">
-                  <span className="material-symbols-outlined text-emerald-600 text-[16px]">fitness_center</span>
-                  <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                    {t('studentProfile.techSectionsTitle')}
+            {/* TRENINGI TECHNICZNE — sky jak w dzienniku */}
+            {recentTechSessions.map(session => (
+              <div key={session.id} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-tech pl-2 pr-3 py-2.5 space-y-2`}>
+                <div className="flex items-center gap-2.5">
+                  <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[18px] text-sky-500">fitness_center</span>
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-sky-600">{t('stats.techSessionType')}</span>
+                    <span className="block text-[13px] font-black leading-snug text-[#0a3a2a] truncate">{session.date}</span>
+                  </span>
+                  <span className="shrink-0 bg-sky-50 text-sky-700 px-2.5 py-0.5 rounded-full text-[10px] font-black">
+                    {session.totalArrows || 0} {t('common.arrows')}
                   </span>
                 </div>
-                {recentTechSessions.map(session => (
-                  <div key={session.id} className="bg-white rounded-[20px] border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="px-4 pt-3 pb-1 flex justify-between items-center">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                          {t('stats.techSessionType')}
-                        </span>
-                      </div>
-                      <div className="bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1 border border-emerald-100/50">
-                        <span className="material-symbols-outlined text-[12px]">fitness_center</span>
-                        {session.totalArrows || 0} {t('common.arrows')}
-                      </div>
-                    </div>
-                    <div className="px-4 pb-4">
-                      <p className="text-[10px] text-gray-300 font-bold uppercase mb-2">{session.date}</p>
-                      {session.note && session.isNotePublic !== false && (
-                        <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100 mb-2">
-                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">
-                            {t('studentProfile.studentNoteLabel')}
-                          </p>
-                          <p className="text-[11px] font-bold text-[#333] italic leading-snug">"{session.note}"</p>
-                        </div>
-                      )}
-                      <CoachNoteModule
-                        session={session}
-                        studentId={studentId}
-                        coachId={coachId}
-                        onSaveSuccess={(note, editCount) => handleUpdateTechSessionNote(session.id, note, editCount)}
-                      />
-                    </div>
+                {session.note && session.isNotePublic !== false && (
+                  <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-100">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('studentProfile.studentNoteLabel')}</p>
+                    <p className="text-[11px] font-bold text-[#333] italic leading-snug">"{session.note}"</p>
                   </div>
-                ))}
+                )}
+                <CoachNoteModule
+                  session={session}
+                  studentId={studentId}
+                  coachId={coachId}
+                  onSaveSuccess={(note, editCount) => handleUpdateTechSessionNote(session.id, note, editCount)}
+                />
               </div>
-            )}
+            ))}
+
+            {/* SPRZĘT — zwijana karta zamiast ikonki 🔧 w nagłówku */}
+            <SummaryCard icon="build" stripe="tb-d1" kind={t('studentProfile.hardwareTitle')} title={t('studentProfile.hardwareSubtitle')} storageKey="coach-equipment" defaultOpen={false}>
+              <StudentEquipmentCard student={student} />
+            </SummaryCard>
+
+            {/* PRYWATNE NOTATKI — zamiast żółtej ikonki 👤; w etapie 3 trafią do „Notizen” */}
+            <button onClick={() => setShowPrivateNoteModal(true)} className={`tb-card border rounded-l-md rounded-r-2xl shadow-sm tb-private w-full pl-2 pr-3 py-2.5 flex items-center gap-2.5 text-left active:opacity-60`}>
+              <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[18px] text-indigo-500">lock</span>
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[9px] font-black uppercase tracking-widest leading-tight text-indigo-600">{t('studentProfile.privateNoteTitle')}</span>
+                <span className={`block text-[12px] leading-snug truncate ${hasAnyPrivateNote ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-400'}`}>
+                  {privateNotes.find(n => n.trim()) || t('studentProfile.privateNoteEmpty')}
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-gray-400 shrink-0">chevron_right</span>
+            </button>
 
           </div>
         )}
@@ -1268,32 +1234,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
                 </>
               );
             })()}
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* MODAL KARTY SPRZĘTOWEJ */}
-      {showHardwareModal && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowHardwareModal(false)}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setShowHardwareModal(false)} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full active:scale-90 transition-all">
-              <span className="material-symbols-outlined">close</span>
-            </button>
-            
-            <div className="flex items-center gap-3 mb-6 mt-2 shrink-0">
-              <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-blue-500">build</span>
-              </div>
-              <div>
-                <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.hardwareTitle')}</h2>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">{t('studentProfile.hardwareSubtitle')}</p>
-              </div>
-            </div>
-            
-            <div className="overflow-y-auto flex-1 pr-1 pb-2 hide-scrollbar">
-              <StudentEquipmentCard student={student} />
-            </div>
           </div>
         </div>,
         document.body

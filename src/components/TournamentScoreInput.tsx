@@ -38,8 +38,23 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
   // Hala (18/25 m) domyślnie 2×30 po 3, reszta 2×36 po 6.
   const [formatId, setFormatId] = useState<TournamentFormatId>(() => (distanceMeters(distance) || 99) <= 25 ? 'IN_2X30' : 'OUT_2X36');
   const { arrowsPerEnd, endsPerRound } = TOURNAMENT_FORMATS[formatId];
-  const totalEnds = endsPerRound * ROUNDS;
   const arrowsPerRound = arrowsPerEnd * endsPerRound;
+  // Wiersz wpisywania ma zawsze 6 strzał — w hali to 2 passe po 3, czytelniej
+  // jak przy 2×36 (user 2026-11-01). Etykieta formatu zostaje „3 pro Passe”.
+  const perRow = 6;
+  const rowsPerRound = arrowsPerRound / perRow;
+  const passesPerRow = perRow / arrowsPerEnd;
+  const totalEnds = rowsPerRound * ROUNDS;
+  // Sortowanie malejąco osobno w każdej passe wiersza (w hali: dwie trójki).
+  const sortRow = (row: string[]) => {
+    const out: string[] = [];
+    for (let i = 0; i < row.length; i += arrowsPerEnd) out.push(...row.slice(i, i + arrowsPerEnd).sort((a, b) => getArrowValue(b) - getArrowValue(a)));
+    return out;
+  };
+  // Numer wiersza = numery passe (w hali „1·2”, „3·4”…).
+  // Przerwa przed drugą passe w wierszu (hala).
+  const gapCls = (aIdx: number) => (aIdx > 0 && aIdx % arrowsPerEnd === 0 ? "ml-2" : "");
+  const rowLabel = (i: number) => passesPerRow === 1 ? String(i + 1) : `${i * passesPerRow + 1}·${i * passesPerRow + passesPerRow}`;
   const maxRoundScore = arrowsPerRound * 10;
 
   // STANY DLA TRYBU SZCZEGÓŁOWEGO
@@ -89,27 +104,25 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       if (editingTarget.endIdx === -1) {
         const newCurrent = [...currentEnd];
         newCurrent[editingTarget.arrowIdx] = key;
-        newCurrent.sort((a, b) => getArrowValue(b) - getArrowValue(a));
-        setCurrentEnd(newCurrent);
+        setCurrentEnd(sortRow(newCurrent));
       } else {
         const newEnds = [...ends];
         const targetEnd = [...newEnds[editingTarget.endIdx]];
         targetEnd[editingTarget.arrowIdx] = key;
-        targetEnd.sort((a, b) => getArrowValue(b) - getArrowValue(a));
-        newEnds[editingTarget.endIdx] = targetEnd;
+        newEnds[editingTarget.endIdx] = sortRow(targetEnd);
         setEnds(newEnds);
       }
       setEditingTarget(null);
     } else {
-      if (currentEnd.length < arrowsPerEnd && ends.length < totalEnds) {
-        const newEnd = [...currentEnd, key].sort((a, b) => getArrowValue(b) - getArrowValue(a));
+      if (currentEnd.length < perRow && ends.length < totalEnds) {
+        const newEnd = sortRow([...currentEnd, key]);
         setCurrentEnd(newEnd);
       }
     }
   };
 
   useEffect(() => {
-    if (currentEnd.length === arrowsPerEnd && !editingTarget) {
+    if (currentEnd.length === perRow && !editingTarget) {
       const timer = setTimeout(() => {
         setEnds(prev => [...prev, currentEnd]);
         setCurrentEnd([]);
@@ -117,7 +130,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       }, 150); 
       return () => clearTimeout(timer);
     }
-  }, [currentEnd, ends.length, editingTarget, arrowsPerEnd, totalEnds]);
+  }, [currentEnd, ends.length, editingTarget, totalEnds]);
 
   const handleDelete = () => {
     if (editingTarget) { setEditingTarget(null); return; }
@@ -135,7 +148,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
   // Sumy wyliczone z trybu szczegółowego dla każdego Durchgangu
   const detailedR1 = useMemo(() => {
-    const r1ends = ends.slice(0, endsPerRound);
+    const r1ends = ends.slice(0, rowsPerRound);
     let score = 0, x = 0, tens = 0, nines = 0;
     r1ends.forEach(end => end.forEach(a => {
       score += getArrowValue(a);
@@ -144,10 +157,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       else if (a === '9') nines++;
     }));
     return { score, x, tens, nines };
-  }, [ends, endsPerRound]);
+  }, [ends, rowsPerRound]);
 
   const detailedR2 = useMemo(() => {
-    const r2ends = ends.slice(endsPerRound, totalEnds);
+    const r2ends = ends.slice(rowsPerRound, totalEnds);
     let score = 0, x = 0, tens = 0, nines = 0;
     r2ends.forEach(end => end.forEach(a => {
       score += getArrowValue(a);
@@ -156,7 +169,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       else if (a === '9') nines++;
     }));
     return { score, x, tens, nines };
-  }, [ends, endsPerRound, totalEnds]);
+  }, [ends, rowsPerRound, totalEnds]);
 
   const stats = useMemo(() => {
     let totalScore = 0, totalX = 0, total10 = 0, total9 = 0;
@@ -248,7 +261,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         ends: inputMode === 'DETAILED' ? archivedEnds : [],
         note: aiNote.trim(),
         inputMode: inputMode,
-        tournamentFormat: { id: formatId, arrowsPerEnd, endsPerRound, rounds: ROUNDS },
+        tournamentFormat: { id: formatId, arrowsPerEnd, endsPerRound, rounds: ROUNDS, arrowsPerRow: perRow },
         // [C25] Po metrach, nie po napisie — dystans moze niesc etykiete.
         targetType: distanceMeters(distance) === 18 ? '3-Spot' : 'Full',
         ...guestExpiryFields() // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
@@ -355,7 +368,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {(() => {
               const locked = hasDetailedData;
               const score  = locked ? detailedR1.score : (parseInt(summaryR1) || 0);
-              const arrows = locked ? ends.slice(0,endsPerRound).flat().filter(a => a !== 'M').length : arrowsPerRound;
+              const arrows = locked ? ends.slice(0,rowsPerRound).flat().filter(a => a !== 'M').length : arrowsPerRound;
               const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
               const r1x    = locked ? String(detailedR1.x)    : summaryX1;
               const r1t    = locked ? String(detailedR1.tens)  : summary10_1;
@@ -369,7 +382,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       <span className="text-[9px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {t('tournamentInput.avgDurchgang')}: <span className="text-[#0a3a2a]">{avg}</span>
                       </span>
-                      {locked && ends.slice(0,endsPerRound).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(0,endsPerRound).length}/{endsPerRound} {t('tournamentInput.passes')}</span>}
+                      {locked && ends.slice(0,rowsPerRound).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(0,rowsPerRound).length * passesPerRow}/{endsPerRound} {t('tournamentInput.passes')}</span>}
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
@@ -389,7 +402,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {(() => {
               const locked = hasDetailedData;
               const score  = locked ? detailedR2.score : (parseInt(summaryR2) || 0);
-              const arrows = locked ? ends.slice(endsPerRound,totalEnds).flat().filter(a => a !== 'M').length : arrowsPerRound;
+              const arrows = locked ? ends.slice(rowsPerRound,totalEnds).flat().filter(a => a !== 'M').length : arrowsPerRound;
               const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
               const r2x    = locked ? String(detailedR2.x)    : summaryX2;
               const r2t    = locked ? String(detailedR2.tens)  : summary10_2;
@@ -403,7 +416,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       <span className="text-[9px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {t('tournamentInput.avgDurchgang')}: <span className="text-[#0a3a2a]">{avg}</span>
                       </span>
-                      {locked && ends.slice(endsPerRound,totalEnds).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(endsPerRound,totalEnds).length}/{endsPerRound} {t('tournamentInput.passes')}</span>}
+                      {locked && ends.slice(rowsPerRound,totalEnds).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(rowsPerRound,totalEnds).length * passesPerRow}/{endsPerRound} {t('tournamentInput.passes')}</span>}
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
@@ -442,15 +455,15 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           <div className="space-y-[2px]">
             {/* HISTORIA SZCZEGÓŁOWA — aktywny Durchgang na górze */}
             {[1, 0].map(durchgang => {
-              const startIdx = durchgang * endsPerRound;
-              const endIdx = startIdx + endsPerRound;
+              const startIdx = durchgang * rowsPerRound;
+              const endIdx = startIdx + rowsPerRound;
               const durchgangEnds = ends.slice(startIdx, endIdx);
               const isCurrentDurchgang = ends.length >= startIdx && ends.length < endIdx;
               const isDurchgangDone = ends.length >= endIdx;
               const durchgangScore = durchgangEnds.reduce((sum, end) => sum + end.reduce((s, v) => s + getArrowValue(v), 0), 0);
 
               // Nie pokazuj 2. Durchgandu jeśli jeszcze nie doszliśmy
-              if (durchgang === 1 && ends.length < endsPerRound && currentEnd.length === 0) return null;
+              if (durchgang === 1 && ends.length < rowsPerRound && currentEnd.length === 0) return null;
 
               return (
                 <div key={durchgang} className="mb-3">
@@ -460,7 +473,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${durchgang === 0 ? 'bg-[#0a3a2a] text-white' : 'bg-white border border-[#0a3a2a] text-[#0a3a2a]'}`}>
                         Durchgang {durchgang + 1}
                       </div>
-                      <span className="text-[8px] font-bold text-gray-400 uppercase">Passe {startIdx + 1}–{startIdx + endsPerRound}</span>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase">Passe {durchgang * endsPerRound + 1}–{(durchgang + 1) * endsPerRound}</span>
                     </div>
                     {isDurchgangDone && (
                       <span className="text-sm font-black text-[#0a3a2a]">{durchgangScore}</span>
@@ -473,15 +486,15 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                     {isCurrentDurchgang && !isFinished && (
                       <div className="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-1.5 flex items-center shadow-sm">
                         <div className="w-6 h-6 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mr-2 border border-emerald-300">
-                          <span className="text-[8px] font-black text-emerald-700">{ends.length + 1}</span>
+                          <span className="text-[7px] font-black text-emerald-700 leading-none">{rowLabel(ends.length)}</span>
                         </div>
                         <div className="flex-1 flex gap-1">
-                          {[...Array(arrowsPerEnd)].map((_, aIdx) => {
+                          {[...Array(perRow)].map((_, aIdx) => {
                             const arrow = currentEnd[aIdx];
                             return arrow ? (
-                              <button key={aIdx} onClick={() => setEditingTarget({ endIdx: -1, arrowIdx: aIdx })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black shadow-sm border animate-scale-in ${getArrowStyles(arrow, editingTarget?.endIdx === -1 && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
+                              <button key={aIdx} onClick={() => setEditingTarget({ endIdx: -1, arrowIdx: aIdx })} className={`${gapCls(aIdx)} w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black shadow-sm border animate-scale-in ${getArrowStyles(arrow, editingTarget?.endIdx === -1 && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
                             ) : (
-                              <div key={aIdx} className="w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border-2 border-dashed border-emerald-200 bg-white/50 text-transparent">-</div>
+                              <div key={aIdx} className={`${gapCls(aIdx)} w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border-2 border-dashed border-emerald-200 bg-white/50 text-transparent`}>-</div>
                             );
                           })}
                         </div>
@@ -498,11 +511,11 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                       return (
                         <div key={realEndIdx} className="bg-white border border-gray-100 rounded-xl p-1.5 flex items-center shadow-sm opacity-90 transition-all">
                           <div className="w-6 h-6 rounded-full bg-gray-50 flex items-center justify-center shrink-0 mr-2 border border-gray-200">
-                            <span className="text-[8px] font-black text-gray-400">{realEndIdx + 1}</span>
+                            <span className="text-[7px] font-black text-gray-400 leading-none">{rowLabel(realEndIdx)}</span>
                           </div>
                           <div className="flex-1 flex gap-1">
                             {end.map((arrow, aIdx) => (
-                              <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
+                              <button key={aIdx} onClick={() => { setEditingTarget({ endIdx: realEndIdx, arrowIdx: aIdx }); setShowKeyboard(true); }} className={`${gapCls(aIdx)} w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black border transition-all ${getArrowStyles(arrow, editingTarget?.endIdx === realEndIdx && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
                             ))}
                           </div>
                           <div className="w-8 text-right">
@@ -513,10 +526,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                     })}
 
                     {/* Separator — pokazuje się pod Durchgangiem 2 (który jest u góry) */}
-                    {durchgang === 1 && ends.length >= endsPerRound && (
+                    {durchgang === 1 && ends.length >= rowsPerRound && (
                       <div className="flex items-center gap-2 py-1 mt-1">
                         <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">D1: {ends.slice(0,endsPerRound).reduce((s,e)=>s+e.reduce((a,v)=>a+getArrowValue(v),0),0)} / D2: {durchgangScore}</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">D1: {ends.slice(0,rowsPerRound).reduce((s,e)=>s+e.reduce((a,v)=>a+getArrowValue(v),0),0)} / D2: {durchgangScore}</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                     )}

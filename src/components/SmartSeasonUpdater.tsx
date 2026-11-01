@@ -145,7 +145,6 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
       
       {modalType === 'NEW_YEAR' && (
         <div className="bg-gradient-to-br from-[#0a3a2a] to-emerald-900 rounded-[32px] p-8 w-full max-w-[400px] shadow-2xl relative flex flex-col items-center border border-emerald-700 text-center">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-20 pointer-events-none rounded-[32px]"></div>
 
           <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 relative z-10 border border-emerald-400/30">
             <span className="material-symbols-outlined text-6xl text-emerald-400 drop-shadow-[0_0_15px_rgba(52,211,153,0.6)]">celebration</span>
@@ -184,7 +183,6 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
 
       {modalType === 'BIRTHDAY' && (
         <div className="bg-gradient-to-br from-indigo-900 to-purple-900 rounded-[32px] p-8 w-full max-w-[400px] shadow-2xl relative flex flex-col items-center border border-indigo-700 text-center">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none rounded-[32px]"></div>
 
           <div className="w-24 h-24 bg-pink-500/20 rounded-full flex items-center justify-center mb-4 relative z-10 border border-pink-400/30">
             <span className="material-symbols-outlined text-6xl text-pink-400 drop-shadow-[0_0_15px_rgba(244,114,182,0.6)]">cake</span>

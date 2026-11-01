@@ -15,8 +15,8 @@ import { scoreSingleFace, calculateSpotScore } from './targetScoring';
  * przy wpisywaniu treningu, więc gra nie może liczyć inaczej niż aplikacja.
  */
 
-export type SchreiberLevel = 'beginner' | 'club' | 'elite';
-export type SchreiberMode = 'end' | 'running';
+/** „Gemischt” = każdy zawodnik losuje swój poziom (Einsteiger/Verein/Kader). */
+export type SchreiberLevel = 'beginner' | 'club' | 'mixed';
 /** Pełna tarcza (40/60/80/122 rysują się tak samo), 6-Ring, pionowy 3-Spot. */
 export type SchreiberTarget = 'full' | 'six' | 'spot3';
 
@@ -64,13 +64,14 @@ const SPOT_LIMIT = 66;
 /** Środek strzały nie bliżej linii niż tyle — bez sporów „liner czy nie”. */
 const LINE_MARGIN = 3;
 /** Minimalny odstęp między strzałami, żeby znaczki dało się odróżnić. */
-const MIN_GAP = 6;
+const MIN_GAP = 11;
 
-const LEVEL_SIGMA: Record<SchreiberLevel, number> = {
+const LEVEL_SIGMA = {
   beginner: 42,
   club: 27,
   elite: 16,
-};
+} as const;
+const MIXED_POOL = ['beginner', 'club', 'elite'] as const;
 
 export const arrowPoints = (value: string): number =>
   value === 'X' ? 10 : value === 'M' ? 0 : Number(value) || 0;
@@ -105,20 +106,21 @@ const shuffle = <T,>(list: T[], rand: Rand): T[] => {
 /** Każdy zawodnik trochę inny: rozrzut ±25 % poziomu i własne przesunięcie. */
 export const createShooterProfiles = (count: number, level: SchreiberLevel, rand: Rand): ShooterProfile[] =>
   Array.from({ length: count }, () => {
-    const sigma = LEVEL_SIGMA[level] * (0.8 + rand() * 0.45);
+    const base = level === 'mixed' ? MIXED_POOL[Math.floor(rand() * MIXED_POOL.length)] : level;
+    const sigma = LEVEL_SIGMA[base] * (0.8 + rand() * 0.45);
     const angle = rand() * 2 * Math.PI;
     const shift = sigma * 0.35 * rand();
     return { sigma, dx: Math.cos(angle) * shift, dy: Math.sin(angle) * shift };
   });
 
 /**
- * Linie, które zmieniają wynik: granice pierścieni bez linii X (X i 10 to
- * te same punkty). Pełna tarcza 15..150, 6-Ring 15..90, spot 12.5..62.5.
+ * Wszystkie linie pierścieni, także X — gracz wpisuje X osobno od 10, więc
+ * strzała na linii X też byłaby sporna. Pełna tarcza 7.5..150, 6-Ring
+ * 7.5..90, spot 6.25..62.5.
  */
 const lineRadii = (target: SchreiberTarget): number[] => {
-  if (target === 'spot3') return [1, 2, 3, 4, 5].map(k => k * SPOT_STEP);
-  const face = resolveTargetFace(SCHREIBER_FACE_ID[target]);
-  return face.rings.map(r => r.r).filter(r => r > face.scoringRingStep / 2);
+  if (target === 'spot3') return [SPOT_STEP / 2, ...[1, 2, 3, 4, 5].map(k => k * SPOT_STEP)];
+  return resolveTargetFace(SCHREIBER_FACE_ID[target]).rings.map(r => r.r);
 };
 
 /** Za blisko linii pierścienia (także krawędzi tarczy) — losujemy jeszcze raz. */
@@ -189,15 +191,44 @@ export const sortedValues = (arrows: SchreiberArrow[]): string[] =>
     .sort((a, b) => b.points - a.points || (a.value === 'X' ? -1 : b.value === 'X' ? 1 : 0))
     .map(a => a.value);
 
-/** Ile gracz ma wpisać: suma serii albo suma narastająca po tej serii. */
-export const expectedAnswer = (ends: SchreiberEnd[], endIndex: number, shooter: number, mode: SchreiberMode): number => {
-  if (mode === 'end') return ends[endIndex].sums[shooter];
-  let total = 0;
-  for (let i = 0; i <= endIndex; i++) total += ends[i].sums[shooter];
-  return total;
+/** Komórki sum w wierszu arkusza (kolejność wpisywania). */
+export type SumCell = 't1' | 't2' | 'sum' | 'carry';
+
+/** 6 strzał: suma 1–3, suma 4–6, Summe, Übertrag. 3 strzały: Summe, Übertrag. */
+export const sumCellsFor = (arrowsPerShooter: number): SumCell[] =>
+  arrowsPerShooter === 6 ? ['t1', 't2', 'sum', 'carry'] : ['sum', 'carry'];
+
+export interface SheetRow {
+  /** Wartości jak na kartce: od najwyższej. */
+  values: string[];
+  cells: Record<SumCell, number>;
+}
+
+/**
+ * Prawidłowy wiersz arkusza dla zawodnika po serii `endIndex`. Übertrag liczy
+ * się z PRAWIDŁOWYCH sum — błąd gracza w jednej serii nie psuje kolejnych.
+ */
+export const expectedRow = (ends: SchreiberEnd[], endIndex: number, shooter: number): SheetRow => {
+  const values = sortedValues(ends[endIndex].arrows.filter(a => a.shooter === shooter));
+  const pts = values.map(arrowPoints);
+  const sumOf = (list: number[]) => list.reduce((acc, p) => acc + p, 0);
+  let carry = 0;
+  for (let i = 0; i <= endIndex; i++) carry += ends[i].sums[shooter];
+  return {
+    values,
+    cells: { t1: sumOf(pts.slice(0, 3)), t2: sumOf(pts.slice(3, 6)), sum: sumOf(pts), carry },
+  };
+};
+
+/** Czy gracz odczytał te same strzały (kolejność dowolna, X ≠ 10). */
+export const sameArrowSet = (entered: string[], actual: string[]): boolean => {
+  if (entered.length !== actual.length) return false;
+  const key = (list: string[]) => [...list].sort().join(',');
+  return key(entered) === key(actual);
 };
 
 export interface SchreiberAnswer {
+  kind: 'arrows' | 'sum';
   correct: boolean;
   ms: number;
 }
@@ -206,16 +237,17 @@ export interface SchreiberResult {
   correct: number;
   total: number;
   totalMs: number;
+  /** Średni czas na jeden wiersz arkusza (zawodnik × seria). */
   avgMs: number;
 }
 
-export const summarizeGame = (answers: SchreiberAnswer[]): SchreiberResult => {
+export const summarizeGame = (answers: SchreiberAnswer[], rows: number): SchreiberResult => {
   const totalMs = answers.reduce((acc, a) => acc + a.ms, 0);
   return {
     correct: answers.filter(a => a.correct).length,
     total: answers.length,
     totalMs,
-    avgMs: answers.length ? Math.round(totalMs / answers.length) : 0,
+    avgMs: rows > 0 ? Math.round(totalMs / rows) : 0,
   };
 };
 
@@ -232,10 +264,9 @@ export interface SchreiberConfig {
   shooters: number;
   arrows: number;
   level: SchreiberLevel;
-  mode: SchreiberMode;
   ends: number;
 }
 
 /** Klucz rekordu — rekord liczy się osobno dla każdego ustawienia gry. */
 export const configKey = (c: SchreiberConfig): string =>
-  `${c.target}-${c.shooters}-${arrowsFor(c.target, c.arrows)}-${c.level}-${c.mode}-${c.ends}`;
+  `${c.target}-${c.shooters}-${arrowsFor(c.target, c.arrows)}-${c.level}-${c.ends}`;

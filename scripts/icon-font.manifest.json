@@ -238,6 +238,8 @@
   "visibility_off",
   "warning",
   "width",
-  "workspace_premium"
+  "workspace_premium",
+  "zoom_in",
+  "zoom_out"
  ]
 }

@@ -169,7 +169,8 @@ export const components = {
     fallbackMode: "Notfallmodus",
     fallbackDesc: "Nutzen wenn Wertungskarte verloren. Nur Durchgang-Summen eingeben.",
     durchgang1: "Durchgang 1",
-    durchgang2: "Durchgang 2"
+    durchgang2: "Durchgang 2",
+    perEnd: "{{count}} pro Passe"
   },
   rules: {
     bow_recurve: "Recurve",

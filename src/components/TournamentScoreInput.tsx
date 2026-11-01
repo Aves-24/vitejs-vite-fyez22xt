@@ -8,6 +8,14 @@ import { getSetupStamp } from '../utils/setupStamp';
 import { settleWrite } from '../utils/offlineWrite';
 import { distanceMeters } from '../config/distances';
 
+// Format zawodów: na zewnątrz 2×36 (passe po 6), w hali 2×30 (passe po 3) — user 2026-11-01.
+export const TOURNAMENT_FORMATS = {
+  OUT_2X36: { arrowsPerEnd: 6, endsPerRound: 6 },
+  IN_2X30: { arrowsPerEnd: 3, endsPerRound: 10 },
+} as const;
+export type TournamentFormatId = keyof typeof TOURNAMENT_FORMATS;
+const ROUNDS = 2;
+
 interface TournamentScoreInputProps {
   userId: string;
   eventId: string;
@@ -27,6 +35,12 @@ interface TournamentScoreInputProps {
 export default function TournamentScoreInput({ userId, eventId, tournamentName, distance, distanceId, distanceLabel, eventDate, onClose, onNavigate }: TournamentScoreInputProps) {
   const { t } = useTranslation();
   const [inputMode, setInputMode] = useState<'DETAILED' | 'SUMMARY'>('DETAILED');
+  // Hala (18/25 m) domyślnie 2×30 po 3, reszta 2×36 po 6.
+  const [formatId, setFormatId] = useState<TournamentFormatId>(() => (distanceMeters(distance) || 99) <= 25 ? 'IN_2X30' : 'OUT_2X36');
+  const { arrowsPerEnd, endsPerRound } = TOURNAMENT_FORMATS[formatId];
+  const totalEnds = endsPerRound * ROUNDS;
+  const arrowsPerRound = arrowsPerEnd * endsPerRound;
+  const maxRoundScore = arrowsPerRound * 10;
 
   // STANY DLA TRYBU SZCZEGÓŁOWEGO
   const [ends, setEnds] = useState<string[][]>([]); 
@@ -87,7 +101,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       }
       setEditingTarget(null);
     } else {
-      if (currentEnd.length < 6 && ends.length < 12) {
+      if (currentEnd.length < arrowsPerEnd && ends.length < totalEnds) {
         const newEnd = [...currentEnd, key].sort((a, b) => getArrowValue(b) - getArrowValue(a));
         setCurrentEnd(newEnd);
       }
@@ -95,15 +109,15 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
   };
 
   useEffect(() => {
-    if (currentEnd.length === 6 && !editingTarget) {
+    if (currentEnd.length === arrowsPerEnd && !editingTarget) {
       const timer = setTimeout(() => {
         setEnds(prev => [...prev, currentEnd]);
         setCurrentEnd([]);
-        if (ends.length === 11) setShowKeyboard(false);
+        if (ends.length === totalEnds - 1) setShowKeyboard(false);
       }, 150); 
       return () => clearTimeout(timer);
     }
-  }, [currentEnd, ends.length, editingTarget]);
+  }, [currentEnd, ends.length, editingTarget, arrowsPerEnd, totalEnds]);
 
   const handleDelete = () => {
     if (editingTarget) { setEditingTarget(null); return; }
@@ -121,7 +135,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
   // Sumy wyliczone z trybu szczegółowego dla każdego Durchgangu
   const detailedR1 = useMemo(() => {
-    const r1ends = ends.slice(0, 6);
+    const r1ends = ends.slice(0, endsPerRound);
     let score = 0, x = 0, tens = 0, nines = 0;
     r1ends.forEach(end => end.forEach(a => {
       score += getArrowValue(a);
@@ -130,10 +144,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       else if (a === '9') nines++;
     }));
     return { score, x, tens, nines };
-  }, [ends]);
+  }, [ends, endsPerRound]);
 
   const detailedR2 = useMemo(() => {
-    const r2ends = ends.slice(6, 12);
+    const r2ends = ends.slice(endsPerRound, totalEnds);
     let score = 0, x = 0, tens = 0, nines = 0;
     r2ends.forEach(end => end.forEach(a => {
       score += getArrowValue(a);
@@ -142,7 +156,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       else if (a === '9') nines++;
     }));
     return { score, x, tens, nines };
-  }, [ends]);
+  }, [ends, endsPerRound, totalEnds]);
 
   const stats = useMemo(() => {
     let totalScore = 0, totalX = 0, total10 = 0, total9 = 0;
@@ -179,7 +193,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     const todayISO = past ? eventDate! : new Date().toISOString().split('T')[0];
     const sameMonth = sessionDay.getFullYear() === now.getFullYear() && sessionDay.getMonth() === now.getMonth();
     // M = wystrzelona strzała (0 pkt), liczy do średniej i do łącznej liczby
-    const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : 72;
+    const sessionArrows = inputMode === 'DETAILED' ? finalEnds.flat().filter((a: string) => a && a.length > 0).length : arrowsPerRound * ROUNDS;
     const scoreArrows = sessionArrows; // M wliczone do mianownika średniej
 
     // Konwersja formatu 'ends' dla trybu DETAILED (aby StatsView widziało strzały)
@@ -234,6 +248,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         ends: inputMode === 'DETAILED' ? archivedEnds : [],
         note: aiNote.trim(),
         inputMode: inputMode,
+        tournamentFormat: { id: formatId, arrowsPerEnd, endsPerRound, rounds: ROUNDS },
         // [C25] Po metrach, nie po napisie — dystans moze niesc etykiete.
         targetType: distanceMeters(distance) === 18 ? '3-Spot' : 'Full',
         ...guestExpiryFields() // [GOŚĆ] sesje gościa wygasają po 24h (TTL)
@@ -266,7 +281,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
     }
   };
 
-  const isFinished = ends.length >= 12;
+  const isFinished = ends.length >= totalEnds;
 
   const content = (
     <div className="fixed inset-0 mx-auto w-full max-w-md bg-[#fcfdfe] z-[100000] flex flex-col pt-[calc(env(safe-area-inset-top)+1rem)] pb-8 animate-fade-in-up shadow-2xl overflow-hidden">
@@ -277,6 +292,22 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
         <button onClick={onClose} className="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 border border-gray-200 active:scale-90"><span className="material-symbols-outlined text-lg">close</span></button>
       </div>
 
+      {/* FORMAT — po pierwszej strzale zablokowany, bo zmienia podział na passe */}
+      <div className="px-5 mb-2 shrink-0">
+        <div className="flex gap-1.5">
+          {(Object.keys(TOURNAMENT_FORMATS) as TournamentFormatId[]).map(id => {
+            const f = TOURNAMENT_FORMATS[id];
+            const on = formatId === id;
+            const lockedFmt = hasDetailedData && !on;
+            return (
+              <button key={id} disabled={lockedFmt} onClick={() => setFormatId(id)} className={`flex-1 py-2 rounded-xl border text-[11px] font-black transition-all active:scale-95 ${on ? 'bg-[#fed33e] border-[#e5bd38] text-[#5d4a00] shadow-sm' : lockedFmt ? 'bg-white border-gray-100 text-gray-300' : 'bg-white border-gray-200 text-gray-500'}`}>
+                {ROUNDS}×{f.arrowsPerEnd * f.endsPerRound} <span className="font-bold opacity-70">· {t('tournamentInput.perEnd', { count: f.arrowsPerEnd })}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="px-5 mb-3 shrink-0">
         <div className="flex p-1 bg-gray-100 rounded-2xl">
           <button onClick={() => setInputMode('DETAILED')} className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all ${inputMode === 'DETAILED' ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'}`}>{t('tournamentInput.modeDetailed')}</button>
@@ -285,16 +316,18 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       </div>
 
       <div className="px-5 mb-3 shrink-0">
-        <div className="bg-[#0a3a2a] rounded-[24px] p-5 text-white shadow-lg flex justify-between items-end relative overflow-hidden">
-          <span className="material-symbols-outlined absolute -right-4 -bottom-4 text-[100px] text-white/5 rotate-12 pointer-events-none">scoreboard</span>
-          <div className="relative z-10">
-            <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest mb-0.5">{t('tournamentInput.totalScore')}</p>
-            <span className="text-4xl font-black leading-none">{stats.totalScore}</span>
+        <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm pl-2.5 pr-4 py-3 flex items-center gap-3">
+          <span className="tb-tourney-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[22px] tb-tourney-accent">emoji_events</span>
+          </span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-tight">{t('tournamentInput.totalScore')}</p>
+            <span className="text-3xl font-black leading-none text-[#0a3a2a]">{stats.totalScore}</span>
           </div>
-          <div className="flex gap-3 text-right relative z-10">
-            <div><p className="text-[8px] font-bold text-emerald-300 uppercase mb-0.5">10</p><span className="text-lg font-black">{stats.total10}</span></div>
-            <div><p className="text-[8px] font-bold text-[#fed33e] uppercase mb-0.5">X</p><span className="text-lg font-black text-[#fed33e]">{stats.totalX}</span></div>
-            <div><p className="text-[8px] font-bold text-gray-300 uppercase mb-0.5">9</p><span className="text-lg font-black text-gray-100">{stats.total9}</span></div>
+          <div className="flex gap-3 text-right">
+            <div><p className="text-[8px] font-black text-gray-400 uppercase mb-0.5">10</p><span className="text-lg font-black text-[#0a3a2a]">{stats.total10}</span></div>
+            <div><p className="text-[8px] font-black text-[#cca800] uppercase mb-0.5">X</p><span className="text-lg font-black text-[#0a3a2a]">{stats.totalX}</span></div>
+            <div><p className="text-[8px] font-black text-gray-400 uppercase mb-0.5">9</p><span className="text-lg font-black text-[#0a3a2a]">{stats.total9}</span></div>
           </div>
         </div>
       </div>
@@ -305,14 +338,14 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
 
             {/* BANER INFO */}
             {hasDetailedData ? (
-              <div className="flex items-start gap-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/20 rounded-2xl p-3">
-                <span className="material-symbols-outlined text-[#0a3a2a] text-[18px] shrink-0 mt-0.5">info</span>
-                <p className="text-[9px] font-bold text-[#0a3a2a] leading-relaxed">{t('tournamentInput.fromDetailed')}</p>
+              <div className="flex items-start gap-2 px-1">
+                <span className="material-symbols-outlined text-gray-400 text-[18px] shrink-0">info</span>
+                <p className="text-[10px] font-bold text-gray-500 leading-relaxed">{t('tournamentInput.fromDetailed')}</p>
               </div>
             ) : (
-              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-2xl p-3">
-                <span className="material-symbols-outlined text-amber-600 text-[18px] shrink-0 mt-0.5">warning</span>
-                <p className="text-[9px] font-bold text-amber-800 leading-relaxed">
+              <div className="flex items-start gap-2 px-1">
+                <span className="material-symbols-outlined text-amber-500 text-[18px] shrink-0">warning</span>
+                <p className="text-[10px] font-bold text-gray-500 leading-relaxed">
                   <strong>{t('tournamentInput.fallbackMode')}</strong> — {t('tournamentInput.fallbackDesc')}
                 </p>
               </div>
@@ -322,31 +355,31 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {(() => {
               const locked = hasDetailedData;
               const score  = locked ? detailedR1.score : (parseInt(summaryR1) || 0);
-              const arrows = locked ? ends.slice(0,6).flat().filter(a => a !== 'M').length : 36;
+              const arrows = locked ? ends.slice(0,endsPerRound).flat().filter(a => a !== 'M').length : arrowsPerRound;
               const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
               const r1x    = locked ? String(detailedR1.x)    : summaryX1;
               const r1t    = locked ? String(detailedR1.tens)  : summary10_1;
               const r1n    = locked ? String(detailedR1.nines) : summary9_1;
-              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-emerald-200'}`;
+              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-200 text-[#0a3a2a]'}`;
               return (
-                <div className="bg-emerald-50 rounded-[24px] p-4 border border-emerald-100 shadow-sm">
-                  <div className="flex items-center justify-between mb-3 border-b border-emerald-200/50 pb-1">
-                    <h3 className="text-[10px] font-black text-emerald-800 uppercase">{t('tournamentInput.durchgang1')}</h3>
+                <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm p-3">
+                  <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-1.5">
+                    <h3 className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('tournamentInput.durchgang1')}</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                      <span className="text-[9px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
                         {t('tournamentInput.avgDurchgang')}: <span className="text-[#0a3a2a]">{avg}</span>
                       </span>
-                      {locked && ends.slice(0,6).length > 0 && <span className="text-[8px] font-black text-emerald-600 bg-emerald-200/60 px-2 py-0.5 rounded-full">{ends.slice(0,6).length}/6 {t('tournamentInput.passes')}</span>}
+                      {locked && ends.slice(0,endsPerRound).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(0,endsPerRound).length}/{endsPerRound} {t('tournamentInput.passes')}</span>}
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
-                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR1} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
+                      <label className="text-[8px] font-black text-gray-400 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
+                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR1} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= maxRoundScore)) setSummaryR1(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-emerald-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
-                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
-                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-black text-gray-400 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r1t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummary10_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r1x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummaryX1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r1n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummary9_1(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>
               );
@@ -356,31 +389,31 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             {(() => {
               const locked = hasDetailedData;
               const score  = locked ? detailedR2.score : (parseInt(summaryR2) || 0);
-              const arrows = locked ? ends.slice(6,12).flat().filter(a => a !== 'M').length : 36;
+              const arrows = locked ? ends.slice(endsPerRound,totalEnds).flat().filter(a => a !== 'M').length : arrowsPerRound;
               const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
               const r2x    = locked ? String(detailedR2.x)    : summaryX2;
               const r2t    = locked ? String(detailedR2.tens)  : summary10_2;
               const r2n    = locked ? String(detailedR2.nines) : summary9_2;
-              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-blue-100'}`;
+              const inputCls = `w-full border rounded-xl p-2 text-center text-base font-black focus:outline-none ${locked ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed' : 'bg-white border-gray-200 text-[#0a3a2a]'}`;
               return (
-                <div className="bg-blue-50/50 rounded-[24px] p-4 border border-blue-100 shadow-sm">
-                  <div className="flex items-center justify-between mb-3 border-b border-blue-200/50 pb-1">
-                    <h3 className="text-[10px] font-black text-blue-800 uppercase">{t('tournamentInput.durchgang2')}</h3>
+                <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm p-3">
+                  <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-1.5">
+                    <h3 className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('tournamentInput.durchgang2')}</h3>
                     <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                        {t('tournamentInput.avgDurchgang')}: <span className="text-blue-900">{avg}</span>
+                      <span className="text-[9px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {t('tournamentInput.avgDurchgang')}: <span className="text-[#0a3a2a]">{avg}</span>
                       </span>
-                      {locked && ends.slice(6,12).length > 0 && <span className="text-[8px] font-black text-blue-600 bg-blue-200/60 px-2 py-0.5 rounded-full">{ends.slice(6,12).length}/6 {t('tournamentInput.passes')}</span>}
+                      {locked && ends.slice(endsPerRound,totalEnds).length > 0 && <span className="text-[8px] font-black text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{ends.slice(endsPerRound,totalEnds).length}/{endsPerRound} {t('tournamentInput.passes')}</span>}
                     </div>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
                     <div>
-                      <label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
-                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR2} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 360)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
+                      <label className="text-[8px] font-black text-gray-400 uppercase block text-center mb-1">{t('tournamentInput.points')}</label>
+                      <input readOnly={locked} type="number" value={locked ? String(score) : summaryR2} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= maxRoundScore)) setSummaryR2(e.target.value); } }} placeholder="0" className={inputCls} />
                     </div>
-                    <div><label className="text-[8px] font-bold text-blue-700 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
-                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
-                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= 36)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-black text-gray-400 uppercase block text-center mb-1">10</label><input readOnly={locked} type="number" value={r2t} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummary10_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-[#cca800] uppercase block text-center mb-1">X</label><input readOnly={locked} type="number" value={r2x} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummaryX2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
+                    <div><label className="text-[8px] font-bold text-gray-400 uppercase block text-center mb-1">9</label><input readOnly={locked} type="number" value={r2n} onChange={e => { if (!locked) { const v = parseInt(e.target.value); if (e.target.value === '' || (!isNaN(v) && v <= arrowsPerRound)) setSummary9_2(e.target.value); } }} placeholder="0" className={inputCls} /></div>
                   </div>
                 </div>
               );
@@ -391,15 +424,15 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
               const totalScore = stats.totalScore;
               const totalArrows = hasDetailedData
                 ? ends.flat().filter(a => a !== 'M').length
-                : ((parseInt(summaryR1) || 0) > 0 || (parseInt(summaryR2) || 0) > 0 ? 72 : 0);
+                : ((parseInt(summaryR1) || 0) > 0 || (parseInt(summaryR2) || 0) > 0 ? arrowsPerRound * ROUNDS : 0);
               const avg = totalArrows > 0 ? (totalScore / totalArrows).toFixed(2) : '—';
               return totalScore > 0 ? (
-                <div className="bg-[#0a3a2a] rounded-[24px] p-4 shadow-md flex items-center justify-between">
+                <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm p-3 flex items-center justify-between">
                   <div>
-                    <p className="text-[9px] font-black text-emerald-300 uppercase tracking-widest mb-0.5">{t('tournamentInput.avgTotal')}</p>
-                    <p className="text-[8px] font-bold text-emerald-400/60">{t('tournamentInput.practiceNote')}</p>
+                    <p className="text-[9px] font-black text-[#0a3a2a] uppercase tracking-widest mb-0.5">{t('tournamentInput.avgTotal')}</p>
+                    <p className="text-[8px] font-bold text-gray-400">{t('tournamentInput.practiceNote')}</p>
                   </div>
-                  <span className="text-3xl font-black text-white">{avg}</span>
+                  <span className="text-2xl font-black text-[#0a3a2a]">{avg}</span>
                 </div>
               ) : null;
             })()}
@@ -409,25 +442,25 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           <div className="space-y-[2px]">
             {/* HISTORIA SZCZEGÓŁOWA — aktywny Durchgang na górze */}
             {[1, 0].map(durchgang => {
-              const startIdx = durchgang * 6;
-              const endIdx = startIdx + 6;
+              const startIdx = durchgang * endsPerRound;
+              const endIdx = startIdx + endsPerRound;
               const durchgangEnds = ends.slice(startIdx, endIdx);
               const isCurrentDurchgang = ends.length >= startIdx && ends.length < endIdx;
               const isDurchgangDone = ends.length >= endIdx;
               const durchgangScore = durchgangEnds.reduce((sum, end) => sum + end.reduce((s, v) => s + getArrowValue(v), 0), 0);
 
               // Nie pokazuj 2. Durchgandu jeśli jeszcze nie doszliśmy
-              if (durchgang === 1 && ends.length < 6 && currentEnd.length === 0) return null;
+              if (durchgang === 1 && ends.length < endsPerRound && currentEnd.length === 0) return null;
 
               return (
                 <div key={durchgang} className="mb-3">
                   {/* Nagłówek Durchgangu */}
                   <div className="flex items-center justify-between px-1 mb-1.5">
                     <div className="flex items-center gap-2">
-                      <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${durchgang === 0 ? 'bg-[#0a3a2a] text-white' : 'bg-blue-600 text-white'}`}>
+                      <div className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${durchgang === 0 ? 'bg-[#0a3a2a] text-white' : 'bg-white border border-[#0a3a2a] text-[#0a3a2a]'}`}>
                         Durchgang {durchgang + 1}
                       </div>
-                      <span className="text-[8px] font-bold text-gray-400 uppercase">Passe {startIdx + 1}–{startIdx + 6}</span>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase">Passe {startIdx + 1}–{startIdx + endsPerRound}</span>
                     </div>
                     {isDurchgangDone && (
                       <span className="text-sm font-black text-[#0a3a2a]">{durchgangScore}</span>
@@ -443,7 +476,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                           <span className="text-[8px] font-black text-emerald-700">{ends.length + 1}</span>
                         </div>
                         <div className="flex-1 flex gap-1">
-                          {[...Array(6)].map((_, aIdx) => {
+                          {[...Array(arrowsPerEnd)].map((_, aIdx) => {
                             const arrow = currentEnd[aIdx];
                             return arrow ? (
                               <button key={aIdx} onClick={() => setEditingTarget({ endIdx: -1, arrowIdx: aIdx })} className={`w-6 h-6 rounded-md flex items-center justify-center text-[9px] font-black shadow-sm border animate-scale-in ${getArrowStyles(arrow, editingTarget?.endIdx === -1 && editingTarget?.arrowIdx === aIdx)}`}>{arrow}</button>
@@ -480,10 +513,10 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
                     })}
 
                     {/* Separator — pokazuje się pod Durchgangiem 2 (który jest u góry) */}
-                    {durchgang === 1 && ends.length >= 6 && (
+                    {durchgang === 1 && ends.length >= endsPerRound && (
                       <div className="flex items-center gap-2 py-1 mt-1">
                         <div className="flex-1 h-px bg-gray-200" />
-                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">D1: {ends.slice(0,6).reduce((s,e)=>s+e.reduce((a,v)=>a+getArrowValue(v),0),0)} / D2: {durchgangScore}</span>
+                        <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">D1: {ends.slice(0,endsPerRound).reduce((s,e)=>s+e.reduce((a,v)=>a+getArrowValue(v),0),0)} / D2: {durchgangScore}</span>
                         <div className="flex-1 h-px bg-gray-200" />
                       </div>
                     )}
@@ -493,9 +526,9 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
             })}
 
             {isFinished && !showKeyboard && (
-              <div className="bg-blue-50 border-2 border-blue-100 rounded-[24px] p-4 text-center flex flex-col items-center shadow-sm mt-2">
-                <span className="material-symbols-outlined text-3xl text-blue-500 mb-1">verified</span>
-                <p className="text-[11px] font-black text-blue-900 uppercase tracking-widest leading-none">{t('tournamentInput.finishedMsg')}</p>
+              <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm p-4 text-center flex flex-col items-center mt-2">
+                <span className="material-symbols-outlined text-3xl text-emerald-600 mb-1">verified</span>
+                <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest leading-none">{t('tournamentInput.finishedMsg')}</p>
               </div>
             )}
           </div>
@@ -545,7 +578,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
           <div className="flex items-center gap-1.5">
             <button onClick={() => setPracticeArrows(p => Math.max(0, p - 1))} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 font-black text-sm shadow-sm active:scale-90 transition-all">−1</button>
             <button onClick={() => setPracticeArrows(p => p + 1)} className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center text-gray-500 font-black text-sm shadow-sm active:scale-90 transition-all">+1</button>
-            <button onClick={() => setPracticeArrows(p => p + 6)} className="w-10 h-8 rounded-lg bg-[#0a3a2a] border border-[#0a3a2a] flex items-center justify-center text-white font-black text-sm shadow-sm active:scale-90 transition-all">+6</button>
+            <button onClick={() => setPracticeArrows(p => p + arrowsPerEnd)} className="w-10 h-8 rounded-lg bg-[#0a3a2a] border border-[#0a3a2a] flex items-center justify-center text-white font-black text-sm shadow-sm active:scale-90 transition-all">+{arrowsPerEnd}</button>
           </div>
         </div>
 

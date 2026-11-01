@@ -136,8 +136,10 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
   const roundDiff = full.length
     ? full.reduce((n, s) => {
         const e = s.ends!;
-        const r1 = e.slice(0, 6).reduce((m, x) => m + endSum(x), 0);
-        const r2 = e.slice(6, 12).reduce((m, x) => m + endSum(x), 0);
+        // Połowy, nie 1–6 / 7–12: w hali to 2×10 passe po 3 (user 2026-11-01).
+        const h = Math.floor(e.length / 2);
+        const r1 = e.slice(0, h).reduce((m, x) => m + endSum(x), 0);
+        const r2 = e.slice(h, h * 2).reduce((m, x) => m + endSum(x), 0);
         return n + (r2 - r1);
       }, 0) / full.length
     : null;

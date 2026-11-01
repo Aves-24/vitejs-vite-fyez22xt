@@ -169,7 +169,8 @@ export const components = {
     fallbackMode: "Fallback mode",
     fallbackDesc: "Use when you lost your scorecard. Enter round totals only.",
     durchgang1: "Round 1",
-    durchgang2: "Round 2"
+    durchgang2: "Round 2",
+    perEnd: "{{count}} per end"
   },
   rules: {
     bow_recurve: "Recurve",

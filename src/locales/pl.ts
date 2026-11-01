@@ -169,7 +169,8 @@ export const components = {
     fallbackMode: "Tryb awaryjny",
     fallbackDesc: "Użyj gdy zgubiłeś karteczkę. Wpisz tylko sumy każdej rundy.",
     durchgang1: "Runda 1",
-    durchgang2: "Runda 2"
+    durchgang2: "Runda 2",
+    perEnd: "po {{count}} w serii"
   },
   rules: {
     bow_recurve: "Klasyczny (Recurve)",

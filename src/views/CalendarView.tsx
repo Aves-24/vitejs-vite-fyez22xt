@@ -59,6 +59,8 @@ interface Event {
  */
 const MAINTENANCE_BG = 'bg-[#8B5E3C]';
 const MAINTENANCE_STRIPE = 'tb-maint';
+// Pole formularza jak w oknach dziennika (TechEditSheet) — szare, przy edycji białe.
+const FIELD = 'w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-black text-[#0a3a2a] placeholder-gray-300 outline-none transition-colors';
 // Pasek karty wg słownika kolorów — ten sam w liście, archiwum i oknie dnia.
 const stripeOf = (e: { category?: string; isMirrored?: boolean; maintenanceGroup?: unknown; todo?: boolean; wasATodo?: boolean }) =>
   e.maintenanceGroup ? 'tb-maint'
@@ -1199,10 +1201,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
       {showForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-start justify-center pt-14 px-4">
-          <div className="bg-white w-full max-w-sm rounded-[32px] px-5 pt-4 pb-5 shadow-2xl overflow-y-auto max-h-[90vh] animate-fade-in-up">
-             <div className="flex justify-between items-center mb-2 text-[#0a3a2a]">
-                <h2 className="text-xl font-black">{editingEventId ? t('calendar.editEvent') : t('calendar.addEvent')}</h2>
-                <button onClick={() => { setShowForm(false); resetForm(); }} className="p-2 active:scale-90 bg-red-50 text-red-500 hover:text-red-600 rounded-full transition-colors"><span className="material-symbols-outlined">close</span></button>
+          <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl overflow-y-auto max-h-[90vh] animate-fade-in-up">
+             <div className="flex items-center gap-2.5 mb-3">
+                <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${newCategory === 'Turniej' ? 'tb-tourney-icon' : 'tb-icon'}`}>
+                  <span className={`material-symbols-outlined text-[20px] ${newCategory === 'Turniej' ? 'tb-tourney-accent' : newCategory === 'Trener' ? 'text-rose-500' : 'text-blue-900'}`}>
+                    {newCategory === 'Turniej' ? 'emoji_events' : newCategory === 'Trener' ? 'group' : 'event'}
+                  </span>
+                </span>
+                <h2 className="flex-1 min-w-0 text-[15px] font-black text-[#0a3a2a] leading-tight">{editingEventId ? t('calendar.editEvent') : t('calendar.addEvent')}</h2>
+                <button onClick={() => { setShowForm(false); resetForm(); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
              </div>
 
              <div className="flex p-1 bg-gray-100 rounded-xl mb-3">
@@ -1214,7 +1221,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              </div>
              
              <div className="space-y-3">
-               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : newCategory === 'Trener' ? t('calendar.formTrainerName') : t('calendar.formOtherName')} className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-3.5 text-sm font-bold text-[#0a3a2a] placeholder:text-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-400" value={newTitle} onChange={e => setNewTitle(e.target.value)} />
+               <input type="text" placeholder={newCategory === 'Turniej' ? t('calendar.formTourName') : newCategory === 'Trener' ? t('calendar.formTrainerName') : t('calendar.formOtherName')} className={FIELD} value={newTitle} onChange={e => setNewTitle(e.target.value)} />
 
                {newCategory === 'Turniej' && titleSuggestions.length > 0 && (() => {
                  const typed = seriesKeyFromTitle(newTitle);
@@ -1299,7 +1306,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    <div className="flex flex-wrap gap-1.5">
                      <button
                        onClick={() => setNewCoachStudents(newCoachStudents === 'all' ? [] : 'all')}
-                       className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${newCoachStudents === 'all' ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                       className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${newCoachStudents === 'all' ? 'bg-rose-100 border-rose-400 text-rose-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
                      >
                        {t('calendar.trainerAllStudents')}
                      </button>
@@ -1360,7 +1367,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                                setNewCoachStudents(arr.includes(s.id) ? arr.filter(id => id !== s.id) : [...arr, s.id]);
                              }
                            }}
-                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${isSelected ? 'bg-blue-100 border-blue-400 text-blue-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
+                           className={`px-3 py-1.5 rounded-xl text-[10px] font-black border transition-all ${isSelected ? 'bg-rose-100 border-rose-400 text-rose-700' : 'bg-gray-50 border-transparent text-gray-400'}`}
                          >
                            {/* Nazwisko pierwsze — lista jest po nim posortowana. */}
                            {`${s.lastName} ${s.firstName}`.trim()}
@@ -1374,8 +1381,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                    {(() => {
                      const hasSelected = newCoachStudents === 'all' || (Array.isArray(newCoachStudents) && newCoachStudents.length > 0);
                      return (
-                       <p className={`text-[11px] font-bold mt-1.5 flex items-center gap-2 rounded-xl border px-3 py-2 ${hasSelected ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
-                         <span className="material-symbols-outlined text-[18px] shrink-0">{hasSelected ? 'visibility' : 'visibility_off'}</span>
+                       <p className="text-[11px] font-bold mt-1.5 flex items-start gap-2 px-1 text-gray-500">
+                         <span className={`material-symbols-outlined text-[18px] shrink-0 ${hasSelected ? 'text-rose-500' : 'text-gray-300'}`}>{hasSelected ? 'visibility' : 'visibility_off'}</span>
                          {hasSelected ? t('calendar.trainerPlanHint') : t('calendar.trainerPlanHintNone')}
                        </p>
                      );
@@ -1387,7 +1394,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  <button
                    type="button"
                    onClick={() => setNewIsTodo(!newIsTodo)}
-                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all ${newIsTodo ? 'bg-emerald-50 border-emerald-400 text-emerald-700' : 'bg-gray-50 border-gray-100 text-gray-400'}`}
+                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 transition-all ${newIsTodo ? 'bg-white border-emerald-400 text-[#0a3a2a]' : 'bg-white border-gray-100 text-gray-400'}`}
                  >
                    <span className={`material-symbols-outlined text-[20px] ${newIsTodo ? 'text-emerald-600' : 'text-gray-300'}`}>
                      {newIsTodo ? 'check_circle' : 'radio_button_unchecked'}
@@ -1400,7 +1407,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  <div className="flex items-center gap-1.5 ml-1">
                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('calendar.modalDateTime')}</label>
                    <div className="relative w-6 h-6">
-                     <div className="w-6 h-6 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-md text-emerald-600 pointer-events-none">
+                     <div className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-md text-gray-500 pointer-events-none">
                        <span className="material-symbols-outlined text-xs">calendar_today</span>
                      </div>
                      <input ref={calendarPickerRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setInputYear(y); setInputMonth(m); setInputDay(d); setDateError(''); } }} />
@@ -1408,20 +1415,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  </div>
                  <div className="flex gap-1.5">
                    <div className="flex-1 flex flex-col gap-1">
-                     <input type="number" placeholder="DD" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputDay} onChange={e => { setInputDay(e.target.value.slice(0,2)); setDateError(''); }} />
+                     <input type="number" placeholder="DD" className={`${FIELD} text-center ${dateError ? '!border-red-400' : ''}`} value={inputDay} onChange={e => { setInputDay(e.target.value.slice(0,2)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                    </div>
                    <div className="flex-1 flex flex-col gap-1">
-                     <input type="number" placeholder="MM" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputMonth} onChange={e => { setInputMonth(e.target.value.slice(0,2)); setDateError(''); }} />
+                     <input type="number" placeholder="MM" className={`${FIELD} text-center ${dateError ? '!border-red-400' : ''}`} value={inputMonth} onChange={e => { setInputMonth(e.target.value.slice(0,2)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                    </div>
                    <div className="flex-[1.5] flex flex-col gap-1">
-                     <input type="number" placeholder="YYYY" className={`w-full bg-gray-50 border rounded-xl p-2.5 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none ${dateError ? 'border-red-400' : 'border-gray-100'}`} value={inputYear} onChange={e => { setInputYear(e.target.value.slice(0,4)); setDateError(''); }} />
+                     <input type="number" placeholder="YYYY" className={`${FIELD} text-center ${dateError ? '!border-red-400' : ''}`} value={inputYear} onChange={e => { setInputYear(e.target.value.slice(0,4)); setDateError(''); }} />
                      <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                    </div>
                    <div className="flex-[1.5] flex flex-col gap-1">
-                     <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-2.5 text-center font-black text-base text-[#5d4a00] outline-none" value={newTime} onChange={e => setNewTime(e.target.value)} />
-                     <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
+                     <input type="time" className={`${FIELD} text-center px-1`} value={newTime} onChange={e => setNewTime(e.target.value)} />
+                     <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.hour')}</span>
                    </div>
                  </div>
                  {dateError && (
@@ -1429,11 +1436,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                  )}
                </div>}
 
-               <input type="text" placeholder={t('calendar.formCity')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold focus:outline-none" value={newAddress} onChange={e => setNewAddress(e.target.value)} />
-               <textarea maxLength={120} placeholder={t('calendar.formNotes')} className="w-full bg-gray-50 border border-gray-100 rounded-2xl p-4 text-sm font-bold h-20 resize-none focus:outline-none" value={newNote} onChange={e => setNewNote(e.target.value)} />
+               <input type="text" placeholder={t('calendar.formCity')} className={FIELD} value={newAddress} onChange={e => setNewAddress(e.target.value)} />
+               <textarea maxLength={120} placeholder={t('calendar.formNotes')} className="w-full h-20 bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[14px] font-medium text-gray-700 placeholder-gray-300 resize-none outline-none leading-relaxed transition-colors" value={newNote} onChange={e => setNewNote(e.target.value)} />
 
                {newCategory === 'Trener' && (
-                 <div className="bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                 <div className="rounded-xl p-3 border border-gray-100">
                    <TopicPicker selectedTopics={newTopics} onChange={setNewTopics} />
                  </div>
                )}
@@ -1441,7 +1448,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                <button
                  onClick={saveEvent}
                  disabled={isSaving || !newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))}
-                 className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 ${(!newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))) ? 'bg-gray-200 text-gray-400' : 'bg-[#0a3a2a] text-white'}`}
+                 className={`w-full py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 ${(!newTitle || (!newIsTodo && (!inputDay || !inputMonth || !inputYear))) ? 'bg-gray-200 text-gray-400' : 'bg-[#0a3a2a] text-white'}`}
                >
                  {isSaving ? t('calendar.formSaving') : t('calendar.formSave')}
                </button>
@@ -1457,8 +1464,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <h2 className="text-base font-black text-[#0a3a2a]">
                 {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
               </h2>
-              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); }} className="p-1.5 bg-red-50 text-red-500 rounded-full active:scale-90 transition-colors">
-                <span className="material-symbols-outlined text-lg">close</span>
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <div className="space-y-2">
@@ -1500,7 +1507,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
-                <button onClick={closeViewingModal} className="p-1.5 bg-red-50 text-red-500 hover:text-red-600 rounded-full active:scale-90 shrink-0 transition-colors"><span className="material-symbols-outlined text-lg">close</span></button>
+                <button onClick={closeViewingModal} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 shrink-0 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
              </div>
 
              {viewingEvent.category === 'Turniej' && viewingEvent.distance && (() => {
@@ -1757,13 +1764,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              <div className="flex gap-2">
                <button
                   onClick={handleEditViewing}
-                  className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
+                  className="flex-1 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
                 >
                   {t('calendar.modalEdit')}
                </button>
                <button
                   onClick={() => handleDeleteEvent(viewingEvent.id)}
-                  className="flex-1 py-3.5 rounded-[16px] font-black text-[10px] uppercase tracking-widest bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
+                  className="flex-1 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest bg-white text-red-500 border border-red-100 active:scale-95 transition-all"
                 >
                   {t('calendar.modalDelete')}
                </button>

@@ -1973,7 +1973,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const renderIncomingInvites = () => incomingInvites.length > 0 && (
     <div className="space-y-2 mb-4">
       {incomingInvites.map(inv => (
-        <div key={inv.id} className="bg-white rounded-xl border border-gray-100 border-l-4 border-l-rose-400 shadow-sm p-3.5">
+        <div key={inv.id} className="tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm p-3.5">
           <p className="flex items-center gap-1.5 text-[12px] font-black text-rose-500 uppercase tracking-wider">
             <span className="material-symbols-outlined text-[16px]">mail</span>
             {t('coachGroupCoaches.inviteTitle')}
@@ -2425,7 +2425,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             const cd = countdown(todayEv);
             const topics = topicsLine(todayEv);
             return (
-              <section className="bg-white rounded-2xl border border-gray-100 border-l-4 border-l-rose-400 shadow-sm overflow-hidden">
+              <section className="tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm overflow-hidden">
                 <button
                   type="button"
                   onClick={() => openEv(todayEv)}
@@ -2487,7 +2487,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   <button
                     type="button"
                     onClick={() => openEv(nextEv)}
-                    className="w-full flex items-center gap-3 bg-white rounded-2xl px-3.5 py-3 shadow-sm border border-gray-100 border-l-4 border-l-rose-400 active:scale-[0.98] transition-all text-left"
+                    className="w-full flex items-center gap-3 tb-card tb-led border rounded-l-md rounded-r-2xl px-3.5 py-3 shadow-sm active:scale-[0.98] transition-all text-left"
                   >
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-black text-[#0a3a2a] first-letter:uppercase">{dateLabel(d)}{nextEv.time ? ` · ${nextEv.time}` : ''}</p>
@@ -2648,7 +2648,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             if (!showPlan) continue;
             const topic = coachGroupTopics[g.id]?.[o.date]?.text;
             items.push({
-              key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'border-l-rose-400',
+              key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'tb-led',
               cancelled: o.cancelled,
               sub: o.cancelled
                 ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
@@ -2666,7 +2666,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
           items.push({
             key: `ev_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'event',
             // Własny termin trenera (np. umówiona wymiana cięciwy) — magenta; temat grupy zostaje różowy jak trening (user 2026-10-27).
-            stripe: gid ? 'border-l-rose-400' : 'border-l-fuchsia-600',
+            stripe: gid ? 'tb-led' : 'border-l-fuchsia-600',
             sub: [e.address, eventRecipients(e)].filter(Boolean).join(' · '),
             // Termin tematu grupy → to samo okienko tematu co w Gruppen.
             onOpen: gid && coachGroupTopics[gid]?.[e.date]
@@ -2680,7 +2680,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         if (showPrivate) {
           // Kolory ze słownika: zawody ciemnozielone, „Inne” granat, od mojego trenera fiolet.
           for (const e of allUpcoming.filter(x => !(x.category === 'Trener' && !x.isMirrored) && inRange(x.date))) {
-            const stripe = e.category === 'Trener' ? 'border-l-violet-400' : e.category === 'Inne' ? 'border-l-blue-900' : 'border-l-[#0a3a2a]';
+            const stripe = e.category === 'Trener' ? 'tb-topic' : e.category === 'Inne' ? 'tb-other' : 'tb-tourney';
             items.push({
               key: `pr_${e.id}`, date: e.date, time: e.time, title: e.title, kind: 'private', stripe,
               sub: t('coachTermine.private'),
@@ -2780,7 +2780,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
                   return (
                     // [TERMINE 2026-10-30] Karta jak w dzienniku: tytuł do 2 linii (bez ucinania
                     // w pół słowa), godzina i opis w osobnej linii pod nim (user: „brzydko ucina”).
-                    <div key={it.key} className={`flex items-center bg-white rounded-l-md rounded-r-2xl border border-gray-100 border-l-[5px] ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
+                    <div key={it.key} className={`flex items-center tb-card border rounded-l-md rounded-r-2xl ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
                       <button
                         type="button"
                         onClick={it.onOpen}

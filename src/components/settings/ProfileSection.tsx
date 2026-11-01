@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { Suspense, useState } from 'react';
 import ClubPicker from '../ClubPicker';
 import { useTranslation } from 'react-i18next';
+import { lazyWithRetry } from '../../utils/lazyWithRetry';
+
+const SchreiberGame = lazyWithRetry(() => import('../schreiber/SchreiberGame'));
 
 interface ProfileSectionProps {
   firstName: string; setFirstName: (v: string) => void;
@@ -31,6 +34,7 @@ interface ProfileSectionProps {
 const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
   const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
+  const [showSchreiber, setShowSchreiber] = useState(false);
 
   return (
     <div className="space-y-3 animate-fade-in-up">
@@ -137,7 +141,13 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
         </div>
 
         <div className="pt-2 border-t border-gray-50 pb-1">
-          <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-1.5 block">{t('settings.wizard.highestLevel')}</label>
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.highestLevel')}</label>
+            {/* [SCHREIBER-TRAINING] Easter egg — gra w liczenie serii (components/schreiber). */}
+            <button onClick={() => setShowSchreiber(true)} aria-label={t('schreiber.open')} title={t('schreiber.title')} className="w-7 h-7 -my-1 rounded-full flex items-center justify-center text-gray-300 hover:text-emerald-600 active:scale-90 transition-all">
+              <span className="material-symbols-outlined text-[16px]">calculate</span>
+            </button>
+          </div>
           <div className="flex flex-col gap-1">
             {props.competitionLevels.map(lvl => (
               <button key={lvl} onClick={() => props.setCompetitionLevel(lvl)} className={`w-full text-left px-3 py-2.5 rounded-xl font-bold text-[11px] border transition-all ${props.competitionLevel === lvl ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white shadow-sm' : 'bg-gray-50 border-gray-100 text-gray-500 hover:bg-white'}`}>
@@ -175,6 +185,11 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
           </button>
         </div>
       </div>
+      {showSchreiber && (
+        <Suspense fallback={null}>
+          <SchreiberGame onClose={() => setShowSchreiber(false)} />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -229,6 +229,10 @@
 .tb-focus { border-left-color: #fbbf24; }
 .tb-focus-coach { border-left-color: #0ea5e9; }
 .tb-skipped { border-left-color: #9ca3af; }
+/* Kalendarz (2026-11-01): granat = „Inne”, brąz = Wartung, zielony = zadanie do odhaczenia. */
+.tb-other { border-left-color: #1e3a8a; }
+.tb-maint { border-left-color: #8B5E3C; }
+.tb-todo { border-left-color: #34d399; }
 /* Meilenstein — złoto (gwiazdka), odróżnia się od pomarańczu wpisów trenera. */
 .tb-mark { border-left-color: #d4a017; }
 /* Okno nowego wpisu i panel filtrów — wjazd od dołu / pojawienie się. */
@@ -253,6 +257,9 @@
 .dark .tb-led { border-left-color: #fb7185; }
 .dark .tb-focus { border-left-color: #fbbf24; }
 .dark .tb-focus-coach { border-left-color: #38bdf8; }
+.dark .tb-other { border-left-color: #60a5fa; }
+.dark .tb-maint { border-left-color: #c08a5b; }
+.dark .tb-todo { border-left-color: #34d399; }
 
 /* [ARENA] Cienki, ciemny pasek przewijania w ciemnych oknach Battle Arena —
    systemowy (biały na Windows) gryzł się z tłem (user 2026-10-21). */

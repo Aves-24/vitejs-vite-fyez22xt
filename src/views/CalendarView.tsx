@@ -58,7 +58,14 @@ interface Event {
  * kolorów 2026-10-30: żaden inny typ terminu go nie używa.
  */
 const MAINTENANCE_BG = 'bg-[#8B5E3C]';
-const MAINTENANCE_STRIPE = 'border-l-[#8B5E3C]';
+const MAINTENANCE_STRIPE = 'tb-maint';
+// Pasek karty wg słownika kolorów — ten sam w liście, archiwum i oknie dnia.
+const stripeOf = (e: { category?: string; isMirrored?: boolean; maintenanceGroup?: unknown; todo?: boolean; wasATodo?: boolean }) =>
+  e.maintenanceGroup ? 'tb-maint'
+  : e.category === 'Turniej' || !e.category ? 'tb-tourney'
+  : e.category === 'Trener' ? (e.isMirrored ? 'tb-topic' : 'tb-led')
+  : e.todo || e.wasATodo ? 'tb-todo'
+  : 'tb-other';
 
 interface CoachStudent {
   id: string;
@@ -724,6 +731,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   // Wpis pod kalendarzem w tym samym stylu co belki listy Termine u trenera
   // (user 2026-10-27): biała karta, pasek koloru kategorii z lewej, dzień tygodnia + data.
+  // Od 2026-11-01 jak karty dziennika (tb-card) — dzisiejszy wpis z grubszym paskiem.
   const renderEventRow = (
     event: Event,
     { stripe, label, sub, badge, right }: { stripe: string; label: string; sub?: string; badge?: React.ReactNode; right?: React.ReactNode },
@@ -731,7 +739,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     const d = new Date(`${event.date}T12:00:00`);
     const isToday = event.date === todayStr;
     return (
-      <div key={event.id} className={`flex items-center bg-white rounded-xl border border-gray-100 border-l-4 ${stripe} shadow-sm`}>
+      <div key={event.id} className={isToday ? 'tb-today' : undefined}>
+      <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center`}>
         <button
           type="button"
           onClick={() => setViewingEvent(event)}
@@ -758,6 +767,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           {badge}
         </button>
         {right}
+      </div>
       </div>
     );
   };
@@ -917,7 +927,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {todoEvents.length > 0 && (
               <div className="space-y-1">
                 {todoEvents.map(event => renderEventRow(event, {
-                  stripe: event.maintenanceGroup ? MAINTENANCE_STRIPE : 'border-l-emerald-400',
+                  stripe: event.maintenanceGroup ? MAINTENANCE_STRIPE : 'tb-todo',
                   label: event.maintenanceGroup
                     ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
                     : t('calendar.todoSection'),
@@ -944,7 +954,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   const hiddenCount = upcomingTournaments.length - visibleTournaments.length;
 
                   return renderEventRow(event, {
-                    stripe: 'border-l-[#0a3a2a]',
+                    stripe: 'tb-tourney',
                     label: t('calendar.legendTournament', 'Turniej'),
                     sub: event.distance ? sessionDistanceLabel(event) : undefined,
                     badge: event.id === nextTournamentId
@@ -957,7 +967,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllTournaments && upcomingTournaments.length > 1 && (
                   <button
                     onClick={() => setShowAllTournaments(false)}
-                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                    className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
                   >
                     {t('calendar.collapseTournaments')}
                   </button>
@@ -973,7 +983,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   const hiddenCount = upcomingOthers.length - visibleOthers.length;
 
                   return renderEventRow(event, {
-                    stripe: 'border-l-blue-900',
+                    stripe: 'tb-other',
                     label: t('calendar.tabOther'),
                     sub: event.address || undefined,
                     right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllOthers(true)) : undefined,
@@ -983,7 +993,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllOthers && upcomingOthers.length > 1 && (
                   <button
                     onClick={() => setShowAllOthers(false)}
-                    className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                    className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
                   >
                     {t('calendar.collapseOthers')}
                   </button>
@@ -1013,7 +1023,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                               .join(', '))
                       : '';
                     return renderEventRow(event, {
-                      stripe: isReceived ? 'border-l-violet-400' : 'border-l-rose-400',
+                      stripe: isReceived ? 'tb-topic' : 'tb-led',
                       label: isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
                       sub: [event.address, recipients].filter(Boolean).join(' · ') || undefined,
                       right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAll(true)) : undefined,
@@ -1023,7 +1033,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   {showAll && trainerEvents.length > 1 && (
                     <button
                       onClick={() => setShowAll(false)}
-                      className="w-full py-2 bg-gray-50 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                      className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
                     >
                       {t('calendar.collapseTrainer')}
                     </button>
@@ -1046,7 +1056,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             <div className="mt-0.5">
               <button
                 onClick={() => openArchiveSection(state, setter, cutoffType, filterFn)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 border border-gray-100 rounded-lg active:bg-gray-100 transition-all"
+                className="w-full flex items-center justify-between px-3 py-2 bg-white border border-gray-100 rounded-xl active:bg-gray-50 transition-all"
               >
                 <span className="flex items-center gap-2 text-[10px] font-black text-gray-400 uppercase tracking-widest">
                   <span className="material-symbols-outlined text-[15px] text-gray-300">{icon}</span>
@@ -1069,7 +1079,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   {state.allItems.slice(0, state.shown).map(event => (
                     <div
                       key={event.id}
-                      className="rounded-lg border border-gray-200 bg-gray-50 text-gray-500 opacity-80 shadow-sm transition-all flex"
+                      className={`tb-card ${stripeOf(event)} border rounded-l-md rounded-r-2xl shadow-sm transition-all flex`}
                     >
                       <div
                         onClick={() => {
@@ -1081,13 +1091,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         }}
                         className="flex-1 p-2.5 flex items-center gap-2 cursor-pointer active:scale-[0.98] transition-transform"
                       >
-                        <div className="px-2 py-1.5 rounded-lg text-center min-w-[48px] border bg-gray-100 border-gray-200 text-[8px]">
-                          <span className="block font-black uppercase leading-tight">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' })}</span>
-                          <span className="block text-base font-black leading-none mt-0">{new Date(event.date).getDate()}</span>
+                        <div className="w-11 text-center shrink-0">
+                          <span className="block text-[10px] font-black uppercase leading-none text-gray-400">{new Date(event.date).toLocaleDateString(currentLocale, { month: 'short' }).replace('.', '')}</span>
+                          <span className="block text-[17px] font-black leading-tight text-gray-500">{new Date(event.date).getDate()}</span>
                         </div>
-                        <div className="flex-1 pr-1.5">
-                          <h3 className="font-black text-xs leading-tight line-through decoration-gray-300">{event.title}</h3>
-                          <p className="text-[7px] font-bold uppercase tracking-widest opacity-70 mt-0.5">
+                        <div className="flex-1 min-w-0 pr-1.5">
+                          <h3 className="font-black text-[13px] leading-tight text-gray-600 truncate">{event.title}</h3>
+                          <p className="text-[10px] font-bold text-gray-400 mt-0.5">
                             {event.category === 'Turniej' || !event.category ? t('calendar.archivePastTournament') : event.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                           </p>
                           {(event.category === 'Turniej' || !event.category) && (() => {
@@ -1096,14 +1106,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                             return (
                               <div className="flex items-center gap-1 mt-1">
                                 {dist && (
-                                  <span className="bg-gray-200 text-gray-600 text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none">{dist}</span>
+                                  <span className="bg-gray-100 text-gray-500 text-[9px] font-black px-1.5 py-0.5 rounded-md leading-none">{dist}</span>
                                 )}
                                 {res ? (
-                                  <span className="bg-[#0a3a2a] text-[#fed33e] text-[8px] font-black px-1.5 py-0.5 rounded-md leading-none">
+                                  <span className="bg-[#0a3a2a] text-[#fed33e] text-[9px] font-black px-1.5 py-0.5 rounded-md leading-none">
                                     {res.score} {t('calendar.archivePts')}
                                   </span>
                                 ) : (
-                                  <span className="text-[8px] font-bold text-gray-300 uppercase tracking-widest">{t('calendar.archiveNoScore')}</span>
+                                  <span className="text-[9px] font-bold text-gray-300 uppercase tracking-widest">{t('calendar.archiveNoScore')}</span>
                                 )}
                               </div>
                             );
@@ -1113,7 +1123,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       <button
                         onClick={() => setViewingEvent(event)}
                         aria-label={t('calendar.modalEdit')}
-                        className="w-9 flex items-center justify-center shrink-0 text-gray-400 opacity-50 active:opacity-100 active:bg-gray-100 rounded-r-lg transition-all"
+                        className="w-9 flex items-center justify-center shrink-0 text-gray-400 active:bg-gray-100 rounded-r-2xl transition-all"
                       >
                         <span className="material-symbols-outlined text-[16px]">more_vert</span>
                       </button>
@@ -1456,23 +1466,21 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 <button
                   key={ev.id}
                   onClick={() => { setViewingEvent(ev); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-2xl border active:scale-[0.98] transition-all text-left"
-                  style={{
-                    background: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? (ev.isMirrored ? '#f5f3ff' : '#fff1f2') : '#eff6ff',
-                    borderColor: ev.category === 'Turniej' ? '#0a3a2a' : ev.category === 'Trener' ? (ev.isMirrored ? '#ddd6fe' : '#fecdd3') : '#bfdbfe',
-                  }}
+                  className={`tb-card ${stripeOf(ev)} border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 active:scale-[0.98] transition-all text-left`}
                 >
-                  <span className={`material-symbols-outlined text-xl ${ev.category === 'Turniej' ? 'text-white' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-violet-500' : 'text-rose-500') : 'text-blue-900'}`}>
-                    {ev.category === 'Turniej' ? 'emoji_events' : ev.category === 'Trener' ? 'group' : 'event'}
+                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ev.category === 'Turniej' || !ev.category ? 'tb-tourney-icon' : 'tb-icon'}`}>
+                    <span className={`material-symbols-outlined text-[18px] ${ev.maintenanceGroup ? 'text-[#8B5E3C]' : ev.category === 'Turniej' || !ev.category ? 'tb-tourney-accent' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-violet-500' : 'text-rose-500') : 'text-blue-900'}`}>
+                      {ev.maintenanceGroup ? 'build' : ev.category === 'Turniej' || !ev.category ? 'emoji_events' : ev.category === 'Trener' ? 'group' : 'event'}
+                    </span>
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className={`font-black text-sm leading-tight truncate ${ev.category === 'Turniej' ? 'text-white' : 'text-[#0a3a2a]'}`}>{ev.title}</p>
-                    <p className={`text-[10px] font-bold uppercase tracking-widest mt-0.5 ${ev.category === 'Turniej' ? 'text-white/60' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-violet-500' : 'text-rose-500') : 'text-blue-900'}`}>
-                      {ev.category === 'Turniej' ? t('calendar.tabTournament') : ev.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
+                    <p className={`text-[9px] font-black uppercase tracking-widest leading-tight ${ev.maintenanceGroup ? 'text-[#8B5E3C]' : ev.category === 'Turniej' || !ev.category ? 'text-[#0a3a2a]' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-violet-500' : 'text-rose-500') : 'text-blue-900'}`}>
+                      {ev.maintenanceGroup ? t('maintenance.calendar.legend') : ev.category === 'Turniej' || !ev.category ? t('calendar.tabTournament') : ev.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')}
                       {ev.time ? ` • ${ev.time}` : ''}
                     </p>
+                    <p className="font-black text-[13px] leading-snug truncate text-[#0a3a2a]">{ev.title}</p>
                   </div>
-                  <span className={`material-symbols-outlined text-lg ${ev.category === 'Turniej' ? 'text-white/50' : 'text-gray-300'}`}>chevron_right</span>
+                  <span className="material-symbols-outlined text-lg text-gray-300">chevron_right</span>
                 </button>
               ))}
             </div>
@@ -1486,7 +1494,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              
              <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className={`inline-block px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest mb-1.5 ${viewingEvent.maintenanceGroup ? `${MAINTENANCE_BG} text-white` : viewingEvent.category === 'Turniej' ? 'bg-[#0a3a2a] text-white' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-violet-100 text-violet-700' : 'bg-rose-100 text-rose-700') : 'bg-blue-100 text-blue-900'}`}>
+                  <span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-gray-500 mb-1.5">
+                    <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${viewingEvent.maintenanceGroup ? MAINTENANCE_BG : viewingEvent.category === 'Turniej' || !viewingEvent.category ? 'bg-[#0a3a2a]' : viewingEvent.category === 'Trener' ? (viewingEvent.isMirrored ? 'bg-violet-500' : 'bg-rose-500') : 'bg-blue-900'}`} />
                     {viewingEvent.maintenanceGroup ? t('maintenance.calendar.legend') : viewingEvent.category === 'Turniej' ? t('calendar.tabTournament') : viewingEvent.category === 'Trener' ? t('calendar.tabTrainer') : t('calendar.tabOther')} {viewingEvent.distance ? `- ${sessionDistanceLabel(viewingEvent)}` : ''}
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
@@ -1501,13 +1510,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 
                 return (
                   <div className="flex gap-2 mb-5 items-stretch">
-                      <div className="flex-[7] bg-emerald-50 border border-emerald-100 rounded-[20px] p-2.5 shadow-sm flex flex-col justify-center">
+                      <div className="flex-[7] tb-card tb-tourney border rounded-l-md rounded-r-2xl p-2.5 shadow-sm flex flex-col justify-center">
                           <div className="flex items-center gap-1.5 mb-2">
                               <span className="material-symbols-outlined text-[16px] text-emerald-600">visibility</span>
-                              <p className="text-[9px] font-black text-emerald-800 uppercase tracking-widest leading-none mt-0.5">{t('calendar.modalSight')} {sessionDistanceLabel(viewingEvent)}</p>
+                              <p className="text-[9px] font-black text-[#0a3a2a] uppercase tracking-widest leading-none mt-0.5">{t('calendar.modalSight')} {sessionDistanceLabel(viewingEvent)}</p>
                           </div>
                           <div className="grid grid-cols-3 gap-1">
-                              <div className="bg-white rounded-xl py-1.5 px-1 text-center shadow-sm flex flex-col justify-center">
+                              <div className="bg-gray-50 rounded-xl py-1.5 px-1 text-center flex flex-col justify-center">
                                   <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">{t('calendar.modalSightExt')}</span>
                                   <span className="text-xl font-black text-[#0a3a2a] leading-none">{sight?.ext || '-'}</span>
                               </div>
@@ -1515,7 +1524,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                                   <span className="block text-[8px] font-bold text-emerald-100/50 uppercase tracking-tighter mb-0.5">{t('calendar.modalSightGD')}</span>
                                   <span className="text-2xl font-black text-white leading-none">{sight?.height || '-'}</span>
                               </div>
-                              <div className="bg-white rounded-xl py-1.5 px-1 text-center shadow-sm flex flex-col justify-center">
+                              <div className="bg-gray-50 rounded-xl py-1.5 px-1 text-center flex flex-col justify-center">
                                   <span className="block text-[8px] font-bold text-gray-400 uppercase tracking-tighter mb-0.5">{t('calendar.modalSightLP')}</span>
                                   <span className="text-xl font-black text-[#0a3a2a] leading-none">{sight?.side || '-'}</span>
                               </div>
@@ -1534,11 +1543,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                                   setShowScoreInput(true);
                               }
                           }} 
-                          className={`flex-[3] flex flex-col items-center justify-center rounded-[20px] p-2 transition-all shadow-sm active:scale-95 border-2 ${
+                          className={`flex-[3] flex flex-col items-center justify-center rounded-2xl p-2 transition-all shadow-sm active:scale-95 border-2 ${
                             viewingEvent.hasScore 
-                                ? 'bg-emerald-600 text-white border-emerald-500' 
+                                ? 'bg-white text-emerald-700 border-emerald-500' 
                                 : !isTournamentToday 
-                                  ? 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed' 
+                                  ? 'bg-white text-gray-400 border-gray-200 cursor-not-allowed' 
                                   : 'bg-[#fed33e] text-[#5d4a00] border-[#e5bd38]'
                           }`}
                       >
@@ -1564,10 +1573,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                return g ? (
                  <button
                    onClick={() => { closeViewingModal(); onNavigate?.('COACH', 'GROUP', g.id); }}
-                   className="w-full mb-3 flex items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-3 text-left active:scale-[0.98] transition-all"
+                   className="w-full mb-3 flex items-center gap-2.5 tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 text-left active:scale-[0.98] transition-all"
                  >
-                   <span className="w-8 h-8 rounded-full bg-rose-500 text-white flex items-center justify-center shrink-0">
-                     <span className="material-symbols-outlined text-[17px]">{groupIcon(g)}</span>
+                   <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
+                     <span className="material-symbols-outlined text-[18px] text-rose-500">{groupIcon(g)}</span>
                    </span>
                    <span className="flex-1 min-w-0">
                      <span className="block text-[9px] font-black uppercase tracking-widest text-rose-500">{t('calendar.openGroupTopicLabel')}</span>
@@ -1578,9 +1587,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                ) : null;
              })()}
 
-             <div className="bg-gray-50 border border-gray-100 rounded-[20px] p-4 mb-5">
+             <div className={`tb-card ${stripeOf(viewingEvent)} border rounded-l-md rounded-r-2xl shadow-sm p-3.5 mb-5`}>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-gray-400">
+                  <div className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-gray-400">
                     <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                   </div>
                   <div className="flex flex-col">
@@ -1595,7 +1604,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
                 {viewingEvent.address && (
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-gray-400">
+                    <div className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-gray-400">
                       <span className="material-symbols-outlined text-[16px]">location_on</span>
                     </div>
                     <div className="flex-1 flex items-center justify-between">
@@ -1614,20 +1623,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 )}
 
                 {viewingEvent.category === 'Trener' && viewingEvent.coachStudents && (
-                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-blue-400">
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+                    <div className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-rose-500">
                       <span className="material-symbols-outlined text-[16px]">group</span>
                     </div>
                     <div className="flex flex-col flex-1 mt-1">
                       <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">{t('calendar.trainerStudents')}</span>
                       {viewingEvent.coachStudents === 'all' ? (
-                        <span className="text-xs font-black text-blue-700">{t('calendar.trainerAllStudents')}</span>
+                        <span className="text-xs font-black text-rose-600">{t('calendar.trainerAllStudents')}</span>
                       ) : (
                         <div className="flex flex-wrap gap-1 mt-0.5">
                           {(viewingEvent.coachStudents as string[]).map(sid => {
                             const s = coachStudentsList.find(cs => cs.id === sid);
                             return s ? (
-                              <span key={sid} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-lg text-[10px] font-black">
+                              <span key={sid} className="px-2 py-0.5 bg-gray-100 text-[#0a3a2a] rounded-lg text-[10px] font-black">
                                 {s.firstName} {s.lastName}
                               </span>
                             ) : null;
@@ -1639,15 +1648,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 )}
 
                 {viewingEvent.category === 'Trener' && viewingEvent.topics && viewingEvent.topics.length > 0 && (
-                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-emerald-500">
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+                    <div className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-emerald-500">
                       <span className="material-symbols-outlined text-[16px]">psychology</span>
                     </div>
                     <div className="flex flex-col flex-1 mt-1">
                       <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1.5">{t('sessionSetup.trainingTopics')}</span>
                       <div className="flex flex-wrap gap-1">
                         {viewingEvent.topics.map((id: string) => (
-                          <span key={id} className="bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-0.5 rounded-full text-[9px] font-black">
+                          <span key={id} className="bg-gray-100 text-[#0a3a2a] px-2 py-0.5 rounded-full text-[9px] font-black">
                             {topicLabel(id, t)}
                           </span>
                         ))}
@@ -1657,8 +1666,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 )}
 
                 {viewingEvent.note && (
-                  <div className="flex items-start gap-3 pt-3 border-t border-gray-200/60">
-                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0 text-gray-400">
+                  <div className="flex items-start gap-3 pt-3 border-t border-gray-100">
+                    <div className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-gray-400">
                       <span className="material-symbols-outlined text-[16px]">notes</span>
                     </div>
                     <div className="flex flex-col flex-1 mt-1">

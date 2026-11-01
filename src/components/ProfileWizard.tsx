@@ -344,11 +344,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 1 && (
           <div className="space-y-5 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <span className="material-symbols-outlined text-3xl text-emerald-600">psychology</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-emerald-600">psychology</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step1Title')}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step1Desc')}
                 </p>
               </div>
@@ -394,11 +394,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 2 && (
           <div className="space-y-5 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex-col text-center">
-              <span className="material-symbols-outlined text-4xl text-emerald-600 self-center">cake</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5 flex-col text-center">
+              <span className="tb-icon w-12 h-12 rounded-lg flex items-center justify-center self-center"><span className="material-symbols-outlined text-[26px] text-emerald-600">cake</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step2Title', { name: uName })}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step2Desc')}
                 </p>
               </div>
@@ -413,15 +413,15 @@ export default function ProfileWizard(props: ProfileWizardProps) {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('settings.wizard.birthDate')}</label>
               <div className="flex gap-2">
                 <div className="flex-1 flex flex-col gap-1">
-                  <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={bDay} onChange={e => setBDay(e.target.value.slice(0,2))} />
+                  <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={bDay} onChange={e => setBDay(e.target.value.slice(0,2))} />
                   <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                 </div>
                 <div className="flex-1 flex flex-col gap-1">
-                  <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={bMonth} onChange={e => setBMonth(e.target.value.slice(0,2))} />
+                  <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={bMonth} onChange={e => setBMonth(e.target.value.slice(0,2))} />
                   <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                 </div>
                 <div className="flex-[1.5] flex flex-col gap-1">
-                  <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={bYear} onChange={e => setBYear(e.target.value.slice(0,4))} />
+                  <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={bYear} onChange={e => setBYear(e.target.value.slice(0,4))} />
                   <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                 </div>
               </div>
@@ -432,11 +432,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 3 && (
           <div className="space-y-5 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <span className="material-symbols-outlined text-3xl text-emerald-600">accessibility_new</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-emerald-600">accessibility_new</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step3Title')}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step3Desc')}
                 </p>
               </div>
@@ -456,11 +456,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 4 && (
           <div className="space-y-5 animate-fade-in-up pb-8">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
-              <span className="material-symbols-outlined text-3xl text-emerald-600">track_changes</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-emerald-600">track_changes</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step4Title')}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step4Desc')}
                 </p>
               </div>
@@ -510,11 +510,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 5 && (
           <div className="space-y-4 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-yellow-50 p-4 rounded-2xl border border-yellow-200">
-              <span className="material-symbols-outlined text-3xl text-yellow-600">center_focus_strong</span>
+            <div className="flex items-start gap-3 tb-card tb-focus border rounded-l-md rounded-r-2xl shadow-sm p-3.5">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-amber-500">center_focus_strong</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step5Title')}</h2>
-                <p className="text-[11px] text-yellow-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step5Desc')}
                 </p>
               </div>
@@ -540,19 +540,19 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                     <div className="col-span-7 flex gap-1 justify-end">
                       <input 
                         type="text" maxLength={8} placeholder={t('settings.wizard.ext')}
-                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-emerald-50 border border-transparent focus:border-emerald-200" 
+                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-white border border-gray-100 focus:border-emerald-300" 
                         value={d.sightExtension || ''}
                         onChange={(e) => updateWizardSight(wizardDistances.indexOf(d), 'sightExtension', e.target.value)}
                       />
                       <input 
                         type="text" maxLength={8} placeholder={t('settings.wizard.ud')}
-                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-emerald-50 border border-transparent focus:border-emerald-200" 
+                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-white border border-gray-100 focus:border-emerald-300" 
                         value={d.sightHeight || ''}
                         onChange={(e) => updateWizardSight(wizardDistances.indexOf(d), 'sightHeight', e.target.value)}
                       />
                       <input 
                         type="text" maxLength={8} placeholder={t('settings.wizard.lr')}
-                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-emerald-50 border border-transparent focus:border-emerald-200" 
+                        className="w-[32%] h-8 bg-gray-50 rounded-md text-[9px] text-center font-bold outline-none focus:bg-white border border-gray-100 focus:border-emerald-300" 
                         value={d.sightSide || ''}
                         onChange={(e) => updateWizardSight(wizardDistances.indexOf(d), 'sightSide', e.target.value)}
                       />
@@ -570,11 +570,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 6 && (
           <div className="space-y-4 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-2">
-              <span className="material-symbols-outlined text-3xl text-emerald-600">event_available</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5 mb-2">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-emerald-600">event_available</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step6Title')}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step6Desc')}
                 </p>
               </div>
@@ -608,29 +608,29 @@ export default function ProfileWizard(props: ProfileWizardProps) {
               </div>
               
               <div className="space-y-3">
-                <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-emerald-50 border-2 border-emerald-400 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-600" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
+                <input type="text" placeholder={t('settings.wizard.tourNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 focus:bg-white focus:border-emerald-300 rounded-xl p-3 text-sm font-bold text-[#0a3a2a] outline-none transition-colors" value={tournamentTitle} onChange={e => setTournamentTitle(e.target.value)} />
 
                 <div className="space-y-2 mt-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tDay} onChange={e => setTDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tMonth} onChange={e => setTMonth(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tMonth} onChange={e => setTMonth(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tYear} onChange={e => setTYear(e.target.value.slice(0,4))} />
+                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={tYear} onChange={e => setTYear(e.target.value.slice(0,4))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
+                      <input type="time" className="w-full bg-gray-50 border border-gray-100 focus:bg-white focus:border-emerald-300 rounded-xl p-3 text-center font-black text-lg text-[#0a3a2a] outline-none transition-colors" value={tournamentTime} onChange={e => setTournamentTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
                     </div>
                     <div className="flex flex-col gap-1 pb-4">
                       <div className="relative w-11 h-11">
-                        <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
+                        <div className="w-11 h-11 flex items-center justify-center bg-gray-100 rounded-xl text-gray-500 pointer-events-none">
                           <span className="material-symbols-outlined text-xl pointer-events-none">calendar_today</span>
                         </div>
                         <input ref={tDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setTYear(y); setTMonth(m); setTDay(d); }}} />
@@ -639,9 +639,9 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                   </div>
                 </div>
                 
-                <input type="text" placeholder={t('settings.wizard.cityPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={tournamentLocation} onChange={e => setTournamentLocation(e.target.value)} />
+                <input type="text" placeholder={t('settings.wizard.cityPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:bg-white focus:border-emerald-300 transition-colors" value={tournamentLocation} onChange={e => setTournamentLocation(e.target.value)} />
                 
-                <textarea maxLength={120} placeholder={t('settings.wizard.notesPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold h-16 resize-none focus:outline-none focus:border-emerald-500" value={tournamentNote} onChange={e => setTournamentNote(e.target.value)} />
+                <textarea maxLength={120} placeholder={t('settings.wizard.notesPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold h-16 resize-none focus:outline-none focus:bg-white focus:border-emerald-300 transition-colors" value={tournamentNote} onChange={e => setTournamentNote(e.target.value)} />
               </div>
             </div>
           </div>
@@ -649,11 +649,11 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
         {props.wizardStep === 7 && (
           <div className="space-y-4 animate-fade-in-up">
-            <div className="flex items-start gap-3 bg-emerald-50 p-4 rounded-2xl border border-emerald-100 mb-2">
-              <span className="material-symbols-outlined text-3xl text-emerald-600">shopping_cart</span>
+            <div className="flex items-start gap-3 tb-card tb-d2 border rounded-l-md rounded-r-2xl shadow-sm p-3.5 mb-2">
+              <span className="tb-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[22px] text-emerald-600">shopping_cart</span></span>
               <div>
                 <h2 className="text-sm font-black text-[#0a3a2a] mb-1">{t('settings.wizard.step7Title')}</h2>
-                <p className="text-[11px] text-emerald-800 leading-relaxed font-medium">
+                <p className="text-[11px] text-gray-500 leading-relaxed font-medium">
                   {t('settings.wizard.step7Desc')}
                 </p>
               </div>
@@ -664,33 +664,33 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
               <div className="flex p-1 bg-gray-100 rounded-xl pointer-events-none mb-4">
                 <button className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all text-gray-400">{t('settings.wizard.tournamentTab')}</button>
-                <button className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-emerald-100 text-emerald-700 shadow-md">{t('settings.wizard.otherTab')}</button>
+                <button className="flex-1 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all bg-blue-900 text-white shadow-md">{t('settings.wizard.otherTab')}</button>
               </div>
               
               <div className="space-y-3">
-                <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-amber-50 border-2 border-amber-400 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-amber-600" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
+                <input type="text" placeholder={t('settings.wizard.privateNamePlaceholder')} className="w-full bg-gray-50 border border-gray-100 focus:bg-white focus:border-emerald-300 rounded-xl p-3 text-sm font-bold text-[#0a3a2a] outline-none transition-colors" value={privateEventTitle} onChange={e => setPrivateEventTitle(e.target.value)} />
 
                 <div className="space-y-2 mt-3">
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pDay} onChange={e => setPDay(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
                     </div>
                     <div className="flex-1 flex flex-col gap-1">
-                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pMonth} onChange={e => setPMonth(e.target.value.slice(0,2))} />
+                      <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pMonth} onChange={e => setPMonth(e.target.value.slice(0,2))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-emerald-50 focus:border-emerald-500 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pYear} onChange={e => setPYear(e.target.value.slice(0,4))} />
+                      <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 px-1 text-center font-black text-base focus:bg-white focus:border-emerald-300 outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none" value={pYear} onChange={e => setPYear(e.target.value.slice(0,4))} />
                       <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
                     </div>
                     <div className="flex-[1.5] flex flex-col gap-1">
-                      <input type="time" className="w-full bg-[#fed33e] border border-[#e5bd38] rounded-xl p-3 text-center font-black text-lg text-[#5d4a00] outline-none" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
+                      <input type="time" className="w-full bg-gray-50 border border-gray-100 focus:bg-white focus:border-emerald-300 rounded-xl p-3 text-center font-black text-lg text-[#0a3a2a] outline-none transition-colors" value={privateEventTime} onChange={e => setPrivateEventTime(e.target.value)} />
                       <span className="text-[8px] text-center font-bold text-gray-400 uppercase">{t('common.hour')}</span>
                     </div>
                     <div className="flex flex-col gap-1 pb-4">
                       <div className="relative w-11 h-11">
-                        <div className="w-11 h-11 flex items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-600 pointer-events-none">
+                        <div className="w-11 h-11 flex items-center justify-center bg-gray-100 rounded-xl text-gray-500 pointer-events-none">
                           <span className="material-symbols-outlined text-xl pointer-events-none">calendar_today</span>
                         </div>
                         <input ref={pDateRef} type="date" className="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onChange={e => { if (e.target.value) { const [y,m,d] = e.target.value.split('-'); setPYear(y); setPMonth(m); setPDay(d); }}} />
@@ -699,9 +699,9 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                   </div>
                 </div>
                 
-                <input type="text" placeholder={t('settings.wizard.shopPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:border-emerald-500" value={privateEventAddress} onChange={e => setPrivateEventAddress(e.target.value)} />
+                <input type="text" placeholder={t('settings.wizard.shopPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold focus:outline-none focus:bg-white focus:border-emerald-300 transition-colors" value={privateEventAddress} onChange={e => setPrivateEventAddress(e.target.value)} />
                 
-                <textarea maxLength={120} placeholder={t('settings.wizard.buyPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold h-16 resize-none focus:outline-none focus:border-emerald-500" value={privateEventNote} onChange={e => setPrivateEventNote(e.target.value)} />
+                <textarea maxLength={120} placeholder={t('settings.wizard.buyPlaceholder')} className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-sm font-bold h-16 resize-none focus:outline-none focus:bg-white focus:border-emerald-300 transition-colors" value={privateEventNote} onChange={e => setPrivateEventNote(e.target.value)} />
               </div>
             </div>
           </div>
@@ -717,7 +717,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             <button
               onClick={() => finishWizard(false)}
               disabled={isSavingLocal || !props.firstName}
-              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-gray-100 active:scale-95 transition-all disabled:opacity-50"
             >
               {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
             </button>
@@ -743,7 +743,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             <button
               onClick={() => finishWizard(false)}
               disabled={isSavingLocal}
-              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+              className="flex-1 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-gray-100 active:scale-95 transition-all disabled:opacity-50"
             >
               {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
             </button>
@@ -762,7 +762,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             <button
               onClick={() => finishWizard(false)}
               disabled={isSavingLocal}
-              className="py-3 px-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-emerald-50 border border-emerald-200 active:scale-95 transition-all disabled:opacity-50"
+              className="py-3 px-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-[#0a3a2a] bg-gray-100 active:scale-95 transition-all disabled:opacity-50"
             >
               {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
             </button>
@@ -794,7 +794,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
             <button
               onClick={() => finishWizard(true)}
               disabled={isSavingLocal}
-              className="flex-[2] py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-emerald-600 shadow-md shadow-emerald-500/30 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 leading-tight"
+              className="flex-[2] py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-white bg-[#0a3a2a] shadow-md active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100 leading-tight"
             >
               {isSavingLocal ? '...' : t('settings.wizard.btnSaveFinish')}
             </button>

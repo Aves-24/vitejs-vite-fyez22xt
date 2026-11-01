@@ -234,7 +234,7 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
       {/* Usunięcie konta (art. 17) */}
       <button
         onClick={() => { setShowDeleteModal(true); setConfirmText(''); setPassword(''); }}
-        className="w-full py-3 bg-red-50 border border-red-100 rounded-xl text-[10px] font-black text-red-600 uppercase tracking-wide active:scale-95 transition-all flex items-center justify-center gap-1.5"
+        className="w-full py-3 bg-white border border-red-100 rounded-xl text-[10px] font-black text-red-600 uppercase tracking-wide active:scale-95 transition-all flex items-center justify-center gap-1.5"
       >
         <span className="material-symbols-outlined text-sm">delete_forever</span>
         {t('settings.deleteAccount')}

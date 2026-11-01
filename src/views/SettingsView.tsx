@@ -585,8 +585,8 @@ export default function SettingsView({
       <div className="flex px-2 border-b border-gray-100 gap-1 overflow-x-auto hide-scrollbar shrink-0 pb-1">
         {[
           { id: 'PRO', label: t('settings.tabPro'), icon: 'diamond', color: 'text-[#F2C94C]' },
-          { id: 'TRENER', label: t('settings.tabCoach'), icon: 'qr_code_scanner', color: 'text-blue-500' },
-          { id: 'ZAWODY', label: t('settings.tabTournament'), icon: 'emoji_events', color: 'text-fuchsia-500' },
+          { id: 'TRENER', label: t('settings.tabCoach'), icon: 'qr_code_scanner', color: 'text-rose-500' },
+          { id: 'ZAWODY', label: t('settings.tabTournament'), icon: 'emoji_events', color: 'text-[#0a3a2a]' },
           { id: 'SHARE', label: t('settings.tabShare'), icon: 'qr_code_2', color: 'text-[#0a3a2a]' }
         ].map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id as SettingsTab)} className={`px-2.5 py-2.5 rounded-xl text-[9px] font-black tracking-widest transition-all whitespace-nowrap flex items-center gap-1 ${activeTab === tab.id ? 'bg-white border border-gray-100 text-[#0a3a2a] shadow-sm z-10' : 'text-gray-400 bg-transparent'}`}>
@@ -686,7 +686,7 @@ export default function SettingsView({
                      {isCustomDistance(d) && (
                        <button
                          onClick={() => setPendingDeleteId(d.id)}
-                         className="shrink-0 w-8 h-8 rounded-md bg-red-50 text-red-500 flex items-center justify-center active:scale-95"
+                         className="shrink-0 w-8 h-8 rounded-md bg-white border border-red-100 text-red-500 flex items-center justify-center active:scale-95"
                          aria-label={t('settings.sight.deleteAsk')}
                        >
                          <span className="material-symbols-outlined text-[16px]">delete</span>
@@ -788,7 +788,7 @@ export default function SettingsView({
         {activeTab === 'JEZYK' && (
           <div className="space-y-2 animate-fade-in-up">
             {[{ id: 'pl', name: 'Polski' }, { id: 'en', name: 'English' }, { id: 'de', name: 'Deutsch' }].map(lang => (
-              <button key={lang.id} onClick={() => switchLanguage(lang.id)} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${i18n.language === lang.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
+              <button key={lang.id} onClick={() => switchLanguage(lang.id)} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${i18n.language === lang.id ? 'border-emerald-400' : 'border-gray-100'}`}>
                 <span className="font-black text-[#333] text-sm">{lang.name}</span>
                 {i18n.language === lang.id && <span className="material-symbols-outlined text-emerald-500 text-lg">check_circle</span>}
               </button>
@@ -801,7 +801,7 @@ export default function SettingsView({
               { id: 'dark', icon: 'dark_mode', label: t('settings.themeDark') },
               { id: 'system', icon: 'contrast', label: t('settings.themeSystem') },
             ] as { id: ThemePreference; icon: string; label: string }[]).map(opt => (
-              <button key={opt.id} onClick={() => { setThemePreference(opt.id); setThemePref(opt.id); }} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${themePref === opt.id ? 'border-emerald-200 bg-emerald-50/20' : 'border-gray-100'}`}>
+              <button key={opt.id} onClick={() => { setThemePreference(opt.id); setThemePref(opt.id); }} className={`w-full bg-white p-4 rounded-2xl border flex justify-between items-center transition-all ${themePref === opt.id ? 'border-emerald-400' : 'border-gray-100'}`}>
                 <span className="flex items-center gap-3">
                   <span className="material-symbols-outlined text-gray-500 text-xl">{opt.icon}</span>
                   <span className="font-black text-[#333] text-sm">{opt.label}</span>
@@ -855,10 +855,10 @@ export default function SettingsView({
         <div className="fixed inset-0 z-[400000] bg-black/80 backdrop-blur-sm flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-6 w-full max-w-sm text-center">
             <h2 className="text-lg font-black text-[#0a3a2a] mb-4">{t('settings.shareProfile')}</h2>
-            <div className="bg-blue-50 p-4 rounded-[24px] inline-block border-4 border-blue-100 mb-6"><QRCodeCanvas value={userId} size={150} /></div>
+            <div className="bg-white p-4 rounded-2xl inline-block border border-gray-100 shadow-sm mb-6"><QRCodeCanvas value={userId} size={150} /></div>
             <div className="bg-gray-50 rounded-xl p-3 flex items-center justify-between border border-gray-200 mb-6">
               <code className="text-[10px] font-black text-[#0a3a2a] truncate pr-2">{userId}</code>
-              <button onClick={() => { navigator.clipboard.writeText(userId); showToast(t('settings.copied')); }} className="bg-blue-100 text-blue-600 p-1.5 rounded-lg shrink-0"><span className="material-symbols-outlined text-[16px]">content_copy</span></button>
+              <button onClick={() => { navigator.clipboard.writeText(userId); showToast(t('settings.copied')); }} className="bg-gray-100 text-[#0a3a2a] p-1.5 rounded-lg shrink-0"><span className="material-symbols-outlined text-[16px]">content_copy</span></button>
             </div>
             <button onClick={() => setShowMyQR(false)} className="w-full py-4 bg-gray-100 text-gray-600 rounded-xl font-black uppercase text-[11px]">{t('home.close')}</button>
           </div>
@@ -888,7 +888,7 @@ export default function SettingsView({
             <p className="text-sm font-bold text-gray-500 mb-6">{t('settings.logoutConfirm')}</p>
             <div className="flex gap-2">
               <button onClick={() => setShowLogoutConfirm(false)} className="flex-1 py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase text-[11px]">{t('setup.warningCancel')}</button>
-              <button onClick={() => signOut(auth)} className="flex-1 py-4 bg-red-50 text-white rounded-xl font-black uppercase text-[11px] shadow-md">{t('settings.wizard.logout')}</button>
+              <button onClick={() => signOut(auth)} className="flex-1 py-4 bg-red-500 text-white rounded-xl font-black uppercase text-[11px] shadow-md">{t('settings.wizard.logout')}</button>
             </div>
           </div>
         </div>, document.body

@@ -107,11 +107,11 @@ const CoachSection: React.FC<CoachSectionProps> = ({
       )}
 
       {!isCoach && (
-        <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
+        <div className="tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm p-4">
           <div className="flex flex-col items-center text-center mb-4">
-            <span className="material-symbols-outlined text-gray-300 text-4xl mb-2">sports</span>
-            <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-1">{t('settings.coach.becomeTitle')}</h4>
-            <p className="text-[10px] text-gray-400 font-medium leading-relaxed">{t('settings.coach.becomeDesc', { count: FREE_COACH_SLOTS })}</p>
+            <span className="tb-icon w-12 h-12 rounded-lg flex items-center justify-center mb-2"><span className="material-symbols-outlined text-rose-500 text-[26px]">sports</span></span>
+            <h4 className="text-xs font-black text-[#0a3a2a] uppercase tracking-widest mb-1">{t('settings.coach.becomeTitle')}</h4>
+            <p className="text-[11px] text-gray-500 font-bold leading-relaxed">{t('settings.coach.becomeDesc', { count: FREE_COACH_SLOTS })}</p>
           </div>
           {isGuest ? (
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('settings.coach.guestBlocked')}</p>
@@ -119,7 +119,7 @@ const CoachSection: React.FC<CoachSectionProps> = ({
             <button
               onClick={() => setCoachMode(true)}
               disabled={modeBusy}
-              className="w-full py-3.5 bg-emerald-500 text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-[#0a3a2a] text-white rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50 disabled:scale-100 flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-base">sports</span>
               {modeBusy ? t('settings.coach.enabling') : t('settings.coach.enableBtn')}

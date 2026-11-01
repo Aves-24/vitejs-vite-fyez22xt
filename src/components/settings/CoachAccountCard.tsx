@@ -98,12 +98,15 @@ const CoachAccountCard: React.FC<CoachAccountCardProps> = ({ userId, userName, u
         <p className="text-[12px] font-bold text-gray-500 leading-snug mt-0.5 mb-3">{t('settings.coach.moreSlotsDesc')}</p>
 
         {status === 'sent' ? (
-          <div className="text-center bg-emerald-50 border border-emerald-100 rounded-xl p-3">
+          <div className="flex items-start gap-2">
+            <span className="material-symbols-outlined text-emerald-600 text-[20px] shrink-0">check_circle</span>
+            <div>
             <p className="text-[12px] font-black text-emerald-700">{t('settings.coach.becomeSent')}</p>
-            <p className="text-[11px] font-bold text-emerald-600 mt-0.5">{t('settings.coach.becomeSentDesc')}</p>
+            <p className="text-[11px] font-bold text-gray-500 mt-0.5">{t('settings.coach.becomeSentDesc')}</p>
+            </div>
           </div>
         ) : status === 'alreadySent' ? (
-          <p className="text-[12px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl p-3">{t('settings.coach.becomeAlreadySent')}</p>
+          <p className="flex items-start gap-2 text-[12px] font-bold text-gray-600"><span className="material-symbols-outlined text-amber-500 text-[20px] shrink-0">schedule</span>{t('settings.coach.becomeAlreadySent')}</p>
         ) : (
           <div className="space-y-2">
             <div className="flex items-center gap-2">

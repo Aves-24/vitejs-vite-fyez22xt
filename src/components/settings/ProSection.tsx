@@ -26,7 +26,6 @@ const ProSection: React.FC<ProSectionProps> = ({ isPremium, trialEndsAt, proGift
 
   return (
     <div className="bg-gradient-to-br from-gray-900 to-[#0a3a2a] rounded-3xl p-5 space-y-4 shadow-xl border border-gray-700 animate-fade-in-up relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 pointer-events-none"></div>
 
       <div className="text-center relative z-10">
         <div className="w-16 h-16 mx-auto bg-[#F2C94C]/20 rounded-full flex items-center justify-center mb-1">

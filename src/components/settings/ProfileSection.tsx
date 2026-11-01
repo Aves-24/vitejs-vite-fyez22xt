@@ -37,14 +37,16 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
       {/* Przycisk Magicznego Kreatora */}
       <button 
         onClick={props.onStartWizard} 
-        className="w-full bg-gradient-to-r from-[#0a3a2a] to-emerald-800 p-4 rounded-xl flex gap-3 items-center shadow-lg active:scale-95 transition-all relative overflow-hidden group"
+        className="w-full tb-card tb-focus border rounded-l-md rounded-r-2xl shadow-sm pl-2.5 pr-3 py-3 flex gap-3 items-center active:scale-[0.98] transition-all"
       >
-        <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-xl -mr-6 -mt-6 group-hover:bg-white/20 transition-all"></div>
-        <span className="material-symbols-outlined text-[#F2C94C] text-3xl">magic_button</span>
-        <div className="text-left relative z-10">
-          <h3 className="text-white font-black text-xs tracking-wide mb-0.5">{t('settings.wizard.btnStart')}</h3>
-          <p className="text-emerald-100 text-[9px] font-medium leading-tight pr-4">{t('settings.wizard.btnDesc')}</p>
+        <span className="tb-tourney-icon w-10 h-10 rounded-lg flex items-center justify-center shrink-0">
+          <span className="material-symbols-outlined text-[#fed33e] text-[22px]">magic_button</span>
+        </span>
+        <div className="text-left flex-1 min-w-0">
+          <h3 className="text-[#0a3a2a] font-black text-[13px] leading-tight mb-0.5">{t('settings.wizard.btnStart')}</h3>
+          <p className="text-gray-500 text-[11px] font-bold leading-snug">{t('settings.wizard.btnDesc')}</p>
         </div>
+        <span className="material-symbols-outlined text-gray-300 shrink-0">chevron_right</span>
       </button>
 
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 space-y-3">
@@ -99,15 +101,15 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{t('settings.wizard.birthDate')}</label>
           <div className="flex gap-2">
             <div className="flex-1 flex flex-col gap-1">
-              <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={props.bDay} onChange={e => props.setBDay(e.target.value.slice(0,2))} />
+              <input type="number" placeholder="DD" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={props.bDay} onChange={e => props.setBDay(e.target.value.slice(0,2))} />
               <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.day')}</span>
             </div>
             <div className="flex-1 flex flex-col gap-1">
-              <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={props.bMonth} onChange={e => props.setBMonth(e.target.value.slice(0,2))} />
+              <input type="number" placeholder="MM" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={props.bMonth} onChange={e => props.setBMonth(e.target.value.slice(0,2))} />
               <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.month')}</span>
             </div>
             <div className="flex-[1.5] flex flex-col gap-1">
-              <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-emerald-50 focus:border-emerald-500 outline-none" value={props.bYear} onChange={e => props.setBYear(e.target.value.slice(0,4))} />
+              <input type="number" placeholder="YYYY" className="w-full bg-gray-50 border border-gray-100 rounded-xl p-3 text-center font-black text-lg focus:bg-white focus:border-emerald-300 outline-none" value={props.bYear} onChange={e => props.setBYear(e.target.value.slice(0,4))} />
               <span className="text-[8px] text-center font-bold text-gray-300 uppercase">{t('common.year')}</span>
             </div>
           </div>

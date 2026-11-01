@@ -43,8 +43,8 @@ const MaintenanceSection: React.FC<MaintenanceSectionProps> = ({ setup, done, on
 
   return (
     <div className="space-y-3">
-      <div className="flex items-start gap-2 bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 rounded-2xl p-3">
-        <span className="material-symbols-outlined text-[#0a3a2a] text-[20px] shrink-0">build</span>
+      <div className="flex items-start gap-2.5 px-1">
+        <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0"><span className="material-symbols-outlined text-[#8B5E3C] text-[18px]">build</span></span>
         <div className="flex-1 min-w-0">
           <p className="text-[12px] font-black text-[#0a3a2a] leading-tight">{t('maintenance.section.title')}</p>
           <p className="text-[10px] font-bold text-gray-500 leading-snug mt-0.5">

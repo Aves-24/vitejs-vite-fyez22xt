@@ -309,7 +309,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           {setups.length < limit ? (
             <button
               onClick={addSetup}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase active:scale-95 transition-all"
+              className="px-2.5 py-1.5 rounded-lg bg-gray-100 text-[#0a3a2a] text-[9px] font-black uppercase active:scale-95 transition-all"
             >
               + {t('settings.equipment.addSetup')}
             </button>
@@ -354,7 +354,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             <button
               onClick={openMaintenance}
               aria-label={t('maintenance.section.title')}
-              className="relative px-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 active:scale-95 transition-all flex items-center gap-1"
+              className="relative px-3 rounded-xl bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[18px]">build</span>
               <span className="text-[9px] font-black uppercase">{t('maintenance.section.button')}</span>
@@ -368,7 +368,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               <button
                 onClick={() => setConfirmDeleteId(active.id)}
                 aria-label={t('settings.equipment.removeSetup')}
-                className="px-3 rounded-xl bg-red-50 text-red-500 border border-red-100 active:scale-95 transition-all"
+                className="px-3 rounded-xl bg-white text-red-500 border border-red-100 active:scale-95 transition-all"
               >
                 <span className="material-symbols-outlined text-[18px]">delete</span>
               </button>

@@ -2,39 +2,32 @@
 # Testy reguł (tests/rules/) wymagają emulatora Firestore (Java 21).
 # Lokalnie na Windows emulator może nie wystartować (AV blokuje loopback Javy)
 # — wtedy ten workflow jest jedynym miejscem weryfikacji reguł.
+#
+# [MINUTY 2026-11-02] Repo prywatne = 2000 darmowych minut/mies. Dlatego JEDEN
+# job (GitHub zaokrągla każdy job w górę do pełnej minuty, a npm ci szło 3×)
+# i bez przebiegów dla samych notatek (*.md, _wip-patches).
 name: CI
 
 on:
   push:
     branches: [main, 'chore/**']
+    paths-ignore:
+      - '**.md'
+      - '_wip-patches/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**.md'
+      - '_wip-patches/**'
 
 jobs:
-  lint-build:
+  ci:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run lint
-      # Testy czystej logiki (Vitest, src/**/*.test.ts) — bitwy, statystyki, tarcze.
-      - run: npm test
-      - run: npm run build
-      # [CI BRAMKA] Deploy wysyła DOKŁADNIE ten build, który przeszedł lint
-      # i testy — bez drugiego budowania w jobie deploy.
-      - uses: actions/upload-artifact@v4
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        with:
-          name: dist
-          path: dist
-          retention-days: 1
-
-  rules-tests:
-    runs-on: ubuntu-latest
+    # [CI BRAMKA] Na main jeden przebieg naraz, po kolei — przy dwóch szybkich
+    # pushach starszy build nie nadpisze nowszego. Inne gałęzie/PR bez kolejki.
+    concurrency:
+      group: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && 'deploy-production' || github.run_id }}
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,6 +39,10 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
+      - run: npm run lint
+      # Testy czystej logiki (Vitest, src/**/*.test.ts) — bitwy, statystyki, tarcze.
+      - run: npm test
+      - run: npm run build
       - name: Cache Firestore emulator
         uses: actions/cache@v4
         with:
@@ -53,24 +50,15 @@ jobs:
           key: firebase-emulators-${{ runner.os }}
       - run: npm run test:rules
 
-  # [C42] Auto-deploy reguł Firestore + Firebase Hosting (grot-x.web.app) po
-  # każdym merge do main — bez terminala. BRAMKA: tylko gdy lint, testy logiki,
-  # build i testy reguł zielone; wysyła przetestowany build (artefakt `dist`).
-  # Ręczny deploy z komputera pilnuje hook predeploy (scripts/predeploy-check.mjs).
-  # Wymaga sekretu FIREBASE_SERVICE_ACCOUNT (JSON konta usługi z rolą
-  # Firebase Hosting Admin). Bez sekretu job kończy się ostrzeżeniem, nie błędem.
-  deploy-hosting:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint-build, rules-tests]
-    runs-on: ubuntu-latest
-    # [CI BRAMKA] Jeden deploy naraz, po kolei — przy dwóch szybkich pushach
-    # starszy build nie nadpisze nowszego. Czekający deploy zastępuje nowszy.
-    concurrency:
-      group: deploy-production
-      cancel-in-progress: false
-    steps:
+      # [C42] Auto-deploy reguł Firestore + Firebase Hosting (grot-x.web.app) po
+      # każdym push do main. BRAMKA: kroki niżej ruszają tylko, gdy lint, testy
+      # logiki, build i testy reguł powyżej przeszły; wysyłają TEN SAM build.
+      # Ręczny deploy z komputera pilnuje hook predeploy (scripts/predeploy-check.mjs).
+      # Wymaga sekretu FIREBASE_SERVICE_ACCOUNT (JSON konta usługi z rolą
+      # Firebase Hosting Admin). Bez sekretu krok kończy się ostrzeżeniem, nie błędem.
       - name: Check secret
         id: secret
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
@@ -80,20 +68,6 @@ jobs:
           else
             echo "ok=true" >> "$GITHUB_OUTPUT"
           fi
-      - uses: actions/checkout@v4
-        if: steps.secret.outputs.ok == 'true'
-      - uses: actions/setup-node@v4
-        if: steps.secret.outputs.ok == 'true'
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-        if: steps.secret.outputs.ok == 'true'
-      - uses: actions/download-artifact@v4
-        if: steps.secret.outputs.ok == 'true'
-        with:
-          name: dist
-          path: dist
       # Reguły Firestore przed hostingiem (nowy kod może ich wymagać).
       # Konto usługi potrzebuje ról: Firebase Rules Admin + Service Usage Consumer.
       - name: Deploy Firestore rules

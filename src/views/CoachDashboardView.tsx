@@ -30,6 +30,8 @@ import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSch
 
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useBackClose, navOverlayValue } from '../hooks/useBackClose';
+import TermineViewToggle from '../components/TermineViewToggle';
+import { getShowPrivate, saveShowPrivate, type TermineView } from '../utils/termineView';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -313,11 +315,13 @@ interface CoachDashboardViewProps {
   onClearPendingGroup?: () => void;
   /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
   onBack?: (view: string, tab?: string) => void;
+  /** [TERMINE] Przełącznik Liste/Monat — podmienia widok bez kroku w historii. */
+  onSwitchTermine?: (v: TermineView) => void;
   /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
   section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
 }
 
-export default function CoachDashboardView({ userId, onNavigate, onBack, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
+export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitchTermine, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
   const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
@@ -379,9 +383,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, pending
   const [shiftTopics, setShiftTopics] = useState(true);
   const [termineWeeks, setTermineWeeks] = useState(4);
   // Prywatne terminy obok trenerskich — kolizje widać od razu (pomysł usera 2026-10-26).
-  const [showPrivate, setShowPrivate] = useState(() => {
-    try { return localStorage.getItem('grotX_coachShowPrivate') === '1'; } catch { return false; }
-  });
+  const [showPrivate, setShowPrivate] = useState(getShowPrivate);
   // Stałe treningi grup w Termine — domyślnie widoczne, da się ukryć (user 2026-10-27).
   const [showPlan, setShowPlan] = useState(() => {
     try { return localStorage.getItem('grotX_coachShowPlan') !== '0'; } catch { return true; }
@@ -1718,7 +1720,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, pending
   const togglePrivate = () => {
     const next = !showPrivate;
     setShowPrivate(next);
-    try { localStorage.setItem('grotX_coachShowPrivate', next ? '1' : '0'); } catch { /* ignore */ }
+    saveShowPrivate(next);
   };
 
   // [EINSTELLUNGEN] Klocki sekcji ustawień: tytuł bloku i wiersz-przycisk.
@@ -2765,18 +2767,21 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, pending
               </button>,
               document.body,
             )}
-            <div className="flex items-center justify-end gap-2">
+            {/* [TERMINE] Lista i miesiąc to jeden ekran — przełącznik zamiast osobnego kalendarza. */}
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <TermineViewToggle value="LIST" onChange={v => (onSwitchTermine ? onSwitchTermine(v) : onNavigate('CALENDAR'))} />
+              <div className="flex items-center gap-2">
               {/* Stałe treningi grup — przełącznik jak „Privat” (user 2026-10-27). */}
               <button
                 type="button"
                 aria-pressed={showPlan}
                 title={t('coachTermine.showPlan')}
                 onClick={togglePlan}
-                className={`py-2.5 px-3 rounded-xl text-[13px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
+                className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
                   showPlan ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">{showPlan ? 'visibility' : 'visibility_off'}</span>
+                <span className="material-symbols-outlined text-[16px]">{showPlan ? 'visibility' : 'visibility_off'}</span>
                 {t('coachTermine.plan')}
               </button>
               {/* Prywatne terminy obok trenerskich — mały przełącznik (user 2026-10-26). */}
@@ -2785,21 +2790,14 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, pending
                 aria-pressed={showPrivate}
                 title={t('coachTermine.showPrivate')}
                 onClick={togglePrivate}
-                className={`py-2.5 px-3 rounded-xl text-[13px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
+                className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
                   showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
                 }`}
               >
-                <span className="material-symbols-outlined text-[18px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
+                <span className="material-symbols-outlined text-[16px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
                 {t('coachTermine.private')}
               </button>
-              <button
-                type="button"
-                onClick={() => onNavigate('CALENDAR')}
-                className="py-2.5 px-3.5 rounded-xl bg-white border border-gray-200 text-[13px] font-black text-[#0a3a2a] flex items-center gap-1 active:scale-95 transition-all"
-              >
-                <span className="material-symbols-outlined text-[18px]">calendar_month</span>
-                {t('coachTermine.month')}
-              </button>
+              </div>
             </div>
 
             {upcomingCoachEvents === null ? (

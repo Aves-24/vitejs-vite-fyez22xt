@@ -26,6 +26,8 @@ import MaintenanceInfo from '../components/settings/MaintenanceInfo';
 import { topicLabel } from '../constants/trainingTopics';
 import { groupIcon } from '../constants/groupIcons';
 import { useBackClose } from '../hooks/useBackClose';
+import TermineViewToggle from '../components/TermineViewToggle';
+import { getShowPrivate, saveShowPrivate, type TermineView } from '../utils/termineView';
 
 interface Event {
   id: string;
@@ -96,18 +98,29 @@ interface CalendarViewProps {
   coachMode?: boolean;
   /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
   onBack?: (view: string, tab?: string) => void;
+  /** [TERMINE] Przełącznik Liste/Monat — podmienia widok bez kroku w historii. */
+  onSwitchTermine?: (v: TermineView) => void;
+  /** Termin/formularz otwarty prosto z innego ekranu zamknięty — wróć tam. */
+  onDeepLinkDone?: () => void;
 }
 
-export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate, coachMode = false, onBack }: CalendarViewProps) {
+const NO_EVENTS: Event[] = [];
+
+export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate, coachMode = false, onBack, onSwitchTermine, onDeepLinkDone }: CalendarViewProps) {
   const { t, i18n: i18nCore } = useTranslation(); 
   // Nasłuch trzyma tylko ostatnie 60 dni i przyszłość. PRO widzi do 730 dni
   // wstecz — starsze miesiące dociągamy dopiero, gdy kalendarz tam zajdzie.
   const [liveEvents, setEvents] = useState<Event[]>([]);
   const [olderEvents, setOlderEvents] = useState<Event[]>([]);
+  // [TERMINE] „Privat” jak na liście trenera: wyłączony = tylko moje terminy trenerskie.
+  const [showPrivate, setShowPrivate] = useState(getShowPrivate);
+  const hidePrivate = coachMode && !showPrivate;
+  const togglePrivate = () => { const next = !showPrivate; setShowPrivate(next); saveShowPrivate(next); };
   const events = useMemo(() => {
     const liveIds = new Set(liveEvents.map(e => e.id));
-    return [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
-  }, [liveEvents, olderEvents]);
+    const all = [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
+    return hidePrivate ? all.filter(e => e.category === 'Trener' && !e.isMirrored) : all;
+  }, [liveEvents, olderEvents, hidePrivate]);
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
@@ -177,7 +190,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const suggestionsLoadedRef = useRef(false);
 
   const [newIsTodo, setNewIsTodo] = useState(false);
-  const [todoEvents, setTodoEvents] = useState<Event[]>([]);
+  const [allTodoEvents, setTodoEvents] = useState<Event[]>([]);
+  const todoEvents = hidePrivate ? NO_EVENTS : allTodoEvents;
 
   // Zwijane sekcje formularza — domyślnie zamknięte (patrz `CollapsibleSection`).
   const [openPastTournaments, setOpenPastTournaments] = useState(false);
@@ -377,9 +391,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   useBackClose(!!showDeleteConfirm, () => setShowDeleteConfirm(null));
   useBackClose(dayPickerEvents.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); });
 
-  const closeViewingModal = () => {
+  // `leave` = false, gdy zaraz i tak przechodzimy gdzie indziej (statystyki, grupa).
+  const closeViewingModal = (leave = true) => {
+    const deep = !!viewingEvent && viewingEvent.id === deepEventIdRef.current;
     setViewingEvent(null);
     if (clearFocusedEvent) clearFocusedEvent();
+    if (deep && leave) onDeepLinkDone?.();
+  };
+  const closeForm = () => {
+    const deep = deepFormRef.current;
+    setShowForm(false);
+    resetForm();
+    if (deep) onDeepLinkDone?.();
   };
 
   const resetForm = (prefilledDate?: string) => {
@@ -461,6 +484,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     setNewTopics(viewingEvent.topics || []);
     collapseCollapsibleSections();
 
+    // Edycja terminu otwartego prosto z listy: po zamknięciu formularza też wracamy.
+    if (viewingEvent.id === deepEventIdRef.current) deepFormRef.current = true;
     setViewingEvent(null);
     setShowForm(true);
   };
@@ -598,8 +623,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         }
       }
       localStorage.removeItem(`grotX_tournaments_${userId}`);
-      setShowForm(false);
-      resetForm();
+      closeForm();
     } catch (error) {
       console.error("Błąd zapisu:", error);
     } finally {
@@ -804,8 +828,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     <div className="flex flex-col h-full bg-[#fcfdfe] pb-32">
 
       <ViewHeader
-        onBack={() => { const back = onBack || onNavigate; if (coachMode) back?.('COACH', 'EVENTS'); else back?.('HOME'); }}
-        title={t('nav.calendar')}
+        onBack={() => { const back = onBack || onNavigate; if (coachMode) back?.('COACH'); else back?.('HOME'); }}
+        title={coachMode ? t('nav.coachEvents') : t('nav.calendar')}
       />
 
       {/* Nowy termin — ten sam plusik co w Tagebuch: na dole po prawej,
@@ -821,6 +845,25 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         document.body,
       )}
 
+      {/* [TERMINE] U trenera miesiąc to drugi widok ekranu Termine — ten sam przełącznik co na liście. */}
+      {coachMode && (
+        <div className="px-4 mt-4 flex items-center justify-between gap-2 flex-wrap shrink-0">
+          <TermineViewToggle value="MONTH" onChange={v => (onSwitchTermine ? onSwitchTermine(v) : onNavigate?.('COACH', 'EVENTS'))} />
+          <button
+            type="button"
+            aria-pressed={showPrivate}
+            title={t('coachTermine.showPrivate')}
+            onClick={togglePrivate}
+            className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
+              showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
+            {t('coachTermine.private')}
+          </button>
+        </div>
+      )}
+
       <div className="px-4 mt-4 mb-2 shrink-0">
         <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-2.5 shadow-sm">
            <div className="flex justify-between items-center mb-1.5 px-1">
@@ -830,16 +873,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
              </h3>
              <div className="flex items-center gap-1">
                <button onClick={nextMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
-               {/* [TERMINE] Z widoku miesiąca z powrotem do listy terminów trenera. */}
-               {coachMode && (
-                 <button
-                   onClick={() => onNavigate?.('COACH', 'EVENTS')}
-                   className="h-7 px-2.5 rounded-full bg-[#0a3a2a]/5 border border-[#0a3a2a]/10 text-[#0a3a2a] flex items-center gap-1 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
-                 >
-                   <span className="material-symbols-outlined text-[15px]">list</span>
-                   {t('coachTermine.list')}
-                 </button>
-               )}
              </div>
            </div>
            
@@ -1224,7 +1257,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   </span>
                 </span>
                 <h2 className="flex-1 min-w-0 text-[15px] font-black text-[#0a3a2a] leading-tight">{editingEventId ? t('calendar.editEvent') : t('calendar.addEvent')}</h2>
-                <button onClick={() => { setShowForm(false); resetForm(); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
+                <button onClick={closeForm} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
              </div>
 
              <div className="flex p-1 bg-gray-100 rounded-xl mb-3">
@@ -1522,7 +1555,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   </span>
                   <h2 className="text-xl font-black text-[#0a3a2a] leading-tight pr-2">{viewingEvent.title}</h2>
                 </div>
-                <button onClick={closeViewingModal} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 shrink-0 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
+                <button onClick={() => closeViewingModal()} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 shrink-0 transition-all"><span className="material-symbols-outlined text-[20px]">close</span></button>
              </div>
 
              {viewingEvent.category === 'Turniej' && viewingEvent.distance && (() => {
@@ -1560,7 +1593,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                                   // Bez daty statystyki otwierały się na dzisiaj, a nie
                                   // na dniu, w którym zawody się odbyły.
                                   onNavigate?.('STATS', undefined, viewingEvent.date);
-                                  closeViewingModal();
+                                  closeViewingModal(false);
                               } else if (isTournamentToday) {
                                   setShowScoreInput(true);
                               }
@@ -1594,7 +1627,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                const g = coachGroups.find(x => x.id === viewingEvent.trainingTopicGroupId);
                return g ? (
                  <button
-                   onClick={() => { closeViewingModal(); onNavigate?.('COACH', 'GROUP', g.id); }}
+                   onClick={() => { closeViewingModal(false); onNavigate?.('COACH', 'GROUP', g.id); }}
                    className="w-full mb-3 flex items-center gap-2.5 tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 text-left active:scale-[0.98] transition-all"
                  >
                    <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">

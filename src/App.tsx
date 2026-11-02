@@ -35,6 +35,7 @@ import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfi
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
 import { TRIAL_DAYS } from './utils/proAccess';
 import GuestBanner from './components/GuestBanner';
+import { getTermineView, setTermineView, type TermineView } from './utils/termineView';
 import { navInit, navPush, navReplace, navState, navPrevState, navBack, navConsumeSuppress } from './hooks/useBackClose';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
@@ -470,7 +471,7 @@ export default function App() {
     }
   }, [isDataReady, showSplash, isAuthLoading]);
 
-  const handleNavigate = (view: AppView, tab?: string, extraData?: string, optionalStudentId?: string) => {
+  const handleNavigate = (view: AppView, tab?: string, extraData?: string, optionalStudentId?: string, opts?: { replace?: boolean }) => {
     // [GOŚĆ] Battles i ranking światowy wymagają konta — goście nie trafiają
     // do world_stats/battles (duchy w rankingu, TTL skasowałby ich wpisy).
     if (isGuestUser() && ['BATTLE_LOBBY', 'BATTLE_HISTORY', 'WORLD_LEADERBOARD'].includes(view)) {
@@ -483,6 +484,12 @@ export default function App() {
     // Bez zakładki (np. powrót z profilu ucznia) trener wraca tam, skąd wyszedł.
     const nextSection: CoachSection = tab === 'GROUP' || tab === 'GROUPS' ? 'GROUPS' : tab === 'ATHLETES' ? 'ATHLETES' : tab === 'EVENTS' ? 'EVENTS' : tab === 'SETTINGS' ? 'SETTINGS'
       : tab === 'TODAY' || !coachMode ? 'TODAY' : coachSection;
+    // [TERMINE] Termine to jeden ekran z widokiem listy i miesiąca — dolne menu
+    // otwiera ostatnio wybrany. Miesiąc to kalendarz w trybie trenera.
+    const termineMonth = view === 'COACH' && tab === 'EVENTS' && getTermineView() === 'MONTH';
+    if (termineMonth) { view = 'CALENDAR'; tab = undefined; extraData = undefined; }
+    // Zakładka trenera inna niż Heute (Termine-miesiąc też się liczy).
+    const isCoachTab = (s: any) => !!s && !s.ovl && ((s.view === 'COACH' && !!s.coachSection && s.coachSection !== 'TODAY') || (s.view === 'CALENDAR' && coachMode));
     // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
     // Zakładki trybu trenera też, żeby „wstecz” cofało z Schüler na Heute.
     if (view !== currentView || (view === 'COACH' && nextSection !== coachSection)) {
@@ -495,15 +502,16 @@ export default function App() {
       // Zakładki trenera jak na Androidzie: Heute zostaje pod spodem, a przeskok
       // między pozostałymi podmienia wpis — „wstecz” z każdej wraca na Heute.
       const cur = navState();
-      if (view === 'COACH' && nextSection !== 'TODAY' && cur?.view === 'COACH' && !cur.ovl
-        && cur.coachSection && cur.coachSection !== 'TODAY') navReplace(state);
+      const toCoachTab = (view === 'COACH' && nextSection !== 'TODAY' && !groupId) || termineMonth;
+      if (opts?.replace || (toCoachTab && isCoachTab(cur))) navReplace(state);
       else navPush(state);
     }
     setCurrentView(view);
     if (view === 'COACH') {
       setCoachMode(true);
       setCoachSection(nextSection);
-    } else if (!COACH_MODE_VIEWS.includes(view)) setCoachMode(false);
+    } else if (termineMonth) setCoachMode(true);
+    else if (!COACH_MODE_VIEWS.includes(view)) setCoachMode(false);
     
     if (view !== 'STATS' && view !== 'STUDENT_PROFILE') {
       setViewingStudentId(null);
@@ -543,6 +551,17 @@ export default function App() {
       : prev.view === view && (!tab || prev.coachSection === tab) && !(tab && prev.ovl));
     if (matches) navBack();
     else handleNavigate(view, tab);
+  };
+
+  // [TERMINE] Przełącznik Liste/Monat: ten sam ekran, więc bez nowego kroku
+  // w historii. Gdy drugi widok jest tuż pod spodem (np. „Frühere Termine”), cofamy.
+  const handleSwitchTermine = (v: TermineView) => {
+    setTermineView(v);
+    const prev = navPrevState();
+    const target = v === 'MONTH' ? prev?.view === 'CALENDAR' : prev?.view === 'COACH' && prev.coachSection === 'EVENTS';
+    if (target && !prev.ovl) { navBack(); return; }
+    if (v === 'MONTH') handleNavigate('CALENDAR', undefined, undefined, undefined, { replace: true });
+    else handleNavigate('COACH', 'EVENTS', undefined, undefined, { replace: true });
   };
 
   const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0, distanceId?: string, distanceLabel?: string, plannedEnds?: number) => {
@@ -894,7 +913,7 @@ export default function App() {
         
         {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
         {currentView === 'WORLD_LEADERBOARD' && <WorldLeaderboardView userLevel={userLevel} onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onBack={(view, tab) => handleBack(view as AppView, tab)} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onBack={(view, tab) => handleBack(view as AppView, tab)} onSwitchTermine={handleSwitchTermine} onDeepLinkDone={navBack} />}
         
         {currentView === 'STATS' && (
           <StatsView
@@ -928,7 +947,7 @@ export default function App() {
         {currentView === 'ADMIN' && ['info@aves-24.de', 'rafal.woropaj@googlemail.com'].includes(user?.email || '') && (
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
-        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} onBack={(view, tab) => handleBack(view as AppView, tab)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
+        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} onBack={(view, tab) => handleBack(view as AppView, tab)} onSwitchTermine={handleSwitchTermine} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}

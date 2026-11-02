@@ -7,6 +7,12 @@
 
 ## MAŁE ZADANIA (zgłoszone przez usera)
 
+- [ ] **Schreiber-Training na stronie głównej** (2026-11-02): dziś gra jest
+      tylko easter eggiem w Einstellungen (przycisk przy „Höchste
+      Wettkampfebene”, `components/schreiber/SchreiberGame.tsx`). Trzeba ją
+      mądrze wyeksponować na Home — jak i gdzie, do przemyślenia razem z userem
+      (najpierw rozmowa, nie kod).
+
 - [x] ✅ ZROBIONE 2026-10-25 (`TechEditSheet`, `updateTechnicalSession`): strzały, data+godzina, tematy; notatki bez zmian (osobny limit).
       **Techniktraining edytowalny w Tagebuch** (2026-10-25): po dodaniu
       nowego treningu technicznego (strzały bez punktów, `utils/techSession.ts`,

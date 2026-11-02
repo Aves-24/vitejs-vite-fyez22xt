@@ -50,9 +50,14 @@ service cloud.firestore {
     }
     // trialEndsAt: klient może zapisać tylko sensowną wartość — maks. 31 dni
     // od teraz. Bez tego limitu można sobie ustawić trial "na zawsze".
+    // [AUDYT 2026-11-02] Trial raz na konto: znacznik trialClaims/{uid} musi
+    // powstać w TYM SAMYM zapisie (batch) i nie mógł istnieć wcześniej.
+    // Bez tego „usuń profil → załóż od nowa” dawało nowy trial bez końca.
     function validTrialEndsAt(data) {
       return data.trialEndsAt is number
-        && data.trialEndsAt <= request.time.toMillis() + 41 * 24 * 60 * 60 * 1000;
+        && data.trialEndsAt <= request.time.toMillis() + 41 * 24 * 60 * 60 * 1000
+        && !exists(/databases/$(database)/documents/trialClaims/$(request.auth.uid))
+        && existsAfter(/databases/$(database)/documents/trialClaims/$(request.auth.uid));
     }
     // [ZESTAWY] Limit zestawow sprzetowych: 1 FREE / 4 PRO.
     //
@@ -242,11 +247,18 @@ service cloud.firestore {
                           listLen(resource.data, 'userDistances'))
         && validActiveSetupId(request.resource.data);
 
+      // [AUDYT 2026-11-02] Paths C–H: lista może tylko dostać jeden wpis NA
+      // KOŃCU (reszta bez zmian) albo stracić wpisy bez dopisywania nowych.
+      // Wcześniej pilnowany był sam rozmiar listy, więc dało się podmienić
+      // pozostałe wpisy na obce uid (obcy „trener” czytał treningi ucznia).
+
       // Path C — student accepting invite: own doc, diff = ['coaches'],
       //          +1 entry, last entry has matching coachInvite.
       allow update: if isSelf(uid)
         && onlyAffects(['coaches'])
         && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') + 1
+        && request.resource.data.coaches == resource.data.get('coaches', []).concat(
+             [request.resource.data.coaches[listLen(request.resource.data, 'coaches') - 1]])
         && coachInviteExists(
              request.resource.data.coaches[listLen(request.resource.data, 'coaches') - 1],
              uid
@@ -255,7 +267,8 @@ service cloud.firestore {
       // Path D — student removing a coach from own list: diff ['coaches'], size -1
       allow update: if isSelf(uid)
         && onlyAffects(['coaches'])
-        && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') - 1;
+        && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') - 1
+        && resource.data.get('coaches', []).hasAll(request.resource.data.coaches);
 
       // Path E — student writes to COACH's doc, adding self to students[]
       //          requires coachInvite(uid, self) exists.
@@ -266,8 +279,8 @@ service cloud.firestore {
         && !isSelf(uid)
         && onlyAffects(['students'])
         && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') + 1
-        && request.resource.data.students[listLen(request.resource.data, 'students') - 1]
-             == request.auth.uid
+        && request.resource.data.students
+             == resource.data.get('students', []).concat([request.auth.uid])
         && coachInviteExists(uid, request.auth.uid)
         && resource.data.get('isCoach', false) == true
         && listLen(resource.data, 'students') < coachSlots(resource.data);
@@ -278,12 +291,14 @@ service cloud.firestore {
         && onlyAffects(['students'])
         && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') - 1
         && !(request.auth.uid in request.resource.data.students)
-        && (request.auth.uid in resource.data.get('students', []));
+        && (request.auth.uid in resource.data.get('students', []))
+        && resource.data.get('students', []).hasAll(request.resource.data.students);
 
       // Path G — coach removes a student (coach = self, own doc)
       allow update: if isSelf(uid)
         && onlyAffects(['students'])
-        && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') - 1;
+        && listLen(request.resource.data, 'students') == listLen(resource.data, 'students') - 1
+        && resource.data.get('students', []).hasAll(request.resource.data.students);
 
       // Path H — coach removes OWN uid from student's coaches[] (when cutting off a student)
       allow update: if isSignedIn()
@@ -291,7 +306,8 @@ service cloud.firestore {
         && onlyAffects(['coaches'])
         && listLen(request.resource.data, 'coaches') == listLen(resource.data, 'coaches') - 1
         && !(request.auth.uid in request.resource.data.coaches)
-        && (request.auth.uid in resource.data.get('coaches', []));
+        && (request.auth.uid in resource.data.get('coaches', []))
+        && resource.data.get('coaches', []).hasAll(request.resource.data.coaches);
 
       // Path I — message sender sets unreadMsgFrom on recipient's doc.
       //          Sender must be in a coach-student relationship with recipient.
@@ -367,7 +383,9 @@ service cloud.firestore {
     //  egzekwuje klient w buildPublicProfile; tu twarde limity pól).
     //  Pisane przez App.tsx przy zmianie users/{uid}.
     match /profiles_public/{uid} {
-      allow read: if isSignedIn();
+      // [AUDYT 2026-11-02] Tylko pojedynczo (get) — bez list nikt nie ściągnie
+      // jednym zapytaniem imion i klubów wszystkich użytkowników.
+      allow get: if isSignedIn();
       allow create, update: if isSelf(uid)
         && !isAnon()
         && request.resource.data.keys().hasOnly(
@@ -1036,9 +1054,23 @@ service cloud.firestore {
     match /announcements/{id} {
       allow read: if isSignedIn();
       allow create: if isAdmin();
+      // [AUDYT 2026-11-02] Wiadomość trenera: tylko do JEDNEGO własnego ucznia
+      // (target USER, trener na liście coaches odbiorcy). Wcześniej każdy —
+      // także gość — mógł dać target ALL i trafić na ekran każdego usera.
       allow create: if isSignedIn()
-        && request.resource.data.get('type', '') == 'coach'
-        && request.resource.data.get('authorId', '') == request.auth.uid;
+        && !isAnon()
+        && request.resource.data.keys().hasOnly(
+             ['title', 'content', 'target', 'targetId', 'lang', 'timestamp', 'senderId', 'type', 'authorId'])
+        && request.resource.data.type == 'coach'
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.get('senderId', request.auth.uid) == request.auth.uid
+        && request.resource.data.target == 'USER'
+        && request.resource.data.targetId is string
+        && request.resource.data.title is string
+        && request.resource.data.title.size() <= 200
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 3000
+        && request.auth.uid in get(/databases/$(database)/documents/users/$(request.resource.data.targetId)).data.get('coaches', []);
       allow update: if false;
       allow delete: if isAdmin()
         || (isSignedIn() && resource.data.get('authorId', '') == request.auth.uid);
@@ -1058,6 +1090,18 @@ service cloud.firestore {
       allow update: if isAdmin();
       allow delete: if isAdmin()
         || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    // ─── /trialClaims/{uid} ─────────────────────────────────────
+    //  [AUDYT 2026-11-02] Znacznik „trial już wykorzystany” (sam czas).
+    //  Klient go nie usunie ani nie zmieni — zostaje po skasowaniu profilu,
+    //  więc ponowne założenie profilu nie daje nowego trialu.
+    match /trialClaims/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['claimedAt'])
+        && request.resource.data.claimedAt == request.time;
+      allow delete: if isAdmin();
     }
 
     // ─── /admin_stats_history/{id} ──────────────────────────────

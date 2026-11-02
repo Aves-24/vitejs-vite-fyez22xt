@@ -1259,7 +1259,10 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           targetId: studentId,
           lang: 'all', 
           timestamp: serverTimestamp(),
-          senderId: userId 
+          senderId: userId,
+          // Reguła wiadomości trenera (announcements) wymaga obu pól.
+          type: 'coach',
+          authorId: userId,
         });
       });
 

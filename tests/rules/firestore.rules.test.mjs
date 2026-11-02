@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, writeBatch } from 'firebase/firestore';
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let env;
@@ -83,18 +83,37 @@ test('T1: create konta z polem chronionym (coachLimit) odrzucone', async () => {
   await assertFails(setDoc(doc(bob(), 'users/newbie'), { coachLimit: 99 }));
 });
 
+/** Profil z trialem + znacznik trialClaims w jednym batchu (jak setProfileWithTrial). */
+function trialBatch(db, uid, trialEndsAt) {
+  const b = writeBatch(db);
+  b.set(doc(db, 'users', uid), { displayName: 'X', trialEndsAt });
+  b.set(doc(db, 'trialClaims', uid), { claimedAt: serverTimestamp() });
+  return b.commit();
+}
+
 test('T1: trialEndsAt do 41 dni (trial 40 dni) przechodzi przy create', async () => {
   await env.clearFirestore();
-  await assertSucceeds(setDoc(doc(alice(), 'users/alice'), {
-    displayName: 'Alice', trialEndsAt: Date.now() + 40 * DAY,
-  }));
+  await assertSucceeds(trialBatch(alice(), 'alice', Date.now() + 40 * DAY));
 });
 
 test('T1: trialEndsAt 60 dni odrzucone', async () => {
   await env.clearFirestore();
-  await assertFails(setDoc(doc(alice(), 'users/alice'), {
-    displayName: 'Alice', trialEndsAt: Date.now() + 60 * DAY,
-  }));
+  await assertFails(trialBatch(alice(), 'alice', Date.now() + 60 * DAY));
+});
+
+test('AUDYT: trialEndsAt bez znacznika trialClaims odrzucone', async () => {
+  await env.clearFirestore();
+  await assertFails(setDoc(doc(alice(), 'users/alice'), { displayName: 'Alice', trialEndsAt: Date.now() + 40 * DAY }));
+});
+
+test('AUDYT: usuń profil i załóż od nowa NIE daje nowego trialu', async () => {
+  await env.clearFirestore();
+  await assertSucceeds(trialBatch(alice(), 'alice', Date.now() + 40 * DAY));
+  await assertSucceeds(deleteDoc(doc(alice(), 'users/alice')));
+  await assertFails(trialBatch(alice(), 'alice', Date.now() + 40 * DAY));
+  await assertFails(deleteDoc(doc(alice(), 'trialClaims/alice')));
+  // profil bez trialu nadal da się założyć
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice'), { displayName: 'Alice' }));
 });
 
 test('T1: raz ustawionego trialEndsAt nie można przedłużyć', async () => {
@@ -1401,4 +1420,70 @@ test('[WPIS DO TRENINGU] trener przypina wpis do treningu migawka sessionRef; ni
   // prywatna notatka trenera też może wskazać trening
   await assertSucceeds(setDoc(doc(coach1(), 'users/coach1/coachStudentNotes/p1'), { studentId: 'alice', title: '', text: 'x', topics: [], sessionRef: ref, createdAt: serverTimestamp() }));
   await assertFails(setDoc(doc(coach1(), 'users/coach1/coachStudentNotes/p2'), { studentId: 'alice', title: '', text: 'x', topics: [], sessionRef: 'zle', createdAt: serverTimestamp() }));
+});
+
+// ─── AUDYT 2026-11-02 ────────────────────────────────────────────
+const anonCtx = () => env.authenticatedContext('guest1', { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+const ctxOf = (uid) => env.authenticatedContext(uid).firestore();
+async function seedRelations() {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    await setDoc(doc(db, 'users/alice'), { coaches: ['coach1', 'coach2'], students: [] });
+    await setDoc(doc(db, 'users/coach1'), { isCoach: true, coaches: [], students: ['alice', 's2', 's3'] });
+  });
+}
+
+test('AUDYT: gość nie opublikuje ogłoszenia dla wszystkich', async () => {
+  await assertFails(setDoc(doc(anonCtx(), 'announcements/x'), {
+    type: 'coach', authorId: 'guest1', target: 'ALL', lang: 'all', title: 't', content: 'c',
+  }));
+});
+
+test('AUDYT: trener nie wyśle ogłoszenia ALL ani do cudzego ucznia', async () => {
+  const base = { type: 'coach', authorId: 'coach1', senderId: 'coach1', lang: 'all', title: 't', content: 'c', timestamp: serverTimestamp() };
+  await assertFails(setDoc(doc(coach1(), 'announcements/a'), { ...base, target: 'ALL', targetId: '' }));
+  await assertFails(setDoc(doc(coach1(), 'announcements/b'), { ...base, target: 'USER', targetId: 'bob' }));
+  await assertSucceeds(setDoc(doc(coach1(), 'announcements/c'), { ...base, target: 'USER', targetId: 'alice' }));
+});
+
+test('AUDYT: trener nie podmieni listy trenerów ucznia na obcego (Path H)', async () => {
+  await seedRelations();
+  await assertFails(updateDoc(doc(coach1(), 'users/alice'), { coaches: ['evil'] }));
+  await assertSucceeds(updateDoc(doc(coach1(), 'users/alice'), { coaches: ['coach2'] }));
+});
+
+test('AUDYT: uczeń nie podmieni sobie trenerów na obcego (Path D)', async () => {
+  await seedRelations();
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { coaches: ['evil'] }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { coaches: ['coach2'] }));
+});
+
+test('AUDYT: uczeń nie wyrzuci innych uczniów trenera (Path F)', async () => {
+  await seedRelations();
+  await assertFails(updateDoc(doc(alice(), 'users/coach1'), { students: ['x', 'y'] }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/coach1'), { students: ['s2', 's3'] }));
+});
+
+test('AUDYT: trener usuwa ucznia bez dopisywania obcych (Path G)', async () => {
+  await seedRelations();
+  await assertFails(updateDoc(doc(coach1(), 'users/coach1'), { students: ['x', 'y'] }));
+  await assertSucceeds(updateDoc(doc(coach1(), 'users/coach1'), { students: ['alice', 's2'] }));
+});
+
+test('AUDYT: przy zaproszeniu nie da się podmienić innych wpisów (Path C i E)', async () => {
+  await seedRelations();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachInvites/coach3_alice'), { coachId: 'coach3', studentId: 'alice' });
+    await setDoc(doc(ctx.firestore(), 'users/coach3'), { isCoach: true, coachLimit: 10, students: ['s9'] });
+  });
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { coaches: ['evil', 'coach2', 'coach3'] }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), { coaches: ['coach1', 'coach2', 'coach3'] }));
+  await assertFails(updateDoc(doc(alice(), 'users/coach3'), { students: ['x', 'alice'] }));
+  await assertSucceeds(updateDoc(doc(alice(), 'users/coach3'), { students: ['s9', 'alice'] }));
+});
+
+test('AUDYT: profiles_public tylko pojedynczo, bez listy', async () => {
+  await assertSucceeds(getDoc(doc(anonCtx(), 'profiles_public/alice')));
+  await assertFails(getDocs(collection(anonCtx(), 'profiles_public')));
+  await assertFails(getDocs(collection(ctxOf('bob'), 'profiles_public')));
 });

@@ -34,6 +34,7 @@ import i18n from './i18n';
 import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfile';
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
 import { TRIAL_DAYS } from './utils/proAccess';
+import { setProfileWithTrial } from './utils/trialClaim';
 import GuestBanner from './components/GuestBanner';
 import { getTermineView, setTermineView, type TermineView } from './utils/termineView';
 import { navInit, navPush, navReplace, navState, navPrevState, navBack, navConsumeSuppress } from './hooks/useBackClose';
@@ -399,9 +400,8 @@ export default function App() {
         // nie istnieje w dokumencie. Ref chroni przed pętlą optimistic-revert.
         if (!data.trialEndsAt && !trialFallbackAttemptedRef.current) {
           trialFallbackAttemptedRef.current = true;
-          setDoc(doc(db, 'users', user.uid), {
-            trialEndsAt: Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
-          }, { merge: true }).catch(e => console.error('trialEndsAt fallback failed:', e));
+          setProfileWithTrial(user.uid)
+            .catch(e => console.error('trialEndsAt fallback failed:', e));
         }
 
         // [RODO C21] Jednorazowa migracja pól wrażliwych (email/birthDate/gender)
@@ -447,12 +447,11 @@ export default function App() {
         // żeby użytkownik zawsze miał konto w Firebase nawet jeśli przerwie wizard.
         // [GOŚĆ] Konto anonimowe dostaje expiresAt (+24h od utworzenia) — TTL
         // Firestore skasuje dokument po terminie; upgrade konta zdejmuje pole.
-        setDoc(doc(db, 'users', user.uid), {
+        setProfileWithTrial(user.uid, {
           uid: user.uid,
           createdAt: serverTimestamp(),
-          trialEndsAt: Date.now() + TRIAL_DAYS * 24 * 60 * 60 * 1000,
           ...guestExpiryFields(),
-        }, { merge: true }).catch(e => console.error('Błąd tworzenia profilu:', e));
+        }).catch(e => console.error('Błąd tworzenia profilu:', e));
 
         setAutoStartWizard(true);
         setCurrentView('SETTINGS');

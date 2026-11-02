@@ -17,7 +17,6 @@ import CoachFocusModal from '../components/CoachFocusModal';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
 import TargetCard from '../components/scoring/TargetCard';
-import SummaryCard from '../components/scoring/SummaryCard';
 import { distanceMeters } from '../config/distances';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import FocusResultChip, { isFocusResult } from '../components/scoring/FocusResultChip';
@@ -356,6 +355,105 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
 // [FREE/PRO] Uczeń FREE: treningi i jego wpisy tylko z FREE_HISTORY_DAYS;
 // wpisy trenera zawsze bez okna (zasada „treści od trenera bez okna”).
 const TIMELINE_PAGE = 20;
+
+// --- OKIENKO 🔒 Z NAGŁÓWKA: prywatne notatki trenera („Nur für mich”) ---
+// Te same wpisy co na osi Tagebuch (users/{coach}/coachStudentNotes), tu pod ręką
+// bez przewijania osi (user 2026-11-02: ikonki wracają do nagłówka).
+function CoachPrivateNotesModal({ notes, setNotes, studentId, studentName, coachId, sessions, onClose }: {
+  notes: CoachPrivateNote[];
+  setNotes: React.Dispatch<React.SetStateAction<CoachPrivateNote[]>>;
+  studentId: string;
+  studentName: string;
+  coachId: string;
+  sessions: any[];
+  onClose: () => void;
+}) {
+  const { t, i18n } = useTranslation();
+  const [adding, setAdding] = useState(notes.length === 0);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const fmtDay = (ms: number) => new Date(ms).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const remove = async (id: string) => {
+    try {
+      await deleteCoachPrivateNote(coachId, id);
+      setNotes(prev => prev.filter(n => n.id !== id));
+    } catch (e) {
+      console.error('CoachLog: błąd usuwania', e);
+    }
+    setConfirmId(null);
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={onClose}>
+      <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full active:scale-90 transition-all">
+          <span className="material-symbols-outlined">close</span>
+        </button>
+        <div className="flex items-center gap-3 mb-2 mt-2 shrink-0 pr-10">
+          <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-indigo-500">lock</span>
+          </div>
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.privateNoteTitle')}</h2>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">{studentName}</p>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-500 font-medium mb-3 leading-tight shrink-0">{t('studentProfile.privateNoteDesc')}</p>
+
+        <div className="overflow-y-auto flex-1 space-y-2 pb-2 hide-scrollbar">
+          {adding ? (
+            <CoachLogComposer
+              studentId={studentId}
+              studentName={studentName}
+              sessions={sessions}
+              currentUserId={coachId}
+              privateOnly
+              onCancel={() => setAdding(false)}
+              onSaved={() => setAdding(false)}
+              onSavedPrivate={note => { setNotes(prev => [note, ...prev]); setAdding(false); }}
+            />
+          ) : (
+            <button
+              onClick={() => setAdding(true)}
+              className="w-full bg-[#0a3a2a] text-[#fed33e] py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-[16px]">add</span>
+              {t('coachLog.addBtn', { defaultValue: 'Eintrag' })}
+            </button>
+          )}
+          {notes.length === 0 && !adding && (
+            <p className="text-[11px] font-bold text-gray-400 text-center py-4">{t('studentProfile.privateNotesEmpty')}</p>
+          )}
+          {notes.map(n => (
+            <div key={n.id} className={`${CARD_SHAPE} tb-private ${CARD_PAD} relative`}>
+              <EntryRow icon="lock" iconCls="text-indigo-500" kind={t('studentProfile.privateKind')} kindCls="text-indigo-600" title={n.title || undefined} time={fmtDay(n.ts)}>
+                {n.sessionRef && <SessionRefLine sref={n.sessionRef} />}
+                <p className="text-[12px] font-medium text-gray-700 leading-relaxed whitespace-pre-wrap break-words mt-1 pr-6">{n.text}</p>
+                {n.topics.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {n.topics.map(id => (
+                      <span key={id} className="border px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-50 text-indigo-600 border-indigo-100">{topicLabel(id, t)}</span>
+                    ))}
+                  </div>
+                )}
+              </EntryRow>
+              {confirmId === n.id ? (
+                <button onClick={() => remove(n.id)} className="absolute right-2 bottom-2 px-2 py-1 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest">
+                  {t('coachLog.delete', { defaultValue: 'Löschen' })}?
+                </button>
+              ) : (
+                <button onClick={() => setConfirmId(n.id)} className="absolute right-2 bottom-2 p-1 text-gray-300 active:text-red-500" aria-label={t('coachLog.delete', { defaultValue: 'Löschen' })}>
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 type TimelineFilter = 'all' | 'trainings' | 'notes';
 type CoachLogItem = TbCoachEntry & { authorId: string };
@@ -727,6 +825,16 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
   const [showTournamentsModal, setShowTournamentsModal] = useState(false);
   // [WSTECZ] Systemowe „wstecz” zamyka okienko.
   useBackClose(showTournamentsModal, () => setShowTournamentsModal(false));
+  // [NAGŁÓWEK 🔧 / 🔒] Sprzęt i prywatne notatki jako ikonki obok imienia (user 2026-11-02).
+  const [showHardwareModal, setShowHardwareModal] = useState(false);
+  const [showPrivateNotes, setShowPrivateNotes] = useState(false);
+  const [headerPrivateNotes, setHeaderPrivateNotes] = useState<CoachPrivateNote[]>([]);
+  useBackClose(showHardwareModal, () => setShowHardwareModal(false));
+  useBackClose(showPrivateNotes, () => setShowPrivateNotes(false));
+  useEffect(() => {
+    if (!coachId || !studentId) return;
+    loadCoachPrivateNotes(coachId, studentId).then(setHeaderPrivateNotes).catch(e => console.error('Prywatne notatki trenera:', e));
+  }, [coachId, studentId]);
 
 
   // TABS
@@ -1017,6 +1125,17 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
           <p className="text-[10px] font-bold text-emerald-300/80 uppercase tracking-widest mt-0.5 truncate">{formatViewerAgeCategory(student.ageCategory, student.ageCategoryPL, i18n.language, t)}</p>
         )}
         hideLogo
+        actions={<>
+          <button onClick={() => setShowHardwareModal(true)} className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/10" aria-label={t('studentProfile.hardwareTitle')}>
+            <span className="material-symbols-outlined text-[19px]">build</span>
+          </button>
+          <button onClick={() => setShowPrivateNotes(true)} className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center text-[#0a3a2a] active:scale-90 transition-all relative" aria-label={t('studentProfile.privateNoteTitle')}>
+            <span className="material-symbols-outlined text-[19px]">lock</span>
+            {headerPrivateNotes.length > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-indigo-500 text-white text-[9px] font-black rounded-full border-2 border-[#0a3a2a] flex items-center justify-center tabular-nums">{headerPrivateNotes.length}</span>
+            )}
+          </button>
+        </>}
       >
 
         {/* [PROFIL B, etap 1] W nagłówku zostaje tylko fokus — widoczny na każdej
@@ -1313,11 +1432,6 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
               </div>
             )}
 
-            {/* SPRZĘT — zwijana karta zamiast ikonki 🔧 w nagłówku */}
-            <SummaryCard icon="build" stripe="tb-d1" kind={t('studentProfile.hardwareTitle')} title={t('studentProfile.hardwareSubtitle')} storageKey="coach-equipment" defaultOpen={false}>
-              <StudentEquipmentCard student={student} />
-            </SummaryCard>
-
           </div>
         )}
 
@@ -1539,6 +1653,43 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
           </div>
         </div>,
         document.body
+      )}
+
+      {/* 🔧 SPRZĘT UCZNIA — z ikonki w nagłówku */}
+      {showHardwareModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowHardwareModal(false)}>
+          <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl relative max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setShowHardwareModal(false)} className="absolute top-5 right-5 p-2 bg-gray-100 rounded-full active:scale-90 transition-all">
+              <span className="material-symbols-outlined">close</span>
+            </button>
+            <div className="flex items-center gap-3 mb-4 mt-2 shrink-0 pr-10">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-emerald-700">build</span>
+              </div>
+              <div className="min-w-0">
+                <h2 className="text-xl font-black text-[#0a3a2a] leading-none">{t('studentProfile.hardwareTitle')}</h2>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">{t('studentProfile.hardwareSubtitle')}</p>
+              </div>
+            </div>
+            <div className="overflow-y-auto flex-1 hide-scrollbar">
+              <StudentEquipmentCard student={student} />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 🔒 PRYWATNE NOTATKI — z ikonki w nagłówku */}
+      {showPrivateNotes && typeof document !== 'undefined' && (
+        <CoachPrivateNotesModal
+          notes={headerPrivateNotes}
+          setNotes={setHeaderPrivateNotes}
+          studentId={studentId}
+          studentName={student.firstName || ''}
+          coachId={coachId}
+          sessions={recentSessions}
+          onClose={() => setShowPrivateNotes(false)}
+        />
       )}
 
       {/* MODAL Z LISTĄ TURNIEJÓW */}

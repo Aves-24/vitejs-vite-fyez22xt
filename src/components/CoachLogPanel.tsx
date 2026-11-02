@@ -76,7 +76,7 @@ export async function deleteCoachLogEntry(studentId: string, entryId: string): P
   await deleteDoc(doc(db, `users/${studentId}/coachLog/${entryId}`));
 }
 
-export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel, sessions = [] }: {
+export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel, sessions = [], privateOnly = false }: {
   studentId: string;
   studentName?: string;
   // [WPIS DO TRENINGU] ostatnie treningi ucznia do wyboru (najnowszy pierwszy)
@@ -85,11 +85,13 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
   onSaved: (entry: TbCoachEntry & { authorId: string }) => void;
   onSavedPrivate: (note: CoachPrivateNote) => void;
   onCancel: () => void;
+  // Okienko 🔒 w nagłówku profilu ucznia: tylko „Nur für mich”, bez wyboru typu.
+  privateOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const [authorName, setAuthorName] = useState('');
   const [text, setText] = useState('');
-  const [type, setType] = useState<EntryType>('observation');
+  const [type, setType] = useState<EntryType>(privateOnly ? 'private' : 'observation');
   const [logTopics, setLogTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   // Domyślnie najnowszy trening — wpis zwykle dotyczy tego, co uczeń właśnie strzelał.
@@ -162,9 +164,9 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
 
   return (
     <div className="tb-card tb-coach border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 space-y-2 tb-fade-in">
-      <p className="text-[10px] font-semibold text-gray-500 leading-snug">
+      {!privateOnly && <p className="text-[10px] font-semibold text-gray-500 leading-snug">
         {t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })}
-      </p>
+      </p>}
 
       {/* [WPIS DO TRENINGU] Do czego odnosi się wpis (user 2026-10-30). */}
       {sessions.length > 0 && (
@@ -193,7 +195,7 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
       )}
 
       {/* Wybór typu wpisu */}
-      <div className="grid grid-cols-5 gap-1">
+      {!privateOnly && <div className="grid grid-cols-5 gap-1">
         {(Object.keys(TYPE_CONFIG) as EntryType[]).map(key => {
           const cfg = TYPE_CONFIG[key];
           const isActive = type === key;
@@ -211,7 +213,7 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
             </button>
           );
         })}
-      </div>
+      </div>}
 
       {/* Liczbą lekcji, podglądem obecnego fokusu i zakończeniem przed
           czasem zarządza CoachFocusModal (klik na pasek fokusu w profilu

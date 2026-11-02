@@ -2438,6 +2438,7 @@ export const views = {
     filterTrainings: "Treningi",
     filterNotes: "Wpisy",
     privateKind: "Prywatna notatka",
+    privateNotesEmpty: "Brak prywatnych notatek.",
     seenByStudent: "Widzi {{name}} + trenerzy",
     seenOnlyYou: "Tylko dla Ciebie",
     entriesEmpty: "Brak wpisów. Wpisy ogólne zapisują, nad czym {{name}} pracuje przez kilka treningów — np. „3 tygodnie: nisko kotwica”.",

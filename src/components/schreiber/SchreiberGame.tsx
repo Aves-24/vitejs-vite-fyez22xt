@@ -41,9 +41,21 @@ const getArrowStyles = (val: string) => {
 
 const CFG_KEY = 'grotx_schreiber_cfg_v2';
 const BEST_KEY = 'grotx_schreiber_best_v2';
-const DEFAULT_CFG: SchreiberConfig = { target: 'full', shooters: 2, arrows: 6, level: 'club', ends: 5 };
+const DEFAULT_CFG: SchreiberConfig = { target: 'full', shooters: 2, arrows: 6, level: 'club', ends: 3 };
 const LEVELS: SchreiberLevel[] = ['beginner', 'club', 'mixed'];
 const TARGETS: SchreiberTarget[] = ['full', 'six', 'spot3'];
+const END_OPTIONS = [3, 6] as const;
+
+/** Lupa: powiększenie tarczy po stuknięciu. */
+const ZOOM = 2.5;
+/** Przesunięcie palca poniżej tylu px to stuknięcie, a nie przeciąganie. */
+const TAP_SLOP = 6;
+/** Symulacja durchgangu: tyle trwa strzelanie jednej grupy (AB albo CD). */
+const VOLLEY_MS = 1000;
+
+/** Grupy jak na zawodach: AB strzelają razem, potem CD. */
+const shooterGroups = (count: number): number[][] =>
+  count <= 2 ? [[0, 1].slice(0, count)] : [[0, 1], [2, 3].slice(0, count - 2)];
 
 const readJson = <T,>(key: string, fallback: T): T => {
   try {
@@ -60,6 +72,7 @@ const readCfg = (): SchreiberConfig => {
     ...c,
     level: LEVELS.includes(c.level) ? c.level : DEFAULT_CFG.level,
     target: TARGETS.includes(c.target) ? c.target : DEFAULT_CFG.target,
+    ends: (END_OPTIONS as readonly number[]).includes(c.ends) ? c.ends : DEFAULT_CFG.ends,
   };
 };
 const readBest = (cfg: SchreiberConfig): SchreiberResult | null => {
@@ -245,7 +258,10 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   const [answers, setAnswers] = useState<SchreiberAnswer[]>([]);
   const [result, setResult] = useState<{ res: SchreiberResult; newBest: boolean } | null>(null);
   const [zoom, setZoom] = useState<{ x: number; y: number } | null>(null);
+  /** Symulacja strzelania przed odczytem: która grupa strzela i ile jej strzał już widać. */
+  const [volley, setVolley] = useState<{ group: number; shown: number } | null>(null);
   const [now, setNow] = useState(0);
+  const drag = useRef<{ px: number; py: number; cx: number; cy: number; moved: boolean } | null>(null);
   const promptStart = useRef(0);
   const elapsedBefore = useRef(0);
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -270,10 +286,11 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     setCellIdx(0); setInput(''); setRowDone(null); answersRef.current = []; setAnswers([]); setResult(null); setZoom(null);
     elapsedBefore.current = 0;
     promptStart.current = performance.now();
+    setVolley({ group: 0, shown: 0 });
     setPhase('play');
   };
 
-  const waiting = arrowCheck !== null || rowDone !== null;
+  const waiting = arrowCheck !== null || rowDone !== null || volley !== null;
   useEffect(() => {
     if (phase !== 'play' || waiting) return;
     const id = window.setInterval(() => setNow(performance.now()), 200);
@@ -291,6 +308,52 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   };
   const resume = () => { promptStart.current = performance.now(); setNow(promptStart.current); };
 
+  // ── Symulacja durchgangu: AB strzelają (~1 s), potem CD; zegar stoi ──
+  const end = ends[endIdx];
+  /** Kolejność pojawiania się strzał w każdej grupie: na zmianę A, B, A, B… */
+  const volleyOrder = useMemo(() => {
+    if (!end) return [];
+    return shooterGroups(cfg.shooters).map(group => {
+      const per = group.map(s => end.arrows.map((a, i) => (a.shooter === s ? i : -1)).filter(i => i >= 0));
+      const out: number[] = [];
+      const longest = Math.max(...per.map(p => p.length));
+      for (let k = 0; k < longest; k++) per.forEach(p => { if (p[k] !== undefined) out.push(p[k]); });
+      return out;
+    });
+  }, [end, cfg.shooters]);
+
+  useEffect(() => {
+    if (!volley) return;
+    const order = volleyOrder[volley.group] ?? [];
+    let delay: number;
+    let next: { group: number; shown: number } | null;
+    if (volley.shown < order.length) {
+      // Najpierw chwila na napis „AB schießen”, potem strzały w równych odstępach.
+      delay = volley.shown === 0 ? 250 : VOLLEY_MS / order.length;
+      next = { group: volley.group, shown: volley.shown + 1 };
+    } else if (volley.group + 1 < volleyOrder.length) {
+      delay = 350;
+      next = { group: volley.group + 1, shown: 0 };
+    } else {
+      delay = 450;
+      next = null;
+    }
+    const id = window.setTimeout(() => { setVolley(next); if (!next) resume(); }, delay);
+    return () => window.clearTimeout(id);
+  }, [volley, volleyOrder]);
+
+  /** Strzały widoczne na tarczy — podczas symulacji tylko te już wystrzelone. */
+  const visibleArrows = useMemo(() => {
+    if (!volley) return null;
+    const set = new Set<number>();
+    volleyOrder.forEach((order, g) => {
+      if (g < volley.group) order.forEach(i => set.add(i));
+      else if (g === volley.group) order.slice(0, volley.shown).forEach(i => set.add(i));
+    });
+    return set;
+  }, [volley, volleyOrder]);
+  const volleyLetters = volley ? (shooterGroups(cfg.shooters)[volley.group] ?? []) : [];
+
   const setRow = (patch: (row: RowState) => RowState) => setSheets(prev => prev.map((rows, s) => {
     if (s !== shooterIdx) return rows;
     const next = [...rows];
@@ -304,7 +367,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
   }, []);
 
   const addArrow = (v: string) => {
-    if (arrowCheck !== null || entered.length >= arrowsPer) return;
+    if (volley || arrowCheck !== null || entered.length >= arrowsPer) return;
     const list = [...entered, v];
     setEntered(list);
     if (list.length < arrowsPer) return;
@@ -331,7 +394,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
       setPhase('result');
       return;
     }
-    if (lastShooter) { setShooterIdx(0); setEndIdx(i => i + 1); } else setShooterIdx(i => i + 1);
+    if (lastShooter) { setShooterIdx(0); setEndIdx(i => i + 1); setVolley({ group: 0, shown: 0 }); } else setShooterIdx(i => i + 1);
     setStep('arrows'); setEntered([]); setZoom(null); resume();
   }, [shooterIdx, endIdx, cfg]);
 
@@ -373,27 +436,46 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
     return () => window.removeEventListener('keydown', onKey);
   }, [phase, step, pressDigit, rowDone, nextRow]);
 
-  // ── Lupa: stuknięcie w tarczę powiększa 2,5× w tym miejscu, drugie wraca ──
+  // ── Lupa: stuknięcie powiększa 2,5× w tym miejscu, przeciąganie przesuwa, drugie stuknięcie wraca ──
+  // Pozycję liczymy z getBoundingClientRect (wcześniej getScreenCTM — u usera lupa
+  // zawsze lądowała w prawym górnym rogu).
   const isSpot = cfg.target === 'spot3';
   const base = isSpot ? { x: 45, y: -12, w: 210, h: 424 } : { x: -25, y: -25, w: 350, h: 350 };
-  const viewBox = (() => {
-    if (!zoom) return `${base.x} ${base.y} ${base.w} ${base.h}`;
-    const w = base.w / 2.5;
-    const h = base.h / 2.5;
-    const x = Math.min(Math.max(zoom.x - w / 2, base.x), base.x + base.w - w);
-    const y = Math.min(Math.max(zoom.y - h / 2, base.y), base.y + base.h - h);
-    return `${x} ${y} ${w} ${h}`;
-  })();
-  const onTargetTap = (e: React.MouseEvent<SVGSVGElement>) => {
+  const zoomW = base.w / ZOOM;
+  const zoomH = base.h / ZOOM;
+  const clampCenter = (x: number, y: number) => ({
+    x: Math.min(Math.max(x, base.x + zoomW / 2), base.x + base.w - zoomW / 2),
+    y: Math.min(Math.max(y, base.y + zoomH / 2), base.y + base.h - zoomH / 2),
+  });
+  const viewBox = zoom
+    ? `${zoom.x - zoomW / 2} ${zoom.y - zoomH / 2} ${zoomW} ${zoomH}`
+    : `${base.x} ${base.y} ${base.w} ${base.h}`;
+  const onTargetDown = (e: React.PointerEvent<SVGSVGElement>) => {
+    if (zoom) e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { px: e.clientX, py: e.clientY, cx: zoom?.x ?? 0, cy: zoom?.y ?? 0, moved: false };
+  };
+  const onTargetMove = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!d || !zoom || !rect) return;
+    const dx = e.clientX - d.px;
+    const dy = e.clientY - d.py;
+    if (!d.moved && Math.hypot(dx, dy) < TAP_SLOP) return;
+    d.moved = true;
+    setZoom(clampCenter(d.cx - (dx / rect.width) * zoomW, d.cy - (dy / rect.height) * zoomH));
+  };
+  const onTargetUp = (e: React.PointerEvent<SVGSVGElement>) => {
+    const d = drag.current;
+    drag.current = null;
+    const rect = svgRef.current?.getBoundingClientRect();
+    if (!d || d.moved || !rect) return;
     if (zoom) { setZoom(null); return; }
-    const svg = svgRef.current;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return;
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse());
-    setZoom({ x: p.x, y: p.y });
+    setZoom(clampCenter(
+      base.x + ((e.clientX - rect.left) / rect.width) * base.w,
+      base.y + ((e.clientY - rect.top) / rect.height) * base.h,
+    ));
   };
 
-  const end = ends[endIdx];
   const letter = SHOOTERS[shooterIdx]?.letter;
   const expectedFor = (e: number) => expectedRow(ends, e, shooterIdx).cells;
   const arrowAnswers = answers.filter(a => a.kind === 'arrows');
@@ -444,7 +526,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             </div>
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-1.5 block">{t('schreiber.ends')}</label>
-              <Choice value={cfg.ends} options={[5, 10] as const} onChange={v => update({ ends: v })} render={v => v} />
+              <Choice value={cfg.ends} options={END_OPTIONS} onChange={v => update({ ends: v })} render={v => v} />
             </div>
 
             <div className="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
@@ -468,7 +550,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="leading-tight">
                   <div className="text-[13px] font-black text-[#0a3a2a]">{t('schreiber.shooterLabel', { letter })}</div>
                   <div className="text-[10px] font-bold text-gray-400 uppercase">
-                    {t('schreiber.endOf', { n: endIdx + 1, total: cfg.ends })} · {t(step === 'arrows' ? 'schreiber.stepArrows' : 'schreiber.stepSums')}
+                    {t('schreiber.endOf', { n: endIdx + 1, total: cfg.ends })} · {t(volley ? 'schreiber.stepShooting' : step === 'arrows' ? 'schreiber.stepArrows' : 'schreiber.stepSums')}
                   </div>
                 </div>
               </div>
@@ -478,21 +560,41 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
             {step === 'arrows' && (
               <>
                 <div className="relative bg-white rounded-2xl border border-gray-100 shadow-sm p-1.5">
-                  <svg ref={svgRef} viewBox={viewBox} onClick={onTargetTap}
-                    className={`h-auto block mx-auto cursor-zoom-in ${isSpot ? 'w-1/2' : 'w-full max-w-[340px]'}`}
+                  <style>{`@keyframes schreiberHit{0%{transform:scale(2.4);opacity:0}60%{opacity:1}100%{transform:scale(1);opacity:1}}.schreiber-hit{transform-box:fill-box;transform-origin:center;animation:schreiberHit .18s ease-out}`}</style>
+                  <svg ref={svgRef} viewBox={viewBox}
+                    onPointerDown={onTargetDown} onPointerMove={onTargetMove} onPointerUp={onTargetUp}
+                    onPointerCancel={() => { drag.current = null; }}
+                    style={{ touchAction: zoom ? 'none' : 'auto' }}
+                    className={`h-auto block mx-auto ${zoom ? 'cursor-grab active:cursor-grabbing' : 'cursor-zoom-in'} ${isSpot ? 'w-1/2' : 'w-full max-w-[340px]'}`}
                     role="img" aria-label={t('schreiber.targetLabel')}>
                     <rect x={base.x} y={base.y} width={base.w} height={base.h} rx="16" fill="#d9cba6" />
                     {isSpot ? <SpotTarget isVertical /> : <StandardTarget targetType={SCHREIBER_FACE_ID[cfg.target]} />}
-                    {end.arrows.map((a, i) => (
-                      <ArrowMark key={i} x={a.x} y={a.y} shooter={a.shooter}
-                        dim={arrowCheck !== null && a.shooter !== shooterIdx}
-                        focus={arrowCheck !== null && a.shooter === shooterIdx}
-                        label={arrowCheck === false && a.shooter === shooterIdx ? a.value : undefined} />
+                    {end.arrows.map((a, i) => (visibleArrows && !visibleArrows.has(i)) ? null : (
+                      <g key={i} className={volley ? 'schreiber-hit' : undefined}>
+                        <ArrowMark x={a.x} y={a.y} shooter={a.shooter}
+                          dim={arrowCheck !== null && a.shooter !== shooterIdx}
+                          focus={arrowCheck !== null && a.shooter === shooterIdx}
+                          label={arrowCheck === false && a.shooter === shooterIdx ? a.value : undefined} />
+                      </g>
                     ))}
                   </svg>
-                  <span className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center text-gray-500 pointer-events-none">
-                    <span className="material-symbols-outlined text-[16px]">{zoom ? 'zoom_out' : 'zoom_in'}</span>
-                  </span>
+                  {volley ? (
+                    <div className="absolute inset-x-0 top-3 flex justify-center pointer-events-none">
+                      <div className="flex items-center gap-1.5 bg-[#0a3a2a]/90 text-white rounded-full pl-2 pr-3 py-1 shadow-lg">
+                        {volleyLetters.map(s => <ShooterIcon key={s} shooter={s} className="w-6 h-6" />)}
+                        <span className="text-[12px] font-black uppercase tracking-widest">
+                          {t('schreiber.shooting', { letters: volleyLetters.map(s => SHOOTERS[s].letter).join('') })}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full bg-white/90 border border-gray-200 flex items-center justify-center text-gray-500 pointer-events-none">
+                      <span className="material-symbols-outlined text-[16px]">{zoom ? 'zoom_out' : 'zoom_in'}</span>
+                    </span>
+                  )}
+                  {zoom && (
+                    <p className="text-center text-[10px] font-bold text-gray-400 pt-1">{t('schreiber.zoomHint')}</p>
+                  )}
                   {cfg.shooters > 1 && (
                     <div className="flex justify-center gap-3 pt-1 text-[11px] font-black text-gray-500">
                       {SHOOTERS.slice(0, cfg.shooters).map((s, i) => (
@@ -525,7 +627,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </div>
 
                 {arrowCheck === null && (
-                  <div className="flex flex-col gap-1.5 h-[220px]">
+                  <div className={`flex flex-col gap-1.5 h-[220px] transition-opacity ${volley ? 'opacity-30 pointer-events-none' : ''}`}>
                     {[['X', '10', '9'], ['8', '7', '6'], ['5', '4', '3']].map(rowKeys => (
                       <div key={rowKeys[0]} className="grid grid-cols-3 gap-1.5 flex-1">
                         {rowKeys.map(v => <button key={v} onClick={() => addArrow(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}

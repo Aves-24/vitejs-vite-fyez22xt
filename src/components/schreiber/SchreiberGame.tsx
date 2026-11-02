@@ -607,7 +607,7 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className={`rounded-2xl border p-2 ${arrowCheck === null ? 'bg-white border-gray-100 shadow-sm' : arrowCheck ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
                   <div className="flex gap-1">
                     {Array.from({ length: arrowsPer }, (_, i) => (
-                      <div key={i} className={`flex-1 h-9 border-[1.5px] border-black bg-white flex items-center justify-center font-black text-[15px] ${arrowCheck === false ? 'text-red-500 line-through' : PEN}`}>
+                      <div key={i} className={`flex-1 h-7 border-[1.5px] border-black bg-white flex items-center justify-center font-black text-[15px] ${arrowCheck === false ? 'text-red-500 line-through' : PEN}`}>
                         {entered[i] ?? ''}
                       </div>
                     ))}
@@ -627,18 +627,18 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </div>
 
                 {arrowCheck === null && (
-                  <div className={`flex flex-col gap-1.5 h-[220px] transition-opacity ${volley ? 'opacity-30 pointer-events-none' : ''}`}>
+                  <div className={`flex flex-col gap-1 h-[164px] transition-opacity ${volley ? 'opacity-30 pointer-events-none' : ''}`}>
                     {[['X', '10', '9'], ['8', '7', '6'], ['5', '4', '3']].map(rowKeys => (
-                      <div key={rowKeys[0]} className="grid grid-cols-3 gap-1.5 flex-1">
-                        {rowKeys.map(v => <button key={v} onClick={() => addArrow(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}
+                      <div key={rowKeys[0]} className="grid grid-cols-3 gap-1 flex-1">
+                        {rowKeys.map(v => <button key={v} onClick={() => addArrow(v)} className={`rounded-lg font-bold text-base active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}
                       </div>
                     ))}
-                    <div className="grid grid-cols-3 gap-1.5 flex-1">
-                      <button onClick={() => addArrow('2')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('2')}`}>2</button>
-                      <button onClick={() => addArrow('1')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('1')}`}>1</button>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <button onClick={() => addArrow('M')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('M')}`}>M</button>
-                        <button onClick={() => setEntered(l => l.slice(0, -1))} aria-label={t('schreiber.delete')} className="rounded-xl bg-white border border-red-100 text-red-500 shadow-sm flex items-center justify-center active:scale-95 transition-all"><span className="material-symbols-outlined text-lg font-black">undo</span></button>
+                    <div className="grid grid-cols-3 gap-1 flex-1">
+                      <button onClick={() => addArrow('2')} className={`rounded-lg font-bold text-base active:scale-95 transition-all ${getArrowStyles('2')}`}>2</button>
+                      <button onClick={() => addArrow('1')} className={`rounded-lg font-bold text-base active:scale-95 transition-all ${getArrowStyles('1')}`}>1</button>
+                      <div className="grid grid-cols-2 gap-1">
+                        <button onClick={() => addArrow('M')} className={`rounded-lg font-bold text-base active:scale-95 transition-all ${getArrowStyles('M')}`}>M</button>
+                        <button onClick={() => setEntered(l => l.slice(0, -1))} aria-label={t('schreiber.delete')} className="rounded-lg bg-white border border-red-100 text-red-500 shadow-sm flex items-center justify-center active:scale-95 transition-all"><span className="material-symbols-outlined text-lg font-black">undo</span></button>
                       </div>
                     </div>
                   </div>
@@ -675,11 +675,11 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 </div>
 
                 {rowDone === null && (
-                  <div className="grid grid-cols-3 gap-1.5">
+                  <div className="grid grid-cols-3 gap-1">
                     {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'del', '0', 'ok'].map(k => (
                       <button key={k} onClick={() => pressDigit(k)}
                         aria-label={k === 'del' ? t('schreiber.delete') : k === 'ok' ? t('schreiber.confirm') : k}
-                        className={`h-[52px] rounded-xl font-black text-xl active:scale-95 transition-all flex items-center justify-center ${k === 'ok' ? 'bg-[#0a3a2a] text-white shadow-md' : k === 'del' ? 'bg-gray-100 text-gray-500' : 'bg-white border border-gray-200 text-[#0a3a2a]'}`}>
+                        className={`h-10 rounded-lg font-black text-lg active:scale-95 transition-all flex items-center justify-center ${k === 'ok' ? 'bg-[#0a3a2a] text-white shadow-md' : k === 'del' ? 'bg-gray-100 text-gray-500' : 'bg-white border border-gray-200 text-[#0a3a2a]'}`}>
                         {k === 'del' ? <span className="material-symbols-outlined">backspace</span> : k === 'ok' ? <span className="material-symbols-outlined">check</span> : k}
                       </button>
                     ))}

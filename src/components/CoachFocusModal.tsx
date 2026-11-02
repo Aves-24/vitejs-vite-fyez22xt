@@ -7,6 +7,7 @@ import TopicPicker from './TopicPicker';
 import { focusTitle, FocusProgress, SetFocusButton } from './tagebuch/FocusCard';
 import FocusEditForm from './tagebuch/FocusEditForm';
 import { topicLabel } from '../constants/trainingTopics';
+import { useBackClose } from '../hooks/useBackClose';
 import { FOCUS_GOAL_OPTIONS, FOCUS_GOAL_DEFAULT, FOCUS_TEXT_MAX, endedFocusSnapshot, loadFocusSessionDates, type FocusState } from '../utils/focus';
 
 const MIN_GOAL = FOCUS_GOAL_OPTIONS[0];
@@ -49,6 +50,8 @@ export default function CoachFocusModal({ studentId, coachId, focusState, onClos
     return () => { cancelled = true; };
   }, [studentId, focus?.topic, focus?.since]);
 
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(true, onClose);
   const [isBumping, setIsBumping] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);

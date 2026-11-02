@@ -25,6 +25,7 @@ import { openItems } from '../utils/maintenanceSchedule';
 import MaintenanceInfo from '../components/settings/MaintenanceInfo';
 import { topicLabel } from '../constants/trainingTopics';
 import { groupIcon } from '../constants/groupIcons';
+import { useBackClose } from '../hooks/useBackClose';
 
 interface Event {
   id: string;
@@ -93,9 +94,11 @@ interface CalendarViewProps {
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
   /** [TERMINE] Otwarty z panelu trenera („Monat”): powrót i przycisk listy prowadzą do Termine. */
   coachMode?: boolean;
+  /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
+  onBack?: (view: string, tab?: string) => void;
 }
 
-export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate, coachMode = false }: CalendarViewProps) {
+export default function CalendarView({ userId, focusedEventId, clearFocusedEvent, openNewTrainerEvent, clearOpenNewTrainerEvent, onNavigate, coachMode = false, onBack }: CalendarViewProps) {
   const { t, i18n: i18nCore } = useTranslation(); 
   // Nasłuch trzyma tylko ostatnie 60 dni i przyszłość. PRO widzi do 730 dni
   // wstecz — starsze miesiące dociągamy dopiero, gdy kalendarz tam zajdzie.
@@ -357,11 +360,22 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     } : null;
   };
 
+  // [WSTECZ] Termin albo formularz otwarty prosto z innego ekranu (Termine, „+”)
+  // nie dostaje własnego wpisu historii — „wstecz” wraca od razu tam, skąd przyszliśmy.
+  const deepEventIdRef = useRef<string | null>(null);
+  const deepFormRef = useRef(false);
   useEffect(() => {
     if (!focusedEventId) return;
     const ev = [...events, ...todoEvents].find(e => e.id === focusedEventId);
-    if (ev) setViewingEvent(ev);
+    if (ev) { deepEventIdRef.current = ev.id; setViewingEvent(ev); }
   }, [focusedEventId, events, todoEvents]);
+  useEffect(() => { if (!viewingEvent) deepEventIdRef.current = null; }, [viewingEvent]);
+  useEffect(() => { if (!showForm) deepFormRef.current = false; }, [showForm]);
+  useBackClose(!!viewingEvent && viewingEvent.id !== deepEventIdRef.current, () => closeViewingModal());
+  useBackClose(showForm && !deepFormRef.current, () => { setShowForm(false); resetForm(); });
+  useBackClose(showScoreInput, () => setShowScoreInput(false));
+  useBackClose(!!showDeleteConfirm, () => setShowDeleteConfirm(null));
+  useBackClose(dayPickerEvents.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); });
 
   const closeViewingModal = () => {
     setViewingEvent(null);
@@ -406,6 +420,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     if (!openNewTrainerEvent || !isCoach) return;
     resetForm();
     setNewCategory('Trener');
+    deepFormRef.current = true;
     setShowForm(true);
     clearOpenNewTrainerEvent?.();
   }, [openNewTrainerEvent, isCoach]);
@@ -789,7 +804,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     <div className="flex flex-col h-full bg-[#fcfdfe] pb-32">
 
       <ViewHeader
-        onBack={() => (coachMode ? onNavigate?.('COACH', 'EVENTS') : onNavigate?.('HOME'))}
+        onBack={() => { const back = onBack || onNavigate; if (coachMode) back?.('COACH', 'EVENTS'); else back?.('HOME'); }}
         title={t('nav.calendar')}
       />
 

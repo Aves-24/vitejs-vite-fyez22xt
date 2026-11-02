@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useBackClose } from '../hooks/useBackClose';
 
 // [LINKI W TEMACIE] (user 2026-10-16) Linki od trenera jako ikony. Klik =
 // okno z pełnym adresem i pytaniem, czy wejść — dopiero wtedy przeglądarka
@@ -31,6 +32,8 @@ export default function TopicLinks({ links, titles, className = '', tone = 'stud
   const { t } = useTranslation();
   const coach = tone === 'coach';
   const [pending, setPending] = useState<{ href: string; title: string } | null>(null);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(!!pending, () => setPending(null));
   if (!links?.length) return null;
 
   const open = () => {

@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { collection, addDoc, query, where, getDocs, Timestamp, doc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { createNotification } from '../../services/notificationService';
 import { buildCoachRequestNotification } from '../../utils/notificationTypes';
+import { useBackClose } from '../../hooks/useBackClose';
 
 // Prośba o miejsca trenerskie żyje najdłużej 6 miesięcy (polityka prywatności §2.4).
 const COACH_REQUEST_TTL_MS = 183 * 24 * 60 * 60 * 1000;
@@ -32,6 +33,8 @@ const CoachAccountCard: React.FC<CoachAccountCardProps> = ({ userId, userName, u
   // Wyłączenie trybu wymaga trafienia w „0" spośród 8 · 0 · 8 — żeby nie
   // wyłączyć go przypadkowym stuknięciem (decyzja usera).
   const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(showDisableConfirm, () => setShowDisableConfirm(false));
   const [wrongDigit, setWrongDigit] = useState(false);
 
   const disableCoachMode = async () => {

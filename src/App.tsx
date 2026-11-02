@@ -35,6 +35,7 @@ import { loadPrivateProfile, migrateSensitiveFields } from './utils/privateProfi
 import { guestExpiryFields, isGuestUser } from './utils/guestMode';
 import { TRIAL_DAYS } from './utils/proAccess';
 import GuestBanner from './components/GuestBanner';
+import { navInit, navPush, navReplace, navState, navPrevState, navBack, navConsumeSuppress } from './hooks/useBackClose';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -256,11 +257,12 @@ export default function App() {
   // pushują stan; popstate przywraca poprzedni widok. Google odrzuca w review
   // TWA, w których back natychmiast zabija appkę.
   useEffect(() => {
-    window.history.replaceState({ view: 'HOME' }, '');
+    navInit({ view: 'HOME' });
     // Po przeładowaniu z powrotem na widok: wpis w historii, żeby „wstecz”
     // prowadziło na Home, a nie zamykało aplikację.
-    if (restorePoint) window.history.pushState({ view: restorePoint.view }, '');
+    if (restorePoint) navPush({ view: restorePoint.view, ...(restorePoint.studentId ? { studentId: restorePoint.studentId } : {}) });
     const onPopState = (e: PopStateEvent) => {
+      if (navConsumeSuppress()) return;
       const v: AppView = (e.state && e.state.view) || 'HOME';
       setCurrentView(v);
       if (v === 'COACH') {
@@ -268,6 +270,8 @@ export default function App() {
         setCoachSection(e.state?.coachSection || 'TODAY');
       } else if (!COACH_MODE_VIEWS.includes(v)) setCoachMode(false);
       if (v !== 'STATS' && v !== 'STUDENT_PROFILE') setViewingStudentId(null);
+      // Powrót na profil ucznia (np. z kalendarza) — uczeń z wpisu historii.
+      else if (e.state?.studentId) setViewingStudentId(e.state.studentId);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
@@ -482,7 +486,18 @@ export default function App() {
     // [C14] Wpis w historii per zmiana widoku — patrz popstate-effect wyżej.
     // Zakładki trybu trenera też, żeby „wstecz” cofało z Schüler na Heute.
     if (view !== currentView || (view === 'COACH' && nextSection !== coachSection)) {
-      window.history.pushState(view === 'COACH' ? { view, coachSection: nextSection } : { view }, '');
+      const studentId = (view === 'STATS' || view === 'STUDENT_PROFILE') ? (optionalStudentId || viewingStudentId) : null;
+      // Grupa otwarta z Heute/kalendarza to od razu ekran grupy — „wstecz” wraca
+      // tam, skąd przyszliśmy, a nie na listę Gruppen (CoachDashboardView przejmuje wpis).
+      const groupId = view === 'COACH' && tab === 'GROUP' && extraData ? extraData.split('@')[0] : null;
+      const state = groupId ? { view, coachSection: nextSection, ovl: true, key: 'coachGroup', value: groupId, keep: true }
+        : view === 'COACH' ? { view, coachSection: nextSection } : studentId ? { view, studentId } : { view };
+      // Zakładki trenera jak na Androidzie: Heute zostaje pod spodem, a przeskok
+      // między pozostałymi podmienia wpis — „wstecz” z każdej wraca na Heute.
+      const cur = navState();
+      if (view === 'COACH' && nextSection !== 'TODAY' && cur?.view === 'COACH' && !cur.ovl
+        && cur.coachSection && cur.coachSection !== 'TODAY') navReplace(state);
+      else navPush(state);
     }
     setCurrentView(view);
     if (view === 'COACH') {
@@ -518,6 +533,18 @@ export default function App() {
     }
   };
 
+  // [WSTECZ] Strzałka w nagłówku: gdy rodzic to poprzedni wpis historii, cofamy
+  // się do niego (jak systemowe „wstecz”), zamiast dokładać nowy wpis — inaczej
+  // systemowe „wstecz” odbijało potem z powrotem na ekran, z którego wyszliśmy.
+  const handleBack = (view: AppView, tab?: string) => {
+    const prev = navPrevState();
+    const matches = !!prev && (view === 'HOME' && coachMode
+      ? !COACH_MODE_VIEWS.includes(prev.view)
+      : prev.view === view && (!tab || prev.coachSection === tab) && !(tab && prev.ovl));
+    if (matches) navBack();
+    else handleNavigate(view, tab);
+  };
+
   const handleStartSession = async (distance: string, targetType: string, forceClear: boolean = true, battleId: string | null = null, practiceArrows: number = 0, distanceId?: string, distanceLabel?: string, plannedEnds?: number) => {
     if (!user) return;
     try {
@@ -541,7 +568,7 @@ export default function App() {
       setSessionPlannedEnds(plannedEnds);
       setActiveBattleId(battleId);
       // [C14] SCORING omija handleNavigate — wpis do historii ręcznie
-      if (currentView !== 'SCORING') window.history.pushState({ view: 'SCORING' }, '');
+      if (currentView !== 'SCORING') navPush({ view: 'SCORING' });
       setCurrentView('SCORING');
 
       // Odejmij strzały próbne z profilu pfeilzaehler — są już zapisane w sesji,
@@ -867,7 +894,7 @@ export default function App() {
         
         {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
         {currentView === 'WORLD_LEADERBOARD' && <WorldLeaderboardView userLevel={userLevel} onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onBack={(view, tab) => handleBack(view as AppView, tab)} />}
         
         {currentView === 'STATS' && (
           <StatsView
@@ -883,7 +910,8 @@ export default function App() {
            <StudentProfileView 
              coachId={user?.uid || ''} 
              studentId={viewingStudentId || ''} 
-             onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} 
+             onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)}
+             onBack={(view, tab) => handleBack(view as AppView, tab)}
            />
         )}
 
@@ -900,7 +928,7 @@ export default function App() {
         {currentView === 'ADMIN' && ['info@aves-24.de', 'rafal.woropaj@googlemail.com'].includes(user?.email || '') && (
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
-        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
+        {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} onBack={(view, tab) => handleBack(view as AppView, tab)} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
         {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}

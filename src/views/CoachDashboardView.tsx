@@ -29,6 +29,7 @@ import { planTopicShift } from '../utils/topicShift';
 import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
 
 import { formatViewerAgeCategory } from '../utils/privateProfile';
+import { useBackClose, navOverlayValue } from '../hooks/useBackClose';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -310,11 +311,13 @@ interface CoachDashboardViewProps {
   /** Z terminu tematu w kalendarzu: zakładka Grupy z tą grupą rozwiniętą. */
   pendingOpenGroupId?: string | null;
   onClearPendingGroup?: () => void;
+  /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
+  onBack?: (view: string, tab?: string) => void;
   /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
   section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
 }
 
-export default function CoachDashboardView({ userId, onNavigate, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
+export default function CoachDashboardView({ userId, onNavigate, onBack, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
   const { t, i18n } = useTranslation();
   const [students, setStudents] = useState<any[]>([]);
   const [coachLimit, setCoachLimit] = useState<number>(0);
@@ -388,7 +391,8 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const ownGroupCount = coachGroups.filter(g => g.ownerId === userId).length;
 
   // Rozwinięta grupa w zakładce GRUPY; 'ALL' = żadna.
-  const [activeGroup, setActiveGroup] = useState<string>('ALL');
+  // Po powrocie z profilu ucznia/kalendarza „wstecz” wraca na ekran grupy (wpis historii).
+  const [activeGroup, setActiveGroup] = useState<string>(() => navOverlayValue('coachGroup') || 'ALL');
   // Lista członków w rozwiniętej grupie — zwinięta (user 2026-10-14: grupa to
   // głównie wiadomości, fokus i statystyki).
   // [EKRAN GRUPY] Zakładka otwartej grupy (user 2026-10-27), zapamiętana.
@@ -521,6 +525,31 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
   const [formCompare, setFormCompare] = useState<Record<string, FormCompare>>({});
+
+  // [WSTECZ] Każde okienko i ekran grupy to krok w historii — systemowe „wstecz”
+  // zamyka najwyższe okienko zamiast wychodzić z panelu trenera.
+  useBackClose(section === 'GROUPS' && activeGroup !== 'ALL', () => { setActiveGroup('ALL'); setGroupFocusDay(null); }, { key: 'coachGroup', value: activeGroup });
+  // Zakładka bez grupy zamyka ekran grupy; powrót „wstecz” na Gruppen otwiera
+  // grupę z wpisu historii, jeśli z niej wyszliśmy.
+  useEffect(() => {
+    if (section !== 'GROUPS') { setActiveGroup('ALL'); return; }
+    const back = navOverlayValue('coachGroup');
+    if (back) setActiveGroup(back);
+  }, [section]);
+  useBackClose(!!sheetStudentId, () => setSheetStudentId(null));
+  useBackClose(!!openMessageStudentId, () => closeStudentChat());
+  useBackClose(!!cancelOcc, () => setCancelOcc(null));
+  useBackClose(isScanning, () => { stopScanner(); setIsScanning(false); });
+  useBackClose(inviteSentTo !== null, () => setInviteSentTo(null));
+  useBackClose(isCreatingGroup, () => setIsCreatingGroup(false));
+  useBackClose(!!addToGroupId, () => setAddToGroupId(null));
+  useBackClose(!!managingGroupsFor, () => setManagingGroupsFor(null));
+  useBackClose(isMessageModalOpen, () => closeMessageModal());
+  useBackClose(!!studentsToDelete, () => setStudentsToDelete(null));
+  useBackClose(!!scheduleGroupId, () => setScheduleGroupId(null));
+  useBackClose(!!editingGroup, () => setEditingGroup(null));
+  useBackClose(!!coachToRemove, () => setCoachToRemove(null));
+  useBackClose(!!confirmDeleteGroup, () => setConfirmDeleteGroup(null));
 
   useEffect(() => {
     if (!userId) return;
@@ -1155,6 +1184,16 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
 
   const handleGroupTopicChanged = (groupId: string, next: GroupTopicsByDay) => {
     setCoachGroupTopics(prev => ({ ...prev, [groupId]: next }));
+  };
+
+  const closeStudentChat = () => {
+    const id = openMessageStudentId;
+    setOpenMessageStudentId(null);
+    if (id) setUnreadStudentIds(prev => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const closeMessageModal = () => {
@@ -2263,7 +2302,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
         className="-mx-5 mb-4 sticky top-0"
         // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
         onBack={() => (section === 'GROUPS' && activeGroup !== 'ALL' ? closeGroup()
-          : section === 'TODAY' ? onNavigate('HOME') : onNavigate('COACH', 'TODAY'))}
+          : section === 'TODAY' ? (onBack || onNavigate)('HOME') : (onBack || onNavigate)('COACH', 'TODAY'))}
         title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : section === 'SETTINGS' ? t('coachSettings.title') : t('coachDashboard.subtitle')}
         hideLogo
       />
@@ -3577,14 +3616,7 @@ export default function CoachDashboardView({ userId, onNavigate, pendingOpenStud
             currentUserId={userId}
             mode="coach"
             otherName={name}
-            onClose={() => {
-              setOpenMessageStudentId(null);
-              setUnreadStudentIds(prev => {
-                const next = new Set(prev);
-                next.delete(openMessageStudentId);
-                return next;
-              });
-            }}
+            onClose={closeStudentChat}
           />
         );
       })()}

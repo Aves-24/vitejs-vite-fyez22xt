@@ -7,6 +7,7 @@ import TopicLinks from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { CARD_PAD, CARD_SHAPE, EntryRow, TopicChips } from './tagebuch/TagebuchCards';
 import { dayKeyOf } from '../utils/focus';
+import { useBackClose } from '../hooks/useBackClose';
 import { GroupSectionHeader, loadTopicStatus, TopicMemberList, type GroupTopic, type GroupTopicsByDay, type MemberStatus } from './GroupTopicPanel';
 
 // [HISTORIA TRENINGÓW] (user 2026-10-15) Zastępuje „Dziennik grupy”: minione
@@ -43,6 +44,8 @@ export default function GroupTrainingHistory({ groupId, coachId, members, topics
   const [saving, setSaving] = useState(false);
   // Powtórka czeka na potwierdzenie (user 2026-10-22).
   const [repeatAsk, setRepeatAsk] = useState<GroupTopic | null>(null);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(!!repeatAsk, () => setRepeatAsk(null));
   const ref = groupTrainingRef(groupId);
 
   useEffect(() => {

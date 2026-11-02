@@ -8,6 +8,7 @@ import TopicPicker from './TopicPicker';
 import TopicLinks, { isYouTube } from './TopicLinks';
 import { focusTitle } from './tagebuch/FocusCard';
 import { CARD_PAD, CARD_SHAPE, EntryRow, TopicChips } from './tagebuch/TagebuchCards';
+import { useBackClose } from '../hooks/useBackClose';
 import { FOCUS_TEXT_MAX, TOPIC_DESC_MAX, TOPIC_GROUP_NAME_MAX, TOPIC_LINK_TITLE_MAX, TOPIC_LINKS_MAX, dayKeyOf, normalizeTopicLink, sessionTopicId } from '../utils/focus';
 
 // [TEMAT TRENINGU] (user 2026-10-15) Trener ustawia grupie temat treningu na
@@ -181,6 +182,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(!!modal, () => setModal(null));
   // Potwierdzenie „Thema löschen” w okienku edycji.
   const [modalDelAsk, setModalDelAsk] = useState(false);
   const [text, setText] = useState('');

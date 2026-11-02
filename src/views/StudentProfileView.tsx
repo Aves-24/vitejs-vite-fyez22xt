@@ -31,6 +31,7 @@ import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useActiveFocus, readSessionFocus, type SessionFocus } from '../utils/focus';
 import { FocusStrip, FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, SessionRefLine, readSessionRef, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
+import { useBackClose } from '../hooks/useBackClose';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
 
 function spCacheGet<T>(key: string): T | null {
@@ -391,6 +392,8 @@ function StudentTimeline({ studentId, coachId, pro, studentName, onCoachLogChang
   }, [focusSessionId, sessions]);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(!!confirmDelete, () => setConfirmDelete(null));
   const freeStart = pro ? 0 : freeHistoryStart().getTime();
 
   const load = async (after: QueryDocumentSnapshot | null, upper: number) => {
@@ -678,12 +681,14 @@ interface StudentProfileViewProps {
   coachId: string;
   studentId: string;
   onNavigate: (view: string, tab?: string, extraData?: string, sId?: string) => void;
+  /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
+  onBack?: (view: string, tab?: string) => void;
 }
 
 // Poza JSX ikony: skrypt icon-font czyta literały w <span> ikony.
 const RANK_TREND_ICON = { up: 'trending_up', down: 'trending_down', flat: 'trending_flat' } as const;
 
-export default function StudentProfileView({ coachId, studentId, onNavigate }: StudentProfileViewProps) {
+export default function StudentProfileView({ coachId, studentId, onNavigate, onBack }: StudentProfileViewProps) {
   const { t, i18n } = useTranslation();
   
   const [student, setStudent] = useState<any | null>(null);
@@ -720,6 +725,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
   const sessionSectionRef = useRef<HTMLDivElement>(null);
   const [isNotesExpanded, setIsNotesExpanded] = useState(false);
   const [showTournamentsModal, setShowTournamentsModal] = useState(false);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(showTournamentsModal, () => setShowTournamentsModal(false));
 
 
   // TABS
@@ -765,6 +772,8 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
 
   // TREND MODAL
   const [showTrendModal, setShowTrendModal] = useState(false);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(showTrendModal, () => setShowTrendModal(false));
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -1001,7 +1010,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate }: S
     <div data-view="student-profile" className="flex flex-col min-h-screen bg-[#fcfdfe] relative overflow-x-hidden">
       
       <ViewHeader
-        onBack={() => onNavigate('COACH')}
+        onBack={() => (onBack ? onBack('COACH') : onNavigate('COACH'))}
         eyebrow={t('studentProfile.headerLabel')}
         title={`${student.firstName} ${student.lastName}`}
         subtitle={(student.ageCategory || student.ageCategoryPL) && (

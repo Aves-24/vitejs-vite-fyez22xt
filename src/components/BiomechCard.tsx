@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { SpreadResult } from '../utils/spread';
 import SummaryCard from './scoring/SummaryCard';
+import { useBackClose } from '../hooks/useBackClose';
 
 interface Props {
   spread: SpreadResult;
@@ -19,6 +20,8 @@ interface Props {
 export default function BiomechCard({ spread, handedness, onNavigate, subtitle }: Props) {
   const { t } = useTranslation();
   const [bioInfo, setBioInfo] = useState<null | 'tendency' | 'error'>(null);
+  // [WSTECZ] Systemowe „wstecz” zamyka okienko.
+  useBackClose(!!bioInfo, () => setBioInfo(null));
 
   return (
     // Styl kart dziennika (2026-10-29), zwijana jak karty po treningu.

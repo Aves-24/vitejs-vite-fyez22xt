@@ -2401,7 +2401,6 @@ export const views = {
     filterTrainings: "Trainings",
     filterNotes: "Entries",
     privateKind: "Private note",
-    privateNotesEmpty: "No private notes yet.",
     seenByStudent: "Seen by {{name}} + coaches",
     seenOnlyYou: "Only for you",
     entriesEmpty: "No entries yet. General entries record what {{name}} works on over several trainings — e.g. \"3 weeks: low anchor\".",

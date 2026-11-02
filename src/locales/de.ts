@@ -2401,7 +2401,6 @@ export const views = {
     filterTrainings: "Trainings",
     filterNotes: "Einträge",
     privateKind: "Private Notiz",
-    privateNotesEmpty: "Noch keine privaten Notizen.",
     seenByStudent: "Sieht {{name}} + Trainer",
     seenOnlyYou: "Nur für dich",
     entriesEmpty: "Noch keine Einträge. Allgemeine Einträge halten fest, woran {{name}} über mehrere Trainings arbeitet — z. B. „3 Wochen: Anker tief“.",

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, deleteDoc, doc, getDoc, getDocs, query, where, limit, updateDoc, deleteField, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, getDoc, getDocs, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { FOCUS_GOAL_DEFAULT } from '../utils/focus';
 import { useTranslation } from 'react-i18next';
 import { useVoiceInput } from '../hooks/useVoiceInput';
@@ -51,32 +51,12 @@ export async function deleteCoachPrivateNote(coachId: string, noteId: string): P
   await deleteDoc(doc(db, `users/${coachId}/coachStudentNotes/${noteId}`));
 }
 
-/**
- * Jednorazowe przeniesienie starych 3 pól (users/{coach}.privateStudentNotes[studentId]:
- * Langzeitziel / Aktuelle Korrekturen / Sonstige Beobachtungen) na wpisy osi czasu.
- * Każde niepuste pole = wpis z tytułem pola; potem pole mapy znika. Bezpieczne
- * przy powtórzeniu: bez starych danych nic nie robi.
- */
-export async function migrateLegacyPrivateNotes(coachId: string, studentId: string, labels: string[]): Promise<boolean> {
-  const cSnap = await getDoc(doc(db, 'users', coachId));
-  const legacy = cSnap.exists() ? cSnap.data().privateStudentNotes?.[studentId] : undefined;
-  if (legacy === undefined) return false;
-  const fields: string[] = Array.isArray(legacy) ? legacy : typeof legacy === 'string' ? [legacy] : [];
-  for (let i = 0; i < fields.length; i++) {
-    const text = (fields[i] || '').trim().slice(0, MAX_PRIVATE);
-    if (!text) continue;
-    await addDoc(privateCol(coachId), { studentId, title: (labels[i] || '').slice(0, 120), text, topics: [], createdAt: serverTimestamp() });
-  }
-  await updateDoc(doc(db, 'users', coachId), { [`privateStudentNotes.${studentId}`]: deleteField() });
-  return true;
-}
-
 /** Usunięcie własnego wpisu trenera. */
 export async function deleteCoachLogEntry(studentId: string, entryId: string): Promise<void> {
   await deleteDoc(doc(db, `users/${studentId}/coachLog/${entryId}`));
 }
 
-export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel, sessions = [], privateOnly = false }: {
+export function CoachLogComposer({ studentId, studentName = '', currentUserId, onSaved, onSavedPrivate, onCancel, sessions = [] }: {
   studentId: string;
   studentName?: string;
   // [WPIS DO TRENINGU] ostatnie treningi ucznia do wyboru (najnowszy pierwszy)
@@ -85,13 +65,11 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
   onSaved: (entry: TbCoachEntry & { authorId: string }) => void;
   onSavedPrivate: (note: CoachPrivateNote) => void;
   onCancel: () => void;
-  // Okienko 🔒 w nagłówku profilu ucznia: tylko „Nur für mich”, bez wyboru typu.
-  privateOnly?: boolean;
 }) {
   const { t } = useTranslation();
   const [authorName, setAuthorName] = useState('');
   const [text, setText] = useState('');
-  const [type, setType] = useState<EntryType>(privateOnly ? 'private' : 'observation');
+  const [type, setType] = useState<EntryType>('observation');
   const [logTopics, setLogTopics] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   // Domyślnie najnowszy trening — wpis zwykle dotyczy tego, co uczeń właśnie strzelał.
@@ -164,9 +142,9 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
 
   return (
     <div className="tb-card tb-coach border rounded-l-md rounded-r-2xl shadow-sm pl-3 pr-3 py-3 space-y-2 tb-fade-in">
-      {!privateOnly && <p className="text-[10px] font-semibold text-gray-500 leading-snug">
+      <p className="text-[10px] font-semibold text-gray-500 leading-snug">
         {t('coachLog.hint', { defaultValue: 'Notiere hier, woran zuletzt mit dem Schüler gearbeitet wurde und worauf in den nächsten Trainings der Fokus liegen soll.' })}
-      </p>}
+      </p>
 
       {/* [WPIS DO TRENINGU] Do czego odnosi się wpis (user 2026-10-30). */}
       {sessions.length > 0 && (
@@ -195,7 +173,7 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
       )}
 
       {/* Wybór typu wpisu */}
-      {!privateOnly && <div className="grid grid-cols-5 gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {(Object.keys(TYPE_CONFIG) as EntryType[]).map(key => {
           const cfg = TYPE_CONFIG[key];
           const isActive = type === key;
@@ -213,7 +191,7 @@ export function CoachLogComposer({ studentId, studentName = '', currentUserId, o
             </button>
           );
         })}
-      </div>}
+      </div>
 
       {/* Liczbą lekcji, podglądem obecnego fokusu i zakończeniem przed
           czasem zarządza CoachFocusModal (klik na pasek fokusu w profilu

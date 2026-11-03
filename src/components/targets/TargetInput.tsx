@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
-import { calculateSpotScore, scoreSingleFace, arrowRadiusUnits } from '../../utils/targetScoring';
+import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
 
 const getArrowStyles = (val: string) => {
@@ -62,8 +62,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // 300 jednostek, więc dostają ciaśniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
-  // [LINIENSCHUSS] Promień strzały — liczy się krawędź, nie środek (utils/targetScoring).
-  const arrowR = arrowRadiusUnits(face);
+
+  // [PUNKTACJA] Liczy się dokładnie punkt krzyżyka — wyższa wartość dopiero,
+  // gdy krzyżyk dotknie linii. Próba z promieniem strzały (fd0c21b) dawała 9
+  // przy krzyżyku wyraźnie jeszcze w 8 — user 2026-11-03: niedokładne.
 
   // [WIĘKSZA TARCZA] Kadr na pełnym ekranie. 3-Spot pokazuje tylko kolumnę,
   // w którą teraz strzelamy — druga i tak jest zablokowana, a pokazanie obu
@@ -122,9 +124,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   const calculateScore = (x: number, y: number) => {
     if (is3Spot) {
-      return calculateSpotScore(x, y, isVertical, isTarget2, arrowR);
+      return calculateSpotScore(x, y, isVertical, isTarget2);
     } 
-    return scoreSingleFace(face, x, y, arrowR);
+    return scoreSingleFace(face, x, y);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -195,8 +197,6 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
                 <circle cx={aimPos.x} cy={aimPos.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
                 <circle cx={aimPos.x} cy={aimPos.y} r="0.7" fill="#ef4444" />
-                {/* [LINIENSCHUSS] Obrys strzały w prawdziwej wielkości — widać, czy dotyka linii. */}
-                {arrowR > 0 && <circle cx={aimPos.x} cy={aimPos.y} r={arrowR} fill="none" stroke="#ef4444" strokeWidth="0.35" />}
                 <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
                 <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
               </svg>

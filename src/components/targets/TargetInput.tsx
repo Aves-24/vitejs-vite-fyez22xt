@@ -4,6 +4,7 @@ import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
+import { smoothAim, Sample, WINDOW_MS } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
 
 const getArrowStyles = (val: string) => {
@@ -53,6 +54,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   const [currentAimScore, setCurrentAimScore] = useState<string | null>(null);
   const aimRef = useRef<{x: number, y: number} | null>(null);
   const lastScoreRef = useRef<string | null>(null);
+  // [STABILIZACJA] Próbki dotyku z ostatnich ~100 ms + dosunięcie, gdy palec stoi.
+  const samplesRef = useRef<Sample[]>([]);
+  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   // [RĘKA] Gdzie krzyżyk stoi względem palca: R = praworęczny (krzyżyk w lewo
@@ -163,6 +167,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     setCurrentAimScore(val);
   };
 
+  const clearSettle = () => { if (settleRef.current) { clearTimeout(settleRef.current); settleRef.current = null; } };
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (currentCoords.length >= maxShots) return;
     (e.target as Element).setPointerCapture(e.pointerId);
@@ -170,17 +176,30 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (c) {
       setIsAiming(true);
       lastScoreRef.current = null;
+      samplesRef.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
       aimAt(c, true);
     }
   };
 
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isAiming) return;
-    const c = getSvgCoords(e.clientX, e.clientY);
+  const smoothTo = (s: Sample) => {
+    const [kept, p] = smoothAim(samplesRef.current, s);
+    samplesRef.current = kept;
+    const c = getSvgCoords(p.x, p.y);
     if (c) aimAt(c, false);
   };
 
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isAiming) return;
+    const s = { x: e.clientX, y: e.clientY, t: e.timeStamp };
+    smoothTo(s);
+    // Palec stanął (iPhone wtedy nie wysyła ruchów) — po oknie krzyżyk dochodzi do palca.
+    clearSettle();
+    settleRef.current = setTimeout(() => smoothTo({ ...s, t: s.t + WINDOW_MS }), WINDOW_MS);
+  };
+
   const handlePointerUp = () => {
+    clearSettle();
+    samplesRef.current = [];
     const a = aimRef.current;
     if (isAiming && a) {
       const { val, sId } = calculateScore(a.x, a.y);

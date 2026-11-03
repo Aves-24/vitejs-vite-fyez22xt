@@ -5,6 +5,10 @@ import App from './App';
 import { initI18n } from './i18n';
 import { initTheme } from './utils/theme';
 import { registerServiceWorker } from './utils/swUpdate';
+import { initSentry } from './sentry';
+
+// Raporty błędów — najpierw, żeby złapać też to, co wybuchnie przy starcie.
+initSentry();
 
 // [C20] Dark mode — aplikuje zapisany motyw + nasłuch zmian systemowych.
 // Anty-flash robi public/theme-init.js (przed pierwszym renderem).

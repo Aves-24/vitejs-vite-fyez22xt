@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
 
 interface Props { children: React.ReactNode }
 interface State { hasError: boolean }
@@ -22,6 +23,9 @@ export default class ViewErrorBoundary extends React.Component<Props, State> {
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ViewErrorBoundary caught:', error, info);
+    // Błąd złapany tutaj nie dociera do globalnego handlera — zgłaszamy ręcznie.
+    // Bez initSentry() (dev, localhost) to no-op.
+    Sentry.captureException(error, { contexts: { react: { componentStack: info.componentStack } } });
   }
 
   handleReload = () => {

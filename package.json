@@ -13,6 +13,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@sentry/react": "^11.10.0",
     "firebase": "^12.11.0",
     "html5-qrcode": "^2.3.8",
     "i18next": "^23.10.0",

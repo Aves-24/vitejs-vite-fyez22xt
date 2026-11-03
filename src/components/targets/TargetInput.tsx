@@ -89,10 +89,13 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // (tam widać obie kolumny i całą serię).
   const spotCx = isVertical ? 150 : isTarget2 ? 225 : 75;
   const viewBox = is3Spot
-    ? (isFullscreen ? `${spotCx - 85} -25 170 450` : "-20 -40 340 480")
+    ? (isFullscreen ? `${spotCx - 85} -25 170 450` : "0 -4 300 408")
     : isCompactFace
       ? (isFullscreen ? "30 0 240 300" : "-20 -30 340 360")
       : (isFullscreen ? "-8 -45 316 380" : "-20 0 340 300");
+  // [3-SPOT W MAŁYM WIDOKU] Przyciski w kolumnie po prawej, tarcza obok — nie
+  // nachodzą na spoty (user 2026-11-03).
+  const spotInline = is3Spot && !isFullscreen;
   const viewCx = (() => { const [x, , w] = viewBox.split(" ").map(Number); return x + w / 2; })();
   // [KOLORY STRZAŁ] Kolor kropki = kolor strzały z tego miejsca w serii.
   // Ciemna obwódka zawsze, bo biała kropka na bieli i żółta na złocie znikają.
@@ -224,7 +227,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
       {/* NAGŁÓWEK. Pełny ekran: LEWO wyniki serii + suma, PRAWO cofnij i zamknij.
           Mały widok: tylko przyszła strzała i powiększenie, po prawej. */}
-      <div className={`w-full flex justify-between items-center z-20 pointer-events-none shrink-0 ${isFullscreen ? `relative ${embed?.headerClass ?? 'px-4 pt-5 mb-3'}` : 'px-2 pt-2 absolute top-0'}`}>
+      <div className={`w-full flex justify-between items-center z-20 pointer-events-none shrink-0 ${isFullscreen ? `relative ${embed?.headerClass ?? 'px-4 pt-5 mb-3'}` : (spotInline ? 'absolute top-0 right-0 w-12 pt-2 justify-center' : 'px-2 pt-2 absolute top-0')}`}>
         {isFullscreen ? (
           <>
             <div className="flex items-center gap-2 pointer-events-auto min-w-0">
@@ -250,7 +253,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-1.5 pointer-events-auto ml-auto">
+          <div className={`flex items-center pointer-events-auto ${spotInline ? 'flex-col-reverse gap-2' : 'gap-1.5 ml-auto'}`}>
           {nextArrow && <NextArrowChip index={currentCoords.length} />}
           <button onClick={onToggleFullscreen} className="p-2 bg-white/90 border border-gray-200 rounded-full shadow-md text-gray-400 active:scale-90 pointer-events-auto transition-all"><span className="material-symbols-outlined text-lg">fullscreen</span></button>
           </div>
@@ -264,7 +267,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       )}
 
       {/* LEWY DÓŁ: celownik (offset) + strona ręki */}
-      <div className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : 'left-2 bottom-2'}`}>
+      <div className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : spotInline ? 'right-2 bottom-14' : 'left-2 bottom-2'}`}>
         {showOffsetSlider ? (
           <div className="relative h-44 bg-white/95 backdrop-blur-md rounded-[22px] shadow-xl border border-gray-100 flex items-stretch gap-1 px-1.5 pb-2 pt-3 pointer-events-auto animate-fade-in-up">
             {/* [RĘKA] Strzałka pokazuje, gdzie krzyżyk stanie nad palcem. */}
@@ -338,7 +341,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         )}
       </div>
 
-      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : 'min-h-0'}`}>
+      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : spotInline ? 'min-h-0 pr-12 py-1.5' : 'min-h-0'}`}>
         {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy.
             Na czas celowania znika — w tym rogu może stanąć lupa. */}
         {isFullscreen && nextArrow && !isAiming && (
@@ -426,9 +429,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       {!isFullscreen && (
         <button
           onClick={onUndo}
-          className="absolute bottom-2 right-2 bg-white shadow-md border border-gray-100 flex items-center justify-center active:scale-90 transition-all pointer-events-auto w-12 h-12 rounded-full"
+          className={`absolute bottom-2 bg-white shadow-md border border-gray-100 flex items-center justify-center active:scale-90 transition-all pointer-events-auto rounded-full ${spotInline ? 'right-1 w-10 h-10' : 'right-2 w-12 h-12'}`}
         >
-          <span className="material-symbols-outlined text-red-500 font-bold text-2xl">undo</span>
+          <span className={`material-symbols-outlined text-red-500 font-bold ${spotInline ? 'text-xl' : 'text-2xl'}`}>undo</span>
         </button>
       )}
 

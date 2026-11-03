@@ -1349,7 +1349,6 @@ export const views = {
     undo: "Letzten Pfeil zurücknehmen",
     close: "Schließen",
     offset: "Fadenkreuz-Abstand",
-    moveHint: "Fadenkreuz kurz auf einem Pfeil halten – dann verschieben",
     hand: { R: "Rechte Hand: Fadenkreuz links über dem Finger", C: "Fadenkreuz gerade über dem Finger", L: "Linke Hand: Fadenkreuz rechts über dem Finger" },
   },
   scoringView: {

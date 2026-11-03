@@ -1370,7 +1370,6 @@ export const views = {
     undo: "Cofnij ostatnią strzałę",
     close: "Zamknij",
     offset: "Odległość krzyżyka",
-    moveHint: "Przytrzymaj krzyżyk na strzale, żeby ją przesunąć",
     hand: { R: "Prawa ręka: krzyżyk w lewo nad palcem", C: "Krzyżyk prosto nad palcem", L: "Lewa ręka: krzyżyk w prawo nad palcem" },
   },
   scoringView: {

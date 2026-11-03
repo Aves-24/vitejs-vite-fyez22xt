@@ -10,8 +10,16 @@ import type { TargetFace } from '../config/targetFaces';
  */
 export interface ShotScore { val: string; sId: string }
 
+/**
+ * [LINIA] W łucznictwie wystarczy musnąć linię, żeby dostać wyższą wartość.
+ * Kliknięcie liczy się wyżej, gdy czerwona kropka krzyżyka (promień 0,7 w lupie)
+ * dotyka linii (grubość 0,5 → pół = 0,25). Jednostki viewBoxa tarczy.
+ * Domyślnie 0 — stare wywołania i testy liczą czysty punkt.
+ */
+export const LINE_TOUCH = 0.95;
+
 // EKSPORTOWANA LOGIKA OBLICZEŃ - Sercem tarczy 3-Spot jest precyzyjny pomiar odległości
-export const calculateSpotScore = (x: number, y: number, isVertical: boolean, isTarget2: boolean): ShotScore => {
+export const calculateSpotScore = (x: number, y: number, isVertical: boolean, isTarget2: boolean, touch = 0): ShotScore => {
   const tX = !isVertical ? (isTarget2 ? 225 : 75) : 150;
 
   // 1. Blokada Vegas (nie pozwalamy na zaliczenie punktów z nieaktywnej połowy)
@@ -28,11 +36,12 @@ export const calculateSpotScore = (x: number, y: number, isVertical: boolean, is
   }));
 
   const closest = centers.reduce((p, n) => p.d < n.d ? p : n);
+  const d = Math.max(0, closest.d - touch); // [LINIA]
 
   // 3. WERYFIKACJA TRAFIENIA: Największy krąg (6 punktów) ma promień 62.5
-  if (closest.d <= 62.5) {
-    const s = 10 - Math.floor(closest.d / 12.5);
-    const val = closest.d <= 6.25 ? "X" : s >= 6 ? s.toString() : "M";
+  if (d <= 62.5) {
+    const s = 10 - Math.floor(d / 12.5);
+    const val = d <= 6.25 ? "X" : s >= 6 ? s.toString() : "M";
     return { val, sId: closest.id }; // Trafienie w kolor - zwracamy ID spotu
   }
 
@@ -41,9 +50,9 @@ export const calculateSpotScore = (x: number, y: number, isVertical: boolean, is
 };
 
 /** Pełna tarcza (layout 'single'), środek w (150, 150) viewBoxa 300x300. */
-export const scoreSingleFace = (face: TargetFace, x: number, y: number): ShotScore => {
+export const scoreSingleFace = (face: TargetFace, x: number, y: number, touch = 0): ShotScore => {
   let val = "M"; const sId = "";
-  const d = Math.hypot(x - 150, y - 150);
+  const d = Math.max(0, Math.hypot(x - 150, y - 150) - touch); // [LINIA]
 
   // [STREFY] Tarcze o nierównej punktacji (dmuchawkowa 3-5-7, w przyszłości
   // IFAA 5-4-3) nie dają się wyliczyć wzorem `10 - floor(d / krok)` — mają

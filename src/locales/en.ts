@@ -1349,7 +1349,6 @@ export const views = {
     undo: "Undo last arrow",
     close: "Close",
     offset: "Crosshair distance",
-    moveHint: "Hold the crosshair on an arrow to move it",
     hand: { R: "Right hand: crosshair up-left of your finger", C: "Crosshair straight above your finger", L: "Left hand: crosshair up-right of your finger" },
   },
   scoringView: {

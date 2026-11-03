@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
-import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
+import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
 import { useTranslation } from 'react-i18next';
 
@@ -44,24 +44,15 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //          inna liczbe strzal niz standardowa serie
 //   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
-//   onMoveShot  [PRZESUŃ STRZAŁĘ] (index, val, x, y, spotId) — krzyżyk
-//               przytrzymany na kropce podnosi strzałę i pozwala ją przesunąć.
-//               Bez tego propu przesuwania nie ma.
-export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
+export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [isAiming, setIsAiming] = useState(false);
   const [aimPos, setAimPos] = useState<{x: number, y: number} | null>(null);
   const [touchPos, setTouchPos] = useState<{x: number, y: number} | null>(null);
   const [currentAimScore, setCurrentAimScore] = useState<string | null>(null);
-  // [PRZESUŃ STRZAŁĘ] Indeks podniesionej strzały (null = wpisujemy nową).
-  const [picked, setPicked] = useState<number | null>(null);
-  const pickedRef = useRef<number | null>(null);
   const aimRef = useRef<{x: number, y: number} | null>(null);
-  const restRef = useRef<{x: number, y: number} | null>(null);
-  const holdTimer = useRef<any>(null);
   const lastScoreRef = useRef<string | null>(null);
-  const pickDelta = useRef({ x: 0, y: 0 });
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   // [RĘKA] Gdzie krzyżyk stoi względem palca: R = praworęczny (krzyżyk w lewo
@@ -70,10 +61,6 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
     try { const v = localStorage.getItem('grotx-aim-hand'); return v === 'L' || v === 'R' ? v : 'C'; } catch { return 'C'; }
   });
   const [showOffsetSlider, setShowOffsetSlider] = useState(false);
-  const [moveHintSeen, setMoveHintSeen] = useState(() => {
-    try { return localStorage.getItem('grotx-move-hint-seen') === '1'; } catch { return false; }
-  });
-
   // [KATALOG TARCZ] Wszystko o tarczy pochodzi z config/targetFaces — wcześniej
   // były to porównania stringów, przez które 6-Ring nigdy się nie uruchamiał.
   const face = resolveTargetFace(targetType);
@@ -84,11 +71,12 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
   const maxShots = embed?.slots ?? 6;
-  const isFull = currentCoords.length >= maxShots;
 
-  // [PUNKTACJA] Liczy się dokładnie punkt krzyżyka — wyższa wartość dopiero,
-  // gdy krzyżyk dotknie linii. Próba z promieniem strzały (fd0c21b) dawała 9
-  // przy krzyżyku wyraźnie jeszcze w 8 — user 2026-11-03: niedokładne.
+  // [PUNKTACJA] Zasada łucznicza: wystarczy musnąć linię, żeby dostać wyższą
+  // wartość. Linia ma na rysunku 0,5 jednostki grubości, a czerwona kropka
+  // krzyżyka w lupie promień 0,7 — gdy kropka dotyka linii, liczy się wyżej.
+  // Promień całej strzały (fd0c21b, 2,25 j.) był za hojny — dawał 9 przy
+  // kropce wyraźnie jeszcze w 8 (user 2026-11-03).
 
   // [WIĘKSZA TARCZA] Kadr na pełnym ekranie. 3-Spot pokazuje tylko kolumnę,
   // w którą teraz strzelamy — druga i tak jest zablokowana, a pokazanie obu
@@ -133,8 +121,6 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
     }
   }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit]);
 
-  useEffect(() => () => clearTimeout(holdTimer.current), []);
-
   // [WIBRACJA] Krótkie „tyk” przy każdej zmianie pierścienia — granicę czuć
   // w palcu. Android; iPhone (Safari) tego nie obsługuje i po prostu milczy.
   const buzz = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* brak wibracji */ } };
@@ -159,105 +145,48 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
     return pt.matrixTransform(svg.getScreenCTM()?.inverse());
   };
 
-  // `index` — która to strzała w serii. Przy przesuwaniu strzały 1–3 na
-  // dwukolumnowym 3-Spot liczy się lewa kolumna, nawet gdy wpisujemy już 4+.
-  const calculateScore = (x: number, y: number, index = currentCoords.length) => {
+  const calculateScore = (x: number, y: number) => {
     if (is3Spot) {
-      return calculateSpotScore(x, y, isVertical, index >= 3);
+      return calculateSpotScore(x, y, isVertical, isTarget2, LINE_TOUCH);
     }
-    return scoreSingleFace(face, x, y);
-  };
-
-  // [PRZESUŃ STRZAŁĘ] Krzyżyk stoi w miejscu ~0,45 s na kropce → strzała
-  // podniesiona. Każdy ruch powyżej ~6 px liczy czas od nowa, więc zwykłe
-  // celowanie obok kropki jej nie łapie.
-  const armHold = () => {
-    clearTimeout(holdTimer.current);
-    if (!onMoveShot || pickedRef.current !== null) return;
-    holdTimer.current = setTimeout(() => {
-      const a = aimRef.current;
-      if (!a) return;
-      const reach = 14 / pxPerUnit();
-      let best = -1; let bestD = Infinity;
-      currentCoords.forEach((d: any, i: number) => {
-        if (d?.x == null || d?.y == null) return;
-        const dist = Math.hypot(d.x - a.x, d.y - a.y);
-        if (dist <= reach && dist < bestD) { best = i; bestD = dist; }
-      });
-      if (best === -1) return;
-      pickedRef.current = best;
-      setPicked(best);
-      const p = { x: currentCoords[best].x, y: currentCoords[best].y };
-      pickDelta.current = { x: p.x - a.x, y: p.y - a.y };
-      aimRef.current = p;
-      setAimPos(p);
-      const val = calculateScore(p.x, p.y, best).val;
-      lastScoreRef.current = val;
-      setCurrentAimScore(val);
-      buzz(25);
-    }, 450);
+    return scoreSingleFace(face, x, y, LINE_TOUCH);
   };
 
   const aimAt = (c: { x: number; y: number }, fresh: boolean) => {
     setTouchPos({ x: c.x, y: c.y });
-    const p = pickedRef.current;
-    // Podniesiona strzała idzie za palcem od miejsca, w którym była — bez skoku.
-    const f = aimFrom(c);
-    const a = p !== null ? { x: f.x + pickDelta.current.x, y: f.y + pickDelta.current.y } : f;
+    const a = aimFrom(c);
     aimRef.current = a;
     setAimPos(a);
-    const val = calculateScore(a.x, a.y, p ?? currentCoords.length).val;
+    const val = calculateScore(a.x, a.y).val;
     if (!fresh && lastScoreRef.current !== null && val !== lastScoreRef.current) buzz(8);
     lastScoreRef.current = val;
     setCurrentAimScore(val);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (isFull && !onMoveShot) return;
+    if (currentCoords.length >= maxShots) return;
     (e.target as Element).setPointerCapture(e.pointerId);
     const c = getSvgCoords(e.clientX, e.clientY);
     if (c) {
       setIsAiming(true);
-      pickedRef.current = null; setPicked(null);
       lastScoreRef.current = null;
-      restRef.current = { x: e.clientX, y: e.clientY };
       aimAt(c, true);
-      armHold();
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isAiming) return;
     const c = getSvgCoords(e.clientX, e.clientY);
-    if (c) {
-      aimAt(c, false);
-      const r = restRef.current;
-      if (!r || Math.hypot(e.clientX - r.x, e.clientY - r.y) > 6) {
-        restRef.current = { x: e.clientX, y: e.clientY };
-        armHold();
-      }
-    }
+    if (c) aimAt(c, false);
   };
 
   const handlePointerUp = () => {
-    clearTimeout(holdTimer.current);
     const a = aimRef.current;
-    const p = pickedRef.current;
     if (isAiming && a) {
-      if (p !== null) {
-        const { val, sId } = calculateScore(a.x, a.y, p);
-        onMoveShot(p, val, a.x, a.y, sId);
-        if (!moveHintSeen) {
-          setMoveHintSeen(true);
-          try { localStorage.setItem('grotx-move-hint-seen', '1'); } catch { /* prywatne okno */ }
-        }
-      } else if (!isFull) {
-        const { val, sId } = calculateScore(a.x, a.y);
-        onShot(val, a.x, a.y, sId);
-      }
+      const { val, sId } = calculateScore(a.x, a.y);
+      onShot(val, a.x, a.y, sId);
     }
-    pickedRef.current = null; aimRef.current = null; lastScoreRef.current = null;
-    setPicked(null);
+    aimRef.current = null; lastScoreRef.current = null;
     setIsAiming(false); setAimPos(null); setTouchPos(null); setCurrentAimScore(null);
   };
 
@@ -270,7 +199,6 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
   // nie skacze w róg, w którym jest palec. Wcześniej siedziała w nagłówku
   // i zasłaniała pierwsze pole wyniku (user 2026-11-03).
   const loupeRight = !!aimPos && aimPos.x < viewCx;
-  const showMoveHint = isFullscreen && !!onMoveShot && !moveHintSeen && currentCoords.length > 0 && !isAiming;
 
   return (
     <div className={`flex flex-col items-center ${isFullscreen ? 'fixed inset-0 z-[99999] bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] justify-start touch-none' : 'w-full h-full relative justify-center overflow-hidden'}`}>
@@ -285,7 +213,7 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
                 {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
                     strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
                     embed (ScoringView), zeby nic tam sie nie zmienilo. */}
-                {Array.from({ length: maxShots }, (_, i) => i).map(i => <div key={i} className={`relative w-7 h-7 flex items-center justify-center text-[11px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')} ${picked === i ? 'ring-2 ring-[#0a3a2a] ring-offset-1' : ''}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
+                {Array.from({ length: maxShots }, (_, i) => i).map(i => <div key={i} className={`relative w-7 h-7 flex items-center justify-center text-[11px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
               </div>
               {currentArrows.length > 0 && (
                 <span className="text-[#0a3a2a] font-black text-lg tabular-nums leading-none" aria-label={t('targetInput.endSum')}>
@@ -409,11 +337,11 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
               preserveAspectRatio="xMidYMid meet"
             >
               {is3Spot ? (
-                <SpotTarget isVertical={isVertical} isTarget2={picked !== null ? picked >= 3 : isTarget2} />
+                <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
               ) : (
                 <StandardTarget targetType={targetType} />
               )}
-              {currentCoords.map((d: any, i: number) => i === picked ? null : (
+              {currentCoords.map((d: any, i: number) => (
                 <g key={`lupa-${i}`}>
                   <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
                   <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
@@ -425,11 +353,6 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
               <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
               <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
             </svg>
-            {picked !== null && (
-              <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-[#0a3a2a] text-white text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none">
-                ↔ {picked + 1}
-              </span>
-            )}
           </div>
         )}
 
@@ -447,17 +370,10 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
           }}
         >
           {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} /> : <StandardTarget targetType={targetType} />}
-          {currentCoords.map((d: any, i: number) => i === picked ? null : <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
+          {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>
-              {/* [PRZESUŃ STRZAŁĘ] Podniesiona kropka jedzie pod krzyżykiem. */}
-              {picked !== null && (
-                <g>
-                  <circle cx={aimPos.x} cy={aimPos.y} r="6" fill={dotColor(picked).hex} stroke="black" strokeWidth="1.5" opacity="0.85" />
-                  <text x={aimPos.x} y={aimPos.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(picked).text}>{picked+1}</text>
-                </g>
-              )}
-              <circle cx={aimPos.x} cy={aimPos.y} r="14" fill="white" fillOpacity={picked !== null ? 0 : 0.3} stroke="#0a3a2a" strokeWidth="1.5" strokeDasharray={picked !== null ? '4,3' : undefined} />
+              <circle cx={aimPos.x} cy={aimPos.y} r="14" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="1.5" />
               <circle cx={aimPos.x} cy={aimPos.y} r="1.5" fill="#ef4444" />
               <path d={`M ${aimPos.x-22} ${aimPos.y} L ${aimPos.x+22} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="1" opacity="0.6" />
               <path d={`M ${aimPos.x} ${aimPos.y-22} L ${aimPos.x} ${aimPos.y+22}`} stroke="#0a3a2a" strokeWidth="1" opacity="0.6" />
@@ -485,13 +401,6 @@ export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggle
           )}
         </svg>
       </div>
-
-      {/* [PRZESUŃ STRZAŁĘ] Podpowiedź do pierwszego przesunięcia. */}
-      {showMoveHint && (
-        <p className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.6rem)] left-16 right-6 text-center text-[11px] font-bold text-gray-400 pointer-events-none">
-          {t('targetInput.moveHint')}
-        </p>
-      )}
 
       {/* UNDO: mały w trybie normalnym */}
       {!isFullscreen && (

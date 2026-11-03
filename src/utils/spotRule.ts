@@ -1,7 +1,6 @@
 /**
  * [3-SPOT] Zasada „jedna strzała na spot” — wydzielona z ScoringView
- * (2026-11-03), bo przesuwanie kropki musi ją przeliczyć od nowa dla całej
- * serii, a nie tylko dla dopisywanej strzały.
+ * (2026-11-03), żeby dało się ją przetestować.
  *
  * Dwie strzały w tym samym spocie: liczy się niższa, druga to M (WA).
  * Remis — nowsza to M. Strzała poza spotem (pusty spotId) to M.
@@ -30,24 +29,3 @@ export function addSpotArrow(arrows: string[], coords: EndCoord[], v: string, co
   return { arrows: [...newArrows, finalVal], coords: [...coords, coord] };
 }
 
-/**
- * Przelicza całą serię po przesunięciu strzały. `scoreAt` zwraca surową
- * wartość punktu na tarczy (bez zasady spotu) — strzały wpisane klawiaturą
- * (x = null) zostają z wartością, jaką mają.
- */
-export function rescoreEnd(
-  arrows: string[],
-  coords: EndCoord[],
-  isSpot: boolean,
-  scoreAt: (c: EndCoord, index: number) => string,
-): string[] {
-  let acc: { arrows: string[]; coords: EndCoord[] } = { arrows: [], coords: [] };
-  coords.forEach((c, i) => {
-    const visual = c?.x != null && c?.y != null;
-    const raw = visual ? scoreAt(c, i) : arrows[i];
-    acc = visual && isSpot
-      ? addSpotArrow(acc.arrows, acc.coords, raw, c)
-      : { arrows: [...acc.arrows, raw], coords: [...acc.coords, c] };
-  });
-  return acc.arrows;
-}

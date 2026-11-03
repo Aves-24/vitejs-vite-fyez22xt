@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateSpotScore, scoreSingleFace } from './targetScoring';
+import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from './targetScoring';
 import { getStats } from './endStats';
 import {
   TARGET_FACES, findTargetFace, friendlyTargetName, resolveTargetFace, selectableTargetIds, selectableTargetIdsFor,
@@ -148,6 +148,31 @@ describe('dmuchawka', () => {
     expect(isBlowgunSession({ targetType: 'Blasrohr 40cm' })).toBe(true);
     expect(isBlowgunSession({ targetType: '40cm' })).toBe(false);
     expect(isBlowgunSession(null)).toBe(false);
+  });
+});
+
+describe('krzyżyk dotyka linii = wyższa wartość', () => {
+  const f = resolveTargetFace('40cm');
+  const on = (d: number) => scoreSingleFace(f, 150 + d, 150, LINE_TOUCH).val;
+
+  it('kropka na linii 10/9 (od zewnątrz) = 10', () => {
+    expect(on(15.2)).toBe('10');
+    expect(on(15.9)).toBe('10');
+  });
+
+  it('kropka wyraźnie za linią = niżej', () => {
+    expect(on(16.5)).toBe('9');
+    expect(on(18)).toBe('9');
+  });
+
+  it('muśnięcie zewnętrznej linii = 1, nie M', () => {
+    expect(on(150.5)).toBe('1');
+    expect(on(152)).toBe('M');
+  });
+
+  it('3-Spot: muśnięcie krawędzi spotu = 6', () => {
+    expect(calculateSpotScore(75 + 63, 66, false, false, LINE_TOUCH)).toEqual({ val: '6', sId: 'L0' });
+    expect(calculateSpotScore(75 + 64, 66, false, false, LINE_TOUCH).val).toBe('M');
   });
 });
 

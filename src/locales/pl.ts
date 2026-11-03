@@ -1371,6 +1371,7 @@ export const views = {
     close: "Zamknij",
     offset: "Odległość krzyżyka",
     hand: { R: "Prawa ręka: krzyżyk w lewo nad palcem", C: "Krzyżyk prosto nad palcem", L: "Lewa ręka: krzyżyk w prawo nad palcem" },
+    vibration: "Wibracja na granicy pierścieni wł./wył.",
   },
   scoringView: {
     partialTitle: "Trening niepełny",

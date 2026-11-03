@@ -1,35 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { smoothAim, holdStill, Sample, Pt } from './aimSmoothing';
+import { startAim, stepAim, AimFilter, Pt } from './aimSmoothing';
 
-const run = (pts: Sample[]): Pt => {
-  let s: Sample[] = []; let p: Pt = pts[0];
-  for (const q of pts) [s, p] = smoothAim(s, q);
-  return p;
+/** Klatki co 16 ms; raw(i) — gdzie jest palec w klatce i. */
+const frames = (n: number, raw: (i: number) => Pt, f0?: AimFilter) => {
+  let f = f0 ?? startAim(raw(0), 0);
+  const out: Pt[] = [];
+  for (let i = 1; i <= n; i++) { f = stepAim(f, raw(i), f.t + 16); out.push(f.x); }
+  return { f, out };
 };
 
-describe('stabilizacja krzyżyka', () => {
-  it('pierwszy punkt bez zmian', () => {
-    expect(smoothAim([], { x: 5, y: 7, t: 0 })[1]).toEqual({ x: 5, y: 7 });
+describe('stabilizacja krzyżyka (One Euro)', () => {
+  it('drżenie ±3 px tłumione do ułamka piksela', () => {
+    const { out } = frames(120, i => ({ x: 100 + (i % 2 ? 3 : -3), y: 100 }));
+    const tail = out.slice(60).map(p => p.x);
+    expect(Math.max(...tail) - Math.min(...tail)).toBeLessThan(1);
   });
 
-  it('drżenie ±2 px co 8 ms tłumione do ułamka', () => {
-    const pts = Array.from({ length: 40 }, (_, i) => ({ x: 100 + (i % 2 ? 2 : -2), y: 100, t: i * 8 }));
-    expect(Math.abs(run(pts).x - 100)).toBeLessThan(0.3);
+  it('po zatrzymaniu palca krzyżyk dojeżdża do niego', () => {
+    const { f } = frames(120, () => ({ x: 50, y: 0 }), startAim({ x: 0, y: 0 }, 0));
+    expect(f.x.x).toBeCloseTo(50, 0);
   });
 
-  it('po zatrzymaniu palca krzyżyk stoi w jego punkcie', () => {
-    const slide = Array.from({ length: 20 }, (_, i) => ({ x: i * 0.5, y: 0, t: i * 8 }));
-    const hold = Array.from({ length: 25 }, (_, i) => ({ x: 10, y: 0, t: 160 + i * 8 }));
-    expect(run([...slide, ...hold]).x).toBeCloseTo(10, 5);
-  });
-
-  it('strefa spokoju: ruch < 1 px nie przesuwa krzyżyka', () => {
-    expect(holdStill({ x: 10, y: 10 }, { x: 10.6, y: 10.5 })).toEqual({ x: 10, y: 10 });
-    expect(holdStill({ x: 10, y: 10 }, { x: 11.5, y: 10 })).toEqual({ x: 11.5, y: 10 });
-    expect(holdStill(null, { x: 3, y: 4 })).toEqual({ x: 3, y: 4 });
-  });
-
-  it('szybki skok idzie od razu', () => {
-    expect(run([{ x: 0, y: 0, t: 0 }, { x: 40, y: 0, t: 8 }])).toEqual({ x: 40, y: 0 });
+  it('bez skoków: przy szybkim przesunięciu żaden krok nie przeskakuje palca', () => {
+    const { out } = frames(60, i => ({ x: Math.min(i * 10, 200), y: 0 }), startAim({ x: 0, y: 0 }, 0));
+    for (let i = 1; i < out.length; i++) {
+      expect(out[i].x).toBeGreaterThanOrEqual(out[i - 1].x - 1e-9);
+      expect(out[i].x).toBeLessThanOrEqual(200 + 1e-9);
+    }
+    expect(out[out.length - 1].x).toBeGreaterThan(195);
   });
 });

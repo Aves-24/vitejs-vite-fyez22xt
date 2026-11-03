@@ -4,7 +4,7 @@ import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
-import { smoothAim, holdStill, Sample, Pt, WINDOW_MS } from '../../utils/aimSmoothing';
+import { startAim, stepAim, AimFilter, Pt } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
 
 const getArrowStyles = (val: string) => {
@@ -54,10 +54,18 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   const [currentAimScore, setCurrentAimScore] = useState<string | null>(null);
   const aimRef = useRef<{x: number, y: number} | null>(null);
   const lastScoreRef = useRef<string | null>(null);
-  // [STABILIZACJA] Próbki dotyku z ostatnich ~100 ms + dosunięcie, gdy palec stoi.
-  const samplesRef = useRef<Sample[]>([]);
-  const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shownRef = useRef<Pt | null>(null); // gdzie krzyżyk stoi (px ekranu)
+  // [STABILIZACJA] Filtr One Euro liczony co klatkę: gdzie jest palec (raw)
+  // i gdzie stoi krzyżyk (filtr), oba w px ekranu.
+  const rawRef = useRef<Pt | null>(null);
+  const filterRef = useRef<AimFilter | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const aimAtRef = useRef<(c: Pt, fresh: boolean) => void>(() => {});
+  // [LUPA] Strona ustalana przy dotknięciu i stała — przerzucanie przy każdym
+  // przejściu przez środek było „beznadziejne” (user 2026-11-03). Zmienia się
+  // tylko, gdy krzyżyk wjedzie pod samą lupę.
+  const [loupeRight, setLoupeRight] = useState(true);
+  const loupeRef = useRef<HTMLDivElement>(null);
+  useEffect(() => () => { if (rafRef.current !== null) cancelAnimationFrame(rafRef.current); }, []);
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   // [RĘKA] Gdzie krzyżyk stoi względem palca: R = praworęczny (krzyżyk w lewo
@@ -66,6 +74,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     try { const v = localStorage.getItem('grotx-aim-hand'); return v === 'L' || v === 'R' ? v : 'C'; } catch { return 'C'; }
   });
   const [showOffsetSlider, setShowOffsetSlider] = useState(false);
+  // [WIBRACJA] Można wyłączyć w panelu offsetu, obok ręki (user 2026-11-03).
+  const [buzzOn, setBuzzOn] = useState(() => {
+    try { return localStorage.getItem('grotx-aim-buzz') !== 'off'; } catch { return true; }
+  });
   // [KATALOG TARCZ] Wszystko o tarczy pochodzi z config/targetFaces — wcześniej
   // były to porównania stringów, przez które 6-Ring nigdy się nie uruchamiał.
   const face = resolveTargetFace(targetType);
@@ -131,7 +143,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   // [WIBRACJA] Krótkie „tyk” przy każdej zmianie pierścienia — granicę czuć
   // w palcu. Android; iPhone (Safari) tego nie obsługuje i po prostu milczy.
-  const buzz = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* brak wibracji */ } };
+  const buzz = (ms: number) => { if (!buzzOn) return; try { navigator.vibrate?.(ms); } catch { /* brak wibracji */ } };
 
   // [WIĘKSZA TARCZA] Przesunięcie celownika jest w pikselach ekranu, nie
   // w jednostkach tarczy — inaczej po powiększeniu tarczy palec musiałby
@@ -161,17 +173,38 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   };
 
   const aimAt = (c: { x: number; y: number }, fresh: boolean) => {
+    if (fresh) setLoupeRight(aimFrom(c).x < viewCx);
     setTouchPos({ x: c.x, y: c.y });
     const a = aimFrom(c);
     aimRef.current = a;
     setAimPos(a);
+    const box = loupeRef.current?.getBoundingClientRect();
+    const m = svgRef.current?.getScreenCTM();
+    if (!fresh && box && m) {
+      const sx = m.a * a.x + m.c * a.y + m.e, sy = m.b * a.x + m.d * a.y + m.f;
+      const pad = 12;
+      if (sx > box.left - pad && sx < box.right + pad && sy > box.top - pad && sy < box.bottom + pad) setLoupeRight(r => !r);
+    }
     const val = calculateScore(a.x, a.y).val;
     if (!fresh && lastScoreRef.current !== null && val !== lastScoreRef.current) buzz(8);
     lastScoreRef.current = val;
     setCurrentAimScore(val);
   };
 
-  const clearSettle = () => { if (settleRef.current) { clearTimeout(settleRef.current); settleRef.current = null; } };
+  aimAtRef.current = aimAt;
+  const stopLoop = () => { if (rafRef.current !== null) { cancelAnimationFrame(rafRef.current); rafRef.current = null; } };
+  // Co klatkę krzyżyk płynnie dojeżdża do palca — także gdy palec stoi i nie ma ruchów.
+  const loop = (now: number) => {
+    const f = filterRef.current, raw = rawRef.current;
+    if (!f || !raw) { rafRef.current = null; return; }
+    const next = stepAim(f, raw, now);
+    filterRef.current = next;
+    if (Math.hypot(next.x.x - f.x.x, next.x.y - f.x.y) > 0.05) {
+      const c = getSvgCoords(next.x.x, next.x.y);
+      if (c) aimAtRef.current(c, false);
+    }
+    rafRef.current = requestAnimationFrame(loop);
+  };
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (currentCoords.length >= maxShots) return;
@@ -180,34 +213,22 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (c) {
       setIsAiming(true);
       lastScoreRef.current = null;
-      samplesRef.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
-      shownRef.current = { x: e.clientX, y: e.clientY };
+      rawRef.current = { x: e.clientX, y: e.clientY };
+      filterRef.current = startAim(rawRef.current, performance.now());
       aimAt(c, true);
+      stopLoop();
+      rafRef.current = requestAnimationFrame(loop);
     }
-  };
-
-  const smoothTo = (s: Sample) => {
-    const [kept, avg] = smoothAim(samplesRef.current, s);
-    samplesRef.current = kept;
-    const p = holdStill(shownRef.current, avg);
-    if (p === shownRef.current) return;
-    shownRef.current = p;
-    const c = getSvgCoords(p.x, p.y);
-    if (c) aimAt(c, false);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!isAiming) return;
-    const s = { x: e.clientX, y: e.clientY, t: e.timeStamp };
-    smoothTo(s);
-    // Palec stanął (iPhone wtedy nie wysyła ruchów) — po oknie krzyżyk dochodzi do palca.
-    clearSettle();
-    settleRef.current = setTimeout(() => smoothTo({ ...s, t: s.t + WINDOW_MS }), WINDOW_MS);
+    rawRef.current = { x: e.clientX, y: e.clientY };
   };
 
   const handlePointerUp = () => {
-    clearSettle();
-    samplesRef.current = []; shownRef.current = null;
+    stopLoop();
+    rawRef.current = null; filterRef.current = null;
     const a = aimRef.current;
     if (isAiming && a) {
       const { val, sId } = calculateScore(a.x, a.y);
@@ -215,6 +236,42 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     }
     aimRef.current = null; lastScoreRef.current = null;
     setIsAiming(false); setAimPos(null); setTouchPos(null); setCurrentAimScore(null);
+  };
+
+  // [LUPA] Zawartość lupy: okolica krzyżyka w powiększeniu ~4×.
+  const loupeSvg = (w: number, h: number, fit: 'meet' | 'slice') => {
+    const a = aimPos;
+    if (!a) return null;
+    return (
+      <svg
+        viewBox={`${a.x - w / 2} ${a.y - h / 2} ${w} ${h}`}
+        className="w-full h-full"
+        preserveAspectRatio={`xMidYMid ${fit}`}
+      >
+        {is3Spot ? (
+          <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
+        ) : (
+          <StandardTarget targetType={targetType} />
+        )}
+        {currentCoords.map((d: any, i: number) => (
+          <g key={`lupa-${i}`}>
+            <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
+            <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
+          </g>
+        ))}
+        {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
+        <circle cx={a.x} cy={a.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
+        <circle cx={a.x} cy={a.y} r="0.7" fill="#ef4444" />
+        <path d={`M ${a.x-9} ${a.y} L ${a.x+9} ${a.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
+        <path d={`M ${a.x} ${a.y-9} L ${a.x} ${a.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
+      </svg>
+    );
+  };
+
+  const chooseBuzz = (on: boolean) => {
+    setBuzzOn(on);
+    try { localStorage.setItem('grotx-aim-buzz', on ? 'on' : 'off'); } catch { /* prywatne okno */ }
+    if (on) { try { navigator.vibrate?.(15); } catch { /* brak wibracji */ } }
   };
 
   const chooseHand = (h: 'L' | 'C' | 'R') => {
@@ -225,7 +282,6 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // [LUPA] Nad tarczą, w górnym rogu PO DRUGIEJ stronie niż krzyżyk — wzrok
   // nie skacze w róg, w którym jest palec. Wcześniej siedziała w nagłówku
   // i zasłaniała pierwsze pole wyniku (user 2026-11-03).
-  const loupeRight = !!aimPos && aimPos.x < viewCx;
 
   return (
     <div className={`flex flex-col items-center ${isFullscreen ? 'fixed inset-0 z-[99999] bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] justify-start touch-none' : 'w-full h-full relative justify-center overflow-hidden'}`}>
@@ -293,6 +349,20 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                   <span className="text-[6px] font-black leading-none">{h === 'C' ? '' : h}</span>
                 </button>
               ))}
+              <button
+                onClick={(e) => { e.stopPropagation(); chooseBuzz(!buzzOn); }}
+                aria-pressed={buzzOn}
+                aria-label={t('targetInput.vibration')}
+                title={t('targetInput.vibration')}
+                className={`relative w-8 h-8 mt-1 rounded-full flex items-center justify-center border transition-colors ${buzzOn ? 'border-[#0a3a2a] text-[#0a3a2a]' : 'border-gray-200 text-gray-300'}`}
+              >
+                {/* Telefon z falami; przekreślony, gdy wibracja wyłączona. */}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="8" y="4" width="8" height="16" rx="1.5" />
+                  <path d="M4 9v6 M20 9v6" />
+                  {!buzzOn && <path d="M3 3 L21 21" />}
+                </svg>
+              </button>
             </div>
 
             <div className="w-8 flex flex-col items-center">
@@ -346,6 +416,16 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         )}
       </div>
 
+      {/* [LUPA] Pełny ekran: prostokątna lupa na stałe nad tarczą (user 2026-11-03)
+          — zawsze w tym samym miejscu, nic nie przeskakuje; tarcza niżej. */}
+      {isFullscreen && (
+        <div className="w-full px-3 mb-2 shrink-0 pointer-events-none">
+          <div className={`h-[120px] rounded-2xl overflow-hidden ${isAiming && aimPos ? 'bg-white border border-gray-200 shadow-[0_6px_18px_rgba(0,0,0,0.12)]' : 'border border-dashed border-gray-200'}`}>
+            {isAiming && aimPos && loupeSvg(90, 30, 'slice')}
+          </div>
+        </div>
+      )}
+
       <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : spotInline ? 'min-h-0 pr-12 py-1.5' : 'min-h-0'}`}>
         {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy.
             Na czas celowania znika — w tym rogu może stanąć lupa. */}
@@ -355,31 +435,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           </div>
         )}
 
-        {/* LUPA — okrągły magnifier ~4× zoom okolicy krzyżyka. Tylko podczas celowania. */}
-        {isAiming && aimPos && (
-          <div className={`absolute z-30 top-0 ${loupeRight ? (isFullscreen ? 'right-3' : 'right-1') : (isFullscreen ? 'left-3' : 'left-1')} ${isFullscreen ? 'w-[132px] h-[132px]' : 'w-[88px] h-[88px]'} rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] border-[3px] border-white pointer-events-none`}>
-            <svg
-              viewBox={`${aimPos.x - 15} ${aimPos.y - 15} 30 30`}
-              className="w-full h-full"
-              preserveAspectRatio="xMidYMid meet"
-            >
-              {is3Spot ? (
-                <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
-              ) : (
-                <StandardTarget targetType={targetType} />
-              )}
-              {currentCoords.map((d: any, i: number) => (
-                <g key={`lupa-${i}`}>
-                  <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
-                  <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
-                </g>
-              ))}
-              {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
-              <circle cx={aimPos.x} cy={aimPos.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
-              <circle cx={aimPos.x} cy={aimPos.y} r="0.7" fill="#ef4444" />
-              <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
-              <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
-            </svg>
+        {/* LUPA (mały widok) — okrągła, w rogu. Na pełnym ekranie jest pasek nad tarczą. */}
+        {!isFullscreen && isAiming && aimPos && (
+          <div ref={loupeRef} className={`absolute z-30 top-0 ${loupeRight ? 'right-1' : 'left-1'} w-[88px] h-[88px] rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] border-[3px] border-white pointer-events-none`}>
+            {loupeSvg(30, 30, "meet")}
           </div>
         )}
 
@@ -391,7 +450,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           style={{
             // [WIĘKSZA TARCZA] Cała wysokość ekranu minus nagłówek (~90) i dół
             // pod celownik offsetu (~96) — wcześniej 58vh zostawiało 1/3 pustą.
-            maxHeight: isFullscreen ? 'calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : '100%',
+            maxHeight: isFullscreen ? 'calc(100dvh - 320px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : '100%',
             // Wbudowana: tyle, ile ma okienko (rośnie z ekranem, user 2026-11-03).
             height: isFullscreen ? 'auto' : '100%',
             ...(embed?.svgStyle || {}),

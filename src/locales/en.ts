@@ -1350,6 +1350,7 @@ export const views = {
     close: "Close",
     offset: "Crosshair distance",
     hand: { R: "Right hand: crosshair up-left of your finger", C: "Crosshair straight above your finger", L: "Left hand: crosshair up-right of your finger" },
+    vibration: "Vibration at ring lines on/off",
   },
   scoringView: {
     partialTitle: "Incomplete training",

@@ -1350,6 +1350,7 @@ export const views = {
     close: "Schließen",
     offset: "Fadenkreuz-Abstand",
     hand: { R: "Rechte Hand: Fadenkreuz links über dem Finger", C: "Fadenkreuz gerade über dem Finger", L: "Linke Hand: Fadenkreuz rechts über dem Finger" },
+    vibration: "Vibration an der Ringgrenze ein/aus",
   },
   scoringView: {
     partialTitle: "Unvollständiges Training",

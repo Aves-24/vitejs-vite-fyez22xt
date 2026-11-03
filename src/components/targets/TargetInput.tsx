@@ -102,10 +102,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // (tam widać obie kolumny i całą serię).
   const spotCx = isVertical ? 150 : isTarget2 ? 225 : 75;
   const viewBox = is3Spot
-    ? (isFullscreen ? `${spotCx - 85} -25 170 450` : "0 -4 300 408")
+    ? (isFullscreen ? `${spotCx - 85} -6 170 412` : "0 -4 300 408")
     : isCompactFace
       ? (isFullscreen ? "30 0 240 300" : "-20 -30 340 360")
-      : (isFullscreen ? "-8 -45 316 380" : "-20 0 340 300");
+      : (isFullscreen ? "-8 -6 316 316" : "-20 0 340 300");
   // [3-SPOT W MAŁYM WIDOKU] Przyciski w kolumnie po prawej, tarcza obok — nie
   // nachodzą na spoty (user 2026-11-03).
   const spotInline = is3Spot && !isFullscreen;

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   arrowPoints, seededRand, createShooterProfiles, generateEnd, isNearLine,
   sortedValues, summarizeGame, isBetterResult, configKey, MAT_RADIUS, SPOT_CENTERS,
-  expectedRow, sameArrowSet, sumCellsFor,
+  expectedRow, sameArrowSet, sumCellsFor, standings,
   type SchreiberArrow, type SchreiberEnd,
 } from './schreiberGame';
 import { resolveTargetFace } from '../config/targetFaces';
@@ -164,6 +164,24 @@ describe('arkusz', () => {
     expect(sameArrowSet(['7', 'X', '9'], ['X', '9', '7'])).toBe(true);
     expect(sameArrowSet(['10', '9', '7'], ['X', '9', '7'])).toBe(false);
     expect(sameArrowSet(['9', '7'], ['X', '9', '7'])).toBe(false);
+  });
+});
+
+describe('standings', () => {
+  const end = (...perShooter: string[][]): SchreiberEnd => ({
+    arrows: perShooter.flatMap((vals, s) => vals.map(v => arrow(v, s))),
+    sums: [],
+  });
+
+  it('sortuje po sumie z obu serii', () => {
+    const r = standings([end(['9', '9', '9'], ['10', '8', '7']), end(['5', '5', '5'], ['9', '9', '9'])], 2);
+    expect(r.map(s => [s.shooter, s.total, s.place])).toEqual([[1, 52, 1], [0, 42, 2]]);
+  });
+
+  it('remis: więcej 10 (z X) wygrywa, potem więcej X', () => {
+    const r = standings([end(['10', '8', '8'], ['9', '9', '8'], ['X', '8', '8'], ['10', '8', '8'])], 4);
+    expect(r.map(s => s.shooter)).toEqual([2, 0, 3, 1]);
+    expect(r.map(s => s.place)).toEqual([1, 2, 2, 4]);
   });
 });
 

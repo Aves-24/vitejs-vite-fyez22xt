@@ -346,6 +346,8 @@ export const components = {
     resultSums: "Sumy",
     avgTime: "Śr. na serię",
     totalTime: "Czas łącznie",
+    standings: "Kto by wygrał?",
+    tensXs: "{{tens}}× 10 · {{xs}}× X",
     newBest: "Nowy rekord",
     again: "Jeszcze raz",
     change: "Ustawienia",

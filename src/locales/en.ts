@@ -332,6 +332,8 @@ export const components = {
     resultSums: "Totals",
     avgTime: "Avg per end",
     totalTime: "Total time",
+    standings: "Who would have won?",
+    tensXs: "{{tens}}× 10 · {{xs}}× X",
     newBest: "New best",
     again: "Again",
     change: "Settings",

@@ -1168,12 +1168,12 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
         )}
         hideLogo
         actions={<>
-          <button onClick={() => setShowHardwareModal(true)} className="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/10" aria-label={t('studentProfile.hardwareTitle')}>
-            <span className="material-symbols-outlined text-[19px]">build</span>
+          <button onClick={() => setShowHardwareModal(true)} className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-white active:scale-90 transition-all border border-white/10" aria-label={t('studentProfile.hardwareTitle')}>
+            <span className="material-symbols-outlined text-[16px]">build</span>
           </button>
-          <button onClick={() => setShowPrivateNotes(true)} className="w-9 h-9 bg-[#fed33e] rounded-xl flex items-center justify-center text-[#0a3a2a] active:scale-90 transition-all relative" aria-label={t('studentProfile.privateNoteTitle')}>
-            <span className="material-symbols-outlined text-[21px]">person</span>
-            {hasAnyPrivateNote && <span className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white"></span>}
+          <button onClick={() => setShowPrivateNotes(true)} className="w-8 h-8 bg-[#fed33e] rounded-lg flex items-center justify-center text-[#0a3a2a] active:scale-90 transition-all relative" aria-label={t('studentProfile.privateNoteTitle')}>
+            <span className="material-symbols-outlined text-[18px]">person</span>
+            {hasAnyPrivateNote && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>}
           </button>
         </>}
       >

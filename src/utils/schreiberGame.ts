@@ -259,6 +259,34 @@ export const isBetterResult = (next: SchreiberResult, best: SchreiberResult | nu
   return next.avgMs < best.avgMs;
 };
 
+export interface ShooterStanding {
+  shooter: number;
+  total: number;
+  /** Dziesiątki razem z X — pierwsze kryterium przy remisie (WA/DSB). */
+  tens: number;
+  xs: number;
+  /** Miejsce 1..n; przy pełnym remisie (suma, 10, X) to samo miejsce. */
+  place: number;
+}
+
+/** Klasyfikacja końcowa: suma, potem liczba 10 (z X), potem liczba X. */
+export const standings = (ends: SchreiberEnd[], shooters: number): ShooterStanding[] => {
+  const rows = Array.from({ length: shooters }, (_, shooter) => {
+    const arrows = ends.flatMap(e => e.arrows.filter(a => a.shooter === shooter));
+    return {
+      shooter,
+      total: arrows.reduce((acc, a) => acc + a.points, 0),
+      tens: arrows.filter(a => a.points === 10).length,
+      xs: arrows.filter(a => a.value === 'X').length,
+      place: 0,
+    };
+  });
+  const cmp = (a: ShooterStanding, b: ShooterStanding) => b.total - a.total || b.tens - a.tens || b.xs - a.xs;
+  rows.sort((a, b) => cmp(a, b) || a.shooter - b.shooter);
+  rows.forEach((r, i) => { r.place = i > 0 && cmp(rows[i - 1], r) === 0 ? rows[i - 1].place : i + 1; });
+  return rows;
+};
+
 export interface SchreiberConfig {
   target: SchreiberTarget;
   shooters: number;

@@ -332,6 +332,8 @@ export const components = {
     resultSums: "Summen",
     avgTime: "Ø pro Passe",
     totalTime: "Gesamtzeit",
+    standings: "Wer hätte gewonnen?",
+    tensXs: "{{tens}}× 10 · {{xs}}× X",
     newBest: "Neuer Rekord",
     again: "Nochmal",
     change: "Einstellungen",

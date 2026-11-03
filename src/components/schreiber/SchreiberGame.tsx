@@ -5,7 +5,7 @@ import { StandardTarget } from '../targets/StandardTarget';
 import { SpotTarget } from '../targets/SpotTarget';
 import {
   createShooterProfiles, generateEnd, summarizeGame, isBetterResult, configKey,
-  expectedRow, sameArrowSet, sumCellsFor, arrowsFor, SCHREIBER_FACE_ID,
+  expectedRow, sameArrowSet, sumCellsFor, arrowsFor, standings, SCHREIBER_FACE_ID,
   type SchreiberConfig, type SchreiberEnd, type SchreiberAnswer, type SchreiberResult,
   type SchreiberLevel, type SchreiberTarget, type SumCell,
 } from '../../utils/schreiberGame';
@@ -715,6 +715,22 @@ const SchreiberGame: React.FC<{ onClose: () => void }> = ({ onClose }) => {
                 <div className="text-lg font-black text-[#0a3a2a] tabular-nums">{fmtSec(result.res.totalMs)} s</div>
               </div>
             </div>
+            {cfg.shooters > 1 && (
+              <div className="text-left">
+                <div className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{t('schreiber.standings')}</div>
+                <div className="space-y-1">
+                  {standings(ends, cfg.shooters).map(s => (
+                    <div key={s.shooter} className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 ${s.place === 1 ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'}`}>
+                      <span className="w-5 text-center text-[13px] font-black text-gray-500 tabular-nums">{s.place === 1 ? '🏆' : `${s.place}.`}</span>
+                      <ShooterIcon shooter={s.shooter} className="w-6 h-6" />
+                      <span className="text-[13px] font-black text-[#0a3a2a]">{t('schreiber.shooterLabel', { letter: SHOOTERS[s.shooter].letter })}</span>
+                      <span className="ml-auto text-[10px] font-bold text-gray-400 tabular-nums">{t('schreiber.tensXs', { tens: s.tens, xs: s.xs })}</span>
+                      <span className="w-9 text-right text-[15px] font-black text-[#0a3a2a] tabular-nums">{s.total}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {best && !result.newBest && (
               <div className="text-[10px] font-bold text-gray-400">
                 {t('schreiber.best')}: {t('schreiber.bestValue', { correct: best.correct, total: best.total, avg: fmtSec(best.avgMs) })}

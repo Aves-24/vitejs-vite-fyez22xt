@@ -1365,6 +1365,14 @@ export const views = {
     placeholderHeight: "np. 180",
     placeholderDraw: "np. 28.5"
   },
+  targetInput: {
+    endSum: "Suma serii",
+    undo: "Cofnij ostatnią strzałę",
+    close: "Zamknij",
+    offset: "Odległość krzyżyka",
+    moveHint: "Przytrzymaj krzyżyk na strzale, żeby ją przesunąć",
+    hand: { R: "Prawa ręka: krzyżyk w lewo nad palcem", C: "Krzyżyk prosto nad palcem", L: "Lewa ręka: krzyżyk w prawo nad palcem" },
+  },
   scoringView: {
     partialTitle: "Trening niepełny",
     partialDesc: "Zagrałeś {{shot}} z {{planned}} serii. Czy ten wynik ma się liczyć jak pełny trening?",

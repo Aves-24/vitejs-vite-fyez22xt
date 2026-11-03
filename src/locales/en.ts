@@ -1344,6 +1344,14 @@ export const views = {
     placeholderHeight: "e.g. 180",
     placeholderDraw: "e.g. 28.5"
   },
+  targetInput: {
+    endSum: "End total",
+    undo: "Undo last arrow",
+    close: "Close",
+    offset: "Crosshair distance",
+    moveHint: "Hold the crosshair on an arrow to move it",
+    hand: { R: "Right hand: crosshair up-left of your finger", C: "Crosshair straight above your finger", L: "Left hand: crosshair up-right of your finger" },
+  },
   scoringView: {
     partialTitle: "Incomplete training",
     partialDesc: "You shot {{shot}} of {{planned}} ends. Should this score count like a full training?",

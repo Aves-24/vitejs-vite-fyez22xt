@@ -25,7 +25,9 @@ import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics,
 import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
-import { isSpotFace, friendlyTargetName } from '../config/targetFaces';
+import { isSpotFace, isVerticalSpotFace, resolveTargetFace, friendlyTargetName } from '../config/targetFaces';
+import { addSpotArrow, rescoreEnd } from '../utils/spotRule';
+import { calculateSpotScore, scoreSingleFace } from '../utils/targetScoring';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
 import { getStats } from '../utils/endStats';
@@ -334,41 +336,32 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   const addScoreFromTarget = (v: string, x: number, y: number, spotId: string | null) => { 
     if (inputArrows.length < 6) { 
-      let finalVal = v;
-      const newArrows = [...inputArrows];
-      const newCoords = [...inputCoordinates];
-
+      const coord = { x: x ?? null, y: y ?? null, spotId: spotId ?? null };
       const isVisualInput = x !== null && y !== null;
-
+      // [3-SPOT] Zasada „jedna strzała na spot” — utils/spotRule.
       if (isVisualInput && isSpotFace(targetType)) {
-        if (!spotId) {
-          finalVal = 'M';
-        } else {
-          const weight = (val: string): number => {
-            if (val === 'X') return 11;
-            if (val === 'M' || !val) return 0;
-            return parseInt(val) || 0;
-          };
-          const existingIdx = newCoords.findIndex(
-            (c, i) => c.spotId === spotId && newArrows[i] !== 'M'
-          );
-          if (existingIdx !== -1) {
-            const currentW = weight(v);
-            const existingW = weight(newArrows[existingIdx]);
-            if (currentW > existingW) {
-              finalVal = 'M';
-            } else if (currentW < existingW) {
-              newArrows[existingIdx] = 'M';
-            } else {
-              finalVal = 'M';
-            }
-          }
-        }
+        const next = addSpotArrow(inputArrows, inputCoordinates, v, coord);
+        setInputArrows(next.arrows);
+        setInputCoordinates(next.coords);
+      } else {
+        setInputArrows([...inputArrows, v]); 
+        setInputCoordinates([...inputCoordinates, coord]); 
       }
-
-      setInputArrows([...newArrows, finalVal]); 
-      setInputCoordinates([...newCoords, { x: x ?? null, y: y ?? null, spotId: spotId ?? null }]); 
     }
+  };
+
+  // [PRZESUŃ STRZAŁĘ] Przytrzymana i przeciągnięta kropka (TargetInput). Cała
+  // seria liczy się od nowa, bo na 3-Spot zmiana spotu może zdjąć albo nałożyć
+  // M na inną strzałę. Znacznik Fehlschuss zostaje przy strzale.
+  const moveShotFromTarget = (index: number, _v: string, x: number, y: number, spotId: string | null) => {
+    const coords = inputCoordinates.map((c, i) => (i === index ? { ...c, x, y, spotId: spotId ?? null } : c));
+    const face = resolveTargetFace(targetType);
+    const spot = isSpotFace(targetType);
+    const vertical = isVerticalSpotFace(targetType);
+    setInputCoordinates(coords);
+    setInputArrows(rescoreEnd(inputArrows, coords, spot, (c, i) => (spot
+      ? calculateSpotScore(c.x as number, c.y as number, vertical, i >= 3).val
+      : scoreSingleFace(face, c.x as number, c.y as number).val)));
   };
 
   // [FEHLSCHUSS] Zły strzał (trener 2026-10-29): flaga w pasku rundy włącza tryb
@@ -720,6 +713,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       {isTargetFullscreen && activeInputTab === 1 && submittedEnds.length < plannedEnds && (
         <TargetInput 
           onShot={addScoreFromTarget} 
+          onMoveShot={moveShotFromTarget}
           isFullscreen={true} 
           onToggleFullscreen={() => setIsTargetFullscreen(false)} 
           currentArrows={inputArrows} 
@@ -868,6 +862,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             ) : (
               <TargetInput 
                 onShot={addScoreFromTarget} 
+                onMoveShot={moveShotFromTarget}
                 isFullscreen={false} 
                 onToggleFullscreen={() => setIsTargetFullscreen(true)} 
                 currentArrows={inputArrows} 

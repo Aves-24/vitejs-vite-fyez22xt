@@ -221,6 +221,11 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     setShots(prev => [...prev, { n: prev.length + 1, x, y, score, spotId, tMs: null, tSource: null, note: null }]);
   };
 
+  // [PRZESUŃ STRZAŁĘ] Przytrzymana i przeciągnięta kropka — tylko ta strzała.
+  const moveShot = (index: number, score: string, x: number, y: number, spotId: string | null) => {
+    setShots(prev => prev.map((s, i) => (i === index ? { ...s, x, y, score, spotId } : s)));
+  };
+
   const undo = () => setShots(prev => prev.slice(0, -1));
 
   // TargetInput w trybie pelnoekranowym jest `fixed inset-0 z-[99999]`, wiec
@@ -232,6 +237,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     <>
       <TargetInput
         onShot={addShot}
+        onMoveShot={moveShot}
         isFullscreen={true}
         onToggleFullscreen={() => setStep('target')}
         currentArrows={currentArrows}

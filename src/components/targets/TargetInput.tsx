@@ -4,6 +4,7 @@ import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
+import { useTranslation } from 'react-i18next';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -43,15 +44,35 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //          inna liczbe strzal niz standardowa serie
 //   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
-export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
+//   onMoveShot  [PRZESUŃ STRZAŁĘ] (index, val, x, y, spotId) — krzyżyk
+//               przytrzymany na kropce podnosi strzałę i pozwala ją przesunąć.
+//               Bez tego propu przesuwania nie ma.
+export default function TargetInput({ onShot, onMoveShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
+  const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [isAiming, setIsAiming] = useState(false);
   const [aimPos, setAimPos] = useState<{x: number, y: number} | null>(null);
   const [touchPos, setTouchPos] = useState<{x: number, y: number} | null>(null);
   const [currentAimScore, setCurrentAimScore] = useState<string | null>(null);
+  // [PRZESUŃ STRZAŁĘ] Indeks podniesionej strzały (null = wpisujemy nową).
+  const [picked, setPicked] = useState<number | null>(null);
+  const pickedRef = useRef<number | null>(null);
+  const aimRef = useRef<{x: number, y: number} | null>(null);
+  const restRef = useRef<{x: number, y: number} | null>(null);
+  const holdTimer = useRef<any>(null);
+  const lastScoreRef = useRef<string | null>(null);
+  const pickDelta = useRef({ x: 0, y: 0 });
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
+  // [RĘKA] Gdzie krzyżyk stoi względem palca: R = praworęczny (krzyżyk w lewo
+  // do góry — kciuk z prawej nie zasłania), L = leworęczny, C = prosto w górę.
+  const [hand, setHand] = useState<'L' | 'C' | 'R'>(() => {
+    try { const v = localStorage.getItem('grotx-aim-hand'); return v === 'L' || v === 'R' ? v : 'C'; } catch { return 'C'; }
+  });
   const [showOffsetSlider, setShowOffsetSlider] = useState(false);
+  const [moveHintSeen, setMoveHintSeen] = useState(() => {
+    try { return localStorage.getItem('grotx-move-hint-seen') === '1'; } catch { return false; }
+  });
 
   // [KATALOG TARCZ] Wszystko o tarczy pochodzi z config/targetFaces — wcześniej
   // były to porównania stringów, przez które 6-Ring nigdy się nie uruchamiał.
@@ -62,6 +83,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // 300 jednostek, więc dostają ciaśniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
+  const maxShots = embed?.slots ?? 6;
+  const isFull = currentCoords.length >= maxShots;
 
   // [PUNKTACJA] Liczy się dokładnie punkt krzyżyka — wyższa wartość dopiero,
   // gdy krzyżyk dotknie linii. Próba z promieniem strzały (fd0c21b) dawała 9
@@ -83,6 +106,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // Ciemna obwódka zawsze, bo biała kropka na bieli i żółta na złocie znikają.
   const dotColor = (i: number) => (arrowColors && arrowColorAt(i)) || { hex: '#ffffff', text: '#000000' };
   const nextArrow = arrowColors ? arrowColorAt(currentCoords.length) : null;
+  const endSum = currentArrows.reduce((s: number, v: string) => s + (v === 'X' ? 10 : v === 'M' ? 0 : parseInt(v) || 0), 0);
 
   useEffect(() => {
     if (isFullscreen) {
@@ -104,16 +128,29 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (currentArrows.length === 6 && isFullscreen) {
       const timer = setTimeout(() => {
         onToggleFullscreen();
-      }, 500); 
+      }, 500);
       return () => clearTimeout(timer);
     }
   }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit]);
+
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
+
+  // [WIBRACJA] Krótkie „tyk” przy każdej zmianie pierścienia — granicę czuć
+  // w palcu. Android; iPhone (Safari) tego nie obsługuje i po prostu milczy.
+  const buzz = (ms: number) => { try { navigator.vibrate?.(ms); } catch { /* brak wibracji */ } };
 
   // [WIĘKSZA TARCZA] Przesunięcie celownika jest w pikselach ekranu, nie
   // w jednostkach tarczy — inaczej po powiększeniu tarczy palec musiałby
   // stać dalej. Na pełnej tarczy 1 jednostka ≈ 1 px, więc zapisane wartości
   // zostają mniej więcej tym, czym były.
-  const offsetUnits = () => aimOffset / (svgRef.current?.getScreenCTM()?.a || 1);
+  const pxPerUnit = () => svgRef.current?.getScreenCTM()?.a || 1;
+  // [RĘKA] Odchylenie o ~20° od pionu w stronę przeciwną do kciuka.
+  const aimFrom = (c: { x: number; y: number }) => {
+    const off = aimOffset / pxPerUnit();
+    const dx = hand === 'R' ? -0.34 : hand === 'L' ? 0.34 : 0;
+    const dy = hand === 'C' ? 1 : 0.94;
+    return { x: c.x + dx * off, y: c.y - dy * off };
+  };
 
   const getSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -122,23 +159,70 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     return pt.matrixTransform(svg.getScreenCTM()?.inverse());
   };
 
-  const calculateScore = (x: number, y: number) => {
+  // `index` — która to strzała w serii. Przy przesuwaniu strzały 1–3 na
+  // dwukolumnowym 3-Spot liczy się lewa kolumna, nawet gdy wpisujemy już 4+.
+  const calculateScore = (x: number, y: number, index = currentCoords.length) => {
     if (is3Spot) {
-      return calculateSpotScore(x, y, isVertical, isTarget2);
-    } 
+      return calculateSpotScore(x, y, isVertical, index >= 3);
+    }
     return scoreSingleFace(face, x, y);
   };
 
+  // [PRZESUŃ STRZAŁĘ] Krzyżyk stoi w miejscu ~0,45 s na kropce → strzała
+  // podniesiona. Każdy ruch powyżej ~6 px liczy czas od nowa, więc zwykłe
+  // celowanie obok kropki jej nie łapie.
+  const armHold = () => {
+    clearTimeout(holdTimer.current);
+    if (!onMoveShot || pickedRef.current !== null) return;
+    holdTimer.current = setTimeout(() => {
+      const a = aimRef.current;
+      if (!a) return;
+      const reach = 14 / pxPerUnit();
+      let best = -1; let bestD = Infinity;
+      currentCoords.forEach((d: any, i: number) => {
+        if (d?.x == null || d?.y == null) return;
+        const dist = Math.hypot(d.x - a.x, d.y - a.y);
+        if (dist <= reach && dist < bestD) { best = i; bestD = dist; }
+      });
+      if (best === -1) return;
+      pickedRef.current = best;
+      setPicked(best);
+      const p = { x: currentCoords[best].x, y: currentCoords[best].y };
+      pickDelta.current = { x: p.x - a.x, y: p.y - a.y };
+      aimRef.current = p;
+      setAimPos(p);
+      const val = calculateScore(p.x, p.y, best).val;
+      lastScoreRef.current = val;
+      setCurrentAimScore(val);
+      buzz(25);
+    }, 450);
+  };
+
+  const aimAt = (c: { x: number; y: number }, fresh: boolean) => {
+    setTouchPos({ x: c.x, y: c.y });
+    const p = pickedRef.current;
+    // Podniesiona strzała idzie za palcem od miejsca, w którym była — bez skoku.
+    const f = aimFrom(c);
+    const a = p !== null ? { x: f.x + pickDelta.current.x, y: f.y + pickDelta.current.y } : f;
+    aimRef.current = a;
+    setAimPos(a);
+    const val = calculateScore(a.x, a.y, p ?? currentCoords.length).val;
+    if (!fresh && lastScoreRef.current !== null && val !== lastScoreRef.current) buzz(8);
+    lastScoreRef.current = val;
+    setCurrentAimScore(val);
+  };
+
   const handlePointerDown = (e: React.PointerEvent) => {
-    if (currentCoords.length >= 6) return;
+    if (isFull && !onMoveShot) return;
     (e.target as Element).setPointerCapture(e.pointerId);
     const c = getSvgCoords(e.clientX, e.clientY);
     if (c) {
       setIsAiming(true);
-      setTouchPos({ x: c.x, y: c.y });
-      const off = offsetUnits();
-      setAimPos({ x: c.x, y: c.y - off });
-      setCurrentAimScore(calculateScore(c.x, c.y - off).val);
+      pickedRef.current = null; setPicked(null);
+      lastScoreRef.current = null;
+      restRef.current = { x: e.clientX, y: e.clientY };
+      aimAt(c, true);
+      armHold();
     }
   };
 
@@ -146,84 +230,80 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (!isAiming) return;
     const c = getSvgCoords(e.clientX, e.clientY);
     if (c) {
-      setTouchPos({ x: c.x, y: c.y });
-      const off = offsetUnits();
-      setAimPos({ x: c.x, y: c.y - off });
-      setCurrentAimScore(calculateScore(c.x, c.y - off).val);
+      aimAt(c, false);
+      const r = restRef.current;
+      if (!r || Math.hypot(e.clientX - r.x, e.clientY - r.y) > 6) {
+        restRef.current = { x: e.clientX, y: e.clientY };
+        armHold();
+      }
     }
   };
 
   const handlePointerUp = () => {
-    if (isAiming && aimPos) {
-      const { val, sId } = calculateScore(aimPos.x, aimPos.y);
-      onShot(val, aimPos.x, aimPos.y, sId);
+    clearTimeout(holdTimer.current);
+    const a = aimRef.current;
+    const p = pickedRef.current;
+    if (isAiming && a) {
+      if (p !== null) {
+        const { val, sId } = calculateScore(a.x, a.y, p);
+        onMoveShot(p, val, a.x, a.y, sId);
+        if (!moveHintSeen) {
+          setMoveHintSeen(true);
+          try { localStorage.setItem('grotx-move-hint-seen', '1'); } catch { /* prywatne okno */ }
+        }
+      } else if (!isFull) {
+        const { val, sId } = calculateScore(a.x, a.y);
+        onShot(val, a.x, a.y, sId);
+      }
     }
+    pickedRef.current = null; aimRef.current = null; lastScoreRef.current = null;
+    setPicked(null);
     setIsAiming(false); setAimPos(null); setTouchPos(null); setCurrentAimScore(null);
   };
 
+  const chooseHand = (h: 'L' | 'C' | 'R') => {
+    setHand(h);
+    try { localStorage.setItem('grotx-aim-hand', h); } catch { /* prywatne okno */ }
+  };
+
+  // [LUPA] Nad tarczą, w górnym rogu PO DRUGIEJ stronie niż krzyżyk — wzrok
+  // nie skacze w róg, w którym jest palec. Wcześniej siedziała w nagłówku
+  // i zasłaniała pierwsze pole wyniku (user 2026-11-03).
+  const loupeRight = !!aimPos && aimPos.x < viewCx;
+  const showMoveHint = isFullscreen && !!onMoveShot && !moveHintSeen && currentCoords.length > 0 && !isAiming;
+
   return (
     <div className={`flex flex-col items-center ${isFullscreen ? 'fixed inset-0 z-[99999] bg-[#fcfdfe] pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] justify-start touch-none' : 'w-full h-full relative justify-center overflow-hidden'}`}>
-      
-      {/* HEADER: 3-kolumnowy layout.
-          LEWO: lupa (absolute, gdy celujesz).
-          ŚRODEK: shot badges + undo — wycentrowane by nie nachodziły na lupę.
-          PRAWO: fullscreen / close button. */}
-      <div className={`w-full flex justify-between items-start z-20 pointer-events-none shrink-0 ${isFullscreen ? `relative ${embed?.headerClass ?? 'px-6 pt-6 mb-4'}` : 'px-2 pt-2 absolute top-0'}`}>
 
-        {/* LEWO: kontener dla lupy. Zarezerwowana szerokość mała (lupa jest
-            absolute i wystaje do 115px/88px wizualnie). Duża kolumna przepełniała
-            header — badges lądowały na lupie. */}
-        <div className={`${isFullscreen ? 'w-[8px]' : 'w-[8px]'} relative shrink-0`}>
-          {/* LUPA — okrągły magnifier ~4× zoom okolicy krzyżyka.
-              Widoczny tylko podczas celowania. */}
-          {isAiming && aimPos && (
-            <div className={`absolute ${isFullscreen ? 'top-0 w-[115px] h-[115px]' : 'top-0 w-[88px] h-[88px]'} left-0 rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.15)] border-[3px] border-white pointer-events-none animate-fade-in-up`}>
-              <svg
-                viewBox={`${aimPos.x - 15} ${aimPos.y - 15} 30 30`}
-                className="w-full h-full"
-                preserveAspectRatio="xMidYMid meet"
-              >
-                {is3Spot ? (
-                  <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
-                ) : (
-                  <StandardTarget targetType={targetType} />
-                )}
-                {currentCoords.map((d: any, i: number) => (
-                  <g key={`lupa-${i}`}>
-                    <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
-                    <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
-                  </g>
-                ))}
-                {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
-                <circle cx={aimPos.x} cy={aimPos.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
-                <circle cx={aimPos.x} cy={aimPos.y} r="0.7" fill="#ef4444" />
-                <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
-                <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
-              </svg>
-            </div>
-          )}
-        </div>
-
-        {/* PRAWO: badges + undo + (separator) + close.
-            Wszystko zgrupowane po prawej, close oddzielony marginesem. */}
+      {/* NAGŁÓWEK. Pełny ekran: LEWO wyniki serii + suma, PRAWO cofnij i zamknij.
+          Mały widok: tylko przyszła strzała i powiększenie, po prawej. */}
+      <div className={`w-full flex justify-between items-center z-20 pointer-events-none shrink-0 ${isFullscreen ? `relative ${embed?.headerClass ?? 'px-4 pt-5 mb-3'}` : 'px-2 pt-2 absolute top-0'}`}>
         {isFullscreen ? (
-          <div className="flex items-center gap-2 pointer-events-auto ml-auto">
-            <div className="flex gap-0.5 bg-white/90 p-1 rounded-xl shadow-sm border border-gray-100">
-              {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
-                  strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
-                  embed (ScoringView), zeby nic tam sie nie zmienilo. */}
-              {Array.from({ length: embed?.slots ?? 6 }, (_, i) => i).map(i => <div key={i} className={`relative w-6 h-6 flex items-center justify-center text-[9px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
+          <>
+            <div className="flex items-center gap-2 pointer-events-auto min-w-0">
+              <div className="flex gap-0.5 bg-white p-1 rounded-xl shadow-sm border border-gray-100">
+                {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
+                    strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
+                    embed (ScoringView), zeby nic tam sie nie zmienilo. */}
+                {Array.from({ length: maxShots }, (_, i) => i).map(i => <div key={i} className={`relative w-7 h-7 flex items-center justify-center text-[11px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')} ${picked === i ? 'ring-2 ring-[#0a3a2a] ring-offset-1' : ''}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
+              </div>
+              {currentArrows.length > 0 && (
+                <span className="text-[#0a3a2a] font-black text-lg tabular-nums leading-none" aria-label={t('targetInput.endSum')}>
+                  <span className="text-[10px] text-gray-400 mr-0.5">Σ</span>{endSum}
+                </span>
+              )}
             </div>
-            <button onClick={onUndo} className="p-2 bg-white border border-red-100 shadow-md rounded-full active:scale-90 transition-all">
-              <span className="material-symbols-outlined text-red-500 font-bold text-xl">undo</span>
-            </button>
-            {/* Close — ten sam design co undo, z separatorem */}
-            <button onClick={onToggleFullscreen} className="ml-3 p-2 bg-white border border-red-100 shadow-md rounded-full active:scale-90 transition-all">
-              <span className="material-symbols-outlined text-red-500 font-bold text-xl">close</span>
-            </button>
-          </div>
+            <div className="flex items-center gap-2 pointer-events-auto shrink-0">
+              <button onClick={onUndo} aria-label={t('targetInput.undo')} className="w-10 h-10 bg-white border border-red-100 shadow-md rounded-full flex items-center justify-center active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-red-500 font-bold text-xl">undo</span>
+              </button>
+              <button onClick={onToggleFullscreen} aria-label={t('targetInput.close')} className="w-10 h-10 bg-white border border-gray-200 shadow-md rounded-full flex items-center justify-center active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-gray-500 font-bold text-xl">close</span>
+              </button>
+            </div>
+          </>
         ) : (
-          <div className="flex items-center gap-1.5 pointer-events-auto">
+          <div className="flex items-center gap-1.5 pointer-events-auto ml-auto">
           {nextArrow && <NextArrowChip index={currentCoords.length} />}
           <button onClick={onToggleFullscreen} className="p-2 bg-white/90 border border-gray-200 rounded-full shadow-md text-gray-400 active:scale-90 pointer-events-auto transition-all"><span className="material-symbols-outlined text-lg">fullscreen</span></button>
           </div>
@@ -231,53 +311,71 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       </div>
 
       {isFullscreen && embed?.title && (
-        <p className="w-full text-center text-[#0a3a2a]/55 text-[11px] font-black uppercase tracking-widest shrink-0 -mt-2 mb-2 z-20 pointer-events-none">
+        <p className="w-full text-center text-[#0a3a2a]/55 text-[11px] font-black uppercase tracking-widest shrink-0 -mt-1 mb-2 z-20 pointer-events-none">
           {embed.title}
         </p>
       )}
 
-      {/* LEWY DÓŁ: INTUICYJNY CELOWNIK (OFFSET) POMNIEJSZONY I W 80% KRYCIA */}
+      {/* LEWY DÓŁ: celownik (offset) + strona ręki */}
       <div className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : 'left-2 bottom-2'}`}>
         {showOffsetSlider ? (
-          <div className="relative w-11 h-44 bg-white/95 backdrop-blur-md rounded-[22px] shadow-xl border border-gray-100 flex flex-col items-center pb-2 pt-3 pointer-events-auto animate-fade-in-up">
-            <span className="text-[6px] font-black text-gray-400 uppercase tracking-widest mb-1">Offset</span>
-            
-            <div className="relative flex-1 w-full flex justify-center mb-1">
-              <input 
-                type="range" min="30" max="120" 
-                value={aimOffset} 
-                onChange={(e) => { const v = parseInt(e.target.value); setAimOffset(v); localStorage.setItem('grotx-aim-offset', v.toString()); }} 
-                className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer" 
-                style={{ writingMode: 'vertical-lr', direction: 'rtl' }} 
-              />
-              
-              {/* Przerywana linia - szyna */}
-              <div className="absolute top-1 bottom-1 w-0 border-l-[2px] border-dotted border-gray-300"></div>
-              
-              {/* Celownik jako fizyczny uchwyt suwaka (też mniejszy: w-8 h-8) */}
-              <div 
-                className="absolute left-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-md border border-gray-100 flex items-center justify-center text-emerald-600 z-10 pointer-events-none transition-transform duration-75"
-                style={{ bottom: `calc(${((aimOffset - 30) / 90) * 100}% - 16px)` }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="8" />
-                  <line x1="12" y1="2" x2="12" y2="6" />
-                  <line x1="12" y1="18" x2="12" y2="22" />
-                  <line x1="2" y1="12" x2="6" y2="12" />
-                  <line x1="18" y1="12" x2="22" y2="12" />
-                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
-                </svg>
-              </div>
+          <div className="relative h-44 bg-white/95 backdrop-blur-md rounded-[22px] shadow-xl border border-gray-100 flex items-stretch gap-1 px-1.5 pb-2 pt-3 pointer-events-auto animate-fade-in-up">
+            {/* [RĘKA] Strzałka pokazuje, gdzie krzyżyk stanie nad palcem. */}
+            <div className="flex flex-col items-center justify-center gap-1.5">
+              {/* Strzałki rysowane — ikony north_west/east nie ma w okrojonym foncie (npm run icons:update). */}
+              {([['R', -45], ['C', 0], ['L', 45]] as const).map(([h, deg]) => (
+                <button
+                  key={h}
+                  onClick={(e) => { e.stopPropagation(); chooseHand(h); }}
+                  aria-pressed={hand === h}
+                  aria-label={t(`targetInput.hand.${h}`)}
+                  title={t(`targetInput.hand.${h}`)}
+                  className={`w-8 h-8 rounded-full flex flex-col items-center justify-center transition-colors ${hand === h ? 'bg-[#0a3a2a] text-white' : 'text-gray-400 active:bg-gray-100'}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: `rotate(${deg}deg)` }}>
+                    <path d="M12 20 V4 M5 11 L12 4 L19 11" />
+                  </svg>
+                  <span className="text-[6px] font-black leading-none">{h === 'C' ? '' : h}</span>
+                </button>
+              ))}
             </div>
 
-            <button onClick={(e) => { e.stopPropagation(); setShowOffsetSlider(false); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 active:bg-gray-100 z-30">
-              <span className="material-symbols-outlined text-lg">keyboard_arrow_down</span>
-            </button>
+            <div className="w-8 flex flex-col items-center">
+              <span className="text-[6px] font-black text-gray-400 uppercase tracking-widest mb-1">Offset</span>
+              <div className="relative flex-1 w-full flex justify-center mb-1">
+                <input
+                  type="range" min="30" max="120"
+                  value={aimOffset}
+                  onChange={(e) => { const v = parseInt(e.target.value); setAimOffset(v); localStorage.setItem('grotx-aim-offset', v.toString()); }}
+                  className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer"
+                  style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                />
+                {/* Przerywana linia - szyna */}
+                <div className="absolute top-1 bottom-1 w-0 border-l-[2px] border-dotted border-gray-300"></div>
+                {/* Celownik jako fizyczny uchwyt suwaka */}
+                <div
+                  className="absolute left-1/2 -translate-x-1/2 w-8 h-8 bg-white rounded-full shadow-md border border-gray-100 flex items-center justify-center text-emerald-600 z-10 pointer-events-none transition-transform duration-75"
+                  style={{ bottom: `calc(${((aimOffset - 30) / 90) * 100}% - 16px)` }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <circle cx="12" cy="12" r="8" />
+                    <line x1="12" y1="2" x2="12" y2="6" />
+                    <line x1="12" y1="18" x2="12" y2="22" />
+                    <line x1="2" y1="12" x2="6" y2="12" />
+                    <line x1="18" y1="12" x2="22" y2="12" />
+                    <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                  </svg>
+                </div>
+              </div>
+              <button onClick={(e) => { e.stopPropagation(); setShowOffsetSlider(false); }} className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 active:bg-gray-100 z-30">
+                <span className="material-symbols-outlined text-lg">keyboard_arrow_down</span>
+              </button>
+            </div>
           </div>
         ) : (
-          <button 
-            onClick={(e) => { e.stopPropagation(); setShowOffsetSlider(true); }} 
-            // IKONA POMNIEJSZONA O 1/3 (w-8 h-8) I ZMNIEJSZONE KRYCIE (opacity-50)
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowOffsetSlider(true); }}
+            aria-label={t('targetInput.offset')}
             className="w-8 h-8 bg-white/95 backdrop-blur-md border border-gray-100 rounded-full shadow-sm flex flex-col items-center justify-center active:scale-90 transition-all pointer-events-auto text-[#0a3a2a] opacity-50 hover:opacity-100"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="relative top-[2px]">
@@ -294,19 +392,53 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       </div>
 
       <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : ''}`}>
-        {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy —
-            w pasku u góry wchodziła na lupę (user 2026-10-28). */}
-        {isFullscreen && nextArrow && (
+        {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy.
+            Na czas celowania znika — w tym rogu może stanąć lupa. */}
+        {isFullscreen && nextArrow && !isAiming && (
           <div className="absolute right-3 top-0 z-10 pointer-events-none">
             <NextArrowChip index={currentCoords.length} />
           </div>
         )}
+
+        {/* LUPA — okrągły magnifier ~4× zoom okolicy krzyżyka. Tylko podczas celowania. */}
+        {isAiming && aimPos && (
+          <div className={`absolute z-30 top-0 ${loupeRight ? (isFullscreen ? 'right-3' : 'right-1') : (isFullscreen ? 'left-3' : 'left-1')} ${isFullscreen ? 'w-[132px] h-[132px]' : 'w-[88px] h-[88px]'} rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] border-[3px] border-white pointer-events-none`}>
+            <svg
+              viewBox={`${aimPos.x - 15} ${aimPos.y - 15} 30 30`}
+              className="w-full h-full"
+              preserveAspectRatio="xMidYMid meet"
+            >
+              {is3Spot ? (
+                <SpotTarget isVertical={isVertical} isTarget2={picked !== null ? picked >= 3 : isTarget2} />
+              ) : (
+                <StandardTarget targetType={targetType} />
+              )}
+              {currentCoords.map((d: any, i: number) => i === picked ? null : (
+                <g key={`lupa-${i}`}>
+                  <circle cx={d.x} cy={d.y} r="3" fill={dotColor(i).hex} stroke="black" strokeWidth="0.8" />
+                  <text x={d.x} y={d.y+1.2} fontSize="3.5" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text>
+                </g>
+              ))}
+              {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
+              <circle cx={aimPos.x} cy={aimPos.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
+              <circle cx={aimPos.x} cy={aimPos.y} r="0.7" fill="#ef4444" />
+              <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
+              <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
+            </svg>
+            {picked !== null && (
+              <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 bg-[#0a3a2a] text-white text-[9px] font-black rounded-full px-1.5 py-0.5 leading-none">
+                ↔ {picked + 1}
+              </span>
+            )}
+          </div>
+        )}
+
         <svg
-          ref={svgRef} 
+          ref={svgRef}
           viewBox={viewBox}
-          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} 
-          className="w-full touch-none transition-transform duration-300 pointer-events-auto" 
-          style={{ 
+          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}
+          className="w-full touch-none transition-transform duration-300 pointer-events-auto"
+          style={{
             // [WIĘKSZA TARCZA] Cała wysokość ekranu minus nagłówek (~90) i dół
             // pod celownik offsetu (~96) — wcześniej 58vh zostawiało 1/3 pustą.
             maxHeight: isFullscreen ? 'calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : '100%',
@@ -315,10 +447,17 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
           }}
         >
           {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} /> : <StandardTarget targetType={targetType} />}
-          {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
+          {currentCoords.map((d: any, i: number) => i === picked ? null : <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>
-              <circle cx={aimPos.x} cy={aimPos.y} r="14" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="1.5" />
+              {/* [PRZESUŃ STRZAŁĘ] Podniesiona kropka jedzie pod krzyżykiem. */}
+              {picked !== null && (
+                <g>
+                  <circle cx={aimPos.x} cy={aimPos.y} r="6" fill={dotColor(picked).hex} stroke="black" strokeWidth="1.5" opacity="0.85" />
+                  <text x={aimPos.x} y={aimPos.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(picked).text}>{picked+1}</text>
+                </g>
+              )}
+              <circle cx={aimPos.x} cy={aimPos.y} r="14" fill="white" fillOpacity={picked !== null ? 0 : 0.3} stroke="#0a3a2a" strokeWidth="1.5" strokeDasharray={picked !== null ? '4,3' : undefined} />
               <circle cx={aimPos.x} cy={aimPos.y} r="1.5" fill="#ef4444" />
               <path d={`M ${aimPos.x-22} ${aimPos.y} L ${aimPos.x+22} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="1" opacity="0.6" />
               <path d={`M ${aimPos.x} ${aimPos.y-22} L ${aimPos.x} ${aimPos.y+22}`} stroke="#0a3a2a" strokeWidth="1" opacity="0.6" />
@@ -347,6 +486,13 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         </svg>
       </div>
 
+      {/* [PRZESUŃ STRZAŁĘ] Podpowiedź do pierwszego przesunięcia. */}
+      {showMoveHint && (
+        <p className="absolute bottom-[calc(env(safe-area-inset-bottom)+2.6rem)] left-16 right-6 text-center text-[11px] font-bold text-gray-400 pointer-events-none">
+          {t('targetInput.moveHint')}
+        </p>
+      )}
+
       {/* UNDO: mały w trybie normalnym */}
       {!isFullscreen && (
         <button
@@ -358,8 +504,6 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       )}
 
       <style>{`
-        .animate-fade-in-right { animation: fadeInRight 0.15s ease-out forwards; } 
-        @keyframes fadeInRight { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.2s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
         /* Totalna blokada domyślnych zachowań przeglądarki podczas interakcji z tarczą */

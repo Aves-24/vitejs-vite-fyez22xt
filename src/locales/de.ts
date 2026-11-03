@@ -1344,6 +1344,14 @@ export const views = {
     placeholderHeight: "z.B. 180",
     placeholderDraw: "z.B. 28.5"
   },
+  targetInput: {
+    endSum: "Summe der Passe",
+    undo: "Letzten Pfeil zurücknehmen",
+    close: "Schließen",
+    offset: "Fadenkreuz-Abstand",
+    moveHint: "Fadenkreuz kurz auf einem Pfeil halten – dann verschieben",
+    hand: { R: "Rechte Hand: Fadenkreuz links über dem Finger", C: "Fadenkreuz gerade über dem Finger", L: "Linke Hand: Fadenkreuz rechts über dem Finger" },
+  },
   scoringView: {
     partialTitle: "Unvollständiges Training",
     partialDesc: "Du hast {{shot}} von {{planned}} Passen geschossen. Soll das Ergebnis wie ein volles Training zählen?",

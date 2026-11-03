@@ -9,8 +9,16 @@
 export interface Pt { x: number; y: number }
 export interface Sample extends Pt { t: number }
 
-export const WINDOW_MS = 100;
+// 2026-11-03: 100 → 150 ms + strefa spokoju — przy 100 ms „jeszcze trochę drży”.
+export const WINDOW_MS = 150;
 const FAST_PX = 24;
+export const STILL_PX = 1;
+
+/** Strefa spokoju: ruch krzyżyka poniżej STILL_PX px pomijamy — znika resztkowe drganie. */
+export function holdStill(shown: Pt | null, next: Pt): Pt {
+  if (shown && Math.hypot(next.x - shown.x, next.y - shown.y) < STILL_PX) return shown;
+  return next;
+}
 
 /** Dopisuje próbkę i zwraca [nowe próbki, pozycja krzyżyka]. */
 export function smoothAim(samples: Sample[], s: Sample): [Sample[], Pt] {

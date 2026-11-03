@@ -4,7 +4,7 @@ import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
-import { smoothAim, Sample, WINDOW_MS } from '../../utils/aimSmoothing';
+import { smoothAim, holdStill, Sample, Pt, WINDOW_MS } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
 
 const getArrowStyles = (val: string) => {
@@ -57,6 +57,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // [STABILIZACJA] Próbki dotyku z ostatnich ~100 ms + dosunięcie, gdy palec stoi.
   const samplesRef = useRef<Sample[]>([]);
   const settleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shownRef = useRef<Pt | null>(null); // gdzie krzyżyk stoi (px ekranu)
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   // [RĘKA] Gdzie krzyżyk stoi względem palca: R = praworęczny (krzyżyk w lewo
@@ -180,13 +181,17 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       setIsAiming(true);
       lastScoreRef.current = null;
       samplesRef.current = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
+      shownRef.current = { x: e.clientX, y: e.clientY };
       aimAt(c, true);
     }
   };
 
   const smoothTo = (s: Sample) => {
-    const [kept, p] = smoothAim(samplesRef.current, s);
+    const [kept, avg] = smoothAim(samplesRef.current, s);
     samplesRef.current = kept;
+    const p = holdStill(shownRef.current, avg);
+    if (p === shownRef.current) return;
+    shownRef.current = p;
     const c = getSvgCoords(p.x, p.y);
     if (c) aimAt(c, false);
   };
@@ -202,7 +207,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   const handlePointerUp = () => {
     clearSettle();
-    samplesRef.current = [];
+    samplesRef.current = []; shownRef.current = null;
     const a = aimRef.current;
     if (isAiming && a) {
       const { val, sId } = calculateScore(a.x, a.y);

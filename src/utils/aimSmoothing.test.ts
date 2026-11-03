@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { smoothAim, Sample, Pt } from './aimSmoothing';
+import { smoothAim, holdStill, Sample, Pt } from './aimSmoothing';
 
 const run = (pts: Sample[]): Pt => {
   let s: Sample[] = []; let p: Pt = pts[0];
@@ -19,8 +19,14 @@ describe('stabilizacja krzyżyka', () => {
 
   it('po zatrzymaniu palca krzyżyk stoi w jego punkcie', () => {
     const slide = Array.from({ length: 20 }, (_, i) => ({ x: i * 0.5, y: 0, t: i * 8 }));
-    const hold = Array.from({ length: 15 }, (_, i) => ({ x: 10, y: 0, t: 160 + i * 8 }));
+    const hold = Array.from({ length: 25 }, (_, i) => ({ x: 10, y: 0, t: 160 + i * 8 }));
     expect(run([...slide, ...hold]).x).toBeCloseTo(10, 5);
+  });
+
+  it('strefa spokoju: ruch < 1 px nie przesuwa krzyżyka', () => {
+    expect(holdStill({ x: 10, y: 10 }, { x: 10.6, y: 10.5 })).toEqual({ x: 10, y: 10 });
+    expect(holdStill({ x: 10, y: 10 }, { x: 11.5, y: 10 })).toEqual({ x: 11.5, y: 10 });
+    expect(holdStill(null, { x: 3, y: 4 })).toEqual({ x: 3, y: 4 });
   });
 
   it('szybki skok idzie od razu', () => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
-import { calculateSpotScore, scoreSingleFace } from '../../utils/targetScoring';
+import { calculateSpotScore, scoreSingleFace, arrowRadiusUnits } from '../../utils/targetScoring';
 import { arrowColorAt } from '../../config/arrowColors';
 
 const getArrowStyles = (val: string) => {
@@ -45,12 +45,10 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
   const svgRef = useRef<SVGSVGElement>(null);
-  const [zoom] = useState(() => parseFloat(localStorage.getItem('grotx-zoom') || '1'));
   const [isAiming, setIsAiming] = useState(false);
   const [aimPos, setAimPos] = useState<{x: number, y: number} | null>(null);
   const [touchPos, setTouchPos] = useState<{x: number, y: number} | null>(null);
   const [currentAimScore, setCurrentAimScore] = useState<string | null>(null);
-  const [spotFocus, setSpotFocus] = useState<'ALL' | 'TOP' | 'MID' | 'BOT'>('ALL');
 
   const [aimOffset, setAimOffset] = useState(() => parseInt(localStorage.getItem('grotx-aim-offset') || '55'));
   const [showOffsetSlider, setShowOffsetSlider] = useState(false);
@@ -64,6 +62,21 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // 300 jednostek, więc dostają ciaśniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
+  // [LINIENSCHUSS] Promień strzały — liczy się krawędź, nie środek (utils/targetScoring).
+  const arrowR = arrowRadiusUnits(face);
+
+  // [WIĘKSZA TARCZA] Kadr na pełnym ekranie. 3-Spot pokazuje tylko kolumnę,
+  // w którą teraz strzelamy — druga i tak jest zablokowana, a pokazanie obu
+  // zmniejszało spot do ~12 px na pierścień. Tarcza 6-Ring nie ma zewnętrznych
+  // pierścieni, więc kadr ciasno wokół niej. Poza pełnym ekranem bez zmian
+  // (tam widać obie kolumny i całą serię).
+  const spotCx = isVertical ? 150 : isTarget2 ? 225 : 75;
+  const viewBox = is3Spot
+    ? (isFullscreen ? `${spotCx - 85} -25 170 450` : "-20 -40 340 480")
+    : isCompactFace
+      ? (isFullscreen ? "30 0 240 300" : "-20 -30 340 360")
+      : (isFullscreen ? "-8 -45 316 380" : "-20 0 340 300");
+  const viewCx = (() => { const [x, , w] = viewBox.split(" ").map(Number); return x + w / 2; })();
   // [KOLORY STRZAŁ] Kolor kropki = kolor strzały z tego miejsca w serii.
   // Ciemna obwódka zawsze, bo biała kropka na bieli i żółta na złocie znikają.
   const dotColor = (i: number) => (arrowColors && arrowColorAt(i)) || { hex: '#ffffff', text: '#000000' };
@@ -94,6 +107,12 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     }
   }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit]);
 
+  // [WIĘKSZA TARCZA] Przesunięcie celownika jest w pikselach ekranu, nie
+  // w jednostkach tarczy — inaczej po powiększeniu tarczy palec musiałby
+  // stać dalej. Na pełnej tarczy 1 jednostka ≈ 1 px, więc zapisane wartości
+  // zostają mniej więcej tym, czym były.
+  const offsetUnits = () => aimOffset / (svgRef.current?.getScreenCTM()?.a || 1);
+
   const getSvgCoords = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
     if (!svg) return null;
@@ -103,9 +122,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   const calculateScore = (x: number, y: number) => {
     if (is3Spot) {
-      return calculateSpotScore(x, y, isVertical, isTarget2);
+      return calculateSpotScore(x, y, isVertical, isTarget2, arrowR);
     } 
-    return scoreSingleFace(face, x, y);
+    return scoreSingleFace(face, x, y, arrowR);
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -115,8 +134,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     if (c) {
       setIsAiming(true);
       setTouchPos({ x: c.x, y: c.y });
-      setAimPos({ x: c.x, y: c.y - aimOffset });
-      setCurrentAimScore(calculateScore(c.x, c.y - aimOffset).val);
+      const off = offsetUnits();
+      setAimPos({ x: c.x, y: c.y - off });
+      setCurrentAimScore(calculateScore(c.x, c.y - off).val);
     }
   };
 
@@ -125,8 +145,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
     const c = getSvgCoords(e.clientX, e.clientY);
     if (c) {
       setTouchPos({ x: c.x, y: c.y });
-      setAimPos({ x: c.x, y: c.y - aimOffset });
-      setCurrentAimScore(calculateScore(c.x, c.y - aimOffset).val);
+      const off = offsetUnits();
+      setAimPos({ x: c.x, y: c.y - off });
+      setCurrentAimScore(calculateScore(c.x, c.y - off).val);
     }
   };
 
@@ -136,13 +157,6 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       onShot(val, aimPos.x, aimPos.y, sId);
     }
     setIsAiming(false); setAimPos(null); setTouchPos(null); setCurrentAimScore(null);
-  };
-
-  const getOrigin = () => {
-    if (spotFocus === 'TOP') return '50% 22%';
-    if (spotFocus === 'MID') return '50% 50%';
-    if (spotFocus === 'BOT') return '50% 78%';
-    return 'center';
   };
 
   return (
@@ -168,7 +182,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 preserveAspectRatio="xMidYMid meet"
               >
                 {is3Spot ? (
-                  <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={() => {}} />
+                  <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
                 ) : (
                   <StandardTarget targetType={targetType} />
                 )}
@@ -181,6 +195,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 {/* Krzyżyk w lupie — cieńsze linie żeby pasowały do zoom'u */}
                 <circle cx={aimPos.x} cy={aimPos.y} r="5" fill="white" fillOpacity="0.3" stroke="#0a3a2a" strokeWidth="0.6" />
                 <circle cx={aimPos.x} cy={aimPos.y} r="0.7" fill="#ef4444" />
+                {/* [LINIENSCHUSS] Obrys strzały w prawdziwej wielkości — widać, czy dotyka linii. */}
+                {arrowR > 0 && <circle cx={aimPos.x} cy={aimPos.y} r={arrowR} fill="none" stroke="#ef4444" strokeWidth="0.35" />}
                 <path d={`M ${aimPos.x-9} ${aimPos.y} L ${aimPos.x+9} ${aimPos.y}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
                 <path d={`M ${aimPos.x} ${aimPos.y-9} L ${aimPos.x} ${aimPos.y+9}`} stroke="#0a3a2a" strokeWidth="0.4" opacity="0.8" />
               </svg>
@@ -287,18 +303,18 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         )}
         <svg
           ref={svgRef} 
-          viewBox={is3Spot ? "-20 -40 340 480" : isCompactFace ? (isFullscreen ? "-20 -50 340 410" : "-20 -30 340 360") : (isFullscreen ? "-20 -50 340 390" : "-20 0 340 300")}
+          viewBox={viewBox}
           onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} 
           className="w-full touch-none transition-transform duration-300 pointer-events-auto" 
           style={{ 
-            transform: spotFocus !== 'ALL' ? 'scale(1.8)' : `scale(${zoom})`, 
-            transformOrigin: getOrigin(),
-            maxHeight: isFullscreen ? '58vh' : '100%',
+            // [WIĘKSZA TARCZA] Cała wysokość ekranu minus nagłówek (~90) i dół
+            // pod celownik offsetu (~96) — wcześniej 58vh zostawiało 1/3 pustą.
+            maxHeight: isFullscreen ? 'calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : '100%',
             height: isFullscreen ? 'auto' : '230px',
             ...(embed?.svgStyle || {}),
           }}
         >
-          {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} spotFocus={spotFocus} setSpotFocus={setSpotFocus} /> : <StandardTarget targetType={targetType} />}
+          {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} /> : <StandardTarget targetType={targetType} />}
           {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>
@@ -310,10 +326,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
               {/* Score chip przyczepiony do krzyżyka.
                   Smart flip: domyślnie chip po prawej, jeśli krzyżyk jest
-                  w prawej połowie tarczy (x > 150) — chip skacze na lewo. */}
+                  w prawej połowie kadru — chip skacze na lewo. */}
               {currentAimScore && (() => {
                 const colors = getScoreColors(currentAimScore);
-                const flipLeft = aimPos.x > 150;
+                const flipLeft = aimPos.x > viewCx;
                 const chipX = flipLeft ? aimPos.x - 48 : aimPos.x + 48;
                 return (
                   <g transform={`translate(${chipX}, ${aimPos.y})`}>

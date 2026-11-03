@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calculateSpotScore, scoreSingleFace } from './targetScoring';
+import { calculateSpotScore, scoreSingleFace, arrowRadiusUnits } from './targetScoring';
 import { getStats } from './endStats';
 import {
   TARGET_FACES, findTargetFace, friendlyTargetName, resolveTargetFace, selectableTargetIds, selectableTargetIdsFor,
@@ -148,6 +148,44 @@ describe('dmuchawka', () => {
     expect(isBlowgunSession({ targetType: 'Blasrohr 40cm' })).toBe(true);
     expect(isBlowgunSession({ targetType: '40cm' })).toBe(false);
     expect(isBlowgunSession(null)).toBe(false);
+  });
+});
+
+describe('Linienschuss — strzała dotykająca linii liczy się wyżej', () => {
+  const f40 = resolveTargetFace('40cm');
+  const r40 = arrowRadiusUnits(f40); // 6 mm na 40 cm = 2,25 jednostki
+
+  it('promień strzały w jednostkach tarczy', () => {
+    expect(r40).toBeCloseTo(2.25);
+    expect(arrowRadiusUnits(resolveTargetFace('122cm'))).toBeCloseTo(0.738, 2);
+    expect(arrowRadiusUnits(resolveTargetFace('3-Spot'))).toBeCloseTo(1.875);
+  });
+
+  it('środek strzały tuż za linią, ale strzała jej dotyka = wyższa wartość', () => {
+    const x = 150 + 15 + 2; // 2 jednostki za linią 10/9
+    expect(scoreSingleFace(f40, x, 150).val).toBe('9');
+    expect(scoreSingleFace(f40, x, 150, r40).val).toBe('10');
+    expect(scoreSingleFace(f40, 150 + 7.5 + 2, 150, r40).val).toBe('X');
+  });
+
+  it('strzała całkiem za linią zostaje niżej', () => {
+    expect(scoreSingleFace(f40, 150 + 15 + 3, 150, r40).val).toBe('9');
+  });
+
+  it('strzała dotykająca zewnętrznej linii to jeszcze 1, nie M', () => {
+    expect(scoreSingleFace(f40, 150 + 151, 150, r40).val).toBe('1');
+    expect(scoreSingleFace(f40, 150 + 153, 150, r40).val).toBe('M');
+  });
+
+  it('3-Spot: dotknięcie krawędzi spotu = 6 z id spotu', () => {
+    const r = arrowRadiusUnits(resolveTargetFace('3-Spot'));
+    expect(spot(75 + 63, 66)).toEqual({ val: 'M', sId: '' });
+    expect(calculateSpotScore(75 + 63, 66, false, false, r)).toEqual({ val: '6', sId: 'L0' });
+  });
+
+  it('dmuchawka bez promienia strzały', () => {
+    expect(arrowRadiusUnits(resolveTargetFace(BLOWGUN_FACE_ID))).toBe(0);
+    expect(arrowRadiusUnits(resolveTargetFace(BLOWGUN40_FACE_ID))).toBe(0);
   });
 });
 

@@ -416,6 +416,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const currentRoundStats = activeRoundTab === 1 ? getStats(r1Ends, submittedEnds.length < roundSize ? inputArrows : []) : getStats(r2Ends, submittedEnds.length >= roundSize ? inputArrows : []);
   const r1TotalScore = r1Ends.reduce((sum, end) => sum + (end.total_sum || 0), 0);
   const isRound1Finished = submittedEnds.length >= roundSize;
+  const isShooting = submittedEnds.length < plannedEnds;
 
   // Wynik na zywo idzie do pojedynku raz na serie (z zatwierdzonych serii),
   // nie przy kazdej strzale — 6x mniej zapisow i odczytow u przeciwnikow.
@@ -693,7 +694,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   );
 
   return (
-    <div className="space-y-2 pb-40 relative w-full pt-[env(safe-area-inset-top)] max-w-md mx-auto min-h-screen flex flex-col bg-[#fcfdfe]">
+    <div className="space-y-2 pb-8 relative w-full pt-[env(safe-area-inset-top)] max-w-md mx-auto min-h-screen flex flex-col bg-[#fcfdfe]">
       
       {isTargetFullscreen && activeInputTab === 1 && submittedEnds.length < plannedEnds && (
         <TargetInput 
@@ -708,6 +709,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         />
       )}
 
+      {/* [UKŁAD] W trakcie strzelania nagłówek, tarcza, tabela i wynik mieszczą się
+          dokładnie w wysokości ekranu (user 2026-11-03) — tarcza bierze resztę. */}
+      <div className={`flex flex-col gap-2 ${isShooting ? 'h-[calc(100dvh-env(safe-area-inset-top))] pb-2' : ''}`}>
       <div className="bg-white p-3 mx-2 mt-2 rounded-2xl shadow-sm border border-gray-100 shrink-0">
         <div className="flex items-center justify-between h-10">
           {/* [FOKUS] Miniatura fokusu w miejscu logo (user 2026-09-18) — ta sama
@@ -786,7 +790,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{getFriendlyTargetName(targetType)}
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0 h-full">
+          <div className="flex items-center gap-2 shrink-0 h-full">
             <div onClick={() => setIsTimerExpanded(true)} className="flex items-center gap-1 cursor-pointer active:scale-90 transition-all">
               <div className="relative flex items-center justify-center">
                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className={timerMode === 'SHOOT' ? 'text-emerald-500 animate-pulse' : 'text-[#0a3a2a]'}>
@@ -800,20 +804,32 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                  )}
               </div>
             </div>
+            {activeBattle?.hostId === userId && activeBattle?.guests?.length > 0 && (
+              <button
+                onClick={() => { setActiveGuestIndex(0); setShowGuestScorePanel(true); }}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-violet-600 text-white active:scale-90 transition-all"
+                aria-label={t('scoringView.guestsBtn', 'Gości')}
+              >
+                <span className="material-symbols-outlined text-[18px]">group</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className={`w-8 h-8 flex items-center justify-center rounded-full transition-all active:scale-90 ${isMenuOpen ? 'bg-[#fed33e] text-[#0a3a2a]' : 'bg-gray-50 text-[#0a3a2a] border border-gray-100'}`}
+              aria-label="Menu"
+              aria-expanded={isMenuOpen}
+            >
+              <span className="material-symbols-outlined text-[20px]">{isMenuOpen ? 'close' : 'menu'}</span>
+            </button>
           </div>
         </div>
 
       </div>
 
-      <div className="flex gap-1 p-1 mx-auto w-5/6 bg-gray-50 rounded-2xl border border-gray-200">
-        <button onClick={() => setActiveRoundTab(1)} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-widest transition-all ${activeRoundTab === 1 ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'} flex items-center justify-center gap-1 uppercase`}>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} 1 {isRound1Finished && <span className="opacity-80">({r1TotalScore})</span>}</button>
-        <button onClick={() => { if (isRound1Finished) setActiveRoundTab(2); }} className={`flex-1 py-2.5 rounded-xl text-[12px] font-black tracking-widest transition-all ${activeRoundTab === 2 ? 'bg-[#0a3a2a] text-white shadow-md' : 'text-gray-400'} ${!isRound1Finished ? 'opacity-30 cursor-not-allowed' : ''} uppercase`}>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} 2</button>
-      </div>
-
       <Timer isExpanded={isTimerExpanded} onClose={() => setIsTimerExpanded(false)} playBeep={playBeep} currentEnd={submittedEnds.length} externalSeconds={timerSeconds} setExternalSeconds={setTimerSeconds} externalMode={timerMode} setExternalMode={setTimerMode} />
 
-      {submittedEnds.length < plannedEnds && (
-        <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden h-[240px] shrink-0 ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
+      {isShooting && (
+        <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[170px] max-h-[380px] ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
           <div className={`flex-1 ${activeInputTab === 0 ? 'p-2' : 'p-1'} h-full flex items-center justify-center`}>
             {activeInputTab === 0 ? (
               <div className="flex flex-col gap-1.5 h-full w-full">
@@ -857,9 +873,25 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         </div>
       )}
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mx-2">
-        <div className="px-3 py-2 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
-          <span>{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm mx-2 shrink-0">
+        <div className="px-1.5 py-1 flex justify-between items-center text-[10px] font-bold text-white bg-[#0a3a2a]">
+          {/* [RUNDY] Przełącznik rund w pasku tabeli zamiast osobnego wiersza (user 2026-11-03). */}
+          <div className="flex gap-1">
+            {[1, 2].map(r => {
+              const on = activeRoundTab === r;
+              const locked = r === 2 && !isRound1Finished;
+              return (
+                <button
+                  key={r}
+                  onClick={() => { if (!locked) setActiveRoundTab(r); }}
+                  className={`h-6 px-2.5 rounded-md text-[10px] font-black tracking-widest uppercase transition-all ${on ? 'bg-white text-[#0a3a2a]' : 'text-white/70'} ${locked ? 'opacity-40 cursor-not-allowed' : 'active:scale-95'}`}
+                  aria-pressed={on}
+                >
+                  {String(t('scoringView.round', 'RUNDA')).toUpperCase()} {r}{r === 1 && isRound1Finished && <span className="opacity-70"> ({r1TotalScore})</span>}
+                </button>
+              );
+            })}
+          </div>
           {/* [FEHLSCHUSS] Tryb oznaczania (user 2026-10-29): przy strzelaniu tylko flaga
               i (i); flaga włącza tryb (podpowiedź + flagi na polach), druga wyłącza. */}
           {hasAnyArrow && (
@@ -883,7 +915,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </div>
           )}
         </div>
-        <div className="p-2 space-y-1">
+        <div className="p-1.5 space-y-0.5">
           {Array.from({ length: roundSize }, (_, i) => i).map(i => {
             const idx = activeRoundTab === 1 ? i : roundSize + i;
             const end = submittedEnds[idx];
@@ -893,7 +925,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             const prevSum = submittedEnds.slice(activeRoundTab === 1 ? 0 : roundSize, idx).reduce((s, e) => s + (e.total_sum || 0), 0);
             const runSum = prevSum + passSum;
             return (
-              <div key={idx} className={`flex items-center text-center p-1 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
+              <div key={idx} className={`flex items-center text-center px-1 py-0.5 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
                 <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
                 <div className="flex-1 grid grid-cols-6 gap-1">
                   {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,
@@ -917,7 +949,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                         role={canToggle ? 'button' : undefined}
                         aria-pressed={canToggle ? bad : undefined}
                         aria-label={canToggle ? t('scoring.badShot.cell', { v: val }) : undefined}
-                        className={`relative h-8 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
+                        className={`relative h-7 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
                       >
                         {val}
                         {/* Flaga w rogu (user 2026-10-29): widoczna przy bieżącej i poprzedniej
@@ -936,31 +968,36 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                     );
                   })}
                 </div>
-                <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#cce6dc] text-[#0a3a2a]' : 'bg-[#F9F9F9] text-transparent'}`}>{passSum || ''}</div>
-                <div className={`w-10 h-8 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#0a3a2a] text-white' : 'bg-[#F9F9F9] text-transparent'}`}>{isCur ? '...' : (runSum || '')}</div>
+                <div className={`w-10 h-7 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#cce6dc] text-[#0a3a2a]' : 'bg-[#F9F9F9] text-transparent'}`}>{passSum || ''}</div>
+                <div className={`w-10 h-7 flex items-center justify-center text-[11px] font-bold rounded-md ml-1 ${end || isCur ? 'bg-[#0a3a2a] text-white' : 'bg-[#F9F9F9] text-transparent'}`}>{isCur ? '...' : (runSum || '')}</div>
               </div>
             );
           })}
         </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 py-3 border-t border-gray-200 text-center bg-white rounded-xl shadow-sm border mx-2 px-2 items-center">
-         <div><span className="text-[9px] block text-gray-400 font-bold uppercase">X/10/9</span><span className="text-sm font-black text-[#333]">{currentRoundStats.x}/{currentRoundStats.t}/{currentRoundStats.n}</span></div>
-         <div><span className="text-[9px] block text-gray-400 font-bold uppercase">{t('scoringView.avg', 'ŚREDNIA')}</span><span className="text-sm font-black text-[#333]">{currentRoundStats.avg}</span></div>
-         <div><span className="text-[9px] block text-gray-400 font-bold uppercase">{t('scoringView.arrows', 'STRZAŁY')}</span><span className="text-sm font-black text-[#333]">{currentRoundStats.count}</span></div>
-         <div className="bg-emerald-50 rounded-lg py-1 border border-emerald-100"><span className="text-[9px] block text-emerald-600 font-black uppercase">{t('scoringView.result', 'WYNIK')}</span><span className="text-base font-black text-[#0a3a2a] leading-none">{currentRoundStats.score}</span></div>
-      </div>
-
-      <div className="bg-[#fed33e] p-4 mx-2 rounded-2xl shadow-md border-2 border-[#e5bd38] flex justify-between items-center relative">
-        <div className="flex flex-col gap-2">
-          <span className="font-black uppercase text-xs tracking-widest text-[#725b00]">{t('scoringView.totalSum', 'Suma Całkowita')}</span>
-          <div className="flex gap-4 text-[#725b00]">
-            <div><span className="text-[8px] block font-black opacity-60 uppercase tracking-widest">X/10/9</span><span className="text-sm font-black">{globalStats.x}/{globalStats.t}/{globalStats.n}</span></div>
-            <div><span className="text-[8px] block font-black opacity-60 uppercase tracking-widest">{t('scoringView.avg', 'ŚREDNIA')}</span><span className="text-sm font-black">{globalStats.avg}</span></div>
-            <div><span className="text-[8px] block font-black opacity-60 uppercase tracking-widest">{t('scoringView.arrows', 'STRZAŁY')}</span><span className="text-sm font-black">{globalStats.count}</span></div>
+      {/* [WYNIK] Jeden pasek zamiast dwóch (user 2026-11-03): po lewej bieżąca runda,
+          po prawej suma całkowita — wcześniej X/10/9, ⌀ i strzały stały dwa razy. */}
+      <div className="bg-[#fed33e] px-3 py-2 mx-2 rounded-2xl shadow-sm border-2 border-[#e5bd38] flex justify-between items-center gap-2 shrink-0 text-[#725b00]">
+        <div className="flex gap-3 min-w-0">
+          <div>
+            <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
+            <span className="text-sm font-black leading-tight">{currentRoundStats.score}</span>
+          </div>
+          <div>
+            <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">X/10/9</span>
+            <span className="text-sm font-black leading-tight">{currentRoundStats.x}/{currentRoundStats.t}/{currentRoundStats.n}</span>
+          </div>
+          <div>
+            <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.avg', 'ŚREDNIA')}</span>
+            <span className="text-sm font-black leading-tight">{currentRoundStats.avg}</span>
           </div>
         </div>
-        <span className="text-5xl font-black text-[#725b00]">{globalStats.score}</span>
+        <div className="text-right shrink-0">
+          <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.totalSum', 'Suma Całkowita')}</span>
+          <span className="text-3xl font-black leading-none">{globalStats.score}</span>
+        </div>
+      </div>
       </div>
 
       {/* [PODSUMOWANIE TRENINGU] Bilanz od razu po ostatniej serii, bez rozwijania. */}
@@ -1153,9 +1190,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         document.body
       )}
 
+      {/* [MENU] Przycisk menu siedzi w nagłówku (user 2026-11-03) — na dole zasłaniał
+          pasek wyniku. Menu spada spod nagłówka, przycisk gości też w nagłówku. */}
       {typeof document !== 'undefined' && createPortal(
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100000] flex flex-col items-center pointer-events-none w-full max-w-md">
-          <div className={`flex items-center bg-[#0a3a2a]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 transition-all duration-300 overflow-hidden mb-3 pointer-events-auto ${isMenuOpen ? 'max-h-24 opacity-100 px-2 py-2' : 'max-h-0 opacity-0'}`}>
+        <div className="fixed top-[calc(env(safe-area-inset-top)+68px)] inset-x-0 z-[100000] flex justify-end pointer-events-none w-full max-w-md mx-auto px-3">
+          <div className={`flex items-center bg-[#0a3a2a]/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/10 transition-all duration-300 overflow-hidden pointer-events-auto ${isMenuOpen ? 'max-h-24 opacity-100 px-2 py-2' : 'max-h-0 opacity-0'}`}>
             <button onClick={() => { setIsMenuOpen(false); onNavigate('HOME'); }} className="flex flex-col items-center gap-1 text-white/80 hover:text-white px-4 py-2 cursor-pointer">
               <span className="material-symbols-outlined text-xl">home</span>
               <span className="text-[8px] font-black uppercase">{t('scoringView.menuHome', 'Home')}</span>
@@ -1169,23 +1208,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <button onClick={() => { setIsMenuOpen(false); onNavigate('SETTINGS'); }} className="flex flex-col items-center gap-1 text-white/80 hover:text-white px-4 py-2 cursor-pointer">
               <span className="material-symbols-outlined text-xl">settings</span>
               <span className="text-[8px] font-black uppercase">{t('scoringView.menuSettings', 'Ustawienia')}</span>
-            </button>
-          </div>
-          <div className="flex items-center gap-3 pointer-events-auto">
-            {activeBattle?.hostId === userId && activeBattle?.guests?.length > 0 && (
-              <button
-                onClick={() => {
-                  setActiveGuestIndex(0);
-                  setShowGuestScorePanel(true);
-                }}
-                className="w-14 h-14 flex items-center justify-center rounded-full shadow-2xl bg-violet-600 text-white border border-violet-400/30 active:scale-90 transition-all flex-col gap-0.5"
-              >
-                <span className="material-symbols-outlined text-xl">group</span>
-                <span className="text-[7px] font-black uppercase leading-none">{t('scoringView.guestsBtn', 'Gości')}</span>
-              </button>
-            )}
-            <button onClick={() => setIsMenuOpen(!isMenuOpen)} className={`w-14 h-14 flex items-center justify-center rounded-full shadow-2xl transition-all duration-300 border border-white/20 ${isMenuOpen ? 'bg-[#fed33e] text-[#0a3a2a] rotate-90 opacity-100' : 'bg-[#0a3a2a] text-white opacity-60 hover:opacity-100'}`}>
-              <span className="material-symbols-outlined text-2xl">{isMenuOpen ? 'close' : 'menu'}</span>
             </button>
           </div>
         </div>,

@@ -319,7 +319,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         )}
       </div>
 
-      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : ''}`}>
+      <div className={`flex-1 w-full relative flex items-start justify-center overflow-visible ${isFullscreen ? (embed?.padClass ?? 'pb-24') : 'min-h-0'}`}>
         {/* [KOLORY STRZAŁ] W pełnym ekranie strzała stoi po prawej przy tarczy.
             Na czas celowania znika — w tym rogu może stanąć lupa. */}
         {isFullscreen && nextArrow && !isAiming && (
@@ -365,7 +365,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             // [WIĘKSZA TARCZA] Cała wysokość ekranu minus nagłówek (~90) i dół
             // pod celownik offsetu (~96) — wcześniej 58vh zostawiało 1/3 pustą.
             maxHeight: isFullscreen ? 'calc(100dvh - 190px - env(safe-area-inset-top) - env(safe-area-inset-bottom))' : '100%',
-            height: isFullscreen ? 'auto' : '230px',
+            // Wbudowana: tyle, ile ma okienko (rośnie z ekranem, user 2026-11-03).
+            height: isFullscreen ? 'auto' : '100%',
             ...(embed?.svgStyle || {}),
           }}
         >

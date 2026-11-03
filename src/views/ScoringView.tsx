@@ -22,7 +22,7 @@ import { AI_ENABLED } from '../config/features';
 import TargetInput, { ArrowColorBar } from '../components/targets/TargetInput';
 import { getSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics, displayPair } from '../utils/focus';
-import { FocusDots, focusTitle, FocusChoiceChips, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
+import { FocusDots, focusTitle, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
 import { isSpotFace, friendlyTargetName } from '../config/targetFaces';
@@ -120,7 +120,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // `true` = z liczbą treningów — miniatura fokusu w nagłówku pokazuje kropki.
   const focusState = useCurrentFocus(battleId ? null : userId);
   // [DWA FOKUSY] Chipy „pod jaki fokus” zamiast dawnego przełącznika tematu.
-  const [focusChoice, setFocusChoice] = useFocusChoice(focusState, userId);
+  const [focusChoice] = useFocusChoice(focusState, userId);
   // [TEMAT TRENINGU] W nagłówku to, co jest na górze karty (fokus albo temat dnia).
   const headerFocus = displayPair(focusState).main;
   // [FOKUS UMGESETZT] Trener 2026-10-29: po treningu krótkie „Ja / Teilweise / Nein”
@@ -802,14 +802,6 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </div>
           </div>
         </div>
-
-        {/* [TEMAT TRENINGU] Pod co idzie ten trening — u góry jak w treningu
-            technicznym (user 2026-10-15); domyślnie zaznaczone fokus i temat. */}
-        {focusState && (focusState.focus || focusState.trainingTopic) && (
-          <div className="mt-2 pt-2 border-t border-gray-100">
-            <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} showLabel={false} />
-          </div>
-        )}
 
       </div>
 

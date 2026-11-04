@@ -41,31 +41,51 @@ function TrimBar({ duration, start, end, marks, onChange }: {
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<'start' | 'end' | null>(null);
+  // Najswiezsze granice — kolejne pointermove potrafia przyjsc przed
+  // rerenderem, a stare `start`/`end` z propsow cofaly wtedy drugi uchwyt.
+  const live = useRef({ start, end });
+  if (!drag.current) live.current = { start, end };
   const toT = (e: React.PointerEvent) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return 0;
     const f = r.height > r.width ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
     return Math.max(0, Math.min(duration, f * duration));
   };
+  // Uchwyt wjezdzajacy na drugi PCHA go dalej (z zachowaniem MIN_CLIP)
+  // zamiast stawac w miejscu — to „stawanie” wygladalo jak zablokowanie.
   const apply = (t: number) => {
-    if (drag.current === 'start') onChange(Math.min(t, end - MIN_CLIP), end, 'start');
-    else if (drag.current === 'end') onChange(start, Math.max(t, start + MIN_CLIP), 'end');
+    let { start: s, end: en } = live.current;
+    if (drag.current === 'start') {
+      s = Math.min(t, duration - MIN_CLIP);
+      if (en - s < MIN_CLIP) en = s + MIN_CLIP;
+    } else if (drag.current === 'end') {
+      en = Math.max(t, MIN_CLIP);
+      if (en - s < MIN_CLIP) s = en - MIN_CLIP;
+    } else return;
+    live.current = { start: s, end: en };
+    onChange(s, en, drag.current);
   };
+  const stop = () => { drag.current = null; };
   const pct = (t: number) => `${(t / duration) * 100}%`;
   return (
+    // Zewnetrzny pas z marginesem px-4 lapie dotyk TAKZE na polowie uchwytu
+    // wystajacej poza tor — wczesniej uchwyt przy samej krawedzi byl w polowie
+    // „martwy” i wygladalo to na zablokowany.
     <div
-      ref={ref}
-      className="relative h-10 mx-3 touch-none select-none"
+      className="px-4 touch-none select-none"
       onPointerDown={(e) => {
         const t = toT(e);
-        drag.current = Math.abs(t - start) <= Math.abs(t - end) ? 'start' : 'end';
+        const { start: s, end: en } = live.current;
+        drag.current = Math.abs(t - s) <= Math.abs(t - en) ? 'start' : 'end';
         e.currentTarget.setPointerCapture(e.pointerId);
         apply(t);
       }}
       onPointerMove={(e) => { if (drag.current) apply(toT(e)); }}
-      onPointerUp={() => { drag.current = null; }}
-      onPointerCancel={() => { drag.current = null; }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onLostPointerCapture={stop}
     >
+    <div ref={ref} className="relative h-10">
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-white/15" />
       <div className="absolute top-1/2 -translate-y-1/2 h-2 bg-[#4ade80]/60" style={{ left: pct(start), width: pct(end - start) }} />
       {marks.map(m => {
@@ -73,7 +93,7 @@ function TrimBar({ duration, start, end, marks, onChange }: {
         return (
           <span
             key={m.n}
-            className="absolute top-0 -translate-x-1/2 text-[8px] font-black leading-none px-0.5 rounded"
+            className="absolute top-0 -translate-x-1/2 text-[8px] font-black leading-none px-0.5 rounded pointer-events-none"
             style={{ left: pct(m.t), color: ac ? ac.hex : '#ffffff' }}
           >
             {m.n}
@@ -88,6 +108,7 @@ function TrimBar({ duration, start, end, marks, onChange }: {
           style={{ left: pct(h === 'start' ? start : end), backgroundColor: FLAG_COLOR[h] }}
         />
       ))}
+    </div>
     </div>
   );
 }
@@ -429,12 +450,35 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // ─── Wycinek ─────────────────────────────────────────────────────────────
   // Ustawiany w okienku Udostepnij dwoma uchwytami (TrimBar). Przeciaganie
   // uchwytu przewija film pod spodem, wiec widac, gdzie sie tnie.
+  // Przewijanie z dlawikiem: nowy skok dopiero po `seeked` poprzedniego.
+  // Ustawianie currentTime przy KAZDYM pointermove zasypywalo dekoder na
+  // telefonie, przegladarka sie dlawila i uchwyt przestawal isc za palcem.
+  // Po drodze liczy sie tylko OSTATNIA pozycja.
+  const seekBusyRef = useRef(false);
+  const seekNextRef = useRef<number | null>(null);
+  const seekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runSeek = (v: HTMLVideoElement, t: number) => {
+    seekBusyRef.current = true;
+    v.currentTime = t;
+    // Bezpiecznik, gdyby `seeked` nie przyszedl — inaczej przewijanie stanelo by na dobre.
+    if (seekTimerRef.current) clearTimeout(seekTimerRef.current);
+    seekTimerRef.current = setTimeout(onSeekDone, 400);
+  };
+  const onSeekDone = () => {
+    if (seekTimerRef.current) { clearTimeout(seekTimerRef.current); seekTimerRef.current = null; }
+    const v = replayVideoRef.current;
+    const next = seekNextRef.current;
+    seekNextRef.current = null;
+    if (v && next !== null) runSeek(v, next);
+    else seekBusyRef.current = false;
+  };
   const seekTo = (t: number) => {
     const v = replayVideoRef.current;
     if (!v) return;
     v.pause();
-    v.currentTime = t;
     setReplayTime(t);
+    if (seekBusyRef.current) { seekNextRef.current = t; return; }
+    runSeek(v, t);
   };
 
   // 3 s przed strzalem (naciag, kotwica) i 2 s po (wypuszczenie, follow-through).
@@ -533,7 +577,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   setReplayDuration(v.duration || 0);
                   setSourceIsPortrait(v.videoHeight > v.videoWidth);
                 }}
-                onTimeUpdate={(e) => setReplayTime(e.currentTarget.currentTime)}
+                onTimeUpdate={(e) => { if (!seekBusyRef.current) setReplayTime(e.currentTarget.currentTime); }}
+                onSeeked={() => { if (seekBusyRef.current) onSeekDone(); }}
                 onPlay={() => setReplayPlaying(true)}
                 onPause={() => setReplayPlaying(false)}
                 onClick={() => {

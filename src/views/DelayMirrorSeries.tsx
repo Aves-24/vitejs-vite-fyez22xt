@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TargetInput from '../components/targets/TargetInput';
 import { readMirrorArrowColors } from '../utils/mirrorArrowColors';
-import { isSpotFace, DEFAULT_TARGET_FACE } from '../config/targetFaces';
+import { isSpotFace, DEFAULT_TARGET_FACE, friendlyTargetName, selectableTargetIdsFor } from '../config/targetFaces';
 import { shotDirection } from '../utils/shotDirection';
 
 // Trening techniczny — ekrany A (tarcza) i B (wbijanie strzał).
@@ -46,29 +46,50 @@ interface Props {
   onShotDelta?: (delta: number) => void;
 }
 
+/** Tarcze do wyboru w lustrze — lucznicze z katalogu aplikacji, bez dmuchawki. */
+export function mirrorFaceIds(): string[] {
+  return selectableTargetIdsFor('recurve');
+}
+
 // Okragla tarcza z ostatniego treningu zamiast jednej wbitej na sztywno.
 // Czytamy ten sam cache co HomeView (`{data, expiresAt}`) — bez zapytania
 // do Firestore i bez ruszania dzialajacego pliku.
-export function lastRoundFace(userId: string): string {
+// Tylko tarcze z katalogu wyboru — po treningu technicznym ostatnia sesja ma
+// targetType 'TECHNICAL' i ten napis ladowal na przycisku tarczy (user 2026-11-04).
+function lastRoundFace(userId: string): string {
   try {
     const raw = localStorage.getItem(`grotX_lastSession_${userId}`);
     if (raw) {
       const { data, expiresAt } = JSON.parse(raw);
-      const tt = data?.targetType;
-      if (Date.now() <= expiresAt && typeof tt === 'string' && tt && !isSpotFace(tt)) return tt;
+      const tt = friendlyTargetName(data?.targetType);
+      if (Date.now() <= expiresAt && mirrorFaceIds().includes(tt) && !isSpotFace(tt)) return tt;
     }
   } catch { /* ignore */ }
   return DEFAULT_TARGET_FACE.id;
 }
 
+const SERIES_FACE_KEY = 'delayMirror.seriesFace';
+
+/** Tarcza passy: zapisany wybor, a bez niego (stary klucz seriesSpot albo
+ *  pierwszy raz) — 3-Spot albo okragla tarcza z ostatniego treningu. */
+export function readSeriesFace(userId: string): string {
+  try {
+    const v = localStorage.getItem(SERIES_FACE_KEY);
+    if (v && mirrorFaceIds().includes(v)) return v;
+    if (localStorage.getItem('delayMirror.seriesSpot') === '1') return SPOT_FACE;
+  } catch { /* ignore */ }
+  return lastRoundFace(userId);
+}
+
+export function saveSeriesFace(id: string) {
+  try { localStorage.setItem(SERIES_FACE_KEY, id); } catch { /* ignore */ }
+}
+
 export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack, onShotDelta }: Props) {
   const { t } = useTranslation();
-  const roundFace = useMemo(() => lastRoundFace(userId), [userId]);
-
   const [step, setStep] = useState<'target' | 'enter'>('target');
-  const [useSpot, setUseSpot] = useState<boolean>(() => {
-    try { return localStorage.getItem('delayMirror.seriesSpot') === '1'; } catch { return false; }
-  });
+  const [face, setFace] = useState<string>(() => readSeriesFace(userId));
+  const pickFace = (id: string) => { setFace(id); saveSeriesFace(id); };
   const [arrowCount, setArrowCount] = useState<number>(() => {
     try {
       const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10);
@@ -111,7 +132,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     };
   }, []);
 
-  const targetType = useSpot ? SPOT_FACE : roundFace;
+  const targetType = face;
 
   // Wysokosc dolnego paska — celownik i wybor reki TargetInput staja nad nim.
   // Pasek rosnie z kazda wbita strzala (kafelki kierunku), wiec mierzymy.
@@ -154,31 +175,24 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
               onClick={() => setEditSetup(true)}
               className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 bg-white/5 border border-white/15 active:scale-95 transition-all"
             >
-              <span className="material-symbols-outlined text-[#fed33e] text-lg">{useSpot ? 'grid_view' : 'radio_button_unchecked'}</span>
+              <span className="material-symbols-outlined text-[#fed33e] text-lg">{isSpotFace(face) ? 'grid_view' : 'radio_button_unchecked'}</span>
               <span className="flex-1 text-left text-white text-sm font-bold">
-                {t('delayMirror.seriesSetupSummary', { face: useSpot ? t('delayMirror.seriesTargetSpot') : roundFace, n: arrowCount })}
+                {t('delayMirror.seriesSetupSummary', { face, n: arrowCount })}
               </span>
               <span className="text-white/50 text-[11px] font-bold uppercase tracking-wider">{t('delayMirror.seriesSetupChange')}</span>
             </button>
           )}
 
           {editSetup && (<>
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setUseSpot(true); try { localStorage.setItem('delayMirror.seriesSpot', '1'); } catch { /* ignore */ } }}
-              className={pickBtn(useSpot)}
-            >
-              <span className="material-symbols-outlined text-lg">grid_view</span>
-              {t('delayMirror.seriesTargetSpot')}
-            </button>
-            <button
-              onClick={() => { setUseSpot(false); try { localStorage.setItem('delayMirror.seriesSpot', '0'); } catch { /* ignore */ } }}
-              className={pickBtn(!useSpot)}
-            >
-              <span className="material-symbols-outlined text-lg">radio_button_unchecked</span>
-              {t('delayMirror.seriesTargetRound')}
-              <span className="text-[9px] font-bold opacity-60 normal-case">{roundFace}</span>
-            </button>
+          {/* Tarcze z katalogu aplikacji (config/targetFaces), ta sama lista
+              co przy zwyklym treningu. */}
+          <div className="grid grid-cols-3 gap-2">
+            {mirrorFaceIds().map(id => (
+              <button key={id} onClick={() => pickFace(id)} className={pickBtn(face === id)}>
+                <span className="material-symbols-outlined text-lg">{isSpotFace(id) ? 'grid_view' : 'radio_button_unchecked'}</span>
+                <span className="normal-case">{id}</span>
+              </button>
+            ))}
           </div>
 
           <div>

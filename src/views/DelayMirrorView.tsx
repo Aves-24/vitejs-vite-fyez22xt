@@ -6,7 +6,8 @@ import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 import { drawBrandOnCanvas } from './DelayMirrorBrand';
 import { getFullCodec } from '../utils/mediaCodecs';
-import DelayMirrorSeries, { TechSeriesDraft, TechShot, lastRoundFace } from './DelayMirrorSeries';
+import DelayMirrorSeries, { TechSeriesDraft, TechShot, readSeriesFace, saveSeriesFace, mirrorFaceIds } from './DelayMirrorSeries';
+import { isSpotFace } from '../config/targetFaces';
 import TopicPicker from '../components/TopicPicker';
 import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
@@ -236,7 +237,8 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   // false = samo lustro — pelny recorder i potok canvas w ogole nie powstaja,
   // wiec nie ma rosnacego bloba w RAM ani petli rAF rysujacej kazda klatke.
   const [clipMode, setClipMode] = useState<boolean>(() => {
-    try { return localStorage.getItem(CLIP_STORAGE_KEY) === '1'; } catch { return false; }
+    // Standard (user 2026-11-04): lustro + nagranie, dopoki ktos sam nie wybierze inaczej.
+    try { return localStorage.getItem(CLIP_STORAGE_KEY) !== '0'; } catch { return true; }
   });
   // Tryb prosty vs ekspercki. Prosty to samo lustro: 15 s, poziomo, nic nie
   // zapisuje i nie pokazuje zadnych ustawien. Ekspercki odslania suwak
@@ -247,16 +249,17 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   useEffect(() => {
     try { localStorage.setItem(EXPERT_STORAGE_KEY, expert ? '1' : '0'); } catch { /* ignore */ }
   }, [expert]);
+  // Tryb prosty to zawsze samo lustro — ale NIE nadpisuje zapisanego wyboru
+  // eksperta (wczesniej setClipMode(false) na starcie gubilo „+ Aufnahme").
+  const useClip = expert && clipMode;
   // [KOLORY STRZAŁ] Kolory strzał w analizie serii. Dopóki user sam nie
   // przełączy, idziemy za opcją z zestawu (SPRZĘT → STRZAŁY).
   const [mirrorColors, setMirrorColors] = useState<boolean>(() => !!readMirrorArrowColors());
-  const [seriesSpot, setSeriesSpot] = useState<boolean>(() => {
-    try { return localStorage.getItem('delayMirror.seriesSpot') === '1'; } catch { return false; }
-  });
+  const [seriesFace, setSeriesFace] = useState<string>(() => readSeriesFace(auth.currentUser?.uid || ''));
+  const [showExpertMore, setShowExpertMore] = useState(false);
   const [seriesArrows, setSeriesArrows] = useState<number>(() => {
     try { const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10); return n >= 1 && n <= 6 ? n : 6; } catch { return 6; }
   });
-  const seriesRoundFace = React.useMemo(() => lastRoundFace(auth.currentUser?.uid || ''), []);
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (readMirrorArrowColors() !== null || !uid) return;
@@ -395,12 +398,11 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     };
   }, []);
 
-  // Manualny override rotacji — przycisk pion/poziom. Domyslnie poziomo:
-  // to jedyna orientacja, w ktorej lucznik faktycznie nagrywa (telefon
-  // stoi na statywie pionowo, obraz i tak leci przez force-rotate).
-  const [manualLandscape, setManualLandscape] = useState(true);
+  // Orientacja UI/nagrania. Domyslnie PIONOWO (user 2026-11-04) — poziom
+  // wybiera sie w Expertenmodus przed sesja, przelacznika w rogu juz nie ma.
+  const [manualLandscape, setManualLandscape] = useState(false);
   // Czy user wybral juz orientacje na ekranie idle (warunek odblokowania Start).
-  // Poziomo jest domyslne, wiec ekran startowy nie musi juz o to pytac.
+  // Pion jest domyslny, wiec ekran startowy nie musi juz o to pytac.
   const [orientationConfirmed, setOrientationConfirmed] = useState(true);
 
   const cleanup = useCallback(() => {
@@ -840,7 +842,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       liveVideoRef.current.srcObject = null;
     }
 
-    if (clipMode) startClipPipeline();
+    if (useClip) startClipPipeline();
 
     setRecSeconds(0);
     timerRef.current = setInterval(() => setRecSeconds(s => s + 1), 1000);
@@ -850,7 +852,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     pendingMSERef.current = { stream, codec: streamCodec };
     setMirrorState('buffering');
     setBufferMs(0);
-  }, [clipMode, startClipPipeline]);
+  }, [useClip, startClipPipeline]);
 
   useEffect(() => {
     if (mirrorState === 'buffering' && pendingMSERef.current && delayedVideoRef.current) {
@@ -1190,22 +1192,9 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       }
     : { position: 'absolute', inset: 0 };
 
-  // Toggle pion/poziom — renderowany POZA rotującym kontenerem (jako sibling
-  // w fragmencie), dzięki czemu zawsze siedzi w tym samym fizycznym rogu
-  // ekranu (top-right viewportu), niezależnie od obrotu UI.
-  // TYLKO na ekranie startowym: orientacje wybiera sie przed sesja, a stukniecie
-  // w trakcie nagrania/edycji rozwalalo uklad (user 2026-11-04).
-  const orientationToggle = (
-    <button
-      onClick={() => setManualLandscape(v => !v)}
-      className="fixed top-4 right-4 z-[70] w-11 h-11 bg-black/60 backdrop-blur-sm rounded-xl border border-white/20 flex items-center justify-center active:scale-90 transition-all"
-      title={manualLandscape ? t('delayMirror.toPortrait') : t('delayMirror.toLandscape')}
-    >
-      <span className="material-symbols-outlined text-white text-xl">
-        {manualLandscape ? 'stay_current_portrait' : 'stay_current_landscape'}
-      </span>
-    </button>
-  );
+  // Przelacznika pion/poziom w rogu ekranu juz NIE ma (user 2026-11-04):
+  // orientacje wybiera sie w Expertenmodus przed sesja, a stukniecie w trakcie
+  // nagrania/edycji rozwalalo uklad.
 
   // ─── PRO Gate ───────────────────────────────────────────────────────────────
   if (premiumLoading) {
@@ -1344,33 +1333,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   const _compactExpert = _displayAsLandscape && expert;
 
   // Bloki ustawien wydzielone, bo w kazdym ukladzie ladują w innej kolumnie.
-  // Zwarty wariant: skrajne wartosci suwaka odpadaja, etykieta i wartosc
-  // stoja w jednym wierszu NAD suwakiem — tak jak w kazdym innym bloku,
-  // dzieki czemu wszystkie krawedzie kolumny sa w jednej linii.
-  const delayBlock = (
-    <div>
-      <div className={`flex items-center justify-between ${_compactExpert ? 'mb-1' : 'mb-1.5'}`}>
-        <span className={`text-white/70 font-bold uppercase tracking-wider ${_compactExpert ? 'text-[10px]' : 'text-[10px]'}`}>{t('delayMirror.delayLabel')}</span>
-        <span className={`text-[#fed33e] font-black tabular-nums ${_compactExpert ? 'text-sm' : 'text-base'}`}>{delaySeconds}s</span>
-      </div>
-      <input
-        type="range"
-        min={MIN_DELAY_S}
-        max={MAX_DELAY_S}
-        step={1}
-        value={delaySeconds}
-        onChange={(e) => setDelaySeconds(parseInt(e.target.value, 10))}
-        className="w-full accent-[#fed33e] block"
-        style={{ height: _compactExpert ? 20 : 24 }}
-      />
-      {!_compactExpert && (
-        <div className="flex justify-between text-[10px] text-white/40 mt-1 font-bold">
-          <span>{MIN_DELAY_S}s</span>
-          <span>{MAX_DELAY_S}s</span>
-        </div>
-      )}
-    </div>
-  );
+  // Opoznienie nie ma tu bloku — ustawia sie je odznaka (delayPickerModal).
 
   const orientationBlock = (
     <div>
@@ -1452,31 +1415,30 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   // Tarcza i liczba strzal passy — ustawiane RAZ tutaj, nie po kazdej passie
   // (user 2026-11-04). Te same klucze localStorage, ktore czyta ekran serii.
+  // Tarcze z katalogu aplikacji (ta sama lista co przy zwyklym treningu).
+  const chipCls = (on: boolean) =>
+    `${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[10px] border active:scale-95 transition-all flex items-center justify-center gap-1 ${
+      on ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'
+    }`;
   const seriesSetupBlock = (
     <div>
     <p className={`text-white/70 font-bold uppercase tracking-wider text-center ${_compactExpert ? "text-[10px] mb-1" : "text-[9px] mb-1.5"}`}>
       {t('delayMirror.seriesSetupLabel')}
     </p>
-    <div className="flex items-center gap-1.5">
-      <button
-        onClick={() => { setSeriesSpot(true); try { localStorage.setItem('delayMirror.seriesSpot', '1'); } catch { /* ignore */ } }}
-        className={`flex-1 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[10px] uppercase tracking-wider border active:scale-95 transition-all flex items-center justify-center gap-1 ${seriesSpot ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
-      >
-        <span className="material-symbols-outlined text-sm">grid_view</span>
-        {t('delayMirror.seriesTargetSpot')}
-      </button>
-      <button
-        onClick={() => { setSeriesSpot(false); try { localStorage.setItem('delayMirror.seriesSpot', '0'); } catch { /* ignore */ } }}
-        className={`flex-1 min-w-0 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[10px] uppercase tracking-wider border active:scale-95 transition-all flex items-center justify-center gap-1 ${!seriesSpot ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
-      >
-        <span className="material-symbols-outlined text-sm">radio_button_unchecked</span>
-        <span className="truncate">{seriesRoundFace}</span>
-      </button>
-      {[3, 6].map(n => (
+    <div className="grid grid-cols-3 gap-1.5">
+      {mirrorFaceIds().map(id => (
+        <button key={id} onClick={() => { setSeriesFace(id); saveSeriesFace(id); }} className={chipCls(seriesFace === id)}>
+          <span className="material-symbols-outlined text-sm">{isSpotFace(id) ? 'grid_view' : 'radio_button_unchecked'}</span>
+          <span className="truncate">{id}</span>
+        </button>
+      ))}
+    </div>
+    <div className="flex gap-1.5 mt-1.5">
+      {[1, 2, 3, 4, 5, 6].map(n => (
         <button
           key={n}
           onClick={() => { setSeriesArrows(n); try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ } }}
-          className={`shrink-0 w-9 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-xs border active:scale-95 transition-all ${seriesArrows === n ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
+          className={`flex-1 ${chipCls(seriesArrows === n)} text-xs`}
           title={t('delayMirror.seriesArrowsTitle')}
         >
           {n}
@@ -1484,6 +1446,30 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
       ))}
     </div>
     </div>
+  );
+
+  // Expertenmodus: na widoku tylko STANDARDY jako podsumowanie, wybory
+  // dopiero po „Ändern" — pelna lista byla „mega zagmatwana" (user 2026-11-04).
+  const summaryChip = (icon: string, label: string) => (
+    <span className="flex items-center gap-1 bg-white/10 rounded-lg px-2 py-1 text-[10px] font-black text-white whitespace-nowrap">
+      <span className="material-symbols-outlined text-sm text-[#fed33e]">{icon}</span>
+      {label}
+    </span>
+  );
+  const expertSummary = (
+    <button
+      onClick={() => setShowExpertMore(true)}
+      className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 bg-white/5 border border-white/15 active:scale-95 transition-all text-left"
+    >
+      <span className="flex-1 min-w-0 flex flex-wrap gap-1.5">
+        {summaryChip(manualLandscape ? 'stay_current_landscape' : 'stay_current_portrait',
+          manualLandscape ? t('delayMirror.orientationLandscape') : t('delayMirror.orientationPortrait'))}
+        {summaryChip(clipMode ? 'videocam' : 'visibility', clipMode ? t('delayMirror.modeRecord') : t('delayMirror.modeMirror'))}
+        {clipMode && summaryChip(isSpotFace(seriesFace) ? 'grid_view' : 'radio_button_unchecked', seriesFace)}
+        {clipMode && summaryChip('north_east', t('delayMirror.seriesArrowsChip', { n: seriesArrows }))}
+      </span>
+      <span className="shrink-0 text-white/50 text-[10px] font-black uppercase tracking-wider">{t('delayMirror.seriesSetupChange')}</span>
+    </button>
   );
 
   const privacyNote = (
@@ -1732,7 +1718,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                 className="px-10 py-4 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-base uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/30 flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-xl">play_arrow</span>
-                {clipMode ? t('delayMirror.positioningStart') : t('delayMirror.positioningStartMirror')}
+                {useClip ? t('delayMirror.positioningStart') : t('delayMirror.positioningStartMirror')}
               </button>
             </div>
           </div>
@@ -1781,24 +1767,22 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   if (mirrorState === 'idle') {
     return (
       <>
-      {orientationToggle}
       {delayPickerModal}
       {techPanelModal}
       {techSummaryModal}
       <div style={screenStyle} className="bg-[#050f0a]">
-        <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? `flex flex-row items-center justify-center ${_compactExpert ? 'gap-8 px-6 py-3' : 'gap-8 px-10 py-4'}` : 'flex flex-col items-center justify-center px-8 py-6'}`}>
-        {/* Powrot musi uciec spod przycisku orientacji (fixed top-4 right-4,
-            z-70). Przy wymuszonym obrocie UI ten fizyczny rog to LEWY GORNY
-            rog obroconego ukladu, wiec powrot idzie wtedy w prawy; bez obrotu
-            jest odwrotnie. */}
-        <button onClick={requestExit} className={`absolute text-white/50 active:scale-90 transition-all z-10 ${_displayAsLandscape ? (_uiForceRotate ? 'top-6 right-5' : 'top-6 left-5') : 'top-6 left-5'}`}>
+        {/* items-start + my-auto na kolumnach zamiast items-center: przy
+            wyzszej zawartosci niz ekran (rozwiniety Expertenmodus w poziomie)
+            items-center ucinal gore poza zasiegiem przewijania. */}
+        <div style={uiRotateStyle} className={`overflow-y-auto ${_displayAsLandscape ? `flex flex-row items-start justify-center ${_compactExpert ? 'gap-8 px-6 py-2' : 'gap-8 px-10 py-4'}` : 'flex flex-col items-center px-8 py-6'}`}>
+        <button onClick={requestExit} className="absolute text-white/50 active:scale-90 transition-all z-10 top-6 left-5">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
         </button>
 
         {/* LEWA KOLUMNA (lub górna w portrait): logo + ikona + tytuł + opóźnienie + privacy.
             W ciasnym ukladzie marka sie kurczy, ale zostaje — ustawienia
             trzymamy w calosci po prawej. */}
-        <div className={`flex flex-col items-center ${_compactExpert ? 'w-[18rem] shrink-0' : _displayAsLandscape ? 'flex-1 max-w-[13rem]' : 'w-full'}`}>
+        <div className={`flex flex-col items-center ${_compactExpert ? 'w-[18rem] shrink-0 my-auto' : _displayAsLandscape ? 'flex-1 max-w-[13rem] my-auto' : 'w-full mt-auto'}`}>
           {/* Logo GROT-X z kropką */}
           <div className={`flex items-baseline gap-0.5 ${_compactExpert ? 'mb-2' : 'mb-3'}`}>
             <h1 className={`${_compactExpert ? 'text-3xl' : 'text-4xl'} font-black text-[#fed33e] tracking-tighter leading-none`}>GROT</h1>
@@ -1811,23 +1795,16 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
             </div>
           )}
           <h2 className={`font-black text-white mb-2 ${_compactExpert ? 'text-lg' : _displayAsLandscape ? 'text-xl' : 'text-2xl'}`}>{t('delayMirror.title')}</h2>
-          {/* W trybie prostym odznaka jest jedynym wejsciem do opoznienia —
-              ekspert ma suwak, wiec tam zostaje zwyklym napisem. */}
-          {expert ? (
-            <div className={`flex items-center gap-2 bg-[#fed33e]/10 rounded-xl ${_compactExpert ? 'px-4 py-2 mb-2.5' : 'px-4 py-2 mb-4'}`}>
-              <span className={`material-symbols-outlined text-[#fed33e] text-base`}>schedule</span>
-              <span className={`text-[#fed33e] font-bold text-center leading-tight ${_compactExpert ? 'text-[11px]' : 'text-xs'}`}>{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowDelayPicker(true)}
-              className="flex items-center gap-2 bg-[#fed33e]/10 border border-[#fed33e]/30 rounded-xl px-4 py-2 mb-4 active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
-              <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
-              <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
-            </button>
-          )}
+          {/* Odznaka jest JEDYNYM wejsciem do opoznienia w obu trybach —
+              suwak w Expertenmodus odpadl przy upraszczaniu (user 2026-11-04). */}
+          <button
+            onClick={() => setShowDelayPicker(true)}
+            className={`flex items-center gap-2 bg-[#fed33e]/10 border border-[#fed33e]/30 rounded-xl px-4 py-2 active:scale-95 transition-all ${_compactExpert ? 'mb-2.5' : 'mb-4'}`}
+          >
+            <span className="material-symbols-outlined text-[#fed33e] text-base">schedule</span>
+            <span className="text-[#fed33e] text-xs font-bold">{t('delayMirror.delayBadge', { seconds: delaySeconds })}</span>
+            <span className="material-symbols-outlined text-[#fed33e] text-base">tune</span>
+          </button>
           {techRow}
           {syncStatus}
           {_displayAsLandscape && <div className={`w-full ${_compactExpert ? "mt-1" : "mt-auto"}`}>{privacyNote}</div>}
@@ -1839,29 +1816,41 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
             w jej srodku — stad dziura w polowie ekranu i martwy pas przy
             krawedzi. Dwie kolumny o stalej szerokosci justify-center stawia
             obok siebie i centruje jako calosc. */}
-        <div className={`flex flex-col items-stretch ${_compactExpert ? 'w-[18rem] shrink-0 gap-2' : _displayAsLandscape ? 'flex-1 max-w-xs gap-2.5' : 'w-full max-w-xs gap-3 mt-1'}`}>
+        <div className={`flex flex-col items-stretch ${_compactExpert ? 'w-[18rem] shrink-0 gap-1.5 my-auto' : _displayAsLandscape ? 'flex-1 max-w-xs gap-2.5 my-auto' : 'w-full max-w-xs gap-3 mt-1 mb-auto'}`}>
           {/* Ustawienia eksperckie — ukryte, dopoki user sam ich nie zazada.
               Tryb prosty ma byc jednym przyciskiem, nie formularzem.
               Wszystkie trzy zostaja razem w tej kolumnie; w poziomie
               zmieszczenie zalatwia zwarty wariant kazdego bloku. */}
-          {expert && (
+          {expert && !showExpertMore && expertSummary}
+          {expert && showExpertMore && (
             <>
-              {delayBlock}
               {orientationBlock}
               {modeBlock}
               {clipMode && seriesSetupBlock}
               {clipMode && arrowColorsBlock}
+              <button
+                onClick={() => setShowExpertMore(false)}
+                className={`w-full ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[11px] uppercase tracking-widest bg-white/10 text-white/80 border border-white/15 active:scale-95 transition-all flex items-center justify-center gap-1.5`}
+              >
+                <span className="material-symbols-outlined text-base">check</span>
+                {t('delayMirror.settingsDone')}
+              </button>
             </>
           )}
 
+          {/* Przy otwartych ustawieniach Start i przelacznik trybu chowaja sie —
+              w poziomie inaczej rozwinieta lista nie miescila sie na ekranie.
+              Wraca sie przyciskiem „Fertig". */}
+          {!(expert && showExpertMore) && (<>
           <button
             onClick={() => {
-              // Tryb prosty narzuca poziom i brak klipu. Opoznienia NIE
+              // Tryb prosty narzuca pion i brak klipu. Opoznienia NIE
               // narzuca — 15 s to wartosc poczatkowa, ale user moze ja
               // zmienic odznaka nad przyciskiem.
               if (!expert) {
-                setClipMode(false);
-                setManualLandscape(true);
+                // Bez setClipMode — useClip i tak jest false w trybie prostym,
+                // a zapisany wybor eksperta ma przetrwac.
+                setManualLandscape(false);
                 setOrientationConfirmed(true);
               }
               startRecording();
@@ -1893,6 +1882,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
             <span className="material-symbols-outlined text-base">{expert ? 'expand_less' : 'tune'}</span>
             {t('delayMirror.expertMode')}
           </button>
+          </>)}
 
           {/* Privacy note — w pionie pod startem. W poziomie siedzi w lewej
               kolumnie, wiec tutaj bylby drugi raz. */}
@@ -2000,8 +1990,8 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           kadru), w ktorym DelayMirrorExport rysuje wypalona tarcze (patrz
           panelX/panelY tam). Dzieki temu lucznik od razu kadruje z pominieciem
           tego rogu, zamiast dowiadywac sie po fakcie, ze tarcza cos zaslania.
-          Przelacznik orientacji (orientationToggle) jest juz tylko na ekranie
-          startowym, wiec panel moze stac przy samej gornej krawedzi. */}
+          Przelacznika orientacji w rogu juz nie ma, wiec panel moze stac przy
+          samej gornej krawedzi. */}
       {/* W PIONIE czas nagrania zostaje sam w rogu, a reszta zjezdza na dol
           jednym rzedem — w waskiej kolumnie po prawej pigulki ukladaly sie
           jedna pod druga i zaslanialy pol kadru (user 2026-11-04). */}

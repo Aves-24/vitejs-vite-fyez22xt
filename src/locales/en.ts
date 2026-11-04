@@ -2577,7 +2577,7 @@ export const views = {
     seriesEnterHint: "Where did arrow {{n}} land?",
     seriesEnterDone: "All arrows entered",
     seriesUndo: "Undo",
-    seriesToReplay: "Watch and mark",
+    seriesToReplay: "Save",
     seriesClock: "{{score}} at {{clock}}",
     seriesCenter: "{{score}} in the centre",
     seriesClipWarning: "The clip only lives until the session ends — share it before you finish. The shot placement itself is saved for good.",

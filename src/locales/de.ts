@@ -2577,7 +2577,7 @@ export const views = {
     seriesEnterHint: "Wo sitzt Pfeil {{n}}?",
     seriesEnterDone: "Alle Pfeile eingetragen",
     seriesUndo: "Zurück",
-    seriesToReplay: "Ansehen und markieren",
+    seriesToReplay: "Speichern",
     seriesClock: "{{score}} auf {{clock}}",
     seriesCenter: "{{score}} in der Mitte",
     seriesClipWarning: "Der Clip lebt nur bis zum Ende der Sitzung — teile ihn vorher. Die Trefferlage selbst wird dauerhaft gespeichert.",

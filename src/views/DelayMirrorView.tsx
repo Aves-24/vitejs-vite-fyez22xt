@@ -1193,6 +1193,8 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   // Toggle pion/poziom — renderowany POZA rotującym kontenerem (jako sibling
   // w fragmencie), dzięki czemu zawsze siedzi w tym samym fizycznym rogu
   // ekranu (top-right viewportu), niezależnie od obrotu UI.
+  // TYLKO na ekranie startowym: orientacje wybiera sie przed sesja, a stukniecie
+  // w trakcie nagrania/edycji rozwalalo uklad (user 2026-11-04).
   const orientationToggle = (
     <button
       onClick={() => setManualLandscape(v => !v)}
@@ -1209,7 +1211,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   if (premiumLoading) {
     return (
       <>
-        {orientationToggle}
         <div style={screenStyle} className="bg-black flex items-center justify-center">
           <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin" />
         </div>
@@ -1220,7 +1221,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   if (mirrorState === 'unsupported') {
     return (
       <>
-      {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
         <button onClick={requestExit} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
@@ -1241,7 +1241,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   if (mirrorState === 'error') {
     return (
       <>
-      {orientationToggle}
       <div style={screenStyle} className="bg-[#0a0a0a] flex flex-col items-center justify-center px-8">
         <button onClick={requestExit} className="absolute top-6 left-5 text-white/50 active:scale-90 transition-all">
           <span className="material-symbols-outlined text-3xl">arrow_back</span>
@@ -1691,7 +1690,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   if (mirrorState === 'positioning') {
     return (
       <>
-      {orientationToggle}
       <div style={screenStyle} className="bg-black">
         {/* Live preview pelnoekranowy — uzywany TYLKO do ustawienia urzadzenia.
             Po starcie nagrywania ten <video> jest odpinany (srcObject=null) zeby
@@ -1909,7 +1907,6 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
 
   return (
     <>
-    {orientationToggle}
 
     {/* Analiza serii — POZA kontenerem rotujacym UI lustra. Rotacja sluzy
         podgladowi kamery; przy wbijaniu strzal user trzyma telefon w rece
@@ -2003,24 +2000,25 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           kadru), w ktorym DelayMirrorExport rysuje wypalona tarcze (patrz
           panelX/panelY tam). Dzieki temu lucznik od razu kadruje z pominieciem
           tego rogu, zamiast dowiadywac sie po fakcie, ze tarcza cos zaslania.
-          Odsuniete od physical top-right, bo tam zawsze siedzi orientationToggle
-          (poza tym kontenerem, fizyczny rog) — w force-rotate te dwa rogi sa
-          rozne (patrz komentarz przy uiRotateStyle), w native landscape sa
-          te same, stad wiekszy odstep od gory tylko w tym drugim przypadku. */}
+          Przelacznik orientacji (orientationToggle) jest juz tylko na ekranie
+          startowym, wiec panel moze stac przy samej gornej krawedzi. */}
       {/* W PIONIE czas nagrania zostaje sam w rogu, a reszta zjezdza na dol
           jednym rzedem — w waskiej kolumnie po prawej pigulki ukladaly sie
           jedna pod druga i zaslanialy pol kadru (user 2026-11-04). */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && !_displayAsLandscape && clipActive && !recordingPaused && (
-        <div className="absolute z-30 top-20 right-4 flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-red-500/40">
+        <div className="absolute z-30 top-4 right-4 flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-red-500/40">
           <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
           <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
         </div>
       )}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
         <div className={_displayAsLandscape
-          ? `absolute z-30 flex flex-col items-stretch gap-1.5 w-[27%] max-w-[11rem] min-w-[7.5rem] right-4 ${_uiForceRotate ? 'top-4' : 'top-20'}`
-          : 'absolute z-30 bottom-5 left-20 right-4 flex items-center justify-end gap-2'}>
-          <div className={_displayAsLandscape ? 'flex flex-wrap gap-1.5 justify-end' : 'flex gap-1.5 justify-end'}>
+          ? `absolute z-30 flex flex-col items-stretch gap-1.5 w-[27%] max-w-[11rem] min-w-[7.5rem] right-4 top-4`
+          : 'absolute z-30 bottom-5 left-20 right-4 flex flex-wrap items-center justify-end gap-2'}>
+          {/* W pionie pigulki bez napisow (sama ikona + liczba) i z zawijaniem —
+              pelny rzad byl szerszy niz miejsce obok strzalki powrotu i licznik
+              strzal wjezdzal pod nia (user 2026-11-04). */}
+          <div className="flex flex-wrap gap-1.5 justify-end">
             {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
                 samego lustra czerwona kropka bylaby klamstwem. */}
             {_displayAsLandscape && clipActive && !recordingPaused && (
@@ -2059,6 +2057,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                   <button
                     onClick={() => setShowPauseCount(v => !v)}
                     aria-label={t('delayMirror.pauseCountTitle')}
+                    title={t('delayMirror.pauseCountTitle')}
                     className="flex items-center gap-1.5 bg-sky-600/70 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-sky-400/40 active:scale-95 transition-all"
                   >
                     <ArrowGlyph className="w-4 h-4 text-white" />
@@ -2077,7 +2076,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                   }`}
                 >
                   <span className="material-symbols-outlined text-sm">grid_on</span>
-                  <span className="text-xs font-bold">{t('delayMirror.grid')}</span>
+                  {_displayAsLandscape && <span className="text-xs font-bold">{t('delayMirror.grid')}</span>}
                 </button>
 
                 {/* Opoznienie — ustawienie widoku, tylko dla eksperta */}
@@ -2088,7 +2087,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
                   >
                     <span className="material-symbols-outlined text-[#fed33e] text-sm">schedule</span>
                     <span className="text-[#fed33e] text-xs font-bold">-{delaySeconds}s</span>
-                    <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>
+                    {_displayAsLandscape && <span className="material-symbols-outlined text-[#fed33e] text-sm">tune</span>}
                   </button>
                 )}
           </div>
@@ -2127,9 +2126,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           skarga: "Passe beenden" i "Beenden" nie do odroznienia). Bez
           etykiety = bez konfliktu slownego, wiec ladzie osobno od gornego
           panelu. Rog logiczny bottom-left, bo top-right zajmuje juz panel
-          wyzej, a top-left pod force-rotate wypadlby pod orientationToggle
-          (ten sam fizyczny-vs-logiczny unik, co przy przycisku powrotu na
-          ekranie idle — patrz komentarz tam). Dziala identycznie w obu
+          wyzej. Dziala identycznie w obu
           trybach: z klipem konczy sesje i pokazuje pelna powtorke, bez
           klipu wraca prosto do menu. */}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (

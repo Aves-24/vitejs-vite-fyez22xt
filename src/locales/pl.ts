@@ -2618,7 +2618,7 @@ export const views = {
     seriesEnterHint: "Gdzie wbiła się strzała {{n}}?",
     seriesEnterDone: "Wszystkie strzały wbite",
     seriesUndo: "Cofnij",
-    seriesToReplay: "Obejrzyj i zaznacz",
+    seriesToReplay: "Zapisz",
     seriesClock: "{{score}} na {{clock}}",
     seriesCenter: "{{score}} w środku",
     seriesClipWarning: "Klip żyje tylko do końca sesji — udostępnij go, zanim zakończysz. Sam rozkład strzał zapisuje się na stałe.",

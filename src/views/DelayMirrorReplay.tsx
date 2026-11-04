@@ -914,6 +914,41 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     : shareState === 'error' ? t('delayMirror.shareError')
     : t('delayMirror.shareOpen');
 
+  // Predkosc: na stale tylko AKTUALNA (podswietlona), reszta wysuwa sie
+  // pionowym menu do gory. W obu ukladach to samo — w pionie piatka
+  // przyciskow zajmowala osobny rzad (user 2026-11-04).
+  const speedControl = (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setShowSpeedMenu(v => !v)}
+        title={t('delayMirror.replaySpeed')}
+        className={`h-9 flex items-center gap-0.5 px-2.5 rounded-xl text-[11px] font-black tabular-nums transition-all active:scale-95 border ${
+          showSpeedMenu
+            ? 'bg-white/10 text-[#fed33e] border-[#fed33e]/60'
+            : 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
+        }`}
+      >
+        {replayRate}x
+        <span className="material-symbols-outlined text-sm">{showSpeedMenu ? 'expand_more' : 'expand_less'}</span>
+      </button>
+      {showSpeedMenu && (
+        <div className="absolute bottom-full mb-2 left-0 flex flex-col gap-1 bg-[#0a0a0a] border border-white/15 rounded-xl p-1.5 shadow-xl z-20">
+          {[4, 2, 1, 0.5, 0.25].map(rate => (
+            <button
+              key={rate}
+              onClick={() => { setReplayRate(rate); setShowSpeedMenu(false); }}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 whitespace-nowrap ${
+                replayRate === rate ? 'bg-[#fed33e] text-[#0a3a2a]' : 'text-white/70 active:bg-white/10'
+              }`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
   // W poziomie kolumna obok wideo; w pionie tarcza po lewej, a oznaczanie
   // strzal obok niej — jedna pod druga zajmowaly caly ekran (user 2026-11-04).
   const targetColumn = targetPanel ? (
@@ -961,34 +996,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               reszta wysuwa sie do gory po stuknieciu — piatka przyciskow na
               stale zjadala za duzo szerokosci w jednym rzedzie z transportem
               i akcjami sesji. */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setShowSpeedMenu(v => !v)}
-              className={`flex items-center gap-0.5 px-2.5 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 border ${
-                showSpeedMenu
-                  ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]'
-                  : 'bg-white/10 text-white/70 border-white/15'
-              }`}
-            >
-              {replayRate}x
-              <span className="material-symbols-outlined text-sm">expand_less</span>
-            </button>
-            {showSpeedMenu && (
-              <div className="absolute bottom-full mb-2 left-0 flex flex-col gap-1 bg-[#0a0a0a] border border-white/15 rounded-xl p-1.5 shadow-xl z-20">
-                {[0.25, 0.5, 1, 2, 4].map(rate => (
-                  <button
-                    key={rate}
-                    onClick={() => { setReplayRate(rate); setShowSpeedMenu(false); }}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-black tabular-nums transition-all active:scale-95 whitespace-nowrap ${
-                      replayRate === rate ? 'bg-[#fed33e] text-[#0a3a2a]' : 'text-white/70 active:bg-white/10'
-                    }`}
-                  >
-                    {rate}x
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          {speedControl}
 
           <button
             onClick={onResume}
@@ -1069,25 +1077,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
 
         {hasFullBlob && (
           <div className="w-full">
-            <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mb-1 text-center">
-              {t('delayMirror.replaySpeed')}
-            </p>
-            <div className="flex justify-center gap-2 mb-2">
-              {[0.25, 0.5, 1, 2, 4].map(rate => (
-                <button
-                  key={rate}
-                  onClick={() => setReplayRate(rate)}
-                  className={`px-3 py-2 rounded-xl text-xs font-black tabular-nums transition-all active:scale-95 ${
-                    replayRate === rate
-                      ? 'bg-[#fed33e] text-[#0a3a2a] shadow-lg shadow-[#fed33e]/20'
-                      : 'bg-white/10 text-white/70 border border-white/15'
-                  }`}
-                >
-                  {rate}x
-                </button>
-              ))}
-            </div>
-            <div className="flex justify-center gap-2 mb-3">
+            <div className="flex justify-center items-center gap-2 mb-3">
+              {speedControl}
               <button
                 onClick={() => replaySeek(-5)}
                 className="px-3 py-2 rounded-xl bg-white/10 text-white/80 border border-white/15 text-xs font-bold active:scale-95 transition-all flex items-center gap-1"

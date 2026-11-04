@@ -498,7 +498,9 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   width: needsRotate ? `${replayBox.h}px` : displayAsLandscape ? `${replayBox.w}px` : undefined,
                   height: needsRotate ? `${replayBox.w}px` : displayAsLandscape ? `${replayBox.h}px` : undefined,
                   maxWidth: needsRotate ? undefined : '100%',
-                  maxHeight: needsRotate || displayAsLandscape ? undefined : '40vh',
+                  // 48vh: akcje passy sa w jednym rzedzie, wiec podglad
+                  // dostal miejsce po dwoch przyciskach (wczesniej 40vh).
+                  maxHeight: needsRotate || displayAsLandscape ? undefined : '48vh',
                   objectFit: 'contain',
                   display: 'block',
                   // BEZ lustra. Wczesniej powtorka odbijala obraz, zeby zgadzac
@@ -964,7 +966,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       </div>
     ) : (
       <div className="w-full flex items-center gap-3">
-        <div className="w-[44%] shrink-0 flex justify-center">
+        <div className="w-1/2 shrink-0 flex justify-center">
           {targetPanel}
         </div>
         <div className="flex-1 min-w-0 flex flex-col items-stretch gap-1.5">
@@ -1103,33 +1105,38 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           </div>
         )}
 
-        <button
-          onClick={onResume}
-          className={`w-full max-w-xs py-3.5 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20`}
-        >
-          {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
-        </button>
-        {/* JEDNO Udostepnij — wybor „sam film / z tarcza" i wycinek siedza
-            w okienku (shareSheet). Darmowe dla wszystkich, patrz decyzja
-            usera przy wide layout wyzej. */}
-        {hasFullBlob && (
+        {/* Akcje passy w JEDNYM rzedzie: Nastepna passa najwieksza, Udostepnij
+            i Zakoncz jako ikony. Trzy pelne przyciski jeden pod drugim zjadaly
+            miejsce, ktore teraz dostaja podglad i tarcza (user 2026-11-04).
+            Udostepnij jest jedno — wybor „sam film / z tarcza" i wycinek siedza
+            w okienku (shareSheet). Darmowe dla wszystkich. */}
+        <div className="w-full flex items-stretch gap-2">
           <button
-            onClick={openShare}
-            disabled={shareState === 'sharing'}
-            className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
+            onClick={onResume}
+            className="flex-1 min-w-0 py-3.5 px-2 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-[#fed33e]/20 truncate"
           >
-            <span className="material-symbols-outlined text-lg">
-              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
-            </span>
-            {shareButtonLabel}
+            {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
           </button>
-        )}
-        <button
-          onClick={onEndSession}
-          className={`w-full max-w-xs py-3 bg-white/10 text-white/70 rounded-2xl font-bold text-sm active:scale-95 transition-all`}
-        >
-          {t('delayMirror.endSession')}
-        </button>
+          {hasFullBlob && (
+            <button
+              onClick={openShare}
+              disabled={shareState === 'sharing'}
+              title={shareButtonLabel}
+              className="shrink-0 w-14 bg-white/15 text-white rounded-2xl active:scale-95 transition-all flex items-center justify-center border border-white/20 disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-xl">
+                {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              </span>
+            </button>
+          )}
+          <button
+            onClick={onEndSession}
+            title={t('delayMirror.endSession')}
+            className="shrink-0 w-14 bg-white/10 text-white/70 rounded-2xl active:scale-95 transition-all flex items-center justify-center"
+          >
+            <span className="material-symbols-outlined text-xl">home</span>
+          </button>
+        </div>
       </div>
     </div>
     {overlays}

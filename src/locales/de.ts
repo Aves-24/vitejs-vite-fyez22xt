@@ -2613,7 +2613,6 @@ export const views = {
     snapshot: "Standbild",
     clipMenu: "Ausschnitt",
     clipRange: "Ausschnitt {{from}}–{{to}}",
-    clipAroundShot: "Um Schuss {{n}}",
     clipClear: "Ganzes Video",
     savePro: "Video speichern — PRO",
     shareSharing: "Teilen…",

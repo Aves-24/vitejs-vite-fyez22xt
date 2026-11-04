@@ -2654,7 +2654,6 @@ export const views = {
     snapshot: "Stopklatka",
     clipMenu: "Wycinek",
     clipRange: "Wycinek {{from}}–{{to}}",
-    clipAroundShot: "Wokół strzału {{n}}",
     clipClear: "Cały film",
     savePro: "Zapisz wideo — PRO",
     shareSharing: "Udostępnianie…",

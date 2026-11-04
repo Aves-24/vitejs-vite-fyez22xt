@@ -955,19 +955,6 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             {t('delayMirror.clipRange', { from: fmtT1(clipRange.start), to: fmtT1(clipRange.end) })}
             {' · '}{(clipRange.end - clipRange.start).toFixed(1)} s
           </p>
-          {markedShots.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 justify-center">
-              {markedShots.map(s => (
-                <button
-                  key={s.n}
-                  onClick={() => clipAroundShot(s.n)}
-                  className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 text-[#fed33e] text-[11px] font-bold active:scale-95 transition-all"
-                >
-                  {t('delayMirror.clipAroundShot', { n: s.n })}
-                </button>
-              ))}
-            </div>
-          )}
           <p className="text-white/40 text-[10px] leading-snug text-center">{t('delayMirror.clipDragHint')}</p>
         </>
       )}

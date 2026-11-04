@@ -2613,7 +2613,6 @@ export const views = {
     snapshot: "Still frame",
     clipMenu: "Clip",
     clipRange: "Clip {{from}}–{{to}}",
-    clipAroundShot: "Around shot {{n}}",
     clipClear: "Whole video",
     savePro: "Save video — PRO",
     shareSharing: "Sharing…",

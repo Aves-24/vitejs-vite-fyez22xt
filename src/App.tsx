@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { db, auth } from './firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { doc, onSnapshot, collection, query, getDocs, deleteDoc, setDoc, serverTimestamp, updateDoc, increment, getDoc } from 'firebase/firestore';
@@ -947,7 +948,15 @@ export default function App() {
           <AdminDashboardView onNavigate={(view) => handleNavigate(view as AppView)} />
         )}
         {currentView === 'COACH' && <CoachDashboardView userId={user?.uid || ''} section={coachSection} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} onBack={(view, tab) => handleBack(view as AppView, tab)} onSwitchTermine={handleSwitchTermine} pendingOpenStudentId={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingOpenGroupId={pendingOpenGroupId} onClearPendingGroup={() => setPendingOpenGroupId(null)} />}
-        {currentView === 'DELAY_MIRROR' && <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />}
+        {/* Portal do <body>: <main> ma scale/blur (wejscie po splashu), a transform
+            i filter robia z niego kontener dla `position: fixed`. Lustro siedzialo
+            wtedy w kolumnie max-w-md, choc orientacje liczy z calego okna — na
+            komputerze wychodzil poziomy uklad w waskim pasku (user 2026-11-04).
+            Z portalem lustro zajmuje cale okno, takze z kamera w laptopie. */}
+        {currentView === 'DELAY_MIRROR' && createPortal(
+          <DelayMirrorView onBack={() => handleNavigate('HOME')} onUpgrade={() => handleNavigate('SETTINGS', 'PRO')} onOpenStats={() => handleNavigate('STATS')} />,
+          document.body,
+        )}
         {/* Widok nadal nazywa się MY_COACH — ta wartość siedzi w navigateTo zapisanych powiadomień. */}
         {currentView === 'MY_COACH' && <TagebuchView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onNavigateToStats={(date, sessionId) => { handleNavigate('STATS', undefined, date); setFocusedSessionId(sessionId || null); }} pendingExtraData={pendingMessageSenderId} onClearPending={() => setPendingMessageSenderId(null)} pendingInitialTab={pendingMyCoachTab} onClearPendingTab={() => setPendingMyCoachTab(null)} />}
       </Suspense>

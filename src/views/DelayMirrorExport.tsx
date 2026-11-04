@@ -65,13 +65,6 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
   const [result, setResult] = useState<Blob | null>(null);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const resultVideoRef = useRef<HTMLVideoElement>(null);
-  // Powiekszony podglad = wiecej wysokosci dla wideo (do 70vh), ale WCIAZ
-  // w tym samym ekranie — NIE prawdziwy Fullscreen API. User: requestFullscreen/
-  // webkitEnterFullscreen wywolywalo systemowe powiadomienie na telefonie
-  // (potencjalne zrodlo problemow w przyszlosci), a przy tym chowalo
-  // przyciski Udostepnij/Powrot pod natywnym odtwarzaczem. Plus tego
-  // podejscia: przyciski zostaja widoczne na dole NAWET w powiekszeniu.
-  const [enlarged, setEnlarged] = useState(false);
 
   // Klip gotowy = mozna go obejrzec jeszcze raz, nie tylko udostepnic —
   // user chcial sprawdzic wynik przed wyslaniem. URL na WYNIKOWYM blobie
@@ -251,7 +244,7 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
   }, []);
 
   return (
-    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
+    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-3 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
       {/* Ukryta instancja tarczy — zrodlo obrazka do wypalenia. Zawsze bez
           podswietlenia, zeby serializowany SVG byl deterministyczny. */}
       {targetType && (
@@ -269,19 +262,20 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
             prawdziwe <video> na wynikowym blobie — juz z wypalona tarcza i
             notatkami w pikselach, wiec do odtworzenia nie trzeba przerysowywac
             nakladki. Canvas zostaje widoczny tylko w trakcie/po niepowodzeniu. */}
+        {/* Podglad wypelnia CALE wolne miejsce nad przyciskami (object-contain
+            w kontenerze flex-1) — wczesniej mial sztywne 42–55% wysokosci
+            i byl za maly (user 2026-11-04). Gotowy klip startuje sam. */}
         {result && resultUrl ? (
           <video
             ref={resultVideoRef}
             src={resultUrl}
             playsInline
-            /* dvh, nie vh: na mobile pasek adresu chowa/pokazuje sie i vh
-               liczy sie od maksymalnej wysokosci, wiec video+przyciski
-               wystawaly za faktyczny widoczny ekran (dvh sledzi realny viewport). */
-            className={`max-w-full rounded-xl border border-white/15 transition-all ${enlarged ? 'max-h-[68dvh]' : 'max-h-[42dvh]'}`}
-            onEnded={() => setEnlarged(false)}
+            autoPlay
+            muted
+            className="w-full h-full object-contain"
           />
         ) : (
-          <canvas ref={canvasRef} className="max-w-full max-h-[55%] rounded-xl border border-white/15" />
+          <canvas ref={canvasRef} className="w-full h-full object-contain" />
         )}
       </div>
 
@@ -301,15 +295,6 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
                 className="shrink-0 w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
               >
                 <span className="material-symbols-outlined text-lg">play_arrow</span>
-              </button>
-              {/* Powiekszenie DO 70vh w tym samym ekranie, NIE prawdziwy
-                  Fullscreen API — patrz komentarz przy stanie `enlarged`. */}
-              <button
-                onClick={() => setEnlarged(v => !v)}
-                title={t('delayMirror.watchFullscreen')}
-                className="shrink-0 w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center active:scale-95 transition-all border border-white/15"
-              >
-                <span className="material-symbols-outlined text-lg">{enlarged ? 'fullscreen_exit' : 'fullscreen'}</span>
               </button>
               <button
                 onClick={() => onShare(result)}

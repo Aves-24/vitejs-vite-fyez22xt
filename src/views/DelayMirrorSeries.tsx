@@ -49,7 +49,7 @@ interface Props {
 // Okragla tarcza z ostatniego treningu zamiast jednej wbitej na sztywno.
 // Czytamy ten sam cache co HomeView (`{data, expiresAt}`) — bez zapytania
 // do Firestore i bez ruszania dzialajacego pliku.
-function lastRoundFace(userId: string): string {
+export function lastRoundFace(userId: string): string {
   try {
     const raw = localStorage.getItem(`grotX_lastSession_${userId}`);
     if (raw) {
@@ -80,6 +80,10 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
     setArrowCount(n);
     try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ }
   };
+  // Tarcze i liczbe strzal ustawia sie na ekranie startowym lustra — tu po
+  // kazdej passie byla do wyklikania od nowa (user 2026-11-04). Zostaje
+  // podsumowanie z „zmien", bo niepelna passa (np. 4 strzaly) sie zdarza.
+  const [editSetup, setEditSetup] = useState(false);
   const [shots, setShots] = useState<TechShot[]>([]);
   // Licznik dnia idzie za kazda wbita strzala — takze gdy user potem
   // porzuci analize, bo te strzaly i tak zostaly oddane.
@@ -109,6 +113,20 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
 
   const targetType = useSpot ? SPOT_FACE : roundFace;
 
+  // Wysokosc dolnego paska — celownik i wybor reki TargetInput staja nad nim.
+  // Pasek rosnie z kazda wbita strzala (kafelki kierunku), wiec mierzymy.
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barH, setBarH] = useState(0);
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el) return;
+    const update = () => setBarH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [step]);
+
   const pickBtn = (active: boolean) =>
     `flex-1 py-2 px-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider leading-tight text-center active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
       active
@@ -127,8 +145,24 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
         </button>
 
         <div className="w-full max-w-xs flex flex-col gap-4 mt-12">
-          <h2 className="text-white font-black text-xl text-center">{t('delayMirror.seriesTargetTitle')}</h2>
+          <h2 className="text-white font-black text-xl text-center">
+            {editSetup ? t('delayMirror.seriesTargetTitle') : t('delayMirror.seriesPassTitle')}
+          </h2>
 
+          {!editSetup && (
+            <button
+              onClick={() => setEditSetup(true)}
+              className="w-full flex items-center gap-2 rounded-xl px-3 py-2.5 bg-white/5 border border-white/15 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[#fed33e] text-lg">{useSpot ? 'grid_view' : 'radio_button_unchecked'}</span>
+              <span className="flex-1 text-left text-white text-sm font-bold">
+                {t('delayMirror.seriesSetupSummary', { face: useSpot ? t('delayMirror.seriesTargetSpot') : roundFace, n: arrowCount })}
+              </span>
+              <span className="text-white/50 text-[11px] font-bold uppercase tracking-wider">{t('delayMirror.seriesSetupChange')}</span>
+            </button>
+          )}
+
+          {editSetup && (<>
           <div className="flex gap-2">
             <button
               onClick={() => { setUseSpot(true); try { localStorage.setItem('delayMirror.seriesSpot', '1'); } catch { /* ignore */ } }}
@@ -176,6 +210,7 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
               ))}
             </div>
           </div>
+          </>)}
 
           <button
             onClick={() => { setShots([]); setStep('enter'); }}
@@ -251,19 +286,19 @@ export default function DelayMirrorSeries({ userId, onWatchOnly, onReady, onBack
           // Bezwzglednie, nie w procentach — patrz uwaga przy `embed`.
           // 160px = zmierzony naglowek (~56) + pasek z kafelkami kierunku (~97).
           svgStyle: landscape ? { maxHeight: 'calc(100vh - 160px)' } : undefined,
+          // Celownik + reka NAD paskiem — wczesniej siedzialy pod nim
+          // i znacznika reki nie bylo widac wcale (user 2026-11-04).
+          toolsBottom: barH > 0 ? barH + 10 : undefined,
         }}
       />
 
-      {/* Pasek nad tarcza. pl-20 zostawia wolny celownik offsetu w lewym
-          dolnym rogu (TargetInput: left-6 bottom-8). W poziomie wszystko
-          w jednej linii, bo wysokosc jest tam towarem deficytowym. */}
+      {/* Pasek nad tarcza. W poziomie wszystko w jednej linii, bo wysokosc
+          jest tam towarem deficytowym. Celownik offsetu stoi nad paskiem
+          (embed.toolsBottom), wiec marginesy nie musza go juz omijac. */}
       <div
+        ref={barRef}
         className={`fixed bottom-0 inset-x-0 z-[100001] bg-[#050f0a]/95 backdrop-blur-sm border-t border-white/15 pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
-          // W poziomie pl-20/pr-4 to celowa asymetria (tekst po lewej, przycisk
-          // po prawej, nic tu nie ma byc scentrowane). W pionie tekst i przycisk
-          // MAJA byc na srodku ekranu, wiec oba marginesy musza byc rowne —
-          // inaczej "wycentrowany" tekst siedzi wizualnie bardziej w prawo.
-          landscape ? 'pl-20 pr-4 pt-1.5 flex items-center gap-3' : 'pl-20 pr-20 pt-2'
+          landscape ? 'px-4 pt-1.5 flex items-center gap-3' : 'px-4 pt-2'
         }`}
       >
         <div className={landscape ? 'flex-1 min-w-0' : ''}>

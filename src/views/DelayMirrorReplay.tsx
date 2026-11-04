@@ -11,6 +11,69 @@ import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
 // stukniecie, a nie fragment do pokazania komus.
 const MIN_CLIP = 0.5;
 
+// Tor wycinka z dwoma uchwytami. Dotyk w dowolnym miejscu toru lapie BLIZSZY
+// uchwyt — trafianie palcem w sam uchwyt na telefonie bylo loterią.
+// Pod force-rotate (UI obrocone o 90°) tor biegnie po ekranie pionowo, wiec
+// pozycje liczymy z osi, wzdluz ktorej faktycznie lezy.
+function TrimBar({ duration, start, end, marks, onChange }: {
+  duration: number;
+  start: number;
+  end: number;
+  marks: { n: number; t: number }[];
+  onChange: (start: number, end: number, moved: 'start' | 'end') => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<'start' | 'end' | null>(null);
+  const toT = (e: React.PointerEvent) => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return 0;
+    const f = r.height > r.width ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
+    return Math.max(0, Math.min(duration, f * duration));
+  };
+  const apply = (t: number) => {
+    if (drag.current === 'start') onChange(Math.min(t, end - MIN_CLIP), end, 'start');
+    else if (drag.current === 'end') onChange(start, Math.max(t, start + MIN_CLIP), 'end');
+  };
+  const pct = (t: number) => `${(t / duration) * 100}%`;
+  return (
+    <div
+      ref={ref}
+      className="relative h-10 mx-3 touch-none select-none"
+      onPointerDown={(e) => {
+        const t = toT(e);
+        drag.current = Math.abs(t - start) <= Math.abs(t - end) ? 'start' : 'end';
+        e.currentTarget.setPointerCapture(e.pointerId);
+        apply(t);
+      }}
+      onPointerMove={(e) => { if (drag.current) apply(toT(e)); }}
+      onPointerUp={() => { drag.current = null; }}
+      onPointerCancel={() => { drag.current = null; }}
+    >
+      <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-white/15" />
+      <div className="absolute top-1/2 -translate-y-1/2 h-2 bg-[#4ade80]/60" style={{ left: pct(start), width: pct(end - start) }} />
+      {marks.map(m => {
+        const ac = mirrorShotColor(m.n);
+        return (
+          <span
+            key={m.n}
+            className="absolute top-0 -translate-x-1/2 text-[8px] font-black leading-none px-0.5 rounded"
+            style={{ left: pct(m.t), color: ac ? ac.hex : '#ffffff' }}
+          >
+            {m.n}
+          </span>
+        );
+      })}
+      {(['start', 'end'] as const).map(h => (
+        <div
+          key={h}
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-7 rounded-md bg-[#4ade80] border-2 border-white shadow pointer-events-none"
+          style={{ left: pct(h === 'start' ? start : end) }}
+        />
+      ))}
+    </div>
+  );
+}
+
 interface Props {
   blob: Blob | null;
   displayAsLandscape: boolean;
@@ -91,6 +154,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     // Wycinek dotyczy TAMTEGO pliku — na nowym klipie te same sekundy to
     // zupelnie inny moment.
     setClipRange(null);
+    setSharePart('all');
     const v = replayVideoRef.current;
     if (v) {
       v.src = url;
@@ -126,7 +190,13 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const [exporting, setExporting] = useState<'target' | 'plain' | null>(null);
   // Wycinek do udostepnienia, w sekundach oryginalu. null = caly klip.
   const [clipRange, setClipRange] = useState<{ start: number; end: number } | null>(null);
-  const [showClipMenu, setShowClipMenu] = useState(false);
+  // Jedno okienko Udostepnij: CO (sam film / z tarcza) i KTORA czesc (calosc /
+  // wycinek). Wczesniej byly dwa przyciski na dole i osobne menu ✂, ktorego
+  // user nie znalazl (2026-11-04).
+  const [showShare, setShowShare] = useState(false);
+  const [shareWithTarget, setShareWithTarget] = useState(true);
+  const [sharePart, setSharePart] = useState<'all' | 'clip'>('all');
+  const scrollRef = useRef<HTMLDivElement>(null);
   // Stopklatka czeka na ekranie podgladu — user oglada zdjecie i dopiero
   // wtedy stuka Udostepnij (share musi wyjsc z gestu, nie z konca awaita).
   const [snapshot, setSnapshot] = useState<{ blob: Blob; url: string } | null>(null);
@@ -302,7 +372,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       shots={shots}
       activeN={activeN}
       onPick={seekToShot}
-      className={displayAsLandscape ? 'absolute inset-0 w-full h-full' : 'w-44'}
+      className={displayAsLandscape ? 'absolute inset-0 w-full h-full' : 'w-full'}
     />
   ) : null;
 
@@ -339,47 +409,55 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   };
 
   // ─── Wycinek ─────────────────────────────────────────────────────────────
-  // Granice stawiane w MIEJSCU odtwarzania, nie uchwytami na suwaku — suwak
-  // juz ma na sobie znaczniki strzal, a drugi zestaw przeciaganych uchwytow
-  // na kilku centymetrach toru bylby nie do trafienia palcem.
-  const setClipStartHere = () => {
+  // Ustawiany w okienku Udostepnij dwoma uchwytami (TrimBar). Przeciaganie
+  // uchwytu przewija film pod spodem, wiec widac, gdzie sie tnie.
+  const seekTo = (t: number) => {
     const v = replayVideoRef.current;
     if (!v) return;
-    const t = v.currentTime;
-    const end = clipRange && clipRange.end - t >= MIN_CLIP ? clipRange.end : replayDuration;
-    if (end - t < MIN_CLIP) return;
-    setClipRange({ start: t, end });
-    setShowClipMenu(false);
+    v.pause();
+    v.currentTime = t;
+    setReplayTime(t);
   };
-
-  const setClipEndHere = () => {
-    const v = replayVideoRef.current;
-    if (!v) return;
-    const t = v.currentTime;
-    const start = clipRange && t - clipRange.start >= MIN_CLIP ? clipRange.start : 0;
-    if (t - start < MIN_CLIP) return;
-    setClipRange({ start, end: t });
-    setShowClipMenu(false);
-  };
-
-  // Strzal, wokol ktorego tniemy: ostatnio oznaczony/stukniety, a jak go
-  // nie ma — ten, ktory wlasnie leci na osi.
-  const clipShotN = (() => {
-    const pick = (n: number | null) => shots.find(s => s.n === n && s.tMs !== null) ?? null;
-    return (pick(lastMarkedN) ?? pick(activeN))?.n ?? null;
-  })();
 
   // 3 s przed strzalem (naciag, kotwica) i 2 s po (wypuszczenie, follow-through).
-  const clipAroundShot = () => {
-    const s = shots.find(x => x.n === clipShotN);
+  const clipAroundShot = (n: number) => {
+    const s = shots.find(x => x.n === n);
     if (!s || s.tMs === null) return;
     const t = s.tMs / 1000;
     const start = Math.max(0, t - 3);
     const end = replayDuration > 0 ? Math.min(replayDuration, t + 2) : t + 2;
     setClipRange({ start, end });
-    setShowClipMenu(false);
-    const v = replayVideoRef.current;
-    if (v) { v.currentTime = start; setReplayTime(start); }
+    seekTo(start);
+  };
+
+  const pickClipPart = () => {
+    setSharePart('clip');
+    if (clipRange) return;
+    // Pierwszy wycinek: wokol ostatnio oznaczonej strzaly, a bez strzal —
+    // 5 s wokol miejsca, w ktorym stoi film.
+    const n = lastMarkedN ?? activeN;
+    const s = shots.find(x => x.n === n && x.tMs !== null);
+    if (s) { clipAroundShot(s.n); return; }
+    const now = replayVideoRef.current?.currentTime ?? 0;
+    const dur = replayDuration || now + 2.5;
+    const start = Math.max(0, Math.min(now - 2.5, dur - 5));
+    setClipRange({ start, end: Math.min(dur, start + 5) });
+  };
+
+  const openShare = () => {
+    replayVideoRef.current?.pause();
+    setShareWithTarget(!!targetPanel);
+    // W pionie film jest na gorze przewijanego ekranu — okienko zaslania dol,
+    // wiec wracamy do gory, zeby przy cieciu bylo widac klatke.
+    scrollRef.current?.scrollTo({ top: 0 });
+    setShowShare(true);
+  };
+
+  const confirmShare = () => {
+    const withT = shareWithTarget && !!targetPanel;
+    setShowShare(false);
+    if (sharePart === 'all' && !withT) { shareVideo(); return; }
+    setExporting(withT ? 'target' : 'plain');
   };
 
   // W poziomie menu lezy PASKIEM NA DOLE, nie kolumna po prawej. Kolumna
@@ -464,63 +542,16 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           </div>
   );
 
-  // Stopklatka i wycinek. W poziomie siedza w pasku transportu (szeroki),
-  // w pionie w rzedzie z ±5 s — obok suwaka zjadaly mu polowe dlugosci.
-  // Menu wycinka wysuwa sie do gory; w pionie ✂ stoi z prawej strony
-  // wysrodkowanego rzedu, wiec menu otwiera sie w lewo.
+  // Stopklatka. W poziomie siedzi w pasku transportu (szeroki), w pionie
+  // w rzedzie z ±5 s — obok suwaka zjadala mu dlugosc.
   const snapClipButtons = (
-    <>
-      <button
-        onClick={takeSnapshot}
-        title={t('delayMirror.snapshot')}
-        className="w-9 h-9 rounded-full bg-white/10 text-white/80 border border-white/10 flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
-      >
-        <span className="material-symbols-outlined text-lg">photo_camera</span>
-      </button>
-      {/* Wycinek: menu wysuwa sie do gory, jak predkosc w pasku poziomym. */}
-      <div className="relative flex-shrink-0">
-        <button
-          onClick={() => setShowClipMenu(v => !v)}
-          title={t('delayMirror.clipMenu')}
-          className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all border ${
-            clipRange
-              ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
-              : 'bg-white/10 text-white/80 border-white/10'
-          }`}
-        >
-          <span className="material-symbols-outlined text-lg">content_cut</span>
-        </button>
-        {showClipMenu && (
-          <div className={`absolute bottom-full mb-2 ${wide ? 'left-0' : 'right-0'} flex flex-col gap-1 bg-[#0a0a0a] border border-white/15 rounded-xl p-1.5 shadow-xl z-30 min-w-[11rem]`}>
-            <p className="px-2 pt-0.5 text-white/40 text-[10px] font-bold tabular-nums">
-              {clipRange
-                ? t('delayMirror.clipRange', { from: fmtT(clipRange.start), to: fmtT(clipRange.end) })
-                : t('delayMirror.clipHint')}
-            </p>
-            <button onClick={setClipStartHere} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/80 active:bg-white/10 whitespace-nowrap text-left">
-              <span className="material-symbols-outlined text-base">first_page</span>
-              {t('delayMirror.clipStartHere')}
-            </button>
-            <button onClick={setClipEndHere} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/80 active:bg-white/10 whitespace-nowrap text-left">
-              <span className="material-symbols-outlined text-base">last_page</span>
-              {t('delayMirror.clipEndHere')}
-            </button>
-            {clipShotN !== null && (
-              <button onClick={clipAroundShot} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[#fed33e] active:bg-white/10 whitespace-nowrap text-left">
-                <span className="material-symbols-outlined text-base">my_location</span>
-                {t('delayMirror.clipAroundShot', { n: clipShotN })}
-              </button>
-            )}
-            {clipRange && (
-              <button onClick={() => { setClipRange(null); setShowClipMenu(false); }} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/50 active:bg-white/10 whitespace-nowrap text-left">
-                <span className="material-symbols-outlined text-base">close</span>
-                {t('delayMirror.clipClear')}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
-    </>
+    <button
+      onClick={takeSnapshot}
+      title={t('delayMirror.snapshot')}
+      className="w-9 h-9 rounded-full bg-white/10 text-white/80 border border-white/10 flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
+    >
+      <span className="material-symbols-outlined text-lg">photo_camera</span>
+    </button>
   );
 
   // Transport: play/pauza, siatka, czas i suwak. W poziomie wchodzi w pasek
@@ -572,7 +603,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               />
               {/* Zaznaczony wycinek na torze — pod znacznikami strzal i bez
                   dotyku, zeby nie zabieral suwakowi przeciagania. */}
-              {clipRange && replayDuration > 0 && (
+              {sharePart === 'clip' && clipRange && replayDuration > 0 && (
                 <div
                   className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-[#4ade80]/45 pointer-events-none"
                   style={{
@@ -739,7 +770,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       blob={blob}
       targetType={withTarget && series ? series.targetType : null}
       shots={withTarget ? shots : []}
-      range={clipRange}
+      range={sharePart === 'clip' ? clipRange : null}
       isPremium={isPremium}
       shareState={shareState}
       onShare={(out) => shareVideo(out)}
@@ -789,22 +820,126 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     </div>
   ) : null;
 
-  const overlays = <>{hiddenTarget}{exportOverlay}{snapshotOverlay}</>;
-
-  // Udostepnij bez tarczy: z wycinkiem trzeba przegrac kawalek przez eksport,
-  // bez wycinka idzie surowy plik od razu.
-  const sharePlain = () => { if (clipRange) setExporting('plain'); else shareVideo(); };
-
-  const targetColumn = targetPanel ? (
-    <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[13rem] h-full min-h-0' : 'w-44'}`}>
-      <div className={wide ? 'flex-1 min-h-0 w-full relative' : 'w-full flex justify-center'}>
-        {targetPanel}
+  // ─── Okienko Udostepnij ──────────────────────────────────────────────────
+  // W pionie wysuwa sie od dolu i zostawia film na gorze widoczny (przy
+  // cieciu widac klatke), w poziomie lezy panelem po prawej, na tarczy.
+  const markedShots = shots.filter(s => s.tMs !== null);
+  const fmtT1 = (s: number) => {
+    const m = Math.floor(s / 60);
+    return `${m}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+  };
+  const seg = (on: boolean) =>
+    `flex-1 py-2 px-2 rounded-xl font-black text-[11px] uppercase tracking-wider border active:scale-95 transition-all flex items-center justify-center gap-1.5 ${
+      on ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'
+    }`;
+  const shareSheet = showShare ? (
+    <div className={`absolute z-[55] bg-[#0a0a0a] border-white/15 shadow-2xl flex flex-col gap-3 p-4 overflow-y-auto ${
+      wide ? 'top-0 right-0 bottom-0 w-[17rem] border-l' : 'bottom-0 inset-x-0 max-h-[60%] rounded-t-3xl border-t pb-[max(1rem,env(safe-area-inset-bottom))]'
+    }`}>
+      <div className="flex items-center">
+        <p className="flex-1 text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.shareTitle')}</p>
+        <button
+          onClick={() => setShowShare(false)}
+          title={t('delayMirror.exportBack')}
+          className="w-8 h-8 rounded-full bg-white/10 text-white/70 flex items-center justify-center active:scale-90 transition-all"
+        >
+          <span className="material-symbols-outlined text-lg">close</span>
+        </button>
       </div>
-      {!marking && (
-        <p className="shrink-0 text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+      {targetPanel && (
+        <div className="flex gap-2">
+          <button onClick={() => setShareWithTarget(false)} className={seg(!shareWithTarget)}>
+            <span className="material-symbols-outlined text-base">movie</span>
+            {t('delayMirror.shareVideoOnly')}
+          </button>
+          <button onClick={() => setShareWithTarget(true)} className={seg(shareWithTarget)}>
+            <span className="material-symbols-outlined text-base">adjust</span>
+            {t('delayMirror.shareWithTarget')}
+          </button>
+        </div>
       )}
-      {markControls}
+      <div className="flex gap-2">
+        <button onClick={() => setSharePart('all')} className={seg(sharePart === 'all')}>
+          {t('delayMirror.clipClear')}
+        </button>
+        <button onClick={pickClipPart} className={seg(sharePart === 'clip')}>
+          <span className="material-symbols-outlined text-base">content_cut</span>
+          {t('delayMirror.clipMenu')}
+        </button>
+      </div>
+      {sharePart === 'clip' && clipRange && replayDuration > 0 && (
+        <>
+          <TrimBar
+            duration={replayDuration}
+            start={clipRange.start}
+            end={clipRange.end}
+            marks={markedShots.map(s => ({ n: s.n, t: (s.tMs as number) / 1000 }))}
+            onChange={(start, end, moved) => { setClipRange({ start, end }); seekTo(moved === 'start' ? start : end); }}
+          />
+          <p className="text-white/70 text-[11px] font-bold tabular-nums text-center -mt-1">
+            {t('delayMirror.clipRange', { from: fmtT1(clipRange.start), to: fmtT1(clipRange.end) })}
+            {' · '}{(clipRange.end - clipRange.start).toFixed(1)} s
+          </p>
+          {markedShots.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 justify-center">
+              {markedShots.map(s => (
+                <button
+                  key={s.n}
+                  onClick={() => clipAroundShot(s.n)}
+                  className="px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 text-[#fed33e] text-[11px] font-bold active:scale-95 transition-all"
+                >
+                  {t('delayMirror.clipAroundShot', { n: s.n })}
+                </button>
+              ))}
+            </div>
+          )}
+          <p className="text-white/40 text-[10px] leading-snug text-center">{t('delayMirror.clipDragHint')}</p>
+        </>
+      )}
+      <button
+        onClick={confirmShare}
+        disabled={shareState === 'sharing'}
+        className="w-full py-3 bg-[#fed33e] text-[#0a3a2a] rounded-2xl font-black text-sm uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+      >
+        <span className="material-symbols-outlined text-lg">share</span>
+        {t('delayMirror.shareGo')}
+      </button>
     </div>
+  ) : null;
+
+  const overlays = <>{hiddenTarget}{shareSheet}{exportOverlay}{snapshotOverlay}</>;
+
+  const shareButtonLabel = shareState === 'sharing' ? t('delayMirror.shareSharing')
+    : shareState === 'saved' ? t('delayMirror.shareSaved')
+    : shareState === 'error' ? t('delayMirror.shareError')
+    : t('delayMirror.shareOpen');
+
+  // W poziomie kolumna obok wideo; w pionie tarcza po lewej, a oznaczanie
+  // strzal obok niej — jedna pod druga zajmowaly caly ekran (user 2026-11-04).
+  const targetColumn = targetPanel ? (
+    wide ? (
+      <div className="shrink-0 flex flex-col items-center justify-center gap-1.5 w-[13rem] h-full min-h-0">
+        <div className="flex-1 min-h-0 w-full relative">
+          {targetPanel}
+        </div>
+        {!marking && (
+          <p className="shrink-0 text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+        )}
+        {markControls}
+      </div>
+    ) : (
+      <div className="w-full flex items-center gap-3">
+        <div className="w-[44%] shrink-0 flex justify-center">
+          {targetPanel}
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col items-stretch gap-1.5">
+          {!marking && (
+            <p className="text-white font-black text-sm text-center">{t('delayMirror.passReviewTitle')}</p>
+          )}
+          {markControls}
+        </div>
+      </div>
+    )
   ) : null;
 
   // ─── Poziomo: wideo + tarcza u gory, menu paskiem na dole ────────────────
@@ -870,7 +1005,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               DelayMirrorExport); bez tarczy (nic do wypalenia) idzie prosto
               do shareVideo. */}
           <button
-            onClick={() => { if (targetPanel) setExporting('target'); else sharePlain(); }}
+            onClick={openShare}
             disabled={shareState === 'sharing'}
             title={t('delayMirror.shareIdle')}
             className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 text-white rounded-xl active:scale-95 transition-all border border-white/20 disabled:opacity-50"
@@ -904,7 +1039,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // i spod niej wystawaly przyciski powtorki.
   return (
     <>
-    <div className="absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 flex flex-col items-center">
+    <div ref={scrollRef} className="absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 flex flex-col items-center">
       {hasFullBlob ? (
         <div className="w-full max-w-md">
           {videoBox}
@@ -983,30 +1118,19 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         >
           {passMode ? t('delayMirror.passReviewNext') : t('delayMirror.resumeBtn')}
         </button>
-        {/* Eksport z tarcza i Udostepnij — darmowe dla wszystkich, patrz
-            decyzja usera przy wide layout wyzej. */}
-        {targetPanel && (
-          <button
-            onClick={() => setExporting('target')}
-            className="w-full max-w-xs py-3 bg-white/10 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30"
-          >
-            <span className="material-symbols-outlined text-lg">adjust</span>
-            {t('delayMirror.exportWithTarget')}
-          </button>
-        )}
+        {/* JEDNO Udostepnij — wybor „sam film / z tarcza" i wycinek siedza
+            w okienku (shareSheet). Darmowe dla wszystkich, patrz decyzja
+            usera przy wide layout wyzej. */}
         {hasFullBlob && (
           <button
-            onClick={sharePlain}
+            onClick={openShare}
             disabled={shareState === 'sharing'}
             className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
           >
             <span className="material-symbols-outlined text-lg">
-              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : clipRange ? 'content_cut' : 'share'}
+              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
             </span>
-            {shareState === 'sharing' && t('delayMirror.shareSharing')}
-            {shareState === 'saved' && t('delayMirror.shareSaved')}
-            {shareState === 'error' && t('delayMirror.shareError')}
-            {shareState === 'idle' && (clipRange ? t('delayMirror.shareClip') : t('delayMirror.shareIdle'))}
+            {shareButtonLabel}
           </button>
         )}
         <button

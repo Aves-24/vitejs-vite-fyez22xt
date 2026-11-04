@@ -6,7 +6,7 @@ import DelayMirrorReplay from './DelayMirrorReplay';
 import DelayMirrorGrid, { drawGridOnCanvas } from './DelayMirrorGrid';
 import { drawBrandOnCanvas } from './DelayMirrorBrand';
 import { getFullCodec } from '../utils/mediaCodecs';
-import DelayMirrorSeries, { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
+import DelayMirrorSeries, { TechSeriesDraft, TechShot, lastRoundFace } from './DelayMirrorSeries';
 import TopicPicker from '../components/TopicPicker';
 import { FocusStrip, FocusChoiceChips } from '../components/tagebuch/FocusCard';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
@@ -250,6 +250,13 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
   // [KOLORY STRZAŁ] Kolory strzał w analizie serii. Dopóki user sam nie
   // przełączy, idziemy za opcją z zestawu (SPRZĘT → STRZAŁY).
   const [mirrorColors, setMirrorColors] = useState<boolean>(() => !!readMirrorArrowColors());
+  const [seriesSpot, setSeriesSpot] = useState<boolean>(() => {
+    try { return localStorage.getItem('delayMirror.seriesSpot') === '1'; } catch { return false; }
+  });
+  const [seriesArrows, setSeriesArrows] = useState<number>(() => {
+    try { const n = parseInt(localStorage.getItem('delayMirror.seriesArrows') || '', 10); return n >= 1 && n <= 6 ? n : 6; } catch { return 6; }
+  });
+  const seriesRoundFace = React.useMemo(() => lastRoundFace(auth.currentUser?.uid || ''), []);
   useEffect(() => {
     const uid = auth.currentUser?.uid;
     if (readMirrorArrowColors() !== null || !uid) return;
@@ -1444,6 +1451,42 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
     </button>
   );
 
+  // Tarcza i liczba strzal passy — ustawiane RAZ tutaj, nie po kazdej passie
+  // (user 2026-11-04). Te same klucze localStorage, ktore czyta ekran serii.
+  const seriesSetupBlock = (
+    <div>
+    <p className={`text-white/70 font-bold uppercase tracking-wider text-center ${_compactExpert ? "text-[10px] mb-1" : "text-[9px] mb-1.5"}`}>
+      {t('delayMirror.seriesSetupLabel')}
+    </p>
+    <div className="flex items-center gap-1.5">
+      <button
+        onClick={() => { setSeriesSpot(true); try { localStorage.setItem('delayMirror.seriesSpot', '1'); } catch { /* ignore */ } }}
+        className={`flex-1 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[10px] uppercase tracking-wider border active:scale-95 transition-all flex items-center justify-center gap-1 ${seriesSpot ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
+      >
+        <span className="material-symbols-outlined text-sm">grid_view</span>
+        {t('delayMirror.seriesTargetSpot')}
+      </button>
+      <button
+        onClick={() => { setSeriesSpot(false); try { localStorage.setItem('delayMirror.seriesSpot', '0'); } catch { /* ignore */ } }}
+        className={`flex-1 min-w-0 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-[10px] uppercase tracking-wider border active:scale-95 transition-all flex items-center justify-center gap-1 ${!seriesSpot ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
+      >
+        <span className="material-symbols-outlined text-sm">radio_button_unchecked</span>
+        <span className="truncate">{seriesRoundFace}</span>
+      </button>
+      {[3, 6].map(n => (
+        <button
+          key={n}
+          onClick={() => { setSeriesArrows(n); try { localStorage.setItem('delayMirror.seriesArrows', String(n)); } catch { /* ignore */ } }}
+          className={`shrink-0 w-9 ${_compactExpert ? 'py-1.5' : 'py-2'} rounded-xl font-black text-xs border active:scale-95 transition-all ${seriesArrows === n ? 'bg-[#fed33e] text-[#0a3a2a] border-[#fed33e]' : 'bg-white/5 text-white/70 border-white/15'}`}
+          title={t('delayMirror.seriesArrowsTitle')}
+        >
+          {n}
+        </button>
+      ))}
+    </div>
+    </div>
+  );
+
   const privacyNote = (
     <div className="flex items-start gap-2 bg-white/5 rounded-xl px-3 py-2">
       <span className="material-symbols-outlined text-[#fed33e]/70 text-sm mt-0.5">lock</span>
@@ -1808,6 +1851,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
               {delayBlock}
               {orientationBlock}
               {modeBlock}
+              {clipMode && seriesSetupBlock}
               {clipMode && arrowColorsBlock}
             </>
           )}
@@ -1963,12 +2007,23 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           (poza tym kontenerem, fizyczny rog) — w force-rotate te dwa rogi sa
           rozne (patrz komentarz przy uiRotateStyle), w native landscape sa
           te same, stad wiekszy odstep od gory tylko w tym drugim przypadku. */}
+      {/* W PIONIE czas nagrania zostaje sam w rogu, a reszta zjezdza na dol
+          jednym rzedem — w waskiej kolumnie po prawej pigulki ukladaly sie
+          jedna pod druga i zaslanialy pol kadru (user 2026-11-04). */}
+      {(mirrorState === 'buffering' || mirrorState === 'live') && !_displayAsLandscape && clipActive && !recordingPaused && (
+        <div className="absolute z-30 top-20 right-4 flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-red-500/40">
+          <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
+          <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
+        </div>
+      )}
       {(mirrorState === 'buffering' || mirrorState === 'live') && (
-        <div className={`absolute z-30 flex flex-col items-stretch gap-1.5 w-[27%] max-w-[11rem] min-w-[7.5rem] right-4 ${_uiForceRotate ? 'top-4' : 'top-20'}`}>
-          <div className="flex flex-wrap gap-1.5 justify-end">
+        <div className={_displayAsLandscape
+          ? `absolute z-30 flex flex-col items-stretch gap-1.5 w-[27%] max-w-[11rem] min-w-[7.5rem] right-4 ${_uiForceRotate ? 'top-4' : 'top-20'}`
+          : 'absolute z-30 bottom-5 left-20 right-4 flex items-center justify-end gap-2'}>
+          <div className={_displayAsLandscape ? 'flex flex-wrap gap-1.5 justify-end' : 'flex gap-1.5 justify-end'}>
             {/* Licznik — tylko gdy klip faktycznie zbiera material. W trybie
                 samego lustra czerwona kropka bylaby klamstwem. */}
-            {clipActive && !recordingPaused && (
+            {_displayAsLandscape && clipActive && !recordingPaused && (
               <div className="flex items-center gap-1.5 bg-red-600/80 backdrop-blur-sm rounded-xl px-2.5 py-1.5 border border-red-500/40">
                 <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
                 <span className="text-white text-xs font-bold tabular-nums">{formatTime(recSeconds)}</span>
@@ -2042,7 +2097,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
               Dziala w obu trybach, bo nie dotyczy klipu tylko mojej obecnosci. */}
           <button
             onClick={toggleRecordingPause}
-            className={`w-full py-2.5 px-3 backdrop-blur-sm rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
+            className={`${_displayAsLandscape ? 'w-full py-2.5 px-3' : 'shrink-0 py-2 px-4'} backdrop-blur-sm rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-0.5 border ${
               recordingPaused
                 ? 'bg-[#fed33e]/25 text-[#fed33e] border-[#fed33e]/50'
                 : 'bg-white/10 text-white/80 border-white/15'
@@ -2091,7 +2146,7 @@ export default function DelayMirrorView({ onBack, onUpgrade, onOpenStats }: Prop
           nagrania). Na dole, bo srodek zajmuje pasek pauzy, a lewy dolny rog
           przycisk wyjscia. */}
       {showPauseCount && (mirrorState === 'live' || mirrorState === 'buffering') && (
-        <div className="absolute bottom-4 inset-x-0 z-[35] flex justify-center px-16">
+        <div className={`absolute ${_displayAsLandscape ? 'bottom-4' : 'bottom-24'} inset-x-0 z-[35] flex justify-center px-16`}>
           <div className="bg-black/80 backdrop-blur-sm rounded-2xl border border-white/20 px-3 py-2.5 flex flex-col items-center gap-2 max-w-full">
             <p className="flex items-center gap-1.5 text-white text-xs font-black uppercase tracking-wider">
               <ArrowGlyph className="w-4 h-4 text-sky-300" />

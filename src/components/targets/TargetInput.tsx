@@ -43,6 +43,7 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //          tytulu wlasnego
 //   slots  liczba pol w pasku ze strzalami (domyslnie 6) — passa moze miec
 //          inna liczbe strzal niz standardowa serie
+//   toolsBottom  odstep celownika/reki od dolu (px), gdy na dole lezy obcy pasek
 //   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
@@ -328,7 +329,13 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
       )}
 
       {/* LEWY DÓŁ: celownik (offset) + strona ręki */}
-      <div className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : spotInline ? 'right-2 bottom-14' : 'left-2 bottom-2'}`}>
+      {/* embed.toolsBottom — gdy wywolujacy kladzie na dole wlasny pasek
+          (Delay Mirror), celownik i reka musza stac NAD nim, inaczej sa
+          niewidoczne pod paskiem. */}
+      <div
+        className={`absolute z-[100] flex flex-col items-center justify-end transition-all duration-300 origin-bottom ${isFullscreen ? 'left-6 bottom-8' : spotInline ? 'right-2 bottom-14' : 'left-2 bottom-2'}`}
+        style={isFullscreen && embed?.toolsBottom ? { bottom: embed.toolsBottom } : undefined}
+      >
         {showOffsetSlider ? (
           <div className="relative h-44 bg-white/95 backdrop-blur-md rounded-[22px] shadow-xl border border-gray-100 flex items-stretch gap-1 px-1.5 pb-2 pt-3 pointer-events-auto animate-fade-in-up">
             {/* [RĘKA] Strzałka pokazuje, gdzie krzyżyk stanie nad palcem. */}

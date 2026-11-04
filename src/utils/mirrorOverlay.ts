@@ -98,7 +98,10 @@ export function drawMirrorOverlay(ctx: CanvasRenderingContext2D, o: OverlayOpts)
 
   if (targetImg && targetType) {
     const vb = seriesTargetViewBox(targetType);
-    const panelW = Math.round(W * 0.26);
+    // 0.32 szerokosci kadru (bylo 0.26) — na telefonie ok. pol centymetra
+    // wiecej tarczy w gotowym klipie i na stopklatce (user 2026-11-04).
+    // Limit wysokosci: wysoki 3-Spot w klipie poziomym zajalby prawie caly kadr.
+    const panelW = Math.round(Math.min(W * 0.32, H * 0.6 * (vb.w / vb.h)));
     const panelH = Math.round(panelW * (vb.h / vb.w));
     const panelX = W - pad - panelW;
     const panelY = pad;

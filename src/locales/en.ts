@@ -2608,7 +2608,7 @@ export const views = {
     shareVideoOnly: "Video only",
     shareWithTarget: "With target",
     shareGo: "Share",
-    clipDragHint: "Drag the green handles — the video shows the cut point.",
+    clipDragHint: "Green = start, red = end — while dragging, the video shows the cut point.",
     shareImage: "Share photo",
     snapshot: "Still frame",
     clipMenu: "Clip",

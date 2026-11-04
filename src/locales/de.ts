@@ -2608,7 +2608,7 @@ export const views = {
     shareVideoOnly: "Nur Video",
     shareWithTarget: "Mit Scheibe",
     shareGo: "Teilen",
-    clipDragHint: "Grüne Griffe verschieben — das Video zeigt die Schnittstelle.",
+    clipDragHint: "Grün = Start, Rot = Ende — beim Verschieben zeigt das Video die Schnittstelle.",
     shareImage: "Bild teilen",
     snapshot: "Standbild",
     clipMenu: "Ausschnitt",

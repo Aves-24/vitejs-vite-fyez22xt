@@ -2649,7 +2649,7 @@ export const views = {
     shareVideoOnly: "Sam film",
     shareWithTarget: "Z tarczą",
     shareGo: "Udostępnij",
-    clipDragHint: "Przesuń zielone uchwyty — film pokazuje miejsce cięcia.",
+    clipDragHint: "Zielony = start, czerwony = koniec — przy przesuwaniu film pokazuje miejsce cięcia.",
     shareImage: "Udostępnij zdjęcie",
     snapshot: "Stopklatka",
     clipMenu: "Wycinek",

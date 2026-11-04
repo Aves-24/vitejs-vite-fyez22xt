@@ -11,6 +11,23 @@ import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
 // stukniecie, a nie fragment do pokazania komus.
 const MIN_CLIP = 0.5;
 
+const FLAG_COLOR = { start: '#4ade80', end: '#ef4444' } as const;
+
+// Flaga startu/stopu wycinka. Drzewce po lewej krawedzi SVG, przesuniete
+// o 1 px, zeby stalo dokladnie na `left` (czasie ciecia).
+function ClipFlag({ kind, className, style }: { kind: 'start' | 'end'; className?: string; style?: React.CSSProperties }) {
+  return (
+    <svg
+      width="12" height="18" viewBox="0 0 12 18"
+      className={className}
+      style={{ ...style, transform: 'translateX(-1px)' }}
+    >
+      <path d="M1 0 V18" stroke="#ffffff" strokeWidth="1.5" />
+      <path d="M1.5 1 H11 L8.5 4.5 L11 8 H1.5 Z" fill={FLAG_COLOR[kind]} stroke="#000" strokeOpacity="0.4" strokeWidth="0.5" />
+    </svg>
+  );
+}
+
 // Tor wycinka z dwoma uchwytami. Dotyk w dowolnym miejscu toru lapie BLIZSZY
 // uchwyt — trafianie palcem w sam uchwyt na telefonie bylo loterią.
 // Pod force-rotate (UI obrocone o 90°) tor biegnie po ekranie pionowo, wiec
@@ -63,11 +80,12 @@ function TrimBar({ duration, start, end, marks, onChange }: {
           </span>
         );
       })}
+      {/* Uchwyty w kolorach flag: zielony start, czerwony stop. */}
       {(['start', 'end'] as const).map(h => (
         <div
           key={h}
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-7 rounded-md bg-[#4ade80] border-2 border-white shadow pointer-events-none"
-          style={{ left: pct(h === 'start' ? start : end) }}
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-7 rounded-md border-2 border-white shadow pointer-events-none"
+          style={{ left: pct(h === 'start' ? start : end), backgroundColor: FLAG_COLOR[h] }}
         />
       ))}
     </div>
@@ -614,6 +632,16 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   }}
                 />
               )}
+              {/* Flagi wycinka nad osia: zielona = start, czerwona = stop
+                  (user 2026-11-04). Drzewce stoi dokladnie na czasie ciecia. */}
+              {sharePart === 'clip' && clipRange && replayDuration > 0 && (['start', 'end'] as const).map(h => (
+                <ClipFlag
+                  key={h}
+                  kind={h}
+                  className="absolute bottom-1/2 pointer-events-none"
+                  style={{ left: `${((h === 'start' ? clipRange.start : clipRange.end) / replayDuration) * 100}%` }}
+                />
+              ))}
               {replayDuration > 0 && shots.filter(s => s.tMs !== null).map(s => {
                 const pct = Math.max(0, Math.min(100, ((s.tMs as number) / 1000 / replayDuration) * 100));
                 // [KOLORY STRZAŁ] Znacznik na osi w kolorze strzały; aktywny tylko rośnie.
@@ -836,7 +864,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     }`;
   const shareSheet = showShare ? (
     <div className={`absolute z-[55] bg-[#0a0a0a] border-white/15 shadow-2xl flex flex-col gap-3 p-4 overflow-y-auto ${
-      wide ? 'top-0 right-0 bottom-0 w-[17rem] border-l' : 'bottom-0 inset-x-0 max-h-[60%] rounded-t-3xl border-t pb-[max(1rem,env(safe-area-inset-bottom))]'
+      wide ? 'top-0 right-0 bottom-0 w-[17rem] border-l' : 'bottom-0 inset-x-0 max-h-[44%] rounded-t-3xl border-t pb-[max(1rem,env(safe-area-inset-bottom))]'
     }`}>
       <div className="flex items-center">
         <p className="flex-1 text-white font-black text-sm uppercase tracking-widest">{t('delayMirror.shareTitle')}</p>

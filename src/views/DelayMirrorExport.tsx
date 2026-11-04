@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
 import type { TechShot } from './DelayMirrorSeries';
 import { getFullCodec } from '../utils/mediaCodecs';
-import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
+import { drawMirrorOverlay, keepSegments, keptTime, loadTargetImage, type ClipSeg } from '../utils/mirrorOverlay';
 
 // Klip z WYPALONA tarcza i znacznikami strzal.
 //
@@ -30,6 +30,9 @@ interface Props {
    *  da sie przyciac bez przekodowania, a przekodowanie i tak leci w czasie
    *  rzeczywistym — wiec przegrywamy po prostu tylko ten kawalek. */
   range: { start: number; end: number } | null;
+  /** Fragmenty wyciete ze srodka (s oryginalu). Przy przegrywaniu recorder
+   *  pauzuje, film przeskakuje za fragment i nagrywanie leci dalej. */
+  cuts: ClipSeg[];
   /** Tempo odtwarzania z powtorki (np. 0.25 = zwolnione). Klip przegrywa sie
    *  w czasie rzeczywistym, wiec nagrany canvas ma dokladnie to tempo. */
   rate: number;
@@ -55,7 +58,7 @@ function bitrateForResolution(w: number, h: number): number {
   return 8_000_000;
 }
 
-export default function DelayMirrorExport({ blob, targetType, shots, range, rate, isPremium, shareState, onShare, onClose, onCancel }: Props) {
+export default function DelayMirrorExport({ blob, targetType, shots, range, cuts, rate, isPremium, shareState, onShare, onClose, onCancel }: Props) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenTargetRef = useRef<HTMLDivElement>(null);
@@ -162,26 +165,69 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, rate
         // i tak ma sensowne granice z UI, a caly klip konczy event `ended`.
         const clipStart = range ? Math.max(0, range.start) : 0;
         const clipEnd = range ? (fullDur > 0 ? Math.min(range.end, fullDur) : range.end) : fullDur;
-        const dur = Math.max(0, clipEnd - clipStart);
+        // Kawalki do przegrania. Bez znanej dlugosci i bez wycinka — jeden
+        // kawalek „do konca” (konczy go event `ended`), ciecia pomijamy.
+        const segs: ClipSeg[] = clipEnd > clipStart
+          ? keepSegments({ start: clipStart, end: clipEnd }, cuts)
+          : [];
+        if (clipEnd > clipStart && segs.length === 0) { setFailed(true); return; }
+        const dur = segs.reduce((sum, g) => sum + (g.end - g.start), 0);
+        let segIdx = 0;
+        // W trakcie przeskoku za wyciety fragment nie rysujemy (klatka sprzed
+        // ciecia) i nie liczymy zaciecia — film stoi celowo.
+        let jumping = false;
 
-        const draw = () => {
+        const seekVideo = (t: number) => new Promise<void>(resolve => {
+          const v = video;
+          if (!v) { resolve(); return; }
+          let done = false;
+          const fin = () => { if (!done) { done = true; resolve(); } };
+          v.addEventListener('seeked', fin, { once: true });
+          // Bezpiecznik: telefon potrafi zgubic `seeked`.
+          setTimeout(fin, 3000);
+          v.currentTime = t;
+        });
+
+        const jumpTo = async (i: number) => {
+          const v = video;
+          if (!v || !rec) return;
+          jumping = true;
+          v.pause();
+          try { if (rec.state === 'recording') rec.pause(); } catch { /* ignore */ }
+          await seekVideo(segs[i].start);
+          if (cancelled || !video) return;
+          segIdx = i;
+          draw(true);
+          try { if (rec.state === 'paused') rec.resume(); } catch { /* ignore */ }
+          lastMoveAt = Date.now();
+          jumping = false;
+          await v.play().catch(() => { /* ignore */ });
+        };
+
+        const draw = (force = false) => {
           const v = video;
           if (!v || !ctx) return;
+          if (jumping && !force) return;
           ctx.drawImage(v, 0, 0, W, H);
 
           const now = v.currentTime;
           drawMirrorOverlay(ctx, {
             W, H, now, targetImg, targetType, shots, isPremium,
-            bar: dur > 0 ? { start: clipStart, end: clipEnd } : null,
+            bar: dur > 0 ? segs : null,
           });
+          if (force) return;
 
-          if (dur > 0) setProgress(Math.max(0, Math.min(1, (now - clipStart) / dur)));
+          if (dur > 0) setProgress(Math.max(0, Math.min(1, (keptTime(segs, now) ?? 0) / dur)));
 
           // Koniec liczymy z czasu odtwarzania, nie z eventu `ended`. Event
           // potrafi nie przyjsc, gdy przegladarka przydusi <video> poza
           // widokiem — wtedy nagrywanie jechalo do bezpiecznika i plik mial
           // 15 s zamrozonej ostatniej klatki zamiast 6 s klipu.
-          if (dur > 0 && now >= clipEnd - 0.05) { finish(); return; }
+          if (dur > 0 && now >= segs[segIdx].end - 0.05) {
+            if (segIdx >= segs.length - 1) { finish(); return; }
+            void jumpTo(segIdx + 1);
+            return;
+          }
 
           // Przegladarka potrafi wstrzymac odtwarzanie, gdy strona przestaje
           // byc rysowana (zgaszony ekran, okno w tle). Bez tego wychodzilby
@@ -211,34 +257,27 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, rate
         // Najpierw przewijamy na poczatek wycinka i CZEKAMY na klatke — inaczej
         // pierwsze rysowania zlapalyby klatke z 0:00 i plik zaczynalby sie
         // mignieciem z poczatku nagrania.
-        if (clipStart > 0) {
-          await new Promise<void>(resolve => {
-            const v = video;
-            if (!v) { resolve(); return; }
-            v.addEventListener('seeked', () => resolve(), { once: true });
-            // Bezpiecznik: telefon potrafi zgubic `seeked` — wtedy jedziemy
-            // dalej zamiast wisiec na ekranie eksportu bez konca.
-            setTimeout(resolve, 3000);
-            v.currentTime = clipStart;
-          });
+        const firstStart = segs.length ? segs[0].start : clipStart;
+        if (firstStart > 0) {
+          await seekVideo(firstStart);
           if (cancelled || !video) { cleanup(); return; }
         } else {
           video.currentTime = 0;
         }
 
         draw();
-        drawTimer = setInterval(draw, 33);
+        drawTimer = setInterval(() => draw(), 33);
         // Bez timeslice — kompletny moov, ta sama zasada co przy nagrywaniu.
         rec.start();
         lastMoveAt = Date.now();
         video.playbackRate = rate > 0 ? rate : 1;
         await video.play().catch(() => { /* i tak rysujemy z rAF */ });
 
-        video.addEventListener('ended', finish, { once: true });
+        video.addEventListener('ended', () => { if (!jumping) finish(); });
 
         // Bezpiecznik: gdyby odtwarzanie utknelo na dobre, konczymy sami
         // zamiast zostawiac usera na ekranie eksportu bez wyjscia.
-        hardStop = setTimeout(finish, Math.round(((dur || 30) / (rate > 0 ? rate : 1)) * 1000 * 1.6) + 6000);
+        hardStop = setTimeout(finish, Math.round(((dur || 30) / (rate > 0 ? rate : 1)) * 1000 * 1.6) + 6000 + segs.length * 3000);
       } catch {
         setFailed(true);
       }

@@ -49,6 +49,45 @@ export async function loadTargetImage(holder: HTMLElement | null, targetType: st
   });
 }
 
+export type ClipSeg = { start: number; end: number };
+
+/** Strzal, ktorego notatka obowiazuje w chwili `now`: ostatni oznaczony
+ *  strzal, ktory juz padl. Notatka trwa do nastepnego strzalu. */
+export function noteShotAt(shots: TechShot[], now: number): TechShot | null {
+  let cur: TechShot | null = null;
+  shots
+    .filter(s => s.tMs !== null)
+    .sort((a, b) => (a.tMs as number) - (b.tMs as number))
+    .forEach(s => { if ((s.tMs as number) / 1000 <= now + 0.05) cur = s; });
+  return cur;
+}
+
+/** Zakres minus wyciete fragmenty = kawalki, ktore ida do klipu. */
+export function keepSegments(range: ClipSeg, cuts: ClipSeg[]): ClipSeg[] {
+  const out: ClipSeg[] = [];
+  let pos = range.start;
+  cuts
+    .filter(c => c.end > range.start && c.start < range.end)
+    .sort((a, b) => a.start - b.start)
+    .forEach(c => {
+      if (c.start > pos) out.push({ start: pos, end: Math.min(c.start, range.end) });
+      pos = Math.max(pos, c.end);
+    });
+  if (pos < range.end) out.push({ start: pos, end: range.end });
+  return out.filter(g => g.end - g.start > 0.05);
+}
+
+/** Czas oryginalu -> czas klipu sklejonego z kawalkow (null = wyciete). */
+export function keptTime(segs: ClipSeg[], t: number): number | null {
+  let acc = 0;
+  for (const g of segs) {
+    if (t < g.start) return null;
+    if (t <= g.end) return acc + (t - g.start);
+    acc += g.end - g.start;
+  }
+  return null;
+}
+
 interface OverlayOpts {
   W: number;
   H: number;
@@ -60,9 +99,9 @@ interface OverlayOpts {
   // Notatki sa jedynym PRO gate w Delay Mirror — sprawdzane tutaj, nie tylko
   // w UI edycji (subskrypcja mogla wygasnac po zapisaniu notatek).
   isPremium: boolean;
-  /** Os czasu dla wycinka [start, end] w sekundach oryginalu. null = bez osi
-   *  (stopklatka — pasek postepu na zdjeciu nic nie mowi). */
-  bar: { start: number; end: number } | null;
+  /** Os czasu: kawalki oryginalu, ktore ida do klipu (wycinek minus
+   *  wyciete fragmenty). null = bez osi (stopklatka). */
+  bar: ClipSeg[] | null;
 }
 
 export function drawMirrorOverlay(ctx: CanvasRenderingContext2D, o: OverlayOpts) {
@@ -82,19 +121,9 @@ export function drawMirrorOverlay(ctx: CanvasRenderingContext2D, o: OverlayOpts)
   let activeN: number | null = null;
   byTime.forEach(s => { if ((s.tMs as number) / 1000 <= now + 0.05) activeN = s.n; });
 
-  // Notatka do strzalu N ma byc widoczna PRZED nim, nie po — to
-  // komentarz/przypomnienie na czas przygotowania i naciagu, nie
-  // podsumowanie po fakcie. Okno: od konca poprzedniego strzalu
-  // (albo od 0:00 dla pierwszego) do WLASNEGO momentu tego strzalu.
-  // Osobne od activeN (obwodka na tarczy), ktora ma zostac na
-  // strzale, ktory WLASNIE trafil.
-  let noteShot: TechShot | null = null;
-  for (let i = 0; i < byTime.length; i++) {
-    const s = byTime[i];
-    const windowEnd = (s.tMs as number) / 1000;
-    const windowStart = i === 0 ? 0 : (byTime[i - 1].tMs as number) / 1000;
-    if (now >= windowStart && now <= windowEnd + 0.05) { noteShot = s; break; }
-  }
+  // Notatka do strzalu N widoczna PO nim (user 2026-11-04): od momentu
+  // strzalu N do strzalu N+1 (ostatnia — do konca klipu).
+  const noteShot = noteShotAt(shots, now);
 
   if (targetImg && targetType) {
     const vb = seriesTargetViewBox(targetType);
@@ -155,14 +184,17 @@ export function drawMirrorOverlay(ctx: CanvasRenderingContext2D, o: OverlayOpts)
 
   // Os czasu ze znacznikami — tylko gdy w wycinku cokolwiek oznaczono.
   // Liczona od poczatku WYCINKA, nie oryginalu.
-  if (!bar) return;
-  const dur = bar.end - bar.start;
-  const inRange = marked.filter(s => {
-    const t = (s.tMs as number) / 1000;
-    return t >= bar.start && t <= bar.end;
-  });
+  if (!bar || bar.length === 0) return;
+  const dur = bar.reduce((sum, g) => sum + (g.end - g.start), 0);
+  const inRange = marked.filter(s => keptTime(bar, (s.tMs as number) / 1000) !== null);
   if (dur <= 0 || inRange.length === 0) return;
-  const frac = (t: number) => Math.max(0, Math.min(1, (t - bar.start) / dur));
+  // Os liczona po SKLEJONYM klipie — wyciete kawalki na niej nie istnieja.
+  let lastKept = 0;
+  const frac = (t: number) => {
+    const k = keptTime(bar, t);
+    if (k !== null) lastKept = k;
+    return Math.max(0, Math.min(1, (k ?? lastKept) / dur));
+  };
   ctx.save();
   ctx.fillStyle = 'rgba(255,255,255,0.28)';
   roundRect(ctx, barX, barY, barW, barH, barH / 2);

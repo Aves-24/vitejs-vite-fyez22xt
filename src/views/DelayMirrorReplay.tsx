@@ -5,13 +5,15 @@ import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
 import DelayMirrorExport from './DelayMirrorExport';
 import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import { mirrorShotColor } from '../utils/mirrorArrowColors';
-import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
+import { drawMirrorOverlay, loadTargetImage, noteShotAt, type ClipSeg } from '../utils/mirrorOverlay';
 
 // Najkrotszy wycinek do udostepnienia — krotszy niz pol sekundy to przypadkowe
 // stukniecie, a nie fragment do pokazania komus.
 const MIN_CLIP = 0.5;
 
 const FLAG_COLOR = { start: '#4ade80', end: '#ef4444' } as const;
+// Najkrotszy wyciety fragment.
+const MIN_CUT = 0.2;
 
 // Flaga startu/stopu wycinka. Drzewce po lewej krawedzi SVG, przesuniete
 // o 1 px, zeby stalo dokladnie na `left` (czasie ciecia).
@@ -32,41 +34,77 @@ function ClipFlag({ kind, className, style }: { kind: 'start' | 'end'; className
 // uchwyt — trafianie palcem w sam uchwyt na telefonie bylo loterią.
 // Pod force-rotate (UI obrocone o 90°) tor biegnie po ekranie pionowo, wiec
 // pozycje liczymy z osi, wzdluz ktorej faktycznie lezy.
-function TrimBar({ duration, start, end, marks, onChange }: {
+type Handle = 'start' | 'end' | { cut: number; side: 'start' | 'end' };
+
+// Tor wycinka. Dotyk w dowolnym miejscu toru lapie NAJBLIZSZY uchwyt —
+// trafianie palcem w sam uchwyt na telefonie bylo loterią. Uchwyty: start/stop
+// wycinka (zielony/czerwony) i po dwa na kazdy wyciety fragment.
+// Pod force-rotate (UI obrocone o 90°) tor biegnie po ekranie pionowo, wiec
+// pozycje liczymy z osi, wzdluz ktorej faktycznie lezy.
+function TrimBar({ duration, start, end, showRange, cuts, marks, onChange, onCutsChange }: {
   duration: number;
   start: number;
   end: number;
+  /** false = caly film (bez uchwytow start/stop), tylko wyciete fragmenty. */
+  showRange: boolean;
+  cuts: ClipSeg[];
   marks: { n: number; t: number }[];
   onChange: (start: number, end: number, moved: 'start' | 'end') => void;
+  onCutsChange: (cuts: ClipSeg[], movedT: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const drag = useRef<'start' | 'end' | null>(null);
+  const drag = useRef<Handle | null>(null);
   // Najswiezsze granice — kolejne pointermove potrafia przyjsc przed
-  // rerenderem, a stare `start`/`end` z propsow cofaly wtedy drugi uchwyt.
-  const live = useRef({ start, end });
-  if (!drag.current) live.current = { start, end };
+  // rerenderem, a stare wartosci z propsow cofaly wtedy drugi uchwyt.
+  const live = useRef({ start, end, cuts });
+  if (!drag.current) live.current = { start, end, cuts };
   const toT = (e: React.PointerEvent) => {
     const r = ref.current?.getBoundingClientRect();
     if (!r) return 0;
     const f = r.height > r.width ? (e.clientY - r.top) / r.height : (e.clientX - r.left) / r.width;
     return Math.max(0, Math.min(duration, f * duration));
   };
-  // Uchwyt wjezdzajacy na drugi PCHA go dalej (z zachowaniem MIN_CLIP)
+  // Uchwyt wjezdzajacy na drugi PCHA go dalej (z zachowaniem minimum)
   // zamiast stawac w miejscu — to „stawanie” wygladalo jak zablokowanie.
   const apply = (t: number) => {
+    const h = drag.current;
+    if (!h) return;
+    if (typeof h === 'object') {
+      const list = live.current.cuts.map(c => ({ ...c }));
+      const c = list[h.cut];
+      if (!c) return;
+      if (h.side === 'start') {
+        c.start = Math.min(t, duration - MIN_CUT);
+        if (c.end - c.start < MIN_CUT) c.end = c.start + MIN_CUT;
+      } else {
+        c.end = Math.max(t, MIN_CUT);
+        if (c.end - c.start < MIN_CUT) c.start = c.end - MIN_CUT;
+      }
+      live.current = { ...live.current, cuts: list };
+      onCutsChange(list, h.side === 'start' ? c.start : c.end);
+      return;
+    }
     let { start: s, end: en } = live.current;
-    if (drag.current === 'start') {
+    if (h === 'start') {
       s = Math.min(t, duration - MIN_CLIP);
       if (en - s < MIN_CLIP) en = s + MIN_CLIP;
-    } else if (drag.current === 'end') {
+    } else {
       en = Math.max(t, MIN_CLIP);
       if (en - s < MIN_CLIP) s = en - MIN_CLIP;
-    } else return;
-    live.current = { start: s, end: en };
-    onChange(s, en, drag.current);
+    }
+    live.current = { ...live.current, start: s, end: en };
+    onChange(s, en, h);
   };
   const stop = () => { drag.current = null; };
   const pct = (t: number) => `${(t / duration) * 100}%`;
+  const handles = (): { h: Handle; t: number }[] => {
+    const { start: s, end: en, cuts: cs } = live.current;
+    const out: { h: Handle; t: number }[] = [];
+    if (showRange) out.push({ h: 'start', t: s }, { h: 'end', t: en });
+    cs.forEach((c, i) => out.push({ h: { cut: i, side: 'start' }, t: c.start }, { h: { cut: i, side: 'end' }, t: c.end }));
+    return out;
+  };
+  const hatch = 'repeating-linear-gradient(45deg, rgba(239,68,68,0.9) 0 3px, rgba(0,0,0,0.6) 3px 6px)';
   return (
     // Zewnetrzny pas z marginesem px-4 lapie dotyk TAKZE na polowie uchwytu
     // wystajacej poza tor — wczesniej uchwyt przy samej krawedzi byl w polowie
@@ -75,8 +113,13 @@ function TrimBar({ duration, start, end, marks, onChange }: {
       className="px-4 touch-none select-none"
       onPointerDown={(e) => {
         const t = toT(e);
-        const { start: s, end: en } = live.current;
-        drag.current = Math.abs(t - s) <= Math.abs(t - en) ? 'start' : 'end';
+        let best: { h: Handle; d: number } | null = null;
+        for (const x of handles()) {
+          const d = Math.abs(t - x.t);
+          if (!best || d < best.d) best = { h: x.h, d };
+        }
+        if (!best) return;
+        drag.current = best.h;
         e.currentTarget.setPointerCapture(e.pointerId);
         apply(t);
       }}
@@ -87,7 +130,18 @@ function TrimBar({ duration, start, end, marks, onChange }: {
     >
     <div ref={ref} className="relative h-10">
       <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-2 rounded-full bg-white/15" />
-      <div className="absolute top-1/2 -translate-y-1/2 h-2 bg-[#4ade80]/60" style={{ left: pct(start), width: pct(end - start) }} />
+      <div
+        className="absolute top-1/2 -translate-y-1/2 h-2 bg-[#4ade80]/60"
+        style={showRange ? { left: pct(start), width: pct(end - start) } : { left: 0, right: 0 }}
+      />
+      {/* Wyciete fragmenty: czerwone, kreskowane — tego nie bedzie w klipie. */}
+      {cuts.map((c, i) => (
+        <div
+          key={i}
+          className="absolute top-1/2 -translate-y-1/2 h-3 rounded-sm pointer-events-none"
+          style={{ left: pct(c.start), width: pct(c.end - c.start), background: hatch }}
+        />
+      ))}
       {marks.map(m => {
         const ac = mirrorShotColor(m.n);
         return (
@@ -100,14 +154,22 @@ function TrimBar({ duration, start, end, marks, onChange }: {
           </span>
         );
       })}
-      {/* Uchwyty w kolorach flag: zielony start, czerwony stop. */}
-      {(['start', 'end'] as const).map(h => (
+      {/* Uchwyty wycinka w kolorach flag: zielony start, czerwony stop. */}
+      {showRange && (['start', 'end'] as const).map(h => (
         <div
           key={h}
           className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-7 rounded-md border-2 border-white shadow pointer-events-none"
           style={{ left: pct(h === 'start' ? start : end), backgroundColor: FLAG_COLOR[h] }}
         />
       ))}
+      {/* Uchwyty wycietych fragmentow — biale z czerwona obwodka. */}
+      {cuts.flatMap((c, i) => [c.start, c.end].map((t, j) => (
+        <div
+          key={`${i}-${j}`}
+          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-6 rounded border-2 border-[#ef4444] bg-white shadow pointer-events-none"
+          style={{ left: pct(t) }}
+        />
+      )))}
     </div>
     </div>
   );
@@ -235,6 +297,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const [showShare, setShowShare] = useState(false);
   const [shareWithTarget, setShareWithTarget] = useState(true);
   const [sharePart, setSharePart] = useState<'all' | 'clip'>('all');
+  // Fragmenty wyciete ze srodka (np. czekanie miedzy strzalami).
+  const [cuts, setCuts] = useState<ClipSeg[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   // Stopklatka czeka na ekranie podgladu — user oglada zdjecie i dopiero
   // wtedy stuka Udostepnij (share musi wyjsc z gestu, nie z konca awaita).
@@ -306,23 +370,10 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         return cur;
       })();
 
-  // Notatka widoczna NA PODGLADZIE, nie tylko w polu edycji — user pisal
-  // tekst, a potem puszczajac klip od nowa nigdzie go nie widzial. Ta sama
-  // logika okna co w wypalanym eksporcie (DelayMirrorExport): notatka do
-  // strzalu N pokazuje sie PRZED nim, od konca poprzedniego strzalu (albo
-  // 0:00 dla pierwszego) do jego wlasnego momentu.
-  const previewNote = !isPremium ? null : (() => {
-    const byTime = shots
-      .filter(s => s.tMs !== null)
-      .sort((a, b) => (a.tMs as number) - (b.tMs as number));
-    for (let i = 0; i < byTime.length; i++) {
-      const s = byTime[i];
-      const windowEnd = (s.tMs as number) / 1000;
-      const windowStart = i === 0 ? 0 : (byTime[i - 1].tMs as number) / 1000;
-      if (replayTime >= windowStart && replayTime <= windowEnd + 0.05) return s.note ?? null;
-    }
-    return null;
-  })();
+  // Notatka na PODGLADZIE — ta sama logika co w wypalanym eksporcie:
+  // notatka do strzalu N pokazuje sie PO nim, do nastepnego strzalu
+  // (user 2026-11-04).
+  const previewNote = !isPremium ? null : (noteShotAt(shots, replayTime)?.note ?? null);
 
   const replaySeek = (delta: number) => {
     const v = replayVideoRef.current;
@@ -506,6 +557,25 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     setClipRange({ start, end: Math.min(dur, start + 5) });
   };
 
+  // Nowy wyciety fragment: 1,5 s od miejsca, w ktorym stoi film (w obrebie
+  // wycinka). Granice ustawia sie potem uchwytami na torze.
+  const addCut = () => {
+    const dur = replayDuration;
+    if (dur <= 0) return;
+    const lo = sharePart === 'clip' && clipRange ? clipRange.start : 0;
+    const hi = sharePart === 'clip' && clipRange ? clipRange.end : dur;
+    const now = replayVideoRef.current?.currentTime ?? lo;
+    const len = Math.min(1.5, Math.max(MIN_CUT, (hi - lo) / 3));
+    let st = Math.max(lo, Math.min(now, hi - len));
+    // Nie na istniejacym — za ostatnim, jesli sie miesci.
+    if (cuts.some(c => st < c.end && st + len > c.start)) {
+      const after = Math.max(...cuts.map(c => c.end)) + 0.1;
+      if (after + len <= hi) st = after;
+    }
+    setCuts([...cuts, { start: st, end: Math.min(hi, st + len) }].sort((x, y) => x.start - y.start));
+    seekTo(st);
+  };
+
   const openShare = () => {
     replayVideoRef.current?.pause();
     setShareWithTarget(!!targetPanel);
@@ -521,7 +591,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     // Surowy plik tylko bez tarczy, bez wycinka i w normalnym tempie — kazda
     // z tych zmian wymaga przegrania klipu przez eksport (user: „jak ustawie
     // 0,25x, to tak samo ma sie nagrac”).
-    if (sharePart === 'all' && !withT && replayRate === 1) { shareVideo(); return; }
+    if (sharePart === 'all' && !withT && replayRate === 1 && cuts.length === 0) { shareVideo(); return; }
     setExporting(withT ? 'target' : 'plain');
   };
 
@@ -580,7 +650,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   setReplayDuration(v.duration || 0);
                   setSourceIsPortrait(v.videoHeight > v.videoWidth);
                 }}
-                onTimeUpdate={(e) => { if (!seekBusyRef.current) setReplayTime(e.currentTarget.currentTime); }}
+                onTimeUpdate={(e) => {
+                  const v = e.currentTarget;
+                  if (seekBusyRef.current) return;
+                  // Podczas odtwarzania wyciete fragmenty sa przeskakiwane —
+                  // widac od razu, jak bedzie wygladal wyslany klip.
+                  if (!v.paused && cuts.length) {
+                    const c = cuts.find(x => v.currentTime >= x.start && v.currentTime < x.end - 0.05);
+                    if (c) { v.currentTime = c.end; return; }
+                  }
+                  setReplayTime(v.currentTime);
+                }}
                 onSeeked={() => { if (seekBusyRef.current) onSeekDone(); }}
                 onPlay={() => setReplayPlaying(true)}
                 onPause={() => setReplayPlaying(false)}
@@ -602,24 +682,22 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                 w wypalonym eksporcie (DelayMirrorExport). Wzgledem outer
                 boxa, nie rotowanego wrappera — wystarczajaco dokladnie na
                 podglad, dokladna pozycja jest w eksporcie. */}
+            {/* Stopklatka w prawym dolnym rogu podgladu (user 2026-11-04). */}
+            {hasFullBlob && (
+              <button
+                onClick={takeSnapshot}
+                title={t('delayMirror.snapshot')}
+                className="absolute bottom-2 right-2 z-10 w-9 h-9 rounded-full bg-black/60 text-white border border-white/20 flex items-center justify-center active:scale-90 transition-all"
+              >
+                <span className="material-symbols-outlined text-lg">photo_camera</span>
+              </button>
+            )}
             {previewNote && (
               <div className="absolute bottom-2 left-2 z-10 max-w-[70%] px-2.5 py-1.5 rounded-lg bg-black/70 text-white text-[11px] font-bold pointer-events-none truncate">
                 {previewNote}
               </div>
             )}
           </div>
-  );
-
-  // Stopklatka. W poziomie siedzi w pasku transportu (szeroki), w pionie
-  // w rzedzie z ±5 s — obok suwaka zjadala mu dlugosc.
-  const snapClipButtons = (
-    <button
-      onClick={takeSnapshot}
-      title={t('delayMirror.snapshot')}
-      className="w-9 h-9 rounded-full bg-white/10 text-white/80 border border-white/10 flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
-    >
-      <span className="material-symbols-outlined text-lg">photo_camera</span>
-    </button>
   );
 
   // Transport: play/pauza, siatka, czas i suwak. W poziomie wchodzi w pasek
@@ -648,7 +726,6 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             >
               <span className="material-symbols-outlined text-lg">grid_on</span>
             </button>
-            {wide && snapClipButtons}
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
             {/* Suwak + znaczniki strzal. Numerki leza NAD torem i tylko one
                 lapia dotyk — gdyby przykrywaly tor, w tych miejscach nie dalo
@@ -688,6 +765,18 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                   kind={h}
                   className="absolute bottom-1/2 pointer-events-none"
                   style={{ left: `${((h === 'start' ? clipRange.start : clipRange.end) / replayDuration) * 100}%` }}
+                />
+              ))}
+              {/* Wyciete fragmenty na osi — czerwone, kreskowane. */}
+              {replayDuration > 0 && cuts.map((c, i) => (
+                <div
+                  key={`cut${i}`}
+                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-sm pointer-events-none"
+                  style={{
+                    left: `${(c.start / replayDuration) * 100}%`,
+                    width: `${((c.end - c.start) / replayDuration) * 100}%`,
+                    background: 'repeating-linear-gradient(45deg, rgba(239,68,68,0.9) 0 3px, rgba(0,0,0,0.6) 3px 6px)',
+                  }}
                 />
               ))}
               {replayDuration > 0 && shots.filter(s => s.tMs !== null).map(s => {
@@ -849,6 +938,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       targetType={withTarget && series ? series.targetType : null}
       shots={withTarget ? shots : []}
       range={sharePart === 'clip' ? clipRange : null}
+      cuts={cuts}
       rate={replayRate}
       isPremium={isPremium}
       shareState={shareState}
@@ -946,21 +1036,58 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {t('delayMirror.clipMenu')}
         </button>
       </div>
-      {sharePart === 'clip' && clipRange && replayDuration > 0 && (
-        <>
-          <TrimBar
-            duration={replayDuration}
-            start={clipRange.start}
-            end={clipRange.end}
-            marks={markedShots.map(s => ({ n: s.n, t: (s.tMs as number) / 1000 }))}
-            onChange={(start, end, moved) => { setClipRange({ start, end }); seekTo(moved === 'start' ? start : end); }}
-          />
-          <p className="text-white/70 text-[11px] font-bold tabular-nums text-center -mt-1">
-            {t('delayMirror.clipRange', { from: fmtT1(clipRange.start), to: fmtT1(clipRange.end) })}
-            {' · '}{(clipRange.end - clipRange.start).toFixed(1)} s
-          </p>
-          <p className="text-white/40 text-[10px] leading-snug text-center">{t('delayMirror.clipDragHint')}</p>
-        </>
+      {replayDuration > 0 && ((sharePart === 'clip' && clipRange) || cuts.length > 0) && (() => {
+        const lo = sharePart === 'clip' && clipRange ? clipRange.start : 0;
+        const hi = sharePart === 'clip' && clipRange ? clipRange.end : replayDuration;
+        const removed = cuts.reduce((sum, c) => sum + Math.max(0, Math.min(c.end, hi) - Math.max(c.start, lo)), 0);
+        return (
+          <>
+            <TrimBar
+              duration={replayDuration}
+              start={lo}
+              end={hi}
+              showRange={sharePart === 'clip'}
+              cuts={cuts}
+              marks={markedShots.map(s => ({ n: s.n, t: (s.tMs as number) / 1000 }))}
+              onChange={(start, end, moved) => { setClipRange({ start, end }); seekTo(moved === 'start' ? start : end); }}
+              onCutsChange={(next, movedT) => { setCuts(next); seekTo(movedT); }}
+            />
+            <p className="text-white/70 text-[11px] font-bold tabular-nums text-center -mt-1">
+              {sharePart === 'clip' && <>{t('delayMirror.clipRange', { from: fmtT1(lo), to: fmtT1(hi) })}{' · '}</>}
+              {Math.max(0, hi - lo - removed).toFixed(1)} s
+            </p>
+          </>
+        );
+      })()}
+      {/* Wyciete fragmenty — lista z usuwaniem (×) i dodawanie nowego. */}
+      {cuts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 justify-center">
+          {cuts.map((c, i) => (
+            <button
+              key={i}
+              onClick={() => setCuts(cuts.filter((_, j) => j !== i))}
+              title={t('delayMirror.cutRemove')}
+              className="flex items-center gap-1 pl-2 pr-1 py-1 rounded-lg bg-[#ef4444]/15 border border-[#ef4444]/40 text-white/80 text-[10px] font-bold tabular-nums active:scale-95 transition-all"
+            >
+              {fmtT1(c.start)}–{fmtT1(c.end)}
+              <span className="material-symbols-outlined text-sm">close</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {replayDuration > 0 && (
+        <button
+          onClick={addCut}
+          className="w-full py-2 rounded-xl bg-white/5 border border-[#ef4444]/40 text-white/80 font-black text-[11px] uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-base text-[#ef4444]">content_cut</span>
+          {t('delayMirror.cutAdd')}
+        </button>
+      )}
+      {((sharePart === 'clip' && clipRange) || cuts.length > 0) && (
+        <p className="text-white/40 text-[10px] leading-snug text-center">
+          {cuts.length > 0 ? t('delayMirror.cutHint') : t('delayMirror.clipDragHint')}
+        </p>
       )}
       {replayRate !== 1 && (
         <p className="flex items-center justify-center gap-1.5 text-[#fed33e] text-[11px] font-bold text-center">
@@ -1170,7 +1297,6 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               >
                 <span className="material-symbols-outlined text-base">forward_5</span>
               </button>
-              {snapClipButtons}
             </div>
           </div>
         )}

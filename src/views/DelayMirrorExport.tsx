@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DelayMirrorSeriesTarget, { seriesTargetViewBox } from './DelayMirrorSeriesTarget';
+import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
 import type { TechShot } from './DelayMirrorSeries';
 import { getFullCodec } from '../utils/mediaCodecs';
-import { mirrorShotColor } from '../utils/mirrorArrowColors';
+import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
 
 // Klip z WYPALONA tarcza i znacznikami strzal.
 //
@@ -23,8 +23,13 @@ import { mirrorShotColor } from '../utils/mirrorArrowColors';
 
 interface Props {
   blob: Blob;
-  targetType: string;
+  /** null = klip bez tarczy (sam wycinek, nic do wypalenia). */
+  targetType: string | null;
   shots: TechShot[];
+  /** Wycinek [start, end] w sekundach oryginalu; null = caly klip. Plik nie
+   *  da sie przyciac bez przekodowania, a przekodowanie i tak leci w czasie
+   *  rzeczywistym — wiec przegrywamy po prostu tylko ten kawalek. */
+  range: { start: number; end: number } | null;
   // Notatki sa JEDYNYM PRO gate w Delay Mirror — wypalanie ich w klip
   // sprawdza to tutaj, nie tylko w UI edycji (obrona przed sytuacja, gdzie
   // user zapisal notatki jako PRO, a potem subskrypcja wygasla).
@@ -34,14 +39,6 @@ interface Props {
   onClose: () => void;
   onCancel: () => void;
 }
-
-const GOLD = '#fed33e';
-// Obwodka aktywnej strzaly NA TARCZY musi byc kolorem, ktorego nie ma na
-// zadnym polu tarczy WA (zloto/zolty, czerwony, niebieski, czarny, bialy) —
-// inaczej strzala w dziesiatce dostaje zolta obwodke na zoltym tle i znika.
-// Reszta nakladki (pasek czasu, znaczniki) zostaje na GOLD — tam nie stoi
-// na tle pierscieni tarczy, wiec problem tam nie wystepuje.
-const HIGHLIGHT = '#4ade80';
 
 // Ta sama tabela co w DelayMirrorView (nagrywanie) — eksport przekodowuje
 // klip, ktory moze juz byc w wyzszej rozdzielczosci, wiec sztywne 2 Mbps
@@ -55,18 +52,7 @@ function bitrateForResolution(w: number, h: number): number {
   return 8_000_000;
 }
 
-function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-  ctx.fill();
-}
-
-export default function DelayMirrorExport({ blob, targetType, shots, isPremium, shareState, onShare, onClose, onCancel }: Props) {
+export default function DelayMirrorExport({ blob, targetType, shots, range, isPremium, shareState, onShare, onClose, onCancel }: Props) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenTargetRef = useRef<HTMLDivElement>(null);
@@ -140,28 +126,14 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
         const canvas = canvasRef.current;
         const holder = hiddenTargetRef.current;
         const codec = getFullCodec();
-        if (!canvas || !holder || !codec) { setFailed(true); return; }
+        if (!canvas || !codec) { setFailed(true); return; }
         if (cancelled) return;
 
-        // Tarcza jedzie do canvasa jako obrazek z tego samego SVG, ktore
-        // widac w aplikacji — zero drugiego renderera do rozjechania sie.
-        const svgNode = holder.querySelector('svg');
-        if (!svgNode) { setFailed(true); return; }
-        const clone = svgNode.cloneNode(true) as SVGSVGElement;
-        clone.removeAttribute('class');
-        clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-        const vb = seriesTargetViewBox(targetType);
-        clone.setAttribute('width', String(vb.w));
-        clone.setAttribute('height', String(vb.h));
-        const svgUrl = 'data:image/svg+xml;charset=utf-8,' +
-          encodeURIComponent(new XMLSerializer().serializeToString(clone));
-        const targetImg = await new Promise<HTMLImageElement | null>(resolve => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = () => resolve(null);
-          img.src = svgUrl;
-        });
-        if (!targetImg) { setFailed(true); return; }
+        let targetImg: HTMLImageElement | null = null;
+        if (targetType) {
+          targetImg = await loadTargetImage(holder, targetType);
+          if (!targetImg) { setFailed(true); return; }
+        }
         if (cancelled) return;
 
         url = URL.createObjectURL(blob);
@@ -189,22 +161,12 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
         const ctx = canvas.getContext('2d');
         if (!ctx) { setFailed(true); return; }
 
-        const dur = isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
-
-        // Panel tarczy w gornym prawym rogu — po przekatnej od znaku GROT-X,
-        // ktory siedzi w pliku w prawym dolnym.
-        const pad = Math.round(Math.min(W, H) * 0.035);
-        const panelW = Math.round(W * 0.26);
-        const panelH = Math.round(panelW * (vb.h / vb.w));
-        const panelX = W - pad - panelW;
-        const panelY = pad;
-
-        const marked = shots.filter(s => s.tMs !== null);
-        const barX = pad;
-        const barW = Math.round(W * 0.62);
-        const barY = H - pad - Math.round(Math.min(W, H) * 0.02);
-        const barH = Math.max(3, Math.round(Math.min(W, H) * 0.008));
-        const pinR = Math.max(6, Math.round(Math.min(W, H) * 0.018));
+        const fullDur = isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+        // Wycinek albo caly klip. Bez znanej dlugosci (fullDur 0) wycinek
+        // i tak ma sensowne granice z UI, a caly klip konczy event `ended`.
+        const clipStart = range ? Math.max(0, range.start) : 0;
+        const clipEnd = range ? (fullDur > 0 ? Math.min(range.end, fullDur) : range.end) : fullDur;
+        const dur = Math.max(0, clipEnd - clipStart);
 
         const draw = () => {
           const v = video;
@@ -212,108 +174,18 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
           ctx.drawImage(v, 0, 0, W, H);
 
           const now = v.currentTime;
-          let activeN: number | null = null;
-          const byTime = marked.slice().sort((a, b) => (a.tMs as number) - (b.tMs as number));
-          byTime.forEach(s => { if ((s.tMs as number) / 1000 <= now + 0.05) activeN = s.n; });
+          drawMirrorOverlay(ctx, {
+            W, H, now, targetImg, targetType, shots, isPremium,
+            bar: dur > 0 ? { start: clipStart, end: clipEnd } : null,
+          });
 
-          // Notatka do strzalu N ma byc widoczna PRZED nim, nie po — to
-          // komentarz/przypomnienie na czas przygotowania i naciagu, nie
-          // podsumowanie po fakcie. Okno: od konca poprzedniego strzalu
-          // (albo od 0:00 dla pierwszego) do WLASNEGO momentu tego strzalu.
-          // Osobne od activeN (obwodka na tarczy), ktora ma zostac na
-          // strzale, ktory WLASNIE trafil.
-          let noteShot: TechShot | null = null;
-          for (let i = 0; i < byTime.length; i++) {
-            const s = byTime[i];
-            const windowEnd = (s.tMs as number) / 1000;
-            const windowStart = i === 0 ? 0 : (byTime[i - 1].tMs as number) / 1000;
-            if (now >= windowStart && now <= windowEnd + 0.05) { noteShot = s; break; }
-          }
-
-          // Podklad panelu — bez niego biala tarcza na jasnym tle traci krawedz.
-          ctx.save();
-          ctx.fillStyle = 'rgba(0,0,0,0.45)';
-          roundRect(ctx, panelX - 6, panelY - 6, panelW + 12, panelH + 12, 14);
-          ctx.restore();
-          ctx.drawImage(targetImg, panelX, panelY, panelW, panelH);
-
-          // Obwodka aktywnej strzaly rysowana w canvasie, a nie w SVG:
-          // dzieki temu obrazek tarczy serializujemy RAZ, a nie co klatke.
-          if (activeN !== null) {
-            const s = shots.find(x => x.n === activeN);
-            if (s) {
-              const sx = panelX + ((s.x - vb.x) / vb.w) * panelW;
-              const sy = panelY + ((s.y - vb.y) / vb.h) * panelH;
-              ctx.save();
-              ctx.strokeStyle = HIGHLIGHT;
-              ctx.lineWidth = Math.max(2, panelW * 0.012);
-              ctx.beginPath();
-              ctx.arc(sx, sy, panelW * 0.045, 0, Math.PI * 2);
-              ctx.stroke();
-              ctx.restore();
-            }
-          }
-
-          // Notatka do strzalu (np. "Arm zu hoch") — user chcial ja NAD
-          // paskiem postepu (dol kadru), nie w gornym lewym rogu. X
-          // wyrownany z barX, Y nad pinami znacznikow (pinR*2 daje im
-          // zapas, zeby capsula nie nachodzila na numerki na pasku).
-          // Okno czasowe: noteShot, patrz wyzej.
-          if (isPremium && noteShot && noteShot.note) {
-            const note = noteShot.note;
-            ctx.save();
-            ctx.font = `700 ${Math.round(pad * 0.9)}px system-ui, -apple-system, sans-serif`;
-            ctx.textAlign = 'left';
-            ctx.textBaseline = 'middle';
-            const textW = ctx.measureText(note).width;
-            const boxPadX = pad * 0.7;
-            const boxH = pad * 1.9;
-            const boxW = textW + boxPadX * 2;
-            const noteY = barY - boxH - Math.round(pinR * 2 + pad * 0.4);
-            ctx.fillStyle = 'rgba(0,0,0,0.55)';
-            roundRect(ctx, barX, noteY, boxW, boxH, boxH / 2);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(note, barX + boxPadX, noteY + boxH / 2 + 1);
-            ctx.restore();
-          }
-
-          // Os czasu ze znacznikami — tylko gdy cokolwiek oznaczono.
-          if (dur > 0 && marked.length > 0) {
-            ctx.save();
-            ctx.fillStyle = 'rgba(255,255,255,0.28)';
-            roundRect(ctx, barX, barY, barW, barH, barH / 2);
-            ctx.fillStyle = GOLD;
-            roundRect(ctx, barX, barY, Math.max(barH, barW * Math.min(1, now / dur)), barH, barH / 2);
-            marked.forEach(s => {
-              const px = barX + barW * Math.min(1, (s.tMs as number) / 1000 / dur);
-              const on = s.n === activeN;
-              // [KOLORY STRZAŁ] Pin w kolorze strzały; aktywny dostaje złotą obwódkę.
-              const ac = mirrorShotColor(s.n);
-              ctx.beginPath();
-              ctx.fillStyle = ac ? ac.hex : on ? GOLD : '#ffffff';
-              ctx.arc(px, barY + barH / 2, on ? pinR * 1.25 : pinR, 0, Math.PI * 2);
-              ctx.fill();
-              if (ac) {
-                ctx.strokeStyle = on ? GOLD : 'rgba(0,0,0,0.5)';
-                ctx.lineWidth = on ? Math.max(2, pinR * 0.3) : 1;
-                ctx.stroke();
-              }
-              ctx.fillStyle = ac ? ac.text : '#0a3a2a';
-              ctx.font = `900 ${Math.round(pinR * 1.2)}px system-ui, -apple-system, sans-serif`;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(String(s.n), px, barY + barH / 2 + 1);
-            });
-            ctx.restore();
-          }
-
-          if (dur > 0) setProgress(Math.min(1, now / dur));
+          if (dur > 0) setProgress(Math.max(0, Math.min(1, (now - clipStart) / dur)));
 
           // Koniec liczymy z czasu odtwarzania, nie z eventu `ended`. Event
           // potrafi nie przyjsc, gdy przegladarka przydusi <video> poza
           // widokiem — wtedy nagrywanie jechalo do bezpiecznika i plik mial
           // 15 s zamrozonej ostatniej klatki zamiast 6 s klipu.
-          if (dur > 0 && now >= dur - 0.05) { finish(); return; }
+          if (dur > 0 && now >= clipEnd - 0.05) { finish(); return; }
 
           // Przegladarka potrafi wstrzymac odtwarzanie, gdy strona przestaje
           // byc rysowana (zgaszony ekran, okno w tle). Bez tego wychodzilby
@@ -338,12 +210,29 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
           setResult(new Blob(chunks, { type: codec.split(';')[0] }));
         };
 
+        // Najpierw przewijamy na poczatek wycinka i CZEKAMY na klatke — inaczej
+        // pierwsze rysowania zlapalyby klatke z 0:00 i plik zaczynalby sie
+        // mignieciem z poczatku nagrania.
+        if (clipStart > 0) {
+          await new Promise<void>(resolve => {
+            const v = video;
+            if (!v) { resolve(); return; }
+            v.addEventListener('seeked', () => resolve(), { once: true });
+            // Bezpiecznik: telefon potrafi zgubic `seeked` — wtedy jedziemy
+            // dalej zamiast wisiec na ekranie eksportu bez konca.
+            setTimeout(resolve, 3000);
+            v.currentTime = clipStart;
+          });
+          if (cancelled || !video) { cleanup(); return; }
+        } else {
+          video.currentTime = 0;
+        }
+
         draw();
         drawTimer = setInterval(draw, 33);
         // Bez timeslice — kompletny moov, ta sama zasada co przy nagrywaniu.
         rec.start();
         lastMoveAt = Date.now();
-        video.currentTime = 0;
         video.playbackRate = 1;
         await video.play().catch(() => { /* i tak rysujemy z rAF */ });
 
@@ -365,9 +254,11 @@ export default function DelayMirrorExport({ blob, targetType, shots, isPremium, 
     <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
       {/* Ukryta instancja tarczy — zrodlo obrazka do wypalenia. Zawsze bez
           podswietlenia, zeby serializowany SVG byl deterministyczny. */}
-      <div ref={hiddenTargetRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
-        <DelayMirrorSeriesTarget targetType={targetType} shots={shots} className="w-[300px]" />
-      </div>
+      {targetType && (
+        <div ref={hiddenTargetRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
+          <DelayMirrorSeriesTarget targetType={targetType} shots={shots} className="w-[300px]" />
+        </div>
+      )}
 
       {/* Wideo/canvas w GORNEJ, elastycznej czesci — kontrolki zawsze na
           dole (shrink-0 nizej), zamiast calego bloku wysrodkowanego na

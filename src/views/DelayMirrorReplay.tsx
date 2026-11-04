@@ -5,6 +5,11 @@ import DelayMirrorSeriesTarget from './DelayMirrorSeriesTarget';
 import DelayMirrorExport from './DelayMirrorExport';
 import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import { mirrorShotColor } from '../utils/mirrorArrowColors';
+import { drawMirrorOverlay, loadTargetImage } from '../utils/mirrorOverlay';
+
+// Najkrotszy wycinek do udostepnienia — krotszy niz pol sekundy to przypadkowe
+// stukniecie, a nie fragment do pokazania komus.
+const MIN_CLIP = 0.5;
 
 interface Props {
   blob: Blob | null;
@@ -51,8 +56,13 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   useEffect(() => {
     const el = replayBoxRef.current;
     if (!el) return;
+    // Ten sam obiekt, gdy wymiar sie nie zmienil — efekt chodzi po KAZDYM
+    // renderze, a nowy obiekt w stanie to kolejny render, czyli petla bez
+    // konca (React: „Maximum update depth exceeded").
     const update = () => {
-      setReplayBox({ w: el.offsetWidth, h: el.offsetHeight });
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      setReplayBox(prev => (prev.w === w && prev.h === h ? prev : { w, h }));
     };
     update();
     const ro = new ResizeObserver(update);
@@ -78,6 +88,9 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     // polowie", choc obraz byl poprawny — tylko cyfry sie nie zgadzaly.
     setReplayTime(0);
     setReplayDuration(0);
+    // Wycinek dotyczy TAMTEGO pliku — na nowym klipie te same sekundy to
+    // zupelnie inny moment.
+    setClipRange(null);
     const v = replayVideoRef.current;
     if (v) {
       v.src = url;
@@ -107,8 +120,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // oznaczona, nie ta aktualnie aktywna na osi (user zdazyl juz odjechac
   // dalej suwakiem, a notatka ma zostac przy strzale ktora wlasnie oznaczyl).
   const [lastMarkedN, setLastMarkedN] = useState<number | null>(null);
-  // Eksport z wypalona tarcza — osobny, swiadomy krok, bo trwa tyle co klip.
-  const [exporting, setExporting] = useState(false);
+  // Eksport — osobny, swiadomy krok, bo trwa tyle co klip. 'target' wypala
+  // tarcze; 'plain' to sam wycinek bez nakladki (przyciac pliku bez
+  // przekodowania sie nie da, wiec wycinek tez idzie przez eksport).
+  const [exporting, setExporting] = useState<'target' | 'plain' | null>(null);
+  // Wycinek do udostepnienia, w sekundach oryginalu. null = caly klip.
+  const [clipRange, setClipRange] = useState<{ start: number; end: number } | null>(null);
+  const [showClipMenu, setShowClipMenu] = useState(false);
+  // Stopklatka czeka na ekranie podgladu — user oglada zdjecie i dopiero
+  // wtedy stuka Udostepnij (share musi wyjsc z gestu, nie z konca awaita).
+  const [snapshot, setSnapshot] = useState<{ blob: Blob; url: string } | null>(null);
+  const hiddenTargetRef = useRef<HTMLDivElement>(null);
   // Nowa passa = nowy komplet strzal. Rodzic nie oddaje tych zmian z powrotem
   // (zapisuje je tylko do localStorage), wiec to nie zapetli sie z markShot.
   useEffect(() => { setShots(series?.shots ?? []); setMarking(false); setLastMarkedN(null); }, [series]);
@@ -208,12 +230,13 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
     v.play().catch(() => { /* ignore */ });
   };
 
-  // `source` pozwala wyslac wersje z wypalona tarcza zamiast surowego klipu.
+  // `source` pozwala wyslac wersje z wypalona tarcza (albo stopklatke)
+  // zamiast surowego klipu.
   const shareVideo = async (source?: Blob) => {
     const out = source ?? blob;
     if (!out) return;
     setShareState('sharing');
-    const ext = out.type.includes('mp4') ? 'mp4' : 'webm';
+    const ext = out.type.includes('jpeg') ? 'jpg' : out.type.includes('mp4') ? 'mp4' : 'webm';
     const now = new Date();
     const dateStr = now.toISOString().slice(0, 10);
     const hh = String(now.getHours()).padStart(2, '0');
@@ -282,6 +305,82 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       className={displayAsLandscape ? 'absolute inset-0 w-full h-full' : 'w-44'}
     />
   ) : null;
+
+  // ─── Stopklatka ──────────────────────────────────────────────────────────
+  // Biezaca klatka + ta sama nakladka co w wypalonym klipie (tarcza,
+  // podswietlona strzala, notatka PRO), bez osi czasu. Plik nie ma lustra,
+  // wiec zdjecie tez nie — dokladnie jak eksport.
+  const takeSnapshot = async () => {
+    const v = replayVideoRef.current;
+    if (!v || !v.videoWidth) return;
+    v.pause();
+    const W = v.videoWidth;
+    const H = v.videoHeight;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(v, 0, 0, W, H);
+    const targetType = targetPanel && series ? series.targetType : null;
+    const targetImg = targetType ? await loadTargetImage(hiddenTargetRef.current, targetType) : null;
+    drawMirrorOverlay(ctx, {
+      W, H, now: v.currentTime, targetImg, targetType: targetImg ? targetType : null,
+      shots, isPremium, bar: null,
+    });
+    const out = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+    if (!out) return;
+    setSnapshot({ blob: out, url: URL.createObjectURL(out) });
+  };
+
+  const closeSnapshot = () => {
+    if (snapshot) URL.revokeObjectURL(snapshot.url);
+    setSnapshot(null);
+  };
+
+  // ─── Wycinek ─────────────────────────────────────────────────────────────
+  // Granice stawiane w MIEJSCU odtwarzania, nie uchwytami na suwaku — suwak
+  // juz ma na sobie znaczniki strzal, a drugi zestaw przeciaganych uchwytow
+  // na kilku centymetrach toru bylby nie do trafienia palcem.
+  const setClipStartHere = () => {
+    const v = replayVideoRef.current;
+    if (!v) return;
+    const t = v.currentTime;
+    const end = clipRange && clipRange.end - t >= MIN_CLIP ? clipRange.end : replayDuration;
+    if (end - t < MIN_CLIP) return;
+    setClipRange({ start: t, end });
+    setShowClipMenu(false);
+  };
+
+  const setClipEndHere = () => {
+    const v = replayVideoRef.current;
+    if (!v) return;
+    const t = v.currentTime;
+    const start = clipRange && t - clipRange.start >= MIN_CLIP ? clipRange.start : 0;
+    if (t - start < MIN_CLIP) return;
+    setClipRange({ start, end: t });
+    setShowClipMenu(false);
+  };
+
+  // Strzal, wokol ktorego tniemy: ostatnio oznaczony/stukniety, a jak go
+  // nie ma — ten, ktory wlasnie leci na osi.
+  const clipShotN = (() => {
+    const pick = (n: number | null) => shots.find(s => s.n === n && s.tMs !== null) ?? null;
+    return (pick(lastMarkedN) ?? pick(activeN))?.n ?? null;
+  })();
+
+  // 3 s przed strzalem (naciag, kotwica) i 2 s po (wypuszczenie, follow-through).
+  const clipAroundShot = () => {
+    const s = shots.find(x => x.n === clipShotN);
+    if (!s || s.tMs === null) return;
+    const t = s.tMs / 1000;
+    const start = Math.max(0, t - 3);
+    const end = replayDuration > 0 ? Math.min(replayDuration, t + 2) : t + 2;
+    setClipRange({ start, end });
+    setShowClipMenu(false);
+    const v = replayVideoRef.current;
+    if (v) { v.currentTime = start; setReplayTime(start); }
+  };
 
   // W poziomie menu lezy PASKIEM NA DOLE, nie kolumna po prawej. Kolumna
   // zabierala 30% szerokosci na przyciski, ktore i tak sa niskie — wideo
@@ -365,6 +464,65 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           </div>
   );
 
+  // Stopklatka i wycinek. W poziomie siedza w pasku transportu (szeroki),
+  // w pionie w rzedzie z ±5 s — obok suwaka zjadaly mu polowe dlugosci.
+  // Menu wycinka wysuwa sie do gory; w pionie ✂ stoi z prawej strony
+  // wysrodkowanego rzedu, wiec menu otwiera sie w lewo.
+  const snapClipButtons = (
+    <>
+      <button
+        onClick={takeSnapshot}
+        title={t('delayMirror.snapshot')}
+        className="w-9 h-9 rounded-full bg-white/10 text-white/80 border border-white/10 flex items-center justify-center active:scale-90 transition-all flex-shrink-0"
+      >
+        <span className="material-symbols-outlined text-lg">photo_camera</span>
+      </button>
+      {/* Wycinek: menu wysuwa sie do gory, jak predkosc w pasku poziomym. */}
+      <div className="relative flex-shrink-0">
+        <button
+          onClick={() => setShowClipMenu(v => !v)}
+          title={t('delayMirror.clipMenu')}
+          className={`w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all border ${
+            clipRange
+              ? 'bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/40'
+              : 'bg-white/10 text-white/80 border-white/10'
+          }`}
+        >
+          <span className="material-symbols-outlined text-lg">content_cut</span>
+        </button>
+        {showClipMenu && (
+          <div className={`absolute bottom-full mb-2 ${wide ? 'left-0' : 'right-0'} flex flex-col gap-1 bg-[#0a0a0a] border border-white/15 rounded-xl p-1.5 shadow-xl z-30 min-w-[11rem]`}>
+            <p className="px-2 pt-0.5 text-white/40 text-[10px] font-bold tabular-nums">
+              {clipRange
+                ? t('delayMirror.clipRange', { from: fmtT(clipRange.start), to: fmtT(clipRange.end) })
+                : t('delayMirror.clipHint')}
+            </p>
+            <button onClick={setClipStartHere} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/80 active:bg-white/10 whitespace-nowrap text-left">
+              <span className="material-symbols-outlined text-base">first_page</span>
+              {t('delayMirror.clipStartHere')}
+            </button>
+            <button onClick={setClipEndHere} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/80 active:bg-white/10 whitespace-nowrap text-left">
+              <span className="material-symbols-outlined text-base">last_page</span>
+              {t('delayMirror.clipEndHere')}
+            </button>
+            {clipShotN !== null && (
+              <button onClick={clipAroundShot} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-[#fed33e] active:bg-white/10 whitespace-nowrap text-left">
+                <span className="material-symbols-outlined text-base">my_location</span>
+                {t('delayMirror.clipAroundShot', { n: clipShotN })}
+              </button>
+            )}
+            {clipRange && (
+              <button onClick={() => { setClipRange(null); setShowClipMenu(false); }} className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white/50 active:bg-white/10 whitespace-nowrap text-left">
+                <span className="material-symbols-outlined text-base">close</span>
+                {t('delayMirror.clipClear')}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
   // Transport: play/pauza, siatka, czas i suwak. W poziomie wchodzi w pasek
   // na dole, w pionie zostaje pod filmikiem.
   const transportRow = (
@@ -391,6 +549,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             >
               <span className="material-symbols-outlined text-lg">grid_on</span>
             </button>
+            {wide && snapClipButtons}
             <span className="text-white/70 text-[10px] font-bold tabular-nums flex-shrink-0">{fmtT(replayTime)}</span>
             {/* Suwak + znaczniki strzal. Numerki leza NAD torem i tylko one
                 lapia dotyk — gdyby przykrywaly tor, w tych miejscach nie dalo
@@ -411,6 +570,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
                 }}
                 className="w-full accent-[#fed33e] block"
               />
+              {/* Zaznaczony wycinek na torze — pod znacznikami strzal i bez
+                  dotyku, zeby nie zabieral suwakowi przeciagania. */}
+              {clipRange && replayDuration > 0 && (
+                <div
+                  className="absolute top-1/2 -translate-y-1/2 h-2 rounded-full bg-[#4ade80]/45 pointer-events-none"
+                  style={{
+                    left: `${(clipRange.start / replayDuration) * 100}%`,
+                    width: `${((clipRange.end - clipRange.start) / replayDuration) * 100}%`,
+                  }}
+                />
+              )}
               {replayDuration > 0 && shots.filter(s => s.tMs !== null).map(s => {
                 const pct = Math.max(0, Math.min(100, ((s.tMs as number) / 1000 / replayDuration) * 100));
                 // [KOLORY STRZAŁ] Znacznik na osi w kolorze strzały; aktywny tylko rośnie.
@@ -563,18 +733,67 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   // oba `return`. Zostaje na ekranie po zbudowaniu klipu: user udostepnia
   // wypalona wersje STAD, bo powtorka pod nia ma tylko surowy blob wejsciowy
   // i po powrocie wypalona tarcza bylaby nie do odzyskania.
-  const exportOverlay = exporting && blob && series ? (
+  const withTarget = exporting === 'target' && !!series;
+  const exportOverlay = exporting && blob ? (
     <DelayMirrorExport
       blob={blob}
-      targetType={series.targetType}
-      shots={shots}
+      targetType={withTarget && series ? series.targetType : null}
+      shots={withTarget ? shots : []}
+      range={clipRange}
       isPremium={isPremium}
       shareState={shareState}
       onShare={(out) => shareVideo(out)}
-      onClose={() => setExporting(false)}
-      onCancel={() => setExporting(false)}
+      onClose={() => setExporting(null)}
+      onCancel={() => setExporting(null)}
     />
   ) : null;
+
+  // Podglad stopklatki — Udostepnij stad, ze swiezego stukniecia.
+  const snapshotOverlay = snapshot ? (
+    <div className="absolute inset-0 z-[60] bg-black/95 flex flex-col px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))] gap-3">
+      <div className="flex-1 min-h-0 flex items-center justify-center">
+        <img src={snapshot.url} alt="" className="max-w-full max-h-full rounded-xl border border-white/15" />
+      </div>
+      <div className="shrink-0 w-full max-w-xs mx-auto flex items-center gap-2">
+        <button
+          onClick={() => shareVideo(snapshot.blob)}
+          disabled={shareState === 'sharing'}
+          className="flex-1 min-w-0 h-10 px-2 bg-[#fed33e] text-[#0a3a2a] rounded-xl font-black text-xs active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-60"
+        >
+          <span className="material-symbols-outlined text-lg shrink-0">
+            {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+          </span>
+          <span className="truncate">
+            {shareState === 'sharing' && t('delayMirror.shareSharing')}
+            {shareState === 'saved' && t('delayMirror.shareSaved')}
+            {shareState === 'error' && t('delayMirror.shareError')}
+            {shareState === 'idle' && t('delayMirror.shareImage')}
+          </span>
+        </button>
+        <button
+          onClick={closeSnapshot}
+          title={t('delayMirror.exportBack')}
+          className="shrink-0 w-10 h-10 rounded-xl bg-white/10 text-white/70 flex items-center justify-center active:scale-95 transition-all border border-white/15"
+        >
+          <span className="material-symbols-outlined text-lg">arrow_back</span>
+        </button>
+      </div>
+    </div>
+  ) : null;
+
+  // Ukryta tarcza bez podswietlenia — zrodlo obrazka dla stopklatki
+  // (eksport ma wlasna instancje).
+  const hiddenTarget = targetPanel && series ? (
+    <div ref={hiddenTargetRef} className="absolute w-0 h-0 overflow-hidden opacity-0 pointer-events-none">
+      <DelayMirrorSeriesTarget targetType={series.targetType} shots={shots} className="w-[300px]" />
+    </div>
+  ) : null;
+
+  const overlays = <>{hiddenTarget}{exportOverlay}{snapshotOverlay}</>;
+
+  // Udostepnij bez tarczy: z wycinkiem trzeba przegrac kawalek przez eksport,
+  // bez wycinka idzie surowy plik od razu.
+  const sharePlain = () => { if (clipRange) setExporting('plain'); else shareVideo(); };
 
   const targetColumn = targetPanel ? (
     <div className={`shrink-0 flex flex-col items-center justify-center gap-1.5 ${wide ? 'w-[13rem] h-full min-h-0' : 'w-44'}`}>
@@ -651,7 +870,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               DelayMirrorExport); bez tarczy (nic do wypalenia) idzie prosto
               do shareVideo. */}
           <button
-            onClick={() => { if (targetPanel) setExporting(true); else shareVideo(); }}
+            onClick={() => { if (targetPanel) setExporting('target'); else sharePlain(); }}
             disabled={shareState === 'sharing'}
             title={t('delayMirror.shareIdle')}
             className="shrink-0 flex items-center gap-1.5 px-3.5 py-2.5 bg-white/15 text-white rounded-xl active:scale-95 transition-all border border-white/20 disabled:opacity-50"
@@ -674,12 +893,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             <span className="material-symbols-outlined text-lg">home</span>
           </button>
         </div>
-        {exportOverlay}
+        {overlays}
       </div>
     );
   }
 
+  // Nakladki (eksport, stopklatka) OBOK przewijanego kontenera, nie w nim:
+  // `absolute inset-0` w srodku przewija sie razem z trescia, wiec po
+  // zjechaniu w dol do przycisku Udostepnij nakladka wisiala nad ekranem
+  // i spod niej wystawaly przyciski powtorki.
   return (
+    <>
     <div className="absolute inset-0 bg-black/95 z-20 overflow-y-auto py-4 px-4 flex flex-col items-center">
       {hasFullBlob ? (
         <div className="w-full max-w-md">
@@ -748,6 +972,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
               >
                 <span className="material-symbols-outlined text-base">forward_5</span>
               </button>
+              {snapClipButtons}
             </div>
           </div>
         )}
@@ -762,7 +987,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             decyzja usera przy wide layout wyzej. */}
         {targetPanel && (
           <button
-            onClick={() => setExporting(true)}
+            onClick={() => setExporting('target')}
             className="w-full max-w-xs py-3 bg-white/10 text-[#fed33e] rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-[#fed33e]/30"
           >
             <span className="material-symbols-outlined text-lg">adjust</span>
@@ -771,17 +996,17 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
         )}
         {hasFullBlob && (
           <button
-            onClick={() => shareVideo()}
+            onClick={sharePlain}
             disabled={shareState === 'sharing'}
             className={`w-full max-w-xs py-3 bg-white/15 text-white rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center gap-2 border border-white/20 disabled:opacity-50`}
           >
             <span className="material-symbols-outlined text-lg">
-              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : 'share'}
+              {shareState === 'saved' ? 'check_circle' : shareState === 'error' ? 'error' : clipRange ? 'content_cut' : 'share'}
             </span>
             {shareState === 'sharing' && t('delayMirror.shareSharing')}
             {shareState === 'saved' && t('delayMirror.shareSaved')}
             {shareState === 'error' && t('delayMirror.shareError')}
-            {shareState === 'idle' && t('delayMirror.shareIdle')}
+            {shareState === 'idle' && (clipRange ? t('delayMirror.shareClip') : t('delayMirror.shareIdle'))}
           </button>
         )}
         <button
@@ -791,7 +1016,8 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           {t('delayMirror.endSession')}
         </button>
       </div>
-      {exportOverlay}
     </div>
+    {overlays}
+    </>
   );
 }

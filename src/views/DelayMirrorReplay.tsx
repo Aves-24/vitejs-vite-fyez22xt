@@ -518,7 +518,10 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
   const confirmShare = () => {
     const withT = shareWithTarget && !!targetPanel;
     setShowShare(false);
-    if (sharePart === 'all' && !withT) { shareVideo(); return; }
+    // Surowy plik tylko bez tarczy, bez wycinka i w normalnym tempie — kazda
+    // z tych zmian wymaga przegrania klipu przez eksport (user: „jak ustawie
+    // 0,25x, to tak samo ma sie nagrac”).
+    if (sharePart === 'all' && !withT && replayRate === 1) { shareVideo(); return; }
     setExporting(withT ? 'target' : 'plain');
   };
 
@@ -846,6 +849,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
       targetType={withTarget && series ? series.targetType : null}
       shots={withTarget ? shots : []}
       range={sharePart === 'clip' ? clipRange : null}
+      rate={replayRate}
       isPremium={isPremium}
       shareState={shareState}
       onShare={(out) => shareVideo(out)}
@@ -957,6 +961,12 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
           </p>
           <p className="text-white/40 text-[10px] leading-snug text-center">{t('delayMirror.clipDragHint')}</p>
         </>
+      )}
+      {replayRate !== 1 && (
+        <p className="flex items-center justify-center gap-1.5 text-[#fed33e] text-[11px] font-bold text-center">
+          <span className="material-symbols-outlined text-base">slow_motion_video</span>
+          {t('delayMirror.shareRateNote', { rate: replayRate })}
+        </p>
       )}
       <button
         onClick={confirmShare}

@@ -30,6 +30,9 @@ interface Props {
    *  da sie przyciac bez przekodowania, a przekodowanie i tak leci w czasie
    *  rzeczywistym — wiec przegrywamy po prostu tylko ten kawalek. */
   range: { start: number; end: number } | null;
+  /** Tempo odtwarzania z powtorki (np. 0.25 = zwolnione). Klip przegrywa sie
+   *  w czasie rzeczywistym, wiec nagrany canvas ma dokladnie to tempo. */
+  rate: number;
   // Notatki sa JEDYNYM PRO gate w Delay Mirror — wypalanie ich w klip
   // sprawdza to tutaj, nie tylko w UI edycji (obrona przed sytuacja, gdzie
   // user zapisal notatki jako PRO, a potem subskrypcja wygasla).
@@ -52,7 +55,7 @@ function bitrateForResolution(w: number, h: number): number {
   return 8_000_000;
 }
 
-export default function DelayMirrorExport({ blob, targetType, shots, range, isPremium, shareState, onShare, onClose, onCancel }: Props) {
+export default function DelayMirrorExport({ blob, targetType, shots, range, rate, isPremium, shareState, onShare, onClose, onCancel }: Props) {
   const { t } = useTranslation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const hiddenTargetRef = useRef<HTMLDivElement>(null);
@@ -184,7 +187,9 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
           // byc rysowana (zgaszony ekran, okno w tle). Bez tego wychodzilby
           // plik zlozony z jednej zamrozonej klatki — lepiej powiedziec
           // wprost, ze nie wyszlo, niz oddac takie cos do wyslania.
-          if (Math.abs(now - lastT) > 0.01) { lastT = now; lastMoveAt = Date.now(); }
+          // Prog 0.001, nie 0.01: przy 0.25x film idzie o ~0.008 s na tik i
+          // wczesniejszy prog bral zwolnione odtwarzanie za zaciecie.
+          if (Math.abs(now - lastT) > 0.001) { lastT = now; lastMoveAt = Date.now(); }
           else if (Date.now() - lastMoveAt > 4000) {
             stalled = true;
             setFailed(true);
@@ -226,14 +231,14 @@ export default function DelayMirrorExport({ blob, targetType, shots, range, isPr
         // Bez timeslice — kompletny moov, ta sama zasada co przy nagrywaniu.
         rec.start();
         lastMoveAt = Date.now();
-        video.playbackRate = 1;
+        video.playbackRate = rate > 0 ? rate : 1;
         await video.play().catch(() => { /* i tak rysujemy z rAF */ });
 
         video.addEventListener('ended', finish, { once: true });
 
         // Bezpiecznik: gdyby odtwarzanie utknelo na dobre, konczymy sami
         // zamiast zostawiac usera na ekranie eksportu bez wyjscia.
-        hardStop = setTimeout(finish, Math.round((dur || 30) * 1000 * 1.6) + 6000);
+        hardStop = setTimeout(finish, Math.round(((dur || 30) / (rate > 0 ? rate : 1)) * 1000 * 1.6) + 6000);
       } catch {
         setFailed(true);
       }

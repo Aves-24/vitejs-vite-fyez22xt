@@ -2597,6 +2597,7 @@ export const views = {
     resumeBtn: "I'm back",
     endSession: "End session",
     shareIdle: "Share video",
+    shareRateNote: "Speed {{rate}}x — the clip is saved at this speed",
     seriesArrowsChip: "{{n}} arrows",
     settingsDone: "Done",
     seriesPassTitle: "Pass finished",

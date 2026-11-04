@@ -2597,6 +2597,7 @@ export const views = {
     resumeBtn: "Bin zurück",
     endSession: "Session beenden",
     shareIdle: "Video teilen",
+    shareRateNote: "Tempo {{rate}}x — so wird auch der Clip gespeichert",
     seriesArrowsChip: "{{n}} Pfeile",
     settingsDone: "Fertig",
     seriesPassTitle: "Passe beendet",

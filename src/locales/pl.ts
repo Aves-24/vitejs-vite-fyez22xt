@@ -2638,6 +2638,7 @@ export const views = {
     resumeBtn: "Wróciłem",
     endSession: "Zakończ sesję",
     shareIdle: "Udostępnij wideo",
+    shareRateNote: "Tempo {{rate}}x — tak też zapisze się klip",
     seriesArrowsChip: "{{n}} strzał",
     settingsDone: "Gotowe",
     seriesPassTitle: "Passa zakończona",

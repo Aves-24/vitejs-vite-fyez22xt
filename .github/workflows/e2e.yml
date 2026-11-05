@@ -1,0 +1,52 @@
+# [E2E] Testy całych ścieżek (Playwright) na emulatorach Firebase.
+# Co dwa dni rano + ręcznie (Actions → E2E → Run workflow). NIE blokują deployu
+# — zwykłe CI (lint, testy logiki, reguły, build) dalej pilnuje każdego pushu.
+# Decyzja usera 2026-11-05: oszczędność darmowych minut (repo prywatne).
+# Gdy test padnie, GitHub wysyła maila; raport i zrzuty w artefakcie przebiegu.
+name: E2E
+
+on:
+  schedule:
+    - cron: '0 4 */2 * *'   # 4:00 UTC co drugi dzień
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - run: npm ci
+      - name: Cache Firestore emulator
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/firebase/emulators
+          key: firebase-emulators-${{ runner.os }}
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run test:e2e
+      - name: Raport e2e (tylko przy błędzie)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

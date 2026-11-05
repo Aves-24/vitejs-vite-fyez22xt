@@ -94,3 +94,36 @@ test('czat: uczeń pisze do trenera, trener odpowiada', async ({ browser }) => {
   await expectNoErrors(coach, coachErrors, 'czat trener');
   await expectNoErrors(student, studentErrors, 'czat uczeń');
 });
+
+test('Ferien: przerwa odwołuje treningi u trenera i u ucznia', async ({ browser }) => {
+  test.setTimeout(120_000);
+  const { coach, student, coachErrors, studentErrors } = await coachWithGroup(browser);
+
+  // Plan: dziś 23:30 + przerwa „Herbstferien” od dziś przez 8 dni.
+  const today = new Date();
+  const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const end = new Date(today); end.setDate(end.getDate() + 8);
+  await coach.getByRole('button', { name: /Regelmäßiges Training/ }).click();
+  await coach.getByRole('combobox', { name: 'Termine' }).selectOption({ label: today.toLocaleDateString('de-DE', { weekday: 'long' }) });
+  await coach.getByRole('textbox', { name: 'Uhrzeit' }).fill('23:30');
+  await coach.getByRole('button', { name: 'add Pause hinzufügen' }).click();
+  await coach.getByRole('textbox', { name: 'Von' }).fill(iso(today));
+  await coach.getByRole('textbox', { name: 'Bis' }).fill(iso(end));
+  await coach.getByPlaceholder('z. B. Herbstferien').fill('Herbstferien');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByText('Trainingszeit gespeichert')).toBeVisible();
+
+  // Trener: dziś bez treningu na Übersicht.
+  await coachNav(coach, 'space_dashboard Übersicht').click();
+  await expect(coach.getByRole('heading', { name: 'Trainer-Panel' })).toBeVisible();
+  await expect(coach.getByRole('heading', { name: 'Heute Training um 23:30' })).toHaveCount(0);
+
+  // Uczeń: „Heute abgesagt · Herbstferien”, następny trening za 2 tygodnie.
+  await student.getByRole('navigation').getByRole('button', { name: /Start$/ }).click();
+  const plan = student.getByTestId('group-plan');
+  await expect(plan).toContainText('Heute abgesagt · Herbstferien');
+  const next = new Date(today); next.setDate(next.getDate() + 14);
+  await expect(plan).toContainText(new RegExp(`Nächstes Training: .*${next.getDate()}\.${next.getMonth() + 1}\..* · 23:30`));
+  await expectNoErrors(coach, coachErrors, 'Ferien trener');
+  await expectNoErrors(student, studentErrors, 'Ferien uczeń');
+});

@@ -63,6 +63,8 @@ export default function GroupPlanStrip({ userId }: { userId: string }) {
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 leading-none">
                 {todayOn.length ? t('groupPlan.today') : todayCancelled ? t('groupPlan.cancelledToday') : t('groupPlan.next')}
+                {/* Powód odwołania albo nazwa przerwy (np. „Herbstferien”). */}
+                {todayCancelled && today[0]?.note ? ` · ${today[0].note}` : ''}
               </p>
               <p className="text-[13px] font-black text-[#0a3a2a] truncate mt-1">
                 {todayOn.length

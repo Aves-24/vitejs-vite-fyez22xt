@@ -43,4 +43,16 @@ test('trener dodaje ucznia, uczeń akceptuje zaproszenie', async ({ browser }) =
   await coach.getByRole('navigation').getByRole('button', { name: 'group Schüler' }).click();
   await expect(coach.getByRole('heading', { name: 'Alle Schüler (1)' })).toBeVisible();
   await expect(coach.getByRole('main').getByText('Uczen').first()).toBeVisible();
+
+  // Świeżo dodany uczeń NIE jest „bez treningu od 14+ dni” — liczy się od dołączenia.
+  await coach.getByRole('navigation').getByRole('button', { name: 'space_dashboard Übersicht' }).click();
+  await expect(coach.getByRole('heading', { name: 'Trainer-Panel' })).toBeVisible();
+  await coach.waitForTimeout(1500);
+  await expect(coach.getByRole('button', { name: /Ohne Training seit 14\+ Tagen/ })).toHaveCount(0);
+  // Kropka „nowy” / data dołączenia przetrwa przeładowanie.
+  await coach.reload();
+  await coach.getByRole('navigation').getByRole('button', { name: 'sports Trainer' }).click().catch(() => {});
+  await expect(coach.getByRole('heading', { name: 'Trainer-Panel' })).toBeVisible();
+  await coach.waitForTimeout(1500);
+  await expect(coach.getByRole('button', { name: /Ohne Training seit 14\+ Tagen/ })).toHaveCount(0);
 });

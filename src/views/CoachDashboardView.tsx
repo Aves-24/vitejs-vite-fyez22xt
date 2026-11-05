@@ -330,6 +330,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   const [myStudentIds, setMyStudentIds] = useState<string[] | null>(null);
   const [pendingStudentIds, setPendingStudentIds] = useState<Set<string> | null>(null);
   const [studentLastChecked, setStudentLastChecked] = useState<Record<string, number>>({});
+  // [NOWY UCZEŃ] Od kiedy uczeń jest u trenera (ms) — „bez treningu od 14+ dni”
+  // liczy się od dołączenia, nie od zera (user 2026-11-05).
+  const [studentSince, setStudentSince] = useState<Record<string, number>>({});
   // [C37] Uczniowie, których trener jeszcze nie oglądał — źródło zielonej kropki.
   const [newStudentIds, setNewStudentIds] = useState<string[]>([]);
   // [C37] Po rozwinięciu „Uczniowie" kropka z przycisku przechodzi na wiersze
@@ -677,6 +680,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const data = coachDoc.data();
         setCoachLimit(effectiveCoachLimit(data));
         setStudentLastChecked(data.studentLastChecked || {});
+        setStudentSince(data.coachStudentSince && typeof data.coachStudentSince === 'object' ? data.coachStudentSince : {});
         
         setSeenMilestones(Array.isArray(data.coachSeenMilestones) ? data.coachSeenMilestones : []);
         // Grupy (skład, plan, tematy) przychodzą z groups/ — subskrypcja niżej.
@@ -722,7 +726,19 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             setNewStudentIds([]);
             void saveSeenStudents(userId, currentIds);
           } else {
-            setNewStudentIds(currentIds.filter((id: string) => !seen.includes(id)));
+            const fresh = currentIds.filter((id: string) => !seen.includes(id));
+            setNewStudentIds(fresh);
+            // [NOWY UCZEŃ] Data dołączenia — tylko dla nowych (dotychczasowi
+            // zostają bez daty, inaczej prawdziwie nieaktywni zniknęliby na 14 dni).
+            const since = data.coachStudentSince && typeof data.coachStudentSince === 'object' ? data.coachStudentSince : {};
+            const missing = fresh.filter((id: string) => !since[id]);
+            if (missing.length) {
+              const now = Date.now();
+              const patch: Record<string, number> = {};
+              for (const id of missing) patch[`coachStudentSince.${id}`] = now;
+              setStudentSince(prev => ({ ...prev, ...Object.fromEntries(missing.map((id: string) => [id, now])) }));
+              updateDoc(doc(db, 'users', userId), patch).catch(e => console.error('Data dołączenia ucznia: błąd zapisu', e));
+            }
             // Sprzątanie po rozłączonych uczniach: gdyby ktoś wrócił, ma się
             // znowu policzyć jako nowy. Zapis tylko wtedy, gdy faktycznie ubyło.
             const stillLinked = seen.filter((id: string) => currentIds.includes(id));
@@ -784,7 +800,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           setFormCompare({});
           setNewStudentIds([]);
           // [C37] Nie ma uczniów — czyścimy pamięć tylko, gdy coś w niej było.
-          if (Array.isArray(data.coachSeenStudents) && data.coachSeenStudents.length > 0) {
+          // Brak listy w ogóle (nowy trener) → zakładamy pustą, inaczej pierwszy
+          // uczeń byłby po cichu „znany” (bez kropki i bez daty dołączenia).
+          if (!Array.isArray(data.coachSeenStudents) || data.coachSeenStudents.length > 0) {
             void saveSeenStudents(userId, []);
           }
         }
@@ -1133,7 +1151,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Uczeń, który nigdy nie trenował (0), też „wypada z rytmu". Wstrzymani
   // (pauza) nie — chyba że właśnie minął miesiąc i jest jedno przypomnienie.
   const inactiveCutoff = Date.now() - INACTIVE_DAYS * 24 * 60 * 60 * 1000;
-  const isInactive = (s: any) => (s.exactLastActivity || 0) < inactiveCutoff
+  const isInactive = (s: any) => Math.max(s.exactLastActivity || 0, studentSince[s.id] || 0) < inactiveCutoff
     && (!pauseOf(s) || pauseReminderDue(s));
   // Najdłużej bez treningu na górze (nigdy nie trenował = 0, więc pierwszy).
   const inactiveStudents = students

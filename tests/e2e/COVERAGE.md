@@ -6,9 +6,9 @@ Uruchamianie (PowerShell):
 $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public"; npm run test:e2e
 ```
 
-Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
+Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) + ręcznie w Actions — NIE blokują deployu.
 
-## Pokryte (32 testy)
+## Pokryte (33 testy)
 
 | Obszar | Plik | Co sprawdza |
 |---|---|---|
@@ -21,7 +21,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
 | Trener ↔ uczeń | coach, coach-flows | zaproszenie + akceptacja, grupa + temat widoczny u ucznia, komentarz trenera w Tagebuchu ucznia |
 | Multiplayer | battle | arena, dołączenie kodem, 6 Passen obu graczy, ranking |
 | Poprawki 2026-11-05 | fixes-2026-11-05 | klawiatura 3-Spot, PRO gościa → trial po założeniu konta, zmiana klasy wiekowej (+ zgoda rodzica < 16) |
-| Termine + czat | coach-schedule | stały trening grupy (4 tygodnie, Übersicht „Heute Training”, odwołanie; uczeń widzi trening i odwołanie na Home), czat uczeń ↔ trener na żywo |
+| Termine + czat | coach-schedule | stały trening grupy (4 tygodnie, Übersicht „Heute Training”, odwołanie; uczeń widzi trening i odwołanie na Home; Ferien/przerwa z opisem), czat uczeń ↔ trener na żywo |
 | Tarcza | target-input | 3-Spot: mysz trafia w miejsce kliku, obie kolumny; dotyk z odsunięciem celownika |
 | Zawody | tournament | termin na dziś, karta wyników, statystyki (tarcza 122cm), Tagebuch, Rekorde, niemieckie daty |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
@@ -30,7 +30,7 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 
 ## Jeszcze NIE pokryte
 
-- Termine trenera: przerwy (Ferien), przesuwanie tematów, rytm co 2 tygodnie
+- Termine trenera: przesuwanie tematów, rytm co 2 tygodnie
 - Fokus ustawiany przez trenera, „Widziałem”, wiadomość ✉ do całej grupy
 - Współtrenerzy grupy (zaproszenie drugiego trenera)
 - Tarcza: pełna 122cm, lupa przy przesuwaniu palca, Fehlschuss
@@ -62,7 +62,7 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 ## Do omówienia (partia 2)
 
 - ZROBIONE 2026-11-05: uczeń widzi na Home najbliższy trening grupy (Heute Training / Heute abgesagt + następny / Nächstes Training) — lustro groupPlans/
-- Świeżo dodany uczeń bez treningów liczy się u trenera jako „Ohne Training seit 14+ Tagen”
+- ZROBIONE 2026-11-05: „Ohne Training seit 14+ Tagen” liczone od dołączenia ucznia (coachStudentSince)
 
 ## Do omówienia — ZROBIONE 2026-11-05
 

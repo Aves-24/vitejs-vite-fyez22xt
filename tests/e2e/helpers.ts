@@ -58,6 +58,42 @@ export async function registerUser(page: Page, name: string, email = testEmail(n
   return page.evaluate(() => (window as any).__fb.auth.currentUser.uid as string);
 }
 
+// Szum, który NIE jest błędem apki (headless bez kamery itp.).
+const IGNORED_ERRORS = [
+  /Camera access error/i,
+  /Requested device not found/i,
+  // Ogólny komunikat przeglądarki — zamiast niego łapiemy odpowiedź z adresem niżej.
+  /Failed to load resource: the server responded with a status of/i,
+];
+// Odpowiedzi HTTP ≥ 400, które są oczekiwane.
+const IGNORED_RESPONSES: RegExp[] = [];
+
+/**
+ * Zbiera błędy z przeglądarki: wyjątki JS, console.error (w tym odrzucenia
+ * reguł Firestore „Missing or insufficient permissions”) i ekran ViewErrorBoundary.
+ * Użycie: const errors = watchErrors(page); … await expectNoErrors(page, errors, 'krok');
+ */
+export function watchErrors(page: Page) {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
+  page.on('console', m => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    if (!IGNORED_ERRORS.some(r => r.test(text))) errors.push(`console: ${text.slice(0, 400)}`);
+  });
+  page.on('response', r => {
+    if (r.status() < 400) return;
+    const url = r.url();
+    if (!IGNORED_RESPONSES.some(re => re.test(url))) errors.push(`http ${r.status()}: ${r.request().method()} ${url.slice(0, 250)}`);
+  });
+  return errors;
+}
+
+export async function expectNoErrors(page: Page, errors: string[], step: string) {
+  await expect(page.getByText('Coś poszło nie tak'), `${step}: ekran błędu widoku`).toHaveCount(0);
+  expect(errors, `${step}: błędy w konsoli`).toEqual([]);
+}
+
 /** Klawiatura punktów na ekranie treningu: 'X', '10' … '1', 'M'. */
 export async function shoot(page: Page, values: string[]) {
   for (const v of values) await page.getByRole('button', { name: v, exact: true }).click();

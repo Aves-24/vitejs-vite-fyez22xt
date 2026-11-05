@@ -62,3 +62,14 @@ test('„Beenden ohne Speichern” niczego nie zapisuje', async ({ page }) => {
   await expect(page.getByRole('button', { name: /Setz dir einen Fokus/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /Training 18m/ })).toHaveCount(0);
 });
+
+test('szybkie wpisywanie: strzała tuż po szóstej nie przepada', async ({ page }) => {
+  // Po 6. strzale seria zamyka się po 600 ms. Stuknięcia w tym oknie
+  // wcześniej ginęły po cichu — teraz zamykają serię od razu.
+  await startAsGuest(page);
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await shoot(page, ['X', '10', '9', '9', '8', '7', '10', '10', '9', '8', '8', 'M']);
+  const main = page.getByRole('main');
+  await expect(main).toContainText(/P2\s*10\s*10\s*9\s*8\s*8\s*M\s*45\s*98/);
+  await expect(main).toContainText(/Gesamtringzahl\s*98/);
+});

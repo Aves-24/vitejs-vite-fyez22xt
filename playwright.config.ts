@@ -23,6 +23,9 @@ export default defineConfig({
     // Apka jest głównie na telefon — testujemy w widoku telefonu.
     ...devices['Pixel 7'],
     locale: 'de-DE',
+    // Sztuczna kamera (Delay Mirror, skaner QR) — Chromium podaje testowy obraz.
+    permissions: ['camera'],
+    launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

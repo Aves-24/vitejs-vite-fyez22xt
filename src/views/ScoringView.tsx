@@ -330,6 +330,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     if (inputArrows.length < 6) {
       setInputArrows([...inputArrows, v]);
       setInputCoordinates([...inputCoordinates, { x: null, y: null, spotId: null }]);
+    } else if (commitEndEarly()) {
+      setInputArrows([v]);
+      setInputCoordinates([{ x: null, y: null, spotId: null }]);
     }
   };
 
@@ -343,9 +346,17 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         setInputArrows(next.arrows);
         setInputCoordinates(next.coords);
       } else {
-        setInputArrows([...inputArrows, v]); 
-        setInputCoordinates([...inputCoordinates, coord]); 
+        setInputArrows([...inputArrows, v]);
+        setInputCoordinates([...inputCoordinates, coord]);
       }
+    } else if (commitEndEarly()) {
+      const coord = { x: x ?? null, y: y ?? null, spotId: spotId ?? null };
+      const isVisualInput = x !== null && y !== null;
+      const next = isVisualInput && isSpotFace(targetType)
+        ? addSpotArrow([], [], v, coord)
+        : { arrows: [v], coords: [coord] };
+      setInputArrows(next.arrows);
+      setInputCoordinates(next.coords);
     }
   };
 
@@ -373,37 +384,52 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
+  // Zamyka pełną serię (6 strzał) i dopisuje ją do submittedEnds.
+  const commitEnd = (arrows: string[], coords: any[]) => {
+    const sorted = sortArrows(arrows);
+    const sum = arrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0);
+
+    const safeCoordinates = coords.map(coord => ({
+      x: coord?.x ?? null,
+      y: coord?.y ?? null,
+      spotId: coord?.spotId ?? null,
+      ...(coord?.bad ? { bad: true } : {}), // [FEHLSCHUSS] utils/badShots
+    }));
+
+    const newEnd = {
+      arrows: sorted,
+      rawArrows: [...arrows],
+      dots: safeCoordinates,
+      total_sum: sum,
+      createdAt: Date.now()
+    };
+
+    setSubmittedEnds(prev => [...prev, newEnd]);
+
+    if (submittedEnds.length === roundSize - 1) {
+      onRoundTwoStart?.();
+      setActiveRoundTab(2);
+    }
+  };
+
+  // Strzała wpisana w 600 ms po szóstej: zamknij serię od razu i zacznij
+  // następną od tej strzały. Wcześniej takie stuknięcia przepadały po cichu
+  // (szybkie wpisywanie z kartki — wykryte testem e2e 2026-11-05).
+  // Zwraca false, gdy to była ostatnia zaplanowana seria (nie ma gdzie wpisać).
+  const commitEndEarly = () => {
+    if (submittedEnds.length + 1 >= plannedEnds) return false;
+    commitEnd(inputArrows, inputCoordinates);
+    return true;
+  };
+
   useEffect(() => {
     let timeoutId: any;
     if (inputArrows.length === 6) {
       timeoutId = setTimeout(() => {
-        const sorted = sortArrows(inputArrows);
-        const sum = inputArrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0);
-        
-        const safeCoordinates = inputCoordinates.map(coord => ({
-          x: coord?.x ?? null,
-          y: coord?.y ?? null,
-          spotId: coord?.spotId ?? null,
-          ...(coord?.bad ? { bad: true } : {}), // [FEHLSCHUSS] utils/badShots
-        }));
-
-        const newEnd = {
-          arrows: sorted,
-          rawArrows: [...inputArrows],
-          dots: safeCoordinates,
-          total_sum: sum,
-          createdAt: Date.now()
-        };
-
-        setSubmittedEnds(prev => [...prev, newEnd]);
-        setInputArrows([]); 
+        commitEnd(inputArrows, inputCoordinates);
+        setInputArrows([]);
         setInputCoordinates([]);
-        
-        if (submittedEnds.length === roundSize - 1) {
-          onRoundTwoStart?.();
-          setActiveRoundTab(2);
-        }
-      }, 600); 
+      }, 600);
     }
     return () => clearTimeout(timeoutId);
     // inputCoordinates w zależnościach: oznaczenie 6. strzały jako Fehlschuss

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors } from './helpers';
+import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, reloadAfterSync } from './helpers';
 
 // Ścieżki zawodnika z zapisem do bazy: fokus, trening techniczny, licznik
 // strzał, notatka/kamień milowy w Tagebuchu, termin zawodów w Kalendarzu.
@@ -18,8 +18,9 @@ test('fokus: ustawienie i widoczność w Tagebuchu', async ({ page }) => {
   await page.getByRole('radio', { name: '3' }).check();
   await page.getByRole('button', { name: 'Lösen & Nachhalten' }).click();
   await save.click();
+  await expect(page.getByRole('main').getByText('Anker ruhig halten').first()).toBeVisible();
 
-  await page.reload();
+  await reloadAfterSync(page);
   await nav(page, 'Tagebuch').click();
   await expect(page.getByRole('main').getByText('Anker ruhig halten').first()).toBeVisible();
   await expectNoErrors(page, errors, 'fokus');
@@ -42,7 +43,7 @@ test('trening techniczny: strzały, temat i notatka trafiają do Tagebucha', asy
   await page.getByRole('button', { name: 'Bestätigen & Speichern' }).click();
 
   await expect(nav(page, 'Start')).toBeVisible();
-  await page.reload();
+  await reloadAfterSync(page);
   await nav(page, 'Tagebuch').click();
   const entry = page.getByRole('button', { name: /Techniktraining 13 Pfeile/ });
   await expect(entry).toBeVisible();
@@ -61,7 +62,8 @@ test('licznik strzał w Vorbereitung liczy się do „Pfeile / Monat”', async 
   await page.getByRole('button', { name: '−1' }).click();
   await page.getByRole('button', { name: 'Speichern', exact: true }).click();
   await page.getByRole('button', { name: 'arrow_back' }).click();
-  await page.reload();
+  await expect(page.getByRole('button', { name: /^11 Pfeile \/ Monat/ })).toBeVisible();
+  await reloadAfterSync(page);
   await expect(page.getByRole('button', { name: /^11 Pfeile \/ Monat/ })).toBeVisible();
   await expectNoErrors(page, errors, 'licznik');
 });
@@ -79,7 +81,7 @@ test('notatka jako kamień milowy w Tagebuchu', async ({ page }) => {
   await dialog.getByRole('button', { name: 'Speichern' }).click();
   await expect(dialog).toHaveCount(0);
 
-  await page.reload();
+  await reloadAfterSync(page);
   await nav(page, 'Tagebuch').click();
   await expect(page.getByRole('main')).toContainText('Erstes Turnier');
   await expectNoErrors(page, errors, 'notatka');
@@ -98,8 +100,9 @@ test('termin zawodów w Kalendarzu', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'YYYY' }).fill(String(d.getFullYear()));
   await page.getByPlaceholder('Stadt / Adresse').fill('Hamburg');
   await page.getByRole('button', { name: 'Termin speichern' }).click();
+  await expect(page.getByRole('main')).toContainText('Hallen-Cup');
 
-  await page.reload();
+  await reloadAfterSync(page);
   await nav(page, 'Kalender').click();
   await expect(page.getByRole('main')).toContainText('Hallen-Cup');
   await expectNoErrors(page, errors, 'termin');

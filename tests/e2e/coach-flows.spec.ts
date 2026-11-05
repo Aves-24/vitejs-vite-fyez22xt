@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Browser } from '@playwright/test';
-import { resetEmulators, registerUser, linkCoachAndStudent, shoot, watchErrors, expectNoErrors, newUserPage, closeUserPages } from './helpers';
+import { resetEmulators, registerUser, linkCoachAndStudent, shoot, watchErrors, expectNoErrors, newUserPage, closeUserPages, reloadAfterSync, syncWrites } from './helpers';
 
 // Ścieżki trenera z zapisem, sprawdzane po stronie ucznia (dwa konta naraz):
 // grupa + temat treningu, komentarz trenera do treningu ucznia.
@@ -44,7 +44,8 @@ test('grupa i temat treningu: uczeń widzi temat na Home i w Tagebuchu', async (
   await expectNoErrors(coach, coachErrors, 'trener: grupa + temat');
 
   // Uczeń: temat dnia na Home (po przeładowaniu) i w Tagebuchu.
-  await student.reload();
+  await syncWrites(coach);
+  await reloadAfterSync(student);
   await expect(student.getByRole('main').getByText('Schulter tief').first()).toBeVisible();
   await student.getByRole('navigation').getByRole('button', { name: /Tagebuch$/ }).click();
   await expect(student.getByRole('main').getByText('Schulter tief').first()).toBeVisible();
@@ -73,7 +74,8 @@ test('komentarz trenera do treningu trafia do Tagebucha ucznia', async ({ browse
   await expectNoErrors(coach, coachErrors, 'trener: komentarz');
 
   // Uczeń: komentarz w Tagebuchu przy treningu.
-  await student.reload();
+  await syncWrites(coach);
+  await reloadAfterSync(student);
   await student.getByRole('navigation').getByRole('button', { name: /Tagebuch$/ }).click();
   const entry = student.getByRole('button', { name: /Training 18m 53 Ringe/ });
   await expect(entry).toBeVisible();

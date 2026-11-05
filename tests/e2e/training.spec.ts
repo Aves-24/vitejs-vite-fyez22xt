@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, startAsGuest, shoot, nav, registerUser } from './helpers';
+import { resetEmulators, startAsGuest, shoot, nav, registerUser, reloadAfterSync } from './helpers';
 
 // Najważniejsza ścieżka apki: gość → trening na klawiaturze → zapis →
 // wynik widać na Home, po odświeżeniu (czyli w Firestore) i w Tagebuchu.
@@ -40,7 +40,7 @@ test('gość zapisuje trening i widzi go na Home i w Tagebuchu', async ({ page }
   await expect(page.getByRole('button', { name: /^6 Pfeile \/ Monat/ })).toBeVisible();
 
   // Po przeładowaniu dane muszą przyjść z Firestore (nie ze stanu Reacta).
-  await page.reload();
+  await reloadAfterSync(page);
   await expect(last).toBeVisible();
 
   // Tagebuch: wpis treningu w bieżącym tygodniu.

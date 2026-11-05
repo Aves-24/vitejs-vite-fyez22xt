@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 // Nowe importy dla najnowszego standardu Firebase
-import { initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, doc, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore';
+import { initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, doc, getDoc, getDocs, collection, updateDoc, waitForPendingWrites } from 'firebase/firestore';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
@@ -75,7 +75,7 @@ if (USE_EMULATORS) {
 // W produkcji ten blok jest usuwany przez tree-shaking (import.meta.env.DEV = false).
 if (import.meta.env.DEV) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (window as any).__fb = { db, auth, doc, getDoc, getDocs, collection, updateDoc };
+  (window as any).__fb = { db, auth, doc, getDoc, getDocs, collection, updateDoc, waitForPendingWrites };
   // eslint-disable-next-line no-console
   console.log('[DEV] Firebase expose na window.__fb');
 }

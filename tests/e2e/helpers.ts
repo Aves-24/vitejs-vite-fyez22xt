@@ -49,6 +49,18 @@ export async function closeUserPages() {
   while (extraContexts.length) await extraContexts.pop()!.close().catch(() => {});
 }
 
+/**
+ * Przeładowanie strony dopiero, gdy Firestore potwierdził wszystkie zapisy.
+ * Bez tego wolniejsze CI przeładowywało w trakcie zapisu (test niestabilny).
+ */
+export async function syncWrites(page: Page) {
+  await page.evaluate(() => (window as any).__fb.waitForPendingWrites((window as any).__fb.db));
+}
+export async function reloadAfterSync(page: Page) {
+  await syncWrites(page);
+  await page.reload();
+}
+
 /** Unikalny e-mail testowy (konta żyją tylko w emulatorze). */
 export const testEmail = (tag: string) => `e2e-${tag}-${Date.now()}@example.test`;
 export const TEST_PASSWORD = 'Test-1234!';
@@ -90,7 +102,8 @@ const IGNORED_ERRORS = [
   /Failed to load resource: the server responded with a status of/i,
 ];
 // Odpowiedzi HTTP ≥ 400, które są oczekiwane.
-const IGNORED_RESPONSES: RegExp[] = [];
+// Strumienie Firestore (WebChannel) zrywane przy przeładowaniu strony dają 400 — szum transportu.
+const IGNORED_RESPONSES: RegExp[] = [/\/google\.firestore\.v1\.Firestore\/(Listen|Write)\/channel/];
 
 /**
  * Zbiera błędy z przeglądarki: wyjątki JS, console.error (w tym odrzucenia

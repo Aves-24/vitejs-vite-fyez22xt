@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { resetEmulators, registerUser, startAsGuest, shoot, nav, watchErrors, expectNoErrors, testEmail, TEST_PASSWORD, adminListDocs } from './helpers';
+import { resetEmulators, registerUser, startAsGuest, shoot, nav, watchErrors, expectNoErrors, testEmail, TEST_PASSWORD, adminListDocs, reloadAfterSync } from './helpers';
 
 // Ustawienia z zapisem: profil, zestaw sprzętowy, język, eksport RODO,
 // usunięcie konta i przejście z gościa na konto bez utraty danych.
@@ -21,7 +21,7 @@ test('profil: dane osobowe zostają po przeładowaniu', async ({ page }) => {
   await saveSettings(page).click();
   await page.waitForTimeout(1500);
 
-  await page.reload();
+  await reloadAfterSync(page);
   // Pierwsza data urodzenia NIE wywołuje noworocznego okienka (było: w listopadzie).
   await expect(page.getByRole('heading', { level: 1, name: 'GROT-X' })).toBeVisible();
   await page.waitForTimeout(1500);
@@ -45,7 +45,7 @@ test('sprzęt: nazwa i dyscyplina zestawu zostają i widać je przy starcie tren
   await saveSettings(page).click();
   await page.waitForTimeout(1500);
 
-  await page.reload();
+  await reloadAfterSync(page);
   await nav(page, 'Einst.').click();
   await settingsTab(page, 'AUSRÜSTUNG').click();
   await expect(page.getByRole('button', { name: 'Halle 2026', exact: true })).toBeVisible();
@@ -64,7 +64,7 @@ test('język: przełączenie na English zostaje po przeładowaniu', async ({ pag
   await settingsTab(page, 'SPRACHE').click();
   await page.getByRole('button', { name: 'English', exact: true }).click();
   await page.waitForTimeout(800);
-  await page.reload();
+  await reloadAfterSync(page);
   await expect(page.getByRole('navigation').getByRole('button', { name: /Settings|Sett\./ })).toBeVisible();
   await expect(page.getByRole('navigation').getByRole('button', { name: /Einst\./ })).toHaveCount(0);
   await expectNoErrors(page, errors, 'język');

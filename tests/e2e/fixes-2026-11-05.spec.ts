@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, registerUser, startAsGuest, nav, watchErrors, expectNoErrors, reloadAfterSync, adminPatchDoc, testEmail, TEST_PASSWORD } from './helpers';
+import { resetEmulators, registerUser, startAsGuest, nav, watchErrors, expectNoErrors, reloadAfterSync, adminPatchDoc, adminListDocs, testEmail, TEST_PASSWORD } from './helpers';
 
 // Poprawki z przeglądu 2026-11-05 (decyzje usera po pierwszej rundzie testów).
 test.beforeEach(async ({ request }) => resetEmulators(request));
@@ -42,6 +42,9 @@ test('zmiana klasy wiekowej w ciągu roku: okienko i nowe dystanse', async ({ pa
   await page.getByRole('spinbutton', { name: 'MM' }).fill('2');
   await page.getByRole('spinbutton', { name: 'YYYY' }).fill(String(y));
   await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  // Zapis Ustawień rusza po odczycie profilu — czekamy, aż data urodzenia jest w bazie.
+  await expect.poll(async () => JSON.stringify(await adminListDocs(request, `users/${uid}/private`)), { timeout: 15_000 })
+    .toContain(String(y));
   await reloadAfterSync(page);
   await expect(page.getByRole('heading', { level: 1, name: 'GROT-X' })).toBeVisible();
   // 13 lat → bramka zgody rodzica (< 16, RODO art. 8).

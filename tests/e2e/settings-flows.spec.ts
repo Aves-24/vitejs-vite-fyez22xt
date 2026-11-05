@@ -8,9 +8,9 @@ test.beforeEach(async ({ request }) => resetEmulators(request));
 const settingsTab = (page: Page, name: string) => page.getByRole('main').getByRole('button', { name, exact: true });
 const saveSettings = (page: Page) => page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' });
 
-test('profil: dane osobowe zostają po przeładowaniu', async ({ page }) => {
+test('profil: dane osobowe zostają po przeładowaniu', async ({ page, request }) => {
   const errors = watchErrors(page);
-  await registerUser(page, 'Profil');
+  const uid = await registerUser(page, 'Profil');
   await nav(page, 'Einst.').click();
   await page.getByRole('textbox', { name: 'Nachname' }).fill('Testowa');
   await page.getByRole('spinbutton', { name: 'DD' }).fill('14');
@@ -19,7 +19,7 @@ test('profil: dane osobowe zostają po przeładowaniu', async ({ page }) => {
   await page.getByRole('spinbutton', { name: 'z.B. 180' }).fill('172');
   await page.getByRole('button', { name: 'Linkshänder (LH)' }).click();
   await saveSettings(page).click();
-  await page.waitForTimeout(1500);
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields ?? {}), { timeout: 15_000 }).toContain('Testowa');
 
   await reloadAfterSync(page);
   // Pierwsza data urodzenia NIE wywołuje noworocznego okienka (było: w listopadzie).
@@ -33,9 +33,9 @@ test('profil: dane osobowe zostają po przeładowaniu', async ({ page }) => {
   await expectNoErrors(page, errors, 'profil');
 });
 
-test('sprzęt: nazwa i dyscyplina zestawu zostają i widać je przy starcie treningu', async ({ page }) => {
+test('sprzęt: nazwa i dyscyplina zestawu zostają i widać je przy starcie treningu', async ({ page, request }) => {
   const errors = watchErrors(page);
-  await registerUser(page, 'Sprzet');
+  const uid = await registerUser(page, 'Sprzet');
   await nav(page, 'Einst.').click();
   await settingsTab(page, 'AUSRÜSTUNG').click();
   const name = page.getByRole('main').getByRole('textbox').first();
@@ -43,7 +43,7 @@ test('sprzęt: nazwa i dyscyplina zestawu zostają i widać je przy starcie tren
   await page.getByRole('button', { name: 'Compound', exact: true }).click();
   await page.getByRole('spinbutton', { name: 'z.B. 28.5' }).fill('29');
   await saveSettings(page).click();
-  await page.waitForTimeout(1500);
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields ?? {}), { timeout: 15_000 }).toContain('Halle 2026');
 
   await reloadAfterSync(page);
   await nav(page, 'Einst.').click();

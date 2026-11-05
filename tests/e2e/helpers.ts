@@ -94,6 +94,23 @@ export async function expectNoErrors(page: Page, errors: string[], step: string)
   expect(errors, `${step}: błędy w konsoli`).toEqual([]);
 }
 
+/** Trener włącza tryb trenera, zaprasza ucznia po ID, uczeń akceptuje. */
+export async function linkCoachAndStudent(coach: Page, student: Page, studentId: string, coachName: string) {
+  await nav(coach, 'Einst.').click();
+  await coach.getByRole('button', { name: /^TRAINER/ }).click();
+  await coach.getByRole('button', { name: /Trainermodus aktivieren/ }).click();
+  await expect(coach.getByText(/Plätze: 0\/1/)).toBeVisible();
+  await coach.getByRole('navigation').getByRole('button', { name: 'sports Trainer' }).click();
+  await coach.getByRole('navigation').getByRole('button', { name: 'settings Einst.' }).click();
+  await coach.getByRole('button', { name: 'person_add Schüler hinzufügen' }).click();
+  await coach.getByPlaceholder('Benutzer-ID einfügen...').fill(studentId);
+  await coach.getByRole('button', { name: 'Hinzufügen', exact: true }).click();
+  await coach.getByRole('button', { name: 'OK', exact: true }).click();
+  await expect(student.getByText(`${coachName} möchte dich als Trainer beobachten.`)).toBeVisible();
+  await student.getByRole('button', { name: 'Annehmen', exact: true }).click();
+  await expect(student.getByText(`${coachName} möchte dich als Trainer beobachten.`)).toHaveCount(0);
+}
+
 /** Klawiatura punktów na ekranie treningu: 'X', '10' … '1', 'M'. */
 export async function shoot(page: Page, values: string[]) {
   for (const v of values) await page.getByRole('button', { name: v, exact: true }).click();

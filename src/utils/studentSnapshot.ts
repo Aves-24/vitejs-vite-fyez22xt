@@ -4,7 +4,6 @@
 // żeby dało się to sprawdzić na surowych danych.
 
 export const SNAPSHOT_DAYS = 14;
-const DAY = 24 * 60 * 60 * 1000;
 
 export type DayKind = 'score' | 'practice' | 'none';
 
@@ -64,6 +63,19 @@ function dayStart(ts: number): number {
   return d.getTime();
 }
 
+/**
+ * Początek dnia przesuniętego o n dni KALENDARZOWYCH. Nie `ts + n * 24 h` —
+ * przez zmianę czasu (doba 23/25 h) granice dni rozjeżdżały się o godzinę,
+ * a podpisy pod paskiem 14 dni u trenera przesuwały się o dzień (2× „25. Okt.”,
+ * brak „dziś” — wykryte testem e2e 2026-11-05).
+ */
+export function addDays(ts: number, n: number): number {
+  const d = new Date(ts);
+  d.setDate(d.getDate() + n);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 /** Klucz licznika strzał — ten sam format co SessionSetup (`2026_09_18`). */
 function counterKey(ts: number): string {
   const d = new Date(ts);
@@ -80,17 +92,17 @@ function sessionArrows(s: SnapSession): number {
 export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string, number> | undefined, now = Date.now(), pickDistance?: string | null): StudentSnapshot {
   const sessions = [...sessionsIn].sort((a, b) => a.ts - b.ts);
   const today = dayStart(now);
-  const from = today - (SNAPSHOT_DAYS - 1) * DAY;          // początek bieżących 14 dni
-  const prevFrom = from - SNAPSHOT_DAYS * DAY;
+  const from = addDays(today, -(SNAPSHOT_DAYS - 1));        // początek bieżących 14 dni
+  const prevFrom = addDays(from, -SNAPSHOT_DAYS);
 
   const cur = sessions.filter(s => s.ts >= from);
   const prev = sessions.filter(s => s.ts >= prevFrom && s.ts < from);
 
   // Pasek dni: wynik wygrywa z treningiem technicznym i samym licznikiem.
-  const inDayOf = (i: number) => cur.filter(s => s.ts >= from + i * DAY && s.ts < from + (i + 1) * DAY);
+  const inDayOf = (i: number) => cur.filter(s => s.ts >= addDays(from, i) && s.ts < addDays(from, i + 1));
   const dayCounts = Array.from({ length: SNAPSHOT_DAYS }, (_, i) => inDayOf(i).length);
   const days: DayKind[] = Array.from({ length: SNAPSHOT_DAYS }, (_, i) => {
-    const d0 = from + i * DAY;
+    const d0 = addDays(from, i);
     const inDay = inDayOf(i);
     if (inDay.some(hasScore)) return 'score';
     if (inDay.length > 0 || (counter?.[counterKey(d0)] || 0) > 0) return 'practice';
@@ -99,7 +111,7 @@ export function buildSnapshot(sessionsIn: SnapSession[], counter: Record<string,
 
   const counterSum = (start: number) => {
     let n = 0;
-    for (let i = 0; i < SNAPSHOT_DAYS; i++) n += counter?.[counterKey(start + i * DAY)] || 0;
+    for (let i = 0; i < SNAPSHOT_DAYS; i++) n += counter?.[counterKey(addDays(start, i))] || 0;
     return n;
   };
   const arrows = cur.reduce((n, s) => n + sessionArrows(s), 0) + counterSum(from);

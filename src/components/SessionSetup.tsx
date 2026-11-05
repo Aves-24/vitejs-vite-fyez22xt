@@ -58,6 +58,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [setupSwitchError, setSetupSwitchError] = useState(false);
   // Płaskie `bowType` — dyscyplina kont sprzed zestawów.
   const [legacyBowType, setLegacyBowType] = useState<string | null>(null);
+  // Dopóki profil (zestawy = dyscyplina) się ładuje, lista dystansów jest pełna
+  // — razem z 10 m dmuchawki. Automatyczny wybór czeka na profil, inaczej
+  // szybkie „Training” zapisywało łucznikowi trening na 10 m z tarczą
+  // Blowgun 20cm (wykryte testem e2e 2026-11-05). Przyciski startu i tak
+  // są zablokowane bez wybranego dystansu.
+  const [profileLoaded, setProfileLoaded] = useState(false);
   const activeSetup = setups.find(s => s.id === activeSetupId) ?? setups[0];
   const setupColors = useMemo(() => resolveSetupColors(setups), [setups]);
   // [DMUCHAWKA] Dyscyplina aktywnego zestawu — decyduje, które tarcze w ogóle
@@ -175,12 +181,13 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           setLegacyBowType(data.bowType ?? null);
         }
       } catch (e) { console.error(e); }
+      setProfileLoaded(true);
     };
     if (userId) checkData();
   }, [userId]);
 
   useEffect(() => {
-    if (distanceOptions.length > 0 && !selectedId) {
+    if (profileLoaded && distanceOptions.length > 0 && !selectedId) {
       const saved = localStorage.getItem(`grotX_lastSetup_${userId}`);
       if (saved) {
         try {
@@ -196,7 +203,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       }
       updateSelection(distanceOptions[0].id);
     }
-  }, [distanceOptions, selectedId]);
+  }, [distanceOptions, selectedId, profileLoaded]);
 
   // [DYSCYPLINY] Dyscyplina dojeżdża z profilu PO pierwszym renderze, więc
   // wybór mógł już paść na dystans, który po zawężeniu listy znika (albo user

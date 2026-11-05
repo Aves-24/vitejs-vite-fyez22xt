@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, startAsGuest, shoot, nav } from './helpers';
+import { resetEmulators, startAsGuest, shoot, nav, registerUser } from './helpers';
 
 // Najważniejsza ścieżka apki: gość → trening na klawiaturze → zapis →
 // wynik widać na Home, po odświeżeniu (czyli w Firestore) i w Tagebuchu.
@@ -72,4 +72,18 @@ test('szybkie wpisywanie: strzała tuż po szóstej nie przepada', async ({ page
   const main = page.getByRole('main');
   await expect(main).toContainText(/P2\s*10\s*10\s*9\s*8\s*8\s*M\s*45\s*98/);
   await expect(main).toContainText(/Gesamtringzahl\s*98/);
+});
+
+test('szybki start po wejściu w Vorbereitung nie łapie 10 m dmuchawki', async ({ page }) => {
+  // Zanim profil (dyscyplina) dojedzie, lista dystansów zawiera też 10 m
+  // dmuchawki. Wcześniej automatyczny wybór łapał właśnie je, a szybkie
+  // „Training” zapisywało łucznikowi trening 10 m / Blowgun 20cm.
+  await registerUser(page, 'Schnell');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await expect(page.getByRole('main')).toContainText(/18m\s*3-Spot/i);
+  await shoot(page, ['X', '10', '9', '9', '8', '7']);
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 53 18m/ })).toBeVisible();
 });

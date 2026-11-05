@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
-import { buildSnapshot, type SnapSession, type StudentSnapshot } from '../utils/studentSnapshot';
+import { buildSnapshot, addDays, type SnapSession, type StudentSnapshot } from '../utils/studentSnapshot';
 import type { FocusState } from '../utils/focus';
 import { FocusDots, FocusProgressText, focusTitle } from './tagebuch/FocusCard';
 import { topicLabel } from '../constants/trainingTopics';
@@ -461,8 +461,7 @@ export default function CoachStudentSheet({
               {/* Znaczniki nad dniem: kamień milowy, zawody, fokus, temat, notatka. */}
               {(() => {
                 const day0 = new Date(snap.fromTs).setHours(0, 0, 0, 0);
-                const dayOf = (ts: number) => Math.round((new Date(ts).setHours(0, 0, 0, 0) - day0) / 86400000);
-                const perDay = snap.days.map((_, i) => MARKS.filter(mk => marks.some(m => m.kind === mk.kind && dayOf(m.ts) === i)));
+                const perDay = snap.days.map((_, i) => MARKS.filter(mk => marks.some(m => m.kind === mk.kind && m.ts >= addDays(day0, i) && m.ts < addDays(day0, i + 1))));
                 if (!perDay.some(d => d.length)) return null;
                 return (
                   <div className="flex gap-[3px] mb-0.5 items-end" aria-hidden>
@@ -483,7 +482,7 @@ export default function CoachStudentSheet({
                     key={i}
                     onClick={() => setPickedDay(d => (d === i ? null : i))}
                     aria-pressed={pickedDay === i}
-                    aria-label={fmtDate(new Date(snap.fromTs).setHours(0, 0, 0, 0) + i * 86400000)}
+                    aria-label={fmtDate(addDays(snap.fromTs, i))}
                     className={`flex-1 h-6 rounded-[4px] flex items-center justify-center text-[8px] font-black text-white transition-all ${k === 'score' ? 'bg-[#1f6e53]' : k === 'practice' ? 'bg-sky-400' : 'bg-gray-100'} ${pickedDay === i ? 'ring-2 ring-[#fed33e] ring-offset-1' : ''}`}
                   >
                     {snap.dayCounts[i] > 1 ? snap.dayCounts[i] : ''}
@@ -514,7 +513,7 @@ export default function CoachStudentSheet({
               {pickedDay === null && <p className="text-[9px] font-bold text-gray-300 mt-1">{t('coachSheet.dayHint')}</p>}
 
               {pickedDay !== null && (() => {
-                const dayStart = new Date(new Date(snap.fromTs).setHours(0, 0, 0, 0) + pickedDay * 86400000 + 43200000).setHours(0, 0, 0, 0);
+                const dayStart = addDays(snap.fromTs, pickedDay);
                 const list = items
                   .filter(it => new Date(it.ts).setHours(0, 0, 0, 0) === dayStart)
                   .sort((a, b) => a.ts - b.ts);

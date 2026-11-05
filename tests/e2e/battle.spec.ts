@@ -28,6 +28,8 @@ test('pojedynek: tworzenie areny, dołączenie kodem, strzelanie, ranking', asyn
   // Ben: dołączenie kodem.
   await b.getByText('Duell starten').click();
   await b.getByRole('button', { name: 'Mit Code / QR beitreten' }).click();
+  await expect(b.getByText('Deine eindeutige ID:')).toBeVisible();
+  await expect(b.getByText(/Schüler-ID/)).toHaveCount(0);
   await b.getByPlaceholder('z.B. AB12CD').fill(code);
   await b.getByRole('button', { name: 'BEITRETEN' }).click();
   await expect(b.getByRole('heading', { name: 'Diesem Spiel beitreten?' })).toBeVisible();

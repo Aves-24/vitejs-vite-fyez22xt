@@ -122,7 +122,21 @@ service cloud.firestore {
       return data.get('isPremium', false) == true
         || data.get('isPremiumPromo', false) == true
         || (data.get('trialEndsAt', 0) is number
-            && data.get('trialEndsAt', 0) > request.time.toMillis());
+            && data.get('trialEndsAt', 0) > request.time.toMillis())
+        || guestPro(data);
+    }
+    // [GOŚĆ 2026-11-05] Gość ma PRO tylko na czas życia konta, BEZ trialu
+    // (trial jest raz na konto i przepadłby przy zakładaniu konta z gościa).
+    // Tylko konto anonimowe, a expiresAt nie dalej niż 25 h od teraz — zwykłe
+    // konto nie dopisze sobie isGuest/expiresAt, żeby dostać limity PRO.
+    // LUSTRO: src/utils/proAccess.ts (hasActivePro, gałąź gościa).
+    function guestPro(data) {
+      return request.auth != null
+        && request.auth.token.firebase.sign_in_provider == 'anonymous'
+        && data.get('isGuest', false) == true
+        && data.get('expiresAt', null) is timestamp
+        && data.get('expiresAt', null) > request.time
+        && data.get('expiresAt', null) <= request.time + duration.value(25, 'h');
     }
     // [TRENER] Miejsca dla uczniów. Każdy może sam włączyć tryb trenera
     // (`isCoach` nie jest chronione) i dostaje 1 miejsce za darmo. Więcej

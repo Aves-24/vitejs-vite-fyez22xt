@@ -29,13 +29,19 @@ test('grupa i temat treningu: uczeń widzi temat na Home i w Tagebuchu', async (
   await coach.getByPlaceholder('Z.B. Anfänger, Kader...').fill('Kader');
   await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
   await expect(coach.getByRole('button', { name: /folder_shared Kader 0 Schüler/ })).toBeVisible();
+  // Ekran pustej grupy: „Mitglieder hinzufügen” prowadzi do Einst. z tą grupą.
+  await coachNav(coach, 'folder_shared Gruppen').click();
+  await expect(coach.getByRole('button', { name: 'add Thema' })).toBeDisabled();
+  await coach.getByRole('button', { name: 'person_add Mitglieder hinzufügen' }).click();
   await coach.getByRole('button', { name: 'person_add Hinzufügen' }).click();
   await coach.getByRole('button', { name: 'check Uczen' }).click();
   await coach.getByRole('button', { name: 'Hinzufügen (1)' }).click();
   await expect(coach.getByRole('button', { name: /folder_shared Kader 1 Schüler/ })).toBeVisible();
 
-  // Temat na dziś.
+  // Temat na dziś (lista grup → Kader).
   await coachNav(coach, 'folder_shared Gruppen').click();
+  const kader = coach.getByRole('main').getByText('Kader', { exact: true });
+  if (await kader.isVisible().catch(() => false)) await kader.click();
   await coach.getByRole('button', { name: 'add Thema' }).click();
   await coach.getByPlaceholder('z. B. Ellenbogenrotation im Vollauszug').fill('Schulter tief');
   await coach.getByPlaceholder('Was genau wir machen, worauf wir achten…').fill('Spiegelübung, 3 × 6 Pfeile');

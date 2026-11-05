@@ -8,7 +8,7 @@ import { buildDistanceEntry, ensureDistanceIds, rebuildMasterList } from '../con
 
 
 
-type ModalType = 'NONE' | 'NEW_YEAR' | 'BIRTHDAY';
+type ModalType = 'NONE' | 'NEW_YEAR' | 'CLASS_CHANGE' | 'BIRTHDAY';
 
 interface SmartSeasonUpdaterProps {
   userId: string; // DODANE: Przypisanie do użytkownika
@@ -68,40 +68,24 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           if (import.meta.env.DEV) console.log(`SeasonUpdater: urodziny dzisiaj? ${isBirthdayToday}`);
 
           const newCategory = getAgeCategory(birthDate, gender);
+          const isFirstCheck = typeof data.lastNewYearGreeting !== 'number';
+          const isNewYear = !isFirstCheck && data.lastNewYearGreeting < currentYear;
+          // [KLASA WIEKOWA] Zmiana klasy = porównanie z ZAPISANĄ klasą, nie sam
+          // Nowy Rok (user 2026-11-05: „aktualne dystanse, gdy przeszła wiekowo
+          // na inne”). Działa też w ciągu roku, np. po poprawieniu daty urodzenia.
+          // Konta bez zapisanej klasy: w Nowy Rok jak dawniej (przeliczamy),
+          // przy pierwszym sprawdzeniu — nie (świeża data urodzenia w listopadzie
+          // dawała „Frohes neues Jahr” i nadpisywała dystanse; e2e 2026-11-05).
+          const classChanged = data.ageCategory ? data.ageCategory !== newCategory : isNewYear;
 
-          // 0. PIERWSZE SPRAWDZENIE (świeża data urodzenia / nowe konto):
-          // tylko zapamiętujemy rok i klasę. Wcześniej każdy, kto pierwszy raz
-          // podał datę urodzenia, dostawał „Frohes neues Jahr” — choćby w
-          // listopadzie — a jego dystanse i tarcze były przeliczane od nowa
-          // (wykryte testem e2e 2026-11-05).
-          if (typeof data.lastNewYearGreeting !== 'number') {
-            await setDoc(profileRef, {
-              lastNewYearGreeting: currentYear,
-              ageCategory: newCategory,
-              ageCategoryPL: getAgeCategoryPL(birthDate, gender)
-            }, { merge: true });
-          }
-          // 1. SPRAWDZAMY CZY TO NOWY ROK
-          else if (data.lastNewYearGreeting < currentYear) {
-            console.log("Trener AI: Wykryto nowy rok! Przeliczam dystanse...");
-
-            // Dystanse przeliczamy TYLKO przy zmianie klasy wiekowej — inaczej
-            // każdy Nowy Rok kasował userowi jego wybór aktywnych dystansów.
-            // Konta bez zapisanej klasy (sprzed tej zmiany) — jak dawniej.
-            const classChanged = !data.ageCategory || data.ageCategory !== newCategory;
-            if (!classChanged) {
-              setHasClassChanged(false);
-              await setDoc(profileRef, { lastNewYearGreeting: currentYear }, { merge: true });
-              setModalType('NEW_YEAR');
-              return;
-            }
-
+          // 1. ZMIANA KLASY WIEKOWEJ → dystanse i tarcze wg przepisów
+          if (classChanged) {
+            console.log("Trener AI: Zmiana klasy wiekowej — przeliczam dystanse...");
             const currentBow = (data.bowType || 'Klasyczny (Recurve)') as BowType;
-            const currentGender = gender;
             const birthYearNum = parseInt(bYearStr, 10) || 1990;
 
-            const recHala = getRecommendation(currentBow, birthYearNum, 'Hala (Indoor)', currentGender);
-            const recTory = getRecommendation(currentBow, birthYearNum, 'Tory (Outdoor)', currentGender);
+            const recHala = getRecommendation(currentBow, birthYearNum, 'Hala (Indoor)', gender);
+            const recTory = getRecommendation(currentBow, birthYearNum, 'Tory (Outdoor)', gender);
 
             // [C25] Regeneracja NIE nadpisuje juz calej listy. Wpisy wlasne
             // usera przechodza nietkniete (rebuildMasterList), a nastawy
@@ -119,13 +103,6 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
               return buildDistanceEntry(m, { ...prev, active: isRecommended, targetType: target });
             });
 
-            const oldDistancesStr = JSON.stringify(data.userDistances || []);
-            const newDistancesStr = JSON.stringify(updatedDistances);
-            const changed = oldDistancesStr !== newDistancesStr;
-            
-            setHasClassChanged(changed);
-
-            // Nowy rok = możliwa zmiana kategorii wiekowej (wiek kalendarzowy)
             await setDoc(profileRef, {
               userDistances: updatedDistances,
               lastNewYearGreeting: currentYear,
@@ -133,11 +110,29 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
               ageCategoryPL: getAgeCategoryPL(birthDate, gender)
             }, { merge: true });
 
-            setModalType('NEW_YEAR');
-            return; 
+            setHasClassChanged(true);
+            setModalType(isNewYear ? 'NEW_YEAR' : 'CLASS_CHANGE');
+            return;
           }
 
-          // 2. SPRAWDZAMY CZY TO URODZINY
+          // 2. NOWY ROK bez zmiany klasy — tylko życzenia, dystanse zostają.
+          if (isNewYear) {
+            await setDoc(profileRef, { lastNewYearGreeting: currentYear, ageCategory: newCategory }, { merge: true });
+            setHasClassChanged(false);
+            setModalType('NEW_YEAR');
+            return;
+          }
+
+          // 3. PIERWSZE SPRAWDZENIE — po cichu zapamiętujemy rok i klasę.
+          if (isFirstCheck || !data.ageCategory) {
+            await setDoc(profileRef, {
+              lastNewYearGreeting: currentYear,
+              ageCategory: newCategory,
+              ageCategoryPL: getAgeCategoryPL(birthDate, gender)
+            }, { merge: true });
+          }
+
+          // 4. SPRAWDZAMY CZY TO URODZINY
           if (isBirthdayToday && data.lastBirthdayGreeting !== currentYear) {
             console.log("Trener AI: Wykryto dzisiejsze urodziny! Pokazuję tort.");
             await setDoc(profileRef, {
@@ -201,6 +196,23 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           </div>
 
           <button onClick={() => setModalType('NONE')} className="w-full py-4 bg-[#F2C94C] text-[#8B6508] rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-yellow-500/20 active:scale-95 transition-all relative z-10">
+            {t('notifications.newYearClose')}
+          </button>
+        </div>
+      )}
+
+      {modalType === 'CLASS_CHANGE' && (
+        <div className="bg-gradient-to-br from-[#0a3a2a] to-emerald-900 rounded-[32px] p-8 w-full max-w-[400px] shadow-2xl relative flex flex-col items-center border border-emerald-700 text-center">
+          <div className="w-24 h-24 bg-emerald-500/20 rounded-full flex items-center justify-center mb-4 border border-emerald-400/30">
+            <span className="material-symbols-outlined text-6xl text-emerald-400">update</span>
+          </div>
+          <h2 className="text-2xl font-black text-white tracking-tight mb-3">
+            {t('notifications.classChangeTitle', { name: displayName })}
+          </h2>
+          <p className="text-sm text-[#F2C94C] font-bold leading-relaxed mb-8">
+            {t('notifications.classChangeMsg')}
+          </p>
+          <button onClick={() => setModalType('NONE')} className="w-full py-4 bg-[#F2C94C] text-[#8B6508] rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-yellow-500/20 active:scale-95 transition-all">
             {t('notifications.newYearClose')}
           </button>
         </div>

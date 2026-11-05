@@ -27,6 +27,18 @@ export async function adminListDocs(request: APIRequestContext, collection: stri
   return (body.documents ?? []) as { name: string; fields: Record<string, any> }[];
 }
 
+/** Nadpisuje pola tekstowe/liczbowe dokumentu w emulatorze z pominięciem reguł. */
+export async function adminPatchDoc(request: APIRequestContext, path: string, fields: Record<string, string | number>) {
+  const body: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(fields)) body[k] = typeof v === 'number' ? { integerValue: String(v) } : { stringValue: v };
+  const mask = Object.keys(fields).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');
+  const res = await request.patch(`${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/${path}?${mask}`, {
+    headers: { Authorization: 'Bearer owner' },
+    data: { fields: body },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
 /** Oznacza konto w emulatorze Auth jako „e-mail potwierdzony” (np. admin). */
 export async function adminVerifyEmail(request: APIRequestContext, uid: string) {
   const res = await request.post(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:update`, {

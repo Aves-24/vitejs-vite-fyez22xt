@@ -157,7 +157,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, part, defaultDay }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, onAddMembers, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, part, defaultDay }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -166,6 +166,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   onChanged: (next: GroupTopicsByDay) => void;
   showToast: (msg: string) => void;
   onOpenStudent?: (studentId: string) => void;
+  /** Pusta grupa: przejście tam, gdzie dodaje się członków (Einst. trenera). */
+  onAddMembers?: () => void;
   /** Historia treningów pod sekcją tematu — dostaje „Powtórz na dziś” (null, gdy dziś już jest temat) i edycję. */
   renderHistory?: (repeatToday: ((gt: GroupTopic) => void) | null, editTopic: (gt: GroupTopic) => void) => ReactNode;
   /** [TERMINE] Dzień wybrany w terminarzu (przyszły trening) — karta „Thema für …” zamiast dzisiejszej. */
@@ -677,7 +679,16 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
         {focus && !focusTopic ? t('coachDashboard.groupTopicAddFor', { day: focusLabel }) : t('coachDashboard.groupTopicAdd')}
       </button>
       {members.length === 0 && (
-        <p className="text-[11px] font-bold text-gray-500 pl-1 -mt-1.5">{t('coachDashboard.groupTopicNeedMembers')}</p>
+        <div className="flex items-center justify-between gap-2 pl-1 -mt-1.5">
+          <p className="text-[11px] font-bold text-gray-500">{t('coachDashboard.groupTopicNeedMembers')}</p>
+          {/* Członków dodaje się w Einst. trenera — wcześniej tekst odsyłał
+              „niżej”, gdzie ich nie było (user 2026-11-05). */}
+          {onAddMembers && (
+            <button type="button" onClick={onAddMembers} className="shrink-0 inline-flex items-center gap-1 text-[11px] font-black text-[#0a3a2a] border border-[#0a3a2a]/20 rounded-full px-3 py-1 active:scale-95 transition-all">
+              <span className="material-symbols-outlined text-[16px]">person_add</span>{t('coachDashboard.groupAddMembers')}
+            </button>
+          )}
+        </div>
       )}
 
       {focus && focusTopic ? (

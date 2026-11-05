@@ -1940,6 +1940,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       onChanged: (next: GroupTopicsByDay) => handleGroupTopicChanged(group.id, next),
       showToast,
       onOpenStudent: setSheetStudentId,
+      onAddMembers: () => { setSettingsGroupId(group.id); onNavigate('COACH', 'SETTINGS'); },
     };
     return (
       <div className="space-y-3">
@@ -3107,6 +3108,18 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
               <span className="material-symbols-outlined text-[14px]">close</span>
             </button>
           )}
+          {/* [UCZNIOWIE] Dodawanie ucznia także tutaj, nie tylko w Einst.
+              (user 2026-11-05: pusta lista nie miała żadnej akcji). Bez wolnych
+              miejsc — przejście do Einst., gdzie jest prośba o więcej miejsc. */}
+          <button
+            type="button"
+            onClick={() => (isLimitReached ? onNavigate('COACH', 'SETTINGS') : startScanner())}
+            className="w-full mb-4 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            {t('coachSettings.addStudent')}
+            <span className="text-[11px] font-bold text-white/60">{students.length}/{coachLimit}</span>
+          </button>
           {renderStudentList(visibleStudents, t('coachDashboard.allStudents'))}
         </div>
       )}

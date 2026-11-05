@@ -39,3 +39,17 @@ describe('freeAnalysisOpen', () => {
     expect(freeAnalysisOpen(null, now)).toBe(false);
   });
 });
+
+describe('hasActivePro — gość (PRO tylko na czas życia konta)', () => {
+  const now = 1_800_000_000_000;
+  it('gość z ważnym expiresAt ma PRO', () => {
+    expect(hasActivePro({ isGuest: true, expiresAt: { toMillis: () => now + 3600_000 } }, now)).toBe(true);
+    expect(hasActivePro({ isGuest: true, expiresAt: now + 60_000 }, now)).toBe(true);
+  });
+  it('po wygaśnięciu konta gościa — bez PRO', () => {
+    expect(hasActivePro({ isGuest: true, expiresAt: { toMillis: () => now - 1 } }, now)).toBe(false);
+  });
+  it('samo expiresAt bez isGuest nie daje PRO', () => {
+    expect(hasActivePro({ expiresAt: now + 3600_000 }, now)).toBe(false);
+  });
+});

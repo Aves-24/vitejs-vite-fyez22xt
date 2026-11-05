@@ -188,6 +188,27 @@ export function isSpotFace(raw?: string | null): boolean {
   return l === 'spot3-double' || l === 'spot3-single';
 }
 
+/**
+ * Klawisze punktów dla klawiatury treningu — tylko wartości, które na tej
+ * tarczy da się trafić (bez 'M', który klawiatura dokłada zawsze).
+ * Wcześniej klawiatura miała zawsze X i 10..1, więc na 3-Spocie (6–10)
+ * można było wpisać 3 (user 2026-11-05).
+ *  - strefy jawne (dmuchawka 3-5-7): dokładnie ich wartości, bez X,
+ *  - 3-spot: najniżej 6 (WA), także gdy katalog ma domyślne minScoringRing,
+ *  - reszta: X i 10..minScoringRing.
+ */
+export function keypadValuesFor(raw?: string | null): string[] {
+  const face = resolveTargetFace(raw);
+  if (face.zones?.length) {
+    return [...face.zones].map(z => z.value).sort((a, b) => b - a).map(String);
+  }
+  const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single';
+  const min = Math.max(1, isSpot ? Math.max(6, face.minScoringRing) : face.minScoringRing);
+  const values = ['X'];
+  for (let v = 10; v >= min; v--) values.push(String(v));
+  return values;
+}
+
 /** 3-spot w jednej kolumnie. */
 export function isVerticalSpotFace(raw?: string | null): boolean {
   return resolveTargetFace(raw).layout === 'spot3-single';

@@ -21,7 +21,7 @@ import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
 import { isGuestUser } from '../utils/guestMode';
-import { TRIAL_DAYS, hasActivePro } from '../utils/proAccess';
+import { TRIAL_DAYS, hasActivePro, guestExpiryMs } from '../utils/proAccess';
 import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../utils/battleStage';
 import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
@@ -353,7 +353,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setIsPremium(computedIsPremium);
         // Plakietka planu pod logo: stałe PRO / PRO na dni (trial, prezent) / FREE.
         setPlanBadge(d.isPremium === true || d.isPremiumPromo === true ? { kind: 'pro' }
-          : computedIsPremium ? { kind: 'days', days: Math.max(1, Math.ceil((Number(d.trialEndsAt) - Date.now()) / 86400000)) }
+          : computedIsPremium ? { kind: 'days', days: Math.max(1, Math.ceil(((typeof d.trialEndsAt === 'number' ? d.trialEndsAt : guestExpiryMs(d) ?? Date.now()) - Date.now()) / 86400000)) }
           : { kind: 'free' });
 
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP

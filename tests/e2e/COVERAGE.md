@@ -8,7 +8,7 @@ $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public"; npm run te
 
 Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
 
-## Pokryte (24 testy)
+## Pokryte (27 testów)
 
 | Obszar | Plik | Co sprawdza |
 |---|---|---|
@@ -20,6 +20,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
 | Trener — dym | smoke-coach | Übersicht, Termine, Gruppen, Einst., Schüler, podgląd ucznia, pełny profil (3 zakładki + okienka), powrót do Schütze |
 | Trener ↔ uczeń | coach, coach-flows | zaproszenie + akceptacja, grupa + temat widoczny u ucznia, komentarz trenera w Tagebuchu ucznia |
 | Multiplayer | battle | arena, dołączenie kodem, 6 Passen obu graczy, ranking |
+| Poprawki 2026-11-05 | fixes-2026-11-05 | klawiatura 3-Spot, PRO gościa → trial po założeniu konta, zmiana klasy wiekowej (+ zgoda rodzica < 16) |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
@@ -50,12 +51,11 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 8. Ekran błędu widoku po polsku dla wszystkich języków
 9. Lobby Areny: łucznik bez historii dostawał 10 m dmuchawki / Blowgun 20cm
 
-## Do omówienia (nie zmieniane)
+## Do omówienia — ZROBIONE 2026-11-05
 
-- 3-Spot (pierścienie 6–10): klawiatura pokazuje też 5, 4, 3, 2, 1
-- Dodawanie ucznia tylko w Einst. panelu trenera — pusta lista „Schüler” nie ma przycisku
-- Ekran grupy: „Füge zuerst Schüler zur Gruppe hinzu (unten bei »Mitglieder«)” — Mitglieder są w Einst., nie niżej
-- Gość dostaje „PRO · noch 40 Tage”, choć konto gościa żyje 24 h
-- Okno dołączania do pojedynku nazywa ID gracza „Schüler-ID”
-- Admin Center tylko po polsku (dla admina OK)
-- Nowy Rok: jeśli klasa wiekowa się NIE zmieniła, dystanse nie są już przeliczane (wcześniej zawsze) — potwierdzić, że tak ma być
+- 3-Spot: klawiatura tylko X, 10–6, M (6-Ring: X–5, dmuchawka 3-5-7: same strefy)
+- Gość: PRO tylko na czas życia konta (bez trialu); po założeniu konta trial 40 dni; reguły pilnują (anonimowy + expiresAt ≤ 25 h)
+- Przycisk „Schüler hinzufügen” na liście uczniów (bez miejsc → Einst.)
+- Pusta grupa: przycisk „Mitglieder hinzufügen” zamiast odsyłacza „niżej”
+- Okno połączenia: „Deine eindeutige ID” zamiast „Schüler-ID”
+- Klasa wiekowa: dystanse przeliczane przy każdej zmianie klasy (Nowy Rok albo poprawiona data urodzenia — okienko „Neue Altersklasse”); Nowy Rok bez zmiany klasy nie rusza dystansów

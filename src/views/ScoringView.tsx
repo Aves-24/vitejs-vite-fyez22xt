@@ -25,7 +25,7 @@ import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics,
 import { FocusDots, focusTitle, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
-import { isSpotFace, friendlyTargetName } from '../config/targetFaces';
+import { isSpotFace, friendlyTargetName, keypadValuesFor } from '../config/targetFaces';
 import { addSpotArrow } from '../utils/spotRule';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
@@ -858,25 +858,34 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[170px] max-h-[380px] ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
           <div className={`flex-1 ${activeInputTab === 0 ? 'p-2' : 'p-1'} h-full flex items-center justify-center`}>
             {activeInputTab === 0 ? (
-              <div className="flex flex-col gap-1.5 h-full w-full">
-                <div className="grid grid-cols-3 gap-1.5 flex-1">
-                  {['X','10','9'].map(v => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 flex-1">
-                  {['8','7','6'].map(v => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 flex-1">
-                  {['5','4','3'].map(v => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>)}
-                </div>
-                <div className="grid grid-cols-3 gap-1.5 flex-1">
-                  <button onClick={() => addScoreFromKeyboard('2')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('2')}`}>2</button>
-                  <button onClick={() => addScoreFromKeyboard('1')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('1')}`}>1</button>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button onClick={() => addScoreFromKeyboard('M')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('M')}`}>M</button>
-                    <button onClick={undo} className="rounded-xl bg-white border border-red-100 text-red-500 shadow-sm flex items-center justify-center active:scale-95 transition-all"><span className="material-symbols-outlined text-lg font-black">undo</span></button>
+              (() => {
+                // [KLAWIATURA] Tylko wartości możliwe na tej tarczy (3-Spot: X–6,
+                // 6-Ring: X–5, 3-5-7: same strefy) — config/targetFaces keypadValuesFor.
+                const values = keypadValuesFor(targetType);
+                const rows: string[][] = [];
+                for (let i = 0; i < values.length; i += 3) rows.push(values.slice(i, i + 3));
+                // Ostatni niepełny rząd dzieli miejsce z M + undo; pełne rzędy → M + undo osobno.
+                const last = rows[rows.length - 1];
+                const tail = last && last.length < 3 ? rows.pop()! : [];
+                const keyBtn = (v: string) => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>;
+                const missBtn = <button key="M" onClick={() => addScoreFromKeyboard('M')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('M')}`}>M</button>;
+                const undoBtn = <button key="undo" onClick={undo} className="rounded-xl bg-white border border-red-100 text-red-500 shadow-sm flex items-center justify-center active:scale-95 transition-all"><span className="material-symbols-outlined text-lg font-black">undo</span></button>;
+                return (
+                  <div className="flex flex-col gap-1.5 h-full w-full">
+                    {rows.map((row, i) => (
+                      <div key={i} className="grid grid-cols-3 gap-1.5 flex-1">{row.map(keyBtn)}</div>
+                    ))}
+                    {tail.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-1.5 flex-1">
+                        {tail.map(keyBtn)}
+                        {tail.length === 1 ? <>{missBtn}{undoBtn}</> : <div className="grid grid-cols-2 gap-1.5">{missBtn}{undoBtn}</div>}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-1.5 flex-1">{missBtn}{undoBtn}</div>
+                    )}
                   </div>
-                </div>
-              </div>
+                );
+              })()
             ) : (
               <TargetInput 
                 onShot={addScoreFromTarget} 
@@ -1273,7 +1282,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             setGuestEndArrows(prev => ({ ...prev, [guest.guestId]: [] }));
           };
 
-          const keys = ['X', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1', 'M'];
+          // Gość bez telefonu strzela na tę samą tarczę — te same klawisze co gospodarz.
+          const keys = [...keypadValuesFor(targetType), 'M'];
           const keyColor = (v: string) => {
             if (v === 'X') return 'bg-yellow-400 text-yellow-900';
             if (v === 'M') return 'bg-gray-700 text-gray-200';

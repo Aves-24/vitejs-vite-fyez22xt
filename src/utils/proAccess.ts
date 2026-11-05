@@ -9,12 +9,24 @@
  * napis w bazie to data z przeszłości wpisywana przy „Odbierz PRO".
  */
 export function hasActivePro(
-  d: { isPremium?: unknown; isPremiumPromo?: unknown; trialEndsAt?: unknown } | null | undefined,
+  d: { isPremium?: unknown; isPremiumPromo?: unknown; trialEndsAt?: unknown; isGuest?: unknown; expiresAt?: unknown } | null | undefined,
   now: number = Date.now(),
 ): boolean {
   if (!d) return false;
   if (d.isPremium === true || d.isPremiumPromo === true) return true;
-  return typeof d.trialEndsAt === 'number' && d.trialEndsAt > now;
+  if (typeof d.trialEndsAt === 'number' && d.trialEndsAt > now) return true;
+  // [GOŚĆ] PRO tylko na czas życia konta gościa (user 2026-11-05) — bez
+  // trialu, który jest raz na konto i przepadłby przy zakładaniu konta.
+  const guestEnd = guestExpiryMs(d);
+  return d.isGuest === true && guestEnd !== null && guestEnd > now;
+}
+
+/** Koniec konta gościa (expiresAt jako Timestamp Firestore albo liczba ms). */
+export function guestExpiryMs(d: { expiresAt?: unknown } | null | undefined): number | null {
+  const e = d?.expiresAt as { toMillis?: () => number } | number | undefined;
+  if (typeof e === 'number') return e;
+  if (e && typeof e.toMillis === 'function') return e.toMillis();
+  return null;
 }
 
 /**

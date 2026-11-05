@@ -26,9 +26,8 @@ test('trener dodaje ucznia, uczeń akceptuje zaproszenie', async ({ browser }) =
   await coach.getByRole('navigation').getByRole('button', { name: 'group Schüler' }).click();
   await expect(coach.getByRole('heading', { name: 'Alle Schüler (0)' })).toBeVisible();
 
-  // Ustawienia trenera → „Schüler hinzufügen” → ID ucznia zamiast QR.
-  await coach.getByRole('navigation').getByRole('button', { name: 'settings Einst.' }).click();
-  await coach.getByRole('button', { name: 'person_add Schüler hinzufügen' }).click();
+  // Zakładka Schüler (pusta lista) → „Schüler hinzufügen” → ID ucznia zamiast QR.
+  await coach.getByRole('main').getByRole('button', { name: /^person_add Schüler hinzufügen 0\/1$/ }).click();
   await coach.getByPlaceholder('Benutzer-ID einfügen...').fill(studentId);
   await coach.getByRole('button', { name: 'Hinzufügen', exact: true }).click();
   await expect(coach.getByText('Einladung gesendet', { exact: true })).toBeVisible();

@@ -8,7 +8,7 @@ import {
   assertSucceeds,
   assertFails,
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, deleteField, serverTimestamp, collection, query, where, writeBatch, Timestamp } from 'firebase/firestore';
 
 /** @type {import('@firebase/rules-unit-testing').RulesTestEnvironment} */
 let env;
@@ -665,6 +665,36 @@ test('ZESTAWY: PRO zapisuje 4 zestawy', async () => {
   await assertSucceeds(updateDoc(doc(alice(), 'users/alice'), {
     setups: mkSetups(4), activeSetupId: 'default',
   }));
+});
+
+// [GOŚĆ 2026-11-05] PRO gościa tylko na czas życia konta, bez trialu.
+const guestDb = (uid) => env.authenticatedContext(uid, { firebase: { sign_in_provider: 'anonymous' } }).firestore();
+const seedGuest = async (uid, expiresInMs) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `users/${uid}`), {
+      isGuest: true, expiresAt: Timestamp.fromMillis(Date.now() + expiresInMs),
+    });
+  });
+};
+
+test('GOŚĆ: ważne konto gościa ma limit PRO (4 zestawy)', async () => {
+  await seedGuest('g1', 20 * 60 * 60 * 1000);
+  await assertSucceeds(updateDoc(doc(guestDb('g1'), 'users/g1'), { setups: mkSetups(4), activeSetupId: 'default' }));
+});
+
+test('GOŚĆ: po wygaśnięciu konta gościa limit FREE', async () => {
+  await seedGuest('g2', -60 * 1000);
+  await assertFails(updateDoc(doc(guestDb('g2'), 'users/g2'), { setups: mkSetups(2), activeSetupId: 'default' }));
+});
+
+test('GOŚĆ: expiresAt dalej niż 25 h nie daje PRO', async () => {
+  await seedGuest('g3', 30 * DAY);
+  await assertFails(updateDoc(doc(guestDb('g3'), 'users/g3'), { setups: mkSetups(2), activeSetupId: 'default' }));
+});
+
+test('GOŚĆ: zwykłe konto z isGuest/expiresAt NIE dostaje PRO', async () => {
+  await seedGuest('alice', 20 * 60 * 60 * 1000);
+  await assertFails(updateDoc(doc(alice(), 'users/alice'), { setups: mkSetups(2), activeSetupId: 'default' }));
 });
 
 test('ZESTAWY: PRO NIE zapisze 5 zestawów', async () => {

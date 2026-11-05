@@ -400,7 +400,10 @@ export default function App() {
         // Jednorazowy fallback dla starych kont bez trialEndsAt.
         // Reguła Firestore (Path B) pozwala na jednorazowy zapis gdy pole
         // nie istnieje w dokumencie. Ref chroni przed pętlą optimistic-revert.
-        if (!data.trialEndsAt && !trialFallbackAttemptedRef.current) {
+        // [GOŚĆ] Gość NIE odbiera trialu (raz na konto!) — ma PRO z samego trybu
+        // gościa, tylko dopóki konto żyje (proAccess). Po założeniu konta
+        // isAnonymous = false i ten sam blok przyznaje normalny trial 40 dni.
+        if (!data.trialEndsAt && !user.isAnonymous && !trialFallbackAttemptedRef.current) {
           trialFallbackAttemptedRef.current = true;
           setProfileWithTrial(user.uid)
             .catch(e => console.error('trialEndsAt fallback failed:', e));
@@ -452,11 +455,12 @@ export default function App() {
         // żeby użytkownik zawsze miał konto w Firebase nawet jeśli przerwie wizard.
         // [GOŚĆ] Konto anonimowe dostaje expiresAt (+24h od utworzenia) — TTL
         // Firestore skasuje dokument po terminie; upgrade konta zdejmuje pole.
-        setProfileWithTrial(user.uid, {
-          uid: user.uid,
-          createdAt: serverTimestamp(),
-          ...guestExpiryFields(),
-        }).catch(e => console.error('Błąd tworzenia profilu:', e));
+        const baseProfile = { uid: user.uid, createdAt: serverTimestamp(), ...guestExpiryFields() };
+        (user.isAnonymous
+          // Gość: bez trialu — PRO tylko na czas życia konta (24 h).
+          ? setDoc(doc(db, 'users', user.uid), baseProfile, { merge: true })
+          : setProfileWithTrial(user.uid, baseProfile)
+        ).catch(e => console.error('Błąd tworzenia profilu:', e));
 
         setAutoStartWizard(true);
         setCurrentView('SETTINGS');

@@ -50,6 +50,30 @@ jobs:
           key: firebase-emulators-${{ runner.os }}
       - run: npm run test:rules
 
+      # [E2E 2026-11-05] Całe ścieżki w Chromium (widok telefonu) na emulatorach
+      # Auth + Firestore (projekt demo-grotx, zero kontaktu z produkcją).
+      # Bramka jak wyżej: czerwony test = brak deployu. ~1–1,5 min na przebieg.
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright install --with-deps chromium
+      - if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
+      - run: npm run test:e2e
+      - name: Raport e2e (tylko przy błędzie)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+
       # [C42] Auto-deploy reguł Firestore + Firebase Hosting (grot-x.web.app) po
       # każdym push do main. BRAMKA: kroki niżej ruszają tylko, gdy lint, testy
       # logiki, build i testy reguł powyżej przeszły; wysyłają TEN SAM build.

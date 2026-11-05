@@ -1,0 +1,67 @@
+import { expect, type Page, type APIRequestContext } from '@playwright/test';
+
+// Emulatory z firebase.json, projekt demo-grotx (patrz src/firebase.ts, tryb e2e).
+const PROJECT = 'demo-grotx';
+const FIRESTORE = 'http://127.0.0.1:8080';
+const AUTH = 'http://127.0.0.1:9099';
+
+/** Czyści wszystkie konta i dokumenty w emulatorach — każdy test startuje od zera. */
+export async function resetEmulators(request: APIRequestContext) {
+  const fs = await request.delete(`${FIRESTORE}/emulator/v1/projects/${PROJECT}/databases/(default)/documents`);
+  expect(fs.ok(), 'Emulator Firestore nie działa — uruchom testy przez `npm run test:e2e`').toBeTruthy();
+  const au = await request.delete(`${AUTH}/emulator/v1/projects/${PROJECT}/accounts`);
+  expect(au.ok(), 'Emulator Auth nie działa — uruchom testy przez `npm run test:e2e`').toBeTruthy();
+}
+
+/**
+ * Dokumenty kolekcji prosto z emulatora, z pominięciem reguł (token `owner`).
+ * Zwraca surowy format REST: [{ name, fields: { pole: { stringValue | mapValue … } } }].
+ */
+export async function adminListDocs(request: APIRequestContext, collection: string) {
+  const res = await request.get(
+    `${FIRESTORE}/v1/projects/${PROJECT}/databases/(default)/documents/${collection}`,
+    { headers: { Authorization: 'Bearer owner' } },
+  );
+  expect(res.ok()).toBeTruthy();
+  const body = await res.json();
+  return (body.documents ?? []) as { name: string; fields: Record<string, any> }[];
+}
+
+/** Unikalny e-mail testowy (konta żyją tylko w emulatorze). */
+export const testEmail = (tag: string) => `e2e-${tag}-${Date.now()}@example.test`;
+export const TEST_PASSWORD = 'Test-1234!';
+
+/** Ekran powitalny po pierwszym logowaniu: imię → „Training starten” / „Zum Startbildschirm”. */
+export async function finishWelcome(page: Page, name: string, next: 'training' | 'home') {
+  await page.getByPlaceholder('Dein Name oder Spitzname').fill(name);
+  if (next === 'training') await page.getByRole('button', { name: /training starten/i }).click();
+  else await page.getByRole('button', { name: /zum startbildschirm/i }).click();
+}
+
+export async function startAsGuest(page: Page, name = 'Testa') {
+  await page.goto('/');
+  await page.getByRole('button', { name: /ohne konto ausprobieren/i }).click();
+  await finishWelcome(page, name, 'training');
+}
+
+/** Nowe konto e-mail (ze zgodą RODO) + imię → Home. Zwraca uid z emulatora. */
+export async function registerUser(page: Page, name: string, email = testEmail(name.toLowerCase())) {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Konto erstellen', exact: true }).click();
+  await page.getByPlaceholder('e-mail').fill(email);
+  await page.getByPlaceholder('••••••••').fill(TEST_PASSWORD);
+  await page.getByRole('checkbox').check();
+  await page.getByRole('button', { name: /person_add Konto erstellen/ }).click();
+  await finishWelcome(page, name, 'home');
+  await expect(page.getByRole('heading', { name: 'GROT-X', level: 1 })).toBeVisible();
+  // Tryb dev wystawia Firebase na window.__fb (src/firebase.ts).
+  return page.evaluate(() => (window as any).__fb.auth.currentUser.uid as string);
+}
+
+/** Klawiatura punktów na ekranie treningu: 'X', '10' … '1', 'M'. */
+export async function shoot(page: Page, values: string[]) {
+  for (const v of values) await page.getByRole('button', { name: v, exact: true }).click();
+}
+
+export const nav = (page: Page, label: 'Start' | 'Kalender' | 'Tagebuch' | 'Stats' | 'Einst.') =>
+  page.getByRole('navigation').getByRole('button', { name: new RegExp(`${label.replace('.', '\\.')}$`) });

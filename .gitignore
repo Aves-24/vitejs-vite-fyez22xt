@@ -24,3 +24,8 @@ vitejs-vite-fyez22xt/
 
 # Lokalne pozwolenia Claude Code — prywatne dla tego komputera
 .claude/settings.local.json
+
+# Playwright (npm run test:e2e)
+test-results/
+playwright-report/
+blob-report/

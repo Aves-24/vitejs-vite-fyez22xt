@@ -1010,6 +1010,10 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       });
 
       setManualStudentId('');
+      // Zamknij okienko dodawania (i kamerę) — inaczej po „OK” w potwierdzeniu
+      // trener wracał do otwartego skanera (wykryte testem e2e 2026-11-05).
+      setIsScanning(false);
+      await stopScanner();
       setInviteSentTo(studentPub.displayName || '');
     } catch (error) {
       console.error("Błąd wysyłania zaproszenia:", error);

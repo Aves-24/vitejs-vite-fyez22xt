@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { db } from '../firebase';
 import {
   collection, query, where, onSnapshot,
-  doc, updateDoc, arrayUnion, deleteDoc
+  doc, writeBatch, arrayUnion, deleteDoc
 } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { getPublicProfile } from '../utils/publicProfile';
@@ -94,14 +94,23 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
     if (!currentInvite || busy) return;
     setBusy(true);
     try {
-      // 1) Dodaj siebie do students[] trenera (reguła wymaga istniejącego invite)
-      await updateDoc(doc(db, 'users', currentInvite.coachId), {
+      // 1+2) JEDNYM batchem (atomowo):
+      //   - siebie do students[] trenera (reguła wymaga istniejącego invite),
+      //   - trenera do własnego coaches[] (własny doc — isSelf).
+      // Wcześniej dwa osobne zapisy: panel trenera słucha swojego dokumentu,
+      // po pierwszym zapisie od razu czytał profil ucznia, a reguła jeszcze go
+      // nie wpuszczała (brak trenera w coaches[]) → uczeń nie pojawiał się na
+      // liście aż do przeładowania (wykryte testem e2e 2026-11-05). Odwrotna
+      // kolejność dałaby z kolei trenerowi dostęp bez relacji, gdyby zapis
+      // u trenera padł (brak miejsca). Batch: albo obie strony, albo żadna.
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'users', currentInvite.coachId), {
         students: arrayUnion(userId),
       });
-      // 2) Dodaj trenera do własnego coaches[] (własny doc — isSelf)
-      await updateDoc(doc(db, 'users', userId), {
+      batch.update(doc(db, 'users', userId), {
         coaches: arrayUnion(currentInvite.coachId),
       });
+      await batch.commit();
       // 3) Skasuj invite (obaj mogą)
       await deleteDoc(doc(db, 'coachInvites', currentInvite.id));
     } catch (e) {

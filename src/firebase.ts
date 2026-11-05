@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 // Nowe importy dla najnowszego standardu Firebase
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, doc, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { initializeFirestore, connectFirestoreEmulator, persistentLocalCache, persistentMultipleTabManager, persistentSingleTabManager, doc, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { initializeAppCheck, ReCaptchaV3Provider } from 'firebase/app-check';
 
 const firebaseConfig = {
@@ -13,7 +13,14 @@ const firebaseConfig = {
   appId: '1:639521703891:web:b8e9befdefd9b016591126',
 };
 
-const app = initializeApp(firebaseConfig);
+// [E2E] `vite --mode e2e` (.env.e2e: VITE_USE_EMULATORS=1) = aplikacja gada wyłącznie
+// z lokalnymi emulatorami Auth + Firestore (testy Playwright, tests/e2e/). Projekt
+// `demo-grotx` — prefiks demo- gwarantuje, że SDK nie dotknie żadnego prawdziwego
+// zasobu w chmurze. W buildzie produkcyjnym zmienna nie istnieje, więc cały ten
+// tryb wylatuje przy tree-shakingu.
+const USE_EMULATORS = import.meta.env.VITE_USE_EMULATORS === '1';
+
+const app = initializeApp(USE_EMULATORS ? { ...firebaseConfig, projectId: 'demo-grotx' } : firebaseConfig);
 
 // --- APP CHECK ---
 // UWAGA: wymuszanie App Check jest włączone dla Authentication od 2026-07-15.
@@ -33,12 +40,14 @@ const app = initializeApp(firebaseConfig);
 //
 // Produkcji to nie dotyczy: tam `import.meta.env.DEV` jest false, więc blok debug
 // tokenu znika przy tree-shakingu i zostaje sama reCAPTCHA v3.
-if (import.meta.env.DEV) {
+if (import.meta.env.DEV && !USE_EMULATORS) {
   // `true` = każ SDK wygenerować token i wypisać go w konsoli.
   self.FIREBASE_APPCHECK_DEBUG_TOKEN = import.meta.env.VITE_APPCHECK_DEBUG_TOKEN || true;
 }
 
-initializeAppCheck(app, {
+// Emulatory nie sprawdzają App Check — w trybie e2e go nie inicjujemy (reCAPTCHA
+// i tak nie działa na localhost, a debug tokenu nie ma w CI).
+if (!USE_EMULATORS) initializeAppCheck(app, {
   provider: new ReCaptchaV3Provider('6LdoQb8sAAAAAKUvHd7Wpu3aqbX9cJPTMWJfe_xp'),
   isTokenAutoRefreshEnabled: true,
 });
@@ -56,6 +65,11 @@ export const db = initializeFirestore(app, {
 });
 
 export const auth = getAuth(app);
+
+if (USE_EMULATORS) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 
 // --- DEV-ONLY: wystaw Firebase na window dla testów w DevTools Console ---
 // W produkcji ten blok jest usuwany przez tree-shaking (import.meta.env.DEV = false).

@@ -125,7 +125,17 @@ export default function BattleLobbyView({ userId, distance, distanceId, targetTy
       
       setCurrentUserData(ud);
       // Te same dystanse co w przygotowaniu: tylko aktywnego zestawu.
-      setDistanceOptions(distancesForSetup(activeDistances, Array.isArray(ud.setups) ? ud.setups : [], ud.activeSetupId ?? null, ud.bowType ?? null));
+      const allowed = distancesForSetup(activeDistances, Array.isArray(ud.setups) ? ud.setups : [], ud.activeSetupId ?? null, ud.bowType ?? null);
+      setDistanceOptions(allowed);
+      // Dystans startowy (ostatni trening albo pierwszy aktywny z PEŁNEJ listy)
+      // mógł być spoza dyscypliny — łucznik bez historii dostawał w lobby
+      // 10 m dmuchawki z tarczą Blowgun 20cm (wykryte testem e2e 2026-11-05).
+      // Wtedy bierzemy pierwszy dozwolony, razem z jego tarczą.
+      const startDistance = myDistanceRef.current;
+      if (allowed.length > 0 && (!startDistance || !allowed.some(d => d.id === startDistance.id))) {
+        setMyDistance(allowed[0]);
+        setTarget(allowed[0].targetType || fallbackTargetFor(allowed[0].m));
+      }
       setShowFullName(ud.showFullName !== false);
       setShowClub(ud.showClub !== false);
       setShowRegion(ud.showRegion !== false);

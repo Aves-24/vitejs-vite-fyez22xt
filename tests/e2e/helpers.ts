@@ -1,4 +1,4 @@
-import { expect, type Page, type APIRequestContext } from '@playwright/test';
+import { expect, type Page, type APIRequestContext, type Browser, type BrowserContext } from '@playwright/test';
 
 // Emulatory z firebase.json, projekt demo-grotx (patrz src/firebase.ts, tryb e2e).
 const PROJECT = 'demo-grotx';
@@ -25,6 +25,28 @@ export async function adminListDocs(request: APIRequestContext, collection: stri
   expect(res.ok()).toBeTruthy();
   const body = await res.json();
   return (body.documents ?? []) as { name: string; fields: Record<string, any> }[];
+}
+
+/** Oznacza konto w emulatorze Auth jako „e-mail potwierdzony” (np. admin). */
+export async function adminVerifyEmail(request: APIRequestContext, uid: string) {
+  const res = await request.post(`${AUTH}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:update`, {
+    headers: { Authorization: 'Bearer owner' },
+    data: { localId: uid, emailVerified: true },
+  });
+  expect(res.ok(), await res.text()).toBeTruthy();
+}
+
+// Dodatkowe przeglądarki (drugie konto w teście). MUSZĄ być zamknięte po
+// teście — inaczej ich apka żyje dalej, widzi wyczyszczoną bazę i odtwarza
+// swój profil w kolejnym teście.
+const extraContexts: BrowserContext[] = [];
+export async function newUserPage(browser: Browser): Promise<Page> {
+  const ctx = await browser.newContext();
+  extraContexts.push(ctx);
+  return ctx.newPage();
+}
+export async function closeUserPages() {
+  while (extraContexts.length) await extraContexts.pop()!.close().catch(() => {});
 }
 
 /** Unikalny e-mail testowy (konta żyją tylko w emulatorze). */
@@ -62,6 +84,8 @@ export async function registerUser(page: Page, name: string, email = testEmail(n
 const IGNORED_ERRORS = [
   /Camera access error/i,
   /Requested device not found/i,
+  // Windows przy długim przebiegu: brak wolnych gniazd w systemie (środowisko, nie apka).
+  /net::ERR_NO_BUFFER_SPACE/i,
   // Ogólny komunikat przeglądarki — zamiast niego łapiemy odpowiedź z adresem niżej.
   /Failed to load resource: the server responded with a status of/i,
 ];

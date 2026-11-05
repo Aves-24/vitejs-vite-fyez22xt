@@ -1,19 +1,18 @@
 import { test, expect, type Page } from '@playwright/test';
-import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, shoot, linkCoachAndStudent } from './helpers';
+import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, shoot, linkCoachAndStudent, newUserPage, closeUserPages } from './helpers';
 
 // Test dymny trenera: uczeń z jednym treningiem + trener z tym uczniem,
 // potem każdy ekran panelu trenera i profilu ucznia — bez wyjątków JS,
 // ekranu błędu i odrzuceń reguł Firestore.
 test.beforeEach(async ({ request }) => resetEmulators(request));
+test.afterEach(() => closeUserPages());
 
 const coachNav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
 
 test('trener: wszystkie ekrany panelu i profil ucznia bez błędów', async ({ browser }) => {
   test.setTimeout(150_000);
-  const coachCtx = await browser.newContext();
-  const studentCtx = await browser.newContext();
-  const coach = await coachCtx.newPage();
-  const student = await studentCtx.newPage();
+  const coach = await newUserPage(browser);
+  const student = await newUserPage(browser);
   const coachErrors = watchErrors(coach);
   const studentErrors = watchErrors(student);
 
@@ -66,7 +65,4 @@ test('trener: wszystkie ekrany panelu i profil ucznia bez błędów', async ({ b
   await visit('Schüler', () => coachNav(coach, 'group Schüler').click());
   await visit('Schütze', () => coachNav(coach, 'target Schütze').click());
   await visit('Kalender (Schütze)', () => nav(coach, 'Kalender').click());
-
-  await coachCtx.close();
-  await studentCtx.close();
 });

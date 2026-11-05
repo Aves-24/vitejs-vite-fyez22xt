@@ -20,6 +20,8 @@ import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
+import { IncomingTransfersCard } from '../components/CoachTransfer';
+import { subscribeOutgoingTransfers, type CoachTransfer } from '../utils/coachTransfers';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
 import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopicPanel';
@@ -470,6 +472,21 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       }
     })().finally(() => { askingConsentRef.current = false; });
   }, [coachGroups, myStudentIds, pendingStudentIds, coachLimit, coachName, userId]);
+
+  // [PRZEKAZANIE UCZNIA] Po zakończonym przekazaniu (zgoda ucznia) uczeń znika
+  // z moich grup — chyba że nowy trener też jest trenerem danej grupy.
+  const [doneOutgoing, setDoneOutgoing] = useState<CoachTransfer[]>([]);
+  useEffect(() => subscribeOutgoingTransfers(userId, l => setDoneOutgoing(l.filter(x => x.status === 'done'))), [userId]);
+  useEffect(() => {
+    if (!myStudentIds || doneOutgoing.length === 0) return;
+    const mine = new Set(myStudentIds);
+    for (const tr of doneOutgoing) {
+      if (mine.has(tr.studentId)) continue;
+      coachGroups
+        .filter(g => g.memberIds.includes(tr.studentId) && !g.coachIds.includes(tr.toCoachId))
+        .forEach(g => updateGroup(g.id, { memberIds: arrayRemove(tr.studentId) }).catch(() => { /* następnym razem */ }));
+    }
+  }, [doneOutgoing, coachGroups, myStudentIds]);
 
   // Imiona członków grup, których nie prowadzę (z publicznego profilu — users/{id} niedostępny).
   const [otherMemberNames, setOtherMemberNames] = useState<Record<string, string>>({});
@@ -2340,6 +2357,10 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           B: dziś bez treningu → najbliższy trening i kto dziś sam trenował.
           W obu: co od ostatniego treningu grupy, a nieaktywni tylko jedną linią. */}
       {section === 'TODAY' && renderIncomingInvites()}
+      {/* [PRZEKAZANIE UCZNIA] Przychodzące przekazania — Übersicht i Schüler. */}
+      {(section === 'TODAY' || section === 'ATHLETES') && (
+        <div className="px-4 pt-3"><IncomingTransfersCard coachId={userId} freeSlots={coachLimit - students.length} /></div>
+      )}
       {section === 'TODAY' && (() => {
         const todayKey = dayKeyOf(nowTick);
         const startOfToday = new Date(nowTick).setHours(0, 0, 0, 0);

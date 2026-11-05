@@ -56,6 +56,9 @@ export default function CoachInvitePopup({ userId }: CoachInvitePopupProps) {
       const items: Invite[] = [];
       for (const d of snap.docs) {
         const data = d.data() as any;
+        // [PRZEKAZANIE] Zaproszenie z przekazania ucznia obsługuje osobne okno
+        // zgody (CoachTransfer → StudentTransferPopup) — tu go nie pokazujemy.
+        if (data.transferId) continue;
         // [RODO C6] Dane trenera z publicznego lustra profiles_public —
         // przed akceptacją zaproszenia nie ma relacji, więc users/{coachId}
         // nie jest czytelny dla ucznia.

@@ -1555,3 +1555,92 @@ test('PLAN: członek czyta swoje plany zapytaniem, obcy nie', async () => {
   await assertFails(getDoc(doc(bob(), 'groupPlans/g1')));
   await assertFails(getDocs(collection(bob(), 'groupPlans')));
 });
+
+// ---------------------------------------------------------------------------
+// [PRZEKAZANIE UCZNIA 2026-11-05] coachTransfers + istniejące ścieżki C/E/D/F.
+// ---------------------------------------------------------------------------
+const seedCoach2 = async (isCoach = true) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'users/coach2'), { displayName: 'Coach 2', coaches: [], students: [], isCoach });
+    await setDoc(doc(ctx.firestore(), 'users/coach1'), { isCoach: true }, { merge: true });
+  });
+};
+const transferData = (over = {}) => ({
+  fromCoachId: 'coach1', fromName: 'Coach', toCoachId: 'coach2', toName: 'Coach 2',
+  studentId: 'alice', studentName: 'Alice', note: 'Anker', status: 'pending_coach', createdAt: Date.now(), ...over,
+});
+const seedTransfer = async (status, extra = {}) => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachTransfers/t1'), transferData({ status, ...extra }));
+  });
+};
+
+test('PRZEKAZANIE: trener ucznia zakłada wniosek do innego trenera', async () => {
+  await seedCoach2();
+  await assertSucceeds(setDoc(doc(coach1(), 'coachTransfers/t1'), transferData()));
+});
+
+test('PRZEKAZANIE: obcy (nie trener ucznia) NIE założy wniosku', async () => {
+  await seedCoach2();
+  await assertFails(setDoc(doc(coach2(), 'coachTransfers/t1'), transferData({ fromCoachId: 'coach2', toCoachId: 'coach1' })));
+});
+
+test('PRZEKAZANIE: do konta bez trybu trenera — odrzucone', async () => {
+  await seedCoach2(false);
+  await assertFails(setDoc(doc(coach1(), 'coachTransfers/t1'), transferData()));
+});
+
+test('PRZEKAZANIE: przyjmuje tylko nowy trener', async () => {
+  await seedCoach2();
+  await seedTransfer('pending_coach');
+  await assertFails(updateDoc(doc(coach1(), 'coachTransfers/t1'), { status: 'pending_student', acceptedByCoachAt: serverTimestamp() }));
+  await assertSucceeds(updateDoc(doc(coach2(), 'coachTransfers/t1'), { status: 'pending_student', acceptedByCoachAt: serverTimestamp() }));
+});
+
+test('PRZEKAZANIE: uczeń nie zgodzi się, zanim nowy trener przyjmie', async () => {
+  await seedCoach2();
+  await seedTransfer('pending_coach');
+  await assertFails(updateDoc(doc(alice(), 'coachTransfers/t1'), { status: 'done', doneAt: serverTimestamp(), consentVersion: '2026-11-05' }));
+});
+
+test('PRZEKAZANIE: pełna zgoda ucznia — nowy trener dochodzi, stary odchodzi, dowód zgody', async () => {
+  await seedCoach2();
+  await seedTransfer('pending_student');
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'coachInvites/coach2_alice'), { coachId: 'coach2', studentId: 'alice', transferId: 't1' });
+  });
+  const db = alice();
+  const add = writeBatch(db);
+  add.update(doc(db, 'users/coach2'), { students: ['alice'] });
+  add.update(doc(db, 'users/alice'), { coaches: ['coach1', 'coach2'] });
+  await assertSucceeds(add.commit());
+  const rm = writeBatch(db);
+  rm.update(doc(db, 'users/alice'), { coaches: ['coach2'] });
+  rm.update(doc(db, 'users/coach1'), { students: [] });
+  await assertSucceeds(rm.commit());
+  await assertSucceeds(updateDoc(doc(db, 'coachTransfers/t1'), { status: 'done', doneAt: serverTimestamp(), consentVersion: '2026-11-05' }));
+});
+
+test('PRZEKAZANIE: dowód zgody kasuje tylko uczeń (nie trener)', async () => {
+  await seedCoach2();
+  await seedTransfer('done');
+  await assertFails(deleteDoc(doc(coach1(), 'coachTransfers/t1')));
+  await assertFails(deleteDoc(doc(coach2(), 'coachTransfers/t1')));
+  await assertSucceeds(deleteDoc(doc(alice(), 'coachTransfers/t1')));
+});
+
+test('PRZEKAZANIE: obcy nie czyta wniosku', async () => {
+  await seedCoach2();
+  await seedTransfer('pending_coach');
+  await assertFails(getDoc(doc(bob(), 'coachTransfers/t1')));
+  await assertSucceeds(getDoc(doc(coach2(), 'coachTransfers/t1')));
+});
+
+test('PRZEKAZANIE: zapytania po każdej ze stron (uczeń, stary, nowy trener)', async () => {
+  await seedCoach2();
+  await seedTransfer('pending_student');
+  await assertSucceeds(getDocs(query(collection(alice(), 'coachTransfers'), where('studentId', '==', 'alice'))));
+  await assertSucceeds(getDocs(query(collection(coach1(), 'coachTransfers'), where('fromCoachId', '==', 'coach1'))));
+  await assertSucceeds(getDocs(query(collection(coach2(), 'coachTransfers'), where('toCoachId', '==', 'coach2'))));
+  await assertFails(getDocs(query(collection(bob(), 'coachTransfers'), where('studentId', '==', 'alice'))));
+});

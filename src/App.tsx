@@ -19,6 +19,7 @@ import { registerRestoreSource, takeRestorePoint, updatingText } from './utils/r
 import { migrateLegacyGroups } from './utils/coachGroups';
 import AuthView from './views/AuthView';
 import CoachInvitePopup from './components/CoachInvitePopup';
+import { StudentTransferPopup } from './components/CoachTransfer';
 import UpdateBanner from './components/UpdateBanner';
 import OfflineBanner from './components/OfflineBanner';
 import MoveNotice from './components/MoveNotice';
@@ -875,6 +876,8 @@ export default function App() {
           popup "Trener X chce Cię obserwować" zanim coach dostanie dostęp.
           Zamontowany na poziomie App, więc widoczny na każdym ekranie. */}
       {user?.uid && <CoachInvitePopup userId={user.uid} />}
+      {/* [PRZEKAZANIE UCZNIA] Zgoda na zmianę trenera. */}
+      {user?.uid && <StudentTransferPopup userId={user.uid} />}
       <UpdateBanner hidden={hasActiveSession || currentView === 'SCORING'} />
       <OfflineBanner hidden={currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />
       <MoveNotice hidden={hasActiveSession || currentView === 'SCORING' || currentView === 'DELAY_MIRROR'} />

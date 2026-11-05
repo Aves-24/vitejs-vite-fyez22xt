@@ -153,6 +153,16 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
         }
       }
 
+      // 3a. [PRZEKAZANIE UCZNIA] Wnioski i dowody zgody z moim udziałem (jako
+      //     uczeń — wszystkie; jako trener — niezakończone, reguła nie pozwala więcej).
+      for (const field of ['studentId', 'fromCoachId', 'toCoachId']) {
+        const trSnap = await getDocs(query(collection(db, 'coachTransfers'), where(field, '==', userId)))
+          .catch(() => null);
+        if (trSnap) {
+          for (const d of trSnap.docs) await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+
       // 3b. [C36] Prośby o miejsca trenerskie (imię + e-mail) — polityka §2.4
       const reqSnap = await getDocs(query(collection(db, 'coachRequests'), where('userId', '==', userId)))
         .catch(() => null);

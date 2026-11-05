@@ -58,6 +58,10 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // [STABILIZACJA] Filtr One Euro liczony co klatkę: gdzie jest palec (raw)
   // i gdzie stoi krzyżyk (filtr), oba w px ekranu.
   const rawRef = useRef<Pt | null>(null);
+  // [MYSZ] Celownik odsunięty nad palec ma sens tylko przy dotyku — kursor
+  // myszy niczego nie zasłania. Wcześniej klik w środek lądował ~55 px wyżej
+  // (wykryte testem e2e 2026-11-05).
+  const pointerTypeRef = useRef<string>('touch');
   const filterRef = useRef<AimFilter | null>(null);
   const rafRef = useRef<number | null>(null);
   const aimAtRef = useRef<(c: Pt, fresh: boolean) => void>(() => {});
@@ -153,6 +157,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   const pxPerUnit = () => svgRef.current?.getScreenCTM()?.a || 1;
   // [RĘKA] Odchylenie o ~20° od pionu w stronę przeciwną do kciuka.
   const aimFrom = (c: { x: number; y: number }) => {
+    if (pointerTypeRef.current === 'mouse') return { x: c.x, y: c.y };
     const off = aimOffset / pxPerUnit();
     const dx = hand === 'R' ? -0.34 : hand === 'L' ? 0.34 : 0;
     const dy = hand === 'C' ? 1 : 0.94;
@@ -209,6 +214,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   const handlePointerDown = (e: React.PointerEvent) => {
     if (currentCoords.length >= maxShots) return;
+    pointerTypeRef.current = e.pointerType || 'touch';
     (e.target as Element).setPointerCapture(e.pointerId);
     const c = getSvgCoords(e.clientX, e.clientY);
     if (c) {

@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import ViewHeader from '../components/ViewHeader';
 import CoachAIPanel from '../components/CoachAIPanel';
 import { AI_ENABLED } from '../config/features';
+import { friendlyTargetName } from '../config/targetFaces';
 import { hasActivePro, FREE_HISTORY_DAYS, FREE_ANALYSIS_HOURS, freeAnalysisOpen } from '../utils/proAccess';
 import LockedCard from '../components/scoring/LockedCard';
 import SessionBilanz from '../components/scoring/SessionBilanz';
@@ -799,7 +800,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                               {selectedSession.type === 'Turniej' ? (selectedSession.tournamentName || t('stats.sessionInfo.defaultTournament')) : selectedSession.type === 'Arena' ? arenaLabel(selectedSession) : selectedSession.type === 'WORLD_BATTLE' ? (selectedSession.worldResult === 'WIN' ? t('stats.sessionInfo.worldWin') : t('stats.sessionInfo.worldLoss')) : t('stats.sessionInfo.solo')}
                             </span>
                           </span>
-                          <span className="shrink-0 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">{displayTargetType || t('stats.sessionInfo.dynamic')}</span>
+                          <span className="shrink-0 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase">{(displayTargetType && friendlyTargetName(displayTargetType)) || t('stats.sessionInfo.dynamic')}</span>
                         </div>
                         <p className="text-[10px] text-gray-500 font-bold flex items-center gap-1 mt-0.5">
                           {selectedSession.date} •

@@ -8,7 +8,7 @@ $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public"; npm run te
 
 Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
 
-## Pokryte (27 testów)
+## Pokryte (32 testy)
 
 | Obszar | Plik | Co sprawdza |
 |---|---|---|
@@ -21,17 +21,20 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI testy blokują deploy.
 | Trener ↔ uczeń | coach, coach-flows | zaproszenie + akceptacja, grupa + temat widoczny u ucznia, komentarz trenera w Tagebuchu ucznia |
 | Multiplayer | battle | arena, dołączenie kodem, 6 Passen obu graczy, ranking |
 | Poprawki 2026-11-05 | fixes-2026-11-05 | klawiatura 3-Spot, PRO gościa → trial po założeniu konta, zmiana klasy wiekowej (+ zgoda rodzica < 16) |
+| Termine + czat | coach-schedule | stały trening grupy (4 tygodnie, Übersicht „Heute Training”, odwołanie), czat uczeń ↔ trener na żywo |
+| Tarcza | target-input | 3-Spot: mysz trafia w miejsce kliku, obie kolumny; dotyk z odsunięciem celownika |
+| Zawody | tournament | termin na dziś, karta wyników, statystyki (tarcza 122cm), Tagebuch, Rekorde, niemieckie daty |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
 
 ## Jeszcze NIE pokryte
 
-- Termine trenera: stały trening grupy, odwołania/przerwy, przesuwanie tematów
-- Fokus ustawiany przez trenera, „Widziałem”, wiadomości ✉ (uczeń ↔ trener, cała grupa)
+- Termine trenera: przerwy (Ferien), przesuwanie tematów, rytm co 2 tygodnie
+- Fokus ustawiany przez trenera, „Widziałem”, wiadomość ✉ do całej grupy
 - Współtrenerzy grupy (zaproszenie drugiego trenera)
-- Wpisywanie strzał na TARCZY (kropki, lupa, 3-Spot „jedna strzała na spot”), Fehlschuss
-- Zawody: wynik zawodów, REKORDY rok do roku
+- Tarcza: pełna 122cm, lupa przy przesuwaniu palca, Fehlschuss
+- Zawody: format 2×30, REKORDY rok do roku (2 sezony)
 - Delay Mirror: nagrywanie, stopklatka, eksport/Teilen (tylko otwarcie ekranu)
 - Statystyki PRO z większą ilością danych, eksport PDF
 - Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
@@ -50,6 +53,16 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 7. Usuwanie konta: App próbował odtworzyć profil w trakcie usuwania (PERMISSION_DENIED)
 8. Ekran błędu widoku po polsku dla wszystkich języków
 9. Lobby Areny: łucznik bez historii dostawał 10 m dmuchawki / Blowgun 20cm
+
+10. Czat uczeń ↔ trener: odpowiedź pojawiała się dopiero po ponownym otwarciu (jednorazowy odczyt → nasłuch)
+11. Tarcza myszą: celownik odsunięty jak dla palca — klik w środek lądował ~55 px wyżej
+12. Kalendarz/daty po angielsku („Thu 5”, „05/11/2026”) dla języka z przeglądarki (de-DE ≠ de)
+13. Karta zawodów w statystykach: surowy alias tarczy „Full” zamiast „122cm”
+
+## Do omówienia (partia 2)
+
+- Uczeń nie widzi na Home dzisiejszego treningu grupy (stały termin trenera) — w notatkach jako „plan widoczny dla uczniów”, do decyzji
+- Świeżo dodany uczeń bez treningów liczy się u trenera jako „Ohne Training seit 14+ Tagen”
 
 ## Do omówienia — ZROBIONE 2026-11-05
 

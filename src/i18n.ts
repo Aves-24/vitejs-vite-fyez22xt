@@ -96,6 +96,15 @@ export async function initI18n(): Promise<typeof i18n> {
 
   await loadLanguage(i18n.resolvedLanguage || i18n.language);
 
+  // Język z przeglądarki przychodzi z regionem ('de-DE'), a kod porównuje
+  // i18n.language === 'de' (formaty dat, przecinek dziesiętny). Bez tego
+  // kalendarz pokazywał „Thu 5” i „05/11/2026” w niemieckim UI każdemu, kto
+  // nie wybrał języka ręcznie (wykryte testem e2e 2026-11-05).
+  const base = (i18n.resolvedLanguage || i18n.language || '').split('-')[0];
+  if (base && base !== i18n.language && (SUPPORTED_LNGS as readonly string[]).includes(base)) {
+    await i18n.changeLanguage(base);
+  }
+
   // Siatka bezpieczeństwa: gdyby język zmienił się z pominięciem
   // switchLanguage() (np. inna karta zapisała localStorage), paczka i tak
   // zostanie dociągnięta — kosztem krótkiego mignięcia kluczy.

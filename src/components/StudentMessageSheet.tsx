@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from 'firebase/firestore';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { createNotification, markAsRead as markNotifAsRead } from '../services/notificationService';
@@ -77,28 +77,39 @@ export default function StudentMessageSheet({
     return () => clearInterval(id);
   }, [cooldownSecs > 0]);
 
+  // [CZAT] Nasłuch na żywo zamiast jednorazowego odczytu — wcześniej odpowiedź
+  // drugiej strony pojawiała się dopiero po zamknięciu i ponownym otwarciu
+  // czatu (wykryte testem e2e 2026-11-05).
+  // „Przeczytane” zapisujemy tylko, gdy przyszła NOWA wiadomość od drugiej
+  // strony — zapis zmienia dokument, więc bezwarunkowy zapis w nasłuchu
+  // zapętliłby się.
+  const clearedBadgeRef = useRef(false);
   useEffect(() => {
-    const load = async () => {
-      setIsLoading(true);
-      try {
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const data = snap.data() as ThreadDoc;
-          setThread(data.thread || []);
-          const readField = mode === 'student' ? 'lastStudentReadAt' : 'lastCoachReadAt';
-          const senderId = mode === 'student' ? coachId : studentId;
-          await Promise.all([
-            updateDoc(docRef, { [readField]: Date.now() }),
-            updateDoc(doc(db, 'users', currentUserId), { unreadMsgFrom: arrayRemove(senderId) }),
-          ]);
-          // Also clear the matching bell notification (refId = senderId).
-          markNotifAsRead(currentUserId, notificationId('message', senderId))
-            .catch(() => { /* non-critical — notif may not exist yet */ });
-        }
-      } catch { /* ignore */ }
+    setIsLoading(true);
+    clearedBadgeRef.current = false;
+    const readField = mode === 'student' ? 'lastStudentReadAt' : 'lastCoachReadAt';
+    const otherSide = mode === 'student' ? 'coach' : 'student';
+    const senderId = mode === 'student' ? coachId : studentId;
+    const unsub = onSnapshot(docRef, (snap) => {
       setIsLoading(false);
-    };
-    load();
+      if (!snap.exists()) { setThread([]); return; }
+      const data = snap.data() as ThreadDoc;
+      const list = data.thread || [];
+      setThread(list);
+      const lastFromOther = list.reduce((m, msg) => (msg.from === otherSide && msg.at > m ? msg.at : m), 0);
+      if (lastFromOther > (data[readField] || 0)) {
+        updateDoc(docRef, { [readField]: Date.now() }).catch(() => { /* ignore */ });
+      }
+      if (!clearedBadgeRef.current || lastFromOther > (data[readField] || 0)) {
+        clearedBadgeRef.current = true;
+        updateDoc(doc(db, 'users', currentUserId), { unreadMsgFrom: arrayRemove(senderId) }).catch(() => { /* ignore */ });
+        // Also clear the matching bell notification (refId = senderId).
+        markNotifAsRead(currentUserId, notificationId('message', senderId))
+          .catch(() => { /* non-critical — notif may not exist yet */ });
+      }
+    }, () => setIsLoading(false));
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [coachId, studentId]);
 
   useEffect(() => {

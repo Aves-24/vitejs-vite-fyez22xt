@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
 import { privacyPolicyUrl, termsUrl, IMPRESSUM_URL } from '../../utils/legalLinks';
+import { markAccountDeletion } from '../../utils/accountDeletion';
 
 interface PrivacySectionProps {
   userId: string;
@@ -168,9 +169,15 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
       await deleteDoc(doc(db, 'profiles_public', userId)).catch(() => {});
 
       // 5. Dokument profilu i konto Firebase Auth
-      await deleteDoc(doc(db, 'users', userId));
-      localStorage.removeItem('grotX_activeSession');
-      await deleteUser(user);
+      markAccountDeletion(userId);
+      try {
+        await deleteDoc(doc(db, 'users', userId));
+        localStorage.removeItem('grotX_activeSession');
+        await deleteUser(user);
+      } catch (e) {
+        markAccountDeletion(null);
+        throw e;
+      }
       // onAuthStateChanged w App.tsx przekieruje automatycznie na ekran logowania
     } catch (e) {
       console.error('Usuwanie konta nieudane:', e);

@@ -1,5 +1,6 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
+import i18n from '../i18n';
 
 interface Props { children: React.ReactNode }
 interface State { hasError: boolean }
@@ -40,17 +41,16 @@ export default class ViewErrorBoundary extends React.Component<Props, State> {
           <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
             <span className="material-symbols-outlined text-red-500 text-3xl">error_outline</span>
           </div>
-          <h2 className="text-base font-black text-[#0a3a2a] mb-2">Coś poszło nie tak</h2>
+          <h2 className="text-base font-black text-[#0a3a2a] mb-2">{i18n.t('common.viewErrorTitle')}</h2>
           <p className="text-[11px] font-bold text-gray-500 mb-5 max-w-xs leading-relaxed">
-            Nie udało się załadować widoku. Może to być spowodowane chwilową utratą połączenia
-            albo aktualizacją aplikacji.
+            {i18n.t('common.viewErrorText')}
           </p>
           <button
             onClick={this.handleReload}
             className="bg-[#0a3a2a] text-[#fed33e] px-5 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all shadow-md flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-[16px]">refresh</span>
-            Spróbuj ponownie
+            {i18n.t('common.viewErrorRetry')}
           </button>
         </div>
       );

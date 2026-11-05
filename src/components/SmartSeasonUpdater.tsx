@@ -67,10 +67,35 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
           // [RODO C21] Data urodzin NIE trafia do konsoli — tylko sam wynik.
           if (import.meta.env.DEV) console.log(`SeasonUpdater: urodziny dzisiaj? ${isBirthdayToday}`);
 
+          const newCategory = getAgeCategory(birthDate, gender);
+
+          // 0. PIERWSZE SPRAWDZENIE (świeża data urodzenia / nowe konto):
+          // tylko zapamiętujemy rok i klasę. Wcześniej każdy, kto pierwszy raz
+          // podał datę urodzenia, dostawał „Frohes neues Jahr” — choćby w
+          // listopadzie — a jego dystanse i tarcze były przeliczane od nowa
+          // (wykryte testem e2e 2026-11-05).
+          if (typeof data.lastNewYearGreeting !== 'number') {
+            await setDoc(profileRef, {
+              lastNewYearGreeting: currentYear,
+              ageCategory: newCategory,
+              ageCategoryPL: getAgeCategoryPL(birthDate, gender)
+            }, { merge: true });
+          }
           // 1. SPRAWDZAMY CZY TO NOWY ROK
-          if (data.lastNewYearGreeting !== currentYear) {
+          else if (data.lastNewYearGreeting < currentYear) {
             console.log("Trener AI: Wykryto nowy rok! Przeliczam dystanse...");
-            
+
+            // Dystanse przeliczamy TYLKO przy zmianie klasy wiekowej — inaczej
+            // każdy Nowy Rok kasował userowi jego wybór aktywnych dystansów.
+            // Konta bez zapisanej klasy (sprzed tej zmiany) — jak dawniej.
+            const classChanged = !data.ageCategory || data.ageCategory !== newCategory;
+            if (!classChanged) {
+              setHasClassChanged(false);
+              await setDoc(profileRef, { lastNewYearGreeting: currentYear }, { merge: true });
+              setModalType('NEW_YEAR');
+              return;
+            }
+
             const currentBow = (data.bowType || 'Klasyczny (Recurve)') as BowType;
             const currentGender = gender;
             const birthYearNum = parseInt(bYearStr, 10) || 1990;
@@ -104,7 +129,7 @@ export default function SmartSeasonUpdater({ userId }: SmartSeasonUpdaterProps) 
             await setDoc(profileRef, {
               userDistances: updatedDistances,
               lastNewYearGreeting: currentYear,
-              ageCategory: getAgeCategory(birthDate, gender),
+              ageCategory: newCategory,
               ageCategoryPL: getAgeCategoryPL(birthDate, gender)
             }, { merge: true });
 

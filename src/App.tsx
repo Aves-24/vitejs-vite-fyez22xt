@@ -39,6 +39,7 @@ import { setProfileWithTrial } from './utils/trialClaim';
 import GuestBanner from './components/GuestBanner';
 import { getTermineView, setTermineView, type TermineView } from './utils/termineView';
 import { navInit, navPush, navReplace, navState, navPrevState, navBack, navConsumeSuppress } from './hooks/useBackClose';
+import { isAccountDeletionInProgress } from './utils/accountDeletion';
 
 // LAZY: ciężkie widoki ładowane dopiero przy nawigacji.
 // Każdy widok = osobny chunk JS pobierany w tle (code splitting).
@@ -443,6 +444,9 @@ export default function App() {
             return 'HOME';
           });
         }
+      } else if (isAccountDeletionInProgress(user.uid)) {
+        // Konto właśnie jest usuwane (PrivacySection) — NIE odtwarzamy profilu.
+        return;
       } else {
         // Dokument nie istnieje — tworzymy go natychmiast z minimalnym rekordem
         // żeby użytkownik zawsze miał konto w Firebase nawet jeśli przerwie wizard.

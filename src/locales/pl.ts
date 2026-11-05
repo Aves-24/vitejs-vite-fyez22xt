@@ -211,6 +211,9 @@ export const components = {
     master: "Master (50+)",
   },
   common: {
+    viewErrorTitle: "Coś poszło nie tak",
+    viewErrorText: "Nie udało się załadować widoku. Może to być spowodowane chwilową utratą połączenia albo aktualizacją aplikacji.",
+    viewErrorRetry: "Spróbuj ponownie",
     updating: "Aktualizuję GROT-X…",
     comingSoon: "Wkrótce dostępne",
     noClubsFound: "Brak pasujących klubów",

@@ -90,7 +90,7 @@ export function watchErrors(page: Page) {
 }
 
 export async function expectNoErrors(page: Page, errors: string[], step: string) {
-  await expect(page.getByText('Coś poszło nie tak'), `${step}: ekran błędu widoku`).toHaveCount(0);
+  await expect(page.getByText(/^(Etwas ist schiefgelaufen|Something went wrong|Coś poszło nie tak)$/), `${step}: ekran błędu widoku`).toHaveCount(0);
   expect(errors, `${step}: błędy w konsoli`).toEqual([]);
 }
 

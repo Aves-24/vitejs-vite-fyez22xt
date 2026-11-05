@@ -197,6 +197,9 @@ export const components = {
     genderF: "w",
   },
   common: {
+    viewErrorTitle: "Etwas ist schiefgelaufen",
+    viewErrorText: "Die Ansicht konnte nicht geladen werden. Das kann an einer kurzen Verbindungsunterbrechung oder an einem App-Update liegen.",
+    viewErrorRetry: "Erneut versuchen",
     updating: "Aktualisiere GROT-X…",
     comingSoon: "In Kürze verfügbar",
     noClubsFound: "Kein passender Verein gefunden",

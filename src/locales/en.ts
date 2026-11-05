@@ -197,6 +197,9 @@ export const components = {
     genderF: "W",
   },
   common: {
+    viewErrorTitle: "Something went wrong",
+    viewErrorText: "The view could not be loaded. This may be caused by a brief loss of connection or an app update.",
+    viewErrorRetry: "Try again",
     updating: "Updating GROT-X…",
     comingSoon: "Coming soon",
     noClubsFound: "No matching clubs found",

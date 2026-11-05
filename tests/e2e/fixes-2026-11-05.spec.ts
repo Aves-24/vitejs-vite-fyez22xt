@@ -50,7 +50,7 @@ test('zmiana klasy wiekowej w ciągu roku: okienko i nowe dystanse', async ({ pa
   // 13 lat → bramka zgody rodzica (< 16, RODO art. 8).
   await expect(page.getByRole('heading', { name: 'Einwilligung der Eltern erforderlich' })).toBeVisible();
   await page.getByPlaceholder('E-Mail der Aufsichtsperson').fill('eltern@example.test');
-  await page.getByRole('checkbox').check();
+  await page.getByRole('checkbox', { name: /Als Elternteil/ }).check();
   await page.getByRole('button', { name: /Einwilligung bestätigen/ }).click();
   await expect(page.getByRole('heading', { name: 'Einwilligung der Eltern erforderlich' })).toHaveCount(0);
   await page.waitForTimeout(1500);

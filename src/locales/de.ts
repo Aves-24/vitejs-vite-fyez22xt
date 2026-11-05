@@ -198,6 +198,11 @@ export const components = {
     genderM: "m",
     genderF: "w",
   },
+  groupPlan: {
+    today: "Heute Training",
+    next: "Nächstes Training",
+    cancelledToday: "Heute abgesagt",
+  },
   common: {
     viewErrorTitle: "Etwas ist schiefgelaufen",
     viewErrorText: "Die Ansicht konnte nicht geladen werden. Das kann an einer kurzen Verbindungsunterbrechung oder an einem App-Update liegen.",

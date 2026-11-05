@@ -198,6 +198,11 @@ export const components = {
     genderM: "M",
     genderF: "W",
   },
+  groupPlan: {
+    today: "Training today",
+    next: "Next training",
+    cancelledToday: "Cancelled today",
+  },
   common: {
     viewErrorTitle: "Something went wrong",
     viewErrorText: "The view could not be loaded. This may be caused by a brief loss of connection or an app update.",

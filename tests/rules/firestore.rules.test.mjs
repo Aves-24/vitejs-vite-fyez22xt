@@ -1517,3 +1517,41 @@ test('AUDYT: profiles_public tylko pojedynczo, bez listy', async () => {
   await assertFails(getDocs(collection(anonCtx(), 'profiles_public')));
   await assertFails(getDocs(collection(ctxOf('bob'), 'profiles_public')));
 });
+
+// ---------------------------------------------------------------------------
+// [PLAN DLA UCZNIA 2026-11-05] groupPlans/{groupId} — lustro planu grupy.
+// ---------------------------------------------------------------------------
+const seedPlanGroup = async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'groups/g1'), {
+      ownerId: 'coach1', coachIds: ['coach1'], coachNames: { coach1: 'C' }, name: 'Kader',
+      memberIds: ['alice'], topics: {}, createdAt: 1,
+    });
+  });
+};
+const planOf = (memberIds) => ({ name: 'Kader', schedule: { slots: [{ day: 4, time: '18:00' }], every: 1, anchor: '2026-11-02' }, memberIds, coachIds: ['coach1'] });
+
+test('PLAN: trener grupy zapisuje lustro zgodne ze składem', async () => {
+  await seedPlanGroup();
+  await assertSucceeds(setDoc(doc(coach1(), 'groupPlans/g1'), planOf(['alice'])));
+});
+
+test('PLAN: trener NIE dopisze do lustra kogoś spoza grupy', async () => {
+  await seedPlanGroup();
+  await assertFails(setDoc(doc(coach1(), 'groupPlans/g1'), planOf(['alice', 'bob'])));
+});
+
+test('PLAN: obcy nie zapisze lustra', async () => {
+  await seedPlanGroup();
+  await assertFails(setDoc(doc(bob(), 'groupPlans/g1'), planOf(['alice'])));
+});
+
+test('PLAN: członek czyta swoje plany zapytaniem, obcy nie', async () => {
+  await seedPlanGroup();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'groupPlans/g1'), planOf(['alice']));
+  });
+  await assertSucceeds(getDocs(query(collection(alice(), 'groupPlans'), where('memberIds', 'array-contains', 'alice'))));
+  await assertFails(getDoc(doc(bob(), 'groupPlans/g1')));
+  await assertFails(getDocs(collection(bob(), 'groupPlans')));
+});

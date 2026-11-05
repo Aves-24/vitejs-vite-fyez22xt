@@ -212,6 +212,11 @@ export const components = {
     senior: "Senior (24–49)",
     master: "Master (50+)",
   },
+  groupPlan: {
+    today: "Dziś trening",
+    next: "Następny trening",
+    cancelledToday: "Dziś odwołany",
+  },
   common: {
     viewErrorTitle: "Coś poszło nie tak",
     viewErrorText: "Nie udało się załadować widoku. Może to być spowodowane chwilową utratą połączenia albo aktualizacją aplikacji.",

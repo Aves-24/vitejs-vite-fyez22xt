@@ -28,7 +28,7 @@ async function coachWithGroup(browser: Browser) {
 
 test('stały trening grupy: Termine, Übersicht i odwołanie', async ({ browser }) => {
   test.setTimeout(120_000);
-  const { coach, coachErrors } = await coachWithGroup(browser);
+  const { coach, student, coachErrors, studentErrors } = await coachWithGroup(browser);
 
   // Dziś, późnym wieczorem — trening zawsze „przed nami”.
   const today = new Date().toLocaleDateString('de-DE', { weekday: 'long' });
@@ -44,6 +44,12 @@ test('stały trening grupy: Termine, Übersicht i odwołanie', async ({ browser 
   const sessions = coach.getByRole('button', { name: /Kader Plan schedule 23:30 · Halle Nord/ });
   await expect(sessions).toHaveCount(4);
 
+  // Uczeń widzi dzisiejszy trening grupy na Home (lustro groupPlans/, na żywo).
+  await student.getByRole('navigation').getByRole('button', { name: /Start$/ }).click();
+  const plan = student.getByTestId('group-plan');
+  await expect(plan).toContainText('Heute Training');
+  await expect(plan).toContainText('23:30 · Kader · Halle Nord');
+
   // Übersicht: dzisiejszy trening na górze.
   await coachNav(coach, 'space_dashboard Übersicht').click();
   await expect(coach.getByRole('heading', { name: 'Heute Training um 23:30' })).toBeVisible();
@@ -58,6 +64,11 @@ test('stały trening grupy: Termine, Übersicht i odwołanie', async ({ browser 
   await coachNav(coach, 'space_dashboard Übersicht').click();
   await expect(coach.getByRole('heading', { name: 'Heute Training um 23:30' })).toHaveCount(0);
   await expectNoErrors(coach, coachErrors, 'Termine');
+
+  // Uczeń: dziś odwołany, pod spodem następny termin (za tydzień).
+  await expect(plan).toContainText('Heute abgesagt');
+  await expect(plan).toContainText(/Nächstes Training: .* · 23:30/);
+  await expectNoErrors(student, studentErrors, 'plan u ucznia');
 });
 
 test('czat: uczeń pisze do trenera, trener odpowiada', async ({ browser }) => {

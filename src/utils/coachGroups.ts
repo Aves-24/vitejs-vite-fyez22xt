@@ -20,6 +20,7 @@ import {
 import type { GroupSchedule } from './groupSchedule';
 import type { GroupTopic, GroupTopicsByDay } from '../components/GroupTopicPanel';
 import { shiftedTopics, type TopicMove } from './topicShift';
+import { syncGroupPlans, deleteGroupPlan } from './groupPlans';
 
 export const MAX_GROUPS = 5;
 export const MAX_GROUP_COACHES = 3;
@@ -68,7 +69,12 @@ const byCreated = (a: CoachGroup, b: CoachGroup) => a.createdAt - b.createdAt ||
 export function subscribeCoachGroups(uid: string, cb: (groups: CoachGroup[]) => void): Unsubscribe {
   return onSnapshot(
     coachGroupsQuery(uid),
-    snap => cb(snap.docs.map(d => fromDoc(d.id, d.data())).sort(byCreated)),
+    snap => {
+      const groups = snap.docs.map(d => fromDoc(d.id, d.data())).sort(byCreated);
+      // [PLAN DLA UCZNIA] Lustro planu dla członków grupy (utils/groupPlans).
+      syncGroupPlans(groups);
+      cb(groups);
+    },
     err => { console.error('Grupy: błąd odczytu', err); cb([]); },
   );
 }
@@ -101,6 +107,7 @@ export const updateGroup = (groupId: string, patch: Record<string, unknown>) => 
 
 /** Usunięcie grupy: najpierw historia (reguła sprawdza trenera w dokumencie grupy), potem grupa. */
 export async function deleteGroup(groupId: string): Promise<void> {
+  await deleteGroupPlan(groupId);
   await deleteDoc(groupTrainingRef(groupId));
   await deleteDoc(groupRef(groupId));
 }

@@ -17,6 +17,7 @@ import { fetchCoachGroups } from '../utils/coachGroups';
 import { PRO_GIFT_ANNOUNCE_DAYS } from '../utils/proGift';
 import { useCurrentFocus, displayPair, displayProgress, swapFocus } from '../utils/focus';
 import { FocusStrip } from '../components/tagebuch/FocusCard';
+import GroupPlanStrip from '../components/GroupPlanStrip';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { isPartialSession, partialLabel, PartialInfo } from '../utils/partialSession';
 import { FREE_COACH_SLOTS } from '../utils/coachAccess';
@@ -1619,6 +1620,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </button>
 
         </div>
+
+        {/* [PLAN DLA UCZNIA] Najbliższy trening grupy (lustro groupPlans/). */}
+        <GroupPlanStrip userId={userId} />
 
         {focusPair.main && (
           <div className="mt-2">

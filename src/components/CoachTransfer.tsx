@@ -14,11 +14,31 @@ import {
 
 const card = 'rounded-2xl border px-3 py-3';
 
-/** Podgląd ucznia u trenera: przekazanie (stary trener) i notatka od poprzednika (nowy). */
-export function TransferStudentSection({ coachId, student }: { coachId: string; student: { id: string; firstName?: string; lastName?: string; nickname?: string } }) {
+/** Podgląd ucznia u NOWEGO trenera: notatka od poprzednika (po zakończonym przekazaniu). */
+export function TransferReceivedNote({ coachId, studentId }: { coachId: string; studentId: string }) {
   const { t, i18n } = useTranslation();
-  const [outgoing, setOutgoing] = useState<CoachTransfer[]>([]);
   const [incoming, setIncoming] = useState<CoachTransfer[]>([]);
+  useEffect(() => subscribeIncomingTransfers(coachId, setIncoming), [coachId]);
+  const received = incoming.find(x => x.studentId === studentId && x.status === 'done');
+  if (!received) return null;
+  return (
+    <div className={`${card} mt-2 bg-sky-50 border-sky-100`} data-testid="transfer-received">
+      <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">
+        {t('coachTransfer.receivedFrom', { name: received.fromName, date: new Date(received.createdAt).toLocaleDateString(i18n.language) })}
+      </p>
+      {received.note && <p className="text-[12px] font-medium text-[#0a3a2a] mt-1 whitespace-pre-wrap">{received.note}</p>}
+    </div>
+  );
+}
+
+/**
+ * Einst. trenera → Schülerliste: ikonka „Schüler übergeben” przy uczniu
+ * (user 2026-11-05: tam, nie w podglądzie). Trwające przekazanie = klepsydra;
+ * klik pokazuje stan i „Zurückziehen”.
+ */
+export function TransferStudentAction({ coachId, student }: { coachId: string; student: { id: string; firstName?: string; lastName?: string; nickname?: string } }) {
+  const { t } = useTranslation();
+  const [outgoing, setOutgoing] = useState<CoachTransfer[]>([]);
   const [open, setOpen] = useState(false);
   const [toId, setToId] = useState('');
   const [note, setNote] = useState('');
@@ -26,11 +46,9 @@ export function TransferStudentSection({ coachId, student }: { coachId: string; 
   const [error, setError] = useState('');
 
   useEffect(() => subscribeOutgoingTransfers(coachId, setOutgoing), [coachId]);
-  useEffect(() => subscribeIncomingTransfers(coachId, setIncoming), [coachId]);
 
   const studentName = `${student.firstName || ''} ${student.lastName || ''}`.trim() || student.nickname || '';
   const pending = outgoing.find(x => x.studentId === student.id && x.status !== 'done');
-  const received = incoming.find(x => x.studentId === student.id && x.status === 'done');
 
   const send = async () => {
     const id = toId.trim();
@@ -46,7 +64,7 @@ export function TransferStudentSection({ coachId, student }: { coachId: string; 
         toCoachId: id, toName: to.displayName || '',
         studentId: student.id, studentName, note,
       });
-      setOpen(false); setToId(''); setNote('');
+      setToId(''); setNote('');
     } catch (e) {
       // Reguła: konto bez trybu trenera albo już trener tego ucznia.
       console.error('Przekazanie: wniosek odrzucony', e);
@@ -56,63 +74,60 @@ export function TransferStudentSection({ coachId, student }: { coachId: string; 
   };
 
   return (
-    <div className="mt-2 space-y-2">
-      {received && (
-        <div className={`${card} bg-sky-50 border-sky-100`} data-testid="transfer-received">
-          <p className="text-[10px] font-black uppercase tracking-widest text-sky-700">
-            {t('coachTransfer.receivedFrom', { name: received.fromName, date: new Date(received.createdAt).toLocaleDateString(i18n.language) })}
-          </p>
-          {received.note && <p className="text-[12px] font-medium text-[#0a3a2a] mt-1 whitespace-pre-wrap">{received.note}</p>}
-        </div>
-      )}
-      {pending ? (
-        <div className={`${card} bg-amber-50 border-amber-100`} data-testid="transfer-pending">
-          <p className="text-[11px] font-black text-amber-800">
-            {t('coachTransfer.pendingTo', { name: pending.toName })} · {pending.status === 'pending_coach' ? t('coachTransfer.waitCoach', { name: pending.toName }) : t('coachTransfer.waitStudent', { name: studentName })}
-          </p>
-          <button onClick={() => cancelTransfer(pending)} className="mt-1.5 text-[10px] font-black uppercase tracking-widest text-amber-800 underline">
-            {t('coachTransfer.withdraw')}
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setOpen(true)}
-          className="w-full py-2 rounded-xl bg-gray-50 border border-gray-200 text-gray-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1 active:scale-[0.98] transition-all"
-        >
-          <span className="material-symbols-outlined text-[15px]">swap_horiz</span>
-          {t('coachTransfer.start')}
-        </button>
-      )}
+    <>
+      <button
+        type="button"
+        onClick={() => { setError(''); setOpen(true); }}
+        aria-label={t('coachTransfer.start')}
+        title={t('coachTransfer.start')}
+        className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center active:scale-90 transition-all ${pending ? 'text-amber-600' : 'text-[#0a3a2a]'}`}
+      >
+        <span className="material-symbols-outlined text-[20px]">{pending ? 'hourglass_top' : 'swap_horiz'}</span>
+      </button>
 
       {open && createPortal(
         <div className="fixed inset-0 z-[600000] bg-black/70 flex items-center justify-center p-4" onClick={() => setOpen(false)}>
           <div role="dialog" aria-label={t('coachTransfer.start')} className="bg-white rounded-[28px] p-5 w-full max-w-sm" onClick={e => e.stopPropagation()}>
-            <h2 className="text-[16px] font-black text-[#0a3a2a]">{t('coachTransfer.start')}</h2>
-            <p className="text-[12px] font-medium text-gray-500 leading-snug mt-2">{t('coachTransfer.startInfo', { name: studentName })}</p>
-            <input
-              value={toId}
-              onChange={e => setToId(e.target.value)}
-              placeholder={t('coachTransfer.toIdPlaceholder')}
-              className="mt-3 w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-bold outline-none focus:border-[#0a3a2a]"
-            />
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value.slice(0, TRANSFER_NOTE_MAX))}
-              placeholder={t('coachTransfer.notePlaceholder')}
-              rows={3}
-              className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium outline-none focus:border-[#0a3a2a] resize-none"
-            />
-            <p className="text-[10px] font-bold text-gray-400 text-right">{note.length}/{TRANSFER_NOTE_MAX}</p>
-            {error && <p className="text-[11px] font-bold text-red-500 mt-1">{error}</p>}
-            <div className="flex gap-2 mt-3">
-              <button onClick={() => setOpen(false)} className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-500 text-[11px] font-black uppercase">{t('coachTransfer.cancel')}</button>
-              <button onClick={send} disabled={!toId.trim() || busy} className="flex-1 py-3 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[11px] font-black uppercase disabled:opacity-40">{t('coachTransfer.send')}</button>
-            </div>
+            <h2 className="text-[16px] font-black text-[#0a3a2a]">{t('coachTransfer.start')} · {studentName}</h2>
+            {pending ? (
+              <>
+                <p className="text-[12px] font-bold text-amber-800 mt-3" data-testid="transfer-pending">
+                  {t('coachTransfer.pendingTo', { name: pending.toName })} · {pending.status === 'pending_coach' ? t('coachTransfer.waitCoach', { name: pending.toName }) : t('coachTransfer.waitStudent', { name: studentName })}
+                </p>
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => setOpen(false)} className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-500 text-[11px] font-black uppercase">{t('coachTransfer.cancel')}</button>
+                  <button onClick={() => cancelTransfer(pending)} className="flex-1 py-3 rounded-xl bg-amber-100 text-amber-800 text-[11px] font-black uppercase">{t('coachTransfer.withdraw')}</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[12px] font-medium text-gray-500 leading-snug mt-2">{t('coachTransfer.startInfo', { name: studentName })}</p>
+                <input
+                  value={toId}
+                  onChange={e => setToId(e.target.value)}
+                  placeholder={t('coachTransfer.toIdPlaceholder')}
+                  className="mt-3 w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-bold outline-none focus:border-[#0a3a2a]"
+                />
+                <textarea
+                  value={note}
+                  onChange={e => setNote(e.target.value.slice(0, TRANSFER_NOTE_MAX))}
+                  placeholder={t('coachTransfer.notePlaceholder')}
+                  rows={3}
+                  className="mt-2 w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium outline-none focus:border-[#0a3a2a] resize-none"
+                />
+                <p className="text-[10px] font-bold text-gray-400 text-right">{note.length}/{TRANSFER_NOTE_MAX}</p>
+                {error && <p className="text-[11px] font-bold text-red-500 mt-1">{error}</p>}
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setOpen(false)} className="flex-1 py-3 rounded-xl bg-gray-100 text-gray-500 text-[11px] font-black uppercase">{t('coachTransfer.cancel')}</button>
+                  <button onClick={send} disabled={!toId.trim() || busy} className="flex-1 py-3 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[11px] font-black uppercase disabled:opacity-40">{t('coachTransfer.send')}</button>
+                </div>
+              </>
+            )}
           </div>
         </div>,
         document.body,
       )}
-    </div>
+    </>
   );
 }
 

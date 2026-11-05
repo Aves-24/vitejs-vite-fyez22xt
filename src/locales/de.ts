@@ -135,6 +135,7 @@ export const components = {
     defaultName: "Schütze",
     newYearTitle: "Frohes neues Jahr, {{name}}! 🎆",
     newYearMsg: "Wir beginnen offiziell die Saison {{year}}. Es ist eine großartige Zeit für neue persönliche Bestleistungen!",
+    markAllRead: "Alle gelesen",
     classChangeTitle: "Neue Altersklasse, {{name}}!",
     classChangeMsg: "Du bist in eine neue Altersklasse gewechselt. Ich habe deine Standarddistanzen und Scheibengrößen gemäß den Verbandsregeln aktualisiert.",
     classChanged: "In diesem Jahr wechselst du in eine neue Altersklasse! Ich habe deine Standarddistanzen und Scheibengrößen gemäß den Verbandsregeln aktualisiert.",

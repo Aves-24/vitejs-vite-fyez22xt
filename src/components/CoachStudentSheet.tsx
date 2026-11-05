@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { TransferStudentSection } from './CoachTransfer';
+import { TransferReceivedNote } from './CoachTransfer';
 import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, Timestamp, updateDoc, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { buildSnapshot, addDays, type SnapSession, type StudentSnapshot } from '../utils/studentSnapshot';
@@ -632,8 +632,8 @@ export default function CoachStudentSheet({
             <p className="text-[9px] font-bold text-gray-400 leading-snug mt-1 px-1">{t('coachSheet.pauseStartHint')}</p>
           </div>
         )}
-        {/* [PRZEKAZANIE UCZNIA] Przekazanie innemu trenerowi / notatka od poprzednika. */}
-        <TransferStudentSection coachId={coachId} student={student} />
+        {/* [PRZEKAZANIE UCZNIA] Notatka od poprzedniego trenera (przekazanie: Einst. → Schülerliste). */}
+        <TransferReceivedNote coachId={coachId} studentId={student.id} />
       </div>
     </div>,
     document.body,

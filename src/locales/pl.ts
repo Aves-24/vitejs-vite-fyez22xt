@@ -135,6 +135,7 @@ export const components = {
     defaultName: "Łuczniku",
     newYearTitle: "Szczęśliwego Nowego Roku, {{name}}! 🎆",
     newYearMsg: "Zaczynamy oficjalnie sezon {{year}}. To świetny moment na nowe rekordy życiowe!",
+    markAllRead: "Wszystkie przeczytane",
     classChangeTitle: "Nowa kategoria wiekowa, {{name}}!",
     classChangeMsg: "Przeszedłeś do nowej kategorii wiekowej. Zaktualizowałem Twoje standardowe dystanse i rozmiary tarcz zgodnie z przepisami związku.",
     classChanged: "W tym roku przechodzisz do nowej kategorii wiekowej! Zaktualizowałem Twoje domyślne dystanse i rozmiary tarcz zgodnie z regulaminem federacji.",

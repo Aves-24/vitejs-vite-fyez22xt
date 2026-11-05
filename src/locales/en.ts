@@ -135,6 +135,7 @@ export const components = {
     defaultName: "Archer",
     newYearTitle: "Happy New Year, {{name}}! 🎆",
     newYearMsg: "We officially begin the {{year}} season. It's a great time for new personal bests!",
+    markAllRead: "Mark all read",
     classChangeTitle: "New age class, {{name}}!",
     classChangeMsg: "You have moved into a new age class. I have updated your default distances and target faces according to the federation rules.",
     classChanged: "This year you're moving to a new age category! I've updated your default distances and target face sizes according to federation rules.",

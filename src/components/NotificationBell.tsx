@@ -47,21 +47,13 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showPanel]);
 
-  const handleToggle = () => {
-    setShowPanel(prev => {
-      const next = !prev;
-      // Opening the panel marks everything as read in Firestore.
-      if (next && unreadCount > 0) {
-        markAllAsRead();
-      }
-      return next;
-    });
-  };
+  // Otwarcie panelu NIE oznacza już wszystkiego jako przeczytane — wiadomość
+  // gasła, zanim user w nią kliknął (user 2026-11-05). Przeczytane: klik w
+  // pozycję, otwarcie czatu albo „Alle gelesen” w nagłówku panelu.
+  const handleToggle = () => setShowPanel(prev => !prev);
 
   const handleItemClick = (item: Notif) => {
     setShowPanel(false);
-    // Defensive — should already be read from markAllAsRead, but ensures
-    // single-click navigation always clears the dot for this item.
     if (!item.readAt) {
       markAsRead(item.id);
     }
@@ -97,6 +89,14 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
             <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">
               {t('announcements.pageTitle')}
             </p>
+            {unreadCount > 0 && (
+              <button
+                onClick={() => markAllAsRead()}
+                className="ml-auto mr-2 text-[9px] font-black uppercase tracking-widest text-emerald-700 active:scale-95"
+              >
+                {t('notifications.markAllRead')}
+              </button>
+            )}
             <button
               onClick={() => setShowPanel(false)}
               className="w-6 h-6 flex items-center justify-center text-gray-400 active:scale-90"

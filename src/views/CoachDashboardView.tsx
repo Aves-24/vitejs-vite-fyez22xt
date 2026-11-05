@@ -20,7 +20,7 @@ import { loadFocusState, type FocusState } from '../utils/focus';
 import { FocusDots, focusTitle } from '../components/tagebuch/FocusCard';
 import { CARD_SHAPE } from '../components/tagebuch/TagebuchCards';
 import CoachStudentSheet from '../components/CoachStudentSheet';
-import { IncomingTransfersCard } from '../components/CoachTransfer';
+import { IncomingTransfersCard, TransferStudentAction } from '../components/CoachTransfer';
 import { subscribeOutgoingTransfers, type CoachTransfer } from '../utils/coachTransfers';
 import GroupIconPicker from '../components/GroupIconPicker';
 import { DEFAULT_GROUP_ICON, groupIcon } from '../constants/groupIcons';
@@ -2152,6 +2152,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                         <span className="material-symbols-outlined text-[20px]">folder_shared</span>
                       </button>
                     )}
+                    {/* [PRZEKAZANIE UCZNIA] Innemu trenerowi (user 2026-11-05: tutaj). */}
+                    <TransferStudentAction coachId={userId} student={s} />
                     <button
                       type="button"
                       onClick={() => setStudentsToDelete([s.id])}
@@ -3148,17 +3150,19 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             </button>
           )}
           {/* [UCZNIOWIE] Dodawanie ucznia także tutaj, nie tylko w Einst.
-              (user 2026-11-05: pusta lista nie miała żadnej akcji). Bez wolnych
+              (user 2026-11-05: pusta lista nie miała żadnej akcji; mały, z boku — rzadko używane). Bez wolnych
               miejsc — przejście do Einst., gdzie jest prośba o więcej miejsc. */}
+          <div className="flex justify-end -mt-1 mb-2">
           <button
             type="button"
             onClick={() => (isLimitReached ? onNavigate('COACH', 'SETTINGS') : startScanner())}
-            className="w-full mb-4 py-2.5 rounded-xl bg-[#0a3a2a] text-[#fed33e] text-[13px] font-black flex items-center justify-center gap-1.5 active:scale-95 transition-all"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-gray-200 bg-white text-[11px] font-black text-[#0a3a2a] active:scale-95 transition-all"
           >
-            <span className="material-symbols-outlined text-[18px]">person_add</span>
+            <span className="material-symbols-outlined text-[16px]">person_add</span>
             {t('coachSettings.addStudent')}
-            <span className="text-[11px] font-bold text-white/60">{students.length}/{coachLimit}</span>
+            <span className="font-bold text-gray-400">{students.length}/{coachLimit}</span>
           </button>
+          </div>
           {renderStudentList(visibleStudents, t('coachDashboard.allStudents'))}
         </div>
       )}

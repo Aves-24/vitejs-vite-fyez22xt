@@ -11,6 +11,13 @@ test.afterEach(() => closeUserPages());
 
 const coachNav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
 
+// Einst. trenera → Schülerliste → ikonka ⇄ przy uczniu (user 2026-11-05: tutaj).
+async function openTransfer(page: Page) {
+  await coachNav(page, 'settings Einst.').click();
+  await page.getByRole('button', { name: /Schülerliste \(1\)/ }).click();
+  await page.getByRole('button', { name: 'Schüler übergeben', exact: true }).click();
+}
+
 async function enableCoachMode(page: Page) {
   await nav(page, 'Einst.').click();
   await page.getByRole('button', { name: /^TRAINER/ }).click();
@@ -33,9 +40,7 @@ test('przekazanie ucznia: wniosek, przyjęcie, zgoda ucznia, stary trener traci 
   await enableCoachMode(newCoach);
 
   // 1. Stary trener: podgląd ucznia → „Schüler übergeben” + notatka.
-  await coachNav(oldCoach, 'group Schüler').click();
-  await oldCoach.getByRole('main').getByText('Uczen').first().click();
-  await oldCoach.getByRole('button', { name: 'swap_horiz Schüler übergeben' }).click();
+  await openTransfer(oldCoach);
   const dialog = oldCoach.getByRole('dialog', { name: 'Schüler übergeben' });
   await dialog.getByPlaceholder('Trainer-ID des neuen Trainers').fill(newCoachId);
   await dialog.getByPlaceholder(/Notiz für den neuen Trainer/).fill('Arbeitet am Anker, Knie schonen.');
@@ -78,7 +83,7 @@ test('przekazanie ucznia: wniosek, przyjęcie, zgoda ucznia, stary trener traci 
   // 4. Nowy trener: uczeń na liście, w podglądzie notatka od poprzednika.
   await coachNav(newCoach, 'group Schüler').click();
   await expect(newCoach.getByRole('heading', { name: 'Alle Schüler (1)' })).toBeVisible();
-  await newCoach.getByRole('main').getByText('Uczen').first().click();
+  await newCoach.getByRole('main').getByRole('heading', { name: 'Uczen', level: 3 }).click();
   await expect(newCoach.getByTestId('transfer-received')).toContainText('Übergeben von Anna');
   await expect(newCoach.getByTestId('transfer-received')).toContainText('Arbeitet am Anker, Knie schonen.');
 
@@ -102,9 +107,7 @@ test('przekazanie: uczeń odrzuca — nic się nie zmienia', async ({ browser, r
   await linkCoachAndStudent(oldCoach, student, studentId, 'Anna');
   await enableCoachMode(newCoach);
 
-  await coachNav(oldCoach, 'group Schüler').click();
-  await oldCoach.getByRole('main').getByText('Uczen').first().click();
-  await oldCoach.getByRole('button', { name: 'swap_horiz Schüler übergeben' }).click();
+  await openTransfer(oldCoach);
   await oldCoach.getByPlaceholder('Trainer-ID des neuen Trainers').fill(newCoachId);
   await oldCoach.getByRole('button', { name: 'Anfrage senden' }).click();
   await coachNav(newCoach, 'space_dashboard Übersicht').click();

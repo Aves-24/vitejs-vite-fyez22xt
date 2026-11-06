@@ -1350,7 +1350,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             {(() => {
               const total = recentZones.reduce((a, b) => a + b, 0);
               const goldPct = total > 0 ? Math.round((recentZones[0] / total) * 100) : 0;
-              const colors = ['#f2c94c', '#e5534b', '#3b82f6', '#222222', '#d9dedb', '#7c3aed'];
+              // M (pudło) nie ma koloru — zostaje pusta, szara część pierścienia (user 2026-11-06).
+              const colors = ['#f2c94c', '#e5534b', '#3b82f6', '#222222', '#cfd5d2', ''];
               let offset = 25;
               return (
                 <button
@@ -1361,10 +1362,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 >
                   {isPremium && total > 0 && (
                     <svg width="34" height="34" viewBox="0 0 42 42" className="shrink-0" aria-hidden="true">
-                      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#eef1ef" strokeWidth="7" />
+                      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#eef1ef" strokeWidth="7" className="zones-track" />
                       {recentZones.map((n, i) => {
-                        if (!n) return null;
                         const len = (n / total) * 100;
+                        if (!n || !colors[i]) { offset -= len; return null; }
                         const el = <circle key={i} cx="21" cy="21" r="15.9" fill="none" stroke={colors[i]} strokeWidth="7" strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
                         offset -= len;
                         return el;

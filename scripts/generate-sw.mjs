@@ -8,7 +8,8 @@ import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const DIST = fileURLToPath(new URL('../dist', import.meta.url));
+// SW_DIST: build e2e do osobnego katalogu (test offline, playwright.prod.config.ts).
+const DIST = process.env.SW_DIST ? fileURLToPath(new URL(`../${process.env.SW_DIST}`, import.meta.url)) : fileURLToPath(new URL('../dist', import.meta.url));
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {

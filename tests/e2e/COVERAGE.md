@@ -6,7 +6,7 @@ Uruchamianie (PowerShell):
 $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public"; npm run test:e2e
 ```
 
-Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) + ręcznie w Actions — NIE blokują deployu.
+Podgląd krok po kroku: `npm run test:e2e:ui`. Offline na zbudowanej apce z service workerem: `npm run test:e2e:prod` (osobny config, tests/e2e-prod/). W CI: co dwa dni (workflow E2E) + ręcznie w Actions — NIE blokują deployu.
 
 ## Pokryte
 
@@ -34,16 +34,19 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Tarcza 122 cm | target-full | 70 m: X/9/8/7/6/1 myszą, lupa przy przeciąganiu (strzała tam, gdzie puszczono), Technikfehler (dawniej „Fehlschuss”) w bazie |
 | Statystyki PRO | stats-pro | 3 treningi → pierwsza ranga („Dein erster Rang”), PRO Progress, eksport PDF (%PDF) i CSV (nagłówek po niemiecku), każda Passe w bazie |
 | Termine + Gesehen | coach-termine | stały trening „alle 2 Wochen” (2 terminy w 4 tygodniach), odwołanie „Absagen und verschieben” (tematy +1 termin w bazie, uczeń: Heute abgesagt + następny za 14 dni); notatka ucznia → trener „Gesehen” → uczeń „Dein Trainer hat deine Notiz gelesen” |
+| Dmuchawka | blowgun | zestaw „Blasrohr”: start tylko 10 m / Blowgun 20cm, klawiatura X/10–6/M, zapis z klasą „Dmuchawka (Blasrohr)”, zestaw łuczniczy bez dmuchawki |
+| Wartung | wartung | 2 czynności z terminem na dziś → jeden wpis (Home + kalendarz), odhaczenie jednej → wpis z drugą, 1 data w maintenanceDone |
+| Delay Mirror eksport | delay-mirror | samo wideo → plik .webm; z wypaloną tarczą + wycięty kawałek → „Clip fertig” → „Video teilen” → plik |
+| Offline (build + SW) | e2e-prod/offline-sw | `npm run test:e2e:prod`: build e2e z sw.js, start bez sieci (pełne przeładowanie), trening offline, Tagebuch/Stats, synchronizacja |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
 
 ## Jeszcze NIE pokryte
 
-- Delay Mirror: eksport klipu / Teilen (navigator.share), wycinanie fragmentów
-- Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
+- Delay Mirror: prawdziwe systemowe „Teilen” (navigator.share) — w headless tylko pobranie pliku
 - WORLD (wyłączone „Bald verfügbar”)
-- Offline na buildzie produkcyjnym z service workerem (w dev moduły ładujemy wcześniej), ciemny motyw, języki PL/EN poza przełącznikiem
+- Ciemny motyw, języki PL/EN poza przełącznikiem
 
 ## Znalezione błędy (naprawione)
 

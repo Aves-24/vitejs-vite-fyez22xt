@@ -73,7 +73,9 @@ if (USE_EMULATORS) {
 
 // --- DEV-ONLY: wystaw Firebase na window dla testów w DevTools Console ---
 // W produkcji ten blok jest usuwany przez tree-shaking (import.meta.env.DEV = false).
-if (import.meta.env.DEV) {
+// Build e2e (emulatory, test offline z service workerem) też go potrzebuje —
+// tylko z lokalnymi emulatorami, nigdy z prawdziwym projektem.
+if (import.meta.env.DEV || USE_EMULATORS) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).__fb = { db, auth, doc, getDoc, getDocs, collection, updateDoc, waitForPendingWrites };
   // eslint-disable-next-line no-console

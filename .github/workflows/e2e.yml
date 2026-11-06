@@ -41,6 +41,8 @@ jobs:
       - if: steps.pw-cache.outputs.cache-hit == 'true'
         run: npx playwright install-deps chromium
       - run: npm run test:e2e
+      # Offline na zbudowanej apce z service workerem (playwright.prod.config.ts).
+      - run: npm run test:e2e:prod
       - name: Raport e2e (tylko przy błędzie)
         if: failure()
         uses: actions/upload-artifact@v4

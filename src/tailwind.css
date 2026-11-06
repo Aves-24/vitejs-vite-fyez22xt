@@ -152,6 +152,11 @@
    musztarda nieczytelna na ciemnym, podbijamy do brand yellow */
 .dark .text-\[\#725b00\] { color: #fed33e; }
 .dark .text-\[\#725b00\]\/70 { color: rgba(254, 211, 62, 0.7); }
+/* [E2E 2026-11-06] …ale nie na żółtym tle (kafelek „Zuletzt” na Home): żółty
+   na żółtym był niewidoczny (kontrast 1,0). Wyższa specyficzność wygrywa. */
+.dark .bg-\[\#fed33e\] .text-\[\#725b00\] { color: #725b00; }
+.dark .bg-\[\#fed33e\] .text-\[\#725b00\]\/70 { color: rgba(114, 91, 0, 0.7); }
+.dark .bg-\[\#fed33e\] .text-\[\#725b00\]\/60 { color: rgba(114, 91, 0, 0.6); }
 
 /* Krzywa wyników na home (inline SVG) — patrz klasa gx-trend w HomeView */
 .dark .gx-trend polyline { stroke: #9adbc0; }

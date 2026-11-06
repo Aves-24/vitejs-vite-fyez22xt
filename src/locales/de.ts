@@ -1016,6 +1016,7 @@ export const views = {
     nextEvents: "Nächste Termine",
     zonesGold: "Gold",
     zonesCount: "letzte {{count}} Trainings",
+    zonesInfo: "Basiert auf den letzten {{count}} Trainings",
     refreshing: "Aktualisiere…",
     pfeilzähler: "Pfeilzähler",
     techAdd: "Technik hinzufügen",

@@ -1036,6 +1036,7 @@ export const views = {
     nextEvents: "Najbliższe terminy",
     zonesGold: "Złoto",
     zonesCount: "ostatnie treningi: {{count}}",
+    zonesInfo: "Na podstawie ostatnich treningów: {{count}}",
     refreshing: "Aktualizuję…",
     pfeilzähler: "Licznik strzał",
     techAdd: "Dodaj Techniczne",

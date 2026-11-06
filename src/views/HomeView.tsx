@@ -114,6 +114,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [recentAvg, setRecentAvg] = useState<number[]>([]);
   // Złoto, czerwień, niebieski, czarny, biały, M — liczba strzał z 6 ostatnich treningów.
   const [recentZones, setRecentZones] = useState<number[]>([0, 0, 0, 0, 0, 0]);
+  // [HOME 2026-11-06] Dymek (i) przy pierścieniu stref: „z ilu treningów”; gaśnie sam.
+  const [zonesInfo, setZonesInfo] = useState(false);
+  useEffect(() => { if (!zonesInfo) return; const id = setTimeout(() => setZonesInfo(false), 3500); return () => clearTimeout(id); }, [zonesInfo]);
   const [perArrow3, setPerArrow3] = useState(0);
   const [perArrowMonth, setPerArrowMonth] = useState(0);
   const [recentSessions, setRecentSessions] = useState<({ score: number; date: string; distance: string; type: string; ts: number } & PartialInfo)[]>([]);
@@ -1361,16 +1364,16 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               const C = { x: 32, y: 32 }, R = 23, W = 15, CIRC = 2 * Math.PI * R;
               const darkText = (i: number) => i === 0 || i === 4;
               return (
+                <div className="relative min-w-0">
                 <button
                   onClick={() => onNavigate?.('STATS', 'PRO_ZONES')}
                   aria-label={total > 0
                     ? `${t('home.zonesCount', { count: recentAvg.length })}: ${recentZones.map((n, i) => n ? `${zoneNames[i]} ${pctOf(n)} %` : '').filter(Boolean).join(', ')}`
                     : t('home.zonesGold')}
-                  className={`active:bg-gray-50 transition-colors min-w-0 ${showRing ? 'flex flex-col items-center justify-center px-1 py-1.5' : 'px-3 py-2.5 text-left'}`}
+                  className={`active:bg-gray-50 transition-colors w-full h-full min-w-0 ${showRing ? 'flex items-center justify-center px-1 py-1' : 'px-3 py-2.5 text-left'}`}
                   data-testid="home-zones"
                 >
                   {showRing ? (
-                    <>
                     <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
                       <circle cx={C.x} cy={C.y} r={R} fill="none" stroke="#eef1ef" strokeWidth={W} className="zones-track" />
                       {recentZones.map((n, i) => {
@@ -1396,8 +1399,6 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                         );
                       })}
                     </svg>
-                    <span className="block text-[11px] font-bold text-gray-500 mt-0.5 truncate max-w-full">{t('home.zonesCount', { count: recentAvg.length })}</span>
-                    </>
                   ) : (
                     <span className="min-w-0">
                       <span className="block text-[20px] font-black text-[#0a3a2a] leading-none">{total > 0 ? `${goldPct} %` : '—'}</span>
@@ -1405,6 +1406,25 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                     </span>
                   )}
                 </button>
+                {total > 0 && (
+                  <>
+                    <button
+                      onClick={() => setZonesInfo(v => !v)}
+                      aria-label={t('home.zonesInfo', { count: recentAvg.length })}
+                      aria-expanded={zonesInfo}
+                      className="absolute top-0 right-0 w-7 h-7 flex items-start justify-end p-1 text-gray-300 active:text-gray-500"
+                      data-testid="home-zones-info"
+                    >
+                      <span className="material-symbols-outlined text-[15px] leading-none">info</span>
+                    </button>
+                    {zonesInfo && (
+                      <div role="status" className="absolute top-7 right-1 z-20 w-max max-w-[150px] rounded-lg bg-[#0a3a2a] text-white text-[11px] font-bold leading-snug px-2.5 py-1.5 shadow-lg">
+                        {t('home.zonesInfo', { count: recentAvg.length })}
+                      </div>
+                    )}
+                  </>
+                )}
+                </div>
               );
             })()}
             <button

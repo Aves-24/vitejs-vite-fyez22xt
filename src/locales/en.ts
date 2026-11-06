@@ -1016,6 +1016,7 @@ export const views = {
     nextEvents: "Upcoming",
     zonesGold: "Gold",
     zonesCount: "last {{count}} sessions",
+    zonesInfo: "Based on your last {{count}} sessions",
     refreshing: "Refreshing…",
     pfeilzähler: "Arrow Counter",
     techAdd: "Add Technical",

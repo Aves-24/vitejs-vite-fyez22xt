@@ -100,6 +100,8 @@ export async function registerUser(page: Page, name: string, email = testEmail(n
   await page.getByRole('button', { name: /person_add Konto erstellen/ }).click();
   await finishWelcome(page, name, 'home');
   await expect(page.getByRole('heading', { name: 'GROT-X', level: 1 })).toBeVisible();
+  // Ekran powitalny znika dopiero po zapisie imienia na serwerze.
+  await expect(page.getByPlaceholder('Dein Name oder Spitzname')).toHaveCount(0);
   // Tryb dev wystawia Firebase na window.__fb (src/firebase.ts).
   return page.evaluate(() => (window as any).__fb.auth.currentUser.uid as string);
 }

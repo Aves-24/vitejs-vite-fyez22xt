@@ -66,7 +66,10 @@ test('rytm co 2 tygodnie + odwołanie z przesunięciem tematów', async ({ brows
   await coachNav(coach, 'event_note Termine').click();
   await coach.getByRole('button', { name: 'Absagen' }).first().click();
   await coach.getByRole('button', { name: 'Absagen und verschieben' }).click();
-  await expect(coach.getByText(/Themen verschoben \(2\)/)).toBeVisible();
+  // Komunikat bywa krótszy niż czekanie testu — pewniejsza jest lista:
+  // dziś „Abgesagt”, „Anker” za 2 tygodnie.
+  await expect(coach.getByRole('button', { name: /23:30 · Abgesagt/ })).toBeVisible();
+  await expect(coach.getByRole('button', { name: /23:30 · Anker/ })).toBeVisible();
   await syncWrites(coach);
   await expectNoErrors(coach, coachErrors, 'Termine');
 

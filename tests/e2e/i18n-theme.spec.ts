@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { resetEmulators, registerUser, shoot, syncWrites } from './helpers';
+import { contrastIssues, langIssues } from './uiChecks';
 
 // Przegląd głównych ekranów: (1) ciemny motyw — tekst prawie niewidoczny na
 // swoim tle (kontrast < 1.5), (2) EN/PL — surowe klucze tłumaczeń i słowa
@@ -50,34 +51,7 @@ test('ciemny motyw: brak niewidocznego tekstu na głównych ekranach', async ({ 
   const problems: string[] = [];
   await screens(page, async (name) => {
     await expect(page.locator('html')).toHaveClass(/dark/);
-    const bad: string[] = await page.evaluate(() => {
-      const lum = (c: number[]) => { const f = (v: number) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]); };
-      const rgba = (s: string) => (s.match(/[\d.]+/g) || []).map(Number);
-      const out: string[] = [];
-      const els = Array.from(document.querySelectorAll<HTMLElement>('body *'));
-      for (const el of els) {
-        const text = Array.from(el.childNodes).filter(n => n.nodeType === 3).map(n => n.textContent || '').join('').trim();
-        if (!text || text.length < 2) continue;
-        const r = el.getBoundingClientRect();
-        const cs = getComputedStyle(el);
-        if (r.width === 0 || r.height === 0 || cs.visibility === 'hidden' || Number(cs.opacity) < 0.3) continue;
-        if (cs.fontFamily.includes('Material')) continue;
-        const fg = rgba(cs.color); if (fg.length >= 4 && fg[3] < 0.3) continue;
-        let bg: number[] | null = null; let node: HTMLElement | null = el; let skip = false;
-        while (node) {
-          const s = getComputedStyle(node);
-          if (s.backgroundImage && s.backgroundImage !== 'none') { skip = true; break; }
-          const b = rgba(s.backgroundColor);
-          if (b.length >= 3 && (b.length < 4 || b[3] > 0.6)) { bg = b; break; }
-          node = node.parentElement;
-        }
-        if (skip || !bg) continue;
-        const l1 = lum(fg), l2 = lum(bg);
-        const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
-        if (ratio < 1.5) out.push(`"${text.slice(0, 40)}" ${cs.color} na ${getComputedStyle(node!).backgroundColor} (${ratio.toFixed(2)})`);
-      }
-      return out;
-    });
+    const bad = await contrastIssues(page);
     for (const b of bad) problems.push(`${name}: ${b}`);
   });
   await page.goto('/');
@@ -94,19 +68,9 @@ for (const lng of ['en', 'pl'] as const) {
     await registerUser(page, 'Sprache');
     await oneTraining(page);
     await page.evaluate((l) => localStorage.setItem('i18nextLng', l), lng);
-    const wrong = lng === 'en'
-      ? /\b(Einstellungen|Speichern|Schüler|Pfeile|Gesamtringzahl|Trainingseinheit|Zuletzt|Wettkampf|Ringe|Zapisz|Ustawienia|Strzały|Trening)\b/
-      : /\b(Einstellungen|Speichern|Schüler|Pfeile|Gesamtringzahl|Trainingseinheit|Zuletzt|Wettkampf|Ringe|Settings|Save|Arrows|Last|Training session)\b/;
-    const rawKey = /\b[a-z][a-zA-Z]+\.[a-z][a-zA-Z]+(\.[a-zA-Z]+)?\b/;
     const problems: string[] = [];
     await screens(page, async (name) => {
-      const text = await page.locator('body').innerText();
-      for (const line of text.split('\n')) {
-        const l = line.trim();
-        if (!l) continue;
-        const w = l.match(wrong); if (w) problems.push(`${name}: obce słowo „${w[0]}” w „${l.slice(0, 60)}”`);
-        const k = l.match(rawKey); if (k && !/\d\.\d|@|https?:|www\.|\.(de|com|pl|app)\b|GROT-X|e\.g\.|z\.B\.|np\./.test(l)) problems.push(`${name}: klucz? „${k[0]}” w „${l.slice(0, 60)}”`);
-      }
+      for (const p of await langIssues(page, lng)) problems.push(`${name}: ${p}`);
     });
     const uniq = [...new Set(problems)];
     console.log(`LANG ${lng}\n` + uniq.join('\n'));

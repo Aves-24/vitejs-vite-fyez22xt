@@ -163,6 +163,14 @@
 .dark .bg-\[\#fed33e\] .text-\[\#725b00\] { color: #725b00; }
 .dark .bg-\[\#fed33e\] .text-\[\#725b00\]\/70 { color: rgba(114, 91, 0, 0.7); }
 .dark .bg-\[\#fed33e\] .text-\[\#725b00\]\/60 { color: rgba(114, 91, 0, 0.6); }
+/* Ekran treningu (e2e 2026-11-06): żółty pasek wyniku ma tło i tekst na TYM
+   SAMYM elemencie; klawisze X/10/9 to ciemny #333 na żółtym; suma Passe
+   (#cce6dc) zostawała jasna pod jasnozielonym tekstem. */
+.dark .bg-\[\#fed33e\].text-\[\#725b00\] { color: #725b00; }
+.dark .bg-\[\#F2C94C\].text-\[\#333\] { color: #333; }
+.dark .bg-\[\#cce6dc\] { background-color: #1f3a30; }
+/* Puste pola tabeli strzał / karty wyników — jaskrawo białe w ciemnym motywie. */
+.dark .bg-\[\#F9F9F9\] { background-color: #232b27; }
 
 /* Krzywa wyników na home (inline SVG) — patrz klasa gx-trend w HomeView */
 .dark .gx-trend polyline { stroke: #9adbc0; }

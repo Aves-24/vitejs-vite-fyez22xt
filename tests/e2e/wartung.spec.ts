@@ -22,6 +22,9 @@ test('Wartung: plan, wpis w kalendarzu, częściowe odhaczanie', async ({ page, 
   await dlg.getByRole('textbox', { name: 'Erste Erinnerung' }).last().fill(iso);
   await expect(dlg.getByText('Aktiv: 2')).toBeVisible();
   await dlg.getByRole('button', { name: 'Fertig' }).click();
+  // Plan musi dojść do bazy przed przeładowaniem (pod obciążeniem bywał gubiony).
+  await syncWrites(page);
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? ''), { timeout: 15_000 }).toContain('maintenance');
 
   // Home: brązowy pasek z jednym wpisem na zestaw.
   await page.goto('/');

@@ -40,6 +40,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. Offline na zbudowanej apce z serv
 | Offline (build + SW) | e2e-prod/offline-sw | `npm run test:e2e:prod`: build e2e z sw.js, start bez sieci (pełne przeładowanie), trening offline, Tagebuch/Stats, synchronizacja |
 | Ciemny motyw + EN/PL | i18n-theme | główne ekrany (Home, Kalender, Tagebuch, Stats + Rekorde, Einst. + zakładki, Vorbereitung): w ciemnym motywie brak tekstu z kontrastem < 1.5; w EN i PL brak surowych kluczy i słów z innego języka |
 | Usunięcie konta trenera | coach-delete | 3 konta: współtrener usuwa konto → znika z coachIds, grupa zostaje; Haupttrainer usuwa konto → groups, groupPlans, groupInvites puste, uczeń bez planu grupy i bez trenera (DS 2.4 v1.11) |
+| Trener: dark + EN/PL | i18n-theme-coach | Übersicht, Termine, Schüler + podgląd + pełny profil, Gruppen + ekran grupy, okno wiadomości, Einst. trenera, ekran treningu (pusty i po Passe): kontrast w ciemnym motywie, EN/PL bez kluczy i obcych słów |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
@@ -48,7 +49,7 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 
 - Delay Mirror: prawdziwe systemowe „Teilen” (navigator.share) — w headless tylko pobranie pliku
 - WORLD (wyłączone „Bald verfügbar”)
-- Ciemny motyw i EN/PL na ekranach trenera, okienkach i ekranie treningu (test przegląda tylko główne ekrany ucznia)
+- Ciemny motyw i EN/PL w pozostałych okienkach (fokus, temat, kalendarz-formularz) — przegląd obejmuje główne ekrany i okno wiadomości
 
 ## Znalezione błędy (naprawione)
 
@@ -76,6 +77,7 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 21. (2026-11-06) Eksport CSV: nagłówek zawsze po polsku
 22. (2026-11-06) „Fehlschuss” dla złego technicznie strzału kolidował z oficjalnym DE Fehlschuss = M → „Technikfehler”
 23. (2026-11-06) Ciemny motyw: kafelek „Zuletzt” na Home — żółty tekst na żółtym tle (niewidoczny wynik)
+24. (2026-11-06) Ciemny motyw, ekran treningu: pasek wyniku żółty na żółtym, jasne cyfry na klawiszach X/10/9, suma Passe jasna na jasnym, białe puste pola tabeli
 
 ## Do omówienia (partia 2)
 

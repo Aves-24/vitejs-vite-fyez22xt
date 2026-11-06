@@ -14,7 +14,12 @@ const addDay = (key: string, n: number) => {
   return dayKeyOfDate(d);
 };
 
-export default function GroupPlanStrip({ userId }: { userId: string }) {
+export default function GroupPlanStrip({ userId, asRows = false, onCount }: {
+  userId: string;
+  /** [HOME 2026-11-06] Wiersze listy „Nächste Termine” (pasek fioletowy = od trenera). */
+  asRows?: boolean;
+  onCount?: (n: number) => void;
+}) {
   const { t, i18n } = useTranslation();
   const [plans, setPlans] = useState<GroupPlan[]>([]);
 
@@ -39,10 +44,45 @@ export default function GroupPlanStrip({ userId }: { userId: string }) {
     })
     .slice(0, 2);
 
+  const count = rows.length;
+  useEffect(() => { onCount?.(count); }, [count, onCount]);
   if (rows.length === 0) return null;
 
   const fmtDay = (key: string) =>
     new Date(`${key}T12:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' });
+
+  if (asRows) {
+    return (
+      <>
+        {rows.map(({ plan, today, next }) => {
+          const todayOn = today.filter(o => !o.cancelled);
+          const todayCancelled = today.length > 0 && todayOn.length === 0;
+          const shown = todayOn[0] ?? next;
+          const place = shown?.place ? ` · ${shown.place}` : '';
+          return (
+            <div key={plan.groupId} data-testid="group-plan" className="flex items-center gap-2 pl-2.5 pr-3 py-2 border-l-4 border-violet-400 border-t border-gray-100 first:border-t-0">
+              <span className="material-symbols-outlined text-[18px] text-violet-500 shrink-0">{plan.icon || 'groups'}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-bold text-[#0a3a2a] truncate leading-tight">
+                  <span className={todayOn.length ? 'text-emerald-700' : todayCancelled ? 'text-red-500' : 'text-gray-500'}>
+                    {todayOn.length ? t('groupPlan.today') : todayCancelled ? t('groupPlan.cancelledToday') : t('groupPlan.next')}
+                    {todayCancelled && today[0]?.note ? ` · ${today[0].note}` : ''}
+                  </span>
+                  {' '}
+                  {todayOn.length
+                    ? `${todayOn.map(o => o.time).join(', ')} · ${plan.name}${place}`
+                    : !todayCancelled && next ? `${fmtDay(next.date)} · ${next.time} · ${plan.name}${place}` : plan.name}
+                </p>
+                {todayCancelled && next && (
+                  <p className="text-[11px] font-bold text-gray-400 truncate">{t('groupPlan.next')}: {fmtDay(next.date)} · {next.time}</p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </>
+    );
+  }
 
   return (
     <div className="mt-2 space-y-1.5">

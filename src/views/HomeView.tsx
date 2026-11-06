@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { Suspense, useState, useEffect, useRef } from 'react';
+import { lazyWithRetry } from '../utils/lazyWithRetry';
 import { createPortal } from 'react-dom'; 
 import { db } from '../firebase';
 import { collection, query, where, orderBy, limit, onSnapshot, doc, getDoc, getDocs, Timestamp, updateDoc, deleteDoc, getAggregateFromServer, getCountFromServer, sum } from 'firebase/firestore';
@@ -27,6 +28,8 @@ import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../util
 import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
+// [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
+const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
 // Ikona plakietki planu pod logo (FREE / PRO / PRO na dni).
 const PLAN_ICON = { free: 'diamond', pro: 'diamond', days: 'hourglass_top' } as const;
@@ -78,31 +81,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
   const focusState = useCurrentFocus(userId);
   const focusPair = displayPair(focusState);
-  // Karty terminów zwijane tapnięciem w etykietę (user 2026-10-15) — pamięć telefonu.
-  const collapsedKey = `grotx_homeCollapsed_${userId}`;
-  const [collapsedCards, setCollapsedCards] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(collapsedKey) || '[]'); } catch { return []; }
-  });
-  const isCollapsed = (id: string) => collapsedCards.includes(id);
-  const toggleCard = (id: string) => {
-    const next = collapsedCards.includes(id) ? collapsedCards.filter(x => x !== id) : [...collapsedCards, id];
-    setCollapsedCards(next);
-    try { localStorage.setItem(collapsedKey, JSON.stringify(next)); } catch { /* prywatny tryb */ }
-  };
   const shortDate = (date: string) => new Date(date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' });
-  const collapsedBar = (id: string, label: string, info: string, cls: string) => (
-    <button
-      key={id}
-      onClick={() => toggleCard(id)}
-      className={`w-full mt-1 flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full shadow-sm border active:scale-[0.98] transition-all ${cls}`}
-    >
-      <span className="shrink-0 text-[8px] font-black uppercase tracking-widest">{label}</span>
-      <span className="flex-1 min-w-0 truncate text-left text-[11px] font-bold opacity-80">{info}</span>
-      <span className="material-symbols-outlined text-[16px] shrink-0">expand_more</span>
-    </button>
-  );
-  // Etykieta karty = przycisk zwijania (karta sama prowadzi do kalendarza).
-  const tagToggle = (id: string) => (e: React.MouseEvent) => { e.stopPropagation(); toggleCard(id); };
+  // [HOME 2026-11-06] Zwijane karty terminów zastąpiła jedna płaska lista „Nächste Termine”.
   const [nextTournament, setNextTournament] = useState<any | null>(null);
   const [nextOtherEvent, setNextOtherEvent] = useState<any | null>(null);
   const [nextTrainerSent, setNextTrainerSent] = useState<any | null>(null);
@@ -129,6 +109,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [avgArrowsMonth, setAvgArrowsMonth] = useState<number>(0);
   const [avgPointsMonth, setAvgPointsMonth] = useState<number>(0);
   const [recentScores, setRecentScores] = useState<number[]>([]);
+  const [recentAvg, setRecentAvg] = useState<number[]>([]);
   const [recentSessions, setRecentSessions] = useState<({ score: number; date: string; distance: string; type: string; ts: number } & PartialInfo)[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
   // snapshotu co liczniki, dzięki czemu modal nie robi już osobnego odczytu.
@@ -154,6 +135,17 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [userClub, setUserClub] = useState(''); 
   const [aiAdvice, setAiAdvice] = useState('');
   const [showQR, setShowQR] = useState(false);
+  // [HOME MENU 2026-11-06] Żółte menu w prawym górnym rogu.
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [bellSignal, setBellSignal] = useState(0);
+  const [showSchreiber, setShowSchreiber] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const close = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [menuOpen]);
   // [C38] Trener zeskanował kod → zaproszenie na ekranie, kod QR znika sam.
   useEffect(() => {
     const close = () => setShowQR(false);
@@ -575,7 +567,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v13_${userId}`;
+      const cacheKey = `grotX_stats_v14_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -589,6 +581,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.avgArrowsMonth != null) setAvgArrowsMonth(cached.avgArrowsMonth);
         if (cached.avgPointsMonth != null) setAvgPointsMonth(cached.avgPointsMonth);
         if (cached.recentScores) setRecentScores(cached.recentScores);
+        if (cached.recentAvg) setRecentAvg(cached.recentAvg);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
         if (cached.weeklyPoints) setWeeklyPoints(cached.weeklyPoints);
@@ -747,7 +740,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
+            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, scoreArrows: dd.scoreArrows || dd.sessionArrows || dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
@@ -755,6 +748,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // Lista w modalu (recentFull) pokazuje wszystkie, ze znaczkiem.
         const fullSessions = sessionList.filter(s => !s.isPartial);
         const recent = fullSessions.slice(-6).map(s => s.score);
+        // [HOME 2026-11-06] Forma = Ø na strzałę z 6 ostatnich treningów z punktami.
+        // Surowe wyniki mieszały dystanse (560 na 18 m obok 417 na 70 m); średnia na
+        // strzałę da się porównać — także dla krótszych treningów.
+        const recentAvg = sessionList.filter(s => s.scoreArrows > 0).slice(-6).map(s => Math.round((s.score / s.scoreArrows) * 100) / 100);
         // Do 50 — modal Ergebniskurve dociąga więcej przyciskiem "Pokaż więcej" (tylko PRO)
         const recentFull = sessionList.slice(-50);
 
@@ -836,6 +833,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setAvgArrowsMonth(avgArrowsM);
         setAvgPointsMonth(avgPointsM);
         setRecentScores(recent);
+        setRecentAvg(recentAvg);
         setRecentSessions(recentFull);
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
@@ -845,7 +843,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setWeeklySessionAvgByDist(weekSessionAvgByDist);
         setWeekStreak(streak);
 
-        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
+        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentAvg, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -855,7 +853,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v13_${userId}`);
+      localStorage.removeItem(`grotX_stats_v14_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -871,7 +869,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v13_${userId}`);
+    localStorage.removeItem(`grotX_stats_v14_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1126,6 +1124,104 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     return (isActive || isLastFinished) ? 1 : 0.7;
   };
 
+  // ─── [HOME 2026-11-06] „Nächste Termine”: jedna lista po dacie ─────────────
+  // Zawody, Wartung i To-do zawsze; reszta (Inne, terminy trenera, od trenera)
+  // dopełnia do 4 według daty. Kolor tylko na pasku (słownik kolorów).
+  type HomeRow = { key: string; kind: 'tournament' | 'maint' | 'todo' | 'coachSent' | 'coachReceived' | 'other'; when: number; dayLabel: string; title: string; meta: string; stripe: string; icon?: string; iconCls?: string; onClick: () => void };
+  const dayLabelOf = (date: string) => {
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? '' : `${d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace(/\.$/, '')} ${d.getDate()}.`;
+  };
+  const whenOf = (date: string, time?: string) => {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) return Number.MAX_SAFE_INTEGER;
+    const [h, m] = (time || '23:59').split(':').map(Number);
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d.getTime();
+  };
+  const homeRows: HomeRow[] = (() => {
+    if (isLoading) return [];
+    const always: HomeRow[] = [];
+    const rest: HomeRow[] = [];
+    if (nextTournament) always.push({
+      key: `t_${nextTournament.id}`, kind: 'tournament', when: whenOf(nextTournament.date, nextTournament.time),
+      dayLabel: dayLabelOf(nextTournament.date), title: nextTournament.title,
+      meta: getDaysUntil(nextTournament.date), stripe: 'border-l-[#0a3a2a]',
+      onClick: () => onGoToCalendar(nextTournament.id),
+    });
+    for (const item of maintenanceItems) always.push({
+      key: `m_${item.id}`, kind: 'maint', when: whenOf(item.maintenanceGroup.due),
+      dayLabel: '', icon: 'build', iconCls: 'text-[#8B5E3C]', title: item.title,
+      meta: t('maintenance.home.dueBy', { date: shortDate(item.maintenanceGroup.due) }), stripe: 'border-l-[#8B5E3C]',
+      onClick: () => onGoToCalendar(item.id),
+    });
+    for (const item of todoItems) always.push({
+      key: `d_${item.id}`, kind: 'todo', when: Number.MAX_SAFE_INTEGER,
+      dayLabel: '', icon: 'radio_button_unchecked', iconCls: 'text-blue-300', title: item.title, meta: '',
+      stripe: 'border-l-blue-900', onClick: () => onGoToCalendar(item.id),
+    });
+    if (nextOtherEvent) rest.push({
+      key: `o_${nextOtherEvent.id}`, kind: 'other', when: whenOf(nextOtherEvent.date, nextOtherEvent.time),
+      dayLabel: dayLabelOf(nextOtherEvent.date), title: nextOtherEvent.title,
+      meta: nextOtherEvent.time || nextOtherEvent.address || '', stripe: 'border-l-blue-900',
+      onClick: () => onGoToCalendar(nextOtherEvent.id),
+    });
+    // [HARMONOGRAM] Najbliższy termin trenera: z kalendarza albo ze stałego planu
+    // grup — co wcześniej. Dzisiejszy trening z planu znika 2 h po starcie.
+    const now = new Date();
+    const todayKey = dayKeyOfDate(now);
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const toMin = (hm: string) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
+    const planNext = isCoach ? coachGroupsHome.flatMap((g: any) =>
+      upcomingOccurrences(g.schedule, todayKey, 3)
+        .filter(o => o.date > todayKey || toMin(o.time) + 120 > nowMin)
+        .slice(0, 1)
+        .map(o => ({ id: `sched_${g.id}_${o.date}`, date: o.date, time: o.time, title: g.name, address: o.place, scheduledGroupId: g.id }))) : [];
+    const byWhen = (x: any, y: any) => `${x.date} ${x.time || '99:99'}`.localeCompare(`${y.date} ${y.time || '99:99'}`);
+    const nextCoach: any = [nextTrainerSent, ...planNext].filter(Boolean).sort(byWhen)[0] || null;
+    if (nextCoach) rest.push({
+      key: `c_${nextCoach.id}`, kind: 'coachSent', when: whenOf(nextCoach.date, nextCoach.time),
+      dayLabel: dayLabelOf(nextCoach.date), title: nextCoach.title, meta: nextCoach.time || t('calendar.wholeDay'),
+      stripe: 'border-l-rose-400',
+      // Trening z planu grupy otwiera grupę na ten dzień w panelu trenera.
+      onClick: () => (nextCoach.scheduledGroupId
+        ? onNavigate?.('COACH', 'GROUP', `${nextCoach.scheduledGroupId}@${nextCoach.date}`)
+        : onGoToCalendar(nextCoach.id)),
+    });
+    if (nextTrainerReceived) rest.push({
+      key: `r_${nextTrainerReceived.id}`, kind: 'coachReceived', when: whenOf(nextTrainerReceived.date, nextTrainerReceived.time),
+      dayLabel: dayLabelOf(nextTrainerReceived.date), title: nextTrainerReceived.title,
+      meta: nextTrainerReceived.time || t('calendar.wholeDay'), stripe: 'border-l-violet-400',
+      onClick: () => onGoToCalendar(nextTrainerReceived.id),
+    });
+    rest.sort((x, y) => x.when - y.when);
+    const picked = [...always, ...rest.slice(0, Math.max(0, 4 - always.length))];
+    return picked.sort((x, y) => x.when - y.when);
+  })();
+  const [groupPlanCount, setGroupPlanCount] = useState(0);
+
+  // Ostatni trening: data krótko + przejście do statystyk tego dnia.
+  const lastSessionMs = (() => {
+    const tsRaw = realLastSession?.timestamp;
+    if (!tsRaw) return 0;
+    return typeof tsRaw === 'number' ? tsRaw : tsRaw.toMillis ? tsRaw.toMillis() : tsRaw.seconds ? tsRaw.seconds * 1000 : 0;
+  })();
+  const lastSessionDate = lastSessionMs
+    ? new Date(lastSessionMs).toLocaleDateString(i18n.language, { day: '2-digit', month: '2-digit' })
+    : (realLastSession?.date ? String(realLastSession.date).split('.').slice(0, 2).map((p: string) => p.padStart(2, '0')).join('.') + '.' : '');
+  const openLastSession = () => {
+    if (!realLastSession) { onGoToStats?.(); return; }
+    let isoDate = '';
+    if (lastSessionMs) {
+      const d = new Date(lastSessionMs);
+      isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    } else if (realLastSession.date) {
+      const p = String(realLastSession.date).split('.');
+      if (p.length === 3) isoDate = `${p[2]}-${p[1].padStart(2, '0')}-${p[0].padStart(2, '0')}`;
+    }
+    onGoToStats?.(isoDate || undefined);
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#fcfdfe] px-5 pb-24 pt-[max(calc(env(safe-area-inset-top)+0.5rem),2.5rem)]">
       
@@ -1155,522 +1251,252 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </button>
           )}
         </div>
+        {/* [HOME MENU 2026-11-06] Jeden mały żółty przycisk (jak Training) zamiast
+            trzech ikon. Dzwonek wychodzi obok tylko przy nieprzeczytanych. */}
         <div className="flex items-center gap-2">
-
-          <button
-            onClick={() => onNavigate?.('DELAY_MIRROR')}
-            className="w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all shadow-sm active:scale-90 opacity-70"
-          >
-            <span className="material-symbols-outlined text-[#0a3a2a] text-[24px] font-bold">slow_motion_video</span>
-          </button>
-
-          <NotificationBell userId={userId} onNavigate={onNavigate ?? (() => {})} />
-          
-          <button onClick={() => setShowQR(true)} className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-gray-100 flex items-center justify-center active:scale-90 transition-all">
-             <span className="material-symbols-outlined text-indigo-600 text-3xl font-bold">qr_code_2</span>
-          </button>
+          <NotificationBell userId={userId} onNavigate={onNavigate ?? (() => {})} hideWhenRead openSignal={bellSignal} />
+          <div ref={menuRef} className="relative">
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              aria-label={t('home.menu')}
+              aria-expanded={menuOpen}
+              className={`w-11 h-11 rounded-full border-[3px] border-white shadow-md flex items-center justify-center active:scale-90 transition-all ${menuOpen ? 'bg-[#0a3a2a] text-[#fed33e]' : 'bg-[#fed33e] text-[#0a3a2a]'}`}
+            >
+              <span className="material-symbols-outlined text-[22px]">{menuOpen ? 'close' : 'apps'}</span>
+            </button>
+            {menuOpen && (
+              <div role="menu" className="absolute right-0 top-12 w-60 bg-white rounded-2xl border border-gray-100 shadow-xl z-[9999] overflow-hidden divide-y divide-gray-50 animate-fade-in">
+                {([
+                  ['notifications', t('announcements.pageTitle'), () => setBellSignal(n => n + 1), 'text-[#0a3a2a]'],
+                  ['slow_motion_video', t('delayMirror.title'), () => onNavigate?.('DELAY_MIRROR'), 'text-[#0a3a2a]'],
+                  ['calculate', t('schreiber.title'), () => setShowSchreiber(true), 'text-[#0a3a2a]'],
+                  ['qr_code_2', t('home.qrTitle'), () => setShowQR(true), 'text-indigo-600'],
+                ] as const).map(([icon, label, run, cls]) => (
+                  <button key={icon} role="menuitem" onClick={() => { setMenuOpen(false); run(); }} className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-50 transition-colors">
+                    <span className={`material-symbols-outlined text-[20px] ${cls}`}>{icon}</span>
+                    <span className="flex-1 text-[14px] font-bold text-[#0a3a2a]">{label}</span>
+                  </button>
+                ))}
+                {/* Odświeżenie statystyk (dawniej przycisk pod kafelkami) — 2× dziennie. */}
+                <button role="menuitem" disabled={isRefreshing || refreshesLeft <= 0} onClick={() => { setMenuOpen(false); handleRefresh(); }} className="w-full flex items-center gap-3 px-4 py-3 text-left active:bg-gray-50 transition-colors disabled:opacity-40">
+                  <span className={`material-symbols-outlined text-[20px] text-[#0a3a2a] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
+                  <span className="flex-1 text-[14px] font-bold text-[#0a3a2a]">{t('home.refresh')}</span>
+                  <span className="text-[11px] font-black text-[#0a3a2a] bg-gray-100 rounded-md px-1.5">{refreshesLeft}</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
 
-      <div className="flex flex-col gap-2">
+      {/* [HOME 2026-11-06] Nowy układ (makieta v5, memory: project_home_redesign_plan):
+          Fokus → liczby + forma → „Nächste Termine” (jedna lista po dacie, kolor
+          tylko na pasku) → Arena i Ranking → zajawka trenera i build. */}
+      <div className="flex flex-col gap-3">
 
-        {/* NASTĘPNY CEL */}
-        {!isLoading && nextTournament && isCollapsed('goal') && collapsedBar('goal', t('home.nextGoal'), `${shortDate(nextTournament.date)} · ${nextTournament.title}`, 'bg-[#0a3a2a] text-white border-[#0a3a2a]')}
-        {!isLoading && nextTournament && !isCollapsed('goal') && (
-          <div onClick={() => onGoToCalendar(nextTournament.id)} className="relative bg-[#0a3a2a] rounded-[28px] p-4 mt-1 shadow-lg text-white active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer border border-[#0a3a2a]">
-            <div className="absolute inset-0 rounded-[28px] overflow-hidden pointer-events-none">
-              <div className="absolute right-[-40px] top-1/2 -translate-y-1/2 opacity-5">
-                <svg width="240" height="240" viewBox="0 0 100 100">
-                  <circle cx="50" cy="50" r="45" stroke="white" strokeWidth="2" fill="none"/>
-                  <circle cx="50" cy="50" r="35" stroke="white" strokeWidth="2" fill="none"/>
-                  <circle cx="50" cy="50" r="25" stroke="white" strokeWidth="2" fill="none"/>
-                  <circle cx="50" cy="50" r="15" stroke="white" strokeWidth="2" fill="none"/>
-                  <circle cx="50" cy="50" r="5" fill="white"/>
-                </svg>
-              </div>
-            </div>
-            
-            <button onClick={tagToggle('goal')} className="absolute -top-2.5 left-6 flex items-center gap-0.5 bg-[#fed33e] text-[#0a3a2a] pl-3 pr-1.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-sm z-20 border border-[#0a3a2a]">
-              {t('home.nextGoal')}
-              <span className="material-symbols-outlined text-[12px]">expand_less</span>
+        {/* 1. FOKUS — na samej górze; bez fokusu karta znika. */}
+        {focusPair.main && (
+          <FocusStrip
+            focus={focusPair.main}
+            {...displayProgress(focusState, focusPair.main)}
+            // Temat treningu: dziennik przewija do wpisu i rozwija opis/linki.
+            onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
+            other={focusPair.other}
+            onSwap={() => swapFocus(userId, focusState)}
+            // Opis i linki tylko jako ikonki — treść w dzienniku (user 2026-10-23).
+            topicMore={focusPair.main.topicId && focusState?.trainingTopic
+              ? { desc: !!focusState.trainingTopic.desc, links: focusState.trainingTopic.links ?? [] }
+              : undefined}
+          />
+        )}
+
+        {/* 2. LICZBY + FORMA — jedna karta. */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="home-stats">
+          <div className="grid grid-cols-3 divide-x divide-gray-100">
+            <button
+              onClick={() => { setQuickStatsInitialTab('ARROWS'); setIsQuickStatsOpen(true); }}
+              className="px-3 py-2.5 text-left active:bg-gray-50 transition-colors"
+            >
+              <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{monthlyTotal}</p>
+              <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.arrowsPerMonth')}</p>
             </button>
-            <span className="absolute -top-2.5 right-6 bg-emerald-500 text-white px-3 py-0.5 rounded-full text-[9px] font-black uppercase shadow-sm z-20 border border-[#0a3a2a]">
-              {getDaysUntil(nextTournament.date)}
-            </span>
+            <button
+              onClick={() => { setQuickStatsInitialTab('POINTS'); setIsQuickStatsOpen(true); }}
+              className="px-3 py-2.5 text-left active:bg-gray-50 transition-colors"
+            >
+              {/* Bez treningu z punktami w 14 dniach: „—” zamiast mylącego 0.0. */}
+              <p className="text-[20px] font-black text-[#0a3a2a] leading-none">
+                {Number(avg14Days) > 0 ? Number(avg14Days).toLocaleString(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
+              </p>
+              <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.avg14Short')}</p>
+            </button>
+            <button
+              onClick={openLastSession}
+              aria-label={realLastSession
+                ? `${t('home.lastShort')} ${realLastSession.score} ${realLastSession.distance || ''}${isPartialSession(realLastSession) ? ` · ${partialLabel(realLastSession)}` : ''} ${lastSessionDate}`.replace(/s+/g, ' ').trim()
+                : t('home.lastShort')}
+              className="px-3 py-2.5 text-left active:bg-gray-50 transition-colors min-w-0"
+            >
+              <p className="text-[20px] font-black text-[#0a3a2a] leading-none truncate">
+                {realLastSession ? realLastSession.score : '—'}
+                {realLastSession?.distance ? <span className="text-[11px] font-bold text-gray-400 ml-1">{realLastSession.distance}</span> : null}
+              </p>
+              <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">
+                {t('home.lastShort')}{lastSessionDate ? ` · ${lastSessionDate}` : ''}
+              </p>
+            </button>
+          </div>
 
-            <div className="flex items-center gap-3 relative z-10 w-full pt-1">
-              <div className="bg-[#fed33e] text-[#0a3a2a] p-2 rounded-2xl text-center min-w-[60px] shadow-inner shrink-0">
-                <span className="block text-[9px] font-black uppercase leading-none mb-0.5">{new Date(nextTournament.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                <span className="block text-xl font-black">{new Date(nextTournament.date).getDate()}</span>
-              </div>
-              <div className="flex-1 min-w-0 pr-2">
-                <h3 className="font-black text-[17px] leading-tight mb-1">{nextTournament.title}</h3>
-                {/* Etykieta budowana na bieżąco — pole `type` w bazie jest zapisane w języku
-                    twórcy wydarzenia, więc stare wpisy pokazywałyby np. niemiecki tekst. */}
-                <span className="text-[9px] font-bold text-emerald-300 uppercase tracking-widest block leading-none mb-1">
-                  {`${t('calendar.upcomingTournaments')}${nextTournament.distance ? ` ${nextTournament.distance}` : ''}`}
+          {/* Forma: Ø na strzałę z 6 ostatnich treningów (porównywalne między dystansami). */}
+          {recentAvg.length >= 2 && (() => {
+            const W = 300, H = 44, pad = 6;
+            const lo = Math.min(...recentAvg), hi = Math.max(...recentAvg);
+            const range = hi - lo || 1;
+            const pts = recentAvg.map((v, i) => ({
+              x: pad + (i / (recentAvg.length - 1)) * (W - pad * 2),
+              y: H - pad - ((v - lo) / range) * (H - pad * 2),
+            }));
+            const first = recentAvg[0], last = recentAvg[recentAvg.length - 1];
+            const delta = Math.round((last - first) * 10) / 10;
+            const fmt = (v: number) => v.toLocaleString(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+            return (
+              <button
+                onClick={() => recentScores.length >= 2 && setShowTrendModal(true)}
+                className="w-full border-t border-gray-100 px-3 pt-2 pb-1.5 text-left active:bg-gray-50 transition-colors"
+                data-testid="home-form"
+              >
+                <span className="flex items-center justify-between text-[11px] font-bold text-gray-500">
+                  <span>{t('home.formTitle', { count: recentAvg.length })}</span>
+                  <span className={delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-500' : 'text-gray-400'}>
+                    <span className="material-symbols-outlined text-[14px] align-[-3px]">{delta > 0 ? 'trending_up' : delta < 0 ? 'trending_down' : 'trending_flat'}</span>
+                    {' '}{delta > 0 ? '+' : ''}{fmt(delta)}
+                  </span>
                 </span>
-                <span className="text-[9px] font-bold text-emerald-500 uppercase tracking-widest flex items-center gap-0.5">
-                  <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
-                  <span>{nextTournament.address || t('home.noLocation')}</span>
+                <span className="flex items-end gap-2 mt-0.5">
+                  <span className="text-[11px] font-bold text-gray-400 shrink-0">{fmt(first)}</span>
+                  <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="flex-1 h-10 gx-trend" style={{ overflow: 'visible' }}>
+                    <polyline points={pts.map(p => `${p.x},${p.y}`).join(' ')} fill="none" stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                    <circle cx={pts[pts.length - 1].x} cy={pts[pts.length - 1].y} r="4" fill="#fed33e" stroke="#0a3a2a" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                  </svg>
+                  <span className="text-[11px] font-black text-[#0a3a2a] shrink-0">{fmt(last)}</span>
                 </span>
+              </button>
+            );
+          })()}
+        </div>
+
+        {/* 3. NÄCHSTE TERMINE — jedna lista po dacie; zawody zawsze, z pucharem. */}
+        {/* Jedna, zawsze zamontowana kopia GroupPlanStrip — pusta lista chowana CSS-em. */}
+        <div className={!isLoading && (homeRows.length > 0 || groupPlanCount > 0) ? '' : 'hidden'}>
+          <div>
+            <div className="flex items-baseline justify-between px-1 mb-1.5">
+              <p className="text-[12px] font-bold text-gray-500">{t('home.nextEvents')}</p>
+              <button onClick={() => onGoToCalendar()} className="text-[12px] font-bold text-[#0a3a2a] flex items-center gap-0.5 active:opacity-60">
+                {t('home.calendar')}<span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+              </button>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="home-events">
+              {homeRows.map((row, i) => (
+                <button
+                  key={row.key}
+                  onClick={row.onClick}
+                  className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${row.kind === 'tournament' ? 'py-2.5' : 'py-2'} text-left border-l-4 ${row.stripe} ${i > 0 ? 'border-t border-t-gray-100' : ''} active:bg-gray-50 transition-colors`}
+                >
+                  <span className={`w-11 shrink-0 text-[12px] ${row.kind === 'tournament' ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
+                    {row.icon
+                      ? <span className={`material-symbols-outlined text-[18px] align-middle ${row.iconCls}`}>{row.icon}</span>
+                      : row.dayLabel}
+                  </span>
+                  {row.kind === 'tournament' && (
+                    <span className="w-6 h-6 rounded-full bg-[#fed33e] flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-[15px] text-[#0a3a2a]">emoji_events</span>
+                    </span>
+                  )}
+                  <span className="flex-1 min-w-0 text-[14px] font-bold text-[#0a3a2a] truncate">{row.title}</span>
+                  {row.kind === 'tournament'
+                    ? <span className="shrink-0 text-[11px] font-black bg-[#0a3a2a] text-[#fed33e] rounded-md px-1.5 py-0.5 whitespace-nowrap">{row.meta}</span>
+                    : row.meta ? <span className="shrink-0 max-w-[40%] truncate text-[11px] font-bold text-gray-400">{row.meta}</span> : null}
+                </button>
+              ))}
+              {/* Plan grupy ucznia (lustro groupPlans/) — wiersze z fioletowym paskiem. */}
+              <div className={homeRows.length > 0 && groupPlanCount > 0 ? 'border-t border-gray-100' : ''}>
+                <GroupPlanStrip userId={userId} asRows onCount={setGroupPlanCount} />
               </div>
-              <span className="material-symbols-outlined text-white/40 font-bold text-[32px] shrink-0">arrow_circle_right</span>
             </div>
           </div>
-        )}
-
-        {/* [WARTUNG] Konserwacja sprzętu — jeden wąski pasek na zestaw, kolor brąz. */}
-        {!isLoading && maintenanceItems.map(item => (
-          <button
-            key={item.id}
-            onClick={() => onGoToCalendar(item.id)}
-            className="w-full mt-2 flex items-center gap-2 pl-2 pr-2 py-1.5 rounded-full shadow-sm border border-[#8B5E3C] bg-[#8B5E3C] text-white active:scale-[0.98] transition-all"
-          >
-            <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined text-[14px]">build</span>
-            </span>
-            <span className="flex-1 min-w-0 truncate text-left text-[11px] font-black">
-              {item.title}{item.note ? <span className="font-bold opacity-70"> · {item.note}</span> : null}
-            </span>
-            <span className="shrink-0 text-[9px] font-black uppercase tracking-widest opacity-80">
-              {t('maintenance.home.dueBy', { date: shortDate(item.maintenanceGroup.due) })}
-            </span>
-            <span className="material-symbols-outlined text-[16px] shrink-0 opacity-80">chevron_right</span>
-          </button>
-        ))}
-
-        {/* KALENDARZ PRYWATNY / TO-DO */}
-        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && isCollapsed('calendar') && collapsedBar(
-          'calendar',
-          todoItems.length > 0 ? t('calendar.todoSection') : t('home.calendar'),
-          todoItems.length > 0 ? todoItems.map(i => i.title).join(' · ') : `${shortDate(nextOtherEvent!.date)} · ${nextOtherEvent!.title}`,
-          'bg-blue-900 text-white border-blue-900',
-        )}
-        {!isLoading && (todoItems.length > 0 || nextOtherEvent) && !isCollapsed('calendar') && (
-          todoItems.length > 0 ? (
-            <div className="relative bg-blue-50 border border-blue-200 rounded-[24px] shadow-sm mt-2 pt-3">
-              <button onClick={tagToggle('calendar')} className="absolute -top-2.5 left-6 flex items-center gap-0.5 bg-blue-900 text-white pl-3 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
-                {t('calendar.todoSection')}
-                <span className="material-symbols-outlined text-[12px]">expand_less</span>
-              </button>
-              <div className="pt-1 px-3 pb-2 space-y-1.5">
-                {todoItems.map(item => (
-                  <div key={item.id} onClick={() => onGoToCalendar(item.id)} className="rounded-[18px] px-3 py-2.5 flex items-center gap-3 active:scale-[0.98] transition-all cursor-pointer">
-                    <span className="material-symbols-outlined text-blue-300 text-[20px] shrink-0">radio_button_unchecked</span>
-                    <p className="flex-1 font-black text-[14px] text-[#0a3a2a] leading-tight truncate">{item.title}</p>
-                    <span className="material-symbols-outlined text-blue-300 text-[18px] shrink-0">arrow_forward_ios</span>
-                  </div>
-                ))}
-              </div>
-              {nextOtherEvent && (
-                <div
-                  onClick={() => onGoToCalendar(nextOtherEvent.id)}
-                  className="flex items-center gap-2 px-4 py-2 border-t border-blue-200 cursor-pointer active:bg-blue-100 transition-colors"
-                >
-                  <span className="material-symbols-outlined text-blue-400 text-[13px] shrink-0">calendar_month</span>
-                  <span className="text-[9px] font-black text-blue-600 shrink-0">
-                    {new Date(nextOtherEvent.date).toLocaleDateString(i18n.language, { day: 'numeric', month: 'short' })}
-                  </span>
-                  <span className="text-[9px] font-bold text-[#0a3a2a] truncate flex-1">{nextOtherEvent.title}</span>
-                  <span className="material-symbols-outlined text-blue-400 text-[13px] shrink-0">arrow_forward</span>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div onClick={() => onGoToCalendar(nextOtherEvent!.id)} className="relative bg-blue-50 border border-blue-200 rounded-[22px] px-3.5 py-2 flex items-center justify-between active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2">
-              <div className="absolute inset-0 rounded-[22px] overflow-hidden pointer-events-none">
-                <div className="absolute right-[20px] top-1/2 -translate-y-1/2 opacity-5">
-                  <span className="material-symbols-outlined text-[110px]">calendar_month</span>
-                </div>
-              </div>
-              <button onClick={tagToggle('calendar')} className="absolute -top-2 left-5 flex items-center gap-0.5 bg-blue-900 text-white pl-2.5 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border border-blue-900">
-                {t('home.calendar')}
-                <span className="material-symbols-outlined text-[12px]">expand_less</span>
-              </button>
-              <div className="flex items-center gap-2.5 relative z-10 w-full pt-0.5">
-                <div className="bg-blue-900 text-white px-2 py-1.5 rounded-xl text-center min-w-[46px] shadow-sm shrink-0">
-                  <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(nextOtherEvent!.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                  <span className="block text-lg font-black leading-none">{new Date(nextOtherEvent!.date).getDate()}</span>
-                </div>
-                <div className="flex-1 min-w-0 pr-1">
-                  <h4 className="font-black text-[#0a3a2a] text-[15px] leading-tight mb-0.5">{nextOtherEvent!.title}</h4>
-                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-widest flex items-center gap-0.5">
-                    <span className="material-symbols-outlined text-[11px] shrink-0">location_on</span>
-                    <span className="truncate">{nextOtherEvent!.address || t('home.noLocation')}</span>
-                  </span>
-                </div>
-                <span className="material-symbols-outlined text-blue-700/30 font-bold text-[26px] shrink-0">arrow_circle_right</span>
-              </div>
-            </div>
-          )
-        )}
-
-        {/* TERMINY TRENERSKIE — jako trener / od trenera */}
-        {!isLoading && (() => {
-          // [HARMONOGRAM] Najbliższy termin trenera: z kalendarza albo ze stałego
-          // planu grup — co wypada wcześniej (user 2026-10-26). Dzisiejszy trening
-          // z planu znika 2 h po starcie.
-          const now = new Date();
-          const todayKey = dayKeyOfDate(now);
-          const nowMin = now.getHours() * 60 + now.getMinutes();
-          const toMin = (hm: string) => { const [h, m] = hm.split(':').map(Number); return h * 60 + m; };
-          const planNext = isCoach ? coachGroupsHome.flatMap((g: any) =>
-            upcomingOccurrences(g.schedule, todayKey, 3)
-              .filter(o => o.date > todayKey || toMin(o.time) + 120 > nowMin)
-              .slice(0, 1)
-              .map(o => ({ id: `sched_${g.id}_${o.date}`, date: o.date, time: o.time, title: g.name, address: o.place, scheduledGroupId: g.id }))) : [];
-          const byWhen = (a: any, b: any) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`);
-          const nextCoach = [nextTrainerSent, ...planNext].filter(Boolean).sort(byWhen)[0] || null;
-          if (!nextCoach && !nextTrainerReceived) return null;
-          const both = !!(nextCoach && nextTrainerReceived);
-          const renderCard = (event: any, isMirrored: boolean, half: boolean) => {
-            const palette = isMirrored
-              ? { bg: 'bg-violet-50', border: 'border-violet-200', label: 'text-violet-600', tag: 'bg-violet-500 text-white border-violet-500', accent: 'text-violet-700/40', dateBg: 'bg-violet-100' }
-              : { bg: 'bg-rose-50', border: 'border-rose-200', label: 'text-rose-600', tag: 'bg-rose-500 text-white border-rose-500', accent: 'text-rose-700/40', dateBg: 'bg-rose-100' };
-            const labelKey = isMirrored ? 'calendar.legendTrainerReceived' : 'calendar.legendTrainerSent';
-            const cardId = isMirrored ? 'trainerReceived' : 'trainerSent';
-            if (isCollapsed(cardId)) {
-              return collapsedBar(cardId, t(labelKey), `${shortDate(event.date)} · ${event.title}`,
-                isMirrored ? 'bg-violet-500 text-white border-violet-500' : 'bg-rose-500 text-white border-rose-500');
-            }
-            return (
-              <div
-                key={event.id}
-                // Trening z planu grupy otwiera grupę na ten dzień w panelu trenera.
-                onClick={() => (event.scheduledGroupId
-                  ? onNavigate?.('COACH', 'GROUP', `${event.scheduledGroupId}@${event.date}`)
-                  : onGoToCalendar(event.id))}
-                className={`relative ${palette.bg} border ${palette.border} rounded-[20px] ${half ? 'px-2.5 py-2' : 'px-3.5 py-2'} active:scale-[0.98] transition-all cursor-pointer shadow-sm mt-2`}
-              >
-                <button onClick={tagToggle(cardId)} className={`absolute -top-2 left-4 flex items-center gap-0.5 ${palette.tag} pl-2.5 pr-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm z-20 border`}>
-                  {t(labelKey)}
-                  <span className="material-symbols-outlined text-[12px]">expand_less</span>
-                </button>
-                <div className="flex items-center gap-2.5 pt-0.5 w-full">
-                  <div className={`${palette.dateBg} text-[#0a3a2a] px-2 py-1.5 rounded-xl text-center min-w-[43px] shadow-sm shrink-0`}>
-                    <span className="block text-[8px] font-black uppercase leading-none mb-0.5">{new Date(event.date).toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                    <span className="block text-lg font-black leading-none">{new Date(event.date).getDate()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0 pr-0.5">
-                    <h4 className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{event.title}</h4>
-                    <span className={`text-[9px] font-bold ${palette.label} uppercase tracking-widest flex items-center gap-0.5`}>
-                      <span className="material-symbols-outlined text-[11px] shrink-0">schedule</span>
-                      <span className="truncate">{event.time || t('calendar.wholeDay')}</span>
-                    </span>
-                  </div>
-                  {!half && (
-                    <span className={`material-symbols-outlined ${palette.accent} font-bold text-[26px] shrink-0`}>arrow_circle_right</span>
-                  )}
-                </div>
-              </div>
-            );
-          };
-          if (both) {
-            return (
-              <div className="grid grid-cols-2 gap-2">
-                {renderCard(nextTrainerReceived, true, true)}
-                {renderCard(nextCoach, false, true)}
-              </div>
-            );
-          }
-          return renderCard(nextTrainerReceived || nextCoach, !!nextTrainerReceived, false);
-        })()}
-
-        {/* ─── PASEK STATYSTYK + OSTATNI WYNIK ──────────────────────────────── */}
-        <div className="flex items-stretch gap-2 mt-1">
-        <div className="bg-white rounded-[24px] border border-gray-100 shadow-sm flex items-stretch flex-1 overflow-hidden">
-
-          {/* 1. Strzały miesięczne */}
-          <button
-            className="flex flex-col items-center justify-center px-4 py-3 shrink-0 active:bg-gray-50 transition-all"
-            onClick={() => { setQuickStatsInitialTab('ARROWS'); setIsQuickStatsOpen(true); }}
-          >
-            <p className="text-[28px] font-black text-[#0a3a2a] leading-none">{monthlyTotal}</p>
-            <span className="text-[11px] font-bold text-gray-500 uppercase mt-1 tracking-wide whitespace-nowrap">{t('home.arrowsPerMonth')}</span>
-          </button>
-
-          <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
-
-          {/* 2. Średnia 14 dni */}
-          <button
-            className="flex flex-col items-center justify-center px-3 py-3 shrink-0 active:bg-gray-50 transition-all"
-            onClick={() => { setQuickStatsInitialTab('POINTS'); setIsQuickStatsOpen(true); }}
-          >
-            <p className="text-[22px] font-black text-[#725b00] leading-none">{avg14Days}</p>
-            <span className="text-[10px] font-bold text-[#725b00]/70 mt-1 tracking-wide whitespace-nowrap">{t('home.avg14Short')}</span>
-          </button>
-
-          <div className="w-[1px] bg-gray-100 self-stretch shrink-0" />
-
-          {/* 3. Wykres + etykiety */}
-          <button onClick={() => recentScores.length >= 2 && setShowTrendModal(true)} className="flex-1 flex items-center justify-center px-2 py-2 min-w-0 overflow-hidden active:opacity-70 transition-opacity">
-            {recentScores.length >= 2 ? (() => {
-              const W = 100, H = 40, pad = 6;
-              const minS = Math.min(...recentScores);
-              const maxS = Math.max(...recentScores);
-              const lastS = recentScores[recentScores.length - 1];
-              const maxIdx = recentScores.indexOf(maxS);
-              const minIdx = recentScores.lastIndexOf(minS);
-              const range = maxS - minS || 1;
-              const pts = recentScores.map((s, i) => ({
-                x: pad + (i / (recentScores.length - 1)) * (W - pad * 2),
-                y: H - pad - ((s - minS) / range) * (H - pad * 2),
-              }));
-              const polyline = pts.map(p => `${p.x},${p.y}`).join(' ');
-              return (
-                <div className="flex items-center gap-1.5 w-full min-w-0">
-                  <svg viewBox={`0 0 ${W} ${H}`} className="gx-trend flex-1 min-w-0" style={{ overflow: 'visible' }}>
-                    <polyline points={polyline} fill="none" stroke="#0a3a2a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" opacity="0.3" />
-                    {pts.map((p, i) => {
-                      const isMax = i === maxIdx;
-                      const isMin = i === minIdx;
-                      const isLast = i === pts.length - 1;
-                      const color = isMax ? '#22c55e' : isMin ? '#ef4444' : isLast ? '#fed33e' : '#0a3a2a';
-                      const r = (isMax || isMin) ? 4 : isLast ? 3 : 2;
-                      const opacity = (isMax || isMin || isLast) ? 1 : 0.2;
-                      return <circle key={i} cx={p.x} cy={p.y} r={r} fill={color} opacity={opacity} />;
-                    })}
-                  </svg>
-                  <div className="flex flex-col gap-[5px] shrink-0">
-                    <span className="flex items-center gap-1 text-[9px] font-black text-emerald-500 leading-none">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 inline-block" />{maxS}
-                    </span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-red-400 leading-none">
-                      <span className="w-2 h-2 rounded-full bg-red-400 shrink-0 inline-block" />{minS}
-                    </span>
-                    <span className="flex items-center gap-1 text-[9px] font-black text-[#725b00] leading-none">
-                      <span className="w-2 h-2 rounded-full bg-[#fed33e] shrink-0 inline-block" />{lastS}
-                    </span>
-                  </div>
-                </div>
-              );
-            })() : (
-              <span className="material-symbols-outlined text-gray-200 text-2xl">monitoring</span>
-            )}
-          </button>
-
         </div>
 
-        {/* 4. Ostatni wynik — osobna karta */}
-        <button
-          className="flex flex-col items-center justify-center px-4 py-3 shrink-0 bg-[#fed33e] rounded-[24px] shadow-sm active:bg-[#ffc800] transition-all text-center"
-          onClick={() => {
-            if (realLastSession) {
-              const tsRaw = realLastSession.timestamp;
-              let isoDate = '';
-              if (tsRaw) {
-                const ms = typeof tsRaw === 'number'
-                  ? tsRaw
-                  : tsRaw.toMillis
-                    ? tsRaw.toMillis()
-                    : tsRaw.seconds
-                      ? tsRaw.seconds * 1000
-                      : 0;
-                if (ms) {
-                  const d = new Date(ms);
-                  isoDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-                }
-              }
-              if (!isoDate && realLastSession.date) {
-                const p = realLastSession.date.split('.');
-                if (p.length === 3) isoDate = `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`;
-              }
-              onGoToStats?.(isoDate || undefined);
-            } else {
-              onGoToStats?.();
-            }
-          }}
-        >
-          <span className="text-[9px] font-black text-[#725b00]/70 uppercase tracking-widest leading-none mb-1 whitespace-nowrap">{t('home.lastShort')}</span>
-          <p className="text-[28px] font-black text-[#725b00] leading-none">{realLastSession ? realLastSession.score : '--'}</p>
-          <span className="text-[9px] font-bold text-[#725b00]/70 leading-none mt-1 whitespace-nowrap block">{realLastSession ? `${realLastSession.distance || ''}${isPartialSession(realLastSession) ? ` · ${partialLabel(realLastSession)}` : ''}` : '--'}</span>
-          <span className="text-[9px] font-bold text-[#725b00]/60 leading-none mt-0.5 whitespace-nowrap block">
-            {realLastSession
-              ? (realLastSession.date || (() => {
-                  const tsRaw = realLastSession.timestamp;
-                  const ms = typeof tsRaw === 'number' ? tsRaw : tsRaw?.toMillis ? tsRaw.toMillis() : tsRaw?.seconds ? tsRaw.seconds * 1000 : 0;
-                  if (!ms) return '--';
-                  const d = new Date(ms);
-                  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
-                })())
-              : '--'}
-          </span>
-        </button>
-        </div>
-
-
-        {/* ─── MULTIPLAYER ARENA + RANKING — obok siebie ───────────────────── */}
-        <div className="mt-2 grid grid-cols-2 gap-2">
-
-          {/* Lewa — Multiplayer Arena. Z grą: wygląd karty BattleCard z okna Arena i historii
-              (gradient indygo–fiolet, ramka, pasek trybu) — user 2026-10-21. */}
-          <div
+        {/* 4. ARENA + RANKING — dwa niskie kafelki. */}
+        <div className="grid grid-cols-2 gap-2">
+          <button
             // Zawsze okno Arena — z niego i historia (karta gry), i nowa gra (user 2026-10-21).
             onClick={() => { setIsClubBattlesModalOpen(true); setClubBattlesReload(n => n + 1); }}
-            className={`rounded-[24px] flex flex-col justify-between p-4 cursor-pointer active:scale-[0.98] transition-all relative overflow-hidden ${
-              !hasAnyBattle
-                ? 'bg-indigo-50 border border-indigo-100 min-h-[80px]'
-                : 'bg-[#0a0f1a] border-2 border-indigo-400 shadow-lg shadow-indigo-500/20 min-h-[96px]'
-            }`}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 flex items-center gap-2.5 text-left active:scale-[0.98] transition-all min-w-0"
           >
-            {hasAnyBattle && (() => {
-              const mode = (doneBattle || pendingBattles[0])?.mode;
-              return (
-                <>
-                  <div className="absolute inset-0 pointer-events-none bg-gradient-to-r from-indigo-600/40 to-fuchsia-600/30" />
-                  <div className={`absolute top-0 left-0 w-1.5 h-full ${mode === 'CLUB' ? 'bg-fuchsia-500' : mode === 'WORLD' ? 'bg-emerald-500' : 'bg-indigo-500'}`} />
-                </>
-              );
-            })()}
-            {!hasAnyBattle && (
-              <div className="absolute right-0 bottom-0 opacity-[0.08] pointer-events-none">
-                <span className="material-symbols-outlined text-[60px] text-indigo-900">groups</span>
-              </div>
-            )}
-
             {!hasAnyBattle ? (
               <>
-                <span className="text-[9px] font-black uppercase tracking-widest leading-none text-indigo-400">Multiplayer Arena</span>
-                <div className="relative z-10 mt-2">
-                  <p className="text-[15px] font-black leading-tight text-indigo-900">{t('home.arenaEmptyTitle')}</p>
-                  <p className="text-[9px] font-bold text-indigo-500 leading-tight mt-0.5">{t('home.arenaEmptyDesc')}</p>
-                </div>
+                <span className="material-symbols-outlined text-[22px] text-indigo-500 shrink-0">groups</span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">{t('home.arenaEmptyTitle')}</span>
+                  <span className="block text-[11px] font-bold text-gray-500 truncate">Multiplayer Arena</span>
+                </span>
               </>
             ) : doneBattle ? (
               <>
-                {/* Wynik obok „Letztes Spiel”, miejsce pod spodem — na wąskim telefonie
-                    „Platz 2/2” obok wyniku się ucinało (user 2026-10-21). */}
-                <div className="relative z-10 pl-1 flex items-start justify-between gap-2">
-                  <span className="inline-flex items-center gap-1 text-[9px] font-black uppercase tracking-widest leading-none text-amber-300 mt-0.5">
-                    <span className="material-symbols-outlined text-[12px]">bolt</span>{t('battleHistory.latest')}
-                  </span>
-                  {donePlace && <p className="text-2xl font-black text-white leading-none shrink-0">{donePlace.score}</p>}
-                </div>
-                <div className="relative z-10 pl-1 mt-1">
-                  <p className="text-[15px] font-black leading-tight text-white">
+                <span className="material-symbols-outlined text-[22px] text-amber-500 shrink-0">bolt</span>
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">
                     {donePlace ? t('home.tilePlaceOnly', { place: donePlace.place, of: donePlace.of }) : t('home.done', 'Ukończono')}
-                  </p>
-                  <p className="text-[9px] font-bold text-gray-400 leading-tight mt-1 truncate">
-                    ✓ {t('home.tileEndsIn', { time: getRemainingTime(doneBattle.expiresAt, doneBattle.createdAt) })}
-                  </p>
-                </div>
+                    {donePlace ? <span className="text-gray-400 font-bold"> · {donePlace.score}</span> : null}
+                  </span>
+                  <span className="block text-[11px] font-bold text-gray-500 truncate">{t('battleHistory.latest')}</span>
+                </span>
               </>
             ) : (
               <>
-                <span className="relative pl-1 text-[9px] font-black uppercase tracking-widest leading-none flex items-center gap-1 text-fuchsia-300">
-                  Multiplayer Arena
-                  <span className="w-1.5 h-1.5 bg-fuchsia-400 rounded-full animate-pulse"></span>
+                <span className="relative shrink-0">
+                  <span className="material-symbols-outlined text-[22px] text-fuchsia-500">sensors</span>
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-fuchsia-500 rounded-full animate-pulse" />
                 </span>
-                <div className="relative z-10 pl-1 mt-2">
-                  <p className="text-[15px] font-black leading-tight text-white">
+                <span className="min-w-0">
+                  <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">
                     {pendingBattles.length === 1
                       ? (pendingBattles[0].mode === 'CLUB' ? t('home.tileClubRunning') : t('home.tileGameRunning'))
                       : t('home.tileGamesRunning', { n: pendingBattles.length })}
-                  </p>
-                  <p className="text-[9px] font-bold text-gray-400 leading-tight mt-1 truncate">
+                  </span>
+                  <span className="block text-[11px] font-bold text-gray-500 truncate">
                     {pendingBattles.length === 1
                       ? t('home.tileTimePlayers', { time: getRemainingTime(pendingBattles[0].expiresAt, pendingBattles[0].createdAt), n: (pendingBattles[0].participants || []).length })
                       : t('home.tileTapToJoin')}
-                  </p>
-                </div>
+                  </span>
+                </span>
               </>
             )}
-          </div>
-
-          {/* Prawa — Ranking Łucznika */}
-          <button
-            onClick={() => setIsRankInfoOpen(true)}
-            className="rounded-[24px] border border-gray-100 bg-white shadow-sm flex flex-col justify-between p-4 active:scale-[0.98] transition-all min-h-[80px] text-left"
-          >
-            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest leading-none">{t('home.archerRanking')}</span>
-            <div className="flex items-center gap-2 mt-2">
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 shadow-sm"
-                style={{ background: userRankColor, border: `2px solid ${userRankBorder}` }}
-              >
-                <span className="text-base font-black" style={{ color: userRankTextColor }}>{userLevel}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span
-                  className="text-[10px] font-black px-2 py-[3px] rounded inline-block mb-1.5"
-                  style={{ background: userRankColor, color: userRankTextColor, border: `1px solid ${userRankBorder}` }}
-                >
-                  {userRankName}
-                </span>
-                <div className="flex gap-[1px] w-full">
-                  {Array.from({ length: 24 }, (_, i) => {
-                    const filled = rankProgress >= (i + 1) * (100 / 24);
-                    const color = i < 6 ? '#ef4444' : i < 12 ? '#f97316' : i < 18 ? '#facc15' : '#22c55e';
-                    return (
-                      <div
-                        key={i}
-                        className="flex-1 h-2 rounded-sm transition-all duration-300"
-                        style={{ background: filled ? color : '#e5e7eb' }}
-                      />
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-            <p className="text-[9px] font-bold text-gray-400 leading-none mt-1.5">
-              {rankLine}
-            </p>
           </button>
 
+          <button
+            onClick={() => setIsRankInfoOpen(true)}
+            aria-label={`${t('home.archerRanking')} ${userLevel} ${userRankName}`}
+            className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 flex items-center gap-2.5 text-left active:scale-[0.98] transition-all min-w-0"
+          >
+            <span
+              className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[13px] font-black"
+              style={{ background: userRankColor, border: `2px solid ${userRankBorder}`, color: userRankTextColor }}
+            >
+              {userLevel}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">{userRankName}</span>
+              <span className="block text-[11px] font-bold text-gray-500 truncate">{rankLine}</span>
+            </span>
+          </button>
         </div>
-
-        {/* [PLAN DLA UCZNIA] Najbliższy trening grupy (lustro groupPlans/). */}
-        <GroupPlanStrip userId={userId} />
-
-        {focusPair.main && (
-          <div className="mt-2">
-            <FocusStrip
-              focus={focusPair.main}
-              {...displayProgress(focusState, focusPair.main)}
-              // Temat treningu: dziennik przewija do wpisu i rozwija opis/linki.
-              onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
-              other={focusPair.other}
-              onSwap={() => swapFocus(userId, focusState)}
-              // Opis i linki tylko jako ikonki — treść w dzienniku (user 2026-10-23).
-              topicMore={focusPair.main.topicId && focusState?.trainingTopic
-                ? { desc: !!focusState.trainingTopic.desc, links: focusState.trainingTopic.links ?? [] }
-                : undefined}
-            />
-          </div>
-        )}
 
         {/* AI COACH — tymczasowo ukryte */}
 
-        {/* BUILD TIMESTAMP + CURRENT TIME + REFRESH */}
-        <div className="flex flex-col items-center gap-2 mt-2">
-          <button
-            onClick={handleRefresh}
-            disabled={isRefreshing || refreshesLeft <= 0}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all shadow-sm relative ${
-              refreshesLeft <= 0
-                ? 'bg-gray-100 opacity-40 cursor-not-allowed'
-                : 'bg-gray-100 active:bg-gray-200'
-            }`}
-          >
-            <span className={`material-symbols-outlined text-[16px] text-[#0a3a2a] ${isRefreshing ? 'animate-spin' : ''}`}>sync</span>
-            <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">
-              {isRefreshing
-                ? t('home.refreshing', { defaultValue: 'Aktualisiere…' })
-                : t('home.refresh', { defaultValue: 'Aktualisieren' })}
-            </span>
-            {!isRefreshing && (
-              <span className={`w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black leading-none ${
-                refreshesLeft > 0 ? 'bg-[#0a3a2a] text-white' : 'bg-gray-300 text-gray-500'
-              }`}>
-                {refreshesLeft}
-              </span>
-            )}
-          </button>
-          {/* Zajawka trybu trenera (user 2026-09-25: „nie tak ukryty”) — mała
-              pigułka pod „Aktualisieren”, dopóki ktoś go nie włączy; prowadzi do Ustawień → Trener.
-              Gość nie może być trenerem (reguły coachInvites), więc bez zajawki. */}
+        {/* 5. DÓŁ: zajawka trybu trenera (nie-trener, nie gość) i build. */}
+        <div className="flex flex-col items-center gap-2 mt-1">
           {!isCoach && !isGuestUser() && (
             <button
               onClick={() => onNavigate?.('SETTINGS', 'TRENER')}
@@ -1689,6 +1515,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         </div>
 
       </div>
+
+      {showSchreiber && (
+        <Suspense fallback={null}>
+          <SchreiberGame onClose={() => setShowSchreiber(false)} />
+        </Suspense>
+      )}
 
       {/* MODAL ZE STATYSTYKAMI */}
       <QuickStatsModal

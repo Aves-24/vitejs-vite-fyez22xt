@@ -171,6 +171,11 @@
 .dark .bg-\[\#cce6dc\] { background-color: #1f3a30; }
 /* Puste pola tabeli strzał / karty wyników — jaskrawo białe w ciemnym motywie. */
 .dark .bg-\[\#F9F9F9\] { background-color: #232b27; }
+/* Home „Nächste Termine” (2026-11-06): kreska między wierszami, puchar na żółtym
+   kółku i pasek zawodów (ciemna zieleń ginie na ciemnym — jak tb-tourney: żółty). */
+.dark .border-t-gray-100 { border-top-color: #26312b; }
+.dark .bg-\[\#fed33e\] .text-\[\#0a3a2a\] { color: #0a3a2a; }
+.dark .border-l-\[\#0a3a2a\] { border-left-color: #fed33e; }
 
 /* Krzywa wyników na home (inline SVG) — patrz klasa gx-trend w HomeView */
 .dark .gx-trend polyline { stroke: #9adbc0; }

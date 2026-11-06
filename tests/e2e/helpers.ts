@@ -169,3 +169,9 @@ export async function shoot(page: Page, values: string[]) {
 
 export const nav = (page: Page, label: 'Start' | 'Kalender' | 'Tagebuch' | 'Stats' | 'Einst.') =>
   page.getByRole('navigation').getByRole('button', { name: new RegExp(`${label.replace('.', '\\.')}$`) });
+
+/** [HOME MENU 2026-11-06] Żółte menu w prawym górnym rogu Home → pozycja. */
+export async function homeMenu(page: Page, item: RegExp | string) {
+  await page.getByRole('button', { name: /^(Menü|Menu)$/ }).click();
+  await page.getByRole('menuitem', { name: item }).click();
+}

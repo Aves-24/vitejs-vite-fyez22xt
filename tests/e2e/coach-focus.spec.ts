@@ -92,7 +92,8 @@ test('wiadomość ✉ do całej grupy dochodzi do ucznia', async ({ browser }) =
   // Uczeń: powiadomienie w dzwoneczku → treść wiadomości.
   await syncWrites(coach);
   await reloadAfterSync(student);
-  await student.getByRole('button', { name: /notifications/ }).first().click();
+  // Nowe powiadomienie → dzwonek wychodzi z menu na wierzch.
+  await student.getByRole('button', { name: 'Benachrichtigungen' }).first().click();
   await expect(student.getByText('Training fällt aus').first()).toBeVisible();
   await student.getByText('Training fällt aus').first().click();
   await expect(student.getByText('Halle gesperrt, wir sehen uns Freitag.').first()).toBeVisible();

@@ -10,6 +10,10 @@ import type {
 interface Props {
   userId: string;
   onNavigate: (view: string, tab?: string, extraData?: string) => void;
+  /** [HOME MENU 2026-11-06] Przycisk tylko przy nieprzeczytanych — reszta w żółtym menu. */
+  hideWhenRead?: boolean;
+  /** Zmiana wartości otwiera panel (pozycja „Benachrichtigungen” w menu). */
+  openSignal?: number;
 }
 
 // Badge color per priority type (matches the old dot-color UX).
@@ -22,7 +26,7 @@ const BADGE_BG: Record<NotificationType, string> = {
   coach_request: 'bg-orange-500',
 };
 
-export default function NotificationBell({ userId, onNavigate }: Props) {
+export default function NotificationBell({ userId, onNavigate, hideWhenRead = false, openSignal = 0 }: Props) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [showPanel, setShowPanel] = useState(false);
@@ -34,6 +38,8 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
     markAsRead,
     markAllAsRead,
   } = useNotifications(userId);
+
+  useEffect(() => { if (openSignal > 0) setShowPanel(true); }, [openSignal]);
 
   // Close panel on outside click.
   useEffect(() => {
@@ -65,13 +71,17 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
 
   return (
     <div ref={containerRef} className="relative">
+      {(!hideWhenRead || unreadCount > 0) && (
       <button
         onClick={handleToggle}
-        className={`w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
+        aria-label={t('announcements.pageTitle')}
+        className={hideWhenRead
+          ? 'w-10 h-10 bg-white rounded-full border border-gray-200 flex items-center justify-center transition-all relative active:scale-90'
+          : `w-12 h-12 bg-white rounded-2xl border border-gray-100 flex items-center justify-center transition-all relative shadow-sm active:scale-90 ${
           unreadCount > 0 ? 'opacity-100' : 'opacity-40'
         }`}
       >
-        <span className="material-symbols-outlined text-gray-400 text-[26px] font-bold">
+        <span className={`material-symbols-outlined font-bold ${hideWhenRead ? 'text-[#0a3a2a] text-[22px]' : 'text-gray-400 text-[26px]'}`}>
           notifications
         </span>
         {unreadCount > 0 && (
@@ -82,9 +92,10 @@ export default function NotificationBell({ userId, onNavigate }: Props) {
           </span>
         )}
       </button>
+      )}
 
       {showPanel && (
-        <div className="absolute right-0 top-14 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden">
+        <div className="absolute right-0 top-12 w-72 bg-white rounded-2xl shadow-xl border border-gray-100 z-[9999] overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">
               {t('announcements.pageTitle')}

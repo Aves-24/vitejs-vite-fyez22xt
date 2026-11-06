@@ -1,9 +1,7 @@
-import React, { Suspense, useState } from 'react';
+import React from 'react';
 import ClubPicker from '../ClubPicker';
 import { useTranslation } from 'react-i18next';
-import { lazyWithRetry } from '../../utils/lazyWithRetry';
 
-const SchreiberGame = lazyWithRetry(() => import('../schreiber/SchreiberGame'));
 
 interface ProfileSectionProps {
   firstName: string; setFirstName: (v: string) => void;
@@ -34,7 +32,6 @@ interface ProfileSectionProps {
 const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
   const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
-  const [showSchreiber, setShowSchreiber] = useState(false);
 
   return (
     <div className="space-y-3 animate-fade-in-up">
@@ -143,10 +140,7 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
         <div className="pt-2 border-t border-gray-50 pb-1">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.highestLevel')}</label>
-            {/* [SCHREIBER-TRAINING] Easter egg — gra w liczenie serii (components/schreiber). */}
-            <button onClick={() => setShowSchreiber(true)} aria-label={t('schreiber.open')} title={t('schreiber.title')} className="w-7 h-7 -my-1 rounded-full flex items-center justify-center text-gray-300 hover:text-emerald-600 active:scale-90 transition-all">
-              <span className="material-symbols-outlined text-[16px]">calculate</span>
-            </button>
+            {/* [HOME MENU 2026-11-06] Schreiber-Training przeniesiony do żółtego menu na Home. */}
           </div>
           <div className="flex flex-col gap-1">
             {props.competitionLevels.map(lvl => (
@@ -185,11 +179,6 @@ const ProfileSection: React.FC<ProfileSectionProps> = (props) => {
           </button>
         </div>
       </div>
-      {showSchreiber && (
-        <Suspense fallback={null}>
-          <SchreiberGame onClose={() => setShowSchreiber(false)} />
-        </Suspense>
-      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, shoot } from './helpers';
+import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, shoot, homeMenu } from './helpers';
 
 // Test dymny zawodnika: każdy ekran i każda zakładka otwiera się bez wyjątku JS,
 // bez ekranu błędu i bez odrzucenia przez reguły Firestore. Nie sprawdza logiki
@@ -45,11 +45,13 @@ test('zawodnik: wszystkie ekrany otwierają się bez błędów', async ({ page }
   await visit('Start (zurück)', () => page.getByRole('button', { name: 'arrow_back' }).click());
 
   // Kafelki Home.
+  // [HOME 2026-11-06] Powiadomienia, QR, Delay Mirror i Schreiber — w żółtym menu.
+  for (const item of [/Benachrichtigungen/, /Deine QR-ID/, /Schreiber-Training/, /Delay Mirror/]) {
+    await visit(`Home/Menü ${item.source}`, () => homeMenu(page, item));
+    await page.goto('/');
+    await expect(nav(page, 'Start')).toBeVisible();
+  }
   const tiles: [string, RegExp | string][] = [
-    ['Powiadomienia', 'notifications'],
-    ['QR', 'qr_code_2'],
-    ['Forma', 'monitoring'],
-    ['Delay Mirror', 'slow_motion_video'],
     ['Zuletzt', /^Zuletzt 98/],
     ['Pfeile/Monat', /Pfeile \/ Monat/],
     ['Ranking', /^Bogenschützen-Ranking/],

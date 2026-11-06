@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, adminVerifyEmail } from './helpers';
+import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, adminVerifyEmail, homeMenu } from './helpers';
 
 // Test dymny ekranów pobocznych: Schreiber-Training i Admin Center.
 test.beforeEach(async ({ request }) => resetEmulators(request));
@@ -7,8 +7,8 @@ test.beforeEach(async ({ request }) => resetEmulators(request));
 test('Schreiber-Training: gra startuje, klawiatura działa', async ({ page }) => {
   const errors = watchErrors(page);
   await registerUser(page, 'Schreib');
-  await nav(page, 'Einst.').click();
-  await page.getByRole('button', { name: 'Schreiber-Training öffnen' }).click();
+  // [HOME 2026-11-06] Wejście z żółtego menu na Home (z Einstellungen usunięte).
+  await homeMenu(page, /Schreiber-Training/);
   await expect(page.getByRole('heading', { name: 'Schreiber-Training' })).toBeVisible();
   for (const shooters of ['4 ABCD', '1 A']) await page.getByRole('button', { name: shooters }).click();
   await page.getByRole('button', { name: 'Los geht’s' }).click();

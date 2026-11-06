@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { resetEmulators, registerUser, watchErrors, expectNoErrors } from './helpers';
+import { resetEmulators, registerUser, watchErrors, expectNoErrors, homeMenu } from './helpers';
 
 // Delay Mirror w głąb (sztuczna kamera Chromium): nagrywanie z opóźnieniem,
 // koniec Passe → strzały na tarczy → powtórka, stopklatka z tarczą,
@@ -16,7 +16,7 @@ async function recordEndToReplay(page: Page) {
   await registerUser(page, 'Mira');
 
   // Ustawienia: tryb eksperta (Spiegel + Aufnahme), opóźnienie 2 s.
-  await page.getByRole('main').getByRole('button', { name: 'slow_motion_video' }).click();
+  await homeMenu(page, /Delay Mirror/);
   await page.getByRole('button', { name: 'tune Expertenmodus' }).click();
   await expect(page.getByRole('button', { name: /Spiegel \+ Aufnahme/ })).toBeVisible();
   await page.getByRole('button', { name: /schedule 15s/ }).click();

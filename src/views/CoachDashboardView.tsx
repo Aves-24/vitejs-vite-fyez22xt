@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createNotification } from '../services/notificationService';
+import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { db, auth } from '../firebase';
 import CoachAccountCard from '../components/settings/CoachAccountCard';
 import {
@@ -1289,8 +1291,10 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
     setIsSendingMsg(true);
     try {
       const batch = writeBatch(db);
+      const sent: { studentId: string; annId: string }[] = [];
       selectedStudents.forEach(studentId => {
         const docRef = doc(collection(db, 'announcements'));
+        sent.push({ studentId, annId: docRef.id });
         batch.set(docRef, {
           title: msgTitle.trim(),
           content: msgContent.trim(),
@@ -1306,7 +1310,16 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       });
 
       await batch.commit();
-      
+
+      // [E2E 2026-11-06] Powiadomienie w dzwoneczku — bez niego uczeń nigdzie
+      // nie widział wiadomości (HomeView synchronizuje tylko ALL/CLUB).
+      await Promise.all(sent.map(({ studentId, annId }) => {
+        const { id, payload } = buildAnnouncementNotification({
+          announcementId: annId, title: msgTitle.trim(), fromCoach: true, senderName: coachName, senderId: userId,
+        });
+        return createNotification(studentId, id, payload).catch(e => console.warn('Powiadomienie ucznia:', e));
+      }));
+
       showToast(t('coachDashboard.toastMsgSent'));
       setIsMessageModalOpen(false);
       setMessageGroupName(null);

@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import {
   doc,
   collection,
@@ -50,8 +50,16 @@ export async function createNotification(
   payload: NotificationPayload
 ): Promise<void> {
   const ref = notificationRef(recipientId, id);
-  const existing = await getDoc(ref);
-  if (existing.exists()) return;
+  // [E2E 2026-11-06] Cudzej skrzynki nie wolno czytać (reguła: tylko odbiorca),
+  // więc getDoc u kogoś innego kończył się PERMISSION_DENIED i KAŻDE
+  // powiadomienie trener→uczeń, uczeń→trener i →admin przepadało po cichu.
+  // U siebie sprawdzamy jak dawniej; u innych zapisujemy od razu — gdy dokument
+  // już jest, zapis to „update”, który reguła odrzuca (= idempotentny no-op).
+  const selfUid = auth.currentUser?.uid;
+  if (selfUid === recipientId) {
+    const existing = await getDoc(ref);
+    if (existing.exists()) return;
+  }
 
   // Strip undefined fields — Firestore rejects them.
   const clean: Record<string, unknown> = {};
@@ -59,11 +67,17 @@ export async function createNotification(
     if (v !== undefined) clean[k] = v;
   }
 
-  await setDoc(ref, {
-    ...clean,
-    createdAt: serverTimestamp(),
-    readAt: null,
-  });
+  try {
+    await setDoc(ref, {
+      ...clean,
+      createdAt: serverTimestamp(),
+      readAt: null,
+    });
+  } catch (e: any) {
+    // Już istnieje u odbiorcy — tak jak dawniej no-op.
+    if (selfUid !== recipientId && e?.code === 'permission-denied') return;
+    throw e;
+  }
 }
 
 // ──────────────────────────────────────────────────────────────────────────────

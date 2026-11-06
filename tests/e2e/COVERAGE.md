@@ -29,6 +29,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Gra Verein | club-battle | gra klubowa na liście „Vereinsspiele”, dołączenie, ranking na ślepo (przed Passe toast, po Passe wynik innego tylko do tej samej liczby strzał) |
 | Delay Mirror | delay-mirror | nagrywanie z opóźnieniem 2 s (WebM — Chromium testowy nie odtwarza H.264 w MSE), Passe na tarczy, powtórka, stopklatka z tarczą, znaczniki + notatka, licznik strzał |
 | Offline | offline | trening zapisany bez sieci widać od razu (Home, Tagebuch), po powrocie sieci trafia do bazy |
+| Pierwsze uruchomienie | onboarding | Profil-Assistent 7 kroków (dane w bazie: data ur. tylko w private), zgoda opiekuna dla 13-latki po kreatorze; TermsGate po zmianie wersji regulaminu (tekst „aktualisiert”, akceptacja zapisuje wersję) |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
@@ -43,7 +44,6 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 - Statystyki PRO z większą ilością danych, eksport PDF
 - Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
 - WORLD (wyłączone „Bald verfügbar”)
-- Wizard profilu, zgoda opiekuna < 16 lat, TermsGate po zmianie regulaminu
 - Offline na buildzie produkcyjnym z service workerem (w dev moduły ładujemy wcześniej), ciemny motyw, języki PL/EN poza przełącznikiem
 
 ## Znalezione błędy (naprawione)
@@ -64,6 +64,9 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 13. Karta zawodów w statystykach: surowy alias tarczy „Full” zamiast „122cm”
 14. (2026-11-06) KAŻDE powiadomienie do innego konta (trener→uczeń, uczeń→trener, →admin) przepadało: createNotification czytał cudzą skrzynkę (reguła: tylko odbiorca) → PERMISSION_DENIED
 15. (2026-11-06) Wiadomość ✉ trenera do grupy nie tworzyła powiadomienia — uczeń nigdzie jej nie widział
+16. (2026-11-06) Kreator krok 3: podpowiedź wzrostu po polsku („np. 180”) w każdym języku
+17. (2026-11-06) Kreator krok 5: łucznik dostawał na liście nastaw „10m Blowgun 20cm”
+18. (2026-11-06) TermsGate po zmianie AGB mówił „GROT-X hat jetzt Nutzungsbedingungen” zamiast o aktualizacji
 
 ## Do omówienia (partia 2)
 

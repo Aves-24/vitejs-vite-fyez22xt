@@ -642,6 +642,8 @@ export const views = {
     weakPassword: "Password must be at least 6 characters."
   },
   termsGate: {
+    titleUpdated: "Updated terms of use",
+    introUpdated: "We have updated our terms of use (version {{version}}). Please read the changes and agree to keep using the app.",
     title: "Our Terms of Use",
     intro: "GROT-X now has Terms of Use. They cover your account, the coach feature, leaderboards and the upcoming PRO subscription. Please read and accept them to keep using the app.",
     read: "Read the Terms of Use",

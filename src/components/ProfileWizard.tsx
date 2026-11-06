@@ -449,7 +449,7 @@ export default function ProfileWizard(props: ProfileWizardProps) {
 
             <div>
               <label className="text-[10px] font-black text-gray-400 uppercase ml-1">{t('settings.wizard.height')}</label>
-              <input type="number" value={props.height} onChange={e => props.setHeight(Number(e.target.value) || '')} placeholder="np. 180" className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold text-center outline-none focus:border-emerald-500" />
+              <input type="number" value={props.height} onChange={e => props.setHeight(Number(e.target.value) || '')} placeholder={t('profile.placeholderHeight')} className="w-full mt-1 bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm font-bold text-center outline-none focus:border-emerald-500" />
             </div>
           </div>
         )}
@@ -530,7 +530,9 @@ export default function ProfileWizard(props: ProfileWizardProps) {
                 </div>
               </div>
 
-              {wizardDistances.filter(d => d.active).map((d, i) => (
+              {/* [E2E 2026-11-06] Bez dmuchawki — kreator pyta o łuk (krok 4), a lista
+                  dystansów zawsze niesie aktywne „10m Blowgun” (filtrują go zestawy). */}
+              {wizardDistances.filter(d => d.active && d.discipline !== 'blowgun').map((d, i) => (
                 <div key={d.m} className="p-2 rounded-xl border bg-white border-gray-100 shadow-sm">
                   <div className="grid grid-cols-12 items-center">
                     <div className="col-span-5 flex flex-col items-start justify-center">

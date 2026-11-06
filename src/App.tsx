@@ -185,6 +185,8 @@ export default function App() {
   const [hasCoach, setHasCoach] = useState<boolean>(false);
   // [C36] Profil bez akceptacji aktualnej wersji regulaminu → TermsGate.
   const [needsTerms, setNeedsTerms] = useState(false);
+  // Wersja zaakceptowana wcześniej (null = konto bez akceptacji) — bramka mówi wtedy „zaktualizowane”.
+  const [termsPrevVersion, setTermsPrevVersion] = useState<string | null>(null);
   const [userLevel, setUserLevel] = useState<number>(1);
 
   // NOWE: trzymamy userClub w App.tsx żeby przekazać do AnnouncementsView
@@ -378,6 +380,7 @@ export default function App() {
         }
         
         setNeedsTerms(data.termsAccepted?.version !== TERMS_VERSION);
+        setTermsPrevVersion(typeof data.termsAccepted?.version === 'string' ? data.termsAccepted.version : null);
         setIsCoach(!!data.isCoach);
         // [GRUPY] Jednorazowo: grupy z dokumentu trenera → kolekcja groups/.
         if (data.isCoach && !data.groupsMigrated && !groupsMigrationRef.current) {
@@ -858,7 +861,7 @@ export default function App() {
 
       {/* [C36] Wyraźna akceptacja regulaminu — konta sprzed jego wprowadzenia
           i po każdej zmianie wersji (TERMS_VERSION). */}
-      {user?.uid && needsTerms && <TermsGate userId={user.uid} />}
+      {user?.uid && needsTerms && <TermsGate userId={user.uid} previousVersion={termsPrevVersion} />}
 
       {/* [GOŚĆ] Stały baner na Home: odliczanie do wygaśnięcia danych +
           upgrade konta (linkWithCredential zachowuje uid i dorobek). */}

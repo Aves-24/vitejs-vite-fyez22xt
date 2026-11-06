@@ -656,6 +656,8 @@ export const views = {
     weakPassword: "Hasło musi mieć co najmniej 6 znaków."
   },
   termsGate: {
+    titleUpdated: "Nowy regulamin",
+    introUpdated: "Zaktualizowaliśmy regulamin (wersja {{version}}). Przeczytaj zmiany i zaakceptuj je, aby dalej korzystać z aplikacji.",
     title: "Nasz regulamin",
     intro: "GROT-X ma teraz regulamin. Określa m.in. zasady konta, funkcji trenera, rankingów i przyszłej subskrypcji PRO. Przeczytaj go i zaakceptuj, aby dalej korzystać z aplikacji.",
     read: "Przeczytaj regulamin",

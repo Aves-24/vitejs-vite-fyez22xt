@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { doc, setDoc } from 'firebase/firestore';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebase';
-import { termsAcceptedField, termsUrl } from '../utils/legalLinks';
+import { termsAcceptedField, termsUrl, TERMS_VERSION } from '../utils/legalLinks';
 
 // ═══════════════════════════════════════════════════════════════════
 //  [C36] Bramka regulaminu. Konto bez akceptacji aktualnej wersji
@@ -15,7 +15,9 @@ import { termsAcceptedField, termsUrl } from '../utils/legalLinks';
 //  App.tsx decyduje, kiedy pokazać (z profilu w onSnapshot).
 // ═══════════════════════════════════════════════════════════════════
 
-export default function TermsGate({ userId }: { userId: string }) {
+export default function TermsGate({ userId, previousVersion = null }: { userId: string; previousVersion?: string | null }) {
+  // Akceptował już starszą wersję → „zaktualizowane”, nie „mamy regulamin”.
+  const updated = !!previousVersion;
   const { t, i18n } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
@@ -45,10 +47,10 @@ export default function TermsGate({ userId }: { userId: string }) {
         </div>
 
         <h2 className="text-lg font-black text-[#0a3a2a] text-center mb-2 leading-tight">
-          {t('termsGate.title')}
+          {t(updated ? 'termsGate.titleUpdated' : 'termsGate.title')}
         </h2>
         <p className="text-[12px] text-gray-500 leading-relaxed font-medium text-center mb-5">
-          {t('termsGate.intro')}
+          {updated ? t('termsGate.introUpdated', { version: TERMS_VERSION }) : t('termsGate.intro')}
         </p>
 
         <a

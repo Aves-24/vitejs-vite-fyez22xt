@@ -9,7 +9,8 @@ test('gość zapisuje trening i widzi go na Home i w Tagebuchu', async ({ page }
   await startAsGuest(page);
 
   // Ustawienia sesji: domyślnie 18 m, 3-Spot.
-  await expect(page.getByText('18M · 3-SPOT', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: '18m', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('setup-card')).toContainText('3-Spot');
   await page.getByRole('button', { name: 'Training', exact: true }).click();
 
   // Ekran wpisywania: przed pierwszą strzałą nie da się zapisać.

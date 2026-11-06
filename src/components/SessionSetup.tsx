@@ -8,7 +8,7 @@ import { invalidateSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
-import { FocusStrip, FocusChoiceChips } from './tagebuch/FocusCard';
+import { FocusStrip, FocusChoiceChips, FocusChoiceLines } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -307,235 +307,214 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   return (
-    <div className={`flex flex-col h-full bg-[#fcfdfe] px-3 ${hasUnsaved ? 'pb-28' : 'pb-16'} animate-fade-in max-w-md mx-auto relative`}>
+    <div className="flex flex-col h-full bg-[#fcfdfe] px-3 pb-24 animate-fade-in max-w-md mx-auto relative">
       <ViewHeader className="-mx-3 mb-3" onBack={() => onNavigate?.('HOME')} title={t('setup.title')} />
 
-      <div className="space-y-2">
-        {/* [FOKUS] Przypomnienie przed treningiem (user 2026-09-18) — ten sam pasek
-            co na Home; klik prowadzi do dziennika. Liczenie: przełącznik przy zapisie. */}
-        {/* [TEMAT TRENINGU] Jak w treningu technicznym: karta + „Dieses Training
-            zählt für” (user 2026-10-15) — wybór przechodzi na ekran z tarczą. */}
-        {focusPair.main && focusState && (
-          <div className="space-y-2">
-            <FocusStrip
-              focus={focusPair.main}
-              {...displayProgress(focusState, focusPair.main)}
-              onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
-              other={focusPair.other}
-              onSwap={() => swapFocus(userId, focusState)}
-            />
-            <div className="px-1">
-              <FocusChoiceChips state={focusState} choice={focusChoice} onChange={setFocusChoice} />
-            </div>
-          </div>
+      {/* [VORBEREITUNG 2026-11-06] Układ jak nowa strona startowa (memory:
+          project_home_redesign_plan): białe karty, kolor tylko na pasku/akcencie,
+          dystans + tarcza + Passen w jednej karcie, żółty Training jedyny wypełniony. */}
+      <div className="space-y-2.5">
+        {/* Niezapisany trening — na górze, nie pływa nad paskiem. */}
+        {hasUnsaved && (
+          <button
+            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
+            className="w-full bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm pl-3 pr-3 py-2.5 flex items-center gap-2 text-left active:scale-[0.99] transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px] text-red-500">history</span>
+            <span className="flex-1 text-[14px] font-black text-[#0a3a2a]">{t('setup.continueBtn')}</span>
+            <span className="material-symbols-outlined text-[18px] text-gray-300">chevron_right</span>
+          </button>
         )}
-        <div className="bg-white px-3 py-2.5 rounded-[20px] border border-gray-100 shadow-sm">
-          {/* [KOLORY] Kropki zestawów — klik pokazuje dystanse tego zestawu
-              i od razu robi go aktywnym (sesja dostanie jego stempel). */}
-          {setups.length > 1 && (
-            <div className="flex gap-1.5 justify-center flex-wrap mb-1.5 pb-1.5 border-b border-gray-50">
-              {setups.map(s => {
-                const on = s.id === activeSetup?.id;
+
+        {/* [FOKUS] Jedna linia na tor + „zählt / zählt nicht”; klik w tytuł → dziennik. */}
+        {focusState && (
+          <FocusChoiceLines
+            state={focusState}
+            choice={focusChoice}
+            onChange={setFocusChoice}
+            onOpen={f => onNavigate?.('MY_COACH', undefined, f.topicId)}
+          />
+        )}
+
+        {/* Co strzelam: zestaw → dystans → tarcza z nastawami → Passen. */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="setup-card">
+          <div className="px-3 pt-2.5 pb-2.5">
+            {/* [KOLORY] Zestawy — klik pokazuje dystanse zestawu i robi go aktywnym.
+                Także przy jednym zestawie: widać, z czego się strzela (dawniej pigułka nad paskiem). */}
+            {setups.length > 0 && (
+              <div className="flex gap-1.5 flex-wrap mb-2">
+                {setups.map(s => {
+                  const on = s.id === activeSetup?.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => switchSetup(s.id)}
+                      aria-pressed={on}
+                      className={`px-2.5 py-1 rounded-full text-[12px] font-bold border flex items-center gap-1.5 transition-all active:scale-95 max-w-[48%] ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(s.id)) }} />
+                      <span className="truncate">{s.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {setupSwitchError && (
+              <p className="text-[11px] text-red-500 font-bold mb-2">{t('setup.setupSwitchFailed')}</p>
+            )}
+            {/* [DYSCYPLINY] Pustka tylko gdy user odznaczył wszystkie dystanse dyscypliny. */}
+            {distanceOptions.length === 0 && (
+              <button
+                onClick={() => onNavigate?.('SETTINGS', 'VISIER')}
+                className="w-full py-3 rounded-xl border border-dashed border-gray-300 text-[12px] font-bold text-gray-500 active:scale-95"
+              >
+                {t('setup.noDistances')}
+              </button>
+            )}
+            <div className="grid grid-cols-3 gap-1.5" aria-label={t('setup.selectDistance')}>
+              {distanceOptions.map((d) => {
+                const on = selectedId === d.id;
                 return (
                   <button
-                    key={s.id}
-                    onClick={() => switchSetup(s.id)}
+                    key={d.id}
+                    onClick={() => updateSelection(d.id)}
                     aria-pressed={on}
-                    className={`px-2.5 py-1.5 rounded-full text-[10px] font-black border flex items-center gap-1.5 transition-all active:scale-95 max-w-[48%] ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a] shadow-sm' : 'bg-white text-gray-400 border-gray-100'}`}
+                    className={`py-2 rounded-xl transition-all active:scale-95 border min-w-0 ${on ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-white border-gray-200 text-gray-500'}`}
                   >
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(s.id)) }} />
-                    <span className="truncate">{s.name}</span>
+                    {/* [C25] Etykieta drugą linijką — „18m barebow” nie mieści się w jednej. */}
+                    <span className={`block text-[14px] leading-none ${on ? 'font-black' : 'font-bold'}`}>{d.m}</span>
+                    {d.label && <span className="block text-[10px] font-bold opacity-70 mt-0.5 truncate px-1">{d.label}</span>}
                   </button>
                 );
               })}
             </div>
-          )}
-          {setupSwitchError && (
-            <p className="text-[10px] text-red-500 font-black text-center mb-2">{t('setup.setupSwitchFailed')}</p>
-          )}
-          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-1.5 text-center">{t('setup.selectDistance')}</span>
-          {/* [DYSCYPLINY] Pustka jest możliwa tylko wtedy, gdy user odznaczył
-              WSZYSTKIE dystanse swojej dyscypliny — lista standardowa ma je
-              obie. Zamiast pustego pola mówimy, gdzie je z powrotem włączyć. */}
-          {distanceOptions.length === 0 && (
-            <button
-              onClick={() => onNavigate?.('SETTINGS', 'VISIER')}
-              className="w-full py-3 rounded-xl border-2 border-dashed border-gray-200 text-[10px] font-black text-gray-400 uppercase tracking-widest active:scale-95"
-            >
-              {t('setup.noDistances')}
-            </button>
-          )}
-          <div className="flex flex-wrap gap-1.5 justify-center">
-            {distanceOptions.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => updateSelection(d.id)}
-                className={`flex-1 min-w-[30%] py-2 rounded-xl font-black transition-all active:scale-95 border-2 ${
-                  selectedId === d.id
-                    ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white shadow-md'
-                    : 'bg-white border-gray-100 text-gray-400 hover:border-gray-200'
-                }`}
-              >
-                {/* [C25] Etykieta idzie DRUGĄ linijką — "18m barebow" w jednym
-                    wierszu nie mieści się w kafelku szerokim na 30%. */}
-                <span className="block text-sm leading-none">{d.m}</span>
-                {d.label && <span className="block text-[9px] font-bold uppercase tracking-wide opacity-70 mt-0.5 truncate px-1">{d.label}</span>}
-              </button>
-            ))}
           </div>
-        </div>
 
-        {/* Wybrany dystans: tarcza + celownik w jednej karcie, edycja w jednym oknie. */}
-        {selectedId && (
-        <div className="bg-[#1f6e53] px-3 py-2.5 rounded-[20px] shadow-lg border border-[#2a7d61]">
-          <div className="flex items-center gap-3">
-            <TargetThumbnail targetType={selectedTarget} className="w-10 h-10 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <span className="text-[9px] font-black text-emerald-200 uppercase tracking-widest block leading-none">{t('setup.targetTitle')}</span>
-              <span className="text-lg font-black text-white uppercase tracking-tight leading-tight block truncate">{selectedTarget}</span>
-            </div>
-            <button
-              onClick={openSightEditor}
-              className="shrink-0 h-9 px-3 rounded-xl bg-white/15 border border-white/15 text-white flex items-center gap-1.5 active:scale-95 transition-all"
-            >
-              <span className="material-symbols-outlined text-[16px]">edit</span>
-              <span className="text-[10px] font-black uppercase tracking-widest">{t('setup.change')}</span>
-            </button>
-          </div>
-          <div className="mt-2 pt-2 border-t border-white/10">
-            {isPremium ? (
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { label: t('setup.editorExt'), value: sightExtension },
-                  { label: t('setup.editorHeight'), value: sightHeight },
-                  { label: t('setup.editorSide'), value: sightSide },
-                ].map(f => (
-                  <div key={f.label} className="bg-black/20 rounded-lg px-1 py-1 text-center min-w-0">
-                    <span className="block text-[8px] font-bold text-emerald-100/70 uppercase tracking-tight truncate leading-tight">{f.label}</span>
-                    <span className="block text-base font-black text-[#fed33e] leading-tight truncate">{f.value || '-'}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <button onClick={() => onNavigate?.('SETTINGS', 'PRO')} className="w-full flex items-center justify-center gap-1.5 py-0.5 active:scale-95">
-                <span className="material-symbols-outlined text-[#F2C94C] text-[16px]">diamond</span>
-                <span className="text-[9px] font-black text-[#F2C94C] uppercase tracking-widest">{t('setup.sightPro')}</span>
-              </button>
-            )}
-          </div>
-        </div>
-        )}
-      </div>
-
-      <div className="mt-2">
-
-        {/* PFEILZÄHLER */}
-        <div className="bg-white rounded-[20px] border-2 border-[#0a3a2a] shadow-sm px-3 pt-1.5 pb-2">
-          <div className="flex items-center justify-center gap-2 mb-1">
-            <span className="text-[10px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('sessionSetup.arrowCounter')}</span>
-            <span className={`text-[9px] font-black uppercase tracking-widest transition-all duration-300 ${counterSaved ? 'text-blue-400 opacity-100' : 'opacity-0'}`}>
-              ✓ {parseInt(techArrows || '0')}
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 6)))}
-              className="flex-1 h-10 bg-blue-500 text-white rounded-xl font-black text-base active:scale-95 transition-all"
-            >+6</button>
-            <button
-              onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 1)))}
-              className="flex-1 h-10 bg-blue-100 text-blue-700 rounded-xl font-black text-base active:scale-95 transition-all"
-            >+1</button>
-            <button
-              onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') - 1)))}
-              className="flex-1 h-10 bg-red-50 text-red-500 rounded-xl font-black text-base active:scale-95 transition-all border border-red-100"
-            >−1</button>
-            <div className="flex-1 h-10 bg-[#0a3a2a] text-white rounded-xl font-black text-xl flex items-center justify-center">
-              {techArrows || '0'}
-            </div>
-            <button
-              onClick={handleSaveCounter}
-              disabled={isSavingCounter}
-              className="px-3 h-10 bg-emerald-500 text-white rounded-xl active:scale-95 transition-all disabled:opacity-50 shadow-sm font-black text-[11px] uppercase tracking-wide"
-            >
-              {isSavingCounter
-                ? <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-                : t('sessionSetup.saveCounter')
-              }
-            </button>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Stały pasek startu — ten sam kształt i kółko co dolna nawigacja w App.tsx.
-          Portal, bo <main> ma transform, a pod nim 96 px pustego pb. */}
-      {createPortal(
-        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[90]">
-          <div className="absolute bottom-full inset-x-0 mb-10 px-3 flex flex-col items-center gap-1.5 pointer-events-none">
-            {hasUnsaved && (
-              <button
-                onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
-                className="pointer-events-auto w-full py-2 rounded-xl font-black text-[10px] uppercase tracking-widest border-2 border-red-500 text-red-500 bg-red-50 active:scale-95 transition-all flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-sm">history</span>
-                {t('setup.continueBtn')}
-              </button>
-            )}
-            {selectedId && (
-              <p className="max-w-full flex items-center gap-1.5 text-[11px] font-black text-gray-500 uppercase tracking-wide bg-white border border-gray-100 shadow-sm rounded-full px-3 py-1">
-                {setups.length > 0 && activeSetup && (
-                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: setupColorHex(setupColors.get(activeSetup.id)) }} />
-                )}
-                <span className="truncate">
-                  {[selectedEntry ? displayDistance(selectedEntry) : selectedDistance, selectedTarget, setups.length > 0 ? activeSetup?.name : null].filter(Boolean).join(' · ')}
-                </span>
-              </p>
-            )}
-            {selectedId && showEndsInfo && plannedEnds !== PLANNED_ENDS && !showEndsPicker && (
-              <div className="pointer-events-auto w-full max-w-xs bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 shadow-sm text-[11px] leading-snug text-blue-900">
-                <p className="font-black mb-1">{t('sessionSetup.shortInfoTitle', { count: plannedEnds, half: Math.ceil(plannedEnds / 2) })}</p>
-                <p className="mb-1">{t('sessionSetup.shortInfoCounts')}</p>
-                <p>{t('sessionSetup.shortInfoSkips')}</p>
-              </div>
-            )}
-            {selectedId && (
-              <div className="pointer-events-auto flex items-center gap-1">
-                {showEndsPicker ? (
-                  [...SHORT_END_OPTIONS, PLANNED_ENDS].map(n => (
-                    <button
-                      key={n}
-                      onClick={() => { setPlannedEnds(n); setShowEndsPicker(false); if (n === PLANNED_ENDS) setShowEndsInfo(false); }}
-                      className={`min-w-[32px] px-2 py-0.5 rounded-full text-[10px] font-black border shadow-sm active:scale-95 transition-all ${n === plannedEnds ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-100'}`}
-                    >
-                      {n}
-                    </button>
-                  ))
+          {/* Tarcza + nastawy celownika w jednej linii; ołówek otwiera ten sam edytor. */}
+          {selectedId && (
+            <button onClick={openSightEditor} className="w-full border-t border-t-gray-100 px-3 py-2 flex items-center gap-2.5 text-left active:bg-gray-50 transition-colors">
+              <TargetThumbnail targetType={selectedTarget} className="w-8 h-8 shrink-0" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-[14px] font-black text-[#0a3a2a] truncate">{selectedTarget}</span>
+                {isPremium ? (
+                  <span className="block text-[11px] font-bold text-gray-500 truncate">
+                    {t('setup.editorExt')} {sightExtension || '–'} · {t('setup.editorHeight')} {sightHeight || '–'} · {t('setup.editorSide')} {sightSide || '–'}
+                  </span>
                 ) : (
-                  <button
-                    onClick={() => setShowEndsPicker(true)}
-                    className={`flex items-center gap-0.5 rounded-full pl-2.5 pr-1.5 py-0.5 text-[10px] font-black uppercase tracking-wide border shadow-sm active:scale-95 transition-all ${plannedEnds !== PLANNED_ENDS ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-white text-gray-400 border-gray-100'}`}
-                  >
-                    {t('sessionSetup.endsChip', { count: plannedEnds })}
-                    <span className="material-symbols-outlined text-[14px]">expand_more</span>
-                  </button>
+                  <span className="flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                    <span className="material-symbols-outlined text-[13px]">diamond</span>{t('setup.sightPro')}
+                  </span>
                 )}
-                {!showEndsPicker && plannedEnds !== PLANNED_ENDS && (
+              </span>
+              <span className="material-symbols-outlined text-[18px] text-gray-400" aria-label={t('setup.change')}>edit</span>
+            </button>
+          )}
+
+          {/* Passen — zawsze widoczne, zwinięte; rozwija 6/8/10/12. */}
+          {selectedId && (
+            <div className="border-t border-t-gray-100 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEndsPicker(v => !v)}
+                  aria-expanded={showEndsPicker}
+                  className="flex-1 flex items-center gap-2 text-left active:opacity-70"
+                >
+                  <span className="flex-1 text-[13px] font-bold text-gray-500">{t('setup.endsLabel')}</span>
+                  <span className={`text-[14px] font-black ${plannedEnds !== PLANNED_ENDS ? 'text-amber-700' : 'text-[#0a3a2a]'}`}>{plannedEnds}</span>
+                  <span className="material-symbols-outlined text-[18px] text-gray-400">{showEndsPicker ? 'expand_less' : 'expand_more'}</span>
+                </button>
+                {plannedEnds !== PLANNED_ENDS && (
                   <button
                     onClick={() => setShowEndsInfo(v => !v)}
                     aria-label={t('sessionSetup.shortInfoAria')}
-                    className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-sm active:scale-90 transition-all"
+                    className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center active:scale-90 transition-all"
                   >
                     <span className="material-symbols-outlined text-[14px]">info</span>
                   </button>
                 )}
               </div>
-            )}
-          </div>
+              {showEndsPicker && (
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {[...SHORT_END_OPTIONS, PLANNED_ENDS].map(n => (
+                    <button
+                      key={n}
+                      onClick={() => { setPlannedEnds(n); setShowEndsPicker(false); if (n === PLANNED_ENDS) setShowEndsInfo(false); }}
+                      aria-pressed={n === plannedEnds}
+                      className={`py-1.5 rounded-lg text-[13px] font-black border active:scale-95 transition-all ${n === plannedEnds ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showEndsInfo && plannedEnds !== PLANNED_ENDS && (
+                <div className="mt-2 bg-blue-50 border border-blue-100 rounded-xl px-3 py-2 text-[11px] leading-snug text-blue-900">
+                  <p className="font-black mb-1">{t('sessionSetup.shortInfoTitle', { count: plannedEnds, half: Math.ceil(plannedEnds / 2) })}</p>
+                  <p className="mb-1">{t('sessionSetup.shortInfoCounts')}</p>
+                  <p>{t('sessionSetup.shortInfoSkips')}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
+        {/* PFEILZÄHLER — jeden płaski wiersz; „Speichern” dopiero przy liczbie > 0. */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2 flex items-center gap-1.5">
+          <span className="flex-1 min-w-0 text-[13px] font-black text-[#0a3a2a] truncate">
+            {t('sessionSetup.arrowCounter')}
+            {counterSaved && <span className="ml-1.5 text-[11px] font-bold text-emerald-600">✓</span>}
+          </span>
+          <button
+            onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') - 1)))}
+            aria-label="−1"
+            className="w-8 h-8 rounded-lg border border-gray-200 text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">remove</span>
+          </button>
+          <span className="min-w-[30px] text-center text-[18px] font-black text-[#0a3a2a]">{techArrows || '0'}</span>
+          <button
+            onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 1)))}
+            aria-label="+1"
+            className="w-8 h-8 rounded-lg border border-gray-200 text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+          </button>
+          <button
+            onClick={() => updateCounter(String(Math.max(0, parseInt(techArrows || '0') + 6)))}
+            className="h-8 px-2 rounded-lg border border-gray-200 text-[13px] font-black text-[#0a3a2a] active:scale-90 transition-all"
+          >+6</button>
+          {parseInt(techArrows || '0') > 0 && (
+            <button
+              onClick={handleSaveCounter}
+              disabled={isSavingCounter}
+              className="h-8 px-2.5 rounded-lg bg-[#0a3a2a] text-white text-[12px] font-black active:scale-95 transition-all disabled:opacity-50"
+            >
+              {isSavingCounter
+                ? <span className="material-symbols-outlined text-[16px] animate-spin align-middle">progress_activity</span>
+                : t('sessionSetup.saveCounter')}
+            </button>
+          )}
+        </div>
+
+        {/* Delay Mirror — mała pigułka (najczęściej otwierany przed treningiem). */}
+        <div className="flex justify-end">
+          <button
+            onClick={() => onNavigate?.('DELAY_MIRROR')}
+            className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-full pl-2 pr-3 py-1 text-[12px] font-bold text-[#0a3a2a] active:scale-95 transition-all"
+          >
+            <span className="material-symbols-outlined text-[16px]">slow_motion_video</span>
+            {t('delayMirror.title')}
+          </button>
+        </div>
+      </div>
+
+      {/* Stały pasek startu — ten sam kształt i kółko co dolna nawigacja w App.tsx.
+          Portal, bo <main> ma transform. Boczne przyciski białe z kolorową ikoną. */}
+      {createPortal(
+        <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[90]">
           <div className="relative h-20 w-full px-2">
             <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{ filter: 'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))' }}>
-              <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" fill="white" />
+              <path d="M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z" className="nav-bg" />
             </svg>
             <div className="flex justify-between items-center h-full w-full relative">
               <div className="flex flex-1 justify-center items-center h-full px-1">
@@ -545,10 +524,10 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     setShowTechModal(true);
                   }}
                   disabled={!selectedDistance}
-                  className="h-12 w-full max-w-[128px] rounded-2xl bg-sky-600 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md transition-all disabled:opacity-50"
+                  className="h-12 w-full max-w-[132px] rounded-2xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center gap-1.5 px-2 font-black active:scale-95 transition-all disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-[20px] shrink-0">psychology</span>
-                  <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.techBtn')}</span>
+                  <span className="material-symbols-outlined text-[20px] shrink-0 text-sky-600">psychology</span>
+                  <span className="text-[10px] tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.techBtn')}</span>
                 </button>
               </div>
 
@@ -580,15 +559,15 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                     }
                   }}
                   disabled={!selectedDistance}
-                  // Wejście do ścieżki Arena — jej ciemny styl (user 2026-10-21).
-                  className="h-12 w-full max-w-[128px] rounded-2xl bg-[#0a0f1a] border border-indigo-400/50 text-white flex items-center gap-1.5 px-2 font-black active:scale-95 shadow-md shadow-indigo-500/20 transition-all disabled:opacity-50"
+                  className="h-12 w-full max-w-[132px] rounded-2xl bg-white border border-gray-200 text-[#0a3a2a] flex items-center gap-1.5 px-2 font-black active:scale-95 transition-all disabled:opacity-50"
                 >
-                  <span className="material-symbols-outlined text-[20px] shrink-0 text-indigo-300">swords</span>
-                  <span className="text-[9px] uppercase tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.battleBtn')}</span>
+                  <span className="material-symbols-outlined text-[20px] shrink-0 text-indigo-500">swords</span>
+                  <span className="text-[10px] tracking-wide text-left leading-tight whitespace-pre-line">{t('setup.battleBtn')}</span>
                 </button>
               </div>
             </div>
           </div>
+          <div className="bg-white" style={{ height: 'env(safe-area-inset-bottom)' }} />
         </div>,
         document.body
       )}

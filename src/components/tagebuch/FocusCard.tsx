@@ -167,6 +167,51 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false, showLa
   );
 }
 
+/**
+ * [VORBEREITUNG 2026-11-06] Fokus w jednej linii na tor: ikonka, tytuł (klik →
+ * dziennik) i plakietka „zählt / zählt nicht” — to samo co FocusChoiceChips,
+ * tylko zwięźle (user: „fokus mniejszy”).
+ */
+export function FocusChoiceLines({ state, choice, onChange, onOpen }: {
+  state: FocusState;
+  choice: FocusChoice;
+  onChange: (next: FocusChoice) => void;
+  onOpen?: (focus: ActiveFocus) => void;
+}) {
+  const { t } = useTranslation();
+  const items: { key: 'own' | 'coach' | 'topic'; focus: ActiveFocus }[] = [
+    ...orderedTracks(state).map(tr => ({ key: (tr.focus.fromCoach ? 'coach' : 'own') as 'own' | 'coach', focus: tr.focus })),
+    ...(state.trainingTopic ? [{ key: 'topic' as const, focus: state.trainingTopic }] : []),
+  ];
+  if (!items.length) return null;
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="setup-focus">
+      {items.map((it, i) => {
+        const on = choice[it.key];
+        const pal = focusPalette(it.focus);
+        return (
+          <div key={it.key} className={`flex items-center gap-2 pl-2.5 pr-2 py-1.5 border-l-4 ${it.focus.topicId ? 'border-l-violet-400' : it.focus.fromCoach ? 'border-l-sky-500' : 'border-l-amber-400'} ${i > 0 ? 'border-t border-t-gray-100' : ''}`}>
+            <span className={`material-symbols-outlined text-[16px] shrink-0 ${pal.accent}`}>{focusIcon(it.focus)}</span>
+            <button type="button" onClick={() => onOpen?.(it.focus)} className="flex-1 min-w-0 text-left text-[13px] font-bold text-[#0a3a2a] truncate">
+              {focusTitle(it.focus, t)}
+            </button>
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={on}
+              aria-label={`${it.key === 'topic' ? t('tagebuch.topicChoice') : t('tagebuch.focusChoiceFocus')}: ${focusTitle(it.focus, t)}`}
+              onClick={() => onChange({ ...choice, [it.key]: !on })}
+              className={`shrink-0 text-[11px] font-black rounded-md px-2 py-0.5 border active:scale-95 transition-all ${on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}
+            >
+              {on ? t('tagebuch.focusCounts') : t('tagebuch.focusNotCounts')}
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
 export function FocusDots({ count, goal, small = false, light = false, muted = false, coach = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean; coach?: boolean }) {
   const done = count >= goal;

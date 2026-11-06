@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { resetEmulators, registerUser, watchErrors, expectNoErrors } from './helpers';
 
 // Delay Mirror w głąb (sztuczna kamera Chromium): nagrywanie z opóźnieniem,
@@ -6,8 +6,7 @@ import { resetEmulators, registerUser, watchErrors, expectNoErrors } from './hel
 // znaczniki strzał na osi, zapis treningu technicznego.
 test.beforeEach(async ({ request }) => resetEmulators(request));
 
-test('Delay Mirror: nagranie, Passe na tarczy, stopklatka, znaczniki, zapis', async ({ page }) => {
-  test.setTimeout(120_000);
+async function recordEndToReplay(page: Page) {
   // Chromium testowy nagrywa H.264, ale MSE go nie odtwarza (bufor stoi na 0%).
   // Na telefonach działa — tu wymuszamy WebM, który apka ma jako zapas.
   await page.addInitScript(() => {
@@ -15,7 +14,6 @@ test('Delay Mirror: nagranie, Passe na tarczy, stopklatka, znaczniki, zapis', as
     (MediaRecorder as any).isTypeSupported = (c: string) => !c.startsWith('video/mp4') && orig(c);
   });
   await registerUser(page, 'Mira');
-  const errors = watchErrors(page);
 
   // Ustawienia: tryb eksperta (Spiegel + Aufnahme), opóźnienie 2 s.
   await page.getByRole('main').getByRole('button', { name: 'slow_motion_video' }).click();
@@ -46,6 +44,14 @@ test('Delay Mirror: nagranie, Passe na tarczy, stopklatka, znaczniki, zapis', as
   // Powtórka z tarczą.
   await expect(page.getByText('Diese Passe')).toBeVisible();
 
+}
+
+
+test('Delay Mirror: nagranie, Passe na tarczy, stopklatka, znaczniki, zapis', async ({ page }) => {
+  test.setTimeout(120_000);
+  const errors = watchErrors(page);
+  await recordEndToReplay(page);
+
   // Stopklatka: klatka + tarcza + „Bild teilen”.
   await page.getByRole('button', { name: 'photo_camera' }).click();
   await expect(page.getByRole('button', { name: 'share Bild teilen' })).toBeVisible();
@@ -69,4 +75,37 @@ test('Delay Mirror: nagranie, Passe na tarczy, stopklatka, znaczniki, zapis', as
   await page.getByRole('button', { name: 'arrow_back' }).first().click();
   await expect(page.getByRole('button', { name: /^6 Pfeile \/ Monat/ })).toBeVisible();
   await expectNoErrors(page, errors, 'Delay Mirror');
+});
+
+test('Delay Mirror: eksport klipu — samo wideo i z wypaloną tarczą + wycięty fragment', async ({ page }) => {
+  test.setTimeout(150_000);
+  const errors = watchErrors(page);
+  await recordEndToReplay(page);
+
+  // Bez systemowego „Teilen” (headless) klip trafia do pobranych plików.
+  await page.getByRole('button', { name: 'share', exact: true }).click();
+  await page.getByRole('button', { name: /Nur Video/ }).click();
+  const [raw] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'share Teilen', exact: true }).click(),
+  ]);
+  expect(raw.suggestedFilename()).toMatch(/^GROTX_DelayMirror_.*.webm$/);
+
+  // Z tarczą + wycięty kawałek: klip budowany w czasie rzeczywistym.
+  await page.getByRole('button', { name: 'share', exact: true }).click();
+  await page.getByRole('button', { name: /Mit Scheibe/ }).click();
+  await page.getByRole('button', { name: /Stück herausschneiden/ }).click();
+  await expect(page.getByText(/Rot gestreift = wird herausgeschnitten/)).toBeVisible();
+  await page.getByRole('button', { name: 'share Teilen', exact: true }).click();
+  // Klip powstaje w czasie rzeczywistym, potem drugi gest „Video teilen”
+  // (system pozwala otworzyć udostępnianie tylko po dotknięciu).
+  await expect(page.getByText('Clip fertig')).toBeVisible({ timeout: 60_000 });
+  const [withTarget] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'share Video teilen' }).click(),
+  ]);
+  expect(withTarget.suggestedFilename()).toMatch(/^GROTX_DelayMirror_.*.webm$/);
+  const fs = await import('fs');
+  expect(fs.statSync((await withTarget.path())!).size).toBeGreaterThan(10_000);
+  await expectNoErrors(page, errors, 'eksport klipu');
 });

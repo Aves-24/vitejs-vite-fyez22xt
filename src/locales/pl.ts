@@ -680,6 +680,7 @@ export const views = {
   },
   coachSent: {
     title: "Wysłane wiadomości",
+    titleGroup: "Wysłane do {{group}}",
     empty: "Nie wysłałeś jeszcze żadnej wiadomości.",
     error: "Nie udało się wczytać listy.",
     toGroup: "{{group}} · {{count}} zaw.",

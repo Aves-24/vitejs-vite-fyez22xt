@@ -1221,6 +1221,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
     };
   };
 
+  // [WYSŁANE] imiona uczniów do listy wysłanych wiadomości
+  const studentNames = useMemo(() => Object.fromEntries(students.map((s: any) => [s.id, `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim()])), [students, t]);
+
   const openGroupMessage = (group: { name: string }, members: any[]) => {
     exitSelecting();
     setSelectedStudents(members.map(s => s.id));
@@ -2347,15 +2350,6 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           </div>
         </section>
 
-        {/* [WYSŁANE 2026-11-06] Wiadomości wysłane uczniom i grupom. */}
-        <section>
-          <CoachSentMessages
-            userId={userId}
-            studentNames={Object.fromEntries(students.map((s: any) => [s.id, `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim()]))}
-            refreshKey={sentRefresh}
-          />
-        </section>
-
         {/* 3. Trainermodus: więcej miejsc i wyłączenie */}
         <section>
           {settingsHeading('sports', t('coachSettings.account'))}
@@ -3330,53 +3324,72 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
          document.body
       )}
 
+      {/* Okno wiadomości w wyglądzie kart (jak formularz terminu w kalendarzu,
+          user 2026-11-06); na dole lista wysłanych — przy grupie tylko jej. */}
       {isMessageModalOpen && typeof document !== 'undefined' && createPortal(
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={closeMessageModal}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[340px] shadow-2xl relative" onClick={e => e.stopPropagation()}>
-             <div className="flex justify-between items-center mb-5">
-               <div className="flex items-center gap-2">
-                 <div className="w-8 h-8 bg-gray-50 text-[#0a3a2a] rounded-full flex items-center justify-center">
-                    <span className="material-symbols-outlined text-[16px]">campaign</span>
-                 </div>
-                 <h2 className="text-lg font-black text-[#0a3a2a] leading-none">{t('coachDashboard.messageTitle')}</h2>
-               </div>
-               <button onClick={closeMessageModal} className="w-8 h-8 bg-gray-50 text-gray-500 rounded-full flex items-center justify-center active:scale-90 transition-all">
-                  <span className="material-symbols-outlined text-sm">close</span>
-               </button>
-             </div>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[500000] flex items-start justify-center pt-14 px-4 animate-fade-in" onClick={closeMessageModal}>
+          <div role="dialog" aria-label={t('coachDashboard.messageTitle')} className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl overflow-y-auto max-h-[88vh] animate-fade-in-up" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-9 h-9 rounded-xl tb-icon flex items-center justify-center shrink-0">
+                <span className="material-symbols-outlined text-[20px] text-indigo-600">mail</span>
+              </span>
+              <h2 className="flex-1 min-w-0 text-[15px] font-black text-[#0a3a2a] leading-tight">{t('coachDashboard.messageTitle')}</h2>
+              <button onClick={closeMessageModal} aria-label={t('common.cancel')} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
 
-             <p className="text-[10px] font-bold text-gray-400 uppercase mb-4 pl-1">{t('coachDashboard.recipients')} <span className="text-[#0a3a2a] font-black">{messageGroupName !== null && <>{messageGroupName} · </>}{t('coachDashboard.recipientsCount', { count: selectedStudents.length })}</span></p>
+            {/* Odbiorcy jako karta z paskiem (fiolet = od trenera, słownik kolorów). */}
+            <div className="tb-card tb-topic border rounded-xl px-3 py-2 mb-3 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[18px] text-violet-500">{messageGroupName !== null ? 'folder_shared' : 'group'}</span>
+              <span className="flex-1 min-w-0">
+                <span className="block text-[9px] font-black uppercase tracking-widest text-gray-400">{t('coachDashboard.recipients').replace(/:$/, '')}</span>
+                <span className="block text-[13px] font-black text-[#0a3a2a] truncate">
+                  {messageGroupName !== null && <>{messageGroupName} · </>}{t('coachDashboard.recipientsCount', { count: selectedStudents.length })}
+                </span>
+              </span>
+            </div>
 
-             <div className="space-y-3">
-               <input 
-                 type="text"
-                 placeholder={t('coachDashboard.titlePlaceholder')}
-                 value={msgTitle} 
-                 onChange={e => setMsgTitle(e.target.value)} 
-                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-black outline-none focus:border-[#0a3a2a] transition-colors text-[#333]" 
-               />
-               <textarea 
-                 placeholder={t('coachDashboard.contentPlaceholder')}
-                 value={msgContent} 
-                 onChange={e => setMsgContent(e.target.value)} 
-                 className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-[12px] font-medium h-32 resize-none outline-none focus:border-[#0a3a2a] transition-colors text-[#333]" 
-               />
-             </div>
+            <div className="space-y-2.5">
+              <input
+                type="text"
+                placeholder={t('coachDashboard.titlePlaceholder')}
+                value={msgTitle}
+                maxLength={200}
+                onChange={e => setMsgTitle(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[#0a3a2a] placeholder-gray-300 outline-none transition-colors text-[14px] font-black"
+              />
+              <textarea
+                placeholder={t('coachDashboard.contentPlaceholder')}
+                value={msgContent}
+                maxLength={3000}
+                onChange={e => setMsgContent(e.target.value)}
+                className="w-full bg-gray-50 border border-gray-100 focus:border-emerald-300 focus:bg-white rounded-xl px-3 py-2.5 text-[#0a3a2a] placeholder-gray-300 outline-none transition-colors text-[13px] font-medium h-32 resize-none"
+              />
+            </div>
 
-             <button 
-               onClick={sendGroupMessage} 
-               disabled={isSendingMsg} 
-               className="w-full mt-6 py-4 bg-[#0a3a2a] text-white rounded-2xl font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
-             >
-               {isSendingMsg ? (
-                 <>{t('coachDashboard.processing')}</>
-               ) : (
-                 <>
-                   <span className="material-symbols-outlined text-[16px]">send</span>
-                   {t('coachDashboard.sendTo', { count: selectedStudents.length })}
-                 </>
-               )}
-             </button>
+            <button
+              onClick={sendGroupMessage}
+              disabled={isSendingMsg || !msgTitle.trim() || !msgContent.trim()}
+              className={`w-full mt-3 py-3.5 rounded-xl text-[11px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 ${!msgTitle.trim() || !msgContent.trim() ? 'bg-gray-200 text-gray-400' : 'bg-[#0a3a2a] text-white'}`}
+            >
+              {isSendingMsg ? t('coachDashboard.processing') : (
+                <>
+                  <span className="material-symbols-outlined text-[16px]">send</span>
+                  {t('coachDashboard.sendTo', { count: selectedStudents.length })}
+                </>
+              )}
+            </button>
+
+            <div className="mt-4">
+              <CoachSentMessages
+                userId={userId}
+                studentNames={studentNames}
+                refreshKey={sentRefresh}
+                groupName={messageGroupName}
+                memberIds={messageGroupName !== null ? selectedStudents : undefined}
+              />
+            </div>
           </div>
         </div>,
         document.body

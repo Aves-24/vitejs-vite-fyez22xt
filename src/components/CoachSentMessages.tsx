@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { collection, getDocs, limit, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 
-// [WYSŁANE 2026-11-06] Lista wiadomości wysłanych przez trenera (Einst. trenera).
+// [WYSŁANE 2026-11-06] Lista wiadomości wysłanych przez trenera — na dole okna
+// „Nachricht” (✉ przy grupie: tylko wiadomości tej grupy; user 2026-11-06).
 // Każda wiadomość to kilka dokumentów announcements/ (po jednym na ucznia) —
 // łączymy je po batchId (starsze bez batchId: po tytule, treści i sekundzie).
 // Czytane raz przy rozwinięciu (i po wysłaniu nowej), bez nasłuchu.
@@ -23,8 +24,12 @@ const toMs = (ts: any): number =>
 
 const SHOWN = 20;
 
-export default function CoachSentMessages({ userId, studentNames, refreshKey }: {
+export default function CoachSentMessages({ userId, studentNames, refreshKey, groupName, memberIds }: {
   userId: string;
+  /** okno otwarte z ✉ grupy → pokazujemy tylko jej wiadomości */
+  groupName?: string | null;
+  /** członkowie grupy — starsze wiadomości nie mają groupName, liczy się skład */
+  memberIds?: string[];
   /** id ucznia → imię do wyświetlenia */
   studentNames: Record<string, string>;
   /** zmienia się po wysłaniu wiadomości — lista czyta się na nowo */
@@ -52,11 +57,16 @@ export default function CoachSentMessages({ userId, studentNames, refreshKey }: 
           if (a.targetId) g.recipients.push(a.targetId);
           groups.set(key, g);
         }
-        setItems([...groups.values()].sort((x, y) => y.ms - x.ms).slice(0, SHOWN));
+        const members = new Set(memberIds || []);
+        const forGroup = (g: SentGroup) => !groupName
+          || g.groupName === groupName
+          || (!g.groupName && g.recipients.length > 1 && g.recipients.every(id => members.has(id)));
+        setItems([...groups.values()].filter(forGroup).sort((x, y) => y.ms - x.ms).slice(0, SHOWN));
       })
       .catch(e => { console.warn('Wysłane wiadomości:', e); if (alive) setError(true); });
     return () => { alive = false; };
-  }, [open, userId, refreshKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userId, refreshKey, groupName]);
 
   const recipientsLabel = (g: SentGroup) => {
     if (g.groupName) return t('coachSent.toGroup', { group: g.groupName, count: g.recipients.length });
@@ -67,15 +77,15 @@ export default function CoachSentMessages({ userId, studentNames, refreshKey }: 
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-gray-100 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
-        className="w-full flex items-center gap-3 px-3 py-2.5 text-left active:bg-gray-50 transition-all"
+        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left bg-gray-50 active:bg-gray-100 transition-all"
       >
-        <span className="material-symbols-outlined text-[20px] text-[#0a3a2a] shrink-0">outgoing_mail</span>
-        <span className="flex-1 text-[14px] font-black text-[#0a3a2a]">{t('coachSent.title')}</span>
+        <span className="material-symbols-outlined text-[18px] text-[#0a3a2a] shrink-0">outgoing_mail</span>
+        <span className="flex-1 text-[12px] font-black uppercase tracking-wider text-[#0a3a2a]">{groupName ? t('coachSent.titleGroup', { group: groupName }) : t('coachSent.title')}</span>
         <span className="material-symbols-outlined text-gray-400 text-[22px] shrink-0">{open ? 'expand_less' : 'expand_more'}</span>
       </button>
       {open && (
@@ -89,7 +99,7 @@ export default function CoachSentMessages({ userId, studentNames, refreshKey }: 
           ) : items.length === 0 ? (
             <p className="px-3 py-3 text-[12px] font-bold text-gray-400">{t('coachSent.empty')}</p>
           ) : (
-            <ul className="divide-y divide-gray-50" data-testid="coach-sent-list">
+            <ul className="divide-y divide-gray-50 max-h-[40vh] overflow-y-auto" data-testid="coach-sent-list">
               {items.map(g => {
                 const isOpen = expanded === g.key;
                 return (

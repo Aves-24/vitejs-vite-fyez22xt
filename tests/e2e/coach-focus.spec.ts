@@ -79,12 +79,14 @@ test('wiadomość ✉ do całej grupy dochodzi do ucznia', async ({ browser }) =
   await expect(coach.getByPlaceholder('Benachrichtigungstitel')).toHaveCount(0);
   await expectNoErrors(coach, coachErrors, 'trener: wiadomość do grupy');
 
-  // Trener: Einst. → „Gesendete Nachrichten” — wiadomość z nazwą grupy.
-  await coachNav(coach, 'settings Einst.').click();
-  await coach.getByRole('button', { name: /Gesendete Nachrichten/ }).click();
+  // Trener: ✉ grupy jeszcze raz → na dole „Gesendet an Kader” z tą wiadomością.
+  await coach.getByRole('button', { name: 'Nachricht an die ganze Gruppe' }).first().click();
+  await coach.getByRole('button', { name: /Gesendet an Kader/ }).click();
   const sentList = coach.getByTestId('coach-sent-list');
   await expect(sentList).toContainText('Training fällt aus');
   await expect(sentList).toContainText('Kader · 1 Schüler');
+  await coach.screenshot({ path: process.env.TEMP + '/dm/msg-modal.png' });
+  await coach.getByRole('dialog').getByRole('button', { name: /close|Abbrechen/ }).first().click();
   await expectNoErrors(coach, coachErrors, 'trener: wysłane');
 
   // Uczeń: powiadomienie w dzwoneczku → treść wiadomości.

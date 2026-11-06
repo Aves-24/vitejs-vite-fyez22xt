@@ -666,6 +666,7 @@ export const views = {
   },
   coachSent: {
     title: "Sent messages",
+    titleGroup: "Sent to {{group}}",
     empty: "You haven't sent any messages yet.",
     error: "Could not load the list.",
     toGroup: "{{group}} · {{count}} athletes",

@@ -666,6 +666,7 @@ export const views = {
   },
   coachSent: {
     title: "Gesendete Nachrichten",
+    titleGroup: "Gesendet an {{group}}",
     empty: "Du hast noch keine Nachrichten gesendet.",
     error: "Liste konnte nicht geladen werden.",
     toGroup: "{{group}} · {{count}} Schüler",

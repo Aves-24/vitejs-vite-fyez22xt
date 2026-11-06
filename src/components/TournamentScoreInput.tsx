@@ -117,6 +117,12 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
       if (currentEnd.length < perRow && ends.length < totalEnds) {
         const newEnd = sortRow([...currentEnd, key]);
         setCurrentEnd(newEnd);
+      } else if (currentEnd.length === perRow && ends.length + 1 < totalEnds) {
+        // [E2E 2026-11-06] Pełny wiersz czeka 150 ms na zatwierdzenie — strzała
+        // wpisana w tym czasie przepadała (z 30 szybkich zostawało 24). Teraz
+        // zatwierdzamy wiersz od razu i zaczynamy następny od tej strzały.
+        setEnds(prev => [...prev, currentEnd]);
+        setCurrentEnd([key]);
       }
     }
   };

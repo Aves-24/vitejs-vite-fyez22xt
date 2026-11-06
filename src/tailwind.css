@@ -178,7 +178,7 @@
 .dark .border-l-\[\#0a3a2a\] { border-left-color: #fed33e; }
 /* Pierścień stref na Home: tło (= pudła M, pusta część) ciemne w ciemnym motywie. */
 .dark .zones-track { stroke: #2a332e; }
-.dark .zones-label { fill: #e6e8e7; }
+.dark .zones-black { stroke: #000000; }
 .dark .zones-track-bg { background-color: #2a332e; }
 
 /* Krzywa wyników na home (inline SVG) — patrz klasa gx-trend w HomeView */

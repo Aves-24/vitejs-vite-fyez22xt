@@ -1353,41 +1353,51 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               const pctOf = (n: number) => Math.round((n / total) * 100);
               const goldPct = total > 0 ? pctOf(recentZones[0]) : 0;
               const showRing = isPremium && total > 0;
-              const labels = showRing ? ringLabels(recentZones) : [];
+              // Napisy w środku kolorowego pasa, obrócone wzdłuż łuku (na dole odwrócone,
+              // żeby dało się czytać); tylko te, które mieszczą się w swoim kolorze.
+              const labels = showRing ? ringLabels(recentZones, 10, 0) : [];
               const zoneNames = [t('stats.pro.zones.gold'), t('stats.pro.zones.red'), t('stats.pro.zones.blue'), t('stats.pro.zones.black'), t('stats.pro.zones.white'), 'M'];
               let offset = 25;
-              const C = { x: 50, y: 34 }, R = 15.9, RL = 27.5;
+              const C = { x: 32, y: 32 }, R = 23, W = 15, CIRC = 2 * Math.PI * R;
+              const darkText = (i: number) => i === 0 || i === 4;
               return (
                 <button
                   onClick={() => onNavigate?.('STATS', 'PRO_ZONES')}
                   aria-label={total > 0
-                    ? recentZones.map((n, i) => n ? `${zoneNames[i]} ${pctOf(n)} %` : '').filter(Boolean).join(', ')
+                    ? `${t('home.zonesCount', { count: recentAvg.length })}: ${recentZones.map((n, i) => n ? `${zoneNames[i]} ${pctOf(n)} %` : '').filter(Boolean).join(', ')}`
                     : t('home.zonesGold')}
-                  className={`active:bg-gray-50 transition-colors min-w-0 ${showRing ? 'flex items-center justify-center px-1 py-0.5' : 'px-3 py-2.5 text-left'}`}
+                  className={`active:bg-gray-50 transition-colors min-w-0 ${showRing ? 'flex flex-col items-center justify-center px-1 py-1.5' : 'px-3 py-2.5 text-left'}`}
                   data-testid="home-zones"
                 >
                   {showRing ? (
-                    <svg width="100" height="68" viewBox="0 0 100 68" aria-hidden="true" className="overflow-visible">
-                      <circle cx={C.x} cy={C.y} r={R} fill="none" stroke="#eef1ef" strokeWidth="7" className="zones-track" />
+                    <>
+                    <svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true">
+                      <circle cx={C.x} cy={C.y} r={R} fill="none" stroke="#eef1ef" strokeWidth={W} className="zones-track" />
                       {recentZones.map((n, i) => {
                         const len = (n / total) * 100;
                         if (!n || !ZONE_COLORS[i]) { offset -= len; return null; }
-                        const el = <circle key={i} cx={C.x} cy={C.y} r={R} fill="none" stroke={ZONE_COLORS[i]} strokeWidth="7" strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
+                        const el = <circle key={i} cx={C.x} cy={C.y} r={R} fill="none" stroke={ZONE_COLORS[i]} strokeWidth={W} pathLength={100} className={i === 3 ? 'zones-black' : undefined} strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
                         offset -= len;
                         return el;
                       })}
                       {labels.map(l => {
+                        const txt = `${Math.round(l.pct)}%`;
+                        // szerokość napisu ~ 4.6 j. na znak przy 8 px — musi zmieścić się w łuku
+                        if (txt.length * 4.6 + 2 > (l.pct / 100) * CIRC) return null;
                         const rad = (l.midDeg - 90) * Math.PI / 180;
-                        const x = C.x + RL * Math.cos(rad);
-                        const y = C.y + RL * Math.sin(rad);
-                        const anchor = Math.abs(Math.cos(rad)) < 0.3 ? 'middle' : Math.cos(rad) > 0 ? 'start' : 'end';
+                        const x = C.x + R * Math.cos(rad);
+                        const y = C.y + R * Math.sin(rad);
+                        const rot = l.midDeg > 90 && l.midDeg < 270 ? l.midDeg - 180 : l.midDeg;
                         return (
-                          <text key={l.i} x={x} y={y + 3.5} textAnchor={anchor} fontSize="10" fontWeight="800" className="zones-label" fill="#0a3a2a">
-                            {Math.round(l.pct)}%
+                          <text key={l.i} x={x} y={y} transform={`rotate(${rot} ${x} ${y})`} textAnchor="middle" dominantBaseline="central"
+                            fontSize="8" fontWeight="800" fill={darkText(l.i) ? '#0a3a2a' : '#ffffff'}>
+                            {txt}
                           </text>
                         );
                       })}
                     </svg>
+                    <span className="block text-[11px] font-bold text-gray-500 mt-0.5 truncate max-w-full">{t('home.zonesCount', { count: recentAvg.length })}</span>
+                    </>
                   ) : (
                     <span className="min-w-0">
                       <span className="block text-[20px] font-black text-[#0a3a2a] leading-none">{total > 0 ? `${goldPct} %` : '—'}</span>

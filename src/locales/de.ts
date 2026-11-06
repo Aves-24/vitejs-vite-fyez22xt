@@ -1015,6 +1015,7 @@ export const views = {
     formTitle: "Form · Ø Pfeil, letzte {{count}} Trainings",
     nextEvents: "Nächste Termine",
     zonesGold: "Gold",
+    zonesCount: "letzte {{count}} Trainings",
     refreshing: "Aktualisiere…",
     pfeilzähler: "Pfeilzähler",
     techAdd: "Technik hinzufügen",

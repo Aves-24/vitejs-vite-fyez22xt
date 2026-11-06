@@ -1015,6 +1015,7 @@ export const views = {
     formTitle: "Form · avg per arrow, last {{count}} sessions",
     nextEvents: "Upcoming",
     zonesGold: "Gold",
+    zonesCount: "last {{count}} sessions",
     refreshing: "Refreshing…",
     pfeilzähler: "Arrow Counter",
     techAdd: "Add Technical",

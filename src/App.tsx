@@ -722,7 +722,7 @@ export default function App() {
     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
       <nav aria-label={ariaLabel} className="relative h-20 w-full px-1">
         <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
-          <path d={notch ? 'M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z' : 'M0,0 H390 V80 H0 Z'} fill="white"/>
+          <path d={notch ? 'M0,0 H148 C158,0 165,36 195,36 C225,36 232,0 242,0 H390 V80 H0 Z' : 'M0,0 H390 V80 H0 Z'} className="nav-bg"/>
         </svg>
         {!notch && <div aria-hidden="true" className="absolute top-0 inset-x-0 h-[3px] bg-rose-400" />}
         <div className="flex items-center h-full w-full relative">{children}</div>

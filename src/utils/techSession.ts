@@ -7,7 +7,7 @@ import { guestExpiryFields } from './guestMode';
 import { sessionNoteField, writePrivateSessionNote } from './privateSessionNote';
 
 function invalidateStatsCache(userId: string) {
-  localStorage.removeItem(`grotX_stats_v14_${userId}`);
+  localStorage.removeItem(`grotX_stats_v15_${userId}`);
   localStorage.removeItem(`grotX_lastSession_${userId}`);
   window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
 }

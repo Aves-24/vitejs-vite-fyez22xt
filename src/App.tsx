@@ -170,6 +170,8 @@ export default function App() {
   // Pulpit trenera → kalendarz z otwartym formularzem kategorii Trener.
   const [openNewTrainerEvent, setOpenNewTrainerEvent] = useState(false);
   const [focusedDate, setFocusedDate] = useState<string | null>(null);
+  // [HOME 2026-11-06] Zakładka statystyk przy wejściu (kafelek stref → PRO Progress).
+  const [statsTab, setStatsTab] = useState<string | null>(null);
   const [focusedSessionId, setFocusedSessionId] = useState<string | null>(null);
   
   const [viewingStudentId, setViewingStudentId] = useState<string | null>(restorePoint?.studentId ?? null);
@@ -537,6 +539,7 @@ export default function App() {
       }
     } else if (view === 'STATS' || view === 'STUDENT_PROFILE') {
       setFocusedDate(extraData || null);
+      setStatsTab(view === 'STATS' ? (tab || null) : null);
       if (optionalStudentId) {
         setViewingStudentId(optionalStudentId);
       }
@@ -936,6 +939,7 @@ export default function App() {
             onNavigate={(view: string, tab?: string) => handleNavigate(view as AppView, tab)}
             initialDate={focusedDate || undefined}
             initialSessionId={focusedSessionId || undefined}
+            initialTab={statsTab === 'PRO' || statsTab === 'RECORDS' ? statsTab : undefined}
           />
         )}
 

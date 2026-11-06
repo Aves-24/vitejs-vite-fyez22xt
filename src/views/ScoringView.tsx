@@ -511,7 +511,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     // Unieważnienie wszystkich cache'y statystyk po nowym treningu
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_proStats_${userId}`);
-    localStorage.removeItem(`grotX_stats_v14_${userId}`);
+    localStorage.removeItem(`grotX_stats_v15_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     invalidateRecentSessions(userId); // wyczyść dedup w pamięci wspólnego źródła sesji
     window.dispatchEvent(new Event('session_state_changed'));

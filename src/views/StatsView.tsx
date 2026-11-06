@@ -364,16 +364,17 @@ interface StatsViewProps {
   onNavigate: any;
   initialDate?: string;
   initialSessionId?: string;
+  initialTab?: 'DAILY' | 'RECORDS' | 'PRO';
   viewingStudentId?: string | null;
   isEmbedded?: boolean;
 }
 
-export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, viewingStudentId, isEmbedded = false }: StatsViewProps) {
+export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, initialTab, viewingStudentId, isEmbedded = false }: StatsViewProps) {
   const { t, i18n } = useTranslation();
   // Bitwa klubowa ma własną etykietę zamiast ogólnego „Arena Live”.
   const arenaLabel = (s: any) => s?.battleMode === 'CLUB' ? t('stats.sessionInfo.arenaClub') : t('stats.sessionInfo.arena');
   
-  const [activeTab, setActiveTab] = useState<'DAILY' | 'RECORDS' | 'PRO'>('DAILY');
+  const [activeTab, setActiveTab] = useState<'DAILY' | 'RECORDS' | 'PRO'>(initialTab ?? 'DAILY');
 
   const [sessions, setSessions] = useState<Session[]>([]);
   // Sesje dociągnięte punktowo dla konkretnej daty (skok z archiwum zawodów).

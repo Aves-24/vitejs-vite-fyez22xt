@@ -28,6 +28,7 @@ import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../util
 import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
+import { isBlowgunSession } from '../config/targets/blowgun';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
@@ -76,6 +77,20 @@ interface HomeViewProps {
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
 }
 
+// [HOME 2026-11-06] Strzały serii → strefy tarczy: X/10/9 złoto, 8/7 czerwień,
+// 6/5 niebieski, 4/3 czarny, 2/1 biały, M pudło.
+function zonesOf(ends: any): number[] {
+  const z = [0, 0, 0, 0, 0, 0];
+  for (const e of Array.isArray(ends) ? ends : []) {
+    for (const v of Array.isArray(e?.arrows) ? e.arrows : []) {
+      const n = v === 'X' ? 10 : v === 'M' ? 0 : parseInt(v, 10);
+      if (isNaN(n)) continue;
+      z[n >= 9 ? 0 : n >= 7 ? 1 : n >= 5 ? 2 : n >= 3 ? 3 : n >= 1 ? 4 : 5]++;
+    }
+  }
+  return z;
+}
+
 export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onCreateArena, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
   const { t, i18n } = useTranslation();
   // Fokus przypomina się przed treningiem; bez fokusu paska nie ma wcale.
@@ -110,6 +125,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [avgPointsMonth, setAvgPointsMonth] = useState<number>(0);
   const [recentScores, setRecentScores] = useState<number[]>([]);
   const [recentAvg, setRecentAvg] = useState<number[]>([]);
+  // Złoto, czerwień, niebieski, czarny, biały, M — liczba strzał z 6 ostatnich treningów.
+  const [recentZones, setRecentZones] = useState<number[]>([0, 0, 0, 0, 0, 0]);
   const [recentSessions, setRecentSessions] = useState<({ score: number; date: string; distance: string; type: string; ts: number } & PartialInfo)[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
   // snapshotu co liczniki, dzięki czemu modal nie robi już osobnego odczytu.
@@ -567,7 +584,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v14_${userId}`;
+      const cacheKey = `grotX_stats_v15_${userId}`;
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -582,6 +599,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.avgPointsMonth != null) setAvgPointsMonth(cached.avgPointsMonth);
         if (cached.recentScores) setRecentScores(cached.recentScores);
         if (cached.recentAvg) setRecentAvg(cached.recentAvg);
+        if (cached.recentZones) setRecentZones(cached.recentZones);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
         if (cached.weeklyPoints) setWeeklyPoints(cached.weeklyPoints);
@@ -740,7 +758,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, scoreArrows: dd.scoreArrows || dd.sessionArrows || dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
+            return { blow: isBlowgunSession({ bowClass: dd.bowClass, targetType: dd.targetType }), zones: zonesOf(dd.ends), score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, scoreArrows: dd.scoreArrows || dd.sessionArrows || dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
@@ -751,7 +769,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // [HOME 2026-11-06] Forma = Ø na strzałę z 6 ostatnich treningów z punktami.
         // Surowe wyniki mieszały dystanse (560 na 18 m obok 417 na 70 m); średnia na
         // strzałę da się porównać — także dla krótszych treningów.
-        const recentAvg = sessionList.filter(s => s.scoreArrows > 0).slice(-6).map(s => Math.round((s.score / s.scoreArrows) * 100) / 100);
+        // Dmuchawka ma inną skalę (6–10) — nie miesza się z formą łucznika.
+        const formBase = sessionList.filter(s => s.scoreArrows > 0 && !s.blow).slice(-6);
+        const recentAvg = formBase.map(s => Math.round((s.score / s.scoreArrows) * 100) / 100);
+        // [HOME 2026-11-06] Strefy tarczy z tych samych 6 treningów (kafelek w środku).
+        const recentZones = formBase.reduce((acc, s) => acc.map((v, i) => v + s.zones[i]), [0, 0, 0, 0, 0, 0]);
         // Do 50 — modal Ergebniskurve dociąga więcej przyciskiem "Pokaż więcej" (tylko PRO)
         const recentFull = sessionList.slice(-50);
 
@@ -834,6 +856,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setAvgPointsMonth(avgPointsM);
         setRecentScores(recent);
         setRecentAvg(recentAvg);
+        setRecentZones(recentZones);
         setRecentSessions(recentFull);
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
@@ -843,7 +866,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setWeeklySessionAvgByDist(weekSessionAvgByDist);
         setWeekStreak(streak);
 
-        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentAvg, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
+        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentAvg, recentZones, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -853,7 +876,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v14_${userId}`);
+      localStorage.removeItem(`grotX_stats_v15_${userId}`);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -869,7 +892,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v14_${userId}`);
+    localStorage.removeItem(`grotX_stats_v15_${userId}`);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1322,16 +1345,39 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{monthlyTotal}</p>
               <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.arrowsPerMonth')}</p>
             </button>
-            <button
-              onClick={() => { setQuickStatsInitialTab('POINTS'); setIsQuickStatsOpen(true); }}
-              className="px-3 py-2.5 text-left active:bg-gray-50 transition-colors"
-            >
-              {/* Bez treningu z punktami w 14 dniach: „—” zamiast mylącego 0.0. */}
-              <p className="text-[20px] font-black text-[#0a3a2a] leading-none">
-                {Number(avg14Days) > 0 ? Number(avg14Days).toLocaleString(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) : '—'}
-              </p>
-              <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.avg14Short')}</p>
-            </button>
+            {/* [HOME 2026-11-06] Strefy tarczy z 6 ostatnich treningów (te same co wykres).
+                PRO: pierścień w kolorach tarczy; FREE: samo „Gold %”. Dotknięcie → PRO Progress. */}
+            {(() => {
+              const total = recentZones.reduce((a, b) => a + b, 0);
+              const goldPct = total > 0 ? Math.round((recentZones[0] / total) * 100) : 0;
+              const colors = ['#f2c94c', '#e5534b', '#3b82f6', '#222222', '#d9dedb', '#7c3aed'];
+              let offset = 25;
+              return (
+                <button
+                  onClick={() => onNavigate?.('STATS', 'PRO')}
+                  aria-label={total > 0 ? `${t('home.zonesGold')} ${goldPct} %` : t('home.zonesGold')}
+                  className="px-2.5 py-2 text-left active:bg-gray-50 transition-colors flex items-center gap-2 min-w-0"
+                  data-testid="home-zones"
+                >
+                  {isPremium && total > 0 && (
+                    <svg width="34" height="34" viewBox="0 0 42 42" className="shrink-0" aria-hidden="true">
+                      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#eef1ef" strokeWidth="7" />
+                      {recentZones.map((n, i) => {
+                        if (!n) return null;
+                        const len = (n / total) * 100;
+                        const el = <circle key={i} cx="21" cy="21" r="15.9" fill="none" stroke={colors[i]} strokeWidth="7" strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
+                        offset -= len;
+                        return el;
+                      })}
+                    </svg>
+                  )}
+                  <span className="min-w-0">
+                    <span className="block text-[20px] font-black text-[#0a3a2a] leading-none">{total > 0 ? `${goldPct} %` : '—'}</span>
+                    <span className="block text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.zonesGold')}</span>
+                  </span>
+                </button>
+              );
+            })()}
             <button
               onClick={openLastSession}
               aria-label={realLastSession
@@ -1350,7 +1396,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           </div>
 
           {/* Forma: Ø na strzałę z 6 ostatnich treningów (porównywalne między dystansami). */}
-          {recentAvg.length >= 2 && (() => {
+          {/* Od 3 treningów — dwa punkty to jeszcze nie forma (user 2026-11-06). */}
+          {recentAvg.length >= 3 && (() => {
             const W = 300, H = 44, pad = 6;
             const lo = Math.min(...recentAvg), hi = Math.max(...recentAvg);
             const range = hi - lo || 1;

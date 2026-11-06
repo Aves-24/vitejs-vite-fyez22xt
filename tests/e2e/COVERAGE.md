@@ -39,6 +39,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. Offline na zbudowanej apce z serv
 | Delay Mirror eksport | delay-mirror | samo wideo → plik .webm; z wypaloną tarczą + wycięty kawałek → „Clip fertig” → „Video teilen” → plik |
 | Offline (build + SW) | e2e-prod/offline-sw | `npm run test:e2e:prod`: build e2e z sw.js, start bez sieci (pełne przeładowanie), trening offline, Tagebuch/Stats, synchronizacja |
 | Ciemny motyw + EN/PL | i18n-theme | główne ekrany (Home, Kalender, Tagebuch, Stats + Rekorde, Einst. + zakładki, Vorbereitung): w ciemnym motywie brak tekstu z kontrastem < 1.5; w EN i PL brak surowych kluczy i słów z innego języka |
+| Usunięcie konta trenera | coach-delete | 3 konta: współtrener usuwa konto → znika z coachIds, grupa zostaje; Haupttrainer usuwa konto → groups, groupPlans, groupInvites puste, uczeń bez planu grupy i bez trenera (DS 2.4 v1.11) |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.

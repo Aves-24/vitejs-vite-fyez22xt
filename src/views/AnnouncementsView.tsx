@@ -188,7 +188,8 @@ export default function AnnouncementsView({ userId, userClub, onNavigate }: Anno
                 </button>
 
                 {/* Górny pasek: badge + data */}
-                <div className="flex items-center justify-between mb-2 relative z-10 pr-6">
+                {/* pr-10: × (32 px + 12 px od krawędzi) nie może nachodzić na datę */}
+                <div className="flex items-center justify-between mb-2 relative z-10 pr-10">
                   <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
                     fromCoach
                       ? 'bg-indigo-600 text-white'

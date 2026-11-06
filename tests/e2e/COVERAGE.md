@@ -33,14 +33,13 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Hala 2×30 + Rekorde | tournament-indoor | turniej 18 m: format 2×30 domyślnie, 60 szybkich strzał (nic nie ginie), D1/D2, zapis; REKORDY: start z zeszłego roku dopisany ręcznie, seria 2 starty, rekord, +22 |
 | Tarcza 122 cm | target-full | 70 m: X/9/8/7/6/1 myszą, lupa przy przeciąganiu (strzała tam, gdzie puszczono), Technikfehler (dawniej „Fehlschuss”) w bazie |
 | Statystyki PRO | stats-pro | 3 treningi → pierwsza ranga („Dein erster Rang”), PRO Progress, eksport PDF (%PDF) i CSV (nagłówek po niemiecku), każda Passe w bazie |
+| Termine + Gesehen | coach-termine | stały trening „alle 2 Wochen” (2 terminy w 4 tygodniach), odwołanie „Absagen und verschieben” (tematy +1 termin w bazie, uczeń: Heute abgesagt + następny za 14 dni); notatka ucznia → trener „Gesehen” → uczeń „Dein Trainer hat deine Notiz gelesen” |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
 
 ## Jeszcze NIE pokryte
 
-- Termine trenera: przesuwanie tematów, rytm co 2 tygodnie
-- „Gesehen” trenera przy notatce ucznia
 - Delay Mirror: eksport klipu / Teilen (navigator.share), wycinanie fragmentów
 - Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
 - WORLD (wyłączone „Bald verfügbar”)

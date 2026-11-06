@@ -1,0 +1,129 @@
+import { test, expect, type Page, type Browser } from '@playwright/test';
+import { resetEmulators, registerUser, linkCoachAndStudent, watchErrors, expectNoErrors, newUserPage, closeUserPages, syncWrites, adminListDocs } from './helpers';
+
+// Termine trenera: stały trening „alle 2 Wochen” i odwołanie z przesunięciem
+// tematów (każdy temat rusza o jeden termin dalej).
+test.beforeEach(async ({ request }) => resetEmulators(request));
+test.afterEach(() => closeUserPages());
+
+const coachNav = (page: Page, name: string) => page.getByRole('navigation').getByRole('button', { name, exact: true });
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const plusDays = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return d; };
+
+async function coachWithGroup(browser: Browser) {
+  const coach = await newUserPage(browser);
+  const student = await newUserPage(browser);
+  const coachErrors = watchErrors(coach);
+  const studentErrors = watchErrors(student);
+  await registerUser(coach, 'Trenerka');
+  const sid = await registerUser(student, 'Uczen');
+  await linkCoachAndStudent(coach, student, sid, 'Trenerka');
+  await coachNav(coach, 'folder_shared Gruppen').click();
+  await coach.getByRole('button', { name: 'Gruppe erstellen' }).click();
+  await coach.getByPlaceholder('Z.B. Anfänger, Kader...').fill('Kader');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await coach.getByRole('button', { name: 'person_add Hinzufügen' }).click();
+  await coach.getByRole('button', { name: 'check Uczen' }).click();
+  await coach.getByRole('button', { name: 'Hinzufügen (1)' }).click();
+  await expect(coach.getByRole('button', { name: /folder_shared Kader 1 Schüler/ })).toBeVisible();
+  return { coach, student, coachErrors, studentErrors };
+}
+
+async function addTopic(coach: Page, day: Date, title: string) {
+  await coachNav(coach, 'folder_shared Gruppen').click();
+  const kader = coach.getByRole('main').getByText('Kader', { exact: true });
+  if (await kader.isVisible().catch(() => false)) await kader.click();
+  await coach.getByRole('button', { name: 'add Thema' }).click();
+  const date = coach.locator('input[type="date"]').last();
+  if (await date.isVisible().catch(() => false)) await date.fill(iso(day));
+  await coach.getByPlaceholder('z. B. Ellenbogenrotation im Vollauszug').fill(title);
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByPlaceholder('z. B. Ellenbogenrotation im Vollauszug')).toHaveCount(0);
+}
+
+test('rytm co 2 tygodnie + odwołanie z przesunięciem tematów', async ({ browser, request }) => {
+  test.setTimeout(150_000);
+  const { coach, student, coachErrors, studentErrors } = await coachWithGroup(browser);
+
+  // Stały trening: dziś 23:30, co 2 tygodnie.
+  const today = new Date();
+  await coach.getByRole('button', { name: /Regelmäßiges Training/ }).click();
+  await coach.getByRole('combobox', { name: 'Termine' }).selectOption({ label: today.toLocaleDateString('de-DE', { weekday: 'long' }) });
+  await coach.getByRole('textbox', { name: 'Uhrzeit' }).fill('23:30');
+  await coach.getByRole('button', { name: 'alle 2 Wochen' }).click();
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByText('Trainingszeit gespeichert')).toBeVisible();
+
+  // Termine (4 tygodnie): tylko 2 treningi — dziś i za 14 dni.
+  await coachNav(coach, 'event_note Termine').click();
+  await expect(coach.getByRole('button', { name: /Kader Plan schedule 23:30/ })).toHaveCount(2);
+
+  // Tematy: dziś „Anker” i za 2 tygodnie „Schulter tief”.
+  await addTopic(coach, today, 'Anker');
+  await addTopic(coach, plusDays(14), 'Schulter tief');
+
+  // Odwołanie dzisiejszego z przesunięciem: Anker → +14, Schulter tief → +28.
+  await coachNav(coach, 'event_note Termine').click();
+  await coach.getByRole('button', { name: 'Absagen' }).first().click();
+  await coach.getByRole('button', { name: 'Absagen und verschieben' }).click();
+  await expect(coach.getByText(/Themen verschoben \(2\)/)).toBeVisible();
+  await syncWrites(coach);
+  await expectNoErrors(coach, coachErrors, 'Termine');
+
+  const groups = await adminListDocs(request, 'groups');
+  const topics = groups[0].fields.topics.mapValue.fields;
+  expect(topics[iso(today)]).toBeUndefined();
+  expect(JSON.stringify(topics[iso(plusDays(14))])).toContain('Anker');
+  expect(JSON.stringify(topics[iso(plusDays(28))])).toContain('Schulter tief');
+
+  // Uczeń: dziś odwołane, następny trening za 2 tygodnie.
+  await student.getByRole('navigation').getByRole('button', { name: /Start$/ }).click();
+  const plan = student.getByTestId('group-plan');
+  await expect(plan).toContainText('Heute abgesagt');
+  const next = plusDays(14);
+  await expect(plan).toContainText(new RegExp(`Nächstes Training: .*${next.getDate()}\.${next.getMonth() + 1}\..* · 23:30`));
+  await expectNoErrors(student, studentErrors, 'uczeń');
+});
+
+test('„Gesehen”: trener odhacza notatkę ucznia, uczeń widzi, że przeczytana', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const coach = await newUserPage(browser);
+  const student = await newUserPage(browser);
+  const coachErrors = watchErrors(coach);
+  const studentErrors = watchErrors(student);
+  await registerUser(coach, 'Trenerka');
+  const sid = await registerUser(student, 'Uczen');
+  await linkCoachAndStudent(coach, student, sid, 'Trenerka');
+
+  // Uczeń: trening z notatką dla trenera (domyślnie „Notiz mit Trainer teilen”).
+  await student.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await student.getByRole('button', { name: 'Training', exact: true }).click();
+  for (const v of ['10', '10', '9', '9', '8', '8']) await student.getByRole('button', { name: v, exact: true }).click();
+  await student.getByRole('button', { name: /Trainingstagbuch Wie lief es/ }).click();
+  await student.getByPlaceholder(/Beschreibe deine Session/).fill('Bogenarm zittert bei 70 m');
+  await expect(student.getByRole('checkbox', { name: /Notiz mit Trainer teilen/ }).or(student.getByText('Notiz mit Trainer teilen'))).toBeVisible();
+  await student.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await student.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(student.getByRole('button', { name: /^Zuletzt 54/ })).toBeVisible();
+  await syncWrites(student);
+
+  // Trener: szybki podgląd ucznia → notatka → „Gesehen”.
+  await coachNav(coach, 'group Schüler').click();
+  await coach.getByRole('main').getByText('Uczen').first().click();
+  await expect(coach.getByText('Bogenarm zittert bei 70 m').first()).toBeVisible({ timeout: 15_000 });
+  await coach.getByRole('button', { name: /check Gesehen/ }).click();
+  await expect(coach.getByText('Abgehakt — du hast die Notiz gesehen')).toBeVisible();
+  await expect(coach.getByRole('button', { name: /check Gesehen/ })).toHaveCount(0);
+  await syncWrites(coach);
+  await expectNoErrors(coach, coachErrors, 'trener: Gesehen');
+
+  // Uczeń: w Tagebuchu „Dein Trainer hat deine Notiz gelesen”.
+  await student.reload();
+  await student.getByRole('navigation').getByRole('button', { name: /Tagebuch$/ }).click();
+  const entry = student.getByRole('button', { name: /Training 18m 54 Ringe/ });
+  await expect(entry).toBeVisible();
+  const seen = student.getByText('Dein Trainer hat deine Notiz gelesen');
+  if (!(await seen.first().isVisible().catch(() => false))) await entry.click();
+  await expect(seen.first()).toBeVisible();
+  await expectNoErrors(student, studentErrors, 'uczeń: przeczytana');
+});

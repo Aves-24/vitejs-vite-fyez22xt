@@ -1,4 +1,4 @@
-# Testy e2e — mapa pokrycia (stan 2026-11-05)
+# Testy e2e — mapa pokrycia (stan 2026-11-06)
 
 Uruchamianie (PowerShell):
 
@@ -8,7 +8,7 @@ $env:JAVA_TOOL_OPTIONS="-Djdk.net.unixdomain.tmpdir=C:/Users/Public"; npm run te
 
 Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) + ręcznie w Actions — NIE blokują deployu.
 
-## Pokryte (33 testy)
+## Pokryte
 
 | Obszar | Plik | Co sprawdza |
 |---|---|---|
@@ -24,6 +24,11 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Termine + czat | coach-schedule | stały trening grupy (4 tygodnie, Übersicht „Heute Training”, odwołanie; uczeń widzi trening i odwołanie na Home; Ferien/przerwa z opisem), czat uczeń ↔ trener na żywo |
 | Tarcza | target-input | 3-Spot: mysz trafia w miejsce kliku, obie kolumny; dotyk z odsunięciem celownika |
 | Zawody | tournament | termin na dziś, karta wyników, statystyki (tarcza 122cm), Tagebuch, Rekorde, niemieckie daty |
+| Fokus + wiadomość | coach-focus | fokus od trenera (Home i Tagebuch ucznia, trening pod fokus), wiadomość ✉ do całej grupy w dzwoneczku ucznia |
+| Współtrener | co-coach | 3 konta: zaproszenie drugiego trenera do grupy, przyjęcie, zgoda ucznia, współtrener widzi ucznia |
+| Gra Verein | club-battle | gra klubowa na liście „Vereinsspiele”, dołączenie, ranking na ślepo (przed Passe toast, po Passe wynik innego tylko do tej samej liczby strzał) |
+| Delay Mirror | delay-mirror | nagrywanie z opóźnieniem 2 s (WebM — Chromium testowy nie odtwarza H.264 w MSE), Passe na tarczy, powtórka, stopklatka z tarczą, znaczniki + notatka, licznik strzał |
+| Offline | offline | trening zapisany bez sieci widać od razu (Home, Tagebuch), po powrocie sieci trafia do bazy |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
@@ -31,16 +36,15 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 ## Jeszcze NIE pokryte
 
 - Termine trenera: przesuwanie tematów, rytm co 2 tygodnie
-- Fokus ustawiany przez trenera, „Widziałem”, wiadomość ✉ do całej grupy
-- Współtrenerzy grupy (zaproszenie drugiego trenera)
+- „Gesehen” trenera przy notatce ucznia
 - Tarcza: pełna 122cm, lupa przy przesuwaniu palca, Fehlschuss
 - Zawody: format 2×30, REKORDY rok do roku (2 sezony)
-- Delay Mirror: nagrywanie, stopklatka, eksport/Teilen (tylko otwarcie ekranu)
+- Delay Mirror: eksport klipu / Teilen (navigator.share), wycinanie fragmentów
 - Statystyki PRO z większą ilością danych, eksport PDF
 - Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
-- Gry klubowe (Verein, ranking na ślepo), WORLD, powiadomienia
+- WORLD (wyłączone „Bald verfügbar”)
 - Wizard profilu, zgoda opiekuna < 16 lat, TermsGate po zmianie regulaminu
-- Tryb offline, ciemny motyw, języki PL/EN poza przełącznikiem
+- Offline na buildzie produkcyjnym z service workerem (w dev moduły ładujemy wcześniej), ciemny motyw, języki PL/EN poza przełącznikiem
 
 ## Znalezione błędy (naprawione)
 
@@ -58,6 +62,8 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 11. Tarcza myszą: celownik odsunięty jak dla palca — klik w środek lądował ~55 px wyżej
 12. Kalendarz/daty po angielsku („Thu 5”, „05/11/2026”) dla języka z przeglądarki (de-DE ≠ de)
 13. Karta zawodów w statystykach: surowy alias tarczy „Full” zamiast „122cm”
+14. (2026-11-06) KAŻDE powiadomienie do innego konta (trener→uczeń, uczeń→trener, →admin) przepadało: createNotification czytał cudzą skrzynkę (reguła: tylko odbiorca) → PERMISSION_DENIED
+15. (2026-11-06) Wiadomość ✉ trenera do grupy nie tworzyła powiadomienia — uczeń nigdzie jej nie widział
 
 ## Do omówienia (partia 2)
 

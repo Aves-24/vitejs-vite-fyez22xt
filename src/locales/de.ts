@@ -1052,6 +1052,12 @@ export const views = {
     challenge: "Herausforderung",
     private: "Privat",
     quickStats: {
+      tabPointsShort: "Ringe",
+      arrowsPerWeek: "Pfeile pro Woche · 12 Wochen",
+      perArrowLast3: "Ringe/Pfeil · letzte 3",
+      perArrowMonth: "Ringe/Pfeil · Monat",
+      sumLabel: "Summe",
+      sumNote: "Summen nur aus vollen Trainings (12 Passen).",
       title: "Schnellstatistik",
       tabArrows: "Pfeile",
       tabPoints: "Ringe & Präzision",

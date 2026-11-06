@@ -23,6 +23,10 @@ interface Props {
   // Ø ringów na trening per tydzień — druga linia nad słupkiem (globalnie i per dystans)
   weeklySessionAvg?: number[];
   weeklySessionAvgByDistance?: Record<string, number[]>;
+  // [QUICK STATS 2026-11-06] Ringe/Pfeil liczone przez rodzica także z krótszych
+  // treningów; brak = jak dotąd z pełnych (Σ pkt / Σ strzał).
+  perArrow3?: number;
+  perArrowMonth?: number;
   locked?: boolean;      // rozmycie słupków + przycisk odblokowania (gdy nie premium)
   onUnlock?: () => void;
 }
@@ -31,9 +35,9 @@ const ALL_DIST = 'ALL';
 
 export default function RingePraezisionPanel({
   avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, weeklyPointsByDistance, avgByDistance,
-  weeklySessionAvg, weeklySessionAvgByDistance, locked = false, onUnlock,
+  weeklySessionAvg, weeklySessionAvgByDistance, locked = false, onUnlock, perArrow3: perArrow3All, perArrowMonth: perArrowMonthAll,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [selectedDist, setSelectedDist] = useState<string>(ALL_DIST);
 
   // Chipy tylko dla dystansów, które mają jakiekolwiek punktowane tygodnie
@@ -63,35 +67,25 @@ export default function RingePraezisionPanel({
   const cardPointsMonth = activeAvg ? activeAvg.avgPointsMonth : avgPointsMonth;
   const cardArrowsMonth = activeAvg ? activeAvg.avgArrowsMonth : avgArrowsMonth;
   // Średnia na strzał = Ø punktów na sesję / Ø strzał na sesję = Σpkt/Σstrzał (dokładna).
-  const perArrow3 = cardArrows3 > 0 ? cardPoints3 / cardArrows3 : 0;
-  const perArrowMonth = cardArrowsMonth > 0 ? cardPointsMonth / cardArrowsMonth : 0;
+  const perArrow3 = !activeAvg && perArrow3All !== undefined ? perArrow3All : (cardArrows3 > 0 ? cardPoints3 / cardArrows3 : 0);
+  const perArrowMonth = !activeAvg && perArrowMonthAll !== undefined ? perArrowMonthAll : (cardArrowsMonth > 0 ? cardPointsMonth / cardArrowsMonth : 0);
+  const fmt1 = (v: number) => v.toLocaleString(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
   return (
     <div className="space-y-4">
-      {/* KARTY ŚREDNICH: zawsze widoczne (tak jak liczniki Tag/Monat/Jahr w zakładce Pfeile) */}
-      <div className="bg-white border-2 border-emerald-50 p-3 rounded-[28px] flex items-stretch justify-center shadow-sm divide-x divide-gray-100">
-        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgLast3Label', { defaultValue: 'Ø Letzte 3' })}</span>
-          <div className="text-center">
-            <p className="text-2xl font-black text-emerald-600 leading-none">{cardPoints3 ? cardPoints3 : '–'}</p>
-            <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
-          </div>
-          <div className="text-center">
-            <p className="text-base font-black text-[#0a3a2a] leading-none">{perArrow3 ? perArrow3.toFixed(1) : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-0.5 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
-          </div>
+      {/* KARTY: na pierwszym miejscu Ringe/Pfeil (także z krótszych treningów),
+          suma na trening jako dopisek — ta tylko z pełnych (user 2026-11-06). */}
+      <div>
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm grid grid-cols-2 divide-x divide-gray-100">
+          {([[perArrow3, cardPoints3, t('home.quickStats.perArrowLast3', { defaultValue: 'Ringe/Pfeil · letzte 3' })], [perArrowMonth, cardPointsMonth, t('home.quickStats.perArrowMonth', { defaultValue: 'Ringe/Pfeil · Monat' })]] as const).map(([pa, sum, label], i) => (
+            <div key={i} className="px-3 py-2.5 min-w-0">
+              <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{pa ? fmt1(pa) : '—'}</p>
+              <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{label}</p>
+              <p className="text-[11px] font-bold text-gray-400 truncate">{t('home.quickStats.sumLabel', { defaultValue: 'Summe' })}: {sum || '—'}</p>
+            </div>
+          ))}
         </div>
-        <div className="flex flex-col items-center justify-center flex-1 px-1.5 gap-1.5">
-          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">{t('home.quickStats.avgMonthLabel', { defaultValue: 'Schnitt Monat' })}</span>
-          <div className="text-center">
-            <p className="text-2xl font-black text-emerald-600 leading-none">{cardPointsMonth ? cardPointsMonth : '–'}</p>
-            <span className="text-[8px] font-bold text-emerald-400 mt-0.5 block uppercase tracking-tighter">{t('home.quickStats.ringeLabel', { defaultValue: 'Ringe' })}</span>
-          </div>
-          <div className="text-center">
-            <p className="text-base font-black text-[#0a3a2a] leading-none">{perArrowMonth ? perArrowMonth.toFixed(1) : '–'}</p>
-            <span className="text-[8px] font-bold text-gray-400 mt-0.5 block uppercase tracking-tighter">{t('stats.pro.unitPtsArrow', { defaultValue: 'Ringe/Pfeil' })}</span>
-          </div>
-        </div>
+        <p className="text-[11px] font-bold text-gray-400 mt-1.5 px-1">{t('home.quickStats.sumNote', { defaultValue: 'Summen nur aus vollen Trainings (12 Passen).' })}</p>
       </div>
 
       {/* SŁUPKI TYGODNIOWE: wysokość = średnia ringów/strzałę (skala 0–10),
@@ -99,15 +93,15 @@ export default function RingePraezisionPanel({
           nagłówek i chipy dystansów zostają widoczne i klikalne — dzięki temu
           widać średnie per dystans w kartach nawet bez PRO. */}
       <div className="relative">
-        <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 ml-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
+        <h3 className="text-[12px] font-bold text-gray-500 mb-1.5 px-1">{t('stats.pro.weeklyPointsShort', 'Średnia ringów / tydzień (12 tyg.)')}</h3>
         {distances.length > 1 && (
           <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1 mb-2">
             {[ALL_DIST, ...distances].map(dist => (
               <button key={dist} onClick={() => setSelectedDist(dist)}
-                className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shrink-0 border-2 ${
+                className={`px-3 py-1 rounded-full text-[12px] font-bold transition-all shrink-0 border ${
                   activeDist === dist
-                    ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a] shadow-md'
-                    : 'bg-gray-50 text-gray-400 border-gray-100'
+                    ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]'
+                    : 'bg-white text-gray-500 border-gray-200'
                 }`}>
                 {dist === ALL_DIST ? t('home.quickStats.allDistShort', { defaultValue: 'Wszystkie' }) : dist}
               </button>
@@ -118,7 +112,7 @@ export default function RingePraezisionPanel({
             jej backdrop-blur rozciągnąłby się na nagłówek i chipy powyżej. */}
         <div className="relative">
           <div className={`relative transition-all duration-500 ${locked ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
-            <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] px-5 pb-4 pt-10 border border-gray-100">
+            <div className="overflow-x-auto hide-scrollbar bg-white rounded-2xl px-3 pb-2 pt-10 border border-gray-100 shadow-sm">
               <div className="flex items-end justify-between gap-1 w-full h-28 relative">
                 {shownPoints.map((pts, i) => {
                   const isBest = pts > 0 && pts === maxPoints;
@@ -128,7 +122,7 @@ export default function RingePraezisionPanel({
                       <div className="w-full relative flex items-end justify-center h-full">
                         {pts > 0 && (
                           <span className="absolute -top-8 flex flex-col items-center leading-tight">
-                            <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{pts.toFixed(1)}</span>
+                            <span className={`text-[8px] font-black transition-colors ${isBest ? 'text-[#0a3a2a]' : 'text-emerald-600'}`}>{fmt1(pts)}</span>
                             {sessAvg > 0 && <span className="text-[8px] font-bold text-gray-400">{sessAvg}</span>}
                           </span>
                         )}

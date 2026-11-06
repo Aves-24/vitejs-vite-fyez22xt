@@ -1052,6 +1052,12 @@ export const views = {
     challenge: "Challenge",
     private: "Private",
     quickStats: {
+      tabPointsShort: "Score",
+      arrowsPerWeek: "Arrows per week · 12 weeks",
+      perArrowLast3: "Score/arrow · last 3",
+      perArrowMonth: "Score/arrow · month",
+      sumLabel: "Total",
+      sumNote: "Totals only from full sessions (12 ends).",
       title: "Quick Stats",
       tabArrows: "Arrows",
       tabPoints: "Points & Accuracy",

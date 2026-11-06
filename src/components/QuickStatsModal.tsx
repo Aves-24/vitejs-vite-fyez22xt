@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getScaleColor } from '../lib/statsChart';
 import RingePraezisionPanel from './stats/RingePraezisionPanel';
 
 interface QuickStatsModalProps {
@@ -32,6 +31,9 @@ interface QuickStatsModalProps {
     avgPoints3?: number;
     avgArrowsMonth?: number;
     avgPointsMonth?: number;
+    // [QUICK STATS 2026-11-06] Ringe/Pfeil także z krótszych treningów (Home liczy).
+    perArrow3?: number;
+    perArrowMonth?: number;
   };
 }
 
@@ -91,92 +93,86 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
     </div>
   );
 
+  // Wykres tygodni w stylu kart: słupki ciemnej zieleni, bieżący tydzień pełny.
+  const WeekBars = ({ values, max, fmt }: { values: number[]; max: number; fmt: (v: number) => string }) => (
+    <div className="flex items-end justify-between gap-1 w-full h-28">
+      {values.map((val, i) => {
+        const last = i === values.length - 1;
+        return (
+          <div key={i} className="flex flex-col items-center justify-end gap-1 flex-1 h-full min-w-0">
+            <div className="w-full relative flex items-end justify-center h-full">
+              {val > 0 && (
+                <span className={`absolute -top-4 text-[9px] font-black ${last ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>{fmt(val)}</span>
+              )}
+              <div
+                className={`w-full max-w-[16px] mx-auto rounded-t ${val > 0 ? (last ? 'bg-emerald-600' : 'bg-emerald-600/25') : 'bg-gray-200'}`}
+                style={{ height: val > 0 ? `${Math.max(6, (val / max) * 100)}%` : '3px' }}
+              />
+            </div>
+            {/* Stała wysokość podpisu — puste etykiety nie przesuwają słupków. */}
+            <span className={`h-3 leading-3 text-[8px] font-bold shrink-0 whitespace-nowrap ${last ? 'text-[#0a3a2a]' : 'text-gray-300'}`}>{(i % 3 === 0 || last) ? getWeekLabel(i).replace('KW ', '') : ''}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // [QUICK STATS 2026-11-06] Wygląd kart (jak okna kalendarza): nagłówek z ikonką,
+  // przełącznik w szarej ramce, białe karty bez wypełnień, bez stopki „GROT-X”.
   return (
-    <div className="fixed inset-0 z-[2000] flex items-start justify-center p-0 sm:p-4">
-      <div className="absolute inset-0 bg-[#0a3a2a]/70 backdrop-blur-md" onClick={onClose}></div>
+    <div className="fixed inset-0 z-[2000] flex items-start justify-center px-4 pt-14">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose}></div>
 
-      <div className="bg-[#fcfdfe] w-full max-w-md rounded-t-[40px] relative z-10 shadow-2xl animate-slide-up mt-12 max-h-[85vh] overflow-hidden flex flex-col border-x border-t border-white/20">
-        
-        <div className="p-6 pb-2 flex justify-between items-center">
-          <h2 className="text-xl font-black text-[#0a3a2a] tracking-tighter uppercase">{t('home.quickStats.title', { defaultValue: 'QUICK STATS' })}</h2>
-          <button onClick={onClose} className="w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 active:scale-90 transition-all">
-            <span className="material-symbols-outlined font-bold">close</span>
+      <div role="dialog" aria-label={t('home.quickStats.title')} className="bg-white w-full max-w-sm rounded-[32px] relative z-10 shadow-2xl animate-fade-in max-h-[85vh] overflow-hidden flex flex-col p-5">
+        <div className="flex items-center gap-2.5 mb-3 shrink-0">
+          <span className="w-9 h-9 rounded-xl tb-icon flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-[20px] text-[#0a3a2a]">bar_chart</span>
+          </span>
+          <h2 className="flex-1 min-w-0 text-[15px] font-black text-[#0a3a2a] leading-tight">{t('home.quickStats.title', { defaultValue: 'Schnellstatistik' })}</h2>
+          <button onClick={onClose} aria-label={t('common.cancel')} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        <div className="flex px-4 gap-1 border-b border-gray-100 bg-white">
-          <button 
-            onClick={() => setActiveTab('ARROWS')}
-            className={`flex-1 pt-4 pb-3 text-[10px] font-black uppercase tracking-widest transition-all relative ${
-              activeTab === 'ARROWS' ? 'text-[#0a3a2a]' : 'text-gray-300'
-            }`}
-          >
-            {t('home.quickStats.tabArrows', { defaultValue: 'PFEILE' })}
-            {activeTab === 'ARROWS' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#fed33e] rounded-t-full"></div>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('POINTS')}
-            className={`flex-1 pt-4 pb-3 text-[10px] font-black uppercase tracking-widest transition-all relative ${
-              activeTab === 'POINTS' ? 'text-[#0a3a2a]' : 'text-gray-300'
-            }`}
-          >
-            {t('home.quickStats.tabPoints', { defaultValue: 'PUNKTE & PRÄZISION' })}
-            {activeTab === 'POINTS' && <div className="absolute bottom-0 left-0 w-full h-1 bg-[#fed33e] rounded-t-full"></div>}
-          </button>
+        <div className="flex p-1 bg-gray-100 rounded-xl mb-3 shrink-0">
+          {([['ARROWS', t('home.quickStats.tabArrows', { defaultValue: 'Pfeile' })], ['POINTS', t('home.quickStats.tabPointsShort', { defaultValue: 'Ringe' })]] as const).map(([id, label]) => (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              aria-pressed={activeTab === id}
+              className={`flex-1 py-1.5 rounded-lg text-[12px] font-black transition-all ${activeTab === id ? 'bg-[#0a3a2a] text-white shadow-sm' : 'text-gray-500'}`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-          
+        <div className="flex-1 overflow-y-auto space-y-3 custom-scrollbar">
           {activeTab === 'ARROWS' && (
-            <div className="space-y-6 animate-fade-in">
-              <div className="bg-[#0a3a2a] p-5 rounded-[32px] text-white flex justify-between items-center shadow-lg relative overflow-hidden">
-                <div className="absolute top-[-10%] right-[-5%] opacity-10"><span className="material-symbols-outlined text-7xl">target</span></div>
-                <div className="text-center flex-1 relative z-10">
-                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest block mb-1">{t('home.day')}</span>
-                  <p className="text-2xl font-black">{stats.daily}</p>
+            <div className="space-y-3 animate-fade-in">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm grid grid-cols-3 divide-x divide-gray-100">
+                <div className="px-3 py-2.5">
+                  <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{stats.daily}</p>
+                  <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.day')}</p>
                 </div>
-                <div className="w-[1px] h-8 bg-white/10"></div>
-                <div className="text-center flex-1 relative z-10">
-                  <span className="text-[8px] font-black text-emerald-400 uppercase tracking-widest block mb-1">{currentMonthName}</span>
-                  <p className="text-2xl font-black">{stats.monthly}</p>
+                <div className="px-3 py-2.5">
+                  <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{stats.monthly}</p>
+                  <p className="text-[11px] font-bold text-gray-500 mt-1 truncate capitalize">{currentMonthName.toLowerCase()}</p>
                   {(stats.prevMonthly ?? 0) > 0 && (
-                    <span className="text-[7px] font-bold text-white/40 block mt-0.5">{prevMonthName}: {stats.prevMonthly}</span>
+                    <p className="text-[10px] font-bold text-gray-400 truncate capitalize">{prevMonthName.toLowerCase()}: {stats.prevMonthly}</p>
                   )}
                 </div>
-                <div className="w-[1px] h-8 bg-white/10"></div>
-                <div className="text-center flex-1 relative z-10">
-                  <span className="text-[8px] font-black text-[#fed33e] uppercase tracking-widest block mb-1">{t('home.yearly')}</span>
-                  <p className="text-2xl font-black">{stats.yearly}</p>
+                <div className="px-3 py-2.5">
+                  <p className="text-[20px] font-black text-[#0a3a2a] leading-none">{stats.yearly.toLocaleString(i18n.language)}</p>
+                  <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.yearly')}</p>
                 </div>
               </div>
 
-              <div className="relative">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 ml-1">TREND (12 WO.)</h3>
-                {/* Nakładka odblokowania zagnieżdżona TYLKO w obrębie wykresu — inaczej
-                    jej backdrop-blur rozciągnąłby się też na tytuł powyżej. */}
+              <div>
+                <p className="text-[12px] font-bold text-gray-500 mb-1.5 px-1">{t('home.quickStats.arrowsPerWeek', { defaultValue: 'Pfeile pro Woche · 12 Wochen' })}</p>
                 <div className="relative">
-                  <div className={`relative transition-all duration-500 ${!isPremium ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
-                    <div className="overflow-x-auto hide-scrollbar bg-gray-50 rounded-[28px] p-5 border border-gray-100">
-                      <div className="flex items-end justify-between gap-1 w-full h-32 relative">
-                        {weeklyArrows.map((val, i) => {
-                            const isMax = val > 0 && val === maxArrows;
-                            return (
-                              <div key={i} className="flex flex-col items-center justify-end gap-1 relative flex-1 h-full">
-                                <div className="w-full relative flex items-end justify-center h-full">
-                                  {/* [ZMIANA] Wyświetlamy wartość dla KAŻDEGO słupka > 0 */}
-                                  {val > 0 && (
-                                    <span className={`absolute -top-5 text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>
-                                      {val}
-                                    </span>
-                                  )}
-                                  <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: val > 0 ? `${(val / maxArrows) * 100}%` : '4px', backgroundColor: val > 0 ? getScaleColor(val, maxArrows) : '#e5e7eb' }}></div>
-                                </div>
-                                <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabel(i)}</span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
+                  <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm px-3 pt-6 pb-2 transition-all duration-500 ${!isPremium ? 'blur-lg opacity-20 pointer-events-none select-none' : ''}`}>
+                    <WeekBars values={weeklyArrows} max={maxArrows} fmt={v => String(v)} />
                   </div>
                   {!isPremium && <ProPaywall />}
                 </div>
@@ -191,6 +187,8 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 avgPoints3={stats.avgPoints3 || 0}
                 avgArrowsMonth={stats.avgArrowsMonth || 0}
                 avgPointsMonth={stats.avgPointsMonth || 0}
+                perArrow3={stats.perArrow3}
+                perArrowMonth={stats.perArrowMonth}
                 weeklyArrows={weeklyArrows}
                 weeklyPoints={weeklyPoints}
                 weeklyPointsByDistance={weeklyPointsByDistance}
@@ -202,11 +200,6 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
               />
             </div>
           )}
-
-        </div>
-        
-        <div className="p-4 bg-gray-50 border-t border-gray-100 text-center shrink-0">
-           <p className="text-[8px] font-bold text-gray-400 uppercase tracking-[0.2em]">Grot-X</p>
         </div>
       </div>
 

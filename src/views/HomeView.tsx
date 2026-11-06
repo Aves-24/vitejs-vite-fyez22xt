@@ -127,6 +127,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [recentAvg, setRecentAvg] = useState<number[]>([]);
   // Złoto, czerwień, niebieski, czarny, biały, M — liczba strzał z 6 ostatnich treningów.
   const [recentZones, setRecentZones] = useState<number[]>([0, 0, 0, 0, 0, 0]);
+  const [perArrow3, setPerArrow3] = useState(0);
+  const [perArrowMonth, setPerArrowMonth] = useState(0);
   const [recentSessions, setRecentSessions] = useState<({ score: number; date: string; distance: string; type: string; ts: number } & PartialInfo)[]>([]);
   // Słupki 12-tygodniowe dla QuickStats — liczone z tego samego rocznego
   // snapshotu co liczniki, dzięki czemu modal nie robi już osobnego odczytu.
@@ -600,6 +602,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         if (cached.recentScores) setRecentScores(cached.recentScores);
         if (cached.recentAvg) setRecentAvg(cached.recentAvg);
         if (cached.recentZones) setRecentZones(cached.recentZones);
+        if (typeof cached.perArrow3 === 'number') setPerArrow3(cached.perArrow3);
+        if (typeof cached.perArrowMonth === 'number') setPerArrowMonth(cached.perArrowMonth);
         if (cached.recentSessions) setRecentSessions(cached.recentSessions);
         if (cached.weeklyArrows) setWeeklyArrows(cached.weeklyArrows);
         if (cached.weeklyPoints) setWeeklyPoints(cached.weeklyPoints);
@@ -778,6 +782,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const recentFull = sessionList.slice(-50);
 
         // ─── ŚREDNIE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
+        // [QUICK STATS 2026-11-06] Ringe/Pfeil także z krótszych treningów (średnia na
+        // strzałę jest porównywalna) — sumy niżej zostają tylko z pełnych.
+        const scoredAll = sessionList.filter(s => s.type !== 'TECHNICAL' && s.scoreArrows > 0 && !s.blow);
+        const perArrowOf = (arr: typeof scoredAll) => { const a = arr.reduce((acc, s) => acc + s.scoreArrows, 0); return a > 0 ? Math.round((arr.reduce((acc, s) => acc + s.score, 0) / a) * 10) / 10 : 0; };
+        const monthStartMs = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+        const perArrow3v = perArrowOf(scoredAll.slice(-3));
+        const perArrowMonthv = perArrowOf(scoredAll.filter(s => s.ts >= monthStartMs));
         const last3NonTech = fullSessions.filter(s => s.type !== 'TECHNICAL').slice(-3);
         const avgArrows3v = last3NonTech.length
           ? Math.round(last3NonTech.reduce((acc, s) => acc + s.arrows, 0) / last3NonTech.length)
@@ -857,6 +868,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setRecentScores(recent);
         setRecentAvg(recentAvg);
         setRecentZones(recentZones);
+        setPerArrow3(perArrow3v);
+        setPerArrowMonth(perArrowMonthv);
         setRecentSessions(recentFull);
         setWeeklyArrows(weekArrows);
         setWeeklyPoints(weekPoints);
@@ -866,7 +879,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         setWeeklySessionAvgByDist(weekSessionAvgByDist);
         setWeekStreak(streak);
 
-        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentAvg, recentZones, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
+        if (yearComplete) cacheSet(cacheKey, { daily: d, monthly: m, prevMonthly: pm, yearly: y, avg14, avgArrows3: avgArrows3v, avgPoints3: avgPoints3v, avgArrowsMonth: avgArrowsM, avgPointsMonth: avgPointsM, recentScores: recent, recentAvg, recentZones, perArrow3: perArrow3v, perArrowMonth: perArrowMonthv, recentSessions: recentFull, weeklyArrows: weekArrows, weeklyPoints: weekPoints, weeklyPointsByDist: weekPointsByDist, avgByDist, weeklySessionAvg: weekSessionAvg, weeklySessionAvgByDist: weekSessionAvgByDist, weekStreak: streak }, CACHE_TTL.STATS);
       } catch (error) {
         console.error("Błąd pobierania statystyk:", error);
       }
@@ -1594,7 +1607,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           avgArrows3: avgArrows3,
           avgPoints3: avgPoints3,
           avgArrowsMonth: avgArrowsMonth,
-          avgPointsMonth: avgPointsMonth
+          avgPointsMonth: avgPointsMonth,
+          perArrow3,
+          perArrowMonth,
         }}
       />
 

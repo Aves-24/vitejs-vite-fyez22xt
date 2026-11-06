@@ -1072,6 +1072,12 @@ export const views = {
     challenge: "Wyzwanie",
     private: "Prywatne",
     quickStats: {
+      tabPointsShort: "Punkty",
+      arrowsPerWeek: "Strzały na tydzień · 12 tygodni",
+      perArrowLast3: "Pkt/strzała · ostatnie 3",
+      perArrowMonth: "Pkt/strzała · miesiąc",
+      sumLabel: "Suma",
+      sumNote: "Sumy tylko z pełnych treningów (12 serii).",
       title: "Szybkie Statystyki",
       tabArrows: "Strzały",
       tabPoints: "Punkty i Celność",

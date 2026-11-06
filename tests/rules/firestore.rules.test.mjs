@@ -1476,6 +1476,14 @@ test('AUDYT: trener nie wyśle ogłoszenia ALL ani do cudzego ucznia', async () 
   await assertSucceeds(setDoc(doc(coach1(), 'announcements/c'), { ...base, target: 'USER', targetId: 'alice' }));
 });
 
+test('WYSŁANE: wiadomość trenera z batchId i nazwą grupy; za długie pola odrzucone', async () => {
+  const base = { type: 'coach', authorId: 'coach1', senderId: 'coach1', lang: 'all', title: 't', content: 'c', timestamp: serverTimestamp(), target: 'USER', targetId: 'alice' };
+  await assertSucceeds(setDoc(doc(coach1(), 'announcements/g1'), { ...base, batchId: 'b123', groupName: 'Kader' }));
+  await assertFails(setDoc(doc(coach1(), 'announcements/g2'), { ...base, groupName: 'x'.repeat(61) }));
+  await assertFails(setDoc(doc(coach1(), 'announcements/g3'), { ...base, batchId: 5 }));
+  await assertFails(setDoc(doc(coach1(), 'announcements/g4'), { ...base, extra: 'nie' }));
+});
+
 test('AUDYT: trener nie podmieni listy trenerów ucznia na obcego (Path H)', async () => {
   await seedRelations();
   await assertFails(updateDoc(doc(coach1(), 'users/alice'), { coaches: ['evil'] }));

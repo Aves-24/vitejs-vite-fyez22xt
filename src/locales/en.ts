@@ -664,6 +664,15 @@ export const views = {
     errorAffirm: "Please tick the consent box to continue.",
     errorSave: "Could not save consent. Please try again."
   },
+  coachSent: {
+    title: "Sent messages",
+    empty: "You haven't sent any messages yet.",
+    error: "Could not load the list.",
+    toGroup: "{{group}} · {{count}} athletes",
+    toMany: "{{names}} +{{count}}",
+    formerStudent: "Former athlete",
+    hint: "Your last {{count}} messages. Only the athlete sees whether they were read."
+  },
   coachGroupCoaches: {
     ownerOnlyName: "Only the head coach can change the group's name and icon.",
     title: "Coaches",

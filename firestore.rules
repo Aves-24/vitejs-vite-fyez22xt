@@ -1154,7 +1154,11 @@ service cloud.firestore {
       allow create: if isSignedIn()
         && !isAnon()
         && request.resource.data.keys().hasOnly(
-             ['title', 'content', 'target', 'targetId', 'lang', 'timestamp', 'senderId', 'type', 'authorId'])
+             ['title', 'content', 'target', 'targetId', 'lang', 'timestamp', 'senderId', 'type', 'authorId', 'batchId', 'groupName'])
+        // [WYSŁANE 2026-11-06] batchId łączy kopie jednej wiadomości (po jednej na
+        // ucznia) w liście „Gesendete Nachrichten”; groupName = do kogo (grupa).
+        && (!('batchId' in request.resource.data) || (request.resource.data.batchId is string && request.resource.data.batchId.size() <= 40))
+        && (!('groupName' in request.resource.data) || (request.resource.data.groupName is string && request.resource.data.groupName.size() <= 60))
         && request.resource.data.type == 'coach'
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.get('senderId', request.auth.uid) == request.auth.uid

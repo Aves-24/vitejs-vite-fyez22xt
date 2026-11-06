@@ -678,6 +678,15 @@ export const views = {
     errorAffirm: "Zaznacz zgodę, aby kontynuować.",
     errorSave: "Nie udało się zapisać zgody. Spróbuj ponownie."
   },
+  coachSent: {
+    title: "Wysłane wiadomości",
+    empty: "Nie wysłałeś jeszcze żadnej wiadomości.",
+    error: "Nie udało się wczytać listy.",
+    toGroup: "{{group}} · {{count}} zaw.",
+    toMany: "{{names}} +{{count}}",
+    formerStudent: "Były zawodnik",
+    hint: "Ostatnie {{count}} wiadomości. Czy zostały przeczytane, widzi tylko zawodnik."
+  },
   coachGroupCoaches: {
     ownerOnlyName: "Nazwę i symbol grupy zmienia tylko główny trener.",
     title: "Trenerzy",

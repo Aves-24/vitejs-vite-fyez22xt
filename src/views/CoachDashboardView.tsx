@@ -3,6 +3,7 @@ import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { db, auth } from '../firebase';
 import CoachAccountCard from '../components/settings/CoachAccountCard';
+import CoachSentMessages from '../components/CoachSentMessages';
 import {
   type CoachGroup, type GroupInvite, MAX_GROUPS, MAX_GROUP_COACHES, subscribeCoachGroups, studentGroupMapOf, createGroup, updateGroup, deleteGroup,
   subscribeGroupInvites, sendGroupInvite, deleteGroupInvite, acceptGroupInvite, removeGroupCoach, applyTopicShift,
@@ -365,6 +366,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   const [isSelecting, setIsSelecting] = useState(false);
   const exitSelecting = () => { setIsSelecting(false); setSelectedStudents([]); };
   const [isMessageModalOpen, setIsMessageModalOpen] = useState(false);
+  // [WYSŁANE] po wysłaniu lista „Gesendete Nachrichten” czyta się na nowo
+  const [sentRefresh, setSentRefresh] = useState(0);
   // Wiadomość wysłana z karty grupy (✉) — nazwa w oknie; po zamknięciu
   // bez wysyłki zaznaczenie wraca do pustego, bo trener niczego nie zaznaczał.
   const [messageGroupName, setMessageGroupName] = useState<string | null>(null);
@@ -1292,6 +1295,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
     try {
       const batch = writeBatch(db);
       const sent: { studentId: string; annId: string }[] = [];
+      // Jedna wiadomość = kopia na ucznia; batchId łączy je w liście wysłanych.
+      const batchId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
       selectedStudents.forEach(studentId => {
         const docRef = doc(collection(db, 'announcements'));
         sent.push({ studentId, annId: docRef.id });
@@ -1306,6 +1311,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           // Reguła wiadomości trenera (announcements) wymaga obu pól.
           type: 'coach',
           authorId: userId,
+          batchId,
+          ...(messageGroupName ? { groupName: messageGroupName.slice(0, 60) } : {}),
         });
       });
 
@@ -1320,6 +1327,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         return createNotification(studentId, id, payload).catch(e => console.warn('Powiadomienie ucznia:', e));
       }));
 
+      setSentRefresh(k => k + 1);
       showToast(t('coachDashboard.toastMsgSent'));
       setIsMessageModalOpen(false);
       setMessageGroupName(null);
@@ -2337,6 +2345,15 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
               <p className="text-[12px] font-bold text-gray-400 px-1">{t('coachSettings.maxGroups')}</p>
             )}
           </div>
+        </section>
+
+        {/* [WYSŁANE 2026-11-06] Wiadomości wysłane uczniom i grupom. */}
+        <section>
+          <CoachSentMessages
+            userId={userId}
+            studentNames={Object.fromEntries(students.map((s: any) => [s.id, `${s.firstName || t('coachDashboard.defaultStudentName')} ${s.lastName || ''}`.trim()]))}
+            refreshKey={sentRefresh}
+          />
         </section>
 
         {/* 3. Trainermodus: więcej miejsc i wyłączenie */}

@@ -664,6 +664,15 @@ export const views = {
     errorAffirm: "Bitte bestätige die Einwilligung, um fortzufahren.",
     errorSave: "Einwilligung konnte nicht gespeichert werden. Bitte versuche es erneut."
   },
+  coachSent: {
+    title: "Gesendete Nachrichten",
+    empty: "Du hast noch keine Nachrichten gesendet.",
+    error: "Liste konnte nicht geladen werden.",
+    toGroup: "{{group}} · {{count}} Schüler",
+    toMany: "{{names}} +{{count}}",
+    formerStudent: "Ehemaliger Schüler",
+    hint: "Die letzten {{count}} Nachrichten. Ob sie gelesen wurden, sieht nur der Schüler."
+  },
   coachGroupCoaches: {
     ownerOnlyName: "Name und Symbol der Gruppe ändert nur der Haupttrainer.",
     title: "Trainer",

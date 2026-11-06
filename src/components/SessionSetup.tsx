@@ -8,7 +8,7 @@ import { invalidateSetupStamp } from '../utils/setupStamp';
 import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocus, shownTopics, pickTopics } from '../utils/focus';
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
-import { FocusStrip, FocusChoiceChips, FocusChoiceLines } from './tagebuch/FocusCard';
+import { FocusStrip, FocusChoiceChips, focusTitle } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
@@ -326,15 +326,34 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           </button>
         )}
 
-        {/* [FOKUS] Jedna linia na tor + „zählt / zählt nicht”; klik w tytuł → dziennik. */}
-        {focusState && (
-          <FocusChoiceLines
-            state={focusState}
-            choice={focusChoice}
-            onChange={setFocusChoice}
-            onOpen={f => onNavigate?.('MY_COACH', undefined, f.topicId)}
-          />
-        )}
+        {/* [FOKUS] Ten sam subtelny pasek co na Home (user 2026-11-06: „identycznie”)
+            + plakietka „zählt / zählt nicht” dla pokazanego toru; kropka zamienia tory. */}
+        {focusPair.main && focusState && (() => {
+          const key: 'own' | 'coach' | 'topic' = focusPair.main.topicId ? 'topic' : focusPair.main.fromCoach ? 'coach' : 'own';
+          const on = focusChoice[key];
+          return (
+            <FocusStrip
+              variant="subtle"
+              focus={focusPair.main}
+              {...displayProgress(focusState, focusPair.main)}
+              onOpen={() => onNavigate?.('MY_COACH', undefined, focusPair.main?.topicId)}
+              other={focusPair.other}
+              onSwap={() => swapFocus(userId, focusState)}
+              extra={(
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={on}
+                  aria-label={`${key === 'topic' ? t('tagebuch.topicChoice') : t('tagebuch.focusChoiceFocus')}: ${focusTitle(focusPair.main, t)}`}
+                  onClick={() => setFocusChoice({ ...focusChoice, [key]: !on })}
+                  className={`shrink-0 text-[11px] font-black rounded-md px-2 py-0.5 border active:scale-95 transition-all ${on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}
+                >
+                  {on ? t('tagebuch.focusCounts') : t('tagebuch.focusNotCounts')}
+                </button>
+              )}
+            />
+          );
+        })()}
 
         {/* Co strzelam: zestaw → dystans → tarcza z nastawami → Passen. */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="setup-card">

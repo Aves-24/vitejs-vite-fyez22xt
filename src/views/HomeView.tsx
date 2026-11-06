@@ -1298,6 +1298,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         {/* 1. FOKUS — na samej górze; bez fokusu karta znika. */}
         {focusPair.main && (
           <FocusStrip
+            variant="subtle"
             focus={focusPair.main}
             {...displayProgress(focusState, focusPair.main)}
             // Temat treningu: dziennik przewija do wpisu i rozwija opis/linki.

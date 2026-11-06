@@ -167,51 +167,6 @@ export function FocusChoiceChips({ state, choice, onChange, dark = false, showLa
   );
 }
 
-/**
- * [VORBEREITUNG 2026-11-06] Fokus w jednej linii na tor: ikonka, tytuł (klik →
- * dziennik) i plakietka „zählt / zählt nicht” — to samo co FocusChoiceChips,
- * tylko zwięźle (user: „fokus mniejszy”).
- */
-export function FocusChoiceLines({ state, choice, onChange, onOpen }: {
-  state: FocusState;
-  choice: FocusChoice;
-  onChange: (next: FocusChoice) => void;
-  onOpen?: (focus: ActiveFocus) => void;
-}) {
-  const { t } = useTranslation();
-  const items: { key: 'own' | 'coach' | 'topic'; focus: ActiveFocus }[] = [
-    ...orderedTracks(state).map(tr => ({ key: (tr.focus.fromCoach ? 'coach' : 'own') as 'own' | 'coach', focus: tr.focus })),
-    ...(state.trainingTopic ? [{ key: 'topic' as const, focus: state.trainingTopic }] : []),
-  ];
-  if (!items.length) return null;
-  return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden" data-testid="setup-focus">
-      {items.map((it, i) => {
-        const on = choice[it.key];
-        const pal = focusPalette(it.focus);
-        return (
-          <div key={it.key} className={`flex items-center gap-2 pl-2.5 pr-2 py-1.5 border-l-4 ${it.focus.topicId ? 'border-l-violet-400' : it.focus.fromCoach ? 'border-l-sky-500' : 'border-l-amber-400'} ${i > 0 ? 'border-t border-t-gray-100' : ''}`}>
-            <span className={`material-symbols-outlined text-[16px] shrink-0 ${pal.accent}`}>{focusIcon(it.focus)}</span>
-            <button type="button" onClick={() => onOpen?.(it.focus)} className="flex-1 min-w-0 text-left text-[13px] font-bold text-[#0a3a2a] truncate">
-              {focusTitle(it.focus, t)}
-            </button>
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={on}
-              aria-label={`${it.key === 'topic' ? t('tagebuch.topicChoice') : t('tagebuch.focusChoiceFocus')}: ${focusTitle(it.focus, t)}`}
-              onClick={() => onChange({ ...choice, [it.key]: !on })}
-              className={`shrink-0 text-[11px] font-black rounded-md px-2 py-0.5 border active:scale-95 transition-all ${on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'}`}
-            >
-              {on ? t('tagebuch.focusCounts') : t('tagebuch.focusNotCounts')}
-            </button>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
 /** Kropki postępu: `goal` sztuk, po osiągnięciu celu wszystkie złote. */
 export function FocusDots({ count, goal, small = false, light = false, muted = false, coach = false }: { count: number; goal: number; small?: boolean; light?: boolean; muted?: boolean; coach?: boolean }) {
   const done = count >= goal;
@@ -484,7 +439,9 @@ export function FocusCard({ focus, ended, dots, goal, count, onEdit, other, onSw
  * W profilu ucznia trener widzi go w nagłówku jako `glass` (zielone tło
  * nagłówka), bez klikania (user 2026-09-16).
  */
-export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false, topicMore }: {
+export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabel, variant = 'card', other, onSwap, past = false, topicMore, extra }: {
+  /** [SUBTLE] Dodatek po prawej (Vorbereitung: plakietka „zählt”). */
+  extra?: React.ReactNode;
   past?: boolean;   // minione sesje (statystyki): sama nazwa dnia zamiast „Heute · …”
   // Home: sam znak, że temat ma opis / linki (treść w dzienniku) — user 2026-10-23.
   topicMore?: { desc: boolean; links: string[] };
@@ -499,7 +456,7 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   // trenera"); trener w profilu ucznia podaje własne („Fokus ucznia · …").
   label?: string;
   sourceLabel?: string;
-  variant?: 'card' | 'pill' | 'glass';
+  variant?: 'card' | 'pill' | 'glass' | 'subtle';
 }) {
   const { t, i18n } = useTranslation();
   const source = sourceLabel ?? (focus.fromCoach
@@ -538,6 +495,53 @@ export function FocusStrip({ focus, dots, goal, count, onOpen, label, sourceLabe
   const pal = focusPalette(focus);
   const coach = !!focus.fromCoach;
   const icon = focusIcon(focus);
+
+  // [SUBTLE 2026-11-06] Home i Vorbereitung: biała karta z paskiem koloru, dwie
+  // niskie linie — wszystko co w karcie (etykieta, autor, temat, kropki, grupa,
+  // ikonki opisu/linków, drugi fokus), tylko mniejsze (user: „subtelniej”).
+  if (variant === 'subtle') {
+    const stripe = focus.topicId ? 'border-l-violet-400' : coach ? 'border-l-sky-500' : 'border-l-amber-400';
+    const hasMore = !!(topicMore?.desc || topicMore?.links.length);
+    const body = (
+      <>
+        <span className="flex items-center gap-1.5 min-w-0 text-[11px] font-bold">
+          <span className={`material-symbols-outlined text-[14px] shrink-0 ${pal.accent}`}>{icon}</span>
+          <span className={`truncate ${pal.label}`}>
+            {label ?? t(focus.topicId ? 'tagebuch.topicLabel' : 'tagebuch.focusLabel')}{source && ` · ${source}`}
+          </span>
+          {focus.topicId && focus.groupName && <TopicGroupLine focus={focus} className={`shrink min-w-0 ${pal.sub}`} />}
+          {dots && (
+            <span className="ml-auto shrink-0 flex items-center gap-1.5 pl-1">
+              <FocusDots count={count} goal={goal} small light coach={coach} />
+              <FocusProgressText count={count} goal={goal} light coach={coach} />
+            </span>
+          )}
+        </span>
+        <span className="flex items-center gap-1.5 min-w-0 mt-0.5">
+          <span className="min-w-0 truncate text-[14px] font-black text-[#0a3a2a] leading-snug">{title}</span>
+          {topic && <span className={`shrink-0 max-w-[40%] truncate text-[11px] font-bold ${pal.sub}`}>· {topic}</span>}
+          {hasMore && (
+            <span className={`shrink-0 inline-flex items-center gap-0.5 ${pal.sub}`} aria-label={[topicMore!.desc ? t('tagebuch.topicDesc') : '', topicMore!.links.length ? t('tagebuch.topicLinks', { count: topicMore!.links.length }) : ''].filter(Boolean).join(', ')}>
+              {topicMore!.desc && <span className="material-symbols-outlined text-[14px]">notes</span>}
+              {topicMore!.links.map((href, i) => (
+                <span key={href + i} className="material-symbols-outlined text-[14px]">{isYouTube(href) ? 'smart_display' : 'open_in_new'}</span>
+              ))}
+            </span>
+          )}
+        </span>
+      </>
+    );
+    return (
+      <div className={`flex items-center gap-2 bg-white rounded-2xl border border-gray-100 border-l-4 ${stripe} shadow-sm pl-2.5 pr-2 py-1.5`} data-testid="focus-strip">
+        {onOpen
+          ? <button type="button" onClick={onOpen} className="flex-1 min-w-0 flex flex-col text-left active:opacity-70">{body}</button>
+          : <div className="flex-1 min-w-0 flex flex-col">{body}</div>}
+        {withDot && <OtherFocusDot focus={other!} onSwap={onSwap!} small />}
+        {extra}
+        {onOpen && !extra && <span className={`material-symbols-outlined text-[18px] shrink-0 ${pal.accent}`}>chevron_right</span>}
+      </div>
+    );
+  }
 
   if (variant === 'pill') {
     return wrap(`gap-2 border rounded-full px-3 py-1.5 ${pal.bg}`, (

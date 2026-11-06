@@ -29,6 +29,7 @@ import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battl
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
 import { isBlowgunSession } from '../config/targets/blowgun';
+import { zonesOf, ringLabels, ZONE_COLORS } from '../utils/zones';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
@@ -75,20 +76,6 @@ interface HomeViewProps {
   // resume = już strzelał w tej grze (okno „Wracasz do gry").
   onJoinBattle?: (battleId: string, distance: string, targetType: string, join?: { needsJoin: boolean; resume?: boolean; hostName?: string; hostClub?: string; mode?: string }) => void; 
   onNavigate?: (view: string, tab?: string, extraData?: string) => void;
-}
-
-// [HOME 2026-11-06] Strzały serii → strefy tarczy: X/10/9 złoto, 8/7 czerwień,
-// 6/5 niebieski, 4/3 czarny, 2/1 biały, M pudło.
-function zonesOf(ends: any): number[] {
-  const z = [0, 0, 0, 0, 0, 0];
-  for (const e of Array.isArray(ends) ? ends : []) {
-    for (const v of Array.isArray(e?.arrows) ? e.arrows : []) {
-      const n = v === 'X' ? 10 : v === 'M' ? 0 : parseInt(v, 10);
-      if (isNaN(n)) continue;
-      z[n >= 9 ? 0 : n >= 7 ? 1 : n >= 5 ? 2 : n >= 3 ? 3 : n >= 1 ? 4 : 5]++;
-    }
-  }
-  return z;
 }
 
 export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats, onGoToBattles, onCreateArena, onJoinBattle, onNavigate, onNewSession }: HomeViewProps) {
@@ -1359,36 +1346,54 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               <p className="text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.arrowsPerMonth')}</p>
             </button>
             {/* [HOME 2026-11-06] Strefy tarczy z 6 ostatnich treningów (te same co wykres).
-                PRO: pierścień w kolorach tarczy; FREE: samo „Gold %”. Dotknięcie → PRO Progress. */}
+                PRO: pierścień z procentami na obwodzie (tylko te, które się mieszczą);
+                FREE: samo „Gold %”. Dotknięcie → PRO Progress, karta stref per dystans. */}
             {(() => {
               const total = recentZones.reduce((a, b) => a + b, 0);
-              const goldPct = total > 0 ? Math.round((recentZones[0] / total) * 100) : 0;
-              // M (pudło) nie ma koloru — zostaje pusta, szara część pierścienia (user 2026-11-06).
-              const colors = ['#f2c94c', '#e5534b', '#3b82f6', '#222222', '#cfd5d2', ''];
+              const pctOf = (n: number) => Math.round((n / total) * 100);
+              const goldPct = total > 0 ? pctOf(recentZones[0]) : 0;
+              const showRing = isPremium && total > 0;
+              const labels = showRing ? ringLabels(recentZones) : [];
+              const zoneNames = [t('stats.pro.zones.gold'), t('stats.pro.zones.red'), t('stats.pro.zones.blue'), t('stats.pro.zones.black'), t('stats.pro.zones.white'), 'M'];
               let offset = 25;
+              const C = { x: 50, y: 34 }, R = 15.9, RL = 27.5;
               return (
                 <button
-                  onClick={() => onNavigate?.('STATS', 'PRO')}
-                  aria-label={total > 0 ? `${t('home.zonesGold')} ${goldPct} %` : t('home.zonesGold')}
-                  className="px-2.5 py-2 text-left active:bg-gray-50 transition-colors flex items-center gap-2 min-w-0"
+                  onClick={() => onNavigate?.('STATS', 'PRO_ZONES')}
+                  aria-label={total > 0
+                    ? recentZones.map((n, i) => n ? `${zoneNames[i]} ${pctOf(n)} %` : '').filter(Boolean).join(', ')
+                    : t('home.zonesGold')}
+                  className={`active:bg-gray-50 transition-colors min-w-0 ${showRing ? 'flex items-center justify-center px-1 py-0.5' : 'px-3 py-2.5 text-left'}`}
                   data-testid="home-zones"
                 >
-                  {isPremium && total > 0 && (
-                    <svg width="34" height="34" viewBox="0 0 42 42" className="shrink-0" aria-hidden="true">
-                      <circle cx="21" cy="21" r="15.9" fill="none" stroke="#eef1ef" strokeWidth="7" className="zones-track" />
+                  {showRing ? (
+                    <svg width="100" height="68" viewBox="0 0 100 68" aria-hidden="true" className="overflow-visible">
+                      <circle cx={C.x} cy={C.y} r={R} fill="none" stroke="#eef1ef" strokeWidth="7" className="zones-track" />
                       {recentZones.map((n, i) => {
                         const len = (n / total) * 100;
-                        if (!n || !colors[i]) { offset -= len; return null; }
-                        const el = <circle key={i} cx="21" cy="21" r="15.9" fill="none" stroke={colors[i]} strokeWidth="7" strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
+                        if (!n || !ZONE_COLORS[i]) { offset -= len; return null; }
+                        const el = <circle key={i} cx={C.x} cy={C.y} r={R} fill="none" stroke={ZONE_COLORS[i]} strokeWidth="7" strokeDasharray={`${len} ${100 - len}`} strokeDashoffset={offset} />;
                         offset -= len;
                         return el;
                       })}
+                      {labels.map(l => {
+                        const rad = (l.midDeg - 90) * Math.PI / 180;
+                        const x = C.x + RL * Math.cos(rad);
+                        const y = C.y + RL * Math.sin(rad);
+                        const anchor = Math.abs(Math.cos(rad)) < 0.3 ? 'middle' : Math.cos(rad) > 0 ? 'start' : 'end';
+                        return (
+                          <text key={l.i} x={x} y={y + 3.5} textAnchor={anchor} fontSize="10" fontWeight="800" className="zones-label" fill="#0a3a2a">
+                            {Math.round(l.pct)}%
+                          </text>
+                        );
+                      })}
                     </svg>
+                  ) : (
+                    <span className="min-w-0">
+                      <span className="block text-[20px] font-black text-[#0a3a2a] leading-none">{total > 0 ? `${goldPct} %` : '—'}</span>
+                      <span className="block text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.zonesGold')}</span>
+                    </span>
                   )}
-                  <span className="min-w-0">
-                    <span className="block text-[20px] font-black text-[#0a3a2a] leading-none">{total > 0 ? `${goldPct} %` : '—'}</span>
-                    <span className="block text-[11px] font-bold text-gray-500 mt-1 truncate">{t('home.zonesGold')}</span>
-                  </span>
                 </button>
               );
             })()}

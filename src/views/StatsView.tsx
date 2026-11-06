@@ -365,11 +365,13 @@ interface StatsViewProps {
   initialDate?: string;
   initialSessionId?: string;
   initialTab?: 'DAILY' | 'RECORDS' | 'PRO';
+  /** Wejście z pierścienia stref na Home: PRO Progress przewija do kart stref. */
+  focusZones?: boolean;
   viewingStudentId?: string | null;
   isEmbedded?: boolean;
 }
 
-export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, initialTab, viewingStudentId, isEmbedded = false }: StatsViewProps) {
+export default function StatsView({ userId, onNavigate, initialDate, initialSessionId, initialTab, focusZones = false, viewingStudentId, isEmbedded = false }: StatsViewProps) {
   const { t, i18n } = useTranslation();
   // Bitwa klubowa ma własną etykietę zamiast ogólnego „Arena Live”.
   const arenaLabel = (s: any) => s?.battleMode === 'CLUB' ? t('stats.sessionInfo.arenaClub') : t('stats.sessionInfo.arena');
@@ -678,6 +680,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
         <ProStatsView
           userId={targetUserId}
           isPremium={isPremium}
+          scrollToZones={focusZones}
           onNavigate={onNavigate}
           onOpenSession={(sessionId, date) => {
             const iso = toISO(date);

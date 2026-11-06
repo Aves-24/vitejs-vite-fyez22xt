@@ -22,6 +22,7 @@ import { isFullFace as isFullFaceType } from '../config/targetFaces';
 import { useDistanceColors } from '../hooks/useDistanceColors';
 import SummaryCard from './scoring/SummaryCard';
 import OverviewSection from './stats/OverviewCards';
+import RecentZonesCard from './stats/RecentZonesCard';
 import { rankFromStored, rankBowOf, type RankBow } from '../utils/rankEngine';
 
 interface Session {
@@ -47,6 +48,8 @@ interface ProStatsViewProps {
   onOpenSession?: (sessionId: string, date: string) => void;
   // Trener w profilu ucznia FREE: zamiast przycisku zakupu sam opis (zakup należy do ucznia).
   lockedHint?: string;
+  /** [STREFY 2026-11-06] Wejście z pierścienia na Home — przewiń do kart stref. */
+  scrollToZones?: boolean;
 }
 
 const PRO_STATS_CACHE_KEY = (uid: string) => `grotX_proStats_${uid}`;
@@ -69,7 +72,7 @@ function proStatsCacheSet(uid: string, sessions: Session[], full: boolean): void
   } catch { /* ignore quota errors */ }
 }
 
-export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession, lockedHint }: ProStatsViewProps) {
+export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSession, lockedHint, scrollToZones = false }: ProStatsViewProps) {
   const { t } = useTranslation();
   const [sessions, setSessions] = useState<Session[]>([]);
   // [C25] Trzyma KLUCZ kubelka (`distanceId`), nie napis z metrami.
@@ -437,6 +440,8 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         lock={null}
         sectionLabel={<Section icon="insights" label={t('stats.overview.title')} />}
       />
+      {/* [STREFY] To samo co pierścień na Home, dokładnie i per dystans (PRO). */}
+      {isPremium && <RecentZonesCard sessions={sessions} scrollIntoView={scrollToZones} />}
 
       {distances.length > 0 && <Section icon="filter_center_focus" label={t('stats.overview.perDistance')} />}
       {distances.length > 0 && (

@@ -939,7 +939,8 @@ export default function App() {
             onNavigate={(view: string, tab?: string) => handleNavigate(view as AppView, tab)}
             initialDate={focusedDate || undefined}
             initialSessionId={focusedSessionId || undefined}
-            initialTab={statsTab === 'PRO' || statsTab === 'RECORDS' ? statsTab : undefined}
+            initialTab={statsTab === 'PRO' || statsTab === 'PRO_ZONES' ? 'PRO' : statsTab === 'RECORDS' ? 'RECORDS' : undefined}
+            focusZones={statsTab === 'PRO_ZONES'}
           />
         )}
 

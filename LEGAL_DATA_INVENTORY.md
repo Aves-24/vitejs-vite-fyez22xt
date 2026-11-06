@@ -1,6 +1,7 @@
 # GROT-X — Inwentarz danych (RODO + formularze sklepowe)
 
-**Wersja:** 1.2 · 2026-07-08 (C22: zgoda opiekuna dla <16 lat — art. 8 RODO)
+**Wersja:** 1.3 · 2026-11-06 (11b `groupPlans`, 11c `coachTransfers`)
+**Poprzednio:** 1.2 · 2026-07-08 (C22: zgoda opiekuna dla <16 lat — art. 8 RODO)
 **Poprzednio:** 1.1 · 2026-07-08 (C21: e-mail/DOB/płeć poza zasięgiem relacji trener↔uczeń)
 **Cel:** jedno źródło prawdy dla (a) polityki prywatności, (b) Google Play
 „Data safety", (c) Apple „App Privacy" (Nutrition Labels).
@@ -27,6 +28,8 @@ polityki prywatności (wersja!) i obu formularzy sklepowych.
 | 10 | Turnieje, kalendarz | `users/{uid}/tournaments` | planowanie | art. 6(1)(b) | właściciel, admin, trenerzy |
 | 11 | Wiadomości trener↔uczeń | `users/{coachId}/studentMessages` | komunikacja | art. 6(1)(a) — relacja za zgodą | obie strony relacji, admin |
 | 11a | Prywatne notatki trenera o uczniu: 3 pola z ikonki w nagłówku profilu (mapa `privateStudentNotes`, przywrócona 2026-11-02) + wpisy „Nur für mich” na osi | `users/{coachId}.privateStudentNotes`, `users/{coachId}/coachStudentNotes` | ciągłość szkolenia, notatki trenera | art. 6(1)(f) — uzasadniony interes trenera | TYLKO trener-autor (+admin) — uczeń NIE; kasowane z kontem trenera, NIE z kontem ucznia (dane w przestrzeni trenera) |
+| 11b | Plan grupy dla uczniów (2026-11-05): nazwa i symbol grupy, terminy treningów (z odwołaniami/przerwami/Ferien z opisem), skład (`memberIds`, `coachIds`) | `groupPlans/{groupId}` — lustro wybranych pól z `groups/{groupId}` (tematy, notatki i zgody zostają w `groups/`, uczeń ich nie czyta) | uczeń widzi na Home trening swojej grupy | art. 6(1)(b) | członkowie i trenerzy tej grupy, admin; pisze/kasuje tylko trener grupy (reguły wymuszają skład = skład grupy); kasowane razem z grupą |
+| 11c | Przekazanie ucznia innemu trenerowi (2026-11-05): uid i imiona starego trenera, nowego trenera i ucznia, notatka dla następcy (≤ 500 znaków), status, czasy (`createdAt`, `acceptedByCoachAt`, `doneAt` = czas serwera), wersja tekstu zgody (`consentVersion`) | `coachTransfers/{id}` | zmiana trenera za zgodą ucznia; po zakończeniu = dowód zgody (art. 7(1)) | art. 6(1)(a) — zgoda ucznia na nowego trenera; dowód zgody: art. 6(1)(c) | uczeń, obaj trenerzy, admin; niezakończone kasuje każda ze stron; zakończone (dowód zgody) tylko uczeń lub admin — usunięcie konta ucznia kasuje wszystkie, usunięcie konta trenera tylko niezakończone (zakończone zostają u ucznia jako jego dowód). Opisane w DS 2.4 (v1.10) |
 | 12 | Dziennik trenerski | `users/{uid}/coachLog` | ciągłość szkolenia | art. 6(1)(a) | uczeń, wszyscy jego trenerzy, admin |
 | 13 | XP/level/handicap | `users/{uid}`, `world_stats` | gamifikacja, ranking | art. 6(1)(b) | leaderboard: wszyscy zalogowani |
 | 14 | Wyniki battles (live) | `battles/{id}` | pojedynki online | art. 6(1)(b) | wszyscy zalogowani (do zawężenia) |

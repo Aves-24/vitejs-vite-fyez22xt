@@ -61,16 +61,16 @@ export const components = {
       short: { yes: "Fokus umgesetzt", partly: "Fokus teilweise", no: "Fokus nicht umgesetzt" }
     },
     badShot: {
-      tapHint: "Pfeil antippen = Fehlschuss",
-      cell: "Pfeil {{v}}: als Fehlschuss markieren",
-      label: "Fehlschüsse",
+      tapHint: "Pfeil antippen = Technikfehler",
+      cell: "Pfeil {{v}}: als Technikfehler markieren",
+      label: "Technikfehler",
       excluded: "nicht in Gruppe und Visier",
       info: {
-        title: "Was ist ein Fehlschuss?",
+        title: "Was ist ein Technikfehler?",
         what: "Ein Pfeil, den du technisch schlecht ausgeführt hast: zum Beispiel gezupft, zu früh gelöst, das Zielen abgebrochen und trotzdem geschossen oder gegen den Klicker gekämpft.",
-        notWhat: "Kein Fehlschuss ist ein sauber ausgeführter Schuss, der nur schlecht getroffen hat. Der gehört zu deiner echten Gruppe.",
+        notWhat: "Kein Technikfehler ist ein sauber ausgeführter Schuss, der nur schlecht getroffen hat. Der gehört zu deiner echten Gruppe.",
         howTitle: "So markierst du ihn",
-        how: "Tippe über der Tabelle auf die Flagge: Der Fehlschuss-Modus geht an. Dann den Pfeil in der Tabelle antippen, die graue Flagge wird rot. Nochmal tippen nimmt die Markierung zurück.",
+        how: "Tippe über der Tabelle auf die Flagge: Der Technikfehler-Modus geht an. Dann den Pfeil in der Tabelle antippen, die graue Flagge wird rot. Nochmal tippen nimmt die Markierung zurück.",
         when: "Im Modus siehst du Flaggen in der aktuellen und der vorigen Passe, so kannst du auch nach Beginn der nächsten Passe noch markieren. Ein zweiter Tipp auf die Flagge beendet den Modus. Bis zum Speichern lässt sich jeder Pfeil markieren.",
         effectTitle: "Was sich ändert",
         scoreStays: "Die Ringe zählen weiter. Dein Ergebnis bleibt ehrlich.",
@@ -119,7 +119,7 @@ export const components = {
         title: "Gruppenversatz",
         single: "Die Mitte deiner Gruppe liegt neben der Scheibenmitte. In einem einzelnen Training ist das fast immer eine Frage der Visiereinstellung, nicht der Technik: Ist die Gruppe eng, aber verschoben, stimmt nur das Visier nicht.",
         multi: "Wandert die Gruppe über mehrere Trainings trotz korrekt eingestelltem Visier immer in dieselbe Richtung, kann die Ursache in der Technik liegen. Das zeigt die Karte „Biomechanik & Streuung“ in Pro Progress über die letzten Trainings, mit Tipps passend zu deiner Schießhand.",
-        howMeasured: "Gemessen wird die Mitte der Gruppe (Median), ein einzelner Ausreißer verschiebt sie nicht. Als Fehlschuss markierte Pfeile zählen nicht mit."
+        howMeasured: "Gemessen wird die Mitte der Gruppe (Median), ein einzelner Ausreißer verschiebt sie nicht. Als Technikfehler markierte Pfeile zählen nicht mit."
       }
     }
   },

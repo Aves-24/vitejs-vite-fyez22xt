@@ -31,7 +31,7 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Offline | offline | trening zapisany bez sieci widać od razu (Home, Tagebuch), po powrocie sieci trafia do bazy |
 | Pierwsze uruchomienie | onboarding | Profil-Assistent 7 kroków (dane w bazie: data ur. tylko w private), zgoda opiekuna dla 13-latki po kreatorze; TermsGate po zmianie wersji regulaminu (tekst „aktualisiert”, akceptacja zapisuje wersję) |
 | Hala 2×30 + Rekorde | tournament-indoor | turniej 18 m: format 2×30 domyślnie, 60 szybkich strzał (nic nie ginie), D1/D2, zapis; REKORDY: start z zeszłego roku dopisany ręcznie, seria 2 starty, rekord, +22 |
-| Tarcza 122 cm | target-full | 70 m: X/9/8/7/6/1 myszą, lupa przy przeciąganiu (strzała tam, gdzie puszczono), Fehlschuss w bazie |
+| Tarcza 122 cm | target-full | 70 m: X/9/8/7/6/1 myszą, lupa przy przeciąganiu (strzała tam, gdzie puszczono), Technikfehler (dawniej „Fehlschuss”) w bazie |
 | Statystyki PRO | stats-pro | 3 treningi → pierwsza ranga („Dein erster Rang”), PRO Progress, eksport PDF (%PDF) i CSV (nagłówek po niemiecku), każda Passe w bazie |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 

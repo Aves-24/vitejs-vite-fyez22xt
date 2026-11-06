@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { resetEmulators, registerUser, watchErrors, expectNoErrors, adminListDocs } from './helpers';
 
 // Pełna tarcza 122 cm (70 m): trafienia w każdy pierścień myszą, lupa przy
-// przesuwaniu (przeciąganie zmienia miejsce strzały), Fehlschuss w tabeli.
+// przesuwaniu (przeciąganie zmienia miejsce strzały), Technikfehler w tabeli.
 test.beforeEach(async ({ request }) => resetEmulators(request));
 
 // Pixel 7: środek tarczy i szerokość pierścienia w px CSS.
@@ -10,7 +10,7 @@ const CX = 186, CY = 272, RING = 15.2;
 // Bliżej zewnętrznej krawędzi pierścienia: grot dotykający wyższej linii liczy się wyżej (LINE_TOUCH).
 const at = (score: number) => ({ x: CX + (10 - score + 0.75) * RING, y: CY });
 
-test('tarcza 122 cm: pierścienie, lupa przy przeciąganiu, Fehlschuss', async ({ page, request }) => {
+test('tarcza 122 cm: pierścienie, lupa przy przeciąganiu, Technikfehler', async ({ page, request }) => {
   test.setTimeout(120_000);
   const errors = watchErrors(page);
   const uid = await registerUser(page, 'Ziel');
@@ -41,16 +41,16 @@ test('tarcza 122 cm: pierścienie, lupa przy przeciąganiu, Fehlschuss', async (
   await page.mouse.click(six.x, six.y);
   await expect(main).toContainText(/Gesamtringzahl\s*41/);
 
-  // Fehlschuss: tryb flagi → strzała 1 oznaczona.
-  await page.getByRole('button', { name: 'Pfeil antippen = Fehlschuss' }).click();
-  await page.getByRole('button', { name: 'Pfeil 1: als Fehlschuss markieren' }).click();
-  await page.getByRole('button', { name: 'Pfeil antippen = Fehlschuss' }).click();
+  // Technikfehler: tryb flagi → strzała 1 oznaczona.
+  await page.getByRole('button', { name: 'Pfeil antippen = Technikfehler' }).click();
+  await page.getByRole('button', { name: 'Pfeil 1: als Technikfehler markieren' }).click();
+  await page.getByRole('button', { name: 'Pfeil antippen = Technikfehler' }).click();
 
   await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
   await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
   await expect(page.getByRole('button', { name: /^Zuletzt 41/ })).toBeVisible();
 
-  // W bazie: 70 m, tarcza 122, jedna strzała oznaczona jako Fehlschuss.
+  // W bazie: 70 m, tarcza 122, jedna strzała oznaczona jako Technikfehler.
   await expect.poll(async () => (await adminListDocs(request, `users/${uid}/sessions`)).length, { timeout: 10_000 }).toBe(1);
   const sess = JSON.stringify((await adminListDocs(request, `users/${uid}/sessions`))[0].fields);
   expect(sess).toContain('70m');

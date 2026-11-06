@@ -14,6 +14,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { privacyPolicyUrl, termsUrl, IMPRESSUM_URL } from '../../utils/legalLinks';
 import { markAccountDeletion } from '../../utils/accountDeletion';
+import { fetchCoachGroups, deleteGroup, removeGroupCoach } from '../../utils/coachGroups';
 
 interface PrivacySectionProps {
   userId: string;
@@ -160,6 +161,24 @@ const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {
           .catch(() => null);
         if (trSnap) {
           for (const d of trSnap.docs) await deleteDoc(d.ref).catch(() => {});
+        }
+      }
+
+      // 3a'. [GRUPY] Moje grupy jako trener: własne kasuję w całości (z lustrem
+      //     groupPlans i historią), ze współprowadzonych wychodzę; zaproszenia
+      //     współtrenerskie z moim udziałem znikają. Polityka §2.4 „Trainingsgruppen”.
+      if (!isAnonymousUser) {
+        const groups = await fetchCoachGroups(userId).catch(() => []);
+        for (const g of groups) {
+          if (g.ownerId === userId) await deleteGroup(g.id).catch(() => {});
+          else await removeGroupCoach(g.id, userId).catch(() => {});
+        }
+        for (const field of ['fromId', 'toId']) {
+          const giSnap = await getDocs(query(collection(db, 'groupInvites'), where(field, '==', userId)))
+            .catch(() => null);
+          if (giSnap) {
+            for (const d of giSnap.docs) await deleteDoc(d.ref).catch(() => {});
+          }
         }
       }
 

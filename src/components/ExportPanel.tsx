@@ -98,7 +98,8 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall, roun
 
     const date = session.date || new Date().toISOString().split('T')[0];
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Seria,Strzala 1,Strzala 2,Strzala 3,Strzala 4,Strzala 5,Strzala 6,Suma\n"; 
+    // [E2E 2026-11-06] Nagłówek w języku użytkownika (wcześniej zawsze po polsku).
+    csvContent += [t('export.csvEnd'), ...[1, 2, 3, 4, 5, 6].map(n => t('export.csvArrow', { n })), t('export.csvSum')].join(',') + '\n';
     
     session.ends.forEach((end: any, index: number) => {
        const arrs = end.arrows || [];

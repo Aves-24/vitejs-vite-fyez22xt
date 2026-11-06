@@ -384,8 +384,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
-  // Zamyka pełną serię (6 strzał) i dopisuje ją do submittedEnds.
-  const commitEnd = (arrows: string[], coords: any[]) => {
+  // Seria w kształcie zapisu (posortowane strzały, kropki, suma).
+  const makeEnd = (arrows: string[], coords: any[]) => {
     const sorted = sortArrows(arrows);
     const sum = arrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0);
 
@@ -396,14 +396,24 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       ...(coord?.bad ? { bad: true } : {}), // [FEHLSCHUSS] utils/badShots
     }));
 
-    const newEnd = {
+    return {
       arrows: sorted,
       rawArrows: [...arrows],
       dots: safeCoordinates,
       total_sum: sum,
       createdAt: Date.now()
     };
+  };
 
+  // [E2E 2026-11-06] Serie do zapisu: zamknięte + ta, która jeszcze czeka
+  // (600 ms po szóstej strzale albo niepełna). Wynik liczył je zawsze, a lista
+  // serii nie — zapis tuż po ostatniej strzale gubił ostatnią Passe z tarczy,
+  // statystyk i eksportu (suma 89, a w ends tylko pierwsza Passe).
+  const endsForSave = () => (inputArrows.length > 0 ? [...submittedEnds, makeEnd(inputArrows, inputCoordinates)] : submittedEnds);
+
+  // Zamyka pełną serię (6 strzał) i dopisuje ją do submittedEnds.
+  const commitEnd = (arrows: string[], coords: any[]) => {
+    const newEnd = makeEnd(arrows, coords);
     setSubmittedEnds(prev => [...prev, newEnd]);
 
     if (submittedEnds.length === roundSize - 1) {
@@ -487,7 +497,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // [C31] Przed 12. seria pytamy, czy wynik ma trafic do sum i krzywych.
   // W Arenie/Battle nie pytamy — tam liczy sie wynik, jaki padl.
   const requestSave = () => {
-    if (!battleId && submittedEnds.length > 0 && submittedEnds.length < plannedEnds) {
+    const shot = endsForSave().length;
+    if (!battleId && shot > 0 && shot < plannedEnds) {
       setShowPartialModal(true);
       return;
     }
@@ -511,7 +522,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     if (!userId) return;
     setShowPartialModal(false);
     
-    if (submittedEnds.length === 0) {
+    const endsToSave = endsForSave();
+    if (endsToSave.length === 0) {
       showToast(t('scoringView.errorNoArrows', 'Brak strzał na tarczy. Dodaj wyniki.'), 'ERROR');
       return;
     }
@@ -587,10 +599,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(sessionTopics.length ? { topics: sessionTopics } : {}),
         ...focusFields,
         ...(focusResult && focusFields.focus ? { focusResult } : {}),
-        ends: submittedEnds,
+        ends: endsToSave,
         // Przerwany ALBO z gory krotszy trening: suma nieporownywalna z 12 seriami.
         // Krotszy ukonczony ma endsShot === endsPlanned (patrz isShortPlanned).
-        ...(markPartial ? { isPartial: true, endsShot: submittedEnds.length, endsPlanned: plannedEnds } : {}),
+        ...(markPartial ? { isPartial: true, endsShot: endsToSave.length, endsPlanned: plannedEnds } : {}),
         ...(isWorldBattle && { sessionType: 'WORLD_BATTLE', worldResult: didWinWorld ? 'WIN' : 'LOSS' }),
         // Bitwa: typ dla statystyk + powiązanie z grą (wcześniej „Solo-Training”).
         ...(activeBattle && { type: isWorldBattle ? 'WORLD_BATTLE' : 'Arena', battleId: activeBattle.id, battleMode: activeBattle.mode || 'LOCAL' }),

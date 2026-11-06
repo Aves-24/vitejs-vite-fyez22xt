@@ -10,6 +10,9 @@ export const components = {
     saveAdvice: "Pamiętaj o wytrzymałości tlenowej na następnym treningu i utrzymaniu luźnego chwytu majdanu."
   },
   export: {
+    csvEnd: "Seria",
+    csvArrow: "Strzała {{n}}",
+    csvSum: "Suma",
     errorGenerate: "Wystąpił błąd podczas generowania dokumentu.",
     title: "Eksport Wyników",
     basic: "Podstawowy",

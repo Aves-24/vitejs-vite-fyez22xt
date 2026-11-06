@@ -52,5 +52,26 @@ test('hala 2×30: pełna karta 60 strzał, sumy, zapis i Rekorde', async ({ page
   await page.getByRole('main').getByRole('button', { name: 'Rekorde', exact: true }).click();
   await expect(page.getByRole('main')).toContainText('Hallen-Kreismeisterschaft');
   await expect(page.getByRole('main')).toContainText('570');
+
+  // REKORDY rok do roku: start z zeszłego roku dopisany ręcznie (ta sama seria).
+  await page.getByRole('button', { name: /Vergangenen Start nachtragen/ }).click();
+  const form = page.locator('body > div').last();
+  await form.getByRole('button', { name: /Hallen-Kreismeisterschaft/ }).click();
+  await expect(form.getByPlaceholder('Name des Wettkampfs')).toHaveValue('Hallen-Kreismeisterschaft');
+  const last = new Date(); last.setFullYear(last.getFullYear() - 1);
+  await form.locator('input[type="date"]').fill(last.toISOString().slice(0, 10));
+  const nums = form.locator('input[type="number"]');
+  await nums.nth(0).fill('548');
+  await nums.nth(1).fill('60');
+  await form.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(form.getByPlaceholder('Name des Wettkampfs')).toHaveCount(0);
+
+  // Seria: 2 starty, rekord 570, oba wyniki i oba lata.
+  const main = page.getByRole('main');
+  await expect(main).toContainText('Starts: 2 · Rekord: 570');
+  await main.getByText('Starts: 2 · Rekord: 570').click();
+  await expect(main).toContainText('548');
+  await expect(main).toContainText(String(last.getFullYear()));
+  await page.screenshot({ path: process.env.TEMP + '/dm/rekorde.png', fullPage: true });
   await expectNoErrors(page, errors, 'hala 2×30');
 });

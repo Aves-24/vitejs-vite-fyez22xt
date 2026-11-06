@@ -30,6 +30,9 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. W CI: co dwa dni (workflow E2E) +
 | Delay Mirror | delay-mirror | nagrywanie z opóźnieniem 2 s (WebM — Chromium testowy nie odtwarza H.264 w MSE), Passe na tarczy, powtórka, stopklatka z tarczą, znaczniki + notatka, licznik strzał |
 | Offline | offline | trening zapisany bez sieci widać od razu (Home, Tagebuch), po powrocie sieci trafia do bazy |
 | Pierwsze uruchomienie | onboarding | Profil-Assistent 7 kroków (dane w bazie: data ur. tylko w private), zgoda opiekuna dla 13-latki po kreatorze; TermsGate po zmianie wersji regulaminu (tekst „aktualisiert”, akceptacja zapisuje wersję) |
+| Hala 2×30 + Rekorde | tournament-indoor | turniej 18 m: format 2×30 domyślnie, 60 szybkich strzał (nic nie ginie), D1/D2, zapis; REKORDY: start z zeszłego roku dopisany ręcznie, seria 2 starty, rekord, +22 |
+| Tarcza 122 cm | target-full | 70 m: X/9/8/7/6/1 myszą, lupa przy przeciąganiu (strzała tam, gdzie puszczono), Fehlschuss w bazie |
+| Statystyki PRO | stats-pro | 3 treningi → pierwsza ranga („Dein erster Rang”), PRO Progress, eksport PDF (%PDF) i CSV (nagłówek po niemiecku), każda Passe w bazie |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
@@ -38,10 +41,7 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 
 - Termine trenera: przesuwanie tematów, rytm co 2 tygodnie
 - „Gesehen” trenera przy notatce ucznia
-- Tarcza: pełna 122cm, lupa przy przesuwaniu palca, Fehlschuss
-- Zawody: format 2×30, REKORDY rok do roku (2 sezony)
 - Delay Mirror: eksport klipu / Teilen (navigator.share), wycinanie fragmentów
-- Statystyki PRO z większą ilością danych, eksport PDF
 - Wartung (konserwacja sprzętu), dmuchawka jako dyscyplina
 - WORLD (wyłączone „Bald verfügbar”)
 - Offline na buildzie produkcyjnym z service workerem (w dev moduły ładujemy wcześniej), ciemny motyw, języki PL/EN poza przełącznikiem
@@ -67,6 +67,9 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 16. (2026-11-06) Kreator krok 3: podpowiedź wzrostu po polsku („np. 180”) w każdym języku
 17. (2026-11-06) Kreator krok 5: łucznik dostawał na liście nastaw „10m Blowgun 20cm”
 18. (2026-11-06) TermsGate po zmianie AGB mówił „GROT-X hat jetzt Nutzungsbedingungen” zamiast o aktualizacji
+19. (2026-11-06) Karta zawodów: strzała wpisana w 150 ms po pełnym wierszu przepadała (z 30 szybkich zostawało 24)
+20. (2026-11-06) Trening: zapis tuż po ostatniej strzale — ostatnia Passe była w sumie, ale NIE w ends (tarcza, statystyki, eksport bez niej)
+21. (2026-11-06) Eksport CSV: nagłówek zawsze po polsku
 
 ## Do omówienia (partia 2)
 

@@ -10,6 +10,9 @@ export const components = {
     saveAdvice: "Denk beim nächsten Training an die aerobe Ausdauer und behalte einen lockeren Griff am Mittelteil bei."
   },
   export: {
+    csvEnd: "Passe",
+    csvArrow: "Pfeil {{n}}",
+    csvSum: "Summe",
     errorGenerate: "Beim Generieren des Dokuments ist ein Fehler aufgetreten.",
     title: "Ergebnisse exportieren",
     basic: "Basis",

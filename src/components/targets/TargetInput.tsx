@@ -450,7 +450,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
         {/* LUPA (mały widok) — okrągła, w rogu. Na pełnym ekranie jest pasek nad tarczą. */}
         {!isFullscreen && isAiming && aimPos && (
-          <div ref={loupeRef} className={`absolute z-30 top-0 ${loupeRight ? 'right-1' : 'left-1'} w-[88px] h-[88px] rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] border-[3px] border-white pointer-events-none`}>
+          <div ref={loupeRef} data-testid="target-loupe" className={`absolute z-30 top-0 ${loupeRight ? 'right-1' : 'left-1'} w-[88px] h-[88px] rounded-full overflow-hidden bg-white shadow-[0_8px_24px_rgba(0,0,0,0.18)] border-[3px] border-white pointer-events-none`}>
             {loupeSvg(30, 30, "meet")}
           </div>
         )}

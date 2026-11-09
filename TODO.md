@@ -7,7 +7,8 @@
 
 ## MAŁE ZADANIA (zgłoszone przez usera)
 
-- [ ] **Nowa tarcza: WA Auflage 3×20 cm Vegas Spot** (2026-11-09): trzy
+- [x] ✅ ZROBIONE 2026-11-09 (d652388): `targets/vegas.ts` + `config/spotGeometry.ts`, dwie kartki z trójkątem (strzały 1–3 / 4–6).
+      **Nowa tarcza: WA Auflage 3×20 cm Vegas Spot** (2026-11-09): trzy
       spoty 20 cm w trójkącie (jeden u góry na środku, dwa niżej obok siebie),
       punktacja 6–10 z wewnętrznym 10/X (jak nasz 3-Spot: X, 10–6, M).
       User: „to jest po prostu spot inaczej ustawiony”. Używana na Vegas
@@ -17,7 +18,8 @@
       palcem do najbliższego spotu, `targetScoring.test.ts`, katalog tarcz,
       ikonka „AUFLAGE” na ekranie treningu. Dystans: 18 m (hala).
 
-- [ ] **Nowe tarcze: WA-Feldbogen-Auflage 80 / 60 / 40 cm + 20 cm 3-fach**
+- [x] ✅ ZROBIONE 2026-11-09 (62f690b + d652388): `targets/waField.ts`, `targets/waField20Triple.ts`; zestaw „Scheibe/Feld” w SPRZĘT, osobny świat statystyk (`config/statsGroups.ts`), teren bez rangi.
+      **Nowe tarcze: WA-Feldbogen-Auflage 80 / 60 / 40 cm + 20 cm 3-fach**
       (2026-11-09, user: dodać razem z Vegas). UWAGA: to WA Field, nie IFAA
       (stare ustalenie „tylko IFAA, opcja 'Field' usunięta” niżej w TODO —
       user teraz chce WA Field). Każda tarcza w NOWYM pliku.
@@ -60,7 +62,8 @@
       Największa praca: zmienna długość serii — ScoringView, statystyki,
       karta zawodów zakładają dziś 6 strzał.
 
-- [ ] **Wybór tarczy w Einstellungen → DISTANZEN jako lista z obrazkami**
+- [x] ✅ ZROBIONE 2026-11-09 (62f690b): `components/targets/TargetPickerSheet.tsx`.
+      **Wybór tarczy w Einstellungen → DISTANZEN jako lista z obrazkami**
       (2026-11-09, user, razem z nowymi tarczami): dziś przy dystansie jest
       systemowy `<select>` (`views/SettingsView.tsx` ~l. 666, `onUpdateTargetType`)
       — na telefonie wyskakuje szara lista systemowa bez obrazków. Ma być

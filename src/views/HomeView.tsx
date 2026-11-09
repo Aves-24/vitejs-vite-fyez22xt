@@ -30,7 +30,8 @@ import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
 import { zonesOf, ringLabels, ZONE_COLORS } from '../utils/zones';
 import { statsGroupOf, statsGroupOfSetup, clearHomeStatsCache, homeStatsCacheKey, scaleMaxOf, type StatsGroup } from '../config/statsGroups';
-import { resolveActiveSetup } from '../config/equipmentSetups';
+import { resolveActiveSetup, styleOfSetup, isBlowgun, asBowType, sanitizeSetups, buildMigrationPayload, type EquipmentSetup, type ShootingStyle } from '../config/equipmentSetups';
+import { invalidateSetupStamp } from '../utils/setupStamp';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
@@ -210,6 +211,10 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     try { const v = localStorage.getItem(statsGroupKey); return v === 'field' || v === 'blowgun' ? v : 'target'; } catch { return 'target'; }
   });
   const [rawIsPremium, setRawIsPremium] = useState(false);
+  // [PRZEŁĄCZNIK ŚWIATA 2026-11-09] Profil (zestawy + pola rangi) do szybkiego
+  // przełącznika WA / Feld / IFAA w żółtym menu.
+  const profileRef = useRef<any>(null);
+  const [worldBusy, setWorldBusy] = useState(false);
   const [trialEndsAt, setTrialEndsAt] = useState<number | null>(null);
   const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
   // null do wczytania profilu — bez mignięcia „FREE” u kont PRO.
@@ -370,6 +375,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
         // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
+        profileRef.current = d;
         const group = statsGroupOfSetup(resolveActiveSetup(d as any));
         // [RANGA TERENOWA] Ranga świata aktywnego zestawu (WA / teren / IFAA).
         setRank(rankFromStored(storedForWorld(d, group)));
@@ -908,6 +914,52 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     };
   }, [userId, refreshNonce, statsGroup]);
 
+  /**
+   * [PRZEŁĄCZNIK ŚWIATA] WA / Feld / IFAA z żółtego menu (pomysł usera 2026-11-09).
+   * Jest zestaw o tym stylu → aktywujemy go (nie przerabiamy „Halle” na teren).
+   * Nie ma → zmieniamy styl aktywnego zestawu (FREE ma jeden zestaw).
+   * Statystyki i ranga Home przełączają się od razu.
+   */
+  const switchWorld = async (style: ShootingStyle) => {
+    const d = profileRef.current;
+    if (!d || worldBusy) return;
+    // Konto bez zapisanych zestawów (świeże, Ustawienia jeszcze nieotwierane):
+    // zestaw #1 budujemy tak samo jak Ustawienia (buildMigrationPayload).
+    const migrated = buildMigrationPayload(d, t('settings.equipment.defaultSetupName'));
+    const base = migrated ? { ...d, ...migrated } : d;
+    const setups: EquipmentSetup[] = Array.isArray(base.setups) ? base.setups : [];
+    const active = resolveActiveSetup(base);
+    if (!active || styleOfSetup(active) === style) return;
+    const match = setups.find(s => !isBlowgun(s.discipline) && styleOfSetup(s) === style);
+    let patch: Record<string, unknown>;
+    let next: any;
+    if (match) {
+      const bow = asBowType(match.discipline);
+      patch = { activeSetupId: match.id, ...(bow ? { bowType: bow } : {}) };
+      next = { ...base, ...patch };
+    } else {
+      const updated = setups.map(s => (s.id === active.id ? { ...s, style, updatedAt: new Date().toISOString() } : s));
+      patch = { setups: sanitizeSetups(updated), ...(migrated ? { activeSetupId: migrated.activeSetupId } : {}) };
+      next = { ...base, setups: updated };
+    }
+    setWorldBusy(true);
+    invalidateSetupStamp(userId);
+    try {
+      await updateDoc(doc(db, 'users', userId), patch);
+      profileRef.current = next;
+      const group = statsGroupOfSetup(resolveActiveSetup(next));
+      setStatsGroup(group);
+      try { localStorage.setItem(`grotX_statsGroup_${userId}`, group); } catch { /* prywatne okno */ }
+      setRank(rankFromStored(storedForWorld(next, group)));
+      setMenuOpen(false);
+    } catch (e) {
+      console.error('Przełączenie świata nie powiodło się:', e);
+      showToast(t('home.worldSwitchError'));
+    } finally {
+      setWorldBusy(false);
+    }
+  };
+
   const handleRefresh = () => {
     if (isRefreshing || !userId || refreshesLeft <= 0) return;
     const current = getRefreshData();
@@ -1311,6 +1363,27 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </button>
             {menuOpen && (
               <div role="menu" className="absolute right-0 top-12 w-60 bg-white rounded-2xl border border-gray-100 shadow-xl z-[9999] overflow-hidden divide-y divide-gray-50 animate-fade-in">
+                {/* [PRZEŁĄCZNIK ŚWIATA] WA / Feld / IFAA — statystyki i ranga Home. */}
+                <div className="px-3 py-2.5">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">{t('settings.equipment.style')}</p>
+                  <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label={t('settings.equipment.style')}>
+                    {([['target', t('home.worldTarget')], ['field', t('home.worldField')], ['ifaa', t('home.worldIfaa')]] as const).map(([id, label]) => {
+                      const on = (statsGroup === 'blowgun' ? 'target' : statsGroup) === id;
+                      return (
+                        <button
+                          key={id}
+                          role="radio"
+                          aria-checked={on}
+                          disabled={worldBusy || statsGroup === 'blowgun'}
+                          onClick={() => switchWorld(id)}
+                          className={`py-1.5 rounded-lg text-[12px] font-black border transition-all active:scale-95 disabled:opacity-50 ${on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 {([
                   ['notifications', t('announcements.pageTitle'), () => setBellSignal(n => n + 1), 'text-[#0a3a2a]'],
                   ['slow_motion_video', t('delayMirror.title'), () => onNavigate?.('DELAY_MIRROR'), 'text-[#0a3a2a]'],

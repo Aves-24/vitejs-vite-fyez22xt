@@ -7,7 +7,7 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankBowOf, rankFromStored, rankUpBetween } from '../utils/rankEngine';
+import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankBowOf, rankFromStored, rankUpBetween, rankWorldOf, storedForWorld } from '../utils/rankEngine';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
@@ -641,10 +641,12 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       await sessionWrite;
 
       // [RANGA] Awans pokazuje Home po powrocie (ten ekran zaraz znika).
-      const rankUp = rankFields ? rankUpBetween(ud, rankFields) : null;
+      // [RANGA TERENOWA] Awans liczony w świecie tej sesji (WA / teren / IFAA).
+      const sessionWorld = rankWorldOf({ targetType, bowClass: setupStamp.bowClass ?? ud.bowType }) ?? 'target';
+      const rankUp = rankFields ? rankUpBetween(ud, rankFields, sessionWorld) : null;
       if (rankUp) {
         try {
-          localStorage.setItem(RANK_UP_KEY, JSON.stringify({ level: rankUp.level, bow: rankUp.bow, handicap: rankUp.handicap, first: rankFromStored(ud).handicap === null }));
+          localStorage.setItem(RANK_UP_KEY, JSON.stringify({ level: rankUp.level, bow: rankUp.bow, handicap: rankUp.handicap, first: rankFromStored(storedForWorld(ud, sessionWorld)).handicap === null, world: sessionWorld }));
         } catch { /* bez localStorage: awans i tak widać na kaflu */ }
       }
 

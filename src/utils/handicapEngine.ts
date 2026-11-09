@@ -27,8 +27,14 @@ export function sigmaR(handicap: number, distanceM: number): number {
   return distanceM * ANG_0 * Math.pow(1 + STEP / 100, handicap + DATUM) * Math.exp(KD * distanceM);
 }
 
-/** Geometria tarczy potrzebna modelowi: średnica i najniższy punktowany pierścień. */
-export interface FaceSpec { diameterM: number; minRing: number }
+/**
+ * Geometria tarczy potrzebna modelowi: średnica i najniższy punktowany pierścień.
+ * [TEREN/IFAA 2026-11-09] Tarcze o innej punktacji (WA Field 6–1, IFAA 5/4/3,
+ * Indoor 5–1) niosą jawne `zones` — promień zewnętrzny strefy [m] i wartość,
+ * od środka na zewnątrz. Ten sam model Atkinsona (archeryutils też liczy
+ * WA_field i IFAA_field), tylko suma po strefach zamiast pierścieni 10…1.
+ */
+export interface FaceSpec { diameterM: number; minRing: number; zones?: { rM: number; value: number }[] }
 
 /**
  * Tarcze z katalogu, które model umie policzyć: koncentryczne 10..1,
@@ -37,7 +43,17 @@ export interface FaceSpec { diameterM: number; minRing: number }
  */
 export function faceSpecFor(targetType?: string | null): FaceSpec | null {
   const face = resolveTargetFace(targetType);
-  if (!face.scorable || face.zones || face.discipline || face.diameterCm <= 0) return null;
+  if (!face.scorable || face.discipline || face.diameterCm <= 0) return null;
+  // Spoty z własnymi strefami (teren 20 cm, IFAA 4-Spot / 5-Spot): strefy z ułamków promienia spotu.
+  if (face.spot?.zones && face.spot.spotCm) {
+    const rSpot = face.spot.spotCm / 200;
+    return { diameterM: face.spot.spotCm / 100, minRing: 1, zones: face.spot.zones.map(z => ({ rM: z.f * rSpot, value: z.value === 'X' ? 10 : Number(z.value) })) };
+  }
+  // Pełne tarcze ze strefami (WA Field, IFAA Field/Hunter/Indoor): r w viewBoxie 300 (promień 150).
+  if (face.zones) {
+    const rFace = face.diameterCm / 200;
+    return { diameterM: face.diameterCm / 100, minRing: 1, zones: face.zones.map(z => ({ rM: (z.r / 150) * rFace, value: z.value })) };
+  }
   const minRing = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spots' ? 6 : face.minScoringRing;
   return { diameterM: face.diameterCm / 100, minRing };
 }
@@ -46,6 +62,16 @@ export function faceSpecFor(targetType?: string | null): FaceSpec | null {
 export function expectedArrowScore(handicap: number, distanceM: number, spec: FaceSpec): number {
   const arrowR = (distanceM <= 25 ? ARROW_D_INDOOR : ARROW_D_OUTDOOR) / 2;
   const sig = sigmaR(handicap, distanceM);
+  if (spec.zones) {
+    // Σ (wartość_i − wartość_{i+1}) · P(trafienie w promień strefy i); poza ostatnią = 0.
+    // Dla stref 10…minRing to dokładnie ta sama suma co pętla niżej.
+    let score = 0;
+    spec.zones.forEach((z, i) => {
+      const next = spec.zones![i + 1]?.value ?? 0;
+      score += (z.value - next) * (1 - Math.exp(-(((arrowR + z.rM) / sig) ** 2)));
+    });
+    return score;
+  }
   const ringWidth = spec.diameterM / 20;
   const lastK = 11 - spec.minRing;
   let score = 10;

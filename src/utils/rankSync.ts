@@ -26,7 +26,7 @@ export async function rebuildRankFromHistory(userId: string, userData: any): Pro
   const sessions = snap.docs
     .map(d => toRankSession(d.data(), userData?.bowType))
     .reverse(); // od najstarszej — tak jak przychodziły
-  const fields: Record<string, unknown> = applySessionsToRank(null, sessions) ?? { rankVersion: RANK_VERSION };
+  const fields: Record<string, unknown> = { ...(applySessionsToRank(null, sessions) ?? { rankVersion: RANK_VERSION }) };
   const deletes = Object.fromEntries(LEGACY_RANK_FIELDS.map(f => [f, deleteField()]));
   await updateDoc(doc(db, 'users', userId), { ...fields, ...deletes });
   return fields;

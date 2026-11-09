@@ -10,7 +10,7 @@
 
 import { calculateCurrentHandicap, sessionHandicap } from './handicapEngine';
 import { distanceMeters } from '../config/distances';
-import { statsGroupOf } from '../config/statsGroups';
+import { statsGroupOf, type StatsGroup } from '../config/statsGroups';
 
 export interface RankDef {
   level: number;
@@ -101,6 +101,27 @@ export interface StoredRank {
   hcByBow?: Partial<Record<RankBow, number[]>>;
   levelByBow?: Partial<Record<RankBow, number>>;
   bestLevel?: number;
+  /**
+   * [RANGA TERENOWA 2026-11-09] Osobna ranga dla terenu i IFAA (decyzja usera:
+   * „A — osobna ranga”). Pola na górze to tarcze WA (jak dotąd, czytają je
+   * World/lobby/profil publiczny); teren i IFAA żyją tutaj w tym samym kształcie.
+   */
+  rankWorlds?: Partial<Record<RankWorld, Omit<StoredRank, 'rankWorlds'>>>;
+}
+
+/** Światy z własną rangą (dmuchawka — bez rangi). */
+export type RankWorld = 'field' | 'ifaa';
+
+/** Świat rangi dla sesji: 'target' (tarcze WA), 'field', 'ifaa' albo null (dmuchawka). */
+export function rankWorldOf(s: { bowClass?: string | null; targetType?: string | null }): 'target' | RankWorld | null {
+  const g: StatsGroup = statsGroupOf({ bowClass: s.bowClass, targetType: s.targetType || '' });
+  return g === 'blowgun' ? null : g;
+}
+
+/** Zapisane pola rangi danego świata (do rankFromStored). */
+export function storedForWorld(d: StoredRank | null | undefined, world: 'target' | RankWorld | StatsGroup): StoredRank | undefined {
+  if (!d) return undefined;
+  return world === 'field' || world === 'ifaa' ? d.rankWorlds?.[world] : d;
 }
 
 export interface RankResult {
@@ -170,9 +191,9 @@ export interface RankSession {
 /** Handicap sesji albo null, gdy nie liczy się do rangi (dmuchawka, Field, technika, brak strzał). */
 export function handicapOfSession(s: RankSession): number | null {
   if (!(s.scoreArrows > 0)) return null;
-  // Handicap (Atkinson) jest zdefiniowany tylko dla tarcz WA — dmuchawka
-  // i teren (skala 6–1, [FELD 2026-11-09]) nie liczą się do rangi.
-  if (statsGroupOf({ bowClass: s.bowClass, targetType: s.targetType || '' }) !== 'target') return null;
+  // Dmuchawka bez rangi (zabawka — decyzja usera). Teren i IFAA liczą się tym
+  // samym modelem ze stref tarczy, ale do WŁASNEJ rangi (applySessionsToRank).
+  if (rankWorldOf(s) === null) return null;
   return sessionHandicap(s.score / s.scoreArrows, distanceMeters(s.distance), s.targetType);
 }
 
@@ -180,13 +201,40 @@ export function handicapOfSession(s: RankSession): number | null {
  * Nowe pola profilu po sesjach (od najstarszej do najnowszej). Zwraca null,
  * gdy żadna sesja nie liczy się do rangi — wtedy profil zostaje bez zmian.
  */
-export function applySessionsToRank(prev: StoredRank | null | undefined, sessions: RankSession[]) {
+/** Pola profilu do zapisu po sesji (część może brakować — np. tylko `rankWorlds`). */
+export type RankFields = StoredRank & {
+  level?: number; rankName?: string; rankColor?: string; rankBorder?: string; rankTextColor?: string;
+  currentHandicap?: number | null; rankVersion: number;
+};
+
+export function applySessionsToRank(prev: StoredRank | null | undefined, sessions: RankSession[]): RankFields | null {
   const hcByBow: Partial<Record<RankBow, number[]>> = { ...(prev?.hcByBow || {}) };
   const levelByBow: Partial<Record<RankBow, number>> = { ...(prev?.levelByBow || {}) };
+  // [RANGA TERENOWA] Teren i IFAA — ta sama mechanika, osobne listy.
+  const worlds: NonNullable<StoredRank['rankWorlds']> = {};
+  for (const w of ['field', 'ifaa'] as RankWorld[]) {
+    const p = prev?.rankWorlds?.[w];
+    if (p) worlds[w] = { hcByBow: { ...(p.hcByBow || {}) }, levelByBow: { ...(p.levelByBow || {}) }, bestLevel: p.bestLevel };
+  }
   let changed = false;
+  let worldsChanged = false;
   for (const s of sessions) {
     const hc = handicapOfSession(s);
     if (hc === null) continue;
+    const world = rankWorldOf(s);
+    if (world === 'field' || world === 'ifaa') {
+      const w = worlds[world] ?? (worlds[world] = { hcByBow: {}, levelByBow: {} });
+      const bowW = rankBowOf(s.bowClass);
+      const listW = [hc, ...(w.hcByBow![bowW] || [])].slice(0, HANDICAP_WINDOW);
+      w.hcByBow![bowW] = listW;
+      const curW = calculateCurrentHandicap(listW);
+      if (curW !== null && listW.length >= MIN_SESSIONS_FOR_RANK) {
+        w.levelByBow![bowW] = levelForHandicap(curW, bowW, w.levelByBow![bowW]);
+      }
+      w.bestLevel = rankFromStored(w).bestLevel;
+      worldsChanged = true;
+      continue;
+    }
     const bow = rankBowOf(s.bowClass);
     const list = [hc, ...(hcByBow[bow] || [])].slice(0, HANDICAP_WINDOW);
     hcByBow[bow] = list;
@@ -196,7 +244,9 @@ export function applySessionsToRank(prev: StoredRank | null | undefined, session
     }
     changed = true;
   }
-  if (!changed) return null;
+  if (!changed && !worldsChanged) return null;
+  // Tylko teren/IFAA: dopisujemy wyłącznie ich pola — ranga WA zostaje nietknięta.
+  if (!changed) return { rankWorlds: worlds, rankVersion: RANK_VERSION };
   const result = rankFromStored({ hcByBow, levelByBow, bestLevel: prev?.bestLevel });
   return {
     hcByBow,
@@ -209,6 +259,7 @@ export function applySessionsToRank(prev: StoredRank | null | undefined, session
     rankBorder: result.border,
     rankTextColor: result.textColor,
     currentHandicap: result.handicap,
+    ...(worldsChanged || prev?.rankWorlds ? { rankWorlds: worlds } : {}),
     rankVersion: RANK_VERSION,
   };
 }
@@ -236,12 +287,14 @@ export function rankTrend(d: StoredRank | null | undefined): 'up' | 'down' | 'fl
 }
 
 /** Awans po zapisie sesji: nowa ranga wyżej niż przed nią (albo pierwsza ranga). */
-export function rankUpBetween(before: StoredRank | null | undefined, after: StoredRank): RankResult | null {
-  const prev = rankFromStored(before);
-  const next = rankFromStored(after);
+export function rankUpBetween(before: StoredRank | null | undefined, after: StoredRank, world: 'target' | RankWorld = 'target'): RankResult | null {
+  // [RANGA TERENOWA] Porównujemy rangę świata tej sesji; `after` to pola po merge'u.
+  const prev = rankFromStored(storedForWorld(before, world));
+  const next = rankFromStored(storedForWorld({ ...(before || {}), ...after }, world));
   if (next.handicap === null) return null;
   return prev.handicap === null || next.level > prev.level ? next : null;
 }
 
 /** Wersja pól rangi — stare profile (XP) przeliczamy raz z historii sesji. */
-export const RANK_VERSION = 2;
+// 3 = [RANGA TERENOWA 2026-11-09]: teren i IFAA dostają własną rangę z historii.
+export const RANK_VERSION = 3;

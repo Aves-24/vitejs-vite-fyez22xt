@@ -3,7 +3,7 @@
 // tydzień (z punktacją + technika) i przebieg handicapu. Czyste funkcje —
 // liczone z już wczytanych sesji, bez dodatkowych odczytów Firestore.
 import { calculateCurrentHandicap } from './handicapEngine';
-import { handicapOfSession, rankBowOf, HANDICAP_WINDOW, type RankBow } from './rankEngine';
+import { handicapOfSession, rankBowOf, rankWorldOf, HANDICAP_WINDOW, type RankBow } from './rankEngine';
 
 export const sessionMs = (s: any): number => {
   const ts = s?.timestamp;
@@ -105,6 +105,8 @@ export function handicapSeries(sessions: any[], bow: RankBow, fallbackBowClass?:
   for (const s of sorted) {
     const bowClass = s.bowClass ?? fallbackBowClass ?? null;
     if (rankBowOf(bowClass) !== bow) continue;
+    // [RANGA TERENOWA] Przebieg u trenera = ranga z tarcz WA (teren/IFAA mają osobną).
+    if (rankWorldOf({ bowClass, targetType: s.targetType }) !== 'target') continue;
     const hc = handicapOfSession({
       score: Number(s.score) || 0,
       scoreArrows: Number(s.scoreArrows ?? s.arrows) || 0,

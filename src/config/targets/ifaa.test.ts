@@ -75,14 +75,17 @@ describe('IFAA — regulamin (Archers’ Handbook 2017–2018)', () => {
     }
   });
 
-  it('osobny świat statystyk IFAA (skala 5), bez rangi', () => {
+  it('osobny świat statystyk IFAA (skala 5) z własnym handicapem', () => {
     expect(statsGroupOf({ targetType: 'DFBV Feld 50cm' })).toBe('ifaa');
     expect(statsGroupOfSetup({ discipline: 'Goły (Barebow)', style: 'ifaa' })).toBe('ifaa');
     expect(scaleMaxOf('ifaa')).toBe(5);
     expect(zonesOf([{ arrows: ['5', '5', '4', '3', 'M'] }], 'ifaa')).toEqual([2, 1, 1, 0, 0, 1]);
     expect(zoneIndexOf('2', 'ifaa')).toBe(3);
     const s = { score: 16, scoreArrows: 4, distance: '30m', bowClass: 'Goły (Barebow)', targetType: 'IFAA Field 50cm' } as any;
-    expect(handicapOfSession(s)).toBeNull();
+    // [RANGA TERENOWA] Handicap z modelu Atkinsona po strefach 5/4/3 — liczba, nie null.
+    const hc = handicapOfSession(s)!;
+    expect(hc).toBeGreaterThan(0);
+    expect(hc).toBeLessThan(150);
   });
 
   it('lista tarcz tylko przy zestawie IFAA i dobór do dystansu', () => {

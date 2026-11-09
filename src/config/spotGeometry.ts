@@ -117,6 +117,8 @@ export interface FaceSpotSpec {
   arrangement?: Pick<SpotGeometry, 'sheets' | 'spots' | 'r' | 'perSheet'>;
   rings?: SpotRing[];
   zones?: SpotZone[];
+  /** [HANDICAP] Fizyczna średnica jednego spotu w cm (strefy w metrach dla modelu Atkinsona). */
+  spotCm?: number;
 }
 
 export function spotGeometryOfFace(face: TargetFace): SpotGeometry | null {

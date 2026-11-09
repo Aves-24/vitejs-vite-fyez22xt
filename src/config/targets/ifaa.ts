@@ -72,6 +72,7 @@ const single = (
 /** 20 cm: tarczki 2×2 z tymi samymi proporcjami (spot 0,2 r, pierścień 0,6 r). */
 const quadSpec = (hunter: boolean): FaceSpotSpec => ({
   arrangement: QUAD,
+  spotCm: 20,
   rings: hunter
     ? [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: BLACK, stroke: WHITE }, { f: 0.2, fill: WHITE, stroke: LINE }]
     : [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: WHITE, stroke: LINE }, { f: 0.2, fill: BLACK, stroke: WHITE }],
@@ -146,6 +147,7 @@ export const IFAA_INDOOR5_FACE: TargetFace = {
   keyColors: { '5': 'white', '4': 'blue' },
   spot: {
     arrangement: DICE5,
+    spotCm: 16,
     rings: [
       { f: 1, fill: BLUE, stroke: WHITE },
       { f: 0.5, fill: WHITE, stroke: WHITE },

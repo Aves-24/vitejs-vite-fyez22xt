@@ -136,3 +136,34 @@ test('IFAA 4-Spot 20 cm i Indoor 5-Spot: jedna strzała na tarczkę, seria 4 / 5
   await page.screenshot({ path: test.info().outputPath('ifaa-stats.png'), fullPage: true });
   await expectNoErrors(page, errors, 'IFAA spots');
 });
+
+test('ranga IFAA: po 3 treningach własna ranga z handicapem, ranga WA nietknięta', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await ifaaSetup(page, request, 'Rang');
+  for (const end of [['5', '5', '4', '4'], ['5', '4', '4', '3'], ['5', '5', '5', '4']]) {
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+    await page.getByRole('button', { name: 'Training', exact: true }).click();
+    await shoot(page, end);
+    await page.waitForTimeout(800);
+    await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+    await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+    await expect(page.getByRole('button', { name: /^Zuletzt/ })).toBeVisible();
+    await syncWrites(page);
+  }
+  const user = (await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))!.fields;
+  // Ranga IFAA zapisana osobno; pola rangi WA puste.
+  const ifaa = user.rankWorlds.mapValue.fields.ifaa.mapValue.fields;
+  expect(ifaa.hcByBow.mapValue.fields.RECURVE.arrayValue.values).toHaveLength(3);
+  expect(user.hcByBow?.mapValue?.fields?.RECURVE).toBeUndefined();
+
+  await page.goto('/');
+  const rankTile = page.getByRole('button', { name: /^Bogenschützen-Ranking/ });
+  await expect(rankTile).toHaveAttribute('aria-label', /IFAA$/);
+  await expect(rankTile).toContainText(/HCP \d+/);
+  await page.waitForTimeout(1500);
+  await expect(rankTile).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('ifaa-rank.png') });
+  await expectNoErrors(page, errors, 'ranga IFAA');
+});

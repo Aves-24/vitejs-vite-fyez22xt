@@ -87,9 +87,10 @@ describe('światy statystyk', () => {
     expect(countsForZones({ score: 50, distance: '18m', targetType: '3-Spot' }, 'field')).toBe(false);
   });
 
-  it('teren nie liczy się do rangi (handicap tylko dla tarcz WA)', () => {
+  it('teren ma własny handicap (model po strefach 6–1), dmuchawka nie', () => {
     const base = { score: 30, scoreArrows: 6, distance: '30m', bowClass: 'Goły (Barebow)' } as any;
-    expect(handicapOfSession({ ...base, targetType: 'Field 60cm' })).toBeNull();
+    expect(handicapOfSession({ ...base, targetType: 'Field 60cm' })).not.toBeNull();
     expect(handicapOfSession({ ...base, targetType: '122cm' })).not.toBeNull();
+    expect(handicapOfSession({ ...base, bowClass: BLOWGUN_DISCIPLINE, targetType: '40cm' })).toBeNull();
   });
 });

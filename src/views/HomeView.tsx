@@ -7,7 +7,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
 import NotificationBell from '../components/NotificationBell';
-import { levelThreshold, MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, RANK_UP_KEY, rankFromStored, RANK_VERSION, TARGET_RANKS, type RankBow, type RankResult } from '../utils/rankEngine';
+import { levelThreshold, MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, RANK_UP_KEY, rankFromStored, RANK_VERSION, TARGET_RANKS, storedForWorld, type RankBow, type RankResult } from '../utils/rankEngine';
 import { rebuildRankFromHistory } from '../utils/rankSync';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
@@ -232,6 +232,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const rankLine = rankPending
     ? t('home.rankPending', { count: rank.sessions, total: MIN_SESSIONS_FOR_RANK })
     : `${t('home.hcShort')} ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
+  // [RANGA TERENOWA] Dopisek świata, gdy ranga nie jest z tarcz WA.
+  const rankWorldTag = statsGroup === 'field' ? t('settings.equipment.styleField') : statsGroup === 'ifaa' ? t('settings.equipment.styleIfaa') : '';
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
   // [RANGA] Awans zapisany przez ScoringView — pokazujemy raz po powrocie z treningu.
   const [rankUp, setRankUp] = useState<{ level: number; bow: RankBow | null; handicap: number; first: boolean } | null>(null);
@@ -368,13 +370,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
         // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
-        setRank(rankFromStored(d));
         const group = statsGroupOfSetup(resolveActiveSetup(d as any));
+        // [RANGA TERENOWA] Ranga świata aktywnego zestawu (WA / teren / IFAA).
+        setRank(rankFromStored(storedForWorld(d, group)));
         setStatsGroup(group);
         try { localStorage.setItem(`grotX_statsGroup_${userId}`, group); } catch { /* prywatne okno */ }
         if (d.rankVersion !== RANK_VERSION) {
           rebuildRankFromHistory(userId, d)
-            .then(fields => { if (!cancelled) setRank(rankFromStored(fields as any)); })
+            .then(fields => { if (!cancelled) setRank(rankFromStored(storedForWorld(fields as any, group))); })
             .catch(e => console.warn('Przeliczenie rangi nie powiodło się:', e));
         }
 
@@ -1590,7 +1593,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
           <button
             onClick={() => setIsRankInfoOpen(true)}
-            aria-label={`${t('home.archerRanking')} ${userLevel} ${userRankName}`}
+            aria-label={`${t('home.archerRanking')} ${userLevel} ${userRankName}${rankWorldTag ? ` ${rankWorldTag}` : ''}`}
             className="bg-white rounded-2xl border border-gray-100 shadow-sm px-3 py-2.5 flex items-center gap-2.5 text-left active:scale-[0.98] transition-all min-w-0"
           >
             <span
@@ -1600,7 +1603,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               {userLevel}
             </span>
             <span className="min-w-0">
-              <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">{userRankName}</span>
+              <span className="block text-[13px] font-black text-[#0a3a2a] leading-tight truncate">{userRankName}{rankWorldTag && <span className="text-[10px] font-bold text-gray-400"> · {rankWorldTag}</span>}</span>
               <span className="block text-[11px] font-bold text-gray-500 truncate">{rankLine}</span>
             </span>
           </button>

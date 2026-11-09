@@ -17,6 +17,7 @@ const YELLOW = '#F2C94C', BLACK = '#333333', WHITE = '#ffffff', LINE = '#333333'
 
 export const FIELD20_SPOT: FaceSpotSpec = {
   arrangement: DOUBLE_COLUMN,
+  spotCm: 20,
   rings: [
     { f: 1, fill: BLACK, stroke: WHITE },
     { f: 0.8, fill: BLACK, stroke: WHITE },

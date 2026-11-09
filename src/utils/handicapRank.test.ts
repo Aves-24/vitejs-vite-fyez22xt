@@ -199,8 +199,8 @@ describe('ranga z sesji', () => {
   it(`pamięta tylko ${HANDICAP_WINDOW} ostatnich sesji na łuk, najnowsza pierwsza`, () => {
     const many = Array.from({ length: 12 }, () => s(8));
     const out = applySessionsToRank(null, [...many, s(9.5)])!;
-    expect(out.hcByBow.RECURVE).toHaveLength(HANDICAP_WINDOW);
-    expect(out.hcByBow.RECURVE![0]).toBe(sessionHandicap(9.5, 70, '122cm'));
+    expect(out.hcByBow!.RECURVE).toHaveLength(HANDICAP_WINDOW);
+    expect(out.hcByBow!.RECURVE![0]).toBe(sessionHandicap(9.5, 70, '122cm'));
   });
 
   it(`ranga dopiero od ${MIN_SESSIONS_FOR_RANK} sesji tego samego łuku`, () => {
@@ -212,7 +212,7 @@ describe('ranga z sesji', () => {
   it('najlepsza ranga nigdy nie spada', () => {
     const good = applySessionsToRank(null, [1, 2, 3].map(() => s(9.3)))!;
     const bad = applySessionsToRank(good, Array.from({ length: 10 }, () => s(5)))!;
-    expect(bad.level).toBeLessThan(good.level);
+    expect(bad.level).toBeLessThan(good.level!);
     expect(bad.bestLevel).toBe(good.bestLevel);
   });
 

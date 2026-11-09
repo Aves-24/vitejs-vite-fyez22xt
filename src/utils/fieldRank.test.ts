@@ -91,3 +91,14 @@ describe('osobna ranga dla każdego świata', () => {
     expect(ifaa.handicap).not.toBe(field.handicap);
   });
 });
+
+describe('przeliczenie rangi z historii', async () => {
+  const { needsRankRebuild, RANK_VERSION } = await import('./rankEngine');
+  it('konto bez treningów nie czeka na przeliczenie (ranga liczy się od razu przy zapisie)', () => {
+    expect(needsRankRebuild({})).toBe(false);
+    expect(needsRankRebuild({ firstName: 'A' })).toBe(false);
+    expect(needsRankRebuild({ rankVersion: RANK_VERSION, lastSessionTimestamp: 1 })).toBe(false);
+    expect(needsRankRebuild({ rankVersion: 2, lastSessionTimestamp: 1 })).toBe(true);
+    expect(needsRankRebuild({ xp: 100, lastSessionTimestamp: 1 })).toBe(true);
+  });
+});

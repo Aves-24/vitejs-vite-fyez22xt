@@ -14,32 +14,28 @@ async function userFields(request: any, uid: string) {
   return (await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))!.fields;
 }
 
-test('jeden zestaw: przełącznik zmienia styl zestawu, Home idzie za nim', async ({ page, request }) => {
+test('jeden zestaw: bez przełącznika w menu, skrót świata przy plakietce po zmianie w Einstellungen', async ({ page, request }) => {
   const errors = watchErrors(page);
   const uid = await registerUser(page, 'Welt');
+  // Jeden świat (WA): w menu brak przełącznika, przy plakietce brak skrótu.
   await openMenu(page);
-  await expect(radio(page, 'WA')).toHaveAttribute('aria-checked', 'true');
-  await page.screenshot({ path: test.info().outputPath('menu.png') });
-  await radio(page, 'IFAA').click();
-  await expect(page.getByRole('menu')).toHaveCount(0);
-  await expect(rankTile(page)).toHaveAttribute('aria-label', /IFAA$/);
+  await expect(page.getByRole('menu').getByRole('radio')).toHaveCount(0);
+  await openMenu(page);
+  await expect(page.getByTestId('world-short')).toHaveCount(0);
+  // Zestaw przestawiony na IFAA w Einstellungen → skrót „IFAA”, ranga IFAA.
+  await nav(page, 'Einst.').click();
+  await page.getByRole('main').getByRole('button', { name: 'AUSRÜSTUNG', exact: true }).click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
   await expect.poll(async () => JSON.stringify((await userFields(request, uid)).setups), { timeout: 15_000 }).toContain('"ifaa"');
-
-  // Po przeładowaniu dalej IFAA; przy starcie tylko tarcze IFAA.
-  await page.reload();
-  await expect(rankTile(page)).toHaveAttribute('aria-label', /IFAA$/);
-  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
-  await expect(page.getByTestId('setup-card')).toContainText('IFAA');
-
   await page.goto('/');
+  await expect(page.getByTestId('world-short')).toHaveText('IFAA');
+  await expect(rankTile(page)).toHaveAttribute('aria-label', /IFAA$/);
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: test.info().outputPath('badge.png') });
   await openMenu(page);
-  await radio(page, 'Feld').click();
-  await expect(rankTile(page)).toHaveAttribute('aria-label', /Feld \(WA\)$/);
-  await openMenu(page);
-  await radio(page, 'WA').click();
-  await expect(rankTile(page)).not.toHaveAttribute('aria-label', /IFAA|Feld/);
-  await expect.poll(async () => JSON.stringify((await userFields(request, uid)).setups), { timeout: 15_000 }).toContain('"target"');
-  await expectNoErrors(page, errors, 'przełącznik');
+  await expect(page.getByRole('menu').getByRole('radio')).toHaveCount(0);
+  await expectNoErrors(page, errors, 'jeden zestaw');
 });
 
 test('dwa zestawy (PRO): przełącznik aktywuje zestaw „Feld”, nie zmienia zestawu WA', async ({ page, request }) => {

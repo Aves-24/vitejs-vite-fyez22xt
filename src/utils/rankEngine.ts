@@ -298,3 +298,15 @@ export function rankUpBetween(before: StoredRank | null | undefined, after: Stor
 /** Wersja pól rangi — stare profile (XP) przeliczamy raz z historii sesji. */
 // 3 = [RANGA TERENOWA 2026-11-09]: teren i IFAA dostają własną rangę z historii.
 export const RANK_VERSION = 3;
+
+/**
+ * [FIX 2026-11-09] Czy profil wymaga przeliczenia rangi z historii.
+ * Konto, które jeszcze nigdy nie trenowało (brak `lastSessionTimestamp`), nie ma
+ * czego przeliczać — wcześniej Home przeliczał je asynchronicznie, a trening
+ * zapisany przed końcem przeliczenia był pomijany przez ScoringView i nie
+ * trafiał do rangi (po 3 treningach brak „Dein erster Rang”, niestabilny e2e).
+ */
+export function needsRankRebuild(d: any): boolean {
+  if (!d || d.rankVersion === RANK_VERSION) return false;
+  return d.lastSessionTimestamp != null;
+}

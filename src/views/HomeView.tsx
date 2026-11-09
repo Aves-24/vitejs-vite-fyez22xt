@@ -7,7 +7,7 @@ import { QRCodeCanvas } from 'qrcode.react';
 import { useTranslation } from 'react-i18next';
 import QuickStatsModal from '../components/QuickStatsModal';
 import NotificationBell from '../components/NotificationBell';
-import { levelThreshold, MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, RANK_UP_KEY, rankFromStored, RANK_VERSION, TARGET_RANKS, storedForWorld, type RankBow, type RankResult } from '../utils/rankEngine';
+import { levelThreshold, MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, RANK_UP_KEY, rankFromStored, TARGET_RANKS, storedForWorld, needsRankRebuild, type RankBow, type RankResult } from '../utils/rankEngine';
 import { rebuildRankFromHistory } from '../utils/rankSync';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
@@ -37,6 +37,12 @@ const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/Schrei
 
 // Ikona plakietki planu pod logo (FREE / PRO / PRO na dni).
 const PLAN_ICON = { free: 'diamond', pro: 'diamond', days: 'hourglass_top' } as const;
+
+/** [PRZEŁĄCZNIK ŚWIATA] Style zestawów łuczniczych (bez dmuchawki), bez powtórzeń. */
+const worldsOfSetups = (d: any): string[] => {
+  const list: EquipmentSetup[] = Array.isArray(d?.setups) ? d.setups : [];
+  return Array.from(new Set(list.filter(s => !isBlowgun(s.discipline)).map(s => styleOfSetup(s))));
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CACHE HELPER
@@ -239,14 +245,27 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     : `${t('home.hcShort')} ${rank.handicap}${rank.nextHandicap !== null ? ` → ${nextRankName} ≤ ${rank.nextHandicap}` : ' ✦ MAX'}`;
   // [RANGA TERENOWA] Dopisek świata, gdy ranga nie jest z tarcz WA.
   const rankWorldTag = statsGroup === 'field' ? t('settings.equipment.styleField') : statsGroup === 'ifaa' ? t('settings.equipment.styleIfaa') : '';
+  // [PRZEŁĄCZNIK ŚWIATA] Światy, w których user ma zestawy (bez dmuchawki). Przełącznik
+  // w menu tylko przy 2+ (user 2026-11-09); skrót przy plakietce, gdy nie-WA albo 2+.
+  const [setupWorlds, setSetupWorlds] = useState<string[]>([]);
+  const multiWorld = setupWorlds.length > 1;
+  const worldShort = statsGroup === 'field' ? t('home.worldField') : statsGroup === 'ifaa' ? t('home.worldIfaa') : statsGroup === 'target' ? t('home.worldTarget') : '';
+  const showWorldShort = !!worldShort && (multiWorld || statsGroup === 'field' || statsGroup === 'ifaa');
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
   // [RANGA] Awans zapisany przez ScoringView — pokazujemy raz po powrocie z treningu.
   const [rankUp, setRankUp] = useState<{ level: number; bow: RankBow | null; handicap: number; first: boolean } | null>(null);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(RANK_UP_KEY);
-      if (raw) { localStorage.removeItem(RANK_UP_KEY); setRankUp(JSON.parse(raw)); }
-    } catch { /* uszkodzony wpis albo brak localStorage — bez okna */ }
+    const read = () => {
+      try {
+        const raw = localStorage.getItem(RANK_UP_KEY);
+        if (raw) { localStorage.removeItem(RANK_UP_KEY); setRankUp(JSON.parse(raw)); }
+      } catch { /* uszkodzony wpis albo brak localStorage — bez okna */ }
+    };
+    read();
+    // [FIX 2026-11-09] Zapis treningu kończy się czasem PO powrocie na Home —
+    // wtedy wpis pojawia się później (niestabilny e2e „Dein erster Rang”).
+    window.addEventListener('grotx-rank-up', read);
+    return () => window.removeEventListener('grotx-rank-up', read);
   }, []);
 
   // [FIX] Ref do śledzenia mount state + timera toast, żeby nie robić setState
@@ -376,12 +395,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
         // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
         profileRef.current = d;
+        setSetupWorlds(worldsOfSetups(d));
         const group = statsGroupOfSetup(resolveActiveSetup(d as any));
         // [RANGA TERENOWA] Ranga świata aktywnego zestawu (WA / teren / IFAA).
         setRank(rankFromStored(storedForWorld(d, group)));
         setStatsGroup(group);
         try { localStorage.setItem(`grotX_statsGroup_${userId}`, group); } catch { /* prywatne okno */ }
-        if (d.rankVersion !== RANK_VERSION) {
+        if (needsRankRebuild(d)) {
           rebuildRankFromHistory(userId, d)
             .then(fields => { if (!cancelled) setRank(rankFromStored(storedForWorld(fields as any, group))); })
             .catch(e => console.warn('Przeliczenie rangi nie powiodło się:', e));
@@ -947,6 +967,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     try {
       await updateDoc(doc(db, 'users', userId), patch);
       profileRef.current = next;
+      setSetupWorlds(worldsOfSetups(next));
       const group = statsGroupOfSetup(resolveActiveSetup(next));
       setStatsGroup(group);
       try { localStorage.setItem(`grotX_statsGroup_${userId}`, group); } catch { /* prywatne okno */ }
@@ -1347,6 +1368,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
               ) : 'PRO'}
             </button>
           )}
+          {/* [PRZEŁĄCZNIK ŚWIATA] Skrót świata statystyk obok plakietki planu. */}
+          {showWorldShort && (
+            <span data-testid="world-short" className="mt-1.5 ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-white border border-gray-200 text-[#0a3a2a]">
+              {worldShort}
+            </span>
+          )}
         </div>
         {/* [HOME MENU 2026-11-06] Jeden mały żółty przycisk (jak Training) zamiast
             trzech ikon. Dzwonek wychodzi obok tylko przy nieprzeczytanych. */}
@@ -1363,8 +1390,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             </button>
             {menuOpen && (
               <div role="menu" className="absolute right-0 top-12 w-60 bg-white rounded-2xl border border-gray-100 shadow-xl z-[9999] overflow-hidden divide-y divide-gray-50 animate-fade-in">
-                {/* [PRZEŁĄCZNIK ŚWIATA] WA / Feld / IFAA — statystyki i ranga Home. */}
-                <div className="px-3 py-2.5">
+                {/* [PRZEŁĄCZNIK ŚWIATA] WA / Feld / IFAA — tylko gdy zestawy są w 2+ światach. */}
+                {multiWorld && <div className="px-3 py-2.5">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">{t('settings.equipment.style')}</p>
                   <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label={t('settings.equipment.style')}>
                     {([['target', t('home.worldTarget')], ['field', t('home.worldField')], ['ifaa', t('home.worldIfaa')]] as const).map(([id, label]) => {
@@ -1383,7 +1410,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                       );
                     })}
                   </div>
-                </div>
+                </div>}
                 {([
                   ['notifications', t('announcements.pageTitle'), () => setBellSignal(n => n + 1), 'text-[#0a3a2a]'],
                   ['slow_motion_video', t('delayMirror.title'), () => onNavigate?.('DELAY_MIRROR'), 'text-[#0a3a2a]'],

@@ -7,7 +7,7 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { sessionNoteField, writePrivateSessionNote } from '../utils/privateSessionNote';
 import { getPublicProfile, buildPublicProfile } from '../utils/publicProfile';
 import { StagePoint, StageScore, compareStage, scoreSeenBy } from '../utils/battleStage';
-import { applySessionsToRank, RANK_UP_KEY, RANK_VERSION, rankBowOf, rankFromStored, rankUpBetween, rankWorldOf, storedForWorld } from '../utils/rankEngine';
+import { applySessionsToRank, RANK_UP_KEY, rankBowOf, rankFromStored, rankUpBetween, rankWorldOf, storedForWorld, needsRankRebuild } from '../utils/rankEngine';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import { updateWorldStatsOnly, WORLD_XP_PARTICIPATION, WORLD_XP_WIN } from '../utils/worldMatchmakingService';
 import { guestExpiryFields } from '../utils/guestMode';
@@ -626,7 +626,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       // i tarcze ze strefami nie liczą się (handicapOfSession → null) — inna
       // skala punktów. Profil jeszcze w systemie XP przelicza Home z historii,
       // tu dopisujemy tylko do profilu już przeliczonego.
-      const rankFields = ud.rankVersion === RANK_VERSION
+      // Bieżąca wersja ALBO konto bez historii (nic do przeliczania) — liczymy od razu.
+      const rankFields = !needsRankRebuild(ud)
         ? applySessionsToRank(ud, [{
             score: globalStats.score,
             scoreArrows: globalStats.count,
@@ -647,6 +648,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       if (rankUp) {
         try {
           localStorage.setItem(RANK_UP_KEY, JSON.stringify({ level: rankUp.level, bow: rankUp.bow, handicap: rankUp.handicap, first: rankFromStored(storedForWorld(ud, sessionWorld)).handicap === null, world: sessionWorld }));
+          // Home mógł się już zamontować (zapis trwa dłużej niż powrót) — dajemy mu znać.
+          window.dispatchEvent(new Event('grotx-rank-up'));
         } catch { /* bez localStorage: awans i tak widać na kaflu */ }
       }
 

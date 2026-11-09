@@ -1728,6 +1728,7 @@ export const views = {
       target: "Face:",
       addTitle: "Add custom distance",
       meters: "Metres",
+      unit: "Unit",
       labelPh: "Label (optional)",
       labelHint: "e.g. blowgun, barebow — up to 10 characters",
       add: "Add",

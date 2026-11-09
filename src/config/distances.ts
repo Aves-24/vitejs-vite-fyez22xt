@@ -168,11 +168,34 @@ export const builtinDistanceId = (m: string): string => `d_${m}`;
 export const newDistanceId = (): string =>
   `d_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
-/** Metry jako liczba. `18m` → 18. Zwraca 0, gdy się nie da. */
-export const distanceMeters = (m?: string | null): number => {
-  const n = parseInt(String(m ?? ''), 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
+/**
+ * [JARDY 2026-11-09] Jednostki dystansu. IFAA podaje dystanse w jardach
+ * (80-70-60-50 yd), a tarczki 20 cm w stopach (35-30-25-20 ft). Napis
+ * dystansu niesie jednostkę: `18m`, `50yd`, `30ft`; bez jednostki = metry.
+ */
+export type DistanceUnit = 'm' | 'yd' | 'ft';
+export const DISTANCE_UNITS: DistanceUnit[] = ['m', 'yd', 'ft'];
+const UNIT_TO_M: Record<DistanceUnit, number> = { m: 1, yd: 0.9144, ft: 0.3048 };
+
+/** Jednostka z napisu dystansu (`50yd` → 'yd'); domyślnie metry. */
+export const distanceUnit = (m?: string | null): DistanceUnit => {
+  const u = /^\s*[\d.,]+\s*(yd|ft|m)\b/i.exec(String(m ?? ''))?.[1]?.toLowerCase();
+  return u === 'yd' || u === 'ft' ? u : 'm';
 };
+
+/**
+ * Metry jako liczba. `18m` → 18, `50yd` → 45,72, `30ft` → 9,144. Zwraca 0,
+ * gdy się nie da. Karmi handicap, dobór tarczy, zakresy i sortowanie.
+ */
+export const distanceMeters = (m?: string | null): number => {
+  const n = parseFloat(String(m ?? '').replace(',', '.'));
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  const unit = distanceUnit(m);
+  return unit === 'm' ? n : Math.round(n * UNIT_TO_M[unit] * 100) / 100;
+};
+
+/** Dystans w danej jednostce do kanonicznego napisu: (50, 'yd') → `50yd`. */
+export const formatDistanceIn = (value: number, unit: DistanceUnit): string => `${Math.round(value)}${unit}`;
 
 /** Metry z powrotem do kanonicznego napisu. 18 → `18m`. */
 export const formatDistance = (meters: number): string => `${Math.round(meters)}m`;

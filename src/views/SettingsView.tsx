@@ -27,7 +27,7 @@ import { effectiveCoachLimit } from '../utils/coachAccess';
 import {
   UserDistance, buildDistanceEntry, buildCustomDistanceEntry, rebuildMasterList, normalizeLabel,
   ownerSetupOf, disciplineOfDistance,
-  formatDistance, isCustomDistance, isDuplicateDistance, compareDistances,
+  formatDistance, formatDistanceIn, distanceMeters, DISTANCE_UNITS, type DistanceUnit, isCustomDistance, isDuplicateDistance, compareDistances,
   countCustomDistances, customDistanceLimitFor,
   DISTANCE_LABEL_MAX, MIN_CUSTOM_METERS, MAX_CUSTOM_METERS,
 } from '../config/distances';
@@ -80,6 +80,8 @@ export default function SettingsView({
   // więc zmiana nazwy nie rusza historii. Patrz config/distances.ts.
   const [showAddDistance, setShowAddDistance] = useState(false);
   const [newMeters, setNewMeters] = useState('');
+  // [JARDY] Jednostka nowego dystansu (IFAA: jardy, tarczki 20 cm: stopy).
+  const [newUnit, setNewUnit] = useState<DistanceUnit>('m');
   const [newLabel, setNewLabel] = useState('');
   const [distanceError, setDistanceError] = useState<string | null>(null);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -89,7 +91,9 @@ export default function SettingsView({
 
   const addCustomDistance = () => {
     const list = distances as UserDistance[];
-    const meters = parseInt(newMeters, 10);
+    const value = parseInt(newMeters, 10);
+    // Limity liczymy w metrach, niezależnie od jednostki wpisu.
+    const meters = Number.isFinite(value) ? distanceMeters(formatDistanceIn(value, newUnit)) : NaN;
     if (!Number.isFinite(meters) || meters < MIN_CUSTOM_METERS || meters > MAX_CUSTOM_METERS) {
       setDistanceError(t('settings.sight.errRange', { min: MIN_CUSTOM_METERS, max: MAX_CUSTOM_METERS }));
       return;
@@ -100,7 +104,7 @@ export default function SettingsView({
       setDistanceError(t('settings.sight.errLimit', { max: customLimit }));
       return;
     }
-    const m = formatDistance(meters);
+    const m = newUnit === 'm' ? formatDistance(meters) : formatDistanceIn(value, newUnit);
     const label = normalizeLabel(newLabel);
     // [KOLORY] Wybrany zestaw daje wpisowi kolor i dyscyplinę. Wspólny wpis
     // bierze dyscyplinę aktywnego zestawu — jak przed kolorami.
@@ -743,8 +747,23 @@ export default function SettingsView({
                     value={newMeters}
                     onChange={(e) => { setNewMeters(e.target.value); setDistanceError(null); }}
                     placeholder={t('settings.sight.meters')}
-                    className="w-24 h-9 bg-gray-50 rounded-md text-[11px] px-2 font-black text-center outline-none border border-gray-100"
+                    className="w-20 h-9 bg-gray-50 rounded-md text-[11px] px-2 font-black text-center outline-none border border-gray-100"
                   />
+                  {/* [JARDY] m / yd / ft — IFAA podaje dystanse w jardach i stopach. */}
+                  <div className="flex rounded-md border border-gray-100 overflow-hidden shrink-0" role="radiogroup" aria-label={t('settings.sight.unit')}>
+                    {DISTANCE_UNITS.map(u => (
+                      <button
+                        key={u}
+                        type="button"
+                        role="radio"
+                        aria-checked={newUnit === u}
+                        onClick={() => { setNewUnit(u); setDistanceError(null); }}
+                        className={`w-9 h-9 text-[11px] font-black ${newUnit === u ? 'bg-[#0a3a2a] text-white' : 'bg-gray-50 text-gray-500'}`}
+                      >
+                        {u}
+                      </button>
+                    ))}
+                  </div>
                   <input
                     type="text" maxLength={DISTANCE_LABEL_MAX}
                     value={newLabel}

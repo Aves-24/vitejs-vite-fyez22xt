@@ -1728,6 +1728,7 @@ export const views = {
       target: "Auflage:",
       addTitle: "Eigene Distanz hinzufügen",
       meters: "Meter",
+      unit: "Einheit",
       labelPh: "Bezeichnung (optional)",
       labelHint: "z. B. Blasrohr, Blank — max. 10 Zeichen",
       add: "Hinzufügen",

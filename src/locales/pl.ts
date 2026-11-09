@@ -1749,6 +1749,7 @@ export const views = {
       target: "Tarcza:",
       addTitle: "Dodaj własny dystans",
       meters: "Metry",
+      unit: "Jednostka",
       labelPh: "Opis (opcjonalnie)",
       labelHint: "np. dmuchawka, barebow — do 10 znaków",
       add: "Dodaj",

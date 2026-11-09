@@ -671,7 +671,7 @@ function calcSightMm(dxSvg: number, dySvg: number, targetType: string, distance:
     d.includes('60')  ? 600  :
     d.includes('40')  ? 400  : 1220;
   const mmPerUnit = targetMm / 300;                // SVG units → mm on target
-  const distM = parseFloat(distance) || 18;
+  const distM = distanceMeters(distance) || 18; // [JARDY] `50yd` → 45,72 m
   const SIGHT_RADIUS_MM = 800;                     // typical recurve sight radius
   const ratio = SIGHT_RADIUS_MM / (distM * 1000);  // parallax factor
   return {

@@ -8,7 +8,8 @@
 // XP zniknęło (user 2026-10-22): systematyczność pokazują dziennik i liczniki.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { calculateCurrentHandicap, sessionHandicap } from './handicapEngine';
+import { calculateCurrentHandicap, sessionHandicap, multiPartHandicap } from './handicapEngine';
+import { hasPerEndTargets, type ParcoursEnd } from '../config/parcours';
 import { distanceMeters } from '../config/distances';
 import { statsGroupOf, type StatsGroup } from '../config/statsGroups';
 
@@ -186,6 +187,8 @@ export interface RankSession {
   distance?: string | null;
   targetType?: string | null;
   bowClass?: string | null;
+  /** [PARCOURS] Serie z własnym dystansem i tarczą — handicap liczy się z nich. */
+  ends?: ParcoursEnd[] | null;
 }
 
 /** Handicap sesji albo null, gdy nie liczy się do rangi (dmuchawka, Field, technika, brak strzał). */
@@ -194,6 +197,13 @@ export function handicapOfSession(s: RankSession): number | null {
   // Dmuchawka bez rangi (zabawka — decyzja usera). Teren i IFAA liczą się tym
   // samym modelem ze stref tarczy, ale do WŁASNEJ rangi (applySessionsToRank).
   if (rankWorldOf(s) === null) return null;
+  if (hasPerEndTargets(s.ends)) {
+    return multiPartHandicap(s.ends!.map(e => ({
+      arrows: (e.arrows || []).filter(Boolean).length,
+      distanceM: distanceMeters(e.distance),
+      targetType: e.targetType,
+    })), s.score);
+  }
   return sessionHandicap(s.score / s.scoreArrows, distanceMeters(s.distance), s.targetType);
 }
 

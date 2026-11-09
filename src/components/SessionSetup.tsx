@@ -15,6 +15,7 @@ import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex, styleOfSe
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, distanceMeters } from '../config/distances';
 import { fieldFaceForMeters } from '../config/targets/waField';
 import { ifaaFaceForMeters } from '../config/targets/ifaa';
+import { PARCOURS_DISTANCE, PARCOURS_DISTANCE_ID } from '../config/parcours';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
 import { hasActivePro } from '../utils/proAccess';
@@ -253,12 +254,20 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
 
   /** Stempel dystansu przekazywany dalej: id zawsze, etykieta tylko gdy jest. */
+  // [PARCOURS] Runda terenowa IFAA: każda tarcza z własną wielkością i dystansem
+  // (wybierane na ekranie treningu). Sesja ma wtedy stały „dystans” Parcours.
+  const canParcours = resolveTargetFace(selectedTarget).statsGroup === 'ifaa';
+  const [parcoursOn, setParcoursOn] = useState(false);
+  const parcoursActive = canParcours && parcoursOn;
+  const startDistance = () => (parcoursActive ? PARCOURS_DISTANCE : selectedDistance);
   const startArgs = (): [string, string | undefined, number] =>
-    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, faceRound ? faceRound.ends : plannedEnds];
+    parcoursActive
+      ? [PARCOURS_DISTANCE_ID, undefined, faceRound?.ends ?? 28]
+      : [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, faceRound ? faceRound.ends : plannedEnds];
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
-    else { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }
+    else { saveLastSetup(); onStartSession(startDistance(), selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }
   };
 
   const openSightEditor = () => {
@@ -323,7 +332,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         {/* Niezapisany trening — na górze, nie pływa nad paskiem. */}
         {hasUnsaved && (
           <button
-            onClick={() => onStartSession(selectedDistance, selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
+            onClick={() => onStartSession(startDistance(), selectedTarget, false, null, parseInt(techArrows || '0') || undefined, ...startArgs())}
             className="w-full bg-white rounded-2xl border border-gray-100 border-l-4 border-l-red-500 shadow-sm pl-3 pr-3 py-2.5 flex items-center gap-2 text-left active:scale-[0.99] transition-all"
           >
             <span className="material-symbols-outlined text-[18px] text-red-500">history</span>
@@ -440,6 +449,16 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             <div className="border-t border-t-gray-100 px-3 py-2 flex items-center gap-2" data-testid="face-round">
               <span className="flex-1 text-[13px] font-bold text-gray-500">{t('setup.endsLabel')}</span>
               <span className="text-[14px] font-black text-[#0a3a2a]">{faceRound.ends} × {faceRound.arrowsPerEnd} {t('common.arrows')}</span>
+            </div>
+          )}
+          {/* [PARCOURS] Przełącznik rundy terenowej (każda tarcza inny dystans). */}
+          {selectedId && canParcours && (
+            <div className="border-t border-t-gray-100 px-3 py-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={parcoursOn} onChange={e => setParcoursOn(e.target.checked)} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0" data-testid="parcours-toggle" />
+                <span className="flex-1 text-[13px] font-black text-[#0a3a2a]">{t('parcours.toggle')}</span>
+              </label>
+              {parcoursOn && <p className="text-[10px] font-bold text-gray-400 mt-1 ml-7">{t('parcours.toggleHint')}</p>}
             </div>
           )}
           {/* Passen — zawsze widoczne, zwinięte; rozwija 6/8/10/12. */}
@@ -775,7 +794,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
-            <button onClick={() => { saveLastSetup(); onStartSession(selectedDistance, selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
+            <button onClick={() => { saveLastSetup(); onStartSession(startDistance(), selectedTarget, true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
         </div>,

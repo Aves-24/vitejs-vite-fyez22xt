@@ -25,7 +25,8 @@ import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics,
 import { FocusDots, focusTitle, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
-import { isSpotFace, friendlyTargetName, keypadValuesFor, resolveTargetFace } from '../config/targetFaces';
+import { isSpotFace, friendlyTargetName, keypadValuesFor, resolveTargetFace, selectableTargetIds, findTargetFace } from '../config/targetFaces';
+import { DISTANCE_UNITS, distanceUnit, formatDistanceIn } from '../config/distances';
 import { addSpotArrow } from '../utils/spotRule';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
@@ -33,6 +34,7 @@ import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
+import { isParcours } from '../config/parcours';
 import { arrowPoints, xPointsFor } from '../utils/arrowPoints';
 import { faceKeyClass } from '../config/arrowKeyColors';
 
@@ -74,7 +76,22 @@ const getFlagEmoji = (countryCode: string) => {
   return String.fromCodePoint(...codePoints);
 };
 
-export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType: sessionTargetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+  // [PARCOURS 2026-11-09] Runda terenowa: każda seria (tarcza) ma własną tarczę
+  // i dystans. `targetType` niżej = tarcza BIEŻĄCEJ serii — klawiatura, kolory,
+  // liczba strzał i X idą za nią bez dalszych zmian.
+  const parcours = !battleId && isParcours({ distance });
+  const [endFace, setEndFace] = useState<string>(sessionTargetType);
+  const [endDist, setEndDist] = useState<string>(() => {
+    try { return localStorage.getItem(`grotX_parcoursDist_${userId}`) || '30yd'; } catch { return '30yd'; }
+  });
+  const targetType = parcours ? endFace : sessionTargetType;
+  // [PARCOURS] Tarcze do wyboru: ten sam świat co tarcza startowa (IFAA albo teren WA).
+  const parcoursFaces = parcours
+    ? selectableTargetIds().filter(id => findTargetFace(id)?.statsGroup === findTargetFace(sessionTargetType)?.statsGroup
+        // Runda terenowa: 4 strzały na tarczę (Indoor 5-strzałowy nie pasuje do trasy).
+        && findTargetFace(id)?.round?.arrowsPerEnd === 4)
+    : [];
   // [KOLORY KLAWISZY] Teren/IFAA mają własne kolory wartości (config/arrowKeyColors).
   const arrowStyle = (v: string) => faceKeyClass(targetType, v) || getArrowStyles(v);
   const { t } = useTranslation();
@@ -192,7 +209,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     if (savedSession) {
       try {
         const data = JSON.parse(savedSession);
-        if ((data.distanceId || null) === (distanceId || null) && data.distance === distance && data.targetType === targetType) {
+        if ((data.distanceId || null) === (distanceId || null) && data.distance === distance && data.targetType === sessionTargetType) {
+          if (data.endFace) setEndFace(data.endFace);
+          if (data.endDist) setEndDist(data.endDist);
           if (data.submittedEnds) setSubmittedEnds(data.submittedEnds);
           if (data.inputArrows) setInputArrows(data.inputArrows);
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
@@ -204,7 +223,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
       }
     }
-  }, [distance, distanceId, targetType]);
+  }, [distance, distanceId, sessionTargetType]);
 
   // [RELOAD 2026-10-29] Pierwsze uruchomienie efektu niżej widzi jeszcze pusty
   // stan (przywrócone serie wchodzą dopiero w następnym renderze) — gdyby tu
@@ -222,7 +241,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(distanceLabel ? { distanceLabel } : {}),
         ...(battleId ? { battleId } : {}),
         ...(practiceArrowsProp ? { practiceArrows: practiceArrowsProp } : {}),
-        targetType,
+        targetType: sessionTargetType,
+        ...(parcours ? { endFace, endDist } : {}),
         inputArrows,
         inputCoordinates,
         submittedEnds,
@@ -238,7 +258,13 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     } else {
       persistReadyRef.current = true;
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, targetType, activeRoundTab, plannedEnds]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, sessionTargetType, activeRoundTab, plannedEnds, parcours, endFace, endDist]);
+
+  // [PARCOURS] Ostatni dystans pamiętamy na kolejną tarczę i kolejny trening.
+  useEffect(() => {
+    if (!parcours) return;
+    try { localStorage.setItem(`grotX_parcoursDist_${userId}`, endDist); } catch { /* prywatne okno */ }
+  }, [parcours, endDist, userId]);
 
   useEffect(() => {
     if (showStats) setIsStatsExpanded(true);
@@ -414,6 +440,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       rawArrows: [...arrows],
       dots: safeCoordinates,
       total_sum: sum,
+      // [PARCOURS] Tarcza i dystans tej serii (handicap rundy wielodystansowej).
+      ...(parcours ? { distance: endDist, targetType: endFace } : {}),
       createdAt: Date.now()
     };
   };
@@ -602,7 +630,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         // wiec NIE sklejamy go tu drugi raz z metrami.
         ...(distanceId ? { distanceId } : {}),
         ...(distanceLabel ? { distanceLabel } : {}),
-        targetType: targetType,
+        // [PARCOURS] Tarcza sesji = tarcza pierwszej serii (świat statystyk IFAA/teren).
+        targetType: parcours ? (endsToSave[0]?.targetType || endFace) : sessionTargetType,
+        ...(parcours ? { parcours: true } : {}),
         date: new Date().toLocaleDateString('pl-PL'),
         timestamp: sessionTimestamp,
         // [RODO C36] Prywatna notatka NIE trafia do sesji (czytelnej dla
@@ -637,6 +667,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             distance,
             targetType,
             bowClass: setupStamp.bowClass ?? ud.bowType,
+            ...(parcours ? { ends: endsToSave } : {}),
           }])
         : null;
 
@@ -884,6 +915,57 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
       <Timer isExpanded={isTimerExpanded} onClose={() => setIsTimerExpanded(false)} playBeep={playBeep} currentEnd={submittedEnds.length} externalSeconds={timerSeconds} setExternalSeconds={setTimerSeconds} externalMode={timerMode} setExternalMode={setTimerMode} />
 
+      {/* [PARCOURS] Tarcza N: wielkość tarczy i dystans tej tarczy (jak kołek na trasie). */}
+      {parcours && isShooting && (
+        <div className="mx-2 mb-1.5 bg-white rounded-2xl border border-gray-200 shadow-sm px-2.5 py-2" data-testid="parcours-bar">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest">{t('parcours.target', { n: submittedEnds.length + 1, total: plannedEnds })}</span>
+            {inputArrows.length > 0 && <span className="text-[10px] font-bold text-gray-400">{t('parcours.locked')}</span>}
+          </div>
+          <div className="flex gap-1 overflow-x-auto hide-scrollbar mb-1.5" role="radiogroup" aria-label={t('parcours.face')}>
+            {parcoursFaces.map(id => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={endFace === id}
+                aria-label={id}
+                disabled={inputArrows.length > 0}
+                onClick={() => setEndFace(id)}
+                className={`shrink-0 flex items-center gap-1 pl-1 pr-2 py-1 rounded-lg border text-[10px] font-black transition-all disabled:opacity-50 ${endFace === id ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+              >
+                <TargetThumbnail targetType={id} className="w-5 h-5" />
+                {id.replace(/^(IFAA|Field|WA) /, '')}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-bold text-gray-400">{t('parcours.distance')}</span>
+            <input
+              type="number" inputMode="numeric" min={1} max={200}
+              aria-label={t('parcours.distance')}
+              value={parseInt(endDist, 10) || ''}
+              disabled={inputArrows.length > 0}
+              onChange={(e) => { const v = parseInt(e.target.value, 10); if (v > 0) setEndDist(formatDistanceIn(v, distanceUnit(endDist))); }}
+              className="w-16 h-8 bg-gray-50 rounded-md text-[13px] font-black text-center outline-none border border-gray-100 disabled:opacity-50"
+            />
+            <div className="flex rounded-md border border-gray-100 overflow-hidden" role="radiogroup" aria-label={t('settings.sight.unit')}>
+              {DISTANCE_UNITS.map(u => (
+                <button
+                  key={u}
+                  role="radio"
+                  aria-checked={distanceUnit(endDist) === u}
+                  disabled={inputArrows.length > 0}
+                  onClick={() => setEndDist(formatDistanceIn(parseInt(endDist, 10) || 30, u))}
+                  className={`w-8 h-8 text-[11px] font-black disabled:opacity-50 ${distanceUnit(endDist) === u ? 'bg-[#0a3a2a] text-white' : 'bg-gray-50 text-gray-500'}`}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {isShooting && (
         <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[170px] max-h-[380px] ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
           <div className={`flex-1 ${activeInputTab === 0 ? 'p-2' : 'p-1'} h-full flex items-center justify-center`}>
@@ -1099,7 +1181,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           <div className="mx-2 mt-4 space-y-3 animate-fade-in-up">
             {/* TREND + wybrana seria, potem TREFFERBILD — wspólne karty z Statystykami (components/scoring). */}
             <TrendCard ends={submittedEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} arrowColors={arrowColors} />
-            <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} />
+            {!parcours && <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} />}
 
             {AI_ENABLED && submittedEnds.length >= 6 && (
               <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />

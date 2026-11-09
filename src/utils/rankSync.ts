@@ -13,6 +13,8 @@ export function toRankSession(s: any, fallbackBowClass?: string | null): RankSes
     distance: s.distance,
     targetType: s.targetType,
     bowClass: s.bowClass ?? fallbackBowClass ?? null,
+    // [PARCOURS] serie z własnym dystansem/tarczą — handicap rundy wielodystansowej
+    ...(s.parcours ? { ends: s.ends } : {}),
   };
 }
 

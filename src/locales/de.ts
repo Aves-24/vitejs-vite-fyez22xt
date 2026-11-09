@@ -330,6 +330,14 @@ export const components = {
     focusGoalLabel: "Wie viele Trainings?",
     focusHint: "Die Anzahl Einheiten und das vorzeitige Beenden verwaltest du im Fokus-Panel — tippe auf den „Fokus“-Balken im Schülerprofil."
   },
+  parcours: {
+    target: "Scheibe {{n}}/{{total}}",
+    locked: "Ändern erst nach dieser Passe",
+    face: "Auflage",
+    distance: "Distanz",
+    toggle: "Parcours",
+    toggleHint: "Jede Scheibe mit eigener Auflage und Distanz – wie im Turnier (28 Scheiben).",
+  },
   schreiber: {
     title: "Schreiber-Training",
     subtitle: "Kopfrechnen an der Scheibe",

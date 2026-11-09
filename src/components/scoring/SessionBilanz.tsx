@@ -103,7 +103,7 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   // Niższy = lepszy. Obok średni handicap z ostatnich treningów na tym samym
   // dystansie i tarczy — handicap wyrównuje różną liczbę strzał, więc tu
   // porównujemy też przerwane treningi. Dmuchawka/Field → null, wiersza nie ma.
-  const hc = handicapOfSession({ score: all.score, scoreArrows: all.count, distance, targetType, bowClass });
+  const hc = handicapOfSession({ score: all.score, scoreArrows: all.count, distance, targetType, bowClass, ends });
   const priorHc = (prior || []).slice(-COMPARE_LAST)
     .map(p => handicapOfSession({ score: p.score, scoreArrows: p.arrows, distance, targetType, bowClass }))
     .filter((h): h is number => h !== null);

@@ -103,6 +103,31 @@ export function sessionHandicap(avgScore: number, distanceM: number, targetType?
 }
 
 /**
+ * [PARCOURS 2026-11-09] Handicap rundy wielodystansowej (Archery GB: rundy
+ * z kilku dystansów liczy się sumą oczekiwanych wyników wszystkich części).
+ * Szukamy handicapu, przy którym Σ strzały_i · E(h, dystans_i, tarcza_i)
+ * równa się zdobytym punktom. null = któraś część poza modelem.
+ */
+export function multiPartHandicap(
+  parts: { arrows: number; distanceM: number; targetType?: string | null }[],
+  score: number,
+): number | null {
+  const ok = parts.filter(p => p.arrows > 0);
+  if (ok.length === 0 || !(score >= 0)) return null;
+  const specs = ok.map(p => ({ ...p, spec: faceSpecFor(p.targetType) }));
+  if (specs.some(p => !p.spec || !(p.distanceM > 0))) return null;
+  const expected = (h: number) => specs.reduce((s, p) => s + p.arrows * expectedArrowScore(h, p.distanceM, p.spec!), 0);
+  if (score >= expected(HANDICAP_MIN)) return HANDICAP_MIN;
+  if (score <= expected(HANDICAP_MAX)) return HANDICAP_MAX;
+  let lo = HANDICAP_MIN, hi = HANDICAP_MAX;
+  for (let i = 0; i < 50; i++) {
+    const mid = (lo + hi) / 2;
+    if (expected(mid) > score) lo = mid; else hi = mid;
+  }
+  return Math.ceil(lo - 1e-9);
+}
+
+/**
  * Bieżący handicap: średnia najlepszych 60% z ostatnich sesji
  * (jeden słaby dzień nie psuje wyniku).
  */

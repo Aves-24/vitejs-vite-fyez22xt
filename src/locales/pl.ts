@@ -344,6 +344,14 @@ export const components = {
     focusGoalLabel: "Ile treningów?",
     focusHint: "Liczbą lekcji i zakończeniem fokusu zarządzasz w panelu fokusu — kliknij pasek „Fokus” w profilu ucznia."
   },
+  parcours: {
+    target: "Tarcza {{n}}/{{total}}",
+    locked: "Zmiana dopiero po tej serii",
+    face: "Tarcza",
+    distance: "Dystans",
+    toggle: "Parkur",
+    toggleHint: "Każda tarcza z własną wielkością i dystansem – jak na zawodach (28 tarcz).",
+  },
   schreiber: {
     title: "Trening liczenia",
     subtitle: "Liczenie w głowie przy tarczy",

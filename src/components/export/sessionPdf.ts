@@ -129,7 +129,7 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
   const diff = r2.count && r1.count === r2.count ? r2.score - r1.score : null;
   value(`R1 ${r1.score}${r2.count ? `   R2 ${r2.score}` : ''}${diff ? `   (${diff > 0 ? '+' : '−'}${Math.abs(diff)})` : ''}`, yR); yR += 5.5;
 
-  const hc = handicapOfSession({ score: all.score, scoreArrows: all.count, distance: session.distance, targetType: o.targetType, bowClass: session.bowClass });
+  const hc = handicapOfSession({ score: all.score, scoreArrows: all.count, distance: session.distance, targetType: o.targetType, bowClass: session.bowClass, ...(session.parcours ? { ends } : {}) });
   if (hc !== null) { label(t('scoring.bilanz.handicap'), yR); value(String(hc), yR); yR += 5.5; }
 
   const sums = ends.map(e => e.total_sum || 0);

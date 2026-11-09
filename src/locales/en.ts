@@ -330,6 +330,14 @@ export const components = {
     focusGoalLabel: "How many sessions?",
     focusHint: "Manage the session count and ending the focus early from the focus panel — tap the “Focus” bar in the student profile."
   },
+  parcours: {
+    target: "Target {{n}}/{{total}}",
+    locked: "Change after this end",
+    face: "Target face",
+    distance: "Distance",
+    toggle: "Course",
+    toggleHint: "Each target with its own face and distance – as in competition (28 targets).",
+  },
   schreiber: {
     title: "Scorer Training",
     subtitle: "Mental maths at the target",

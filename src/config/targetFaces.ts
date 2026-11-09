@@ -23,6 +23,9 @@ import { BLOWGUN_FACE } from './targets/blowgun';
 import { BLOWGUN357_FACE } from './targets/blowgun357';
 import { BLOWGUN40_FACE } from './targets/blowgun40';
 import { WA_FIELD_80_FACE, WA_FIELD_60_FACE, WA_FIELD_40_FACE } from './targets/waField';
+import { WA_FIELD20_FACE } from './targets/waField20Triple';
+import { VEGAS_FACE } from './targets/vegas';
+import type { FaceSpotSpec } from './spotGeometry';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
 import { isBlowgun } from './equipmentSetups';
@@ -31,6 +34,7 @@ export type TargetLayout =
   | 'single'       // jedna tarcza koncentryczna, viewBox 300x300
   | 'spot3-double' // dwie kolumny po 3 spoty, viewBox 300x400
   | 'spot3-single' // jedna kolumna 3 spotów, viewBox 300x400
+  | 'spot3-vegas'  // [VEGAS] dwie kartki z trzema spotami w trójkącie, viewBox 300x400
   | 'none';        // sesja bez tarczy (trening techniczny)
 
 export interface TargetRing {
@@ -85,6 +89,11 @@ export interface TargetFace {
    * Takie tarcze pokazujemy wyłącznie przy zestawie ustawionym na „Feld”.
    */
   statsGroup?: 'field';
+  /**
+   * [SPOTY 2026-11-09] Własny układ/kolory/strefy spotów (Vegas, teren 20 cm).
+   * Brak = klasyczny spot WA w układzie z `layout`. Patrz `config/spotGeometry.ts`.
+   */
+  spot?: FaceSpotSpec;
   /** Stare stringi z Firestore, które muszą dalej działać. */
   aliases: readonly string[];
   /** Czy w ogóle się na nią strzela (trening techniczny — nie). */
@@ -161,6 +170,10 @@ export const TARGET_FACES: readonly TargetFace[] = [
   WA_FIELD_80_FACE,
   WA_FIELD_60_FACE,
   WA_FIELD_40_FACE,
+  // [FELD] 20 cm 3-fach — targets/waField20Triple.ts.
+  WA_FIELD20_FACE,
+  // [VEGAS] 3×20 cm w trójkącie — targets/vegas.ts.
+  VEGAS_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */
@@ -197,7 +210,7 @@ export function isFullFace(raw?: string | null): boolean {
 /** Dowolny 3-spot — pionowy albo dwukolumnowy. */
 export function isSpotFace(raw?: string | null): boolean {
   const l = resolveTargetFace(raw).layout;
-  return l === 'spot3-double' || l === 'spot3-single';
+  return l === 'spot3-double' || l === 'spot3-single' || l === 'spot3-vegas';
 }
 
 /**
@@ -214,7 +227,7 @@ export function keypadValuesFor(raw?: string | null): string[] {
   if (face.zones?.length) {
     return [...face.zones].map(z => z.value).sort((a, b) => b - a).map(String);
   }
-  const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single';
+  const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spot3-vegas';
   const min = Math.max(1, isSpot ? Math.max(6, face.minScoringRing) : face.minScoringRing);
   const values = ['X'];
   for (let v = 10; v >= min; v--) values.push(String(v));

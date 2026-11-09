@@ -39,12 +39,13 @@ describe('WA Field — tarcze terenowe', () => {
   it('lista tarcz: Field tylko przy zestawie „Feld”, a przy nim wyłącznie Field', () => {
     expect(selectableTargetIdsFor('Klasyczny (Recurve)')).not.toContain('Field 80cm');
     expect(selectableTargetIdsFor('Klasyczny (Recurve)', 'target')).not.toContain('Field 80cm');
-    expect(selectableTargetIdsFor('Goły (Barebow)', 'field')).toEqual(['Field 80cm', 'Field 60cm', 'Field 40cm']);
+    expect(selectableTargetIdsFor('Goły (Barebow)', 'field')).toEqual(['Field 80cm', 'Field 60cm', 'Field 40cm', 'Field 20cm 3-Spot']);
     // Dmuchawka ignoruje styl.
     expect(selectableTargetIdsFor(BLOWGUN_DISCIPLINE, 'field').some(id => id.startsWith('Field'))).toBe(false);
   });
 
   it('tarcza dla dystansu w terenie', () => {
+    expect(fieldFaceForMeters(10)).toBe('Field 20cm 3-Spot');
     expect(fieldFaceForMeters(15)).toBe('Field 40cm');
     expect(fieldFaceForMeters(30)).toBe('Field 60cm');
     expect(fieldFaceForMeters(55)).toBe('Field 80cm');

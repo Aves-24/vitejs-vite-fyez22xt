@@ -76,6 +76,8 @@ export const WA_FIELD_40_FACE = fieldFace(40, 12);
  */
 export function fieldFaceForMeters(m?: number | null): string {
   const v = m || 0;
+  // 20 cm 3-fach: 5–20 m — do 12 m bierzemy ją, wyżej 40 cm (10–30 m).
+  if (v > 0 && v <= 12) return 'Field 20cm 3-Spot';
   if (v > 0 && v <= 25) return WA_FIELD_40_FACE.id;
   if (v > 0 && v <= 40) return WA_FIELD_60_FACE.id;
   return WA_FIELD_80_FACE.id;

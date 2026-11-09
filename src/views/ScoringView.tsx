@@ -33,7 +33,8 @@ import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
-import { fieldArrowClass, isFieldFaceId } from '../config/targets/waField';
+import { fieldArrowClass } from '../config/targets/waField';
+import { isFieldFace } from '../config/statsGroups';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -75,7 +76,7 @@ const getFlagEmoji = (countryCode: string) => {
 
 export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
   // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
-  const isField = isFieldFaceId(targetType);
+  const isField = isFieldFace(targetType);
   const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { isFullFace as isFullFaceType, isSpotFace } from '../config/targetFaces';
+import { isFullFace as isFullFaceType, isSpotFace, resolveTargetFace } from '../config/targetFaces';
+import { StandardTarget } from './targets/StandardTarget';
+import { SpotTarget } from './targets/SpotTarget';
 import { arrowColorAt } from '../config/arrowColors';
 import { groupStats, GROUP_CENTER_RINGS } from '../utils/groupStats';
 import { directionKey } from '../utils/arrowStats';
@@ -95,7 +97,10 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
         <svg viewBox={!isFullFace ? "0 0 300 400" : "0 0 300 300"} className={`w-full h-auto drop-shadow-md ${bare ? 'max-h-[380px]' : 'max-h-[220px]'}`}>
           {/* Tarcza przygaszona do 70% (user 2026-10-29) — strzały lepiej widać. */}
           <g opacity="0.7">
-          {isFullFace ? (
+          {isFullFace && resolveTargetFace(targetType).zones ? (
+            // [FELD] Tarcze z jawnymi strefami (teren 6–1) — rysunek z katalogu.
+            <StandardTarget targetType={targetType} />
+          ) : isFullFace ? (
             <g>
               <circle cx="150" cy="150" r="150" fill="white" stroke="#333" strokeWidth="1" />
               <circle cx="150" cy="150" r="135" fill="white" stroke="#333" strokeWidth="1" />
@@ -109,6 +114,9 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
               <circle cx="150" cy="150" r="15" fill="#F2C94C" stroke="#333" strokeWidth="1" />
               <circle cx="150" cy="150" r="7.5" fill="#F2C94C" stroke="#333" strokeWidth="1" />
             </g>
+          ) : is3Spot && resolveTargetFace(targetType).spot ? (
+            // [SPOTY] Vegas / teren 20 cm — układ i kolory z geometrii (te same co przy wpisywaniu).
+            <SpotTarget targetType={targetType} preview />
           ) : is3Spot ? (
             // TUTAJ POPRAWKA: Jeśli is3Spot jest prawda, ZAWSZE rysuj dwie pionowe połówki (Lewa na 75, Prawa na 225)
             <g>

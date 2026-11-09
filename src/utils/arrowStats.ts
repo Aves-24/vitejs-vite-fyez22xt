@@ -1,4 +1,5 @@
 import { resolveTargetFace, isSpotFace } from '../config/targetFaces';
+import { spotGeometryOf, spotById } from '../config/spotGeometry';
 import { centerFor } from './spread';
 import { ARROW_COLORS } from '../config/arrowColors';
 
@@ -72,6 +73,11 @@ const median = (v: number[]): number => {
 /** Szerokość pierścienia w jednostkach SVG i w cm dla danej tarczy. */
 export function ringScale(targetType?: string): { unit: number; cm: number } {
   const face = resolveTargetFace(targetType);
+  // [SPOTY] Vegas / teren 20 cm: pierścień = r/5 spotu; każdy z tych spotów ma 20 cm, czyli 2 cm na pierścień.
+  if (face.spot) {
+    const g = spotGeometryOf(targetType);
+    if (g) return { unit: g.r / 5, cm: 2 };
+  }
   if (isSpotFace(targetType)) {
     // Spot 40 cm: pierścienie 6–10 po 2 cm, w SVG po 12.5 (patrz targetScoring).
     return { unit: 12.5, cm: (face.diameterCm || 40) / 20 };
@@ -81,6 +87,11 @@ export function ringScale(targetType?: string): { unit: number; cm: number } {
 
 /** Środek spotu z jego id (L0/R1/V2) — pewniejszy niż zgadywanie po pozycji. */
 function spotCenter(spotId: string | null | undefined, x: number, y: number, targetType?: string) {
+  if (resolveTargetFace(targetType).spot) {
+    const g = spotGeometryOf(targetType);
+    const s = g ? spotById(g, spotId) : null;
+    if (s) return { cX: s.cx, cY: s.cy };
+  }
   const m = spotId ? /^([LRV])([012])$/.exec(spotId) : null;
   if (m) {
     const cX = m[1] === 'L' ? 75 : m[1] === 'R' ? 225 : 150;

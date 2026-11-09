@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace } from '../config/targetFaces';
+import { isFullFace as isFullFaceType, isSpotFace, isDoubleSpotFace, resolveTargetFace } from '../config/targetFaces';
+import { spotGeometryOf } from '../config/spotGeometry';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HEATMAPA ROZRZUTU — efekt kamery termowizyjnej + kontur dyspersji.
@@ -167,11 +168,12 @@ function useHeatmapDataURL(dots: any[], vbW: number, vbH: number): string {
   return dataURL;
 }
 
-function MonochromeFullFace() {
+// [FELD] Tarcze z jawnymi strefami (teren 6–1, dmuchawka 3-5-7) — etykiety z ich stref.
+function MonochromeFullFace({ rings = FF_RINGS }: { rings?: { r: number; label: string }[] }) {
   return (
     <g>
-      {FF_RINGS.map((ring, i) => {
-        const innerR = i + 1 < FF_RINGS.length ? FF_RINGS[i + 1].r : 0;
+      {rings.map((ring, i) => {
+        const innerR = i + 1 < rings.length ? rings[i + 1].r : 0;
         const midR = (ring.r + innerR) / 2;
         const ringW = ring.r - innerR;
         const fs = Math.max(Math.min(ringW * 0.55, 9), 4);
@@ -189,11 +191,11 @@ function MonochromeFullFace() {
   );
 }
 
-function MonochromeSpot({ cx, cy }: { cx: number; cy: number }) {
+function MonochromeSpot({ cx, cy, rings = SPOT_RINGS }: { cx: number; cy: number; rings?: { r: number; label: string }[] }) {
   return (
     <g>
-      {SPOT_RINGS.map((ring, i) => {
-        const innerR = i + 1 < SPOT_RINGS.length ? SPOT_RINGS[i + 1].r : 0;
+      {rings.map((ring, i) => {
+        const innerR = i + 1 < rings.length ? rings[i + 1].r : 0;
         const midR = (ring.r + innerR) / 2;
         const ringW = ring.r - innerR;
         const fs = Math.max(Math.min(ringW * 0.55, 8), 3.5);
@@ -214,6 +216,10 @@ export default function HeatmapTarget({ dots, targetType }: { dots: any[], targe
   const isFullFace = isFullFaceType(targetType);
   const is3Spot = isSpotFace(targetType);
   const vbW = 300, vbH = isFullFace ? 300 : 400;
+  const face = resolveTargetFace(targetType);
+  // Tarcze z własnymi spotami (Vegas, teren 20 cm) rysujemy z geometrii.
+  const customSpot = face.spot ? spotGeometryOf(targetType) : null;
+  const fullRings = face.zones ? [...face.zones].reverse().map(z => ({ r: z.r, label: String(z.value) })) : FF_RINGS;
   const heatURL = useHeatmapDataURL(dots, vbW, vbH);
 
   // CROSSFADE: trzymamy poprzednią klatkę pod spodem, nowa wjeżdża fade-inem
@@ -236,9 +242,9 @@ export default function HeatmapTarget({ dots, targetType }: { dots: any[], targe
 
     if (!isFullFace) {
       // Spot targets: group dots by nearest spot centre, build one contour per spot
-      const spotCenters: [number, number][] = isDoubleSpotFace(targetType)
-        ? [[75,66],[75,200],[75,333],[225,66],[225,200],[225,333]]
-        : [[150,66],[150,200],[150,333]]; // Vertical 3-Spot / other single-column spot
+      // [SPOTY] Środki z geometrii tarczy (3-Spot: te same co wcześniej, Vegas: trójkąty).
+      const spotCenters: [number, number][] = spotGeometryOf(targetType)?.spots.map(s => [s.cx, s.cy] as [number, number])
+        ?? [[150,66],[150,200],[150,333]];
 
       const groups: any[][] = spotCenters.map(() => []);
       dots.forEach(dot => {
@@ -266,7 +272,12 @@ export default function HeatmapTarget({ dots, targetType }: { dots: any[], targe
     <svg viewBox={`0 0 ${vbW} ${vbH}`} className="w-full h-auto max-h-[340px]">
       {/* MONOCHROME TARGET WITH NUMBERS */}
       {isFullFace ? (
-        <MonochromeFullFace />
+        <MonochromeFullFace rings={fullRings} />
+      ) : customSpot ? (
+        <g>
+          {customSpot.sheets.map((s, i) => <rect key={i} x={s.x} y={s.y} width={s.w} height={s.h} fill="#f0f0f0" rx="8" stroke="#bbb" strokeWidth="1" />)}
+          {customSpot.spots.map(p => <MonochromeSpot key={p.id} cx={p.cx} cy={p.cy} rings={[...customSpot.zones].reverse().map(z => ({ r: customSpot.r * z.f, label: z.value }))} />)}
+        </g>
       ) : is3Spot && isDoubleSpotFace(targetType) ? (
         <g>
           <rect x="5"   y="0" width="140" height="400" fill="#f0f0f0" rx="8" stroke="#bbb" strokeWidth="1" />

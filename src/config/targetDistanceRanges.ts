@@ -21,6 +21,12 @@ const RANGES: Record<string, readonly [number, number]> = {
   '80cm': [20, 50],
   '80cm (6-Ring)': [20, 50], // compound tory: 25–50 m
   '122cm': [30, 90],         // DSB: od 35 m barebow Jugend, 40 m Schüler A/Seniorinnen; WA do 90 m
+  // [VEGAS / FELD 2026-11-09] Vegas = hala; teren wg Krügera (tarcze WA Field).
+  'Vegas 3-Spot': [18, 18],
+  'Field 20cm 3-Spot': [5, 20],
+  'Field 40cm': [10, 30],
+  'Field 60cm': [15, 45],
+  'Field 80cm': [20, 60],
 };
 
 /** Zakres [min, max] w metrach albo `null`, gdy tarcza nie ma ograniczeń. */

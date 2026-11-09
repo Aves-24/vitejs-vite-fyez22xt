@@ -38,7 +38,7 @@ export interface FaceSpec { diameterM: number; minRing: number }
 export function faceSpecFor(targetType?: string | null): FaceSpec | null {
   const face = resolveTargetFace(targetType);
   if (!face.scorable || face.zones || face.discipline || face.diameterCm <= 0) return null;
-  const minRing = face.layout === 'spot3-double' || face.layout === 'spot3-single' ? 6 : face.minScoringRing;
+  const minRing = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spot3-vegas' ? 6 : face.minScoringRing;
   return { diameterM: face.diameterCm / 100, minRing };
 }
 

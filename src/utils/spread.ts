@@ -1,4 +1,5 @@
 import { isSpotFace, resolveTargetFace } from '../config/targetFaces';
+import { spotGeometryOf, nearestSpot } from '../config/spotGeometry';
 
 // Analiza rozrzutu grupy: kierunek grupowania (środek) + dominujący błąd (kształt).
 // Współdzielone przez StatsView (pojedyncza sesja) i ProStatsView (ostatnie 3 treningi).
@@ -15,6 +16,9 @@ const is3Spot = (targetType: string) => isSpotFace(targetType);
 // Eksportowane, bo kierunek strzały (godzina) liczy się względem TEGO środka —
 // bez tego każda strzała na dolnym spocie wychodziłaby „na szóstej”.
 export function centerFor(targetType: string, x: number, y: number): { cX: number; cY: number } {
+  // [SPOTY] Tarcze z własną geometrią (Vegas, teren 20 cm): najbliższy spot.
+  const g = resolveTargetFace(targetType).spot ? spotGeometryOf(targetType) : null;
+  if (g) { const s = nearestSpot(g, x, y); return { cX: s.cx, cY: s.cy }; }
   if (is3Spot(targetType)) {
     const cX = x < 150 ? 75 : 225;
     let cY = 333;
@@ -26,8 +30,11 @@ export function centerFor(targetType: string, x: number, y: number): { cX: numbe
 }
 
 /** Szerokość pierścienia w jednostkach SVG — jak ringScale (arrowStats), bez importu w kółko. */
-const ringUnit = (targetType: string): number =>
-  isSpotFace(targetType) ? 12.5 : (resolveTargetFace(targetType).scoringRingStep || 15);
+const ringUnit = (targetType: string): number => {
+  const g = resolveTargetFace(targetType).spot ? spotGeometryOf(targetType) : null;
+  if (g) return g.r / 5;
+  return isSpotFace(targetType) ? 12.5 : (resolveTargetFace(targetType).scoringRingStep || 15);
+};
 
 /** Do środka (w pierścieniach) grupa jest „Mitte” — jak GROUP_CENTER_RINGS w groupStats. */
 const CENTER_RINGS = 0.3;

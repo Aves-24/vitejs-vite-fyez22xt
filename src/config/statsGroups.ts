@@ -27,6 +27,9 @@ export function statsGroupOf(s?: { bowClass?: string | null; targetType?: string
   return 'target';
 }
 
+/** Tarcza terenowa (kolory 6/5 żółte, 4–1 czarne; świat 'field'). */
+export const isFieldFace = (id?: string | null) => findTargetFace(id)?.statsGroup === 'field';
+
 /** Świat statystyk aktywnego zestawu (Home, Schnellstatistik, strefy). */
 export function statsGroupOfSetup(setup?: { discipline?: string | null; style?: string | null } | null): StatsGroup {
   if (isBlowgun(setup?.discipline)) return 'blowgun';

@@ -48,7 +48,7 @@ export default function DelayMirrorSeriesTarget({ targetType, shots, className, 
       {/* `preview` — obie kolumny 3-Spota pelne. Przygaszanie w TargetInput
           prowadzi usera przez kolejne strzaly; w podsumowaniu nie ma czego
           prowadzic, a przygaszona polowa wygladalaby na blad. */}
-      {is3Spot ? <SpotTarget isVertical={isVertical} preview /> : <StandardTarget targetType={targetType} />}
+      {is3Spot ? <SpotTarget targetType={targetType} isVertical={isVertical} preview /> : <StandardTarget targetType={targetType} />}
       {shots.map(s => {
         const active = activeN === s.n;
         // [KOLORY STRZAŁ] Kolor strzały; aktywna i tak dostaje zieloną obwódkę grubością.

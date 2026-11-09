@@ -35,9 +35,11 @@ export const TargetThumbnail: React.FC<TargetThumbnailProps> = ({ targetType, cl
   }
 
   const isVertical = face.layout === 'spot3-single';
+  // [VEGAS] dwie kartki jedna nad drugą zajmują całą szerokość.
+  const vb = face.layout === 'spot3-vegas' ? '-2 -2 304 404' : isVertical ? '73 -2 154 404' : '3 -2 294 404';
   return (
-    <svg viewBox={isVertical ? '73 -2 154 404' : '3 -2 294 404'} className={className} aria-hidden="true">
-      <SpotTarget isVertical={isVertical} preview />
+    <svg viewBox={vb} className={className} aria-hidden="true">
+      <SpotTarget targetType={face.id} isVertical={isVertical} preview />
     </svg>
   );
 };

@@ -7,7 +7,8 @@ import { directionKey } from '../../utils/arrowStats';
 import { countBad } from '../../utils/badShots';
 import { handicapOfSession } from '../../utils/rankEngine';
 import { arrowColorAt } from '../../config/arrowColors';
-import { isFullFace, isSpotFace, friendlyTargetName } from '../../config/targetFaces';
+import { isFullFace, isSpotFace, friendlyTargetName, resolveTargetFace } from '../../config/targetFaces';
+import { spotGeometryOf } from '../../config/spotGeometry';
 import { sessionDistanceLabel } from '../../config/distances';
 
 /**
@@ -192,7 +193,15 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
     const ox = colR + (colRW - size) / 2, oy = yR;
     const P = (vx: number, vy: number): [number, number] => [ox + vx * sc, oy + vy * sc];
     doc.setLineWidth(0.15);
-    if (full) {
+    const pdfFace = resolveTargetFace(o.targetType);
+    const pdfSpot = pdfFace.spot ? spotGeometryOf(o.targetType) : null;
+    if (full && pdfFace.zones) {
+      // [FELD] Tarcze z jawnymi strefami (teren 6–1) — pierścienie z katalogu.
+      pdfFace.rings.forEach(rg => { doc.setFillColor(...hexRgb(rg.fill)); doc.setDrawColor(...hexRgb(rg.stroke)); const [cx, cy] = P(150, 150); doc.circle(cx, cy, rg.r * sc, 'FD'); });
+    } else if (pdfSpot) {
+      // [SPOTY] Vegas / teren 20 cm — układ i kolory z geometrii.
+      pdfSpot.spots.forEach(p => pdfSpot.rings.forEach(rg => { doc.setFillColor(...hexRgb(rg.fill)); doc.setDrawColor(...hexRgb(rg.stroke)); const [cx, cy] = P(p.cx, p.cy); doc.circle(cx, cy, pdfSpot.r * rg.f * sc, 'FD'); }));
+    } else if (full) {
       const rings: Array<[number, RGB, RGB]> = [[150, RING.white, [60, 60, 60]], [135, RING.white, [60, 60, 60]], [120, RING.black, [255, 255, 255]], [105, RING.black, [255, 255, 255]], [90, RING.blue, [60, 60, 60]], [75, RING.blue, [60, 60, 60]], [60, RING.red, [60, 60, 60]], [45, RING.red, [60, 60, 60]], [30, RING.gold, [60, 60, 60]], [15, RING.gold, [60, 60, 60]], [7.5, RING.gold, [60, 60, 60]]];
       rings.forEach(([r, fill, stroke]) => { doc.setFillColor(...fill); doc.setDrawColor(...stroke); const [cx, cy] = P(150, 150); doc.circle(cx, cy, r * sc, 'FD'); });
     } else if (isSpotFace(o.targetType)) {

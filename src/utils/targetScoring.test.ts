@@ -218,7 +218,7 @@ describe('katalog tarcz — spójność', () => {
   it('lista wyboru: łucznik nie widzi tarcz dmuchawki i odwrotnie', () => {
     const archery = selectableTargetIdsFor('Klasyczny (Recurve)');
     const blowgun = selectableTargetIdsFor(BLOWGUN_DISCIPLINE);
-    expect(archery).toEqual(['3-Spot', '40cm', '60cm', '80cm (6-Ring)', '80cm', '122cm']);
+    expect(archery).toEqual(['3-Spot', 'Vegas 3-Spot', '40cm', '60cm', '80cm (6-Ring)', '80cm', '122cm']);
     expect(blowgun).toEqual([BLOWGUN_FACE_ID, BLOWGUN40_FACE_ID]);
     // [FELD] Bez dyscypliny: wszystko poza tarczami terenowymi (te tylko przy zestawie „Feld”).
     expect(selectableTargetIdsFor(null)).toEqual(selectableTargetIds().filter(id => !id.startsWith('Field ')));

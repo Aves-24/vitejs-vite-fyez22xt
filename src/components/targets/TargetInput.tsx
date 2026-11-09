@@ -3,7 +3,9 @@ import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
-import { fieldArrowClass, fieldScoreColors, isFieldFaceId } from '../../config/targets/waField';
+import { spotGeometryOf, sheetForArrow, sheetViewBox, scoreSpot } from '../../config/spotGeometry';
+import { fieldArrowClass, fieldScoreColors } from '../../config/targets/waField';
+import { isFieldFace } from '../../config/statsGroups';
 import { arrowColorAt } from '../../config/arrowColors';
 import { startAim, stepAim, AimFilter, Pt } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
@@ -49,7 +51,7 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
   // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
-  const isField = isFieldFaceId(targetType);
+  const isField = isFieldFace(targetType);
   const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
@@ -110,8 +112,12 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // pierścieni, więc kadr ciasno wokół niej. Poza pełnym ekranem bez zmian
   // (tam widać obie kolumny i całą serię).
   const spotCx = isVertical ? 150 : isTarget2 ? 225 : 75;
+  // [SPOTY 2026-11-09] Tarcze z własną geometrią (Vegas, teren 20 cm): kadr
+  // na pełnym ekranie wokół arkusza, w który teraz strzelamy.
+  const spotGeom = face.spot ? spotGeometryOf(targetType) : null;
+  const activeSheet = spotGeom ? sheetForArrow(spotGeom, currentArrows.length) : (isTarget2 ? 1 : 0);
   const viewBox = is3Spot
-    ? (isFullscreen ? `${spotCx - 85} -6 170 412` : "0 -4 300 408")
+    ? (isFullscreen ? (spotGeom ? sheetViewBox(spotGeom, activeSheet, 6) : `${spotCx - 85} -6 170 412`) : "0 -4 300 408")
     : isCompactFace
       ? (isFullscreen ? "30 0 240 300" : "-20 -30 340 360")
       : (isFullscreen ? "-8 -6 316 316" : "-20 0 340 300");
@@ -176,6 +182,9 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   };
 
   const calculateScore = (x: number, y: number) => {
+    if (spotGeom) {
+      return scoreSpot(spotGeom, x, y, spotGeom.sheets.length > 1 ? activeSheet : null, LINE_TOUCH);
+    }
     if (is3Spot) {
       return calculateSpotScore(x, y, isVertical, isTarget2, LINE_TOUCH);
     }
@@ -260,7 +269,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
         preserveAspectRatio={`xMidYMid ${fit}`}
       >
         {is3Spot ? (
-          <SpotTarget isVertical={isVertical} isTarget2={isTarget2} />
+          <SpotTarget targetType={targetType} isVertical={isVertical} isTarget2={activeSheet === 1} />
         ) : (
           <StandardTarget targetType={targetType} />
         )}
@@ -473,7 +482,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
             ...(embed?.svgStyle || {}),
           }}
         >
-          {is3Spot ? <SpotTarget isVertical={isVertical} isTarget2={isTarget2} /> : <StandardTarget targetType={targetType} />}
+          {is3Spot ? <SpotTarget targetType={targetType} isVertical={isVertical} isTarget2={activeSheet === 1} /> : <StandardTarget targetType={targetType} />}
           {currentCoords.map((d: any, i: number) => <g key={i}><circle cx={d.x} cy={d.y} r="6" fill={dotColor(i).hex} stroke="black" strokeWidth="1.5" /><text x={d.x} y={d.y+2.5} fontSize="7" fontWeight="bold" textAnchor="middle" fill={dotColor(i).text}>{i+1}</text></g>)}
           {isAiming && aimPos && (
             <g style={{ pointerEvents: 'none' }}>

@@ -14,7 +14,7 @@ async function userFields(request: any, uid: string) {
   return (await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))!.fields;
 }
 
-test('jeden zestaw: bez przełącznika w menu, skrót świata przy plakietce po zmianie w Einstellungen', async ({ page, request }) => {
+test('jeden zestaw (także tylko IFAA): nic na Home i nic w menu', async ({ page, request }) => {
   const errors = watchErrors(page);
   const uid = await registerUser(page, 'Welt');
   // Jeden świat (WA): w menu brak przełącznika, przy plakietce brak skrótu.
@@ -29,7 +29,8 @@ test('jeden zestaw: bez przełącznika w menu, skrót świata przy plakietce po 
   await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
   await expect.poll(async () => JSON.stringify((await userFields(request, uid)).setups), { timeout: 15_000 }).toContain('"ifaa"');
   await page.goto('/');
-  await expect(page.getByTestId('world-short')).toHaveText('IFAA');
+  // Jeden świat (tu tylko IFAA) — bez skrótu przy plakietce (user 2026-11-09).
+  await expect(page.getByTestId('world-short')).toHaveCount(0);
   await expect(rankTile(page)).toHaveAttribute('aria-label', /IFAA$/);
   await page.waitForTimeout(2500);
   await page.screenshot({ path: test.info().outputPath('badge.png') });
@@ -60,8 +61,19 @@ test('dwa zestawy (PRO): przełącznik aktywuje zestaw „Feld”, nie zmienia z
     await openMenu(page);
   }
 
+  // Tylko światy z zestawów: WA i Feld, bez IFAA (user 2026-11-09).
+  await expect(page.getByRole('menu').getByRole('radio')).toHaveCount(2);
+  await expect(radio(page, 'IFAA')).toHaveCount(0);
   await radio(page, 'Feld').click();
   await expect(rankTile(page)).toHaveAttribute('aria-label', /Feld \(WA\)$/);
+  await expect(page.getByTestId('world-short')).toHaveText('Feld');
+  // Skrót na tej samej wysokości co plakietka PRO.
+  const badge = await page.getByRole('button', { name: /PRO/ }).first().boundingBox();
+  const chip = await page.getByTestId('world-short').boundingBox();
+  expect(Math.abs((badge!.y + badge!.height / 2) - (chip!.y + chip!.height / 2))).toBeLessThan(1);
+  expect(Math.abs(badge!.height - chip!.height)).toBeLessThan(1.5);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: test.info().outputPath('badge-two-worlds.png'), clip: { x: 0, y: 0, width: 412, height: 140 } });
   await expect.poll(async () => (await first()).activeSetupId?.stringValue, { timeout: 15_000 }).not.toBe('default');
   // Zestaw 1 nadal na tarczach WA (nie przerobiony na teren).
   const setups = (await first()).setups.arrayValue.values.map((v: any) => v.mapValue.fields);
@@ -72,4 +84,25 @@ test('dwa zestawy (PRO): przełącznik aktywuje zestaw „Feld”, nie zmienia z
   await radio(page, 'WA').click();
   await expect.poll(async () => (await first()).activeSetupId?.stringValue, { timeout: 15_000 }).toBe('default');
   await expectNoErrors(page, errors, 'dwa zestawy');
+});
+
+test('kasowanie zestawu: okienko mówi, co zostaje i co przepada; Abbrechen niczego nie kasuje', async ({ page, request }) => {
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Loesch');
+  await nav(page, 'Einst.').click();
+  await page.getByRole('main').getByRole('button', { name: 'AUSRÜSTUNG', exact: true }).click();
+  await page.getByRole('button', { name: '+ Hinzufügen' }).click();
+  await page.getByRole('main').getByRole('textbox').first().fill('Zweitbogen');
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await userFields(request, uid)).setups), { timeout: 15_000 }).toContain('Zweitbogen');
+
+  await page.getByRole('button', { name: 'Set löschen' }).click();
+  await expect(page.getByText('Dieses Set wirklich löschen?')).toBeVisible();
+  await expect(page.getByText(/Bleibt erhalten: alle Trainings, Statistiken und dein Rang/)).toBeVisible();
+  await expect(page.getByText(/Geht verloren: die Ausrüstung dieses Sets/)).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath('delete-dialog.png') });
+  await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(page.getByText('Dieses Set wirklich löschen?')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Zweitbogen', exact: true })).toBeVisible();
+  await expectNoErrors(page, errors, 'kasowanie zestawu');
 });

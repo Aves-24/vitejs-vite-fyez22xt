@@ -551,9 +551,18 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
               {t('settings.equipment.confirmDelete')}
             </h2>
             <p className="text-sm font-black text-[#0a3a2a] mb-1">„{setupToDelete.name}"</p>
-            <p className="text-sm font-bold text-gray-500 mb-6">
-              {t('settings.equipment.confirmDeleteDesc')}
-            </p>
+            {/* [2026-11-09] User pytał, czy kasując Set traci się statystyki — wprost: co zostaje, co przepada. */}
+            <div className="text-left space-y-2 mb-6 mt-3">
+              <p className="flex gap-2 text-[13px] font-bold text-emerald-800 bg-emerald-50 rounded-xl px-3 py-2">
+                <span className="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
+                <span>{t('settings.equipment.confirmDeleteKeep')}</span>
+              </p>
+              <p className="flex gap-2 text-[13px] font-bold text-red-700 bg-red-50 rounded-xl px-3 py-2">
+                <span className="material-symbols-outlined text-[18px] shrink-0">delete</span>
+                <span>{t('settings.equipment.confirmDeleteLost')}</span>
+              </p>
+              <p className="text-[11px] font-bold text-gray-400 text-center">{t('settings.equipment.confirmDeleteSave')}</p>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmDeleteId(null)}

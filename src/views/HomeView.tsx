@@ -250,7 +250,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [setupWorlds, setSetupWorlds] = useState<string[]>([]);
   const multiWorld = setupWorlds.length > 1;
   const worldShort = statsGroup === 'field' ? t('home.worldField') : statsGroup === 'ifaa' ? t('home.worldIfaa') : statsGroup === 'target' ? t('home.worldTarget') : '';
-  const showWorldShort = !!worldShort && (multiWorld || statsGroup === 'field' || statsGroup === 'ifaa');
+  // Jeden świat (np. tylko WA albo tylko IFAA) — nic na Home i nic w menu (user 2026-11-09).
+  const showWorldShort = !!worldShort && multiWorld;
   const [isRankInfoOpen, setIsRankInfoOpen] = useState(false);
   // [RANGA] Awans zapisany przez ScoringView — pokazujemy raz po powrocie z treningu.
   const [rankUp, setRankUp] = useState<{ level: number; bow: RankBow | null; handicap: number; first: boolean } | null>(null);
@@ -1353,10 +1354,12 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
             <div className="bg-[#fed33e] w-2.5 h-2.5 rounded-full animate-pulse ml-1.5 relative bottom-[7.5px]"></div>
           </div>
           {/* PLAN (user 2026-10-28): FREE / PRO z licznikiem dni / PRO — klik → zakładka PRO. */}
+          {/* Plakietka planu i skrót świata w jednym rzędzie, wyrównane do środka. */}
+          <div className="mt-1.5 flex items-center gap-1.5">
           {planBadge && (
             <button
               onClick={() => onNavigate?.('SETTINGS', 'PRO')}
-              className={`mt-1.5 inline-flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all ${
+              className={`inline-flex items-center gap-1 pl-1.5 pr-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all ${
                 planBadge.kind === 'free' ? 'bg-white border border-gray-200 text-gray-500' : 'bg-[#0a3a2a] text-[#fed33e]'
               }`}
             >
@@ -1370,10 +1373,11 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           )}
           {/* [PRZEŁĄCZNIK ŚWIATA] Skrót świata statystyk obok plakietki planu. */}
           {showWorldShort && (
-            <span data-testid="world-short" className="mt-1.5 ml-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest bg-white border border-gray-200 text-[#0a3a2a]">
+            <span data-testid="world-short" className="self-stretch inline-flex items-center px-2 rounded-full text-[9px] font-black uppercase tracking-widest bg-white border border-gray-200 text-[#0a3a2a]">
               {worldShort}
             </span>
           )}
+          </div>
         </div>
         {/* [HOME MENU 2026-11-06] Jeden mały żółty przycisk (jak Training) zamiast
             trzech ikon. Dzwonek wychodzi obok tylko przy nieprzeczytanych. */}
@@ -1393,8 +1397,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 {/* [PRZEŁĄCZNIK ŚWIATA] WA / Feld / IFAA — tylko gdy zestawy są w 2+ światach. */}
                 {multiWorld && <div className="px-3 py-2.5">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">{t('settings.equipment.style')}</p>
-                  <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label={t('settings.equipment.style')}>
-                    {([['target', t('home.worldTarget')], ['field', t('home.worldField')], ['ifaa', t('home.worldIfaa')]] as const).map(([id, label]) => {
+                  <div className={`grid ${setupWorlds.length > 2 ? 'grid-cols-3' : 'grid-cols-2'} gap-1`} role="radiogroup" aria-label={t('settings.equipment.style')}>
+                    {/* Tylko światy, w których user ma zestawy (user 2026-11-09). */}
+                    {([['target', t('home.worldTarget')], ['field', t('home.worldField')], ['ifaa', t('home.worldIfaa')]] as const).filter(([id]) => setupWorlds.includes(id)).map(([id, label]) => {
                       const on = (statsGroup === 'blowgun' ? 'target' : statsGroup) === id;
                       return (
                         <button

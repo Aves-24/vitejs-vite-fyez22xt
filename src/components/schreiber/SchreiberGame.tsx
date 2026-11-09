@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import { StandardTarget } from '../targets/StandardTarget';
 import { SpotTarget } from '../targets/SpotTarget';
 import {
@@ -80,7 +81,8 @@ const readBest = (cfg: SchreiberConfig): SchreiberResult | null => {
   return all[configKey(cfg)] ?? null;
 };
 
-const fmtSec = (ms: number) => (ms / 1000).toFixed(1);
+// Przecinek po niemiecku/polsku (0,7 s), kropka po angielsku.
+const fmtSec = (ms: number) => (ms / 1000).toLocaleString(i18n.language, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 
 /** Znaczek strzały: kształt + kolor zawodnika, czarna kropka = miejsce trafienia. */
 const ArrowMark: React.FC<{ x: number; y: number; shooter: number; dim?: boolean; focus?: boolean; label?: string }> = ({ x, y, shooter, dim, focus, label }) => {

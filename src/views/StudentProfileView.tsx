@@ -32,6 +32,7 @@ import { FocusStrip, FocusDots, focusTitle } from '../components/tagebuch/FocusC
 import { CARD_SHAPE, CARD_PAD, EntryRow, distanceTier, CoachEntryCard, SessionRefLine, readSessionRef, type TbCoachEntry } from '../components/tagebuch/TagebuchCards';
 import { useBackClose } from '../hooks/useBackClose';
 import { MIN_SESSIONS_FOR_RANK, RANK_BOW_LABEL, rankFromStored, rankTrend, rankBowOf } from '../utils/rankEngine';
+import { fmtNum } from '../utils/formatNumber';
 
 function spCacheGet<T>(key: string): T | null {
   try {
@@ -254,7 +255,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
   const isTech = session.type === 'TECHNICAL';
   const ends: any[] = session.ends || [];
   const hits = calculateHits(ends);
-  const avg = session.arrows > 0 ? (session.score / session.arrows).toFixed(2) : '0.00';
+  const avg = session.arrows > 0 ? fmtNum(session.score / session.arrows, 2) : fmtNum(0, 2);
   const roundSize = roundSizeFor(session);
   // Jak w StatsView: tarcza z dystansu, gdy sesja ma tylko „Full”; podpowiedź celownika recurve/compound.
   const targetType = session.targetType && session.targetType !== 'Full'
@@ -1364,7 +1365,7 @@ export default function StudentProfileView({ coachId, studentId, onNavigate, onB
                     </button>
                     <button onClick={() => { setQuickStatsTab('POINTS'); setIsQuickStatsOpen(true); }} className={`${tile} border-x border-gray-100 rounded-none`}>
                       <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('studentProfile.avg14days')}</span>
-                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{avg14Days}</span>
+                      <span className="text-lg font-black text-[#0a3a2a] tabular-nums leading-tight">{fmtNum(Number(avg14Days), 1)}</span>
                     </button>
                     <button
                       onClick={() => { if (lastScored) { setCurrentSessionIndex(recentSessions.indexOf(lastScored)); setTimeout(() => sessionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80); } }}

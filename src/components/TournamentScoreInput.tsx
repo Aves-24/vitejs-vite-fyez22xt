@@ -7,6 +7,7 @@ import { guestExpiryFields } from '../utils/guestMode';
 import { getSetupStamp } from '../utils/setupStamp';
 import { settleWrite } from '../utils/offlineWrite';
 import { distanceMeters } from '../config/distances';
+import { fmtNum } from '../utils/formatNumber';
 
 // Format zawodów: na zewnątrz 2×36 (passe po 6), w hali 2×30 (passe po 3) — user 2026-11-01.
 export const TOURNAMENT_FORMATS = {
@@ -375,7 +376,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
               const locked = hasDetailedData;
               const score  = locked ? detailedR1.score : (parseInt(summaryR1) || 0);
               const arrows = locked ? ends.slice(0,rowsPerRound).flat().filter(a => a !== 'M').length : arrowsPerRound;
-              const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
+              const avg    = arrows > 0 ? fmtNum(score / arrows, 2) : '—';
               const r1x    = locked ? String(detailedR1.x)    : summaryX1;
               const r1t    = locked ? String(detailedR1.tens)  : summary10_1;
               const r1n    = locked ? String(detailedR1.nines) : summary9_1;
@@ -409,7 +410,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
               const locked = hasDetailedData;
               const score  = locked ? detailedR2.score : (parseInt(summaryR2) || 0);
               const arrows = locked ? ends.slice(rowsPerRound,totalEnds).flat().filter(a => a !== 'M').length : arrowsPerRound;
-              const avg    = arrows > 0 ? (score / arrows).toFixed(2) : '—';
+              const avg    = arrows > 0 ? fmtNum(score / arrows, 2) : '—';
               const r2x    = locked ? String(detailedR2.x)    : summaryX2;
               const r2t    = locked ? String(detailedR2.tens)  : summary10_2;
               const r2n    = locked ? String(detailedR2.nines) : summary9_2;
@@ -444,7 +445,7 @@ export default function TournamentScoreInput({ userId, eventId, tournamentName, 
               const totalArrows = hasDetailedData
                 ? ends.flat().filter(a => a !== 'M').length
                 : ((parseInt(summaryR1) || 0) > 0 || (parseInt(summaryR2) || 0) > 0 ? arrowsPerRound * ROUNDS : 0);
-              const avg = totalArrows > 0 ? (totalScore / totalArrows).toFixed(2) : '—';
+              const avg = totalArrows > 0 ? fmtNum(totalScore / totalArrows, 2) : '—';
               return totalScore > 0 ? (
                 <div className="tb-card tb-tourney border rounded-l-md rounded-r-2xl shadow-sm p-3 flex items-center justify-between">
                   <div>

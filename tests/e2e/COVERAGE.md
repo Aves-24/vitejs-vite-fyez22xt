@@ -1,4 +1,4 @@
-# Testy e2e — mapa pokrycia (stan 2026-11-06)
+# Testy e2e — mapa pokrycia (stan 2026-11-09)
 
 Uruchamianie (PowerShell):
 
@@ -42,6 +42,10 @@ Podgląd krok po kroku: `npm run test:e2e:ui`. Offline na zbudowanej apce z serv
 | Usunięcie konta trenera | coach-delete | 3 konta: współtrener usuwa konto → znika z coachIds, grupa zostaje; Haupttrainer usuwa konto → groups, groupPlans, groupInvites puste, uczeń bez planu grupy i bez trenera (DS 2.4 v1.11) |
 | Trener: dark + EN/PL | i18n-theme-coach | Übersicht, Termine, Schüler + podgląd + pełny profil, Gruppen + ekran grupy, okno wiadomości, Einst. trenera, ekran treningu (pusty i po Passe): kontrast w ciemnym motywie, EN/PL bez kluczy i obcych słów |
 | Inne | smoke-extras | Schreiber-Training (start, klawiatura), Admin Center (4 zakładki) |
+| Nowe Home | home-zones | pierścień stref (Gold/Rot/Blau/M %), (i) z dymkiem, forma od 3 treningów, klik → PRO Trefferzonen (te same liczby, karta w widoku), Schnellstatistik Pfeile/Ringe |
+| Schreiber do końca | schreiber-ranking | 2 strzelców × 3 Passen, wynik 0/18, czasy z przecinkiem, ranking „Wer hätte gewonnen?” posortowany, „Nochmal” |
+| Wznowienie treningu | resume-training | przeładowanie w środku Passe → „LÄUFT”, te same strzały, dokończenie i zapis obu Passen |
+| Okienka: dark + EN/PL | i18n-theme-windows | menu Home, Schnellstatistik ×2, dymek (i), Ergebniskurve, ranga, PRO Trefferzonen, Schreiber (ustawienia + gra), okno fokusu, nowy termin; zrzuty każdego okienka |
 
 Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Firestore i odpowiedzi HTTP ≥ 400.
 
@@ -78,6 +82,9 @@ Każdy test łapie też: wyjątki JS, ekran błędu widoku, odrzucenia reguł Fi
 22. (2026-11-06) „Fehlschuss” dla złego technicznie strzału kolidował z oficjalnym DE Fehlschuss = M → „Technikfehler”
 23. (2026-11-06) Ciemny motyw: kafelek „Zuletzt” na Home — żółty tekst na żółtym tle (niewidoczny wynik)
 24. (2026-11-06) Ciemny motyw, ekran treningu: pasek wyniku żółty na żółtym, jasne cyfry na klawiszach X/10/9, suma Passe jasna na jasnym, białe puste pola tabeli
+25. (2026-11-09) Schreiber-Training: czasy „0.7 s” z kropką w DE/PL
+26. (2026-11-09) Ciemny motyw: Schreiber-Training na jasnoszarym tle; puste słupki w Schnellstatistik/Ringe białe
+27. (2026-11-09) Liczby z kropką zamiast przecinka (DE/PL): Schnitt na ekranie treningu, PRO Progress (Formtrend, Ermüdung, strefy, mm), panel ucznia u trenera, karta zawodów, Tagebuch ucznia, Delay Mirror (długość klipu)
 
 ## Do omówienia (partia 2)
 

@@ -6,6 +6,7 @@ import DelayMirrorExport from './DelayMirrorExport';
 import type { TechSeriesDraft, TechShot } from './DelayMirrorSeries';
 import { mirrorShotColor } from '../utils/mirrorArrowColors';
 import { drawMirrorOverlay, loadTargetImage, noteShotAt, type ClipSeg } from '../utils/mirrorOverlay';
+import { fmtNum } from '../utils/formatNumber';
 
 // Najkrotszy wycinek do udostepnienia — krotszy niz pol sekundy to przypadkowe
 // stukniecie, a nie fragment do pokazania komus.
@@ -1054,7 +1055,7 @@ export default function DelayMirrorReplay({ blob, displayAsLandscape, showGridIn
             />
             <p className="text-white/70 text-[11px] font-bold tabular-nums text-center -mt-1">
               {sharePart === 'clip' && <>{t('delayMirror.clipRange', { from: fmtT1(lo), to: fmtT1(hi) })}{' · '}</>}
-              {Math.max(0, hi - lo - removed).toFixed(1)} s
+              {fmtNum(Math.max(0, hi - lo - removed), 1)} s
             </p>
           </>
         );

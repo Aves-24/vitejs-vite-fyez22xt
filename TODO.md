@@ -17,6 +17,41 @@
       palcem do najbliższego spotu, `targetScoring.test.ts`, katalog tarcz,
       ikonka „AUFLAGE” na ekranie treningu. Dystans: 18 m (hala).
 
+- [ ] **Nowe tarcze: WA-Feldbogen-Auflage 80 / 60 / 40 cm + 20 cm 3-fach**
+      (2026-11-09, user: dodać razem z Vegas). UWAGA: to WA Field, nie IFAA
+      (stare ustalenie „tylko IFAA, opcja 'Field' usunięta” niżej w TODO —
+      user teraz chce WA Field). Każda tarcza w NOWYM pliku.
+      Wygląd: czarna, środek żółty (strefy 6 i 5), białe linie między
+      strefami, cienki krzyżyk X w środku. Punktacja 6–1 + M; strefa 6 = „X”
+      (od 2008 X liczy się 6, w karcie jako X do remisów).
+      Średnice stref (WA, równe pierścienie po D/10 promienia; dla D = średnica tarczy):
+      | strefa | wzór  | 80 cm | 60 cm | 40 cm | 20 cm |
+      | 6 (X)  | D/10  | 8     | 6     | 4     | 2     |
+      | 5      | D/5   | 16    | 12    | 8     | 4     |
+      | 4      | 2D/5  | 32    | 24    | 16    | 8     |
+      | 3      | 3D/5  | 48    | 36    | 24    | 12    |
+      | 2      | 4D/5  | 64    | 48    | 32    | 16    |
+      | 1      | D     | 80    | 60    | 40    | 20    |
+      80 cm potwierdzone tabelą WA (tolerancja 1–2 mm); złoto 4/8/12 cm dla
+      20/40/60 potwierdzone (bogenundpfeile.de, DSB), reszta z tego samego wzoru.
+      20 cm 3-fach: trzy spoty jeden POD drugim (pion), arkusz 22×66 cm,
+      jedna strzała na spot. Dystanse (Krüger): 20 cm 5–20 m, 40 cm 10–30 m,
+      60 cm 15–45 m, 80 cm 20–60 m → do `targetDistanceRanges.ts`.
+      Źródła: worldarchery.org/rulebook/article/1360 (Field of Play setup),
+      bogenundpfeile.de/Zielauflagen/Zielauflage_Feld.php,
+      krueger-scheiben.de/overview/bogen-feldauflagen-wa.
+      Przed kodowaniem sprawdzić w aktualnym WA Book 4 (PDF z extranetu się
+      nie pobrał) linie i cienki X.
+
+- [ ] **Wybór tarczy w Einstellungen → DISTANZEN jako lista z obrazkami**
+      (2026-11-09, user, razem z nowymi tarczami): dziś przy dystansie jest
+      systemowy `<select>` (`views/SettingsView.tsx` ~l. 666, `onUpdateTargetType`)
+      — na telefonie wyskakuje szara lista systemowa bez obrazków. Ma być
+      okienko jak w naszej apce: lista tarcz z miniaturą (`targets/TargetThumbnail.tsx`,
+      tak jak w Vorbereitung/`SessionSetup` i w lobby bitwy), nazwa + rozmiar,
+      zaznaczona bieżąca. Przy okazji nowe tarcze (Vegas, Field 80/60/40/20)
+      od razu w tej liście.
+
 - [ ] **Schreiber-Training na stronie głównej** (2026-11-02): dziś gra jest
       tylko easter eggiem w Einstellungen (przycisk przy „Höchste
       Wettkampfebene”, `components/schreiber/SchreiberGame.tsx`). Trzeba ją

@@ -23,6 +23,7 @@ import TechSessionCard from '../components/TechSessionCard';
 import { SessionFocusCard } from '../components/tagebuch/FocusCard';
 import { createPortal } from 'react-dom';
 import { isPartialSession, partialLabel, isShortPlanned, roundSizeFor } from '../utils/partialSession';
+import { fmtNum } from '../utils/formatNumber';
 
 // Status PRO jest odczytywany zawsze świeżo z Firestore (SDK ma własny offline cache w IndexedDB)
 // Nie używamy tu localStorage — admin może zmienić status w dowolnej chwili
@@ -826,7 +827,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         {/* Wynik, średnia i strzały dnia w jednym wierszu, bez szarych kafli. */}
                         <div className="grid grid-cols-3 mt-2.5 pt-2.5 border-t border-gray-100 text-center">
                           <div><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.score')}</span><span className="text-xl font-black text-[#0a3a2a] tabular-nums">{selectedSession.score || 0}</span></div>
-                          <div className="border-x border-gray-100"><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.average')}</span><span className="text-xl font-black text-[#0a3a2a] tabular-nums">{((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1)).toFixed(2)}</span></div>
+                          <div className="border-x border-gray-100"><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.average')}</span><span className="text-xl font-black text-[#0a3a2a] tabular-nums">{fmtNum((selectedSession.score || 0) / (selectedSession.scoreArrows || selectedSession.arrows || 1), 2)}</span></div>
                           <div><span className="block text-[8px] font-black text-gray-400 uppercase tracking-widest">{t('stats.cards.dailyArrows', 'Strzały dzisiaj')}</span><span className="text-xl font-black text-emerald-600 tabular-nums">{dailyArrows}</span></div>
                         </div>
                       </div>

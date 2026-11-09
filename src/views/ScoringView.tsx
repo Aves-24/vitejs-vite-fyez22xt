@@ -31,6 +31,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
 import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
+import { fmtNum } from '../utils/formatNumber';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -1037,7 +1038,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           </div>
           <div>
             <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.avg', 'ŚREDNIA')}</span>
-            <span className="text-sm font-black leading-tight">{currentRoundStats.avg}</span>
+            <span className="text-sm font-black leading-tight">{fmtNum(Number(currentRoundStats.avg), 2)}</span>
           </div>
         </div>
         <div className="text-right shrink-0">

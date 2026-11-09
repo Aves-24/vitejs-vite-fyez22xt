@@ -21,7 +21,8 @@ test('gość zapisuje trening i widzi go na Home i w Tagebuchu', async ({ page }
   // textContent skleja komórki bez spacji, stąd \s* w wyrażeniach.
   const main = page.getByRole('main');
   await expect(main).toContainText(/X\/10\/9\s*1\/2\/2/);
-  await expect(main).toContainText(/SCHNITT\s*8\.83/);
+  // Średnia z przecinkiem po niemiecku (wcześniej „8.83”).
+  await expect(main).toContainText(/SCHNITT\s*8,83/);
   await expect(main).toContainText(/Gesamtringzahl\s*53/);
 
   // Undo cofa ostatnią strzałę, a nowa wraca do tej samej sumy.

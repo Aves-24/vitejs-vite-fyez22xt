@@ -11,6 +11,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { createNotification } from '../services/notificationService';
 import { CARD_SHAPE, CARD_PAD, EntryRow, SessionRefLine, sessionRefOf } from './tagebuch/TagebuchCards';
 import { buildCoachNoteNotification } from '../utils/notificationTypes';
+import { fmtNum } from '../utils/formatNumber';
 
 // [KARTA UCZNIA] Wysuwana od dołu karta po tapnięciu ucznia w panelu trenera
 // (user 2026-09-18): ile trenuje, jak strzela, fokus, najbliższy start i
@@ -448,10 +449,10 @@ export default function CoachStudentSheet({
                 <div>
                   <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest truncate px-1">{t('coachSheet.avgArrow', { distance: snap.distanceLabel || '' })}</p>
                   <p className="text-[16px] font-black text-[#0a3a2a] leading-tight tabular-nums">
-                    {snap.avgArrow !== null ? snap.avgArrow.toFixed(1) : '–'}{' '}
+                    {snap.avgArrow !== null ? fmtNum(snap.avgArrow, 1) : '–'}{' '}
                     {snap.avgArrow !== null && snap.avgArrowPrev !== null && Math.abs(snap.avgArrow - snap.avgArrowPrev) >= 0.05 && (
                       <span className={`text-[10px] font-black ${snap.avgArrow > snap.avgArrowPrev ? 'text-emerald-600' : 'text-orange-500'}`}>
-                        {snap.avgArrow > snap.avgArrowPrev ? '+' : ''}{(snap.avgArrow - snap.avgArrowPrev).toFixed(1)}
+                        {snap.avgArrow > snap.avgArrowPrev ? '+' : ''}{fmtNum(snap.avgArrow - snap.avgArrowPrev, 1)}
                       </span>
                     )}
                   </p>
@@ -573,7 +574,7 @@ export default function CoachStudentSheet({
                   <div className="flex items-center gap-3">
                     <Sparkline values={snap.recent.map(r => r.avg)} />
                     <div className="text-[11px] font-bold text-[#0a3a2a] leading-snug min-w-0">
-                      <p>{t('coachSheet.lastAvg', { list: snap.recent.slice(-3).map(r => r.avg.toFixed(1)).join(' · ') })}</p>
+                      <p>{t('coachSheet.lastAvg', { list: snap.recent.slice(-3).map(r => fmtNum(r.avg, 1)).join(' · ') })}</p>
                       <p className="text-[10px] text-gray-400">
                         {t('coachSheet.lastScores', { list: snap.recent.slice(-3).map(r => t('coachSheet.scoreOf', { score: r.score, arrows: r.arrows })).join(' · ') })}
                       </p>
@@ -657,7 +658,7 @@ function Sparkline({ values }: { values: number[] }) {
   if (values.length < 2) {
     return (
       <div className="w-[120px] h-[34px] shrink-0 flex flex-col items-center justify-center leading-tight">
-        <span className="text-[15px] font-black text-[#0a3a2a] tabular-nums">Ø {(values[0] ?? 0).toFixed(1)}</span>
+        <span className="text-[15px] font-black text-[#0a3a2a] tabular-nums">Ø {fmtNum(values[0] ?? 0, 1)}</span>
         <span className="text-[8px] font-bold text-gray-400">{t('coachSheet.curveNeedsTwo')}</span>
       </div>
     );

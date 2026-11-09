@@ -437,7 +437,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-2 block">
               {t('settings.equipment.style')}
             </label>
-            <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t('settings.equipment.style')}>
+            <div className="grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={t('settings.equipment.style')}>
               {SHOOTING_STYLES.map(s => {
                 const on = styleOfSetup(active) === s.id;
                 return (
@@ -453,8 +453,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                 );
               })}
             </div>
-            {styleOfSetup(active) === 'field' && (
-              <p className="text-[9px] text-gray-400 font-bold mt-2 ml-1">{t('settings.equipment.styleHint')}</p>
+            {styleOfSetup(active) !== 'target' && (
+              <p className="text-[9px] text-gray-400 font-bold mt-2 ml-1">{t(styleOfSetup(active) === 'ifaa' ? 'settings.equipment.styleIfaaHint' : 'settings.equipment.styleHint')}</p>
             )}
           </div>
         )}

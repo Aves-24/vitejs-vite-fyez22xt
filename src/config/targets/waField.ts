@@ -49,6 +49,9 @@ export const WA_FIELD_ZONES = [
   { r: 150, value: 1 },
 ] as const;
 
+/** Klawisze terenu: 6 i 5 żółte, 4–1 czarne (config/arrowKeyColors). */
+export const FIELD_KEY_COLORS = { '6': 'gold', '5': 'gold', '4': 'black', '3': 'black', '2': 'black', '1': 'black' } as const;
+
 const fieldFace = (cm: 80 | 60 | 40, pickOrder: number): TargetFace => ({
   id: `Field ${cm}cm`,
   layout: 'single',
@@ -62,6 +65,7 @@ const fieldFace = (cm: 80 | 60 | 40, pickOrder: number): TargetFace => ({
   aliases: [`WA Field ${cm}cm`, `Feld ${cm}cm`],
   scorable: true,
   statsGroup: 'field',
+  keyColors: FIELD_KEY_COLORS,
   pickOrder,
 });
 
@@ -81,25 +85,6 @@ export function fieldFaceForMeters(m?: number | null): string {
   if (v > 0 && v <= 25) return WA_FIELD_40_FACE.id;
   if (v > 0 && v <= 40) return WA_FIELD_60_FACE.id;
   return WA_FIELD_80_FACE.id;
-}
-
-/**
- * Kolory przycisków/pól strzał na tarczy terenowej: 6 i 5 żółte, 4–1 czarne
- * (na tarczach WA 6/5 są niebieskie — tu wprowadzałyby w błąd). `null` = bez
- * zmian (M, puste pole).
- */
-export function fieldArrowClass(val: string): string | null {
-  if (val === '6' || val === '5' || val === 'X') return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
-  // UWAGA: Tailwind skanuje tylko *.tsx (tailwind.config.cjs) — klasy stąd MUSZĄ
-  // istnieć też w jakimś .tsx, inaczej się nie wygenerują (złapane w e2e 2026-11-09:
-  // bg-[#222222] dawało biały tekst na białym). Te same co getArrowStyles.
-  if (['4', '3', '2', '1'].includes(val)) return 'bg-[#333333] text-white border-none shadow-sm';
-  return null;
-}
-export function fieldScoreColors(val: string): { bg: string; text: string; stroke: string } | null {
-  if (val === '6' || val === '5' || val === 'X') return { bg: '#F2C94C', text: '#333', stroke: '#fff' };
-  if (['4', '3', '2', '1'].includes(val)) return { bg: '#222', text: '#fff', stroke: '#fff' };
-  return null;
 }
 
 /** Czy to tarcza terenowa (osobny świat statystyk, inne kolory). */

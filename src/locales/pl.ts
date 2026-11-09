@@ -1529,6 +1529,8 @@ export const views = {
       style: "Strzela na",
       styleTarget: "Tarcza (WA)",
       styleField: "Teren (WA)",
+      styleIfaa: "IFAA",
+      styleIfaaHint: "IFAA: tylko tarcze IFAA (5–3), serie jak na zawodach, osobne statystyki.",
       styleHint: "Teren: tylko tarcze terenowe (6–1), osobne statystyki.",
       pickTarget: "Wybierz tarczę",
       color: "Kolor zestawu",

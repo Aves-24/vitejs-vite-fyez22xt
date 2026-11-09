@@ -1508,6 +1508,8 @@ export const views = {
       style: "Schießt auf",
       styleTarget: "Scheibe (WA)",
       styleField: "Feld (WA)",
+      styleIfaa: "IFAA",
+      styleIfaaHint: "IFAA: nur IFAA-Auflagen (5–3), Serien wie im Turnier, eigene Statistik.",
       styleHint: "Feld: nur Feldauflagen (6–1), eigene Statistik.",
       pickTarget: "Auflage wählen",
       color: "Set-Farbe",

@@ -13,17 +13,19 @@ import { isBlowgun, styleOfSetup } from './equipmentSetups';
  *
  *  - 'target'  — tarcze WA (hala i tory), jedyny świat z rangą z handicapu,
  *  - 'field'   — tarcze terenowe WA (6–1),
- *  - 'blowgun' — dmuchawka (6–10, ale osobne dystanse i bez rangi).
+ *  - 'blowgun' — dmuchawka (6–10, ale osobne dystanse i bez rangi),
+ *  - 'ifaa'    — tarcze IFAA (5–1, seria 4/5 strzał jak na zawodach).
  *
  * Trening przypisujemy po TARCZY (i stemplu dyscypliny dla dmuchawki), nie po
  * zestawie — tarcza jest zapisana w każdej sesji, także w starych.
  */
-export type StatsGroup = 'target' | 'field' | 'blowgun';
+export type StatsGroup = 'target' | 'field' | 'blowgun' | 'ifaa';
 
 export function statsGroupOf(s?: { bowClass?: string | null; targetType?: string | null } | null): StatsGroup {
   if (!s) return 'target';
   if (isBlowgunSession({ bowClass: s.bowClass, targetType: s.targetType })) return 'blowgun';
-  if (findTargetFace(s.targetType)?.statsGroup === 'field') return 'field';
+  const g = findTargetFace(s.targetType)?.statsGroup;
+  if (g === 'field' || g === 'ifaa') return g;
   return 'target';
 }
 
@@ -33,15 +35,16 @@ export const isFieldFace = (id?: string | null) => findTargetFace(id)?.statsGrou
 /** Świat statystyk aktywnego zestawu (Home, Schnellstatistik, strefy). */
 export function statsGroupOfSetup(setup?: { discipline?: string | null; style?: string | null } | null): StatsGroup {
   if (isBlowgun(setup?.discipline)) return 'blowgun';
-  return styleOfSetup(setup) === 'field' ? 'field' : 'target';
+  const st = styleOfSetup(setup);
+  return st === 'field' ? 'field' : st === 'ifaa' ? 'ifaa' : 'target';
 }
 
 /** Świat statystyk aktywnego zestawu zapamiętany przez Home (PRO Progress, karta stref). */
 export function storedStatsGroup(userId?: string | null): StatsGroup {
-  try { const v = localStorage.getItem(`grotX_statsGroup_${userId}`); return v === 'field' || v === 'blowgun' ? v : 'target'; } catch { return 'target'; }
+  try { const v = localStorage.getItem(`grotX_statsGroup_${userId}`); return v === 'field' || v === 'blowgun' || v === 'ifaa' ? v : 'target'; } catch { return 'target'; }
 }
 
-export const STATS_GROUPS: readonly StatsGroup[] = ['target', 'field', 'blowgun'];
+export const STATS_GROUPS: readonly StatsGroup[] = ['target', 'field', 'blowgun', 'ifaa'];
 
 /** Klucz cache statystyk Home dla danego świata. */
 export const homeStatsCacheKey = (userId: string, g: StatsGroup) => `grotX_stats_v16_${userId}_${g}`;
@@ -55,7 +58,7 @@ export function clearHomeStatsCache(userId: string) {
 }
 
 /** Najwyższa wartość strzały w danym świecie (skala słupków, wykresów). */
-export const scaleMaxOf = (g: StatsGroup): number => (g === 'field' ? 6 : 10);
+export const scaleMaxOf = (g: StatsGroup): number => (g === 'field' ? 6 : g === 'ifaa' ? 5 : 10);
 
 /**
  * Strzała → indeks strefy [złoto, czerwień, niebieski, czarny, biały, M].
@@ -63,9 +66,11 @@ export const scaleMaxOf = (g: StatsGroup): number => (g === 'field' ? 6 : 10);
  */
 export function zoneIndexOf(v: unknown, g: StatsGroup = 'target'): number | null {
   if (v === 'M') return 5;
-  const n = v === 'X' ? (g === 'field' ? 6 : 10) : parseInt(String(v), 10);
+  const n = v === 'X' ? (g === 'field' ? 6 : g === 'ifaa' ? 5 : 10) : parseInt(String(v), 10);
   if (isNaN(n)) return null;
   if (n <= 0) return 5;
   if (g === 'field') return n >= 5 ? 0 : 3;
+  // IFAA: 5 = środek (najlepsza strefa), 4 = pierścień wewnętrzny, 3 = zewnętrzny; 2/1 tylko Indoor/Expert.
+  if (g === 'ifaa') return n >= 5 ? 0 : n === 4 ? 1 : n === 3 ? 2 : 3;
   return n >= 9 ? 0 : n >= 7 ? 1 : n >= 5 ? 2 : n >= 3 ? 3 : 4;
 }

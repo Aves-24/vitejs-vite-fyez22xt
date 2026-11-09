@@ -25,6 +25,7 @@ import { BLOWGUN40_FACE } from './targets/blowgun40';
 import { WA_FIELD_80_FACE, WA_FIELD_60_FACE, WA_FIELD_40_FACE } from './targets/waField';
 import { WA_FIELD20_FACE } from './targets/waField20Triple';
 import { VEGAS_FACE } from './targets/vegas';
+import { IFAA_FIELD_FACES, IFAA_INDOOR_FACE, IFAA_INDOOR5_FACE } from './targets/ifaa';
 import type { FaceSpotSpec } from './spotGeometry';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
@@ -34,7 +35,7 @@ export type TargetLayout =
   | 'single'       // jedna tarcza koncentryczna, viewBox 300x300
   | 'spot3-double' // dwie kolumny po 3 spoty, viewBox 300x400
   | 'spot3-single' // jedna kolumna 3 spotów, viewBox 300x400
-  | 'spot3-vegas'  // [VEGAS] dwie kartki z trzema spotami w trójkącie, viewBox 300x400
+  | 'spots'        // [SPOTY] własna geometria z pola `spot` (Vegas, IFAA 4-Spot/5-Spot), viewBox 300x400
   | 'none';        // sesja bez tarczy (trening techniczny)
 
 export interface TargetRing {
@@ -88,12 +89,22 @@ export interface TargetFace {
    * liczą się we własnej skali (`config/statsGroups.ts`). Brak = tarcza WA.
    * Takie tarcze pokazujemy wyłącznie przy zestawie ustawionym na „Feld”.
    */
-  statsGroup?: 'field';
+  statsGroup?: 'field' | 'ifaa';
   /**
    * [SPOTY 2026-11-09] Własny układ/kolory/strefy spotów (Vegas, teren 20 cm).
    * Brak = klasyczny spot WA w układzie z `layout`. Patrz `config/spotGeometry.ts`.
    */
   spot?: FaceSpotSpec;
+  /**
+   * [KOLORY KLAWISZY] Kolor przycisku/pola dla wartości, gdy inny niż na
+   * tarczy WA (teren: 5 żółte; IFAA: 5 czarny/biały…). Patrz config/arrowKeyColors.
+   */
+  keyColors?: Record<string, 'gold' | 'red' | 'blue' | 'black' | 'white'>;
+  /**
+   * [IFAA] Format jak na zawodach: strzały w serii i liczba serii. Brak = 6 × 12.
+   * IFAA Field/Hunter: 4 strzały na tarczę; Indoor: serie po 5.
+   */
+  round?: { arrowsPerEnd: number; ends: number };
   /** Stare stringi z Firestore, które muszą dalej działać. */
   aliases: readonly string[];
   /** Czy w ogóle się na nią strzela (trening techniczny — nie). */
@@ -174,6 +185,10 @@ export const TARGET_FACES: readonly TargetFace[] = [
   WA_FIELD20_FACE,
   // [VEGAS] 3×20 cm w trójkącie — targets/vegas.ts.
   VEGAS_FACE,
+  // [IFAA] Field/Hunter 20–65 cm, Indoor 40 cm i 5-Spot — targets/ifaa.ts.
+  ...IFAA_FIELD_FACES,
+  IFAA_INDOOR_FACE,
+  IFAA_INDOOR5_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */
@@ -210,7 +225,7 @@ export function isFullFace(raw?: string | null): boolean {
 /** Dowolny 3-spot — pionowy albo dwukolumnowy. */
 export function isSpotFace(raw?: string | null): boolean {
   const l = resolveTargetFace(raw).layout;
-  return l === 'spot3-double' || l === 'spot3-single' || l === 'spot3-vegas';
+  return l === 'spot3-double' || l === 'spot3-single' || l === 'spots';
 }
 
 /**
@@ -227,7 +242,7 @@ export function keypadValuesFor(raw?: string | null): string[] {
   if (face.zones?.length) {
     return [...face.zones].map(z => z.value).sort((a, b) => b - a).map(String);
   }
-  const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spot3-vegas';
+  const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spots';
   const min = Math.max(1, isSpot ? Math.max(6, face.minScoringRing) : face.minScoringRing);
   const values = ['X'];
   for (let v = 10; v >= min; v--) values.push(String(v));
@@ -273,16 +288,16 @@ export function selectableTargetIds(): string[] {
  * pokazujemy wszystko — lepiej dać za dużo niż zablokować komuś wybór.
  */
 export function selectableTargetIdsFor(discipline?: string | null, style?: string | null): string[] {
-  // [FELD] Tarcze terenowe tylko przy zestawie „Feld”, a przy nim WYŁĄCZNIE one.
-  const wantField = style === 'field';
+  // [FELD/IFAA] Tarcze terenowe/IFAA tylko przy zestawie o tym stylu, a przy nim WYŁĄCZNIE one.
+  const want = style === 'field' || style === 'ifaa' ? style : undefined;
   if (!discipline) {
-    return selectableTargetIds().filter(id => (findTargetFace(id)?.statsGroup === 'field') === wantField);
+    return selectableTargetIds().filter(id => findTargetFace(id)?.statsGroup === want);
   }
   const wantBlowgun = isBlowgun(discipline);
   return TARGET_FACES
     .filter(f => f.scorable && f.pickOrder !== undefined)
     .filter(f => (f.discipline === 'blowgun') === wantBlowgun)
-    .filter(f => wantBlowgun || (f.statsGroup === 'field') === wantField)
+    .filter(f => wantBlowgun || f.statsGroup === want)
     .sort((a, b) => (a.pickOrder as number) - (b.pickOrder as number))
     .map(f => f.id);
 }

@@ -1,5 +1,6 @@
 import type { TargetFace } from '../targetFaces';
 import { DOUBLE_COLUMN, type FaceSpotSpec } from '../spotGeometry';
+import { FIELD_KEY_COLORS } from './waField';
 
 /**
  * [WA FIELD 20 cm 3-fach 2026-11-09] Feldbogen-Auflage 20 cm, trzy spoty
@@ -55,6 +56,7 @@ export const WA_FIELD20_FACE: TargetFace = {
   aliases: ['WA Field 20cm', 'Feld 20cm 3-fach', 'Field 20cm'],
   scorable: true,
   statsGroup: 'field',
+  keyColors: FIELD_KEY_COLORS,
   spot: FIELD20_SPOT,
   pickOrder: 13,
 };

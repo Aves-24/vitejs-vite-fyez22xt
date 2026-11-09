@@ -50,15 +50,17 @@ export const DISCIPLINES: { id: Discipline; labelKey: string }[] = [
 ];
 
 /** [FELD] Styl strzelania zestawu: tarcze WA albo teren. */
-export type ShootingStyle = 'target' | 'field';
+export type ShootingStyle = 'target' | 'field' | 'ifaa';
 export const SHOOTING_STYLES: { id: ShootingStyle; labelKey: string }[] = [
   { id: 'target', labelKey: 'settings.equipment.styleTarget' },
   { id: 'field', labelKey: 'settings.equipment.styleField' },
+  { id: 'ifaa', labelKey: 'settings.equipment.styleIfaa' },
 ];
 
 /** Styl zestawu — „field” tylko dla łuku (dmuchawka zawsze 'target'). */
 export function styleOfSetup(s?: { discipline?: string | null; style?: string | null } | null): ShootingStyle {
-  return s?.style === 'field' && !isBlowgun(s?.discipline) ? 'field' : 'target';
+  if (isBlowgun(s?.discipline)) return 'target';
+  return s?.style === 'field' || s?.style === 'ifaa' ? s.style : 'target';
 }
 
 export function isBlowgun(d?: string | null): boolean {

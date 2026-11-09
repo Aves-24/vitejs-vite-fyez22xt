@@ -4,8 +4,7 @@ import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { spotGeometryOf, sheetForArrow, sheetViewBox, scoreSpot } from '../../config/spotGeometry';
-import { fieldArrowClass, fieldScoreColors } from '../../config/targets/waField';
-import { isFieldFace } from '../../config/statsGroups';
+import { faceKeyClass, faceKeySvg } from '../../config/arrowKeyColors';
 import { arrowColorAt } from '../../config/arrowColors';
 import { startAim, stepAim, AimFilter, Pt } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
@@ -50,9 +49,8 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
-  // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
-  const isField = isFieldFace(targetType);
-  const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
+  // [KOLORY KLAWISZY] Teren/IFAA mają własne kolory wartości (config/arrowKeyColors).
+  const arrowStyle = (v: string) => faceKeyClass(targetType, v) || getArrowStyles(v);
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [isAiming, setIsAiming] = useState(false);
@@ -98,7 +96,8 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // 300 jednostek, więc dostają ciaśniejszy viewBox.
   const isCompactFace = face.rings.length > 0 && face.rings[0].r < 150;
   const isTarget2 = currentArrows.length >= 3;
-  const maxShots = embed?.slots ?? 6;
+  // [IFAA] Seria z tarczy: IFAA Field/Hunter 4, Indoor 5, reszta 6.
+  const maxShots = embed?.slots ?? (face.round?.arrowsPerEnd ?? 6);
 
   // [PUNKTACJA] Zasada łucznicza: wystarczy musnąć linię, żeby dostać wyższą
   // wartość. Linia ma na rysunku 0,5 jednostki grubości, a czerwona kropka
@@ -148,13 +147,13 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
 
   useEffect(() => {
     if (embed?.autoExit === false) return;
-    if (currentArrows.length === 6 && isFullscreen) {
+    if (currentArrows.length === maxShots && isFullscreen) {
       const timer = setTimeout(() => {
         onToggleFullscreen();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit]);
+  }, [currentArrows.length, isFullscreen, onToggleFullscreen, embed?.autoExit, maxShots]);
 
   // [WIBRACJA] Krótkie „tyk” przy każdej zmianie pierścienia — granicę czuć
   // w palcu. Android; iPhone (Safari) tego nie obsługuje i po prostu milczy.
@@ -496,7 +495,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                   Smart flip: domyślnie chip po prawej, jeśli krzyżyk jest
                   w prawej połowie kadru — chip skacze na lewo. */}
               {currentAimScore && (() => {
-                const colors = (isField && fieldScoreColors(currentAimScore)) || getScoreColors(currentAimScore);
+                const colors = faceKeySvg(targetType, currentAimScore) || getScoreColors(currentAimScore);
                 const flipLeft = aimPos.x > viewCx;
                 const chipX = flipLeft ? aimPos.x - 48 : aimPos.x + 48;
                 return (

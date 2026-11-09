@@ -1508,6 +1508,8 @@ export const views = {
       style: "Shoots on",
       styleTarget: "Target (WA)",
       styleField: "Field (WA)",
+      styleIfaa: "IFAA",
+      styleIfaaHint: "IFAA: IFAA faces only (5–3), ends as in competition, separate statistics.",
       styleHint: "Field: field faces only (6–1), separate statistics.",
       pickTarget: "Choose target face",
       color: "Setup color",

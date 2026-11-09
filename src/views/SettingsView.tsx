@@ -36,6 +36,7 @@ import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { TargetPickerSheet } from '../components/targets/TargetPickerSheet';
 import { styleOfSetup } from '../config/equipmentSetups';
 import { fieldFaceForMeters } from '../config/targets/waField';
+import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { APP_HOST, APP_URL } from '../constants/appUrl';
@@ -113,7 +114,9 @@ export default function SettingsView({
     }
     const entry = buildCustomDistanceEntry(m, label, discipline, owner?.id);
     // [FELD] Dystans zestawu „Feld” startuje od tarczy terenowej dobranej do metrów.
-    if ((owner ? styleOfSetup(owner) : activeStyle) === 'field') entry.targetType = fieldFaceForMeters(meters);
+    const newStyle = owner ? styleOfSetup(owner) : activeStyle;
+    if (newStyle === 'field') entry.targetType = fieldFaceForMeters(meters);
+    if (newStyle === 'ifaa') entry.targetType = ifaaFaceForMeters(meters);
     onUpdateAllDistances([...list, entry].sort(compareDistances));
     setShowAddDistance(false);
     setNewMeters('');

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import jsPDF from 'jspdf';
 import { buildSessionPdf } from './export/sessionPdf';
+import { resolveTargetFace } from '../config/targetFaces';
 import { useTranslation } from 'react-i18next'; 
 
 interface ExportPanelProps {
@@ -99,14 +100,15 @@ export default function ExportPanel({ session, isPremium, onTriggerPaywall, roun
     const date = session.date || new Date().toISOString().split('T')[0];
     let csvContent = "data:text/csv;charset=utf-8,";
     // [E2E 2026-11-06] Nagłówek w języku użytkownika (wcześniej zawsze po polsku).
-    csvContent += [t('export.csvEnd'), ...[1, 2, 3, 4, 5, 6].map(n => t('export.csvArrow', { n })), t('export.csvSum')].join(',') + '\n';
+    // [IFAA] Tyle kolumn strzał, ile ma seria (IFAA 4/5, reszta 6).
+    const perEnd = resolveTargetFace(targetType || session.targetType).round?.arrowsPerEnd ?? 6;
+    csvContent += [t('export.csvEnd'), ...Array.from({ length: perEnd }, (_, k) => t('export.csvArrow', { n: k + 1 })), t('export.csvSum')].join(',') + '\n';
     
     session.ends.forEach((end: any, index: number) => {
        const arrs = end.arrows || [];
        const row = [
          index + 1, 
-         arrs[0] || '', arrs[1] || '', arrs[2] || '', 
-         arrs[3] || '', arrs[4] || '', arrs[5] || '', 
+         ...Array.from({ length: perEnd }, (_, k) => arrs[k] || ''),
          end.total_sum || 0
        ];
        csvContent += row.join(",") + "\n";

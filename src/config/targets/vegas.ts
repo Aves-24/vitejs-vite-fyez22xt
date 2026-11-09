@@ -35,7 +35,7 @@ export const VEGAS_FACE_ID = 'Vegas 3-Spot';
 
 export const VEGAS_FACE: TargetFace = {
   id: VEGAS_FACE_ID,
-  layout: 'spot3-vegas',
+  layout: 'spots',
   // Fizycznie spot 20 cm, ale wymiarami stref = tarcza 40 cm (handicap liczy jak 3-Spot).
   diameterCm: 40,
   scoringRingStep: 10, // 0,2 r przy r = 50 — szerokość pierścienia do skupienia

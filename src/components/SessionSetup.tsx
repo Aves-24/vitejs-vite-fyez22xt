@@ -9,11 +9,12 @@ import { useCurrentFocus, useFocusChoice, displayPair, displayProgress, swapFocu
 import { saveTechnicalSession, addToDailyArrowCounter } from '../utils/techSession';
 import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip, FocusChoiceChips, focusTitle } from './tagebuch/FocusCard';
-import { selectableTargetIdsFor } from '../config/targetFaces';
+import { selectableTargetIdsFor, resolveTargetFace } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
 import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex, styleOfSetup } from '../config/equipmentSetups';
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, distanceMeters } from '../config/distances';
 import { fieldFaceForMeters } from '../config/targets/waField';
+import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
 import { hasActivePro } from '../utils/proAccess';
@@ -126,6 +127,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // [FELD] Zestaw „Feld” dostaje wyłącznie tarcze terenowe (i tylko on je widzi).
   const style = styleOfSetup(activeSetup);
   const targetOptions = useMemo(() => selectableTargetIdsFor(discipline, style), [discipline, style]);
+  // [IFAA] Tarcza z własnym formatem zawodów (4 × 28, 5 × 12) — bez skracania serii.
+  const faceRound = resolveTargetFace(selectedTarget).round;
 
   // [KOLORY] Dystanse aktywnego zestawu: te w jego kolorze plus wspólne jego
   // dyscypliny — patrz `distancesForSetup`. Łucznik dalej nie przewija 5 i 7 m
@@ -241,7 +244,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // z tarczą, której nie ma nawet na liście wyboru.
   useEffect(() => {
     if (targetOptions.length > 0 && selectedTarget && !targetOptions.includes(selectedTarget)) {
-      setSelectedTarget(style === 'field' ? fieldFaceForMeters(distanceMeters(selectedDistance)) : targetOptions[0]);
+      setSelectedTarget(style === 'field' ? fieldFaceForMeters(distanceMeters(selectedDistance)) : style === 'ifaa' ? ifaaFaceForMeters(distanceMeters(selectedDistance)) : targetOptions[0]);
     }
   }, [targetOptions, selectedTarget, style, selectedDistance]);
 
@@ -251,7 +254,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   /** Stempel dystansu przekazywany dalej: id zawsze, etykieta tylko gdy jest. */
   const startArgs = (): [string, string | undefined, number] =>
-    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, plannedEnds];
+    [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, faceRound ? faceRound.ends : plannedEnds];
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
@@ -432,8 +435,15 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </button>
           )}
 
+          {/* [IFAA] Format z tarczy jak na zawodach — bez skracania. */}
+          {selectedId && faceRound && (
+            <div className="border-t border-t-gray-100 px-3 py-2 flex items-center gap-2" data-testid="face-round">
+              <span className="flex-1 text-[13px] font-bold text-gray-500">{t('setup.endsLabel')}</span>
+              <span className="text-[14px] font-black text-[#0a3a2a]">{faceRound.ends} × {faceRound.arrowsPerEnd} {t('common.arrows')}</span>
+            </div>
+          )}
           {/* Passen — zawsze widoczne, zwinięte; rozwija 6/8/10/12. */}
-          {selectedId && (
+          {selectedId && !faceRound && (
             <div className="border-t border-t-gray-100 px-3 py-2">
               <div className="flex items-center gap-2">
                 <button

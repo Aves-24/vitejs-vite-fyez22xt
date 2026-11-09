@@ -2,6 +2,7 @@ import React from 'react';
 import { resolveTargetFace } from '../../config/targetFaces';
 import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
+import { spotGeometryOf } from '../../config/spotGeometry';
 
 interface TargetThumbnailProps {
   targetType?: string | null;
@@ -36,7 +37,10 @@ export const TargetThumbnail: React.FC<TargetThumbnailProps> = ({ targetType, cl
 
   const isVertical = face.layout === 'spot3-single';
   // [VEGAS] dwie kartki jedna nad drugą zajmują całą szerokość.
-  const vb = face.layout === 'spot3-vegas' ? '-2 -2 304 404' : isVertical ? '73 -2 154 404' : '3 -2 294 404';
+  // [SPOTY] Własna geometria (Vegas, IFAA 4/5-Spot) — kadr wokół kartek.
+  const g = face.layout === 'spots' ? spotGeometryOf(face.id) : null;
+  const box = g ? g.sheets.reduce((b, s) => ({ x0: Math.min(b.x0, s.x), y0: Math.min(b.y0, s.y), x1: Math.max(b.x1, s.x + s.w), y1: Math.max(b.y1, s.y + s.h) }), { x0: 999, y0: 999, x1: -999, y1: -999 }) : null;
+  const vb = box ? `${box.x0 - 2} ${box.y0 - 2} ${box.x1 - box.x0 + 4} ${box.y1 - box.y0 + 4}` : isVertical ? '73 -2 154 404' : '3 -2 294 404';
   return (
     <svg viewBox={vb} className={className} aria-hidden="true">
       <SpotTarget targetType={face.id} isVertical={isVertical} preview />

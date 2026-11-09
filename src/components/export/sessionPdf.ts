@@ -81,13 +81,15 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
   // --- LEWA KOLUMNA: TABELE RUND ---
   let yL = 36;
   const rounds = [ends.slice(0, o.roundSize), ends.slice(o.roundSize)].filter(r => r.length);
+  // [IFAA] Kolumny strzał = długość serii tarczy (IFAA 4/5, reszta 6).
+  const perEnd = resolveTargetFace(o.targetType).round?.arrowsPerEnd ?? 6;
   rounds.forEach((round, ri) => {
     const start = ri === 0 ? 0 : o.roundSize;
     let run = 0;
     const body = round.map((e: any, i: number) => {
       run += e.total_sum || 0;
       const arr: string[] = e.arrows || [];
-      return [String(start + i + 1), ...Array.from({ length: 6 }, (_, k) => arr[k] || ''), String(e.total_sum ?? ''), String(run)];
+      return [String(start + i + 1), ...Array.from({ length: perEnd }, (_, k) => arr[k] || ''), String(e.total_sum ?? ''), String(run)];
     });
     const st = getStats(round);
     autoTable(doc, {
@@ -98,13 +100,13 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
       styles: { font: 'Roboto', fontSize: 8, cellPadding: 1.4, halign: 'center', lineColor: LINE, lineWidth: 0.1, textColor: [30, 30, 30] },
       headStyles: { fillColor: FOREST, textColor: [255, 255, 255], fontStyle: 'bold' },
       head: [
-        [{ content: `${t('export.pdfRound', 'Runda')} ${ri + 1}`, colSpan: 7, styles: { halign: 'left' } }, { content: `${st.score}`, colSpan: 2, styles: { halign: 'right' } }],
-        ['P', '1', '2', '3', '4', '5', '6', t('export.pdfSum', 'Suma'), t('export.pdfTotal', 'Wynik')],
+        [{ content: `${t('export.pdfRound', 'Runda')} ${ri + 1}`, colSpan: perEnd + 1, styles: { halign: 'left' } }, { content: `${st.score}`, colSpan: 2, styles: { halign: 'right' } }],
+        ['P', ...Array.from({ length: perEnd }, (_, k) => String(k + 1)), t('export.pdfSum', 'Suma'), t('export.pdfTotal', 'Wynik')],
       ],
       body,
-      columnStyles: { 0: { textColor: GREY, cellWidth: 9 }, 7: { fontStyle: 'bold', cellWidth: 14 }, 8: { fontStyle: 'bold', cellWidth: 14 } },
+      columnStyles: { 0: { textColor: GREY, cellWidth: 9 }, [perEnd + 1]: { fontStyle: 'bold', cellWidth: 14 }, [perEnd + 2]: { fontStyle: 'bold', cellWidth: 14 } },
       didParseCell: (d: any) => {
-        if (d.section === 'body' && d.column.index >= 1 && d.column.index <= 6) d.cell.styles.fillColor = cellFill(String(d.cell.raw || ''));
+        if (d.section === 'body' && d.column.index >= 1 && d.column.index <= perEnd) d.cell.styles.fillColor = cellFill(String(d.cell.raw || ''));
       },
     });
     yL = (doc as any).lastAutoTable.finalY + 2;

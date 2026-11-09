@@ -76,6 +76,40 @@ export const SINGLE_COLUMN: Pick<SpotGeometry, 'sheets' | 'spots' | 'r' | 'perSh
 };
 
 /**
+ * [IFAA] 4-Spot 20 cm: cztery tarczki w kwadracie 2×2 na jednej kartce,
+ * jedna strzała na każdą (regulamin: lewa górna, prawa górna, lewa dolna,
+ * prawa dolna). Seria = 4 strzały, więc jeden arkusz.
+ */
+export const QUAD: Pick<SpotGeometry, 'sheets' | 'spots' | 'r' | 'perSheet'> = {
+  sheets: [{ x: 5, y: 50, w: 290, h: 300 }],
+  spots: [
+    { id: 'Q0', cx: 80, cy: 125, sheet: 0 },
+    { id: 'Q1', cx: 220, cy: 125, sheet: 0 },
+    { id: 'Q2', cx: 80, cy: 275, sheet: 0 },
+    { id: 'Q3', cx: 220, cy: 275, sheet: 0 },
+  ],
+  r: 66,
+  perSheet: 4,
+};
+
+/**
+ * [IFAA] Indoor 5-Spot: pięć tarczek 16 cm ułożonych jak piątka na kostce,
+ * jedna strzała na każdą (dowolna kolejność). Seria = 5 strzał.
+ */
+export const DICE5: Pick<SpotGeometry, 'sheets' | 'spots' | 'r' | 'perSheet'> = {
+  sheets: [{ x: 5, y: 35, w: 290, h: 330 }],
+  spots: [
+    { id: 'D0', cx: 72, cy: 100, sheet: 0 },
+    { id: 'D1', cx: 228, cy: 100, sheet: 0 },
+    { id: 'D2', cx: 150, cy: 200, sheet: 0 },
+    { id: 'D3', cx: 72, cy: 300, sheet: 0 },
+    { id: 'D4', cx: 228, cy: 300, sheet: 0 },
+  ],
+  r: 58,
+  perSheet: 5,
+};
+
+/**
  * Definicja spotów niesiona przez tarczę (pole `spot` w TargetFace). Brak =
  * klasyczny spot WA w układzie z `layout`.
  */

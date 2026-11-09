@@ -25,7 +25,7 @@ import { useCurrentFocus, sessionFocusFields, useFocusChoice, chosenFocusTopics,
 import { FocusDots, focusTitle, focusPalette, focusIcon } from '../components/tagebuch/FocusCard';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { useTranslation } from 'react-i18next';
-import { isSpotFace, friendlyTargetName, keypadValuesFor } from '../config/targetFaces';
+import { isSpotFace, friendlyTargetName, keypadValuesFor, resolveTargetFace } from '../config/targetFaces';
 import { addSpotArrow } from '../utils/spotRule';
 import { topicLabel } from '../constants/trainingTopics';
 import { PLANNED_ENDS } from '../utils/partialSession';
@@ -33,8 +33,7 @@ import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
-import { fieldArrowClass } from '../config/targets/waField';
-import { isFieldFace } from '../config/statsGroups';
+import { faceKeyClass } from '../config/arrowKeyColors';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -75,9 +74,8 @@ const getFlagEmoji = (countryCode: string) => {
 };
 
 export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
-  // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
-  const isField = isFieldFace(targetType);
-  const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
+  // [KOLORY KLAWISZY] Teren/IFAA mają własne kolory wartości (config/arrowKeyColors).
+  const arrowStyle = (v: string) => faceKeyClass(targetType, v) || getArrowStyles(v);
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
@@ -164,10 +162,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // Ile serii ma ten trening. Standard 12 (2 rundy po 6); krotszy wybiera sie
   // w Vorbereitung. Pojedynek zawsze 12. Wznowiony trening bierze wartosc
   // z grotX_activeSession (efekt nizej), nie z propsa.
+  // [IFAA] Format z tarczy jak na zawodach: IFAA Field/Hunter 4 strzały × 28 tarcz,
+  // Indoor 5 × 12; reszta 6 × 12. Pojedynek zawsze standard.
+  const faceRound = battleId ? undefined : resolveTargetFace(targetType).round;
+  const arrowsPerEnd = faceRound?.arrowsPerEnd ?? 6;
+  const fullEnds = faceRound?.ends ?? PLANNED_ENDS;
   const [plannedEnds, setPlannedEnds] = useState<number>(
-    !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < PLANNED_ENDS ? plannedEndsProp : PLANNED_ENDS
+    !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < fullEnds ? plannedEndsProp : fullEnds
   );
-  const isShortTraining = plannedEnds < PLANNED_ENDS;
+  const isShortTraining = plannedEnds < fullEnds;
   // Seria dzieli sie po rowno na 2 Durchgange: 12 = 6+6, 8 = 4+4, 6 = 3+3.
   const roundSize = Math.ceil(plannedEnds / 2);
 
@@ -192,7 +195,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
           if (data.activeRoundTab) setActiveRoundTab(data.activeRoundTab);
           if (data.saveId) saveIdRef.current = data.saveId;
-          if (!battleId && typeof data.plannedEnds === 'number' && data.plannedEnds > 0 && data.plannedEnds <= PLANNED_ENDS) setPlannedEnds(data.plannedEnds);
+          if (!battleId && typeof data.plannedEnds === 'number' && data.plannedEnds > 0 && data.plannedEnds <= fullEnds) setPlannedEnds(data.plannedEnds);
         }
       } catch (e) {
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
@@ -334,7 +337,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   };
 
   const addScoreFromKeyboard = (v: string) => {
-    if (inputArrows.length < 6) {
+    if (inputArrows.length < arrowsPerEnd) {
       setInputArrows([...inputArrows, v]);
       setInputCoordinates([...inputCoordinates, { x: null, y: null, spotId: null }]);
     } else if (commitEndEarly()) {
@@ -344,7 +347,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   };
 
   const addScoreFromTarget = (v: string, x: number, y: number, spotId: string | null) => { 
-    if (inputArrows.length < 6) { 
+    if (inputArrows.length < arrowsPerEnd) { 
       const coord = { x: x ?? null, y: y ?? null, spotId: spotId ?? null };
       const isVisualInput = x !== null && y !== null;
       // [3-SPOT] Zasada „jedna strzała na spot” — utils/spotRule.
@@ -441,7 +444,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   useEffect(() => {
     let timeoutId: any;
-    if (inputArrows.length === 6) {
+    if (inputArrows.length === arrowsPerEnd) {
       timeoutId = setTimeout(() => {
         commitEnd(inputArrows, inputCoordinates);
         setInputArrows([]);
@@ -451,7 +454,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     return () => clearTimeout(timeoutId);
     // inputCoordinates w zależnościach: oznaczenie 6. strzały jako Fehlschuss
     // w tych 600 ms musi trafić do zamykanej serii (inaczej zostaje stary stan).
-  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize]);
+  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd]);
 
   const r1Ends = submittedEnds.slice(0, roundSize);
   const r2Ends = submittedEnds.slice(roundSize, plannedEnds);
@@ -981,11 +984,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             return (
               <div key={idx} className={`flex items-center text-center px-1 py-0.5 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
                 <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
-                <div className="flex-1 grid grid-cols-6 gap-1">
+                <div className="flex-1 grid gap-1" style={{ gridTemplateColumns: `repeat(${arrowsPerEnd}, minmax(0, 1fr))` }}>
                   {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,
                       więc pasek pod polem = kolor strzały; gotowe serie zostają
                       posortowane od X do M jak zawsze. */}
-                  {[0,1,2,3,4,5].map(ai => {
+                  {Array.from({ length: arrowsPerEnd }, (_, k) => k).map(ai => {
                     // [FEHLSCHUSS] Gotowa seria jest posortowana — pole ai to strzała rawArrows[order[ai]].
                     const rawIdx = isCur ? ai : (end?.rawArrows ? sortedRawIndices(end.rawArrows)[ai] : -1);
                     const bad = isCur ? !!inputCoordinates[ai]?.bad : !!(rawIdx >= 0 && end?.dots?.[rawIdx]?.bad);

@@ -7,6 +7,16 @@
 
 ## MAŁE ZADANIA (zgłoszone przez usera)
 
+- [ ] **Nowa tarcza: WA Auflage 3×20 cm Vegas Spot** (2026-11-09): trzy
+      spoty 20 cm w trójkącie (jeden u góry na środku, dwa niżej obok siebie),
+      punktacja 6–10 z wewnętrznym 10/X (jak nasz 3-Spot: X, 10–6, M).
+      User: „to jest po prostu spot inaczej ustawiony”. Używana na Vegas
+      (hala) i NFAA, dobra dla Blankbogen. Do zrobienia: nowy układ w
+      `config/targetFaces.ts` (np. `spot3-vegas`, trójkąt) + rysunek tarczy
+      w NOWYM pliku (memory: nowa tarcza = nowy plik), wpisywanie myszą/
+      palcem do najbliższego spotu, `targetScoring.test.ts`, katalog tarcz,
+      ikonka „AUFLAGE” na ekranie treningu. Dystans: 18 m (hala).
+
 - [ ] **Schreiber-Training na stronie głównej** (2026-11-02): dziś gra jest
       tylko easter eggiem w Einstellungen (przycisk przy „Höchste
       Wettkampfebene”, `components/schreiber/SchreiberGame.tsx`). Trzeba ją

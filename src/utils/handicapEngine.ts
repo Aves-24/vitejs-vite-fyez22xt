@@ -47,7 +47,8 @@ export function faceSpecFor(targetType?: string | null): FaceSpec | null {
   // Spoty z własnymi strefami (teren 20 cm, IFAA 4-Spot / 5-Spot): strefy z ułamków promienia spotu.
   if (face.spot?.zones && face.spot.spotCm) {
     const rSpot = face.spot.spotCm / 200;
-    return { diameterM: face.spot.spotCm / 100, minRing: 1, zones: face.spot.zones.map(z => ({ rM: z.f * rSpot, value: z.value === 'X' ? 10 : Number(z.value) })) };
+    return { diameterM: face.spot.spotCm / 100, minRing: 1, // X w strefie środkowej (IFAA) nie ma osobnej wartości — pomijamy go w modelu.
+    zones: face.spot.zones.filter(z => z.value !== 'X').map(z => ({ rM: z.f * rSpot, value: Number(z.value) })) };
   }
   // Pełne tarcze ze strefami (WA Field, IFAA Field/Hunter/Indoor): r w viewBoxie 300 (promień 150).
   if (face.zones) {

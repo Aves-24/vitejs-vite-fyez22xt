@@ -5,6 +5,7 @@ import { distanceKey } from '../../config/distances';
 import { getStats } from '../../utils/endStats';
 import { handicapOfSession } from '../../utils/rankEngine';
 import { countBad } from '../../utils/badShots';
+import { xPointsFor } from '../../utils/arrowPoints';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -71,7 +72,7 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   const num = (v: number, digits: number) =>
     v.toLocaleString(i18n.language, { minimumFractionDigits: digits, maximumFractionDigits: digits });
 
-  const all = getStats(ends);
+  const all = getStats(ends, [], xPointsFor(targetType));
   if (all.count === 0) return null;
   const avg = all.score / all.count;
 
@@ -112,8 +113,8 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   const badCount = countBad(ends);
 
   // --- Rundy ---
-  const r1 = getStats(ends.slice(0, roundSize));
-  const r2 = getStats(ends.slice(roundSize));
+  const r1 = getStats(ends.slice(0, roundSize), [], xPointsFor(targetType));
+  const r2 = getStats(ends.slice(roundSize), [], xPointsFor(targetType));
   const roundDelta = r2.count > 0 && r1.count === r2.count ? r2.score - r1.score : null;
 
   // --- Równość serii (odchylenie standardowe sum serii) ---

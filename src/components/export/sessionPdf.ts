@@ -10,6 +10,7 @@ import { arrowColorAt } from '../../config/arrowColors';
 import { isFullFace, isSpotFace, friendlyTargetName, resolveTargetFace } from '../../config/targetFaces';
 import { spotGeometryOf } from '../../config/spotGeometry';
 import { sessionDistanceLabel } from '../../config/distances';
+import { xPointsFor } from '../../utils/arrowPoints';
 
 /**
  * [PDF 2026-10-29] Raport treningu w układzie nowego podsumowania: nagłówek
@@ -57,7 +58,7 @@ export interface SessionPdfOptions {
 export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions): void {
   const { t } = o;
   const ends: any[] = session.ends || [];
-  const all = getStats(ends);
+  const all = getStats(ends, [], xPointsFor(o.targetType));
   const avg = all.count ? all.score / all.count : 0;
   const num = (v: number, d = 2) => v.toLocaleString(o.lang, { minimumFractionDigits: d, maximumFractionDigits: d });
   const L = 12, R = 198;                 // marginesy strony
@@ -91,7 +92,7 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
       const arr: string[] = e.arrows || [];
       return [String(start + i + 1), ...Array.from({ length: perEnd }, (_, k) => arr[k] || ''), String(e.total_sum ?? ''), String(run)];
     });
-    const st = getStats(round);
+    const st = getStats(round, [], xPointsFor(o.targetType));
     autoTable(doc, {
       startY: yL,
       margin: { left: colL },
@@ -122,8 +123,8 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
   doc.setFont('Roboto', 'bold'); doc.setFontSize(10); doc.setTextColor(...FOREST);
   doc.text(t('scoring.bilanz.title'), colR, yR); yR += 6;
 
-  const r1 = getStats(ends.slice(0, o.roundSize));
-  const r2 = getStats(ends.slice(o.roundSize));
+  const r1 = getStats(ends.slice(0, o.roundSize), [], xPointsFor(o.targetType));
+  const r2 = getStats(ends.slice(o.roundSize), [], xPointsFor(o.targetType));
   label(t('scoring.bilanz.rounds'), yR);
   const diff = r2.count && r1.count === r2.count ? r2.score - r1.score : null;
   value(`R1 ${r1.score}${r2.count ? `   R2 ${r2.score}` : ''}${diff ? `   (${diff > 0 ? '+' : '−'}${Math.abs(diff)})` : ''}`, yR); yR += 5.5;

@@ -1,4 +1,5 @@
 import { resolveTargetFace, isSpotFace } from '../config/targetFaces';
+import { xPointsFor } from './arrowPoints';
 import { spotGeometryOf, spotById } from '../config/spotGeometry';
 import { centerFor } from './spread';
 import { ARROW_COLORS } from '../config/arrowColors';
@@ -56,9 +57,9 @@ interface SessionLike {
   ends?: Array<{ rawArrows?: string[]; arrows?: string[]; dots?: Array<{ x: number | null; y: number | null; spotId?: string | null; bad?: boolean }> }>;
 }
 
-const valueOf = (v?: string): number | null => {
+const valueOf = (v?: string, xPoints = 10): number | null => {
   if (!v) return null;
-  if (v === 'X') return 10;
+  if (v === 'X') return xPoints; // [LICZNIK X] IFAA: X = 5
   if (v === 'M') return 0;
   const n = parseInt(v, 10);
   return Number.isFinite(n) ? n : null;
@@ -115,7 +116,7 @@ export function computeArrowStats(sessions: SessionLike[]): ArrowStatsResult | n
 
       raw.forEach((v, i) => {
         if (i >= acc.length) return;
-        const val = valueOf(v);
+        const val = valueOf(v, xPointsFor(s.targetType));
         if (val === null) return;
         acc[i].score += val;
         acc[i].scored++;

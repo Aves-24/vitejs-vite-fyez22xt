@@ -26,6 +26,7 @@ import { WA_FIELD_80_FACE, WA_FIELD_60_FACE, WA_FIELD_40_FACE } from './targets/
 import { WA_FIELD20_FACE } from './targets/waField20Triple';
 import { VEGAS_FACE } from './targets/vegas';
 import { IFAA_FIELD_FACES, IFAA_INDOOR_FACE, IFAA_INDOOR5_FACE } from './targets/ifaa';
+import { IFAA_EXPERT_FACES } from './targets/ifaaExpert';
 import type { FaceSpotSpec } from './spotGeometry';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
@@ -105,6 +106,12 @@ export interface TargetFace {
    * IFAA Field/Hunter: 4 strzały na tarczę; Indoor: serie po 5.
    */
   round?: { arrowsPerEnd: number; ends: number };
+  /**
+   * [LICZNIK X] Promień X-ringu (viewBox 300) na tarczach ze strefami — X liczy
+   * się jak strefa środkowa (IFAA: 5) i osobno do remisów. Dla tarcz wielospotowych
+   * X idzie ze `spot.zones` (wartość 'X'); tu wystarczy > 0, żeby klawiatura miała X.
+   */
+  xRing?: number;
   /** Stare stringi z Firestore, które muszą dalej działać. */
   aliases: readonly string[];
   /** Czy w ogóle się na nią strzela (trening techniczny — nie). */
@@ -189,6 +196,8 @@ export const TARGET_FACES: readonly TargetFace[] = [
   ...IFAA_FIELD_FACES,
   IFAA_INDOOR_FACE,
   IFAA_INDOOR5_FACE,
+  // [IFAA EXPERT] Field z liniami pośrednimi, 5–1 — targets/ifaaExpert.ts.
+  ...IFAA_EXPERT_FACES,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */
@@ -240,7 +249,8 @@ export function isSpotFace(raw?: string | null): boolean {
 export function keypadValuesFor(raw?: string | null): string[] {
   const face = resolveTargetFace(raw);
   if (face.zones?.length) {
-    return [...face.zones].map(z => z.value).sort((a, b) => b - a).map(String);
+    const vals = [...face.zones].map(z => z.value).sort((a, b) => b - a).map(String);
+    return face.xRing ? ['X', ...vals] : vals;
   }
   const isSpot = face.layout === 'spot3-double' || face.layout === 'spot3-single' || face.layout === 'spots';
   const min = Math.max(1, isSpot ? Math.max(6, face.minScoringRing) : face.minScoringRing);

@@ -5,6 +5,7 @@ import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
 import { spotGeometryOf, sheetForArrow, sheetViewBox, scoreSpot } from '../../config/spotGeometry';
 import { faceKeyClass, faceKeySvg } from '../../config/arrowKeyColors';
+import { arrowPoints, xPointsFor } from '../../utils/arrowPoints';
 import { arrowColorAt } from '../../config/arrowColors';
 import { startAim, stepAim, AimFilter, Pt } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
@@ -128,7 +129,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
   // Ciemna obwódka zawsze, bo biała kropka na bieli i żółta na złocie znikają.
   const dotColor = (i: number) => (arrowColors && arrowColorAt(i)) || { hex: '#ffffff', text: '#000000' };
   const nextArrow = arrowColors ? arrowColorAt(currentCoords.length) : null;
-  const endSum = currentArrows.reduce((s: number, v: string) => s + (v === 'X' ? 10 : v === 'M' ? 0 : parseInt(v) || 0), 0);
+  const endSum = currentArrows.reduce((s: number, v: string) => s + arrowPoints(v, xPointsFor(targetType)), 0);
 
   useEffect(() => {
     if (isFullscreen) {

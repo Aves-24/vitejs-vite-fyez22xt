@@ -37,9 +37,9 @@ async function pickFor18m(page: Page, request: any, uid: string, to: string, fro
   await settingsTab(page, 'DISTANZEN').click();
   await page.getByRole('button', { name: `Auflage wählen: ${from}` }).click();
   const sheet = page.getByRole('dialog', { name: 'Auflage wählen · 18m' });
-  await expect(sheet.getByRole('button', { name: /IFAA/ })).toHaveCount(10);
+  await expect(sheet.getByRole('button', { name: /IFAA/ })).toHaveCount(14);
   await page.screenshot({ path: test.info().outputPath(`picker-${to.replace(/\W+/g, '_')}.png`) });
-  await sheet.getByRole('button', { name: new RegExp(`^${to}`) }).click();
+  await sheet.getByRole('button', { name: to, exact: true }).click();
   await save(page).click();
   await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields ?? {}), { timeout: 15_000 }).toContain(to);
 }
@@ -55,18 +55,20 @@ test('IFAA Field 35 cm: seria 4 strzał, 28 tarcz, klawiatura 5/4/3, świat IFAA
   await expect(page.getByTestId('setup-card')).toContainText('IFAA Field 35cm');
   await expect(page.getByTestId('face-round')).toContainText('28 × 4');
   await page.getByRole('button', { name: 'Training', exact: true }).click();
-  for (const v of ['5', '4', '3', 'M']) await expect(page.getByRole('button', { name: v, exact: true })).toBeVisible();
-  for (const v of ['X', '6', '2']) await expect(page.getByRole('button', { name: v, exact: true })).toHaveCount(0);
+  // [LICZNIK X] X (= 5, do remisów), 5/4/3, M.
+  for (const v of ['X', '5', '4', '3', 'M']) await expect(page.getByRole('button', { name: v, exact: true })).toBeVisible();
+  for (const v of ['6', '2']) await expect(page.getByRole('button', { name: v, exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: '5', exact: true })).toHaveCSS('background-color', 'rgb(51, 51, 51)'); // czarny środek
   await expect(page.getByRole('button', { name: '4', exact: true })).toHaveCSS('background-color', 'rgb(255, 255, 255)'); // biały pierścień
 
-  await shoot(page, ['5', '5', '4', '3']); // seria 1 = 17 (4 strzały)
+  await shoot(page, ['X', '5', '4', '3']); // seria 1 = 17 (X = 5, 4 strzały)
   await page.waitForTimeout(800);
   await shoot(page, ['5', '4', '4', '3']); // seria 2 = 16
   await page.waitForTimeout(800);
   const main = page.getByRole('main');
-  await expect(main).toContainText(/P1\s*5\s*5\s*4\s*3\s*17\s*17/);
+  await expect(main).toContainText(/P1\s*X\s*5\s*4\s*3\s*17\s*17/);
   await expect(main).toContainText(/Gesamtringzahl\s*33/);
+  await expect(main).toContainText(/X\/10\/9\s*1\/0\/0/); // 1 X, bez dziesiątek
   await expect(main).toContainText('P14'); // runda 1 = 14 tarcz
   await page.screenshot({ path: test.info().outputPath('ifaa-field-scoring.png') });
 
@@ -102,7 +104,8 @@ test('IFAA 4-Spot 20 cm i Indoor 5-Spot: jedna strzała na tarczkę, seria 4 / 5
   await clickSvg(page, 80 + 25, 275); // 4 (0,2r–0,6r)
   await page.screenshot({ path: test.info().outputPath('ifaa-4spot.png') });
   await clickSvg(page, 220, 275);
-  await expect(page.getByRole('main')).toContainText(/P1\s*5\s*5\s*5\s*4\s*19/);
+  // Środki tarczek = X (5 pkt każdy): X X X 4 = 19.
+  await expect(page.getByRole('main')).toContainText(/P1\s*X\s*X\s*X\s*4\s*19/);
   await page.waitForTimeout(800);
   await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
   await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();

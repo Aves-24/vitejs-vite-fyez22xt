@@ -58,6 +58,8 @@ export const scoreSingleFace = (face: TargetFace, x: number, y: number, touch = 
   // IFAA 5-4-3) nie dają się wyliczyć wzorem `10 - floor(d / krok)` — mają
   // jawną listę stref. Pierwsza strefa, w którą trafiamy, wygrywa.
   if (face.zones) {
+    // [LICZNIK X] X-ring w środkowej strefie (IFAA) — osobno do remisów.
+    if (face.xRing && d <= face.xRing) return { val: 'X', sId: '' };
     const zone = face.zones.find(z => d <= z.r);
     return { val: zone ? String(zone.value) : "M", sId: "" };
   }

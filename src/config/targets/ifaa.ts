@@ -36,20 +36,24 @@ const FIELD_RINGS: readonly TargetRing[] = [
   { r: 150, fill: BLACK, stroke: WHITE },
   { r: 90, fill: WHITE, stroke: LINE },
   { r: 30, fill: BLACK, stroke: WHITE },
-  { r: 4, fill: WHITE, stroke: WHITE }, // biały „x” w środku (tylko znak, nie strefa)
+  // [LICZNIK X] X-ring (remisy): regulamin podaje tylko „white X in the centre spot”,
+  // bez wymiaru — przyjmujemy 0,1 D jak w Indoor (4 cm na 40 cm), zgodnie z wydrukami DFBV.
+  { r: 15, fill: BLACK, stroke: WHITE },
+  { r: 4, fill: WHITE, stroke: WHITE }, // biały „x” w środku
 ];
 const HUNTER_RINGS: readonly TargetRing[] = [
   { r: 150, fill: BLACK, stroke: WHITE },
   { r: 90, fill: BLACK, stroke: WHITE },
   { r: 30, fill: WHITE, stroke: LINE },
+  { r: 15, fill: WHITE, stroke: LINE }, // X-ring (remisy), 0,1 D
   { r: 4, fill: BLACK, stroke: BLACK }, // czarny „x” w białym środku
 ];
 
 /** 4 strzały na tarczę; jednostka 14 tarcz, runda = 2 jednostki (28). */
 const FIELD_ROUND = { arrowsPerEnd: 4, ends: 28 } as const;
 
-const FIELD_KEYS = { '5': 'black', '4': 'white', '3': 'black' } as const;
-const HUNTER_KEYS = { '5': 'white', '4': 'black', '3': 'black' } as const;
+const FIELD_KEYS = { X: 'black', '5': 'black', '4': 'white', '3': 'black' } as const;
+const HUNTER_KEYS = { X: 'white', '5': 'white', '4': 'black', '3': 'black' } as const;
 
 const single = (
   id: string, cm: number, rings: readonly TargetRing[], keys: Record<string, 'black' | 'white'>, pickOrder: number, aliases: string[],
@@ -61,6 +65,7 @@ const single = (
   minScoringRing: 3,
   rings,
   zones: FIELD_ZONES,
+  xRing: 15,
   aliases,
   scorable: true,
   statsGroup: 'ifaa',
@@ -74,9 +79,9 @@ const quadSpec = (hunter: boolean): FaceSpotSpec => ({
   arrangement: QUAD,
   spotCm: 20,
   rings: hunter
-    ? [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: BLACK, stroke: WHITE }, { f: 0.2, fill: WHITE, stroke: LINE }]
-    : [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: WHITE, stroke: LINE }, { f: 0.2, fill: BLACK, stroke: WHITE }],
-  zones: [{ f: 0.2, value: '5' }, { f: 0.6, value: '4' }, { f: 1, value: '3' }],
+    ? [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: BLACK, stroke: WHITE }, { f: 0.2, fill: WHITE, stroke: LINE }, { f: 0.1, fill: WHITE, stroke: LINE }]
+    : [{ f: 1, fill: BLACK, stroke: WHITE }, { f: 0.6, fill: WHITE, stroke: LINE }, { f: 0.2, fill: BLACK, stroke: WHITE }, { f: 0.1, fill: BLACK, stroke: WHITE }],
+  zones: [{ f: 0.1, value: 'X' }, { f: 0.2, value: '5' }, { f: 0.6, value: '4' }, { f: 1, value: '3' }],
 });
 
 const quad = (id: string, hunter: boolean, pickOrder: number, aliases: string[]): TargetFace => ({
@@ -88,6 +93,7 @@ const quad = (id: string, hunter: boolean, pickOrder: number, aliases: string[])
   rings: [],
   // Klawiatura i strefy: 5/4/3 (wartości z `zones`).
   zones: [{ r: 13.2, value: 5 }, { r: 39.6, value: 4 }, { r: 66, value: 3 }],
+  xRing: 6.6, // X ze `spot.zones`; tu tylko, żeby klawiatura miała X
   aliases,
   scorable: true,
   statsGroup: 'ifaa',
@@ -124,10 +130,11 @@ export const IFAA_INDOOR_FACE: TargetFace = {
     { r: 15, fill: WHITE, stroke: BLUE }, // X-ring (remisy)
   ],
   zones: [{ r: 30, value: 5 }, { r: 60, value: 4 }, { r: 90, value: 3 }, { r: 120, value: 2 }, { r: 150, value: 1 }],
+  xRing: 15, // regulamin: „4cm diameter X-ring” — tylko do remisów
   aliases: ['DFBV Indoor 40cm', 'IFAA Indoor'],
   scorable: true,
   statsGroup: 'ifaa',
-  keyColors: { '5': 'white', '4': 'blue', '3': 'blue', '2': 'blue', '1': 'blue' },
+  keyColors: { X: 'white', '5': 'white', '4': 'blue', '3': 'blue', '2': 'blue', '1': 'blue' },
   round: { arrowsPerEnd: 5, ends: 12 },
   pickOrder: 28,
 };

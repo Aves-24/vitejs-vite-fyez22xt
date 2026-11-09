@@ -19,9 +19,11 @@ export interface EndStats {
   avg: string;
 }
 
-export const getStats = (ends: any[], active: string[] = []): EndStats => {
+// [LICZNIK X] `xPoints` — ile daje X na tej tarczy (WA 10, IFAA 5: tylko do remisów,
+// więc w IFAA nie liczy się też jako „dziesiątka”). Domyślnie jak dotąd.
+export const getStats = (ends: any[], active: string[] = [], xPoints = 10): EndStats => {
   let x=0, t=0, n=0, score=0, count=0;
-  const proc = (v: string) => { if (!v) return; count++; if (v === 'X') { x++; t++; score += 10; } else if (v === '10') { t++; score += 10; } else if (v === '9') { n++; score += 9; } else if (v !== 'M') { score += parseInt(v); } };
+  const proc = (v: string) => { if (!v) return; count++; if (v === 'X') { x++; if (xPoints === 10) t++; score += xPoints; } else if (v === '10') { t++; score += 10; } else if (v === '9') { n++; score += 9; } else if (v !== 'M') { score += parseInt(v); } };
   ends.forEach(e => e.arrows?.forEach(proc)); active.forEach(proc);
   const avg = count > 0 ? (score / count).toFixed(2) : '0.00';
   return { x, t, n, score, count, avg };

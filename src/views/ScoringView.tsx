@@ -33,6 +33,7 @@ import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
+import { arrowPoints, xPointsFor } from '../utils/arrowPoints';
 import { faceKeyClass } from '../config/arrowKeyColors';
 
 const getArrowStyles = (val: string) => {
@@ -166,6 +167,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // Indoor 5 × 12; reszta 6 × 12. Pojedynek zawsze standard.
   const faceRound = battleId ? undefined : resolveTargetFace(targetType).round;
   const arrowsPerEnd = faceRound?.arrowsPerEnd ?? 6;
+  // [LICZNIK X] X na IFAA = 5 (tylko do remisów), na WA = 10.
+  const xPoints = xPointsFor(targetType);
   const fullEnds = faceRound?.ends ?? PLANNED_ENDS;
   const [plannedEnds, setPlannedEnds] = useState<number>(
     !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < fullEnds ? plannedEndsProp : fullEnds
@@ -397,7 +400,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // Seria w kształcie zapisu (posortowane strzały, kropki, suma).
   const makeEnd = (arrows: string[], coords: any[]) => {
     const sorted = sortArrows(arrows);
-    const sum = arrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0);
+    const sum = arrows.reduce((s, v) => s + arrowPoints(v, xPoints), 0);
 
     const safeCoordinates = coords.map(coord => ({
       x: coord?.x ?? null,
@@ -458,8 +461,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   const r1Ends = submittedEnds.slice(0, roundSize);
   const r2Ends = submittedEnds.slice(roundSize, plannedEnds);
-  const globalStats = getStats(submittedEnds, inputArrows);
-  const currentRoundStats = activeRoundTab === 1 ? getStats(r1Ends, submittedEnds.length < roundSize ? inputArrows : []) : getStats(r2Ends, submittedEnds.length >= roundSize ? inputArrows : []);
+  const globalStats = getStats(submittedEnds, inputArrows, xPoints);
+  const currentRoundStats = activeRoundTab === 1 ? getStats(r1Ends, submittedEnds.length < roundSize ? inputArrows : [], xPoints) : getStats(r2Ends, submittedEnds.length >= roundSize ? inputArrows : [], xPoints);
   const r1TotalScore = r1Ends.reduce((sum, end) => sum + (end.total_sum || 0), 0);
   const isRound1Finished = submittedEnds.length >= roundSize;
   const isShooting = submittedEnds.length < plannedEnds;
@@ -467,16 +470,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // Wynik na zywo idzie do pojedynku raz na serie (z zatwierdzonych serii),
   // nie przy kazdej strzale — 6x mniej zapisow i odczytow u przeciwnikow.
   // Wynik koncowy (z niedokonczona seria) dosyla saveTrainingSession.
-  const endsStats = getStats(submittedEnds);
+  const endsStats = getStats(submittedEnds, [], xPoints);
   // [VEREIN] Wynik narastający po każdej serii — z niego ranking „na ślepo"
   // przycina innych do etapu patrzącego (utils/battleStage.ts).
   const stageProgress = (active: string[] = []): StagePoint[] => {
     const out: StagePoint[] = submittedEnds.map((_, i) => {
-      const s = getStats(submittedEnds.slice(0, i + 1));
+      const s = getStats(submittedEnds.slice(0, i + 1), [], xPoints);
       return { a: s.count, s: s.score, x: s.x, t: s.t, n: s.n };
     });
     if (active.length) {
-      const s = getStats(submittedEnds, active);
+      const s = getStats(submittedEnds, active, xPoints);
       out.push({ a: s.count, s: s.score, x: s.x, t: s.t, n: s.n });
     }
     return out;
@@ -983,7 +986,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             const end = submittedEnds[idx];
             const isCur = idx === submittedEnds.length;
             const currentPassArrows = isCur ? inputArrows : (end?.arrows || []); 
-            const passSum = isCur ? inputArrows.reduce((s, v) => s + (v==='X'?10:v==='M'?0:parseInt(v)), 0) : (end?.total_sum || 0);
+            const passSum = isCur ? inputArrows.reduce((s, v) => s + arrowPoints(v, xPoints), 0) : (end?.total_sum || 0);
             const prevSum = submittedEnds.slice(activeRoundTab === 1 ? 0 : roundSize, idx).reduce((s, e) => s + (e.total_sum || 0), 0);
             const runSum = prevSum + passSum;
             return (

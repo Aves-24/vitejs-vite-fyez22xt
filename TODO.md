@@ -45,7 +45,8 @@
       Przed kodowaniem sprawdzić w aktualnym WA Book 4 (PDF z extranetu się
       nie pobrał) linie i cienki X.
 
-- [ ] **Rodzina tarcz IFAA / DFBV** (2026-11-09, user znalazł na
+- [x] ✅ ZROBIONE 2026-11-09 (0c64c61): `targets/ifaa.ts`, zestaw „IFAA”, świat 'ifaa' (skala 5), format zawodów 4×28 / 5×12, 4-Spot/5-Spot w spotGeometry. NIE zrobione: Expert Field (5–1 na liniach pośrednich), Animal Round, dystanse w jardach i runda z 28 różnymi dystansami (sesja = jeden dystans), licznik X dla remisów.
+      **Rodzina tarcz IFAA / DFBV** (2026-11-09, user znalazł na
       bogensportwelt.de → „Overlays FITA sport”): Indoor 40 cm niebieska
       (+ 5-Spot w kształcie X), Field 20 (4-Spot 2×2) / 35 / 50 / 65 cm
       (czarny środek + biała obręcz), Hunting 20 (4-Spot) / 35 / 50 / 65 cm

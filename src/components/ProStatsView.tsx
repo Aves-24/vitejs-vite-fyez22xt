@@ -3,6 +3,10 @@ import { distanceKey, sessionDistanceLabel, distanceMeters } from '../config/dis
 import { db } from '../firebase';
 import { collection, query, orderBy, limit, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+
+// Liczby z separatorem wg języka (DE/PL: 7,85; EN: 7.85).
+const fx = (v: number, d: number) => v.toLocaleString(i18n.language, { minimumFractionDigits: d, maximumFractionDigits: d });
 import { getRecentSessions } from '../lib/recentSessions';
 import ErgebniskurvePanel, { CurveSession } from './stats/ErgebniskurvePanel';
 import { isPartialSession, PartialInfo } from '../utils/partialSession';
@@ -540,7 +544,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                   <span className="block text-[8px] font-black uppercase tracking-widest text-gray-400">{t('stats.pro.formTrend', 'Trend Formy')}</span>
                   <span className={`inline-flex items-center gap-1 text-2xl font-black tabular-nums leading-tight ${stats.formTrend >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                     <span className="material-symbols-outlined text-[18px]">{stats.formTrend >= 0 ? 'trending_up' : 'trending_down'}</span>
-                    {stats.formTrend > 0 ? '+' : ''}{stats.formTrend.toFixed(2)}
+                    {stats.formTrend > 0 ? '+' : ''}{fx(stats.formTrend, 2)}
                   </span>
                   <span className="block text-[9px] font-bold text-gray-400">{t('stats.pro.unitPtsArrow', 'Pkt/Strzałę')}</span>
                 </div>
@@ -567,7 +571,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                           <div className="w-full relative flex items-end justify-center h-full">
                             {val > 0 && (
                               <span className="absolute -top-8 flex flex-col items-center leading-tight">
-                                {pts > 0 && <span className="text-[8px] font-black text-emerald-600">{pts.toFixed(1)}</span>}
+                                {pts > 0 && <span className="text-[8px] font-black text-emerald-600">{fx(pts, 1)}</span>}
                                 <span className={`text-[8px] font-black transition-colors ${isMax ? 'text-[#0a3a2a]' : 'text-gray-400'}`}>{val}</span>
                               </span>
                             )}
@@ -590,18 +594,18 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                                   <div className="flex items-center justify-between">
                   <div className="text-center flex-1">
                      <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.firstHalf', 'I Połowa (Śr.)')}</span>
-                     <span className="text-lg font-black text-[#0a3a2a]">{stats.fhAvg.toFixed(2)}</span>
+                     <span className="text-lg font-black text-[#0a3a2a]">{fx(stats.fhAvg, 2)}</span>
                   </div>
                   <div className="w-[1px] h-8 bg-gray-100"></div>
                   <div className="text-center flex-1">
                      <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.secondHalf', 'II Połowa (Śr.)')}</span>
-                     <span className="text-lg font-black text-[#0a3a2a]">{stats.shAvg.toFixed(2)}</span>
+                     <span className="text-lg font-black text-[#0a3a2a]">{fx(stats.shAvg, 2)}</span>
                   </div>
                   <div className="w-[1px] h-8 bg-gray-100"></div>
                   <div className="text-center flex-1">
                      <span className="text-[8px] font-bold text-gray-400 uppercase block mb-1">{t('stats.pro.decline', 'Spadek')}</span>
                      <span className={`text-lg font-black ${stats.fatigueDrop < -0.3 ? 'text-red-500' : stats.fatigueDrop > 0 ? 'text-emerald-500' : 'text-gray-500'}`}>
-                       {stats.fatigueDrop > 0 ? '+' : ''}{stats.fatigueDrop.toFixed(2)}
+                       {stats.fatigueDrop > 0 ? '+' : ''}{fx(stats.fatigueDrop, 2)}
                      </span>
                   </div>
                 </div>
@@ -612,7 +616,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
               {(arrowStats || stats.totalArrowsWithDetails > 0) && <Section icon="scatter_plot" label={t('stats.pro.secPfeile')} />}
               {arrowStats && <ArrowStatsCard data={arrowStats} />}
               {stats.totalArrowsWithDetails > 0 && (
-                <SummaryCard icon="track_changes" stripe="tb-d2" kind={t('stats.pro.zonesTitle', 'Rozkład Trafień')} title={`${t('stats.pro.zones.gold', 'Złote')}: ${((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(0)}%`} storageKey="pro-zones">
+                <SummaryCard icon="track_changes" stripe="tb-d2" kind={t('stats.pro.zonesTitle', 'Rozkład Trafień')} title={`${t('stats.pro.zones.gold', 'Złote')}: ${fx((stats.zones.gold / stats.totalArrowsWithDetails) * 100, 0)}%`} storageKey="pro-zones">
                                   <div className="w-full h-8 flex rounded-full overflow-hidden mb-2 shadow-inner">
                   {stats.zones.gold > 0 && <div style={{ width: `${(stats.zones.gold / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#F2C94C] h-full transition-all"></div>}
                   {stats.zones.red > 0 && <div style={{ width: `${(stats.zones.red / stats.totalArrowsWithDetails) * 100}%` }} className="bg-[#EB5757] h-full transition-all"></div>}
@@ -623,12 +627,12 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
                 </div>
                 
                 <div className="grid grid-cols-3 gap-y-2 mt-3">
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#F2C94C]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.gold', 'Złote')} ({((stats.zones.gold / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#EB5757]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.red', 'Czerw.')} ({((stats.zones.red / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#2F80ED]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.blue', 'Nieb.')} ({((stats.zones.blue / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#333333]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.black', 'Czarne')} ({((stats.zones.black / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.white', 'Białe')} ({((stats.zones.white / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
-                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-900"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.miss', 'Pudła')} ({((stats.zones.miss / stats.totalArrowsWithDetails) * 100).toFixed(1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#F2C94C]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.gold', 'Złote')} ({fx((stats.zones.gold / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#EB5757]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.red', 'Czerw.')} ({fx((stats.zones.red / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#2F80ED]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.blue', 'Nieb.')} ({fx((stats.zones.blue / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-[#333333]"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.black', 'Czarne')} ({fx((stats.zones.black / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-gray-200"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.white', 'Białe')} ({fx((stats.zones.white / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
+                  <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-purple-900"></div><span className="text-[9px] font-bold text-gray-500">{t('stats.pro.zones.miss', 'Pudła')} ({fx((stats.zones.miss / stats.totalArrowsWithDetails) * 100, 1)}%)</span></div>
                 </div>
                 </SummaryCard>
               )}
@@ -710,14 +714,14 @@ function useSightTips(dots: any[], targetType: string, distance: string) {
       icon: dx > 0 ? 'arrow_forward' : 'arrow_back',
       label: dx > 0 ? t('stats.pro.sight.adjustRight') : t('stats.pro.sight.adjustLeft'),
       mag: mag(dx),
-      sightMm: `${(mm.xSight * 0.8).toFixed(1)}–${(mm.xSight * 1.2).toFixed(1)} mm`,
+      sightMm: `${fx(mm.xSight * 0.8, 1)}–${fx(mm.xSight * 1.2, 1)} mm`,
     });
   if (Math.abs(dy) > THRESHOLD)
     pills.push({
       icon: dy > 0 ? 'arrow_downward' : 'arrow_upward',
       label: dy > 0 ? t('stats.pro.sight.adjustDown') : t('stats.pro.sight.adjustUp'),
       mag: mag(dy),
-      sightMm: `${(mm.ySight * 0.8).toFixed(1)}–${(mm.ySight * 1.2).toFixed(1)} mm`,
+      sightMm: `${fx(mm.ySight * 0.8, 1)}–${fx(mm.ySight * 1.2, 1)} mm`,
     });
 
   return { ok: false, pills, mm };

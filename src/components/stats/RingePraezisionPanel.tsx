@@ -126,7 +126,7 @@ export default function RingePraezisionPanel({
                             {sessAvg > 0 && <span className="text-[8px] font-bold text-gray-400">{sessAvg}</span>}
                           </span>
                         )}
-                        <div className="w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000" style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : '#e5e7eb' }}></div>
+                        <div className={`w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000 ${pts > 0 ? '' : 'bg-gray-200'}`} style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : undefined }}></div>
                       </div>
                       <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
                     </div>

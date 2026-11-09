@@ -81,6 +81,8 @@
 /* Tła — app shell, karty, sekcje */
 .dark .bg-\[\#fcfdfe\] { background-color: #0f1512; }
 .dark .bg-\[\#f8f9fa\] { background-color: #141a17; }
+/* Tło pełnoekranowego Schreiber-Training (portal). */
+.dark .bg-\[\#f4f6f5\] { background-color: #0f1512; }
 .dark .bg-white { background-color: #1a201d; }
 /* Dolne menu (SVG z wcięciem pod przycisk treningu) — w ciemnym motywie ten sam
    kolor co bg-white, razem z paskiem safe-area pod spodem (user 2026-11-06). */

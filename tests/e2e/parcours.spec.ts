@@ -70,3 +70,68 @@ test('Parcours: tarcza 1 = 50 cm / 50 yd, tarcza 2 = 35 cm / 25 yd, zapis per se
   await page.screenshot({ path: test.info().outputPath('parcours-stats.png'), fullPage: true });
   await expectNoErrors(page, errors, 'Parcours');
 });
+
+test('długa runda (14 tarcz): tabela nie nachodzi na notatki, bieżąca seria widoczna', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Lang');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  // 12 serii po 4 strzały (runda 1 = 14 tarcz).
+  for (let i = 0; i < 12; i++) { await shoot(page, ['5', '4', '4', '3']); await page.waitForTimeout(700); }
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*192/);
+
+  const table = page.getByTestId('ends-table');
+  const tableBox = (await table.boundingBox())!;
+  const sumBar = (await page.getByText('Gesamtringzahl').first().locator('xpath=ancestor::div[contains(@class,"rounded-2xl")][1]').boundingBox())!;
+  const notes = (await page.getByText('Wie lief es?').first().boundingBox())!;
+  // Kolejność bez nakładania: tabela → pasek sumy → notatki.
+  expect(tableBox.y + tableBox.height).toBeLessThanOrEqual(sumBar.y + 1);
+  expect(sumBar.y + sumBar.height).toBeLessThanOrEqual(notes.y + 1);
+  // Bieżąca seria (P13) widoczna w przewijanej tabeli.
+  const cur = (await table.locator('[data-current]').boundingBox())!;
+  expect(cur.y).toBeGreaterThanOrEqual(tableBox.y - 1);
+  expect(cur.y + cur.height).toBeLessThanOrEqual(tableBox.y + tableBox.height + 1);
+  await expect(table.locator('[data-current]')).toContainText('P13');
+  // Klawisze nie spłaszczone (pełna wysokość jak przy zwykłym treningu).
+  expect((await page.getByRole('button', { name: '5', exact: true }).boundingBox())!.height).toBeGreaterThan(40);
+  await page.screenshot({ path: test.info().outputPath('long-round.png') });
+  await expectNoErrors(page, errors, 'długa runda');
+});
+
+test('okienko celownika (Distanz-Einstellungen) na małym ekranie: całe, pełne nazwy tarcz', async ({ page, request }) => {
+  test.setTimeout(150_000);
+  const errors = watchErrors(page);
+  await page.setViewportSize({ width: 375, height: 667 });
+  const uid = await registerUser(page, 'Klein');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.locator('button:has-text("edit")').first().click();
+  const box = page.getByTestId('sight-editor');
+  await expect(box).toBeVisible();
+  const b = (await box.boundingBox())!;
+  expect(b.y).toBeGreaterThanOrEqual(0);
+  expect(b.y + b.height).toBeLessThanOrEqual(668);
+  // Zwykła 20 cm i Expert są rozróżnialne — żadna nazwa nie jest ucięta.
+  await expect(box.getByRole('button', { name: 'IFAA Field 20cm 4-Spot', exact: true })).toBeVisible();
+  await expect(box.getByRole('button', { name: 'IFAA Field 20cm 4-Spot Expert', exact: true })).toBeVisible();
+  const truncated = await box.evaluate(el => Array.from(el.querySelectorAll('button span')).filter(s => (s as HTMLElement).scrollWidth > (s as HTMLElement).clientWidth + 1).map(s => s.textContent));
+  expect(truncated).toEqual([]);
+  // „Speichern” osiągalny przewinięciem okienka.
+  const save = box.getByRole('button', { name: 'Speichern', exact: true });
+  await save.scrollIntoViewIfNeeded();
+  await expect(save).toBeInViewport();
+  await page.screenshot({ path: test.info().outputPath('sight-small.png') });
+  await expectNoErrors(page, errors, 'okienko celownika');
+});

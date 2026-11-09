@@ -487,6 +487,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     // w tych 600 ms musi trafić do zamykanej serii (inaczej zostaje stary stan).
   }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd]);
 
+  // [DŁUGA RUNDA] Bieżąca seria zawsze widoczna w przewijanej tabeli.
+  const endsListRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const box = endsListRef.current;
+    if (!box || roundSize <= 6) return;
+    const row = box.querySelector<HTMLElement>('[data-current]');
+    if (row) box.scrollTop = Math.max(0, row.offsetTop - box.offsetTop - box.clientHeight / 2 + row.clientHeight / 2);
+  }, [submittedEnds.length, activeRoundTab, roundSize]);
+
   const r1Ends = submittedEnds.slice(0, roundSize);
   const r2Ends = submittedEnds.slice(roundSize, plannedEnds);
   const globalStats = getStats(submittedEnds, inputArrows, xPoints);
@@ -798,6 +807,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
       {/* [UKŁAD] W trakcie strzelania nagłówek, tarcza, tabela i wynik mieszczą się
           dokładnie w wysokości ekranu (user 2026-11-03) — tarcza bierze resztę. */}
+      {/* Stała wysokość ekranu — klawiatura wypełnia resztę miejsca. [FIX 2026-11-09] Przy
+          długiej rundzie (IFAA 14 tarcz) tabela przewija się sama (niżej), inaczej
+          wychodziła poza ekran i nachodziła na notatki. */}
       <div className={`flex flex-col gap-2 ${isShooting ? 'h-[calc(100dvh-env(safe-area-inset-top))] pb-2' : ''}`}>
       <div className="bg-white p-3 mx-2 mt-2 rounded-2xl shadow-sm border border-gray-100 shrink-0">
         <div className="flex items-center justify-between h-10">
@@ -1062,7 +1074,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             </div>
           )}
         </div>
-        <div className="p-1.5 space-y-0.5">
+        {/* [DŁUGA RUNDA] Ponad 6 serii (IFAA 14 tarcz): tabela przewija się sama w sobie,
+            żeby klawiatura, tabela i suma zostały na jednym ekranie. */}
+        <div ref={endsListRef} className="p-1.5 space-y-0.5" style={roundSize > 6 ? { maxHeight: parcours ? '24dvh' : '30dvh', overflowY: 'auto' } : undefined} data-testid="ends-table">
           {Array.from({ length: roundSize }, (_, i) => i).map(i => {
             const idx = activeRoundTab === 1 ? i : roundSize + i;
             const end = submittedEnds[idx];
@@ -1072,7 +1086,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             const prevSum = submittedEnds.slice(activeRoundTab === 1 ? 0 : roundSize, idx).reduce((s, e) => s + (e.total_sum || 0), 0);
             const runSum = prevSum + passSum;
             return (
-              <div key={idx} className={`flex items-center text-center px-1 py-0.5 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
+              <div key={idx} data-current={isCur || undefined} className={`flex items-center text-center px-1 py-0.5 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
                 <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
                 <div className="flex-1 grid gap-1" style={{ gridTemplateColumns: `repeat(${arrowsPerEnd}, minmax(0, 1fr))` }}>
                   {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,

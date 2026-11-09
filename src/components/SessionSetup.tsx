@@ -720,10 +720,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
       {/* Portal: <main> w App.tsx ma transform, przy którym `fixed` kotwiczy się do strony, nie do okna. */}
       {showSightEditor && createPortal(
         <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+56px)]"
+          // [FIX 2026-11-09] Mniej odstępu u góry i przewijanie w granicach ekranu —
+          // przy wielu tarczach (IFAA) dół okienka uciekał poza mniejszy telefon.
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100000] flex items-start justify-center p-3 pt-[calc(env(safe-area-inset-top)+12px)]"
           onClick={() => setShowSightEditor(false)}
         >
-          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-5 animate-fade-in-up shadow-2xl max-h-[calc(100dvh-80px)] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-md rounded-[28px] p-5 pb-5 animate-fade-in-up shadow-2xl max-h-[calc(100dvh-env(safe-area-inset-top)-24px)] overflow-y-auto overscroll-contain" onClick={e => e.stopPropagation()} data-testid="sight-editor">
             <div className="flex items-start justify-between gap-3 mb-4">
               <div className="min-w-0">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('setup.distSettings')}</p>
@@ -739,14 +741,18 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               <TargetThumbnail targetType={editTarget} className="w-9 h-9 shrink-0" />
               <span className="text-lg font-black text-white uppercase tracking-tight truncate">{editTarget}</span>
             </div>
+            {/* [FIX 2026-11-09] Pełne nazwy z obrazkiem tarczy — ucięte „IFAA FIELD 20CM 4…”
+                nie odróżniało zwykłej tarczy od Expert. */}
             <div className="grid grid-cols-3 gap-1.5 mb-4">
               {targetOptions.filter(o => o !== editTarget).map(o => (
                 <button
                   key={o}
                   onClick={() => setEditTarget(o)}
-                  className="h-10 flex items-center justify-center rounded-lg border bg-white text-gray-500 border-gray-200 active:scale-95 transition-all"
+                  aria-label={o}
+                  className="min-h-[44px] flex flex-col items-center justify-center gap-1 rounded-lg border bg-white text-gray-500 border-gray-200 px-1 py-1.5 active:scale-95 transition-all"
                 >
-                  <span className="text-[10px] font-black uppercase tracking-tight text-center leading-none px-1 truncate w-full">{o}</span>
+                  <TargetThumbnail targetType={o} className="w-6 h-6 shrink-0" />
+                  <span className="text-[9px] font-black uppercase tracking-tight text-center leading-tight break-words w-full">{o}</span>
                 </button>
               ))}
             </div>

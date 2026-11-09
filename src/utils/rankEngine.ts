@@ -10,7 +10,7 @@
 
 import { calculateCurrentHandicap, sessionHandicap } from './handicapEngine';
 import { distanceMeters } from '../config/distances';
-import { isBlowgunSession } from '../config/targets/blowgun';
+import { statsGroupOf } from '../config/statsGroups';
 
 export interface RankDef {
   level: number;
@@ -170,7 +170,9 @@ export interface RankSession {
 /** Handicap sesji albo null, gdy nie liczy się do rangi (dmuchawka, Field, technika, brak strzał). */
 export function handicapOfSession(s: RankSession): number | null {
   if (!(s.scoreArrows > 0)) return null;
-  if (isBlowgunSession({ bowClass: s.bowClass, targetType: s.targetType || '' })) return null;
+  // Handicap (Atkinson) jest zdefiniowany tylko dla tarcz WA — dmuchawka
+  // i teren (skala 6–1, [FELD 2026-11-09]) nie liczą się do rangi.
+  if (statsGroupOf({ bowClass: s.bowClass, targetType: s.targetType || '' }) !== 'target') return null;
   return sessionHandicap(s.score / s.scoreArrows, distanceMeters(s.distance), s.targetType);
 }
 

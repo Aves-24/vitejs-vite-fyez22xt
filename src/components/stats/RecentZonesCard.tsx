@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import SummaryCard from '../scoring/SummaryCard';
 import { sessionDistanceLabel, distanceKey, distanceMeters } from '../../config/distances';
 import { zonesOf, addZones, countsForZones, ZONE_COLORS, ZONE_KEYS, type Zones } from '../../utils/zones';
+import type { StatsGroup } from '../../config/statsGroups';
 
 // [STREFY 2026-11-06] To samo, co pierścień na Home — 6 ostatnich treningów
 // z punktami (bez technicznych i dmuchawki) — tylko dokładnie: razem i osobno
@@ -40,27 +41,27 @@ function ZoneRow({ label, sub, zones }: { label: string; sub: string; zones: Zon
   );
 }
 
-export default function RecentZonesCard({ sessions, scrollIntoView = false }: { sessions: any[]; scrollIntoView?: boolean }) {
+export default function RecentZonesCard({ sessions, scrollIntoView = false, group = 'target' }: { sessions: any[]; scrollIntoView?: boolean; group?: StatsGroup }) {
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
 
   const data = useMemo(() => {
     const recent = [...sessions]
-      .filter(s => countsForZones(s) && Array.isArray(s.ends) && s.ends.length > 0)
+      .filter(s => countsForZones(s, group) && Array.isArray(s.ends) && s.ends.length > 0)
       .sort((a, b) => toMs(b.timestamp) - toMs(a.timestamp))
       .slice(0, 6);
     const empty: Zones = [0, 0, 0, 0, 0, 0];
     let all = empty;
     const byDist = new Map<string, { label: string; meters: number; zones: Zones; count: number }>();
     for (const s of recent) {
-      const z = zonesOf(s.ends);
+      const z = zonesOf(s.ends, group);
       all = addZones(all, z);
       const key = distanceKey(s);
       const cur = byDist.get(key) || { label: sessionDistanceLabel(s), meters: distanceMeters(s.distance || ''), zones: empty, count: 0 };
       byDist.set(key, { ...cur, zones: addZones(cur.zones, z), count: cur.count + 1 });
     }
     return { recent, all, rows: [...byDist.values()].sort((a, b) => a.meters - b.meters) };
-  }, [sessions]);
+  }, [sessions, group]);
 
   useEffect(() => {
     if (scrollIntoView && data.recent.length > 0) {

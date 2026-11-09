@@ -11,8 +11,9 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip, FocusChoiceChips, focusTitle } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
-import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex } from '../config/equipmentSetups';
-import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor } from '../config/distances';
+import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex, styleOfSetup } from '../config/equipmentSetups';
+import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, distanceMeters } from '../config/distances';
+import { fieldFaceForMeters } from '../config/targets/waField';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
 import { hasActivePro } from '../utils/proAccess';
@@ -122,7 +123,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
 
   // [KATALOG TARCZ] Lista pochodzi z config/targetFaces — nie da się już
   // wybrać tarczy, której aplikacja nie potrafi narysować ani policzyć.
-  const targetOptions = useMemo(() => selectableTargetIdsFor(discipline), [discipline]);
+  // [FELD] Zestaw „Feld” dostaje wyłącznie tarcze terenowe (i tylko on je widzi).
+  const style = styleOfSetup(activeSetup);
+  const targetOptions = useMemo(() => selectableTargetIdsFor(discipline, style), [discipline, style]);
 
   // [KOLORY] Dystanse aktywnego zestawu: te w jego kolorze plus wspólne jego
   // dyscypliny — patrz `distancesForSetup`. Łucznik dalej nie przewija 5 i 7 m
@@ -238,9 +241,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // z tarczą, której nie ma nawet na liście wyboru.
   useEffect(() => {
     if (targetOptions.length > 0 && selectedTarget && !targetOptions.includes(selectedTarget)) {
-      setSelectedTarget(targetOptions[0]);
+      setSelectedTarget(style === 'field' ? fieldFaceForMeters(distanceMeters(selectedDistance)) : targetOptions[0]);
     }
-  }, [targetOptions, selectedTarget]);
+  }, [targetOptions, selectedTarget, style, selectedDistance]);
 
   const saveLastSetup = () => {
     localStorage.setItem(`grotX_lastSetup_${userId}`, JSON.stringify({ distanceId: selectedId, distance: selectedDistance, targetType: selectedTarget }));

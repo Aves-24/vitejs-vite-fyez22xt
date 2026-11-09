@@ -32,6 +32,8 @@ import { PLANNED_ENDS } from '../utils/partialSession';
 import { getStats } from '../utils/endStats';
 import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
+import { clearHomeStatsCache } from '../config/statsGroups';
+import { fieldArrowClass, isFieldFaceId } from '../config/targets/waField';
 
 const getArrowStyles = (val: string) => {
   if (['X', '10', '9'].includes(val)) return 'bg-[#F2C94C] text-[#333] border-none shadow-sm';
@@ -72,6 +74,9 @@ const getFlagEmoji = (countryCode: string) => {
 };
 
 export default function ScoringView({ userId, distance = "70m", distanceId, distanceLabel, targetType = "Full", battleId = null, practiceArrows: practiceArrowsProp = 0, plannedEnds: plannedEndsProp, onRoundTwoStart, onUpdateEndIndex, onNavigate }: any) {
+  // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
+  const isField = isFieldFaceId(targetType);
+  const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
   const { t } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
@@ -512,7 +517,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     // Unieważnienie wszystkich cache'y statystyk po nowym treningu
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_proStats_${userId}`);
-    localStorage.removeItem(`grotX_stats_v15_${userId}`);
+    clearHomeStatsCache(userId);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     invalidateRecentSessions(userId); // wyczyść dedup w pamięci wspólnego źródła sesji
     window.dispatchEvent(new Event('session_state_changed'));
@@ -880,7 +885,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                 // Ostatni niepełny rząd dzieli miejsce z M + undo; pełne rzędy → M + undo osobno.
                 const last = rows[rows.length - 1];
                 const tail = last && last.length < 3 ? rows.pop()! : [];
-                const keyBtn = (v: string) => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles(v)}`}>{v}</button>;
+                const keyBtn = (v: string) => <button key={v} onClick={() => addScoreFromKeyboard(v)} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${arrowStyle(v)}`}>{v}</button>;
                 const missBtn = <button key="M" onClick={() => addScoreFromKeyboard('M')} className={`rounded-xl font-bold text-lg active:scale-95 transition-all ${getArrowStyles('M')}`}>M</button>;
                 const undoBtn = <button key="undo" onClick={undo} className="rounded-xl bg-white border border-red-100 text-red-500 shadow-sm flex items-center justify-center active:scale-95 transition-all"><span className="material-symbols-outlined text-lg font-black">undo</span></button>;
                 return (
@@ -997,7 +1002,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
                         role={canToggle ? 'button' : undefined}
                         aria-pressed={canToggle ? bad : undefined}
                         aria-label={canToggle ? t('scoring.badShot.cell', { v: val }) : undefined}
-                        className={`relative h-7 flex items-center justify-center rounded-md text-[12px] font-bold ${getArrowStyles(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
+                        className={`relative h-7 flex items-center justify-center rounded-md text-[12px] font-bold ${arrowStyle(val)} ${canToggle ? 'cursor-pointer active:scale-95' : ''} ${bad ? 'ring-2 ring-red-500 ring-inset' : ''}`}
                       >
                         {val}
                         {/* Flaga w rogu (user 2026-10-29): widoczna przy bieżącej i poprzedniej

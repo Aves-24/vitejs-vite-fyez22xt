@@ -18,6 +18,9 @@ import {
   firstFreeSetupColor,
   setupColorHex,
   DISCIPLINES,
+  SHOOTING_STYLES,
+  styleOfSetup,
+  isBlowgun,
 } from '../../config/equipmentSetups';
 
 /**
@@ -425,6 +428,36 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             ))}
           </div>
         </div>
+
+        {/* [FELD 2026-11-09] Tarcze WA albo teren — osobno od klasy łuku, bo w terenie
+            strzela się z tego samego recurve/compound/barebow. Decyduje o liście
+            tarcz i o statystykach na Home. Dmuchawka tego nie ma. */}
+        {!isBlowgun(active.discipline) && (
+          <div>
+            <label className="text-[10px] font-black text-gray-400 uppercase ml-1 mb-2 block">
+              {t('settings.equipment.style')}
+            </label>
+            <div className="grid grid-cols-2 gap-1.5" role="radiogroup" aria-label={t('settings.equipment.style')}>
+              {SHOOTING_STYLES.map(s => {
+                const on = styleOfSetup(active) === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => patchActive({ style: s.id })}
+                    className={`py-2 rounded-xl font-black text-[10px] border transition-all ${on ? 'bg-emerald-50 text-emerald-700 border-emerald-400 shadow-sm' : 'bg-white text-gray-400 border-gray-100'}`}
+                  >
+                    {t(s.labelKey)}
+                  </button>
+                );
+              })}
+            </div>
+            {styleOfSetup(active) === 'field' && (
+              <p className="text-[9px] text-gray-400 font-bold mt-2 ml-1">{t('settings.equipment.styleHint')}</p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Podzakładki */}

@@ -28,8 +28,9 @@ import { CLUB_MAX_PLAYERS, arrowsShot, compareStage, scoreSeenBy } from '../util
 import { BattleStats, computeBattleStats, loadBattleStats } from '../utils/battleStats';
 import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
-import { isBlowgunSession } from '../config/targets/blowgun';
 import { zonesOf, ringLabels, ZONE_COLORS } from '../utils/zones';
+import { statsGroupOf, statsGroupOfSetup, clearHomeStatsCache, homeStatsCacheKey, scaleMaxOf, type StatsGroup } from '../config/statsGroups';
+import { resolveActiveSetup } from '../config/equipmentSetups';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
@@ -201,6 +202,13 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const [isPremium, setIsPremium] = useState(false);
+  // [FELD 2026-11-09] Świat statystyk aktywnego zestawu (tarcze WA / teren /
+  // dmuchawka). Ostatni znany trzymamy w localStorage, żeby Home nie mrugał
+  // statystykami innego świata, zanim przyjdzie profil.
+  const statsGroupKey = `grotX_statsGroup_${userId}`;
+  const [statsGroup, setStatsGroup] = useState<StatsGroup>(() => {
+    try { const v = localStorage.getItem(statsGroupKey); return v === 'field' || v === 'blowgun' ? v : 'target'; } catch { return 'target'; }
+  });
   const [rawIsPremium, setRawIsPremium] = useState(false);
   const [trialEndsAt, setTrialEndsAt] = useState<number | null>(null);
   const [proGiftedAt, setProGiftedAt] = useState<number | null>(null);
@@ -361,6 +369,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // THE TARGET SERIES — ranga z handicapu. Profil jeszcze z systemu XP
         // przeliczamy raz z historii sesji (rankSync), potem już tylko czytamy.
         setRank(rankFromStored(d));
+        const group = statsGroupOfSetup(resolveActiveSetup(d as any));
+        setStatsGroup(group);
+        try { localStorage.setItem(`grotX_statsGroup_${userId}`, group); } catch { /* prywatne okno */ }
         if (d.rankVersion !== RANK_VERSION) {
           rebuildRankFromHistory(userId, d)
             .then(fields => { if (!cancelled) setRank(rankFromStored(fields as any)); })
@@ -576,7 +587,8 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     let cancelled = false;
 
     const fetchAggr = async () => {
-      const cacheKey = `grotX_stats_v15_${userId}`;
+      // [FELD] Osobny cache dla każdego świata statystyk.
+      const cacheKey = homeStatsCacheKey(userId, statsGroup);
       const cached = cacheGet<any>(cacheKey);
 
       if (cached) {
@@ -672,7 +684,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
           const scoreArr = data.scoreArrows || data.arrows || 0; // tylko strzały z punktacją — do średniej
           const sc  = data.score  || 0;
           const ts  = getSafeTime(data.timestamp);
-          const isTechnical = data.type === 'TECHNICAL';
+          // [FELD] Punkty i średnie tylko ze świata aktywnego zestawu; liczniki
+          // strzał (dzień/miesiąc/rok, słupki Pfeile) ze wszystkich — strzała to strzała.
+          const isTechnical = data.type === 'TECHNICAL' || statsGroupOf(data) !== statsGroup;
           const partial = isPartialSession(data);
 
           // Strażnik: snapshot może sięgać poprzedniego roku (rolling 12 tyg.),
@@ -752,13 +766,15 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         const sessionList = snapYear.docs
           .map(d => {
             const dd = d.data();
-            return { blow: isBlowgunSession({ bowClass: dd.bowClass, targetType: dd.targetType }), zones: zonesOf(dd.ends), score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, scoreArrows: dd.scoreArrows || dd.sessionArrows || dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
+            // [FELD] `blow` = „nie z tego świata” (nazwa historyczna z czasów samej dmuchawki).
+            return { blow: statsGroupOf(dd) !== statsGroup, zones: zonesOf(dd.ends, statsGroup), score: dd.score || 0, arrows: dd.arrows || dd.totalArrows || 0, scoreArrows: dd.scoreArrows || dd.sessionArrows || dd.arrows || dd.totalArrows || 0, ts: getSafeTime(dd.timestamp), date: dd.date || '', distance: dd.distance || '', type: dd.type || 'Trening', title: dd.title || dd.tournamentName || '', isPartial: isPartialSession(dd), endsShot: dd.endsShot, endsPlanned: dd.endsPlanned };
           })
           .filter(s => s.score > 0)
           .sort((a, b) => a.ts - b.ts);
         // [C31] Sumy, trend i średnie „na trening" tylko z pełnych treningów.
         // Lista w modalu (recentFull) pokazuje wszystkie, ze znaczkiem.
-        const fullSessions = sessionList.filter(s => !s.isPartial);
+        // [FELD] Tylko świat aktywnego zestawu — sumy z różnych skal nie mają sensu.
+        const fullSessions = sessionList.filter(s => !s.isPartial && !s.blow);
         const recent = fullSessions.slice(-6).map(s => s.score);
         // [HOME 2026-11-06] Forma = Ø na strzałę z 6 ostatnich treningów z punktami.
         // Surowe wyniki mieszały dystanse (560 na 18 m obok 417 na 70 m); średnia na
@@ -769,7 +785,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         // [HOME 2026-11-06] Strefy tarczy z tych samych 6 treningów (kafelek w środku).
         const recentZones = formBase.reduce((acc, s) => acc.map((v, i) => v + s.zones[i]), [0, 0, 0, 0, 0, 0]);
         // Do 50 — modal Ergebniskurve dociąga więcej przyciskiem "Pokaż więcej" (tylko PRO)
-        const recentFull = sessionList.slice(-50);
+        const recentFull = sessionList.filter(s => !s.blow).slice(-50);
 
         // ─── ŚREDNIE z 3 ostatnich sesji (trening/turniej, bez TECH) ──
         // [QUICK STATS 2026-11-06] Ringe/Pfeil także z krótszych treningów (średnia na
@@ -879,7 +895,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
 
     // Odświeżaj statystyki gdy Pfeilzähler lub Trening Techniczny doda strzały
     const onStatsUpdated = () => {
-      localStorage.removeItem(`grotX_stats_v15_${userId}`);
+      clearHomeStatsCache(userId);
       fetchAggr();
     };
     window.addEventListener('grotx-stats-updated', onStatsUpdated);
@@ -887,7 +903,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       cancelled = true;
       window.removeEventListener('grotx-stats-updated', onStatsUpdated);
     };
-  }, [userId, refreshNonce]);
+  }, [userId, refreshNonce, statsGroup]);
 
   const handleRefresh = () => {
     if (isRefreshing || !userId || refreshesLeft <= 0) return;
@@ -895,7 +911,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const newCount = current.date === todayStr ? current.count + 1 : 1;
     localStorage.setItem(`grotX_refreshLimit_${userId}`, JSON.stringify({ count: newCount, date: todayStr }));
     setIsRefreshing(true);
-    localStorage.removeItem(`grotX_stats_v15_${userId}`);
+    clearHomeStatsCache(userId);
     localStorage.removeItem(`grotX_quickStats_${userId}`);
     localStorage.removeItem(`grotX_lastSession_${userId}`);
     localStorage.removeItem(`grotX_tournaments_${userId}`);
@@ -1633,6 +1649,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
         avgByDistance={avgByDist}
         weeklySessionAvg={weeklySessionAvg}
         weeklySessionAvgByDistance={weeklySessionAvgByDist}
+        scaleMax={scaleMaxOf(statsGroup)}
         stats={{
           daily: dailyTotal,
           monthly: monthlyTotal,

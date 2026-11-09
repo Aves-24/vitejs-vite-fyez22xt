@@ -7,6 +7,8 @@ import { getScaleColor, getWeekLabelKW } from '../../lib/statsChart';
 // Prezentacyjny — dane liczy rodzic. Używany w QuickStatsModal
 // oraz w przeglądzie ProStats.
 interface Props {
+  /** [FELD] Najwyższa wartość strzały (teren: 6) — wysokość i kolor słupków. */
+  scaleMax?: number;
   avgArrows3: number;
   avgPoints3: number;
   avgArrowsMonth: number;
@@ -36,6 +38,7 @@ const ALL_DIST = 'ALL';
 export default function RingePraezisionPanel({
   avgArrows3, avgPoints3, avgArrowsMonth, avgPointsMonth, weeklyPoints, weeklyPointsByDistance, avgByDistance,
   weeklySessionAvg, weeklySessionAvgByDistance, locked = false, onUnlock, perArrow3: perArrow3All, perArrowMonth: perArrowMonthAll,
+  scaleMax = 10,
 }: Props) {
   const { t, i18n } = useTranslation();
   const [selectedDist, setSelectedDist] = useState<string>(ALL_DIST);
@@ -126,7 +129,7 @@ export default function RingePraezisionPanel({
                             {sessAvg > 0 && <span className="text-[8px] font-bold text-gray-400">{sessAvg}</span>}
                           </span>
                         )}
-                        <div className={`w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000 ${pts > 0 ? '' : 'bg-gray-200'}`} style={{ height: pts > 0 ? `${(pts / 10) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, 10) : undefined }}></div>
+                        <div className={`w-full rounded-t-sm max-w-[16px] mx-auto transition-all duration-1000 ${pts > 0 ? '' : 'bg-gray-200'}`} style={{ height: pts > 0 ? `${(pts / scaleMax) * 100}%` : '4px', backgroundColor: pts > 0 ? getScaleColor(pts, scaleMax) : undefined }}></div>
                       </div>
                       <span className="text-[6px] text-gray-300 font-bold mt-1 shrink-0">{getWeekLabelKW(i)}</span>
                     </div>

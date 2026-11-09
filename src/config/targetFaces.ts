@@ -22,6 +22,7 @@
 import { BLOWGUN_FACE } from './targets/blowgun';
 import { BLOWGUN357_FACE } from './targets/blowgun357';
 import { BLOWGUN40_FACE } from './targets/blowgun40';
+import { WA_FIELD_80_FACE, WA_FIELD_60_FACE, WA_FIELD_40_FACE } from './targets/waField';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
 import { isBlowgun } from './equipmentSetups';
@@ -77,6 +78,13 @@ export interface TargetFace {
    * dmuchawkarzowi. Teraz dodanie kolejnej to wpis z tym tagiem i nic więcej.
    */
   discipline?: 'blowgun';
+  /**
+   * [FELD 2026-11-09] Osobny świat statystyk. Tarcze terenowe WA punktują 6–1,
+   * więc ich treningi nie mieszają się z formą, strefami i rangą tarcz WA —
+   * liczą się we własnej skali (`config/statsGroups.ts`). Brak = tarcza WA.
+   * Takie tarcze pokazujemy wyłącznie przy zestawie ustawionym na „Feld”.
+   */
+  statsGroup?: 'field';
   /** Stare stringi z Firestore, które muszą dalej działać. */
   aliases: readonly string[];
   /** Czy w ogóle się na nią strzela (trening techniczny — nie). */
@@ -149,6 +157,10 @@ export const TARGET_FACES: readonly TargetFace[] = [
   BLOWGUN357_FACE,
   // [DMUCHAWKA] Pełna 40 cm jak łucznicza, ale z tagiem dmuchawki (2026-09-11).
   BLOWGUN40_FACE,
+  // [FELD] Tarcze terenowe WA — definicje w targets/waField.ts.
+  WA_FIELD_80_FACE,
+  WA_FIELD_60_FACE,
+  WA_FIELD_40_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */
@@ -247,12 +259,17 @@ export function selectableTargetIds(): string[] {
  * Gdy dyscyplina jest nieznana (sesja bez zestawu, konto sprzed zestawów),
  * pokazujemy wszystko — lepiej dać za dużo niż zablokować komuś wybór.
  */
-export function selectableTargetIdsFor(discipline?: string | null): string[] {
-  if (!discipline) return selectableTargetIds();
+export function selectableTargetIdsFor(discipline?: string | null, style?: string | null): string[] {
+  // [FELD] Tarcze terenowe tylko przy zestawie „Feld”, a przy nim WYŁĄCZNIE one.
+  const wantField = style === 'field';
+  if (!discipline) {
+    return selectableTargetIds().filter(id => (findTargetFace(id)?.statsGroup === 'field') === wantField);
+  }
   const wantBlowgun = isBlowgun(discipline);
   return TARGET_FACES
     .filter(f => f.scorable && f.pickOrder !== undefined)
     .filter(f => (f.discipline === 'blowgun') === wantBlowgun)
+    .filter(f => wantBlowgun || (f.statsGroup === 'field') === wantField)
     .sort((a, b) => (a.pickOrder as number) - (b.pickOrder as number))
     .map(f => f.id);
 }

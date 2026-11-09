@@ -27,6 +27,7 @@ import { useDistanceColors } from '../hooks/useDistanceColors';
 import SummaryCard from './scoring/SummaryCard';
 import OverviewSection from './stats/OverviewCards';
 import RecentZonesCard from './stats/RecentZonesCard';
+import { statsGroupOf, storedStatsGroup, zoneIndexOf } from '../config/statsGroups';
 import { rankFromStored, rankBowOf, type RankBow } from '../utils/rankEngine';
 
 interface Session {
@@ -247,12 +248,9 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         s.ends.forEach((end) => {
           end.arrows?.forEach((arrow: string) => {
             totalArrowsWithDetails++;
-            if (['X', '10', '9'].includes(arrow)) zones.gold++;
-            else if (['8', '7'].includes(arrow)) zones.red++;
-            else if (['6', '5'].includes(arrow)) zones.blue++;
-            else if (['4', '3'].includes(arrow)) zones.black++;
-            else if (['2', '1'].includes(arrow)) zones.white++;
-            else zones.miss++;
+            // [FELD] Strefy w skali tarczy tej sesji (teren: 6/5 złoto, 4–1 czerń).
+            const zi = zoneIndexOf(arrow, statsGroupOf(s as any)) ?? 5;
+            zones[(['gold', 'red', 'blue', 'black', 'white', 'miss'] as const)[zi]]++;
           });
         });
       }
@@ -445,7 +443,7 @@ export default function ProStatsView({ userId, isPremium, onNavigate, onOpenSess
         sectionLabel={<Section icon="insights" label={t('stats.overview.title')} />}
       />
       {/* [STREFY] To samo co pierścień na Home, dokładnie i per dystans (PRO). */}
-      {isPremium && <RecentZonesCard sessions={sessions} scrollIntoView={scrollToZones} />}
+      {isPremium && <RecentZonesCard sessions={sessions} scrollIntoView={scrollToZones} group={storedStatsGroup(userId)} />}
 
       {distances.length > 0 && <Section icon="filter_center_focus" label={t('stats.overview.perDistance')} />}
       {distances.length > 0 && (

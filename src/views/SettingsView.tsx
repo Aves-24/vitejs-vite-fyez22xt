@@ -33,6 +33,9 @@ import {
 } from '../config/distances';
 import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
+import { TargetPickerSheet } from '../components/targets/TargetPickerSheet';
+import { styleOfSetup } from '../config/equipmentSetups';
+import { fieldFaceForMeters } from '../config/targets/waField';
 import EquipmentSection from '../components/settings/EquipmentSection';
 import { COACH_INVITE_SHOWN_EVENT } from '../components/CoachInvitePopup';
 import { APP_HOST, APP_URL } from '../constants/appUrl';
@@ -65,6 +68,8 @@ export default function SettingsView({
   
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab as SettingsTab);
+  // [WYBÓR TARCZY] Indeks dystansu, dla którego otwarte jest okienko tarcz.
+  const [targetPickerFor, setTargetPickerFor] = useState<number | null>(null);
   // [C20] Motyw (jasny/ciemny/system) — źródło prawdy w localStorage (utils/theme)
   const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference());
   const [isSaving, setIsSaving] = useState(false);
@@ -107,6 +112,8 @@ export default function SettingsView({
       return;
     }
     const entry = buildCustomDistanceEntry(m, label, discipline, owner?.id);
+    // [FELD] Dystans zestawu „Feld” startuje od tarczy terenowej dobranej do metrów.
+    if ((owner ? styleOfSetup(owner) : activeStyle) === 'field') entry.targetType = fieldFaceForMeters(meters);
     onUpdateAllDistances([...list, entry].sort(compareDistances));
     setShowAddDistance(false);
     setNewMeters('');
@@ -207,6 +214,8 @@ export default function SettingsView({
   // Dyscyplina aktywnego zestawu. Stare, płaskie `bowType` to fallback dla
   // kont sprzed zestawów — dokładnie jak w `getSetupStamp` i w SessionSetup.
   const activeDiscipline = (setups.find(s => s.id === activeSetupId) ?? setups[0])?.discipline ?? bowType;
+  // [FELD] Styl aktywnego zestawu — dla wspólnych dystansów (bez koloru zestawu).
+  const activeStyle = styleOfSetup(setups.find(s => s.id === activeSetupId) ?? setups[0]);
 
   // [KOLORY] CELOWNIK pokazuje WSZYSTKIE dystanse, niezależnie od aktywnego
   // zestawu (decyzja usera 2026-09-10). Filtr po dyscyplinie z 2026-09-08
@@ -633,7 +642,8 @@ export default function SettingsView({
               const ownerHex = owner ? setupColorHex(setupColors.get(owner.id)) : undefined;
               // [DMUCHAWKA] Tarcze zawężone dyscypliną TEGO dystansu (jego
               // zestawu albo tagu) — ekran nie ma już jednej wspólnej dyscypliny.
-              const targetOptions = selectableTargetIdsFor(disciplineOfDistance(d, setups));
+              // [FELD] …oraz stylem jego zestawu: zestaw „Feld” ma tylko tarcze terenowe.
+              const targetOptions = selectableTargetIdsFor(disciplineOfDistance(d, setups), owner ? styleOfSetup(owner) : activeStyle);
               return (
               <div
                 key={d.id || d.m || i}
@@ -659,18 +669,28 @@ export default function SettingsView({
                    <>
                    <div className="mt-2 pt-2 border-t border-gray-50 flex items-center justify-between">
                      <span className="text-[9px] font-black text-gray-400 uppercase">{t('settings.sight.target')}</span>
-                     {/* [PODGLĄD TARCZY] Natywny select nie pokaże obrazka w opcjach,
-                         więc miniatura aktualnego wyboru stoi obok niego. */}
-                     <div className="flex items-center gap-1.5">
-                     <TargetThumbnail targetType={d.targetType || '122cm'} className="w-6 h-6 shrink-0" />
-                     <select value={d.targetType || '122cm'} onChange={(e) => onUpdateTargetType(i, e.target.value)} className="bg-gray-50 text-[10px] font-black text-[#0a3a2a] py-1.5 px-2 rounded-md outline-none border-none">
-                       {/* [DMUCHAWKA] Lista zawężona dyscypliną aktywnego zestawu.
-                           Zapisana wcześniej tarcza spoza listy zostaje dopisana,
-                           żeby select nie pokazał pustki i nie podmienił jej po cichu. */}
-                       {Array.from(new Set([...targetOptions, d.targetType || '122cm']))
-                         .map(id => <option key={id} value={id}>{id}</option>)}
-                     </select>
-                     </div>
+                     {/* [WYBÓR TARCZY 2026-11-09] Okienko z obrazkami zamiast systemowego
+                         select (ten na telefonie pokazywał szarą listę bez obrazków). */}
+                     <button
+                       onClick={() => setTargetPickerFor(i)}
+                       aria-label={`${t('settings.equipment.pickTarget')}: ${d.targetType || '122cm'}`}
+                       className="flex items-center gap-1.5 bg-gray-50 rounded-md py-1 pl-1 pr-2 active:scale-95 transition-all"
+                     >
+                       <TargetThumbnail targetType={d.targetType || '122cm'} className="w-6 h-6 shrink-0" />
+                       <span className="text-[10px] font-black text-[#0a3a2a]">{d.targetType || '122cm'}</span>
+                       <span className="material-symbols-outlined text-[16px] text-gray-400">expand_more</span>
+                     </button>
+                     {targetPickerFor === i && (
+                       <TargetPickerSheet
+                         title={`${t('settings.equipment.pickTarget')} · ${d.m}`}
+                         // [DMUCHAWKA] Zapisana wcześniej tarcza spoza listy zostaje dopisana,
+                         // żeby nie zniknęła i nie podmieniła się po cichu.
+                         options={Array.from(new Set([...targetOptions, d.targetType || '122cm']))}
+                         value={d.targetType || '122cm'}
+                         onSelect={(id) => onUpdateTargetType(i, id)}
+                         onClose={() => setTargetPickerFor(null)}
+                       />
+                     )}
                    </div>
                    {/* [C25] Opis wolno zmieniać kiedykolwiek — tożsamością jest `id`,
                        więc zmiana nazwy nie rusza zapisanych treningów. */}

@@ -49,6 +49,18 @@ export const DISCIPLINES: { id: Discipline; labelKey: string }[] = [
   { id: BLOWGUN_DISCIPLINE, labelKey: 'rules.discipline_blowgun' },
 ];
 
+/** [FELD] Styl strzelania zestawu: tarcze WA albo teren. */
+export type ShootingStyle = 'target' | 'field';
+export const SHOOTING_STYLES: { id: ShootingStyle; labelKey: string }[] = [
+  { id: 'target', labelKey: 'settings.equipment.styleTarget' },
+  { id: 'field', labelKey: 'settings.equipment.styleField' },
+];
+
+/** Styl zestawu — „field” tylko dla łuku (dmuchawka zawsze 'target'). */
+export function styleOfSetup(s?: { discipline?: string | null; style?: string | null } | null): ShootingStyle {
+  return s?.style === 'field' && !isBlowgun(s?.discipline) ? 'field' : 'target';
+}
+
 export function isBlowgun(d?: string | null): boolean {
   return d === BLOWGUN_DISCIPLINE;
 }
@@ -218,6 +230,14 @@ export interface EquipmentSetup {
    * wprost w sygnaturach.
    */
   discipline: Discipline;
+  /**
+   * [FELD 2026-11-09] Na co strzela ten zestaw: tarcze WA (brak pola) albo
+   * teren („field”). Osobno od klasy łuku, bo w terenie strzela się z tego
+   * samego recurve/compound/barebow. Decyduje o liście tarcz przy starcie
+   * i o tym, które statystyki pokazuje Home (patrz `config/statsGroups.ts`).
+   * Dla dmuchawki bez znaczenia.
+   */
+  style?: ShootingStyle;
   archer?: SetupArcher;
   blowgun?: SetupBlowgun;
   bow?: SetupBow;

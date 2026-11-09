@@ -43,6 +43,23 @@
       Przed kodowaniem sprawdzić w aktualnym WA Book 4 (PDF z extranetu się
       nie pobrał) linie i cienki X.
 
+- [ ] **Rodzina tarcz IFAA / DFBV** (2026-11-09, user znalazł na
+      bogensportwelt.de → „Overlays FITA sport”): Indoor 40 cm niebieska
+      (+ 5-Spot w kształcie X), Field 20 (4-Spot 2×2) / 35 / 50 / 65 cm
+      (czarny środek + biała obręcz), Hunting 20 (4-Spot) / 35 / 50 / 65 cm
+      (cała czarna, biały środek). Ustalenia z regulaminu: memory
+      `reference_ifaa_target_faces` — punktacja 5/4/3 (Experten 5–1), X NIE
+      punktuje (tylko remisy), obręcz 0,6 D, środek 0,2 D; 4 strzały na
+      tarczę, dystanse w jardach. Plan: osobny świat statystyk 'ifaa' (skala 5)
+      jak teren WA + układy 4-Spot/5-Spot w `config/spotGeometry.ts`
+      (od 2026-11-09 dodanie układu to same dane).
+      DECYZJA USERA 2026-11-09: „ma być jak na zawodach” → Field/Hunting
+      seria 4 strzał (4 na tarczę), Indoor 5-Spot seria 5 (jedna na spot),
+      X = 5 punktów + osobny licznik X do remisów (jak X na 3-Spocie).
+      PRZED KODEM potwierdzić w regulaminie IFAA (Indoor Round: 12×5?).
+      Największa praca: zmienna długość serii — ScoringView, statystyki,
+      karta zawodów zakładają dziś 6 strzał.
+
 - [ ] **Wybór tarczy w Einstellungen → DISTANZEN jako lista z obrazkami**
       (2026-11-09, user, razem z nowymi tarczami): dziś przy dystansie jest
       systemowy `<select>` (`views/SettingsView.tsx` ~l. 666, `onUpdateTargetType`)

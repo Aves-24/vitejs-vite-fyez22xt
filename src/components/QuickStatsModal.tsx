@@ -20,6 +20,8 @@ interface QuickStatsModalProps {
   // Ø ringów na trening per tydzień (druga linia nad słupkiem) — globalnie i per dystans
   weeklySessionAvg?: number[];
   weeklySessionAvgByDistance?: Record<string, number[]>;
+  /** [FELD] Najwyższa wartość strzały w świecie statystyk (teren: 6). */
+  scaleMax?: number;
   stats: {
     daily: number;
     monthly: number;
@@ -39,7 +41,7 @@ interface QuickStatsModalProps {
 
 const EMPTY_WEEKS: number[] = Array(12).fill(0);
 
-export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, weeklyPointsByDistance, avgByDistance, weeklySessionAvg, weeklySessionAvgByDistance, stats }: QuickStatsModalProps) {
+export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate, initialTab = 'ARROWS', weeklyArrows = EMPTY_WEEKS, weeklyPoints = EMPTY_WEEKS, weeklyPointsByDistance, avgByDistance, weeklySessionAvg, weeklySessionAvgByDistance, scaleMax = 10, stats }: QuickStatsModalProps) {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'ARROWS' | 'POINTS'>(initialTab);
 
@@ -197,6 +199,7 @@ export default function QuickStatsModal({ isOpen, onClose, isPremium, onNavigate
                 weeklySessionAvgByDistance={weeklySessionAvgByDistance}
                 locked={!isPremium}
                 onUnlock={handleGoToPro}
+                scaleMax={scaleMax}
               />
             </div>
           )}

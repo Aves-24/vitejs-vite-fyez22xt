@@ -2,21 +2,21 @@
 // i PRO Progress (karta „Trefferzonen · letzte 6 Trainings”), żeby liczyły
 // identycznie. Kolejność: złoto (X/10/9), czerwień (8/7), niebieski (6/5),
 // czarny (4/3), biały (2/1), M (pudło).
-import { isBlowgunSession } from '../config/targets/blowgun';
+import { statsGroupOf, zoneIndexOf, type StatsGroup } from '../config/statsGroups';
 
 export type Zones = [number, number, number, number, number, number];
 
 export const ZONE_COLORS = ['#f2c94c', '#e5534b', '#3b82f6', '#222222', '#cfd5d2', ''] as const;
 export const ZONE_KEYS = ['gold', 'red', 'blue', 'black', 'white', 'miss'] as const;
 
-export function zonesOf(ends: unknown): Zones {
+/** [FELD] `group` = świat statystyk: na tarczy terenowej 6 i 5 to złoto, 4–1 czerń. */
+export function zonesOf(ends: unknown, group: StatsGroup = 'target'): Zones {
   const z: Zones = [0, 0, 0, 0, 0, 0];
   for (const e of Array.isArray(ends) ? ends : []) {
     const arrows = (e as { arrows?: unknown })?.arrows;
     for (const v of Array.isArray(arrows) ? arrows : []) {
-      const n = v === 'X' ? 10 : v === 'M' ? 0 : parseInt(String(v), 10);
-      if (isNaN(n)) continue;
-      z[n >= 9 ? 0 : n >= 7 ? 1 : n >= 5 ? 2 : n >= 3 ? 3 : n >= 1 ? 4 : 5]++;
+      const i = zoneIndexOf(v, group);
+      if (i !== null) z[i]++;
     }
   }
   return z;
@@ -24,9 +24,12 @@ export function zonesOf(ends: unknown): Zones {
 
 export const addZones = (a: Zones, b: Zones): Zones => a.map((v, i) => v + b[i]) as Zones;
 
-/** Treningi z punktami, które liczą się do stref/formy: bez technicznych i bez dmuchawki. */
-export function countsForZones(s: { type?: string; score?: number; distance?: string; bowClass?: string | null; targetType?: string | null }): boolean {
-  return (s.score || 0) > 0 && s.type !== 'TECHNICAL' && s.distance !== 'TECH' && !isBlowgunSession({ bowClass: s.bowClass, targetType: s.targetType });
+/**
+ * Treningi z punktami, które liczą się do stref/formy danego świata
+ * (domyślnie tarcze WA — bez technicznych, dmuchawki i terenu).
+ */
+export function countsForZones(s: { type?: string; score?: number; distance?: string; bowClass?: string | null; targetType?: string | null }, group: StatsGroup = 'target'): boolean {
+  return (s.score || 0) > 0 && s.type !== 'TECHNICAL' && s.distance !== 'TECH' && statsGroupOf(s) === group;
 }
 
 /**

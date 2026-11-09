@@ -5,9 +5,10 @@ import { settleWrite } from './offlineWrite';
 import { sessionFocusFields, chosenFocusTopics, FocusState, type FocusChoice } from './focus';
 import { guestExpiryFields } from './guestMode';
 import { sessionNoteField, writePrivateSessionNote } from './privateSessionNote';
+import { clearHomeStatsCache } from '../config/statsGroups';
 
 function invalidateStatsCache(userId: string) {
-  localStorage.removeItem(`grotX_stats_v15_${userId}`);
+  clearHomeStatsCache(userId);
   localStorage.removeItem(`grotX_lastSession_${userId}`);
   window.dispatchEvent(new CustomEvent('grotx-stats-updated'));
 }

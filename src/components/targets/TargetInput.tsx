@@ -3,6 +3,7 @@ import { StandardTarget } from './StandardTarget';
 import { SpotTarget } from './SpotTarget';
 import { resolveTargetFace, isSpotFace, isVerticalSpotFace } from '../../config/targetFaces';
 import { calculateSpotScore, scoreSingleFace, LINE_TOUCH } from '../../utils/targetScoring';
+import { fieldArrowClass, fieldScoreColors, isFieldFaceId } from '../../config/targets/waField';
 import { arrowColorAt } from '../../config/arrowColors';
 import { startAim, stepAim, AimFilter, Pt } from '../../utils/aimSmoothing';
 import { useTranslation } from 'react-i18next';
@@ -47,6 +48,9 @@ const getScoreColors = (val: string): { bg: string; text: string; stroke: string
 //   arrowColors  [KOLORY STRZAŁ] kropki w kolorach strzał + podpowiedź, która
 //                strzała jest teraz do wpisania (config/arrowColors.ts)
 export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, currentArrows, currentCoords, onUndo, targetType, embed, arrowColors }: any) {
+  // [FELD] Na tarczy terenowej 6/5 żółte, 4–1 czarne.
+  const isField = isFieldFaceId(targetType);
+  const arrowStyle = (v: string) => (isField && fieldArrowClass(v)) || getArrowStyles(v);
   const { t } = useTranslation();
   const svgRef = useRef<SVGSVGElement>(null);
   const [isAiming, setIsAiming] = useState(false);
@@ -303,7 +307,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                 {/* embed.slots — liczba pol ma odpowiadac wybranej liczbie
                     strzal (np. 4), nie zawsze 6. Domyslnie 6 dla wywolan bez
                     embed (ScoringView), zeby nic tam sie nie zmienilo. */}
-                {Array.from({ length: maxShots }, (_, i) => i).map(i => <div key={i} className={`relative w-7 h-7 flex items-center justify-center text-[11px] font-black rounded-md ${getArrowStyles(currentArrows[i] || '')}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
+                {Array.from({ length: maxShots }, (_, i) => i).map(i => <div key={i} className={`relative w-7 h-7 flex items-center justify-center text-[11px] font-black rounded-md ${arrowStyle(currentArrows[i] || '')}`}>{currentArrows[i] || ''}{arrowColors && <ArrowColorBar index={i} isNext={i === currentArrows.length} />}</div>)}
               </div>
               {currentArrows.length > 0 && (
                 <span className="text-[#0a3a2a] font-black text-lg tabular-nums leading-none" aria-label={t('targetInput.endSum')}>
@@ -483,7 +487,7 @@ export default function TargetInput({ onShot, isFullscreen, onToggleFullscreen, 
                   Smart flip: domyślnie chip po prawej, jeśli krzyżyk jest
                   w prawej połowie kadru — chip skacze na lewo. */}
               {currentAimScore && (() => {
-                const colors = getScoreColors(currentAimScore);
+                const colors = (isField && fieldScoreColors(currentAimScore)) || getScoreColors(currentAimScore);
                 const flipLeft = aimPos.x > viewCx;
                 const chipX = flipLeft ? aimPos.x - 48 : aimPos.x + 48;
                 return (

@@ -72,3 +72,33 @@ describe('DBSV 3D (Wald / Jagd)', () => {
     expect(s).toMatchObject({ stations: 3, score: 22, byArrow: [1, 1, 0], kills: 1, wounds: 1, misses: 1 });
   });
 });
+
+describe('IFAA 3D (Hunting 1 strzała, Standard 2 strzały obie liczone)', () => {
+  const hunt = animalFormatById('ifaa-3d-hunt');
+  const std = animalFormatById('ifaa-3d-std');
+
+  it('Hunting: Kill 20 / Vital 16 / Wound 10, jedna strzała', () => {
+    expect(['K', 'V', 'W'].map(h => animalPoints(0, h as any, hunt))).toEqual([20, 16, 10]);
+    expect(stationDone(['M'], hunt)).toBe(true);
+    expect(stationResult(['16'], hunt)).toEqual({ arrow: 1, hit: 'V', points: 16 });
+  });
+
+  it('Standard: 10/8/5 każdą strzałą, trafienie NIE kończy, suma obu strzał', () => {
+    expect(['K', 'V', 'W'].map(h => animalPoints(1, h as any, std))).toEqual([10, 8, 5]);
+    expect(stationDone(['10'], std)).toBe(false);
+    expect(stationDone(['10', 'M'], std)).toBe(true);
+    expect(stationResult(['8', '10'], std)).toEqual({ arrow: 1, hit: 'V', points: 18 });
+    expect(stationResult(['M', '5'], std)).toEqual({ arrow: 2, hit: 'W', points: 5 });
+  });
+
+  it('Trefferquote Standard: wszystkie trafienia, Vital osobno', () => {
+    const s = animalSummary([{ arrows: ['10', '8'] }, { arrows: ['M', 'M'] }, { arrows: ['5', 'M'] }], std);
+    expect(s).toMatchObject({ stations: 3, score: 23, byArrow: [2, 1, 0], kills: 1, vitals: 1, wounds: 1, misses: 1 });
+  });
+
+  it('3D bez rangi, poza listami tarcz', () => {
+    expect(statsGroupOf({ targetType: std.faceId })).toBe('animal');
+    expect(rankWorldOf({ targetType: hunt.faceId })).toBeNull();
+    expect(selectableTargetIds()).not.toContain(std.faceId);
+  });
+});

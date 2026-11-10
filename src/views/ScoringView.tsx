@@ -1270,8 +1270,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             return (
               <>
                 <div>
-                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.kills')}/{t(animalFmt.woundKey)}</span>
-                  <span className="text-sm font-black leading-tight">{as.kills}/{as.wounds}</span>
+                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{animalFmt.zones.map(z => t(z.key)).join('/')}</span>
+                  <span className="text-sm font-black leading-tight">{animalFmt.zones.map(z => (z.hit === 'K' ? as.kills : z.hit === 'V' ? as.vitals : as.wounds)).join('/')}</span>
                 </div>
                 <div>
                   <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.perStation')}</span>

@@ -485,14 +485,14 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </div>
             {animalActive && (
               <div className="mt-2" data-testid="animal-format">
-                <div className="flex gap-1" role="radiogroup" aria-label={t('animal.format')}>
+                <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label={t('animal.format')}>
                   {ANIMAL_FORMATS.map(f => (
                     <button
                       key={f.id}
                       role="radio"
                       aria-checked={animalFmt.id === f.id}
                       onClick={() => pickAnimalFmt(f.id)}
-                      className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg border text-[11px] font-black truncate transition-all ${animalFmt.id === f.id ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                      className={`min-w-0 py-1.5 px-1 rounded-lg border text-[11px] font-black truncate transition-all ${animalFmt.id === f.id ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
                     >
                       {t(`animal.fmt.${f.id}`)}
                     </button>

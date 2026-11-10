@@ -263,3 +263,64 @@ test('DBSV 3D: Jagdrunde 1 Pfeil (Kill 15 / Körper 12, Miss schließt), Waldrun
   await expect(page.getByTestId('animal-card')).toContainText('Körper');
   await expectNoErrors(page, errors, 'DBSV');
 });
+
+test('IFAA 3D: Hunting 1 Pfeil (Kill/Vital/Wound 20/16/10), Standard 2 Pfeile beide zählen (10/8/5)', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Ifaa3d');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+
+  const start = async (fmtName: string) => {
+    await page.goto('/');
+    await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+    await page.getByTestId('animal-tile').click();
+    await page.getByTestId('animal-format').getByRole('radio', { name: fmtName }).click();
+    await page.getByRole('button', { name: 'Training', exact: true }).click();
+  };
+  const keypad = page.getByTestId('animal-keypad');
+  const bar = page.getByTestId('animal-bar');
+
+  // Hunting: Vital 16, potem Miss (od razu dalej), potem Kill 20.
+  await start('IFAA 3D Jagd');
+  await expect(keypad.getByRole('button', { name: 'Vital 16' })).toBeVisible();
+  // Bez surowych kluczy i18n (np. „animal.vital”) na klawiaturze i pasku wyniku.
+  await expect(keypad).not.toContainText('animal.');
+  await expect(page.getByRole('main')).not.toContainText('animal.');
+  await keypad.getByRole('button', { name: 'Vital 16' }).click();
+  await page.waitForTimeout(800);
+  await keypad.getByRole('button', { name: 'Miss' }).click();
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 3/28');
+  await keypad.getByRole('button', { name: 'Kill 20' }).click();
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*36/);
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 36/ })).toBeVisible();
+
+  // Standard: trafienie nie zamyka, po 2 strzałach dalej; obie się liczą.
+  await start('IFAA 3D 2 Pfeile');
+  await keypad.getByRole('button', { name: 'Kill 10' }).click();
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 1/28'); // nadal to samo zwierzę
+  await keypad.getByRole('button', { name: 'Vital 8' }).click();
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 2/28');
+  await keypad.getByRole('button', { name: 'Miss' }).click();
+  await keypad.getByRole('button', { name: 'Wound 5' }).click();
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*23/);
+  await page.screenshot({ path: test.info().outputPath('ifaa-3d-std.png') });
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 23/ })).toBeVisible();
+  await syncWrites(page);
+  const ss = (await adminListDocs(request, `users/${uid}/sessions`)).map(d => d.fields).sort((a: any, b: any) => Number(a.score.integerValue) - Number(b.score.integerValue));
+  expect(ss.map((f: any) => f.targetType.stringValue)).toEqual(['IFAA 3D Standard', 'IFAA 3D Hunting']);
+  expect(ss[0].ends.arrayValue.values.map((v: any) => v.mapValue.fields.arrows.arrayValue.values.map((a: any) => a.stringValue).join(','))).toEqual(['10,8', 'M,5']);
+  await expectNoErrors(page, errors, 'IFAA 3D');
+});

@@ -6,7 +6,7 @@ import { getStats } from '../../utils/endStats';
 import { handicapOfSession } from '../../utils/rankEngine';
 import { countBad } from '../../utils/badShots';
 import { xPointsFor } from '../../utils/arrowPoints';
-import { isAnimalRound, animalFormatOf, type AnimalFormat } from '../../config/animalRound';
+import { isAnimalRound, animalFormatOf, type AnimalFormat, type AnimalHit } from '../../config/animalRound';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -34,18 +34,22 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
   return map[v] ? { bg: map[v] } : { bg: '#ffffff', ring: true };
 };
 
-// [ANIMAL ROUND] Kolejność i kolory wg formatu: Kill — złoto od ciemnego,
-// Wound/Körper — biel i szarości jak sylwetka. Wartość jest unikalna w obrębie
-// formatu (IFAA 20/16/12 + 18/14/10, DBSV 15/10/5 + 12/7/2).
-const KILL_SHADES = ['#D9A400', '#F2C94C', '#F8E08E'];
-const WOUND_SHADES: { bg: string; ring?: boolean }[] = [{ bg: '#ffffff', ring: true }, { bg: '#d1d5db' }, { bg: '#9ca3af' }];
-const animalValueOrder = (f: AnimalFormat) => [...f.K.map(String), ...f.W.map(String), 'M'];
+// [ANIMAL ROUND] Kolejność i kolory wg stref formatu: Kill — złoto od ciemnego,
+// Vital — czerwień, Wound/Körper — biel i szarości jak sylwetka. Wartość jest
+// unikalna w obrębie formatu (3D Standard: 10/8/5 dla obu strzał).
+const ZONE_SHADES: Record<AnimalHit, { bg: string; ring?: boolean }[]> = {
+  K: [{ bg: '#D9A400' }, { bg: '#F2C94C' }, { bg: '#F8E08E' }],
+  V: [{ bg: '#D83A3A' }, { bg: '#F28B8B' }, { bg: '#F8B4B4' }],
+  W: [{ bg: '#ffffff', ring: true }, { bg: '#d1d5db' }, { bg: '#9ca3af' }],
+};
+const animalValueOrder = (f: AnimalFormat) => [...new Set(f.zones.flatMap(z => z.pts.map(String)))].concat('M');
 const animalValueColor = (f: AnimalFormat, v: string): { bg: string; ring?: boolean } => {
   if (v === 'M') return { bg: '#581c87' };
-  const k = f.K.map(String).indexOf(v);
-  if (k >= 0) return { bg: KILL_SHADES[k] };
-  const w = f.W.map(String).indexOf(v);
-  return w >= 0 ? WOUND_SHADES[w] : { bg: '#ffffff', ring: true };
+  for (const z of f.zones) {
+    const i = z.pts.map(String).indexOf(v);
+    if (i >= 0) return ZONE_SHADES[z.hit][i] ?? ZONE_SHADES[z.hit][0];
+  }
+  return { bg: '#ffffff', ring: true };
 };
 
 interface Prior { score: number; arrows: number; ts: number }

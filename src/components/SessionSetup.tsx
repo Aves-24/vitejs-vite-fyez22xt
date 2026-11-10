@@ -18,6 +18,7 @@ import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import { PARCOURS_DISTANCE, PARCOURS_DISTANCE_ID } from '../config/parcours';
 import { ANIMAL_DISTANCE, ANIMAL_DISTANCE_ID, ANIMAL_STATIONS } from '../config/animalRound';
 import { IFAA_ANIMAL_FACE_ID } from '../config/targets/ifaaAnimal';
+import { listCourses, selectedCourseKey, type Course } from '../utils/courses';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
 import { hasActivePro } from '../utils/proAccess';
@@ -268,16 +269,32 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const animalActive = canParcours && animalOn;
   const startDistance = () => (animalActive ? ANIMAL_DISTANCE : parcoursActive ? PARCOURS_DISTANCE : selectedDistance);
   const startTarget = () => (animalActive ? IFAA_ANIMAL_FACE_ID : selectedTarget);
+  // [ANIMAL ROUND] Zapisane trasy: wybrana wypełnia nazwy zwierząt i liczbę stanowisk.
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [courseId, setCourseId] = useState<string>('');
+  useEffect(() => {
+    if (!animalOn || !userId) return;
+    let alive = true;
+    listCourses(userId).then(cs => { if (alive) setCourses(cs); }).catch(() => {});
+    return () => { alive = false; };
+  }, [animalOn, userId]);
+  const course = courses.find(c => c.id === courseId) || null;
+  const rememberCourse = () => {
+    try {
+      if (animalActive && course) localStorage.setItem(selectedCourseKey(userId), JSON.stringify(course));
+      else localStorage.removeItem(selectedCourseKey(userId));
+    } catch { /* prywatne okno — runda bez trasy */ }
+  };
   const startArgs = (): [string, string | undefined, number] =>
     animalActive
-      ? [ANIMAL_DISTANCE_ID, undefined, ANIMAL_STATIONS]
+      ? [ANIMAL_DISTANCE_ID, undefined, course ? course.stations.length : ANIMAL_STATIONS]
       : parcoursActive
       ? [PARCOURS_DISTANCE_ID, undefined, faceRound?.ends ?? 28]
       : [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, faceRound ? faceRound.ends : plannedEnds];
 
   const handleStartClick = () => {
     if (hasUnsaved) setShowWarning(true);
-    else { saveLastSetup(); onStartSession(startDistance(), startTarget(), true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }
+    else { saveLastSetup(); rememberCourse(); onStartSession(startDistance(), startTarget(), true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }
   };
 
   const openSightEditor = () => {
@@ -475,6 +492,22 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 <span className="flex-1 text-[13px] font-black text-[#0a3a2a]">{t('animal.toggle')}</span>
               </label>
               {animalOn && <p className="text-[10px] font-bold text-gray-400 mt-1 ml-7">{t('animal.toggleHint')}</p>}
+              {/* [ANIMAL ROUND] Zapisana trasa — nazwy zwierząt wypełnią się same. */}
+              {animalOn && (
+                <label className="flex items-center gap-2 mt-2 ml-7">
+                  <span className="text-[11px] font-bold text-gray-500 shrink-0">{t('animal.course')}</span>
+                  <select
+                    value={courseId}
+                    onChange={e => setCourseId(e.target.value)}
+                    aria-label={t('animal.course')}
+                    data-testid="course-select"
+                    className="flex-1 min-w-0 h-8 px-2 bg-gray-50 rounded-md text-[12px] font-bold text-[#0a3a2a] border border-gray-100 outline-none"
+                  >
+                    <option value="">{t('animal.newCourse')}</option>
+                    {courses.map(c => <option key={c.id} value={c.id}>{c.name} ({c.stations.length})</option>)}
+                  </select>
+                </label>
+              )}
             </div>
           )}
           {/* Passen — zawsze widoczne, zwinięte; rozwija 6/8/10/12. */}
@@ -816,7 +849,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-6">
           <div className="bg-white rounded-[32px] p-8 w-full shadow-2xl text-center">
             <h2 className="text-xl font-black text-[#0a3a2a] mb-2">{t('setup.warningTitle')}</h2>
-            <button onClick={() => { saveLastSetup(); onStartSession(startDistance(), startTarget(), true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
+            <button onClick={() => { saveLastSetup(); rememberCourse(); onStartSession(startDistance(), startTarget(), true, null, parseInt(techArrows || '0') || undefined, ...startArgs()); }} className="w-full py-4 bg-red-500 text-white rounded-xl font-black uppercase mb-3">{t('setup.warningConfirm')}</button>
             <button onClick={() => setShowWarning(false)} className="w-full py-4 bg-gray-100 text-gray-500 rounded-xl font-black uppercase">{t('setup.warningCancel')}</button>
           </div>
         </div>,

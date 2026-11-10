@@ -642,6 +642,23 @@ service cloud.firestore {
       allow read, write: if isSelf(uid) || isAdmin();
     }
 
+    // ─── /users/{uid}/courses/{courseId} ────────────────────────
+    //  [ANIMAL ROUND 2026-11-10] Zapisane trasy (parcours): nazwa + stanowiska
+    //  (nazwa zwierzęcia, opcjonalny obrys). Tylko właściciel. Limit FREE (1 trasa)
+    //  pilnuje klient — reguła pilnuje kształtu i rozmiaru.
+    match /users/{uid}/courses/{courseId} {
+      allow read, delete: if isSelf(uid) || isAdmin();
+      allow create, update: if isSelf(uid) && validCourse(request.resource.data);
+    }
+
+    function validCourse(d) {
+      return d.keys().hasOnly(['name', 'stations', 'createdAt', 'updatedAt'])
+        && d.name is string && d.name.size() >= 1 && d.name.size() <= 60
+        && d.stations is list && d.stations.size() >= 1 && d.stations.size() <= 60
+        && d.get('createdAt', 0) is number
+        && d.get('updatedAt', 0) is number;
+    }
+
     // ─── Legacy subcol users/{uid}/scores — owner only ──────────
     match /users/{uid}/scores/{scoreId} {
       allow read, write: if isSelf(uid) || isAdmin();

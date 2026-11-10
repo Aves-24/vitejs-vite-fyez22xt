@@ -38,6 +38,12 @@ import { isParcours } from '../config/parcours';
 import { isAnimalRound, animalPoints, stationDone, animalSummary, type AnimalHit } from '../config/animalRound';
 import AnimalKeypad from '../components/scoring/AnimalKeypad';
 import AnimalCard from '../components/scoring/AnimalCard';
+import CourseSaveCard from '../components/scoring/CourseSaveCard';
+import OutlinePicker, { OutlineSvg, useOutline } from '../components/scoring/OutlinePicker';
+import { outlineName } from '../config/animals/loadOutlines';
+import { selectedCourseKey, MAX_STATIONS, type Course } from '../utils/courses';
+import { hasActivePro } from '../utils/proAccess';
+import { isGuestUser } from '../utils/guestMode';
 import { arrowPoints, xPointsFor } from '../utils/arrowPoints';
 import { faceKeyClass } from '../config/arrowKeyColors';
 
@@ -93,6 +99,17 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // pierwsze trafienie zamyka stanowisko. Nazwa zwierzęcia wpisywana na trasie.
   const animal = !battleId && isAnimalRound({ distance });
   const [endAnimal, setEndAnimal] = useState('');
+  // Obrys zwierzęcia (PRO) i zapisana trasa wybrana w Vorbereitung (utils/courses).
+  const [endOutline, setEndOutline] = useState('');
+  const [course, setCourse] = useState<Course | null>(null);
+  const [isPro, setIsPro] = useState(false);
+  const [showOutlinePicker, setShowOutlinePicker] = useState(false);
+  const endOutlineObj = useOutline(animal ? endOutline : null);
+  /** Nazwa i obrys stanowiska `i` z trasy (puste bez trasy). */
+  const fillStation = (c: Course | null, i: number) => {
+    setEndAnimal(c?.stations[i]?.name || '');
+    setEndOutline(c?.stations[i]?.outlineId || '');
+  };
   // [PARCOURS] Tarcze do wyboru: ten sam świat co tarcza startowa (IFAA albo teren WA).
   const parcoursFaces = parcours
     ? selectableTargetIds().filter(id => findTargetFace(id)?.statsGroup === findTargetFace(sessionTargetType)?.statsGroup
@@ -101,7 +118,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     : [];
   // [KOLORY KLAWISZY] Teren/IFAA mają własne kolory wartości (config/arrowKeyColors).
   const arrowStyle = (v: string) => faceKeyClass(targetType, v) || getArrowStyles(v);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [inputArrows, setInputArrows] = useState<string[]>([]); 
   const [inputCoordinates, setInputCoordinates] = useState<any[]>([]); 
   const [submittedEnds, setSubmittedEnds] = useState<any[]>([]); 
@@ -195,7 +212,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const xPoints = xPointsFor(targetType);
   const fullEnds = faceRound?.ends ?? PLANNED_ENDS;
   const [plannedEnds, setPlannedEnds] = useState<number>(
-    !battleId && plannedEndsProp && plannedEndsProp > 0 && plannedEndsProp < fullEnds ? plannedEndsProp : fullEnds
+    !battleId && plannedEndsProp && plannedEndsProp > 0 && (plannedEndsProp < fullEnds || (animal && plannedEndsProp <= MAX_STATIONS)) ? plannedEndsProp : fullEnds
   );
   const isShortTraining = plannedEnds < fullEnds;
   // Seria dzieli sie po rowno na 2 Durchgange: 12 = 6+6, 8 = 4+4, 6 = 3+3.
@@ -213,10 +230,16 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   useEffect(() => {
     const savedSession = localStorage.getItem('grotX_activeSession');
+    // [ANIMAL ROUND] Nowa runda: trasa z Vorbereitung wypełnia pierwsze stanowisko.
+    // Wznowiona runda bierze trasę i bieżące stanowisko z zapisu (niżej).
+    let resumed = false;
     if (savedSession) {
       try {
         const data = JSON.parse(savedSession);
         if ((data.distanceId || null) === (distanceId || null) && data.distance === distance && data.targetType === sessionTargetType) {
+          resumed = true;
+          if (data.course) setCourse(data.course);
+          if (typeof data.endOutline === 'string') setEndOutline(data.endOutline);
           if (data.endFace) setEndFace(data.endFace);
           if (data.endDist) setEndDist(data.endDist);
           if (typeof data.endAnimal === 'string') setEndAnimal(data.endAnimal);
@@ -225,13 +248,26 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
           if (data.activeRoundTab) setActiveRoundTab(data.activeRoundTab);
           if (data.saveId) saveIdRef.current = data.saveId;
-          if (!battleId && typeof data.plannedEnds === 'number' && data.plannedEnds > 0 && data.plannedEnds <= fullEnds) setPlannedEnds(data.plannedEnds);
+          if (!battleId && typeof data.plannedEnds === 'number' && data.plannedEnds > 0 && (data.plannedEnds <= fullEnds || (animal && data.plannedEnds <= MAX_STATIONS))) setPlannedEnds(data.plannedEnds);
         }
       } catch (e) {
         console.error("Błąd odczytu lokalnej pamięci sesji", e);
       }
     }
+    if (!resumed && isAnimalRound({ distance }) && userId) {
+      try {
+        const c = JSON.parse(localStorage.getItem(selectedCourseKey(userId)) || 'null') as Course | null;
+        if (c?.stations?.length) { setCourse(c); fillStation(c, 0); }
+      } catch { /* bez trasy */ }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [distance, distanceId, sessionTargetType]);
+
+  // [ANIMAL ROUND] Obrysy tylko w PRO.
+  useEffect(() => {
+    if (!animal || !userId) return;
+    userDocCacheFirst(userId).then(s => setIsPro(hasActivePro(s.exists() ? (s.data() as any) : null))).catch(() => {});
+  }, [animal, userId]);
 
   // [RELOAD 2026-10-29] Pierwsze uruchomienie efektu niżej widzi jeszcze pusty
   // stan (przywrócone serie wchodzą dopiero w następnym renderze) — gdyby tu
@@ -251,7 +287,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(practiceArrowsProp ? { practiceArrows: practiceArrowsProp } : {}),
         targetType: sessionTargetType,
         ...(parcours ? { endFace, endDist } : {}),
-        ...(animal ? { endAnimal } : {}),
+        ...(animal ? { endAnimal, endOutline, ...(course ? { course } : {}) } : {}),
         inputArrows,
         inputCoordinates,
         submittedEnds,
@@ -267,7 +303,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     } else {
       persistReadyRef.current = true;
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, sessionTargetType, activeRoundTab, plannedEnds, parcours, endFace, endDist, animal, endAnimal]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, sessionTargetType, activeRoundTab, plannedEnds, parcours, endFace, endDist, animal, endAnimal, endOutline, course]);
 
   // [PARCOURS] Ostatni dystans pamiętamy na kolejną tarczę i kolejny trening.
   useEffect(() => {
@@ -436,7 +472,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       const raw = lastEnd.rawArrows || lastEnd.arrows || [];
       setInputArrows(raw.slice(0, -1));
       setInputCoordinates(lastEnd.dots ? lastEnd.dots.slice(0, -1) : []);
-      if (animal) setEndAnimal(lastEnd.animal || ''); // wraca nazwa cofniętego zwierzęcia
+      if (animal) { setEndAnimal(lastEnd.animal || ''); setEndOutline(lastEnd.outlineId || ''); } // wraca cofnięte zwierzę
       setSubmittedEnds(p => p.slice(0, -1));
     }
   };
@@ -458,6 +494,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       arrows: animal ? [...arrows] : sorted,
       rawArrows: [...arrows],
       ...(animal && endAnimal.trim() ? { animal: endAnimal.trim().slice(0, 40) } : {}),
+      ...(animal && endOutline ? { outlineId: endOutline } : {}),
       dots: safeCoordinates,
       total_sum: sum,
       // [PARCOURS] Tarcza i dystans tej serii (handicap rundy wielodystansowej).
@@ -476,7 +513,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const commitEnd = (arrows: string[], coords: any[]) => {
     const newEnd = makeEnd(arrows, coords);
     setSubmittedEnds(prev => [...prev, newEnd]);
-    if (animal) setEndAnimal(''); // następne zwierzę od nowa
+    if (animal) fillStation(course, submittedEnds.length + 1); // następne zwierzę: z trasy albo puste
 
     if (submittedEnds.length === roundSize - 1) {
       onRoundTwoStart?.();
@@ -507,7 +544,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     return () => clearTimeout(timeoutId);
     // inputCoordinates w zależnościach: oznaczenie 6. strzały jako Fehlschuss
     // w tych 600 ms musi trafić do zamykanej serii (inaczej zostaje stary stan).
-  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd, animal, endAnimal]);
+  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd, animal, endAnimal, endOutline, course]);
 
   // [DŁUGA RUNDA] Bieżąca seria zawsze widoczna w przewijanej tabeli.
   const endsListRef = useRef<HTMLDivElement>(null);
@@ -1019,8 +1056,30 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <datalist id="animal-names">
               {[...new Set(submittedEnds.map(e => e.animal).filter(Boolean))].map(n => <option key={n} value={n} />)}
             </datalist>
+            {/* Obrys zwierzęcia (PRO) — paczka ładuje się dopiero przy otwarciu. */}
+            <button
+              onClick={() => (isPro ? setShowOutlinePicker(true) : showToast(t('animal.outlinePro')))}
+              className="w-10 h-8 shrink-0 rounded-md border border-gray-100 bg-gray-50 flex items-center justify-center text-[#0a3a2a] active:scale-95"
+              aria-label={t('animal.outlineTitle')}
+              data-testid="outline-btn"
+            >
+              {endOutlineObj
+                ? <OutlineSvg o={endOutlineObj} className="h-6 w-8" />
+                : <span className={`material-symbols-outlined text-[16px] ${isPro ? '' : 'text-amber-600'}`}>{isPro ? 'add' : 'diamond'}</span>}
+            </button>
           </div>
         </div>
+      )}
+      {showOutlinePicker && (
+        <OutlinePicker
+          value={endOutline}
+          onClose={() => setShowOutlinePicker(false)}
+          onPick={o => {
+            setEndOutline(o?.id || '');
+            if (o && !endAnimal.trim()) setEndAnimal(outlineName(o, i18n.language));
+            setShowOutlinePicker(false);
+          }}
+        />
       )}
 
       {animal && isShooting && (
@@ -1273,6 +1332,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             {/* TREND + wybrana seria, potem TREFFERBILD — wspólne karty z Statystykami (components/scoring). */}
             <TrendCard ends={submittedEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} arrowColors={arrowColors} />
             {/* [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
+            {animal && !isGuestUser() && (
+              <CourseSaveCard userId={userId} ends={submittedEnds} course={course} isPro={isPro} onSaved={setCourse} />
+            )}
             {animal
               ? <AnimalCard ends={submittedEnds} />
               : <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={parcours ? (submittedEnds[0]?.targetType || targetType) : targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} parcours={parcours} />}

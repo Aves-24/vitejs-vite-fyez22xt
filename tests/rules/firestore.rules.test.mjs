@@ -1652,3 +1652,27 @@ test('PRZEKAZANIE: zapytania po każdej ze stron (uczeń, stary, nowy trener)', 
   await assertSucceeds(getDocs(query(collection(coach2(), 'coachTransfers'), where('toCoachId', '==', 'coach2'))));
   await assertFails(getDocs(query(collection(bob(), 'coachTransfers'), where('studentId', '==', 'alice'))));
 });
+
+// ─── [ANIMAL ROUND 2026-11-10] Zapisane trasy users/{uid}/courses ─────────
+const COURSE = { name: 'BSV Rundkurs', stations: [{ name: 'Hirsch' }, { name: 'Fuchs', outlineId: 'red-fox' }], createdAt: 1, updatedAt: 1 };
+
+test('TRASY: właściciel zapisuje, czyta i kasuje swoją trasę', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice/courses/c1'), COURSE));
+  await assertSucceeds(getDoc(doc(alice(), 'users/alice/courses/c1')));
+  await assertSucceeds(deleteDoc(doc(alice(), 'users/alice/courses/c1')));
+});
+
+test('TRASY: obcy i trener nie czytają ani nie piszą cudzej trasy', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'users/alice/courses/c1'), COURSE));
+  await assertFails(getDoc(doc(bob(), 'users/alice/courses/c1')));
+  await assertFails(getDoc(doc(coach1(), 'users/alice/courses/c1')));
+  await assertFails(setDoc(doc(bob(), 'users/alice/courses/c2'), COURSE));
+});
+
+test('TRASY: kształt — bez obcych pól, nazwa ≤ 60, ≤ 60 stanowisk, nie pusta', async () => {
+  await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, isPremium: true }));
+  await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, name: 'x'.repeat(61) }));
+  await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, name: '' }));
+  await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, stations: [] }));
+  await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, stations: Array.from({ length: 61 }, () => ({ name: 'a' })) }));
+});

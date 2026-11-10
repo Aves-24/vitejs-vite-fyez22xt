@@ -1,7 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SummaryCard from './SummaryCard';
-import { animalSummary, stationResult, animalFormatOf, zoneOf } from '../../config/animalRound';
+import { animalSummary, stationResult, animalFormatOf, type AnimalHit } from '../../config/animalRound';
+
+const STAT_CLS: Record<AnimalHit, string> = {
+  X: 'bg-[#D9A400] text-[#333]',
+  K: 'bg-[#F2C94C] text-[#333]',
+  V: 'bg-[#EB5757] text-white',
+  W: 'bg-white border border-gray-200 text-[#333]',
+};
 import { fmtNum } from '../../utils/formatNumber';
 
 // [ANIMAL ROUND 2026-11-10] „Trefferquote” zamiast Trefferbild — przy zwierzętach
@@ -31,10 +38,9 @@ export default function AnimalCard({ ends, targetType, storageKey = 'sum-animal'
             <span className="w-14 text-right font-black text-[#0a3a2a]">{b.n} · {pct(b.n)}%</span>
           </div>
         ))}
-        <div className="grid gap-1.5 pt-2" style={{ gridTemplateColumns: `repeat(${f.zones.length + 1}, minmax(0, 1fr))` }}>
-          <Stat label={t('animal.kills')} value={String(s.kills)} cls="bg-[#F2C94C] text-[#333]" />
-          {zoneOf(f, 'V') && <Stat label={t('animal.vital')} value={String(s.vitals)} cls="bg-[#EB5757] text-white" />}
-          <Stat label={t(zoneOf(f, 'W')?.key ?? 'animal.wound')} value={String(s.wounds)} cls="bg-white border border-gray-200 text-[#333]" />
+        <div className="grid gap-1.5 pt-2" style={{ gridTemplateColumns: `repeat(${f.zones.length + 1 > 4 ? 3 : f.zones.length + 1}, minmax(0, 1fr))` }}>
+          {/* Trafienia w każdą strefę formatu (WA: 11/10/8/5, IFAA 3D: Kill/Vital/Wound…). */}
+          {f.zones.map(z => <Stat key={z.hit} label={t(z.key)} value={String(s.zones[z.hit])} cls={STAT_CLS[z.hit]} />)}
           <Stat label={t('animal.perStation')} value={fmtNum(s.perStation, 1)} cls="bg-[#cce6dc] text-[#0a3a2a]" />
         </div>
         {/* Lista stanowisk z nazwami — które zwierzę sprawiło kłopot. */}
@@ -45,7 +51,7 @@ export default function AnimalCard({ ends, targetType, storageKey = 'sum-animal'
               <div key={i} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 min-w-0">
                 <span className="w-5 shrink-0 text-gray-400">{i + 1}</span>
                 <span className="flex-1 truncate text-[#0a3a2a]">{e.animal || '–'}</span>
-                <span className={`shrink-0 w-7 text-center rounded ${r ? (r.hit === 'K' ? 'bg-[#F2C94C] text-[#333]' : r.hit === 'V' ? 'bg-[#EB5757] text-white' : 'bg-white border border-gray-200') : 'bg-indigo-900 text-white'}`}>{r ? r.points : 0}</span>
+                <span className={`shrink-0 w-7 text-center rounded ${r ? (STAT_CLS[r.hit]) : 'bg-indigo-900 text-white'}`}>{r ? r.points : 0}</span>
               </div>
             );
           })}

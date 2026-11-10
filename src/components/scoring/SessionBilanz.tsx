@@ -38,6 +38,7 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
 // Vital — czerwień, Wound/Körper — biel i szarości jak sylwetka. Wartość jest
 // unikalna w obrębie formatu (3D Standard: 10/8/5 dla obu strzał).
 const ZONE_SHADES: Record<AnimalHit, { bg: string; ring?: boolean }[]> = {
+  X: [{ bg: '#B8860B' }, { bg: '#B8860B' }],
   K: [{ bg: '#D9A400' }, { bg: '#F2C94C' }, { bg: '#F8E08E' }],
   V: [{ bg: '#D83A3A' }, { bg: '#F28B8B' }, { bg: '#F8B4B4' }],
   W: [{ bg: '#ffffff', ring: true }, { bg: '#d1d5db' }, { bg: '#9ca3af' }],

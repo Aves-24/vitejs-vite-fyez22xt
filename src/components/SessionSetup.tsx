@@ -16,7 +16,7 @@ import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, di
 import { fieldFaceForMeters } from '../config/targets/waField';
 import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import { PARCOURS_DISTANCE, PARCOURS_DISTANCE_ID } from '../config/parcours';
-import { ANIMAL_DISTANCE, ANIMAL_DISTANCE_ID, ANIMAL_STATIONS, ANIMAL_FORMATS, animalFormatById } from '../config/animalRound';
+import { ANIMAL_DISTANCE, ANIMAL_DISTANCE_ID, ANIMAL_STATIONS, ANIMAL_FORMATS, animalFormatById, formatLabel } from '../config/animalRound';
 import { listCourses, selectedCourseKey, type Course } from '../utils/courses';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
@@ -292,7 +292,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   };
   const startArgs = (): [string, string | undefined, number] =>
     animalActive
-      ? [ANIMAL_DISTANCE_ID, undefined, course ? course.stations.length : ANIMAL_STATIONS]
+      ? [ANIMAL_DISTANCE_ID, undefined, course ? course.stations.length : (resolveTargetFace(animalFmt.faceId).round?.ends ?? ANIMAL_STATIONS)]
       : parcoursActive
       ? [PARCOURS_DISTANCE_ID, undefined, faceRound?.ends ?? 28]
       : [selectedId, selectedEntry?.label ? displayDistance(selectedEntry) : undefined, faceRound ? faceRound.ends : plannedEnds];
@@ -485,18 +485,24 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             </div>
             {animalActive && (
               <div className="mt-2" data-testid="animal-format">
-                <div className="grid grid-cols-3 gap-1" role="radiogroup" aria-label={t('animal.format')}>
-                  {ANIMAL_FORMATS.map(f => (
-                    <button
-                      key={f.id}
-                      role="radio"
-                      aria-checked={animalFmt.id === f.id}
-                      onClick={() => pickAnimalFmt(f.id)}
-                      className={`min-w-0 py-1.5 px-1 rounded-lg border text-[11px] font-black truncate transition-all ${animalFmt.id === f.id ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
-                    >
-                      {t(`animal.fmt.${f.id}`)}
-                    </button>
-                  ))}
+                {/* [ANIMAL ROUND] Nazwa z punktów i liczby strzał (user 2026-11-10),
+                    związek tylko małym podpisem — każdy rozpozna swój format po karcie wyników. */}
+                <div className="grid grid-cols-1 gap-1" role="radiogroup" aria-label={t('animal.format')}>
+                  {ANIMAL_FORMATS.map(f => {
+                    const on = animalFmt.id === f.id;
+                    return (
+                      <button
+                        key={f.id}
+                        role="radio"
+                        aria-checked={on}
+                        onClick={() => pickAnimalFmt(f.id)}
+                        className={`min-w-0 py-1.5 px-2.5 rounded-lg border flex items-baseline gap-2 text-left transition-all ${on ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-600 border-gray-200'}`}
+                      >
+                        <span className="flex-1 min-w-0 text-[12px] font-black truncate">{formatLabel(f, t)}</span>
+                        <span className={`shrink-0 text-[10px] font-bold ${on ? 'text-white/70' : 'text-gray-400'}`}>{t(`animal.fmt.${f.id}`)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <p className="text-[10px] font-bold text-gray-400 mt-1.5">{t(`animal.fmtHint.${animalFmt.id}`)}</p>
               </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { animalPoints, stationResult, stationDone, animalSummary, isAnimalRound, animalFormatById, animalFormatOf } from './animalRound';
+import { animalPoints, stationResult, stationDone, animalSummary, isAnimalRound, animalFormatById, animalFormatOf, formatLabel } from './animalRound';
 import { DBSV_WALD_FACE_ID, DBSV_JAGD_FACE_ID } from './targets/dbsv3d';
 import { statsGroupOf } from './statsGroups';
 import { rankWorldOf, handicapOfSession } from '../utils/rankEngine';
@@ -100,5 +100,23 @@ describe('IFAA 3D (Hunting 1 strzała, Standard 2 strzały obie liczone)', () =>
     expect(statsGroupOf({ targetType: std.faceId })).toBe('animal');
     expect(rankWorldOf({ targetType: hunt.faceId })).toBeNull();
     expect(selectableTargetIds()).not.toContain(std.faceId);
+  });
+});
+
+describe('WA 3D (11/10/8/5, 2 strzały obie liczone) i nazwy formatów', () => {
+  const wa = animalFormatById('wa-3d');
+  it('punkty i strefy', () => {
+    expect(['X', 'K', 'V', 'W'].map(h => animalPoints(1, h as any, wa))).toEqual([11, 10, 8, 5]);
+    expect(stationDone(['11'], wa)).toBe(false);
+    expect(stationResult(['11', '8'], wa)).toEqual({ arrow: 1, hit: 'X', points: 19 });
+    const s = animalSummary([{ arrows: ['11', '8'] }, { arrows: ['M', '5'] }], wa);
+    expect(s.zones).toEqual({ X: 1, K: 0, V: 1, W: 1 });
+    expect(s.score).toBe(24);
+  });
+  it('nazwy z punktów (bez związku)', () => {
+    const t = (k: string, o?: any) => ({ 'animal.lbl.one': '1 Pfeil', 'animal.lbl.upTo': `bis ${o?.n} Pfeile`, 'animal.lbl.n': `${o?.n} Pfeile`, 'animal.lbl.each': 'je' } as any)[k];
+    expect(formatLabel(wa, t)).toBe('2 Pfeile · je 11/10/8/5');
+    expect(formatLabel(animalFormatById('ifaa'), t)).toBe('bis 3 Pfeile · 20/18 → 16/14 → 12/10');
+    expect(formatLabel(animalFormatById('dbsv-jagd'), t)).toBe('1 Pfeil · 15/12');
   });
 });

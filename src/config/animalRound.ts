@@ -1,6 +1,7 @@
 import { IFAA_ANIMAL_FACE_ID } from './targets/ifaaAnimal';
 import { DBSV_WALD_FACE_ID, DBSV_JAGD_FACE_ID } from './targets/dbsv3d';
 import { IFAA_3D_HUNTING_FACE_ID, IFAA_3D_STANDARD_FACE_ID } from './targets/ifaa3d';
+import { WA_3D_FACE_ID } from './targets/wa3d';
 
 /**
  * [ANIMAL ROUND 2026-11-10] Rundy zwierzęce (2D i 3D) — IFAA i DBSV.
@@ -17,6 +18,10 @@ import { IFAA_3D_HUNTING_FACE_ID, IFAA_3D_STANDARD_FACE_ID } from './targets/ifa
  *    Źródło IFAA: Archers' Handbook 2021 („A maximum of three shots is allowed,
  *    but an archer shoots only until a hit is made.”; 3-D Hunting „Only one
  *    arrow is shot”; 3-D Standard „Both arrows are counted for score.”).
+ *  - World Archery 3D (też PZŁucz w Polsce i DSB w Niemczech) — 2 strzały,
+ *    liczą się obie: 11 (małe koło w środku dziesiątki) / 10 / 8 (Vital) / 5
+ *    (reszta ciała). Źródło: WA Book 4 (2026-09-14) 20.3.1 „In 3D, two arrows
+ *    per target will be shot in all rounds.”, Book 2 8.2.2.1 (strefy 11/10/8/5).
  *  - DBSV 3D-Waldrunde — do 3 strzał, pierwsze trafienie kończy:
  *    Kill 15/10/5, Körper 12/7/2.
  *  - DBSV 3D-Jagdrunde — 1 strzała: Kill 15, Körper 12.
@@ -35,19 +40,19 @@ export const ANIMAL_MAX_ARROWS = 3;
 
 export const isAnimalRound = (s?: { distance?: string | null } | null): boolean => s?.distance === ANIMAL_DISTANCE;
 
-/** Strefa trafienia: Kill (środek), Vital (tylko 3D IFAA), Wound/Körper (reszta). */
-export type AnimalHit = 'K' | 'V' | 'W';
+/** Strefa trafienia: X (11 w WA 3D), Kill, Vital (3D), Wound/Körper (reszta). */
+export type AnimalHit = 'X' | 'K' | 'V' | 'W';
 
 export interface AnimalZone {
   hit: AnimalHit;
   /** Klucz i18n nazwy strefy. */
-  key: 'animal.kill' | 'animal.vital' | 'animal.wound' | 'animal.body';
+  key: 'animal.center' | 'animal.kill' | 'animal.vital' | 'animal.wound' | 'animal.body';
   /** Punkty za trafienie strzałą nr 1, 2, 3… */
   pts: readonly number[];
 }
 
 export interface AnimalFormat {
-  id: 'ifaa' | 'ifaa-3d-hunt' | 'ifaa-3d-std' | 'dbsv-wald' | 'dbsv-jagd';
+  id: 'ifaa' | 'ifaa-3d-hunt' | 'ifaa-3d-std' | 'wa-3d' | 'dbsv-wald' | 'dbsv-jagd';
   faceId: string;
   maxArrows: number;
   /** Pierwsze trafienie kończy stanowisko (Animal Round, Waldrunde); 3D Standard — nie. */
@@ -56,32 +61,41 @@ export interface AnimalFormat {
   zones: readonly AnimalZone[];
 }
 
-const KILL = 'animal.kill', VITAL = 'animal.vital', WOUND = 'animal.wound', BODY = 'animal.body';
+const CENTER = 'animal.center', KILL = 'animal.kill', VITAL = 'animal.vital', WOUND = 'animal.wound', BODY = 'animal.body';
 
+/**
+ * Kolejność = kolejność na liście wyboru: od najmniejszej liczby strzał
+ * (user 2026-11-10: nazwy z punktów, związek tylko jako podpis).
+ */
 export const ANIMAL_FORMATS: readonly AnimalFormat[] = [
-  { id: 'ifaa', faceId: IFAA_ANIMAL_FACE_ID, maxArrows: 3, stopOnHit: true,
-    zones: [{ hit: 'K', key: KILL, pts: [20, 16, 12] }, { hit: 'W', key: WOUND, pts: [18, 14, 10] }] },
   { id: 'ifaa-3d-hunt', faceId: IFAA_3D_HUNTING_FACE_ID, maxArrows: 1, stopOnHit: true,
     zones: [{ hit: 'K', key: KILL, pts: [20] }, { hit: 'V', key: VITAL, pts: [16] }, { hit: 'W', key: WOUND, pts: [10] }] },
-  { id: 'ifaa-3d-std', faceId: IFAA_3D_STANDARD_FACE_ID, maxArrows: 2, stopOnHit: false,
-    zones: [{ hit: 'K', key: KILL, pts: [10, 10] }, { hit: 'V', key: VITAL, pts: [8, 8] }, { hit: 'W', key: WOUND, pts: [5, 5] }] },
-  { id: 'dbsv-wald', faceId: DBSV_WALD_FACE_ID, maxArrows: 3, stopOnHit: true,
-    zones: [{ hit: 'K', key: KILL, pts: [15, 10, 5] }, { hit: 'W', key: BODY, pts: [12, 7, 2] }] },
   { id: 'dbsv-jagd', faceId: DBSV_JAGD_FACE_ID, maxArrows: 1, stopOnHit: true,
     zones: [{ hit: 'K', key: KILL, pts: [15] }, { hit: 'W', key: BODY, pts: [12] }] },
+  { id: 'wa-3d', faceId: WA_3D_FACE_ID, maxArrows: 2, stopOnHit: false,
+    zones: [{ hit: 'X', key: CENTER, pts: [11, 11] }, { hit: 'K', key: KILL, pts: [10, 10] }, { hit: 'V', key: VITAL, pts: [8, 8] }, { hit: 'W', key: BODY, pts: [5, 5] }] },
+  { id: 'ifaa-3d-std', faceId: IFAA_3D_STANDARD_FACE_ID, maxArrows: 2, stopOnHit: false,
+    zones: [{ hit: 'K', key: KILL, pts: [10, 10] }, { hit: 'V', key: VITAL, pts: [8, 8] }, { hit: 'W', key: WOUND, pts: [5, 5] }] },
+  { id: 'ifaa', faceId: IFAA_ANIMAL_FACE_ID, maxArrows: 3, stopOnHit: true,
+    zones: [{ hit: 'K', key: KILL, pts: [20, 16, 12] }, { hit: 'W', key: WOUND, pts: [18, 14, 10] }] },
+  { id: 'dbsv-wald', faceId: DBSV_WALD_FACE_ID, maxArrows: 3, stopOnHit: true,
+    zones: [{ hit: 'K', key: KILL, pts: [15, 10, 5] }, { hit: 'W', key: BODY, pts: [12, 7, 2] }] },
 ];
+
+/** Domyślny format (stare sesje bez formatu) — IFAA Animal Round. */
+const DEFAULT_FORMAT = ANIMAL_FORMATS.find(f => f.id === 'ifaa')!;
 
 /** Format z tarczy sesji (brak/nieznana = IFAA Animal Round). */
 export const animalFormatOf = (targetType?: string | null): AnimalFormat =>
-  ANIMAL_FORMATS.find(f => f.faceId === targetType) ?? ANIMAL_FORMATS[0];
+  ANIMAL_FORMATS.find(f => f.faceId === targetType) ?? DEFAULT_FORMAT;
 
 export const animalFormatById = (id?: string | null): AnimalFormat =>
-  ANIMAL_FORMATS.find(f => f.id === id) ?? ANIMAL_FORMATS[0];
+  ANIMAL_FORMATS.find(f => f.id === id) ?? DEFAULT_FORMAT;
 
 /** Czy tarcza to któryś format rundy zwierzęcej. */
 export const isAnimalFace = (targetType?: string | null): boolean => ANIMAL_FORMATS.some(f => f.faceId === targetType);
 
-const IFAA = ANIMAL_FORMATS[0];
+const IFAA = DEFAULT_FORMAT;
 
 /** Strefa formatu (null, gdy format jej nie ma). */
 export const zoneOf = (f: AnimalFormat, hit: AnimalHit): AnimalZone | null => f.zones.find(z => z.hit === hit) ?? null;
@@ -125,6 +139,8 @@ export interface AnimalSummary {
   score: number;
   /** Trafienia 1., 2., 3. strzałą (w „do pierwszego trafienia” = którą strzałą zaliczone). */
   byArrow: [number, number, number];
+  /** Trafienia w każdą strefę (X/K/V/W). */
+  zones: Record<AnimalHit, number>;
   kills: number;
   vitals: number;
   wounds: number;
@@ -136,7 +152,7 @@ export interface AnimalSummary {
 
 /** „Trefferquote” — podsumowanie rundy po stanowiskach. */
 export function animalSummary(ends: readonly { arrows?: string[]; rawArrows?: string[] }[], f: AnimalFormat = IFAA): AnimalSummary {
-  const s: AnimalSummary = { stations: 0, score: 0, byArrow: [0, 0, 0], kills: 0, vitals: 0, wounds: 0, misses: 0, perStation: 0 };
+  const s: AnimalSummary = { stations: 0, score: 0, byArrow: [0, 0, 0], zones: { X: 0, K: 0, V: 0, W: 0 }, kills: 0, vitals: 0, wounds: 0, misses: 0, perStation: 0 };
   for (const e of ends) {
     const arrows = e.rawArrows || e.arrows || [];
     if (!arrows.length) continue;
@@ -148,11 +164,26 @@ export function animalSummary(ends: readonly { arrows?: string[]; rawArrows?: st
       any = true;
       s.score += parseInt(arrows[i], 10);
       if (i < 3) s.byArrow[i]++;
-      if (h === 'K') s.kills++; else if (h === 'V') s.vitals++; else s.wounds++;
+      s.zones[h]++;
+      if (h === 'K' || h === 'X') s.kills++; else if (h === 'V') s.vitals++; else s.wounds++;
       if (f.stopOnHit) break;
     }
     if (!any) s.misses++;
   }
   s.perStation = s.stations ? s.score / s.stations : 0;
   return s;
+}
+
+/**
+ * Nazwa formatu z jego danych (user 2026-11-10: zamiast „Niemcy/IFAA” — liczba
+ * strzał i punkty, związek jako podpis). Np. „1 Pfeil · 20/16/10”,
+ * „2 Pfeile · je 11/10/8/5”, „bis 3 · 20/18 → 16/14 → 12/10”.
+ */
+export function formatLabel(f: AnimalFormat, t: (k: string, o?: any) => string): string {
+  const arrows = f.maxArrows === 1 ? t('animal.lbl.one') : f.stopOnHit ? t('animal.lbl.upTo', { n: f.maxArrows }) : t('animal.lbl.n', { n: f.maxArrows });
+  const perArrow = Array.from({ length: f.maxArrows }, (_, i) => f.zones.map(z => z.pts[i]).join('/'));
+  const pts = f.stopOnHit || f.maxArrows === 1
+    ? perArrow.join(' → ')
+    : `${t('animal.lbl.each')} ${perArrow[0]}`;
+  return `${arrows} · ${pts}`;
 }

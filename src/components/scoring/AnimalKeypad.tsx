@@ -9,11 +9,12 @@ import type { AnimalHit, AnimalFormat } from '../../config/animalRound';
 // więc na przycisku widać, ile da TA strzała.
 
 const ZONE_CLS: Record<AnimalHit, string> = {
+  X: 'bg-[#D9A400] text-[#333]',
   K: 'bg-[#F2C94C] text-[#333]',
   V: 'bg-[#EB5757] text-white',
   W: 'bg-white border border-gray-200 text-[#333]',
 };
-const HINT_KEY: Record<AnimalHit, string> = { K: 'animal.killHint', V: 'animal.vitalHint', W: 'animal.woundHint' };
+const HINT_KEY: Record<AnimalHit, string> = { X: 'animal.centerHint', K: 'animal.killHint', V: 'animal.vitalHint', W: 'animal.woundHint' };
 
 export default function AnimalKeypad({ arrowIndex, onShot, onUndo, format }: {
   arrowIndex: number;
@@ -29,7 +30,8 @@ export default function AnimalKeypad({ arrowIndex, onShot, onUndo, format }: {
       <div className="text-center text-[10px] font-black uppercase tracking-widest text-gray-400">
         {t('animal.arrowN', { n: n + 1 })}{format.maxArrows > 1 && !format.stopOnHit ? ` / ${format.maxArrows}` : ''}
       </div>
-      <div className="grid gap-1.5 flex-1" style={{ gridTemplateColumns: `repeat(${format.zones.length}, minmax(0, 1fr))` }}>
+      {/* 4 strefy (WA 3D) — siatka 2×2, inaczej w jednym rzędzie. */}
+      <div className="grid gap-1.5 flex-1" style={{ gridTemplateColumns: `repeat(${format.zones.length > 3 ? 2 : format.zones.length}, minmax(0, 1fr))` }}>
         {format.zones.map(z => {
           const pts = z.pts[n] ?? 0;
           const label = t(z.key);

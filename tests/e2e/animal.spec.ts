@@ -274,7 +274,7 @@ test('IFAA 3D: Hunting 1 Pfeil (Kill/Vital/Wound 20/16/10), Standard 2 Pfeile be
   await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
   await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
 
-  const start = async (fmtName: string) => {
+  const start = async (fmtName: string | RegExp) => {
     await page.goto('/');
     await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
     await page.getByTestId('animal-tile').click();
@@ -285,7 +285,7 @@ test('IFAA 3D: Hunting 1 Pfeil (Kill/Vital/Wound 20/16/10), Standard 2 Pfeile be
   const bar = page.getByTestId('animal-bar');
 
   // Hunting: Vital 16, potem Miss (od razu dalej), potem Kill 20.
-  await start('IFAA 3D Jagd');
+  await start('1 Pfeil · 20/16/10');
   await expect(keypad.getByRole('button', { name: 'Vital 16' })).toBeVisible();
   // Bez surowych kluczy i18n (np. „animal.vital”) na klawiaturze i pasku wyniku.
   await expect(keypad).not.toContainText('animal.');
@@ -303,7 +303,7 @@ test('IFAA 3D: Hunting 1 Pfeil (Kill/Vital/Wound 20/16/10), Standard 2 Pfeile be
   await expect(page.getByRole('button', { name: /^Zuletzt 36/ })).toBeVisible();
 
   // Standard: trafienie nie zamyka, po 2 strzałach dalej; obie się liczą.
-  await start('IFAA 3D 2 Pfeile');
+  await start('je 10/8/5');
   await keypad.getByRole('button', { name: 'Kill 10' }).click();
   await page.waitForTimeout(800);
   await expect(bar).toContainText('Tier 1/28'); // nadal to samo zwierzę
@@ -323,4 +323,54 @@ test('IFAA 3D: Hunting 1 Pfeil (Kill/Vital/Wound 20/16/10), Standard 2 Pfeile be
   expect(ss.map((f: any) => f.targetType.stringValue)).toEqual(['IFAA 3D Standard', 'IFAA 3D Hunting']);
   expect(ss[0].ends.arrayValue.values.map((v: any) => v.mapValue.fields.arrows.arrayValue.values.map((a: any) => a.stringValue).join(','))).toEqual(['10,8', 'M,5']);
   await expectNoErrors(page, errors, 'IFAA 3D');
+});
+
+test('WA 3D (DSB, PZŁucz): 2 Pfeile beide zählen, 11/10/8/5 im 2×2-Raster, 24 Tiere; Namen aus Punkten', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Wa3d');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('animal-tile').click();
+  const fmt = page.getByTestId('animal-format');
+  // Nazwy z punktów, od najmniejszej liczby strzał; związek jako podpis.
+  const names = await fmt.getByRole('radio').allInnerTexts();
+  expect(names.map(n => n.replace(/\s+/g, ' ').trim())).toEqual([
+    '1 Pfeil · 20/16/10 IFAA 3D',
+    '1 Pfeil · 15/12 DBSV Jagd',
+    '2 Pfeile · je 11/10/8/5 WA 3D (DSB, PZŁucz)',
+    '2 Pfeile · je 10/8/5 IFAA 3D',
+    'bis 3 Pfeile · 20/18 → 16/14 → 12/10 IFAA Tiere',
+    'bis 3 Pfeile · 15/12 → 10/7 → 5/2 DBSV Wald',
+  ]);
+  await page.screenshot({ path: test.info().outputPath('formats.png'), fullPage: true });
+  await fmt.getByRole('radio', { name: 'je 11/10/8/5' }).click();
+  await expect(fmt).toContainText('24 Tiere');
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  const keypad = page.getByTestId('animal-keypad');
+  const bar = page.getByTestId('animal-bar');
+  await expect(bar).toContainText('Tier 1/24');
+  for (const b of ['Mitte 11', 'Kill 10', 'Vital 8', 'Körper 5']) await expect(keypad.getByRole('button', { name: b })).toBeVisible();
+  await keypad.getByRole('button', { name: 'Mitte 11' }).click();
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 1/24'); // trafienie nie kończy
+  await keypad.getByRole('button', { name: 'Vital 8' }).click();
+  await page.waitForTimeout(800);
+  await keypad.getByRole('button', { name: 'Miss' }).click();
+  await keypad.getByRole('button', { name: 'Körper 5' }).click();
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*24/);
+  await page.screenshot({ path: test.info().outputPath('wa3d.png') });
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 24/ })).toBeVisible();
+  await syncWrites(page);
+  const s = (await adminListDocs(request, `users/${uid}/sessions`))[0].fields;
+  expect(s.targetType.stringValue).toBe('WA 3D');
+  await expectNoErrors(page, errors, 'WA 3D');
 });

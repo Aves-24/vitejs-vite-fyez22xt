@@ -17,6 +17,8 @@ import CoachFocusModal from '../components/CoachFocusModal';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
 import TargetCard from '../components/scoring/TargetCard';
+import AnimalCard from '../components/scoring/AnimalCard';
+import { isAnimalRound } from '../config/animalRound';
 import { distanceMeters } from '../config/distances';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import FocusResultChip, { isFocusResult } from '../components/scoring/FocusResultChip';
@@ -323,7 +325,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
                 beforeTs={ms || undefined}
               />
               <TrendCard ends={ends} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!session.arrowColors} storageKey="coach-trend" />
-              <TargetCard
+              {isAnimalRound(session) ? <AnimalCard ends={ends} storageKey="coach-animal" /> : <TargetCard
                 ends={ends}
                 roundSize={roundSize}
                 targetType={targetType}
@@ -333,7 +335,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
                 parcours={!!session.parcours}
                 heatmap
                 storageKey="coach-target"
-              />
+              />}
             </div>
           )}
         </>

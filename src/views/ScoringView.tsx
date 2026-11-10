@@ -35,6 +35,9 @@ import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
 import { isParcours } from '../config/parcours';
+import { isAnimalRound, animalPoints, stationDone, animalSummary, type AnimalHit } from '../config/animalRound';
+import AnimalKeypad from '../components/scoring/AnimalKeypad';
+import AnimalCard from '../components/scoring/AnimalCard';
 import { arrowPoints, xPointsFor } from '../utils/arrowPoints';
 import { faceKeyClass } from '../config/arrowKeyColors';
 
@@ -86,6 +89,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     try { return localStorage.getItem(`grotX_parcoursDist_${userId}`) || '30yd'; } catch { return '30yd'; }
   });
   const targetType = parcours ? endFace : sessionTargetType;
+  // [ANIMAL ROUND 2026-11-10] Zwierzęta: Kill/Wound/Miss, do 3 strzał na stanowisko,
+  // pierwsze trafienie zamyka stanowisko. Nazwa zwierzęcia wpisywana na trasie.
+  const animal = !battleId && isAnimalRound({ distance });
+  const [endAnimal, setEndAnimal] = useState('');
   // [PARCOURS] Tarcze do wyboru: ten sam świat co tarcza startowa (IFAA albo teren WA).
   const parcoursFaces = parcours
     ? selectableTargetIds().filter(id => findTargetFace(id)?.statsGroup === findTargetFace(sessionTargetType)?.statsGroup
@@ -212,6 +219,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         if ((data.distanceId || null) === (distanceId || null) && data.distance === distance && data.targetType === sessionTargetType) {
           if (data.endFace) setEndFace(data.endFace);
           if (data.endDist) setEndDist(data.endDist);
+          if (typeof data.endAnimal === 'string') setEndAnimal(data.endAnimal);
           if (data.submittedEnds) setSubmittedEnds(data.submittedEnds);
           if (data.inputArrows) setInputArrows(data.inputArrows);
           if (data.inputCoordinates) setInputCoordinates(data.inputCoordinates);
@@ -243,6 +251,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         ...(practiceArrowsProp ? { practiceArrows: practiceArrowsProp } : {}),
         targetType: sessionTargetType,
         ...(parcours ? { endFace, endDist } : {}),
+        ...(animal ? { endAnimal } : {}),
         inputArrows,
         inputCoordinates,
         submittedEnds,
@@ -258,7 +267,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     } else {
       persistReadyRef.current = true;
     }
-  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, sessionTargetType, activeRoundTab, plannedEnds, parcours, endFace, endDist]);
+  }, [inputArrows, inputCoordinates, submittedEnds, distance, distanceId, distanceLabel, battleId, practiceArrowsProp, sessionTargetType, activeRoundTab, plannedEnds, parcours, endFace, endDist, animal, endAnimal]);
 
   // [PARCOURS] Ostatni dystans pamiętamy na kolejną tarczę i kolejny trening.
   useEffect(() => {
@@ -375,7 +384,15 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }
   };
 
-  const addScoreFromTarget = (v: string, x: number, y: number, spotId: string | null) => { 
+  // [ANIMAL ROUND] Strzała = punkty z numeru strzały (Kill/Wound) albo M.
+  const addAnimalShot = (hit: AnimalHit | 'M') => {
+    if (inputArrows.length >= arrowsPerEnd || stationDone(inputArrows)) return; // zamyka się samo
+    const v = hit === 'M' ? 'M' : String(animalPoints(inputArrows.length, hit));
+    setInputArrows([...inputArrows, v]);
+    setInputCoordinates([...inputCoordinates, { x: null, y: null, spotId: null }]);
+  };
+
+  const addScoreFromTarget = (v: string, x: number, y: number, spotId: string | null) => {
     if (inputArrows.length < arrowsPerEnd) { 
       const coord = { x: x ?? null, y: y ?? null, spotId: spotId ?? null };
       const isVisualInput = x !== null && y !== null;
@@ -419,6 +436,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
       const raw = lastEnd.rawArrows || lastEnd.arrows || [];
       setInputArrows(raw.slice(0, -1));
       setInputCoordinates(lastEnd.dots ? lastEnd.dots.slice(0, -1) : []);
+      if (animal) setEndAnimal(lastEnd.animal || ''); // wraca nazwa cofniętego zwierzęcia
       setSubmittedEnds(p => p.slice(0, -1));
     }
   };
@@ -436,8 +454,10 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     }));
 
     return {
-      arrows: sorted,
+      // [ANIMAL ROUND] Kolejność strzał ma znaczenie (która trafiła) — bez sortowania.
+      arrows: animal ? [...arrows] : sorted,
       rawArrows: [...arrows],
+      ...(animal && endAnimal.trim() ? { animal: endAnimal.trim().slice(0, 40) } : {}),
       dots: safeCoordinates,
       total_sum: sum,
       // [PARCOURS] Tarcza i dystans tej serii (handicap rundy wielodystansowej).
@@ -456,6 +476,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   const commitEnd = (arrows: string[], coords: any[]) => {
     const newEnd = makeEnd(arrows, coords);
     setSubmittedEnds(prev => [...prev, newEnd]);
+    if (animal) setEndAnimal(''); // następne zwierzę od nowa
 
     if (submittedEnds.length === roundSize - 1) {
       onRoundTwoStart?.();
@@ -475,7 +496,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   useEffect(() => {
     let timeoutId: any;
-    if (inputArrows.length === arrowsPerEnd) {
+    // [ANIMAL ROUND] Stanowisko zamyka też pierwsze trafienie (nie trzeba 3 strzał).
+    if (inputArrows.length === arrowsPerEnd || (animal && inputArrows.length > 0 && stationDone(inputArrows))) {
       timeoutId = setTimeout(() => {
         commitEnd(inputArrows, inputCoordinates);
         setInputArrows([]);
@@ -485,7 +507,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
     return () => clearTimeout(timeoutId);
     // inputCoordinates w zależnościach: oznaczenie 6. strzały jako Fehlschuss
     // w tych 600 ms musi trafić do zamykanej serii (inaczej zostaje stary stan).
-  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd]);
+  }, [inputArrows, inputCoordinates, submittedEnds.length, onRoundTwoStart, roundSize, arrowsPerEnd, animal, endAnimal]);
 
   // [DŁUGA RUNDA] Bieżąca seria zawsze widoczna w przewijanej tabeli.
   const endsListRef = useRef<HTMLDivElement>(null);
@@ -978,7 +1000,36 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         </div>
       )}
 
-      {isShooting && (
+      {/* [ANIMAL ROUND] Stanowisko N: nazwa zwierzęcia (wpisywana, edytowalna). */}
+      {animal && isShooting && (
+        <div className="mx-2 mb-1.5 bg-white rounded-2xl border border-gray-200 shadow-sm px-2.5 py-2" data-testid="animal-bar">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-black text-[#0a3a2a] uppercase tracking-widest shrink-0">{t('animal.station', { n: submittedEnds.length + 1, total: plannedEnds })}</span>
+            <input
+              type="text"
+              value={endAnimal}
+              maxLength={40}
+              onChange={e => setEndAnimal(e.target.value)}
+              placeholder={t('animal.namePlaceholder')}
+              aria-label={t('animal.name')}
+              list="animal-names"
+              className="flex-1 min-w-0 h-8 px-2 bg-gray-50 rounded-md text-[13px] font-bold text-[#0a3a2a] outline-none border border-gray-100"
+            />
+            {/* Podpowiedzi: zwierzęta wpisane już w tej rundzie. */}
+            <datalist id="animal-names">
+              {[...new Set(submittedEnds.map(e => e.animal).filter(Boolean))].map(n => <option key={n} value={n} />)}
+            </datalist>
+          </div>
+        </div>
+      )}
+
+      {animal && isShooting && (
+        <div className="flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[200px] max-h-[380px] p-2">
+          <AnimalKeypad arrowIndex={inputArrows.length} onShot={addAnimalShot} onUndo={undo} />
+        </div>
+      )}
+
+      {isShooting && !animal && (
         <div className={`flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[170px] max-h-[380px] ${isTargetFullscreen && activeInputTab === 1 ? 'hidden' : ''}`}>
           <div className={`flex-1 ${activeInputTab === 0 ? 'p-2' : 'p-1'} h-full flex items-center justify-center`}>
             {activeInputTab === 0 ? (
@@ -1053,7 +1104,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           </div>
           {/* [FEHLSCHUSS] Tryb oznaczania (user 2026-10-29): przy strzelaniu tylko flaga
               i (i); flaga włącza tryb (podpowiedź + flagi na polach), druga wyłącza. */}
-          {hasAnyArrow && (
+          {hasAnyArrow && !animal && (
             <div className="flex items-center gap-1.5 -my-1">
               <button
                 onClick={() => setBadMode(m => !m)}
@@ -1076,7 +1127,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
         </div>
         {/* [DŁUGA RUNDA] Ponad 6 serii (IFAA 14 tarcz): tabela przewija się sama w sobie,
             żeby klawiatura, tabela i suma zostały na jednym ekranie. */}
-        <div ref={endsListRef} className="p-1.5 space-y-0.5" style={roundSize > 6 ? { maxHeight: parcours ? '24dvh' : '30dvh', overflowY: 'auto' } : undefined} data-testid="ends-table">
+        <div ref={endsListRef} className="p-1.5 space-y-0.5" style={roundSize > 6 ? { maxHeight: parcours || animal ? '24dvh' : '30dvh', overflowY: 'auto' } : undefined} data-testid="ends-table">
           {Array.from({ length: roundSize }, (_, i) => i).map(i => {
             const idx = activeRoundTab === 1 ? i : roundSize + i;
             const end = submittedEnds[idx];
@@ -1087,7 +1138,14 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             const runSum = prevSum + passSum;
             return (
               <div key={idx} data-current={isCur || undefined} className={`flex items-center text-center px-1 py-0.5 rounded-md transition-all ${isCur ? 'border border-[#F2C94C] bg-white' : 'bg-transparent'}`}>
-                <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
+                {animal ? (
+                  // [ANIMAL ROUND] Numer + nazwa zwierzęcia zamiast „P1”.
+                  <div className="w-16 text-left text-[10px] font-bold text-gray-500 truncate pr-1" title={end?.animal || ''}>
+                    {idx + 1}{end?.animal || (isCur && endAnimal) ? ` ${end?.animal || endAnimal}` : ''}
+                  </div>
+                ) : (
+                  <div className="w-6 text-[10px] font-bold text-gray-500">{t('scoringView.endAbbr', 'P')}{idx + 1}</div>
+                )}
                 <div className="flex-1 grid gap-1" style={{ gridTemplateColumns: `repeat(${arrowsPerEnd}, minmax(0, 1fr))` }}>
                   {/* [KOLORY STRZAŁ] Bieżąca seria idzie w kolejności wpisywania,
                       więc pasek pod polem = kolor strzały; gotowe serie zostają
@@ -1145,14 +1203,33 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{String(t('scoringView.round', 'RUNDA')).toUpperCase()} {activeRoundTab}</span>
             <span className="text-sm font-black leading-tight">{currentRoundStats.score}</span>
           </div>
-          <div>
-            <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">X/10/9</span>
-            <span className="text-sm font-black leading-tight">{currentRoundStats.x}/{currentRoundStats.t}/{currentRoundStats.n}</span>
-          </div>
-          <div>
-            <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.avg', 'ŚREDNIA')}</span>
-            <span className="text-sm font-black leading-tight">{fmtNum(Number(currentRoundStats.avg), 2)}</span>
-          </div>
+          {animal ? (() => {
+            // [ANIMAL ROUND] Zamiast X/10/9 i średniej na strzałę: Kill/Wound i średnia na zwierzę.
+            const as = animalSummary(submittedEnds);
+            return (
+              <>
+                <div>
+                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.kills')}/{t('animal.wounds')}</span>
+                  <span className="text-sm font-black leading-tight">{as.kills}/{as.wounds}</span>
+                </div>
+                <div>
+                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.perStation')}</span>
+                  <span className="text-sm font-black leading-tight">{fmtNum(as.perStation, 1)}</span>
+                </div>
+              </>
+            );
+          })() : (
+            <>
+              <div>
+                <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">X/10/9</span>
+                <span className="text-sm font-black leading-tight">{currentRoundStats.x}/{currentRoundStats.t}/{currentRoundStats.n}</span>
+              </div>
+              <div>
+                <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.avg', 'ŚREDNIA')}</span>
+                <span className="text-sm font-black leading-tight">{fmtNum(Number(currentRoundStats.avg), 2)}</span>
+              </div>
+            </>
+          )}
         </div>
         <div className="text-right shrink-0">
           <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('scoringView.totalSum', 'Suma Całkowita')}</span>
@@ -1196,7 +1273,9 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
             {/* TREND + wybrana seria, potem TREFFERBILD — wspólne karty z Statystykami (components/scoring). */}
             <TrendCard ends={submittedEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} arrowColors={arrowColors} />
             {/* [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
-            <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={parcours ? (submittedEnds[0]?.targetType || targetType) : targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} parcours={parcours} />
+            {animal
+              ? <AnimalCard ends={submittedEnds} />
+              : <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={parcours ? (submittedEnds[0]?.targetType || targetType) : targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} parcours={parcours} />}
 
             {AI_ENABLED && submittedEnds.length >= 6 && (
               <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />

@@ -178,7 +178,8 @@ describe('krzyżyk dotyka linii = wyższa wartość', () => {
 
 describe('katalog tarcz — spójność', () => {
   it('rysunek zgadza się z punktacją: zewnętrzny pierścień = krok × liczba pierścieni', () => {
-    TARGET_FACES.filter(f => f.scorable && !f.zones && f.layout === 'single').forEach(f => {
+    // [ANIMAL ROUND] Zwierzę nie ma rysunku (Kill/Wound/Miss) — poza tym sprawdzeniem.
+    TARGET_FACES.filter(f => f.scorable && !f.zones && f.layout === 'single' && f.statsGroup !== 'animal').forEach(f => {
       expect(f.rings[0].r).toBe(f.scoringRingStep * (11 - f.minScoringRing));
     });
   });

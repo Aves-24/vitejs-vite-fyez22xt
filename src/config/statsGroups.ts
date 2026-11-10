@@ -14,18 +14,21 @@ import { isBlowgun, styleOfSetup } from './equipmentSetups';
  *  - 'target'  — tarcze WA (hala i tory), jedyny świat z rangą z handicapu,
  *  - 'field'   — tarcze terenowe WA (6–1),
  *  - 'blowgun' — dmuchawka (6–10, ale osobne dystanse i bez rangi),
- *  - 'ifaa'    — tarcze IFAA (5–1, seria 4/5 strzał jak na zawodach).
+ *  - 'ifaa'    — tarcze IFAA (5–1, seria 4/5 strzał jak na zawodach),
+ *  - 'animal'  — [ANIMAL ROUND 2026-11-10] runda zwierzęca IFAA (20…4 za
+ *                stanowisko, config/animalRound.ts) — bez rangi, nie ma
+ *                własnego zestawu (strzela się z zestawu IFAA).
  *
  * Trening przypisujemy po TARCZY (i stemplu dyscypliny dla dmuchawki), nie po
  * zestawie — tarcza jest zapisana w każdej sesji, także w starych.
  */
-export type StatsGroup = 'target' | 'field' | 'blowgun' | 'ifaa';
+export type StatsGroup = 'target' | 'field' | 'blowgun' | 'ifaa' | 'animal';
 
 export function statsGroupOf(s?: { bowClass?: string | null; targetType?: string | null } | null): StatsGroup {
   if (!s) return 'target';
   if (isBlowgunSession({ bowClass: s.bowClass, targetType: s.targetType })) return 'blowgun';
   const g = findTargetFace(s.targetType)?.statsGroup;
-  if (g === 'field' || g === 'ifaa') return g;
+  if (g === 'field' || g === 'ifaa' || g === 'animal') return g;
   return 'target';
 }
 
@@ -58,7 +61,7 @@ export function clearHomeStatsCache(userId: string) {
 }
 
 /** Najwyższa wartość strzały w danym świecie (skala słupków, wykresów). */
-export const scaleMaxOf = (g: StatsGroup): number => (g === 'field' ? 6 : g === 'ifaa' ? 5 : 10);
+export const scaleMaxOf = (g: StatsGroup): number => (g === 'field' ? 6 : g === 'ifaa' ? 5 : g === 'animal' ? 20 : 10);
 
 /**
  * Strzała → indeks strefy [złoto, czerwień, niebieski, czarny, biały, M].
@@ -69,6 +72,8 @@ export function zoneIndexOf(v: unknown, g: StatsGroup = 'target'): number | null
   const n = v === 'X' ? (g === 'field' ? 6 : g === 'ifaa' ? 5 : 10) : parseInt(String(v), 10);
   if (isNaN(n)) return null;
   if (n <= 0) return 5;
+  // Zwierzę: Kill (20/14/8) = złoto, Wound (16/10/4) = biały.
+  if (g === 'animal') return n === 20 || n === 14 || n === 8 ? 0 : 4;
   if (g === 'field') return n >= 5 ? 0 : 3;
   // IFAA: 5 = środek (najlepsza strefa), 4 = pierścień wewnętrzny, 3 = zewnętrzny; 2/1 tylko Indoor/Expert.
   if (g === 'ifaa') return n >= 5 ? 0 : n === 4 ? 1 : n === 3 ? 2 : 3;

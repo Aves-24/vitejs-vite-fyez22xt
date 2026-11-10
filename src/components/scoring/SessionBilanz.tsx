@@ -6,6 +6,7 @@ import { getStats } from '../../utils/endStats';
 import { handicapOfSession } from '../../utils/rankEngine';
 import { countBad } from '../../utils/badShots';
 import { xPointsFor } from '../../utils/arrowPoints';
+import { isAnimalRound } from '../../config/animalRound';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -31,6 +32,17 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
     M: '#581c87',
   };
   return map[v] ? { bg: map[v] } : { bg: '#ffffff', ring: true };
+};
+
+const ANIMAL_VALUE_ORDER = ['20', '14', '8', '16', '10', '4', 'M'];
+// Kill (20/14/8) — złoto od ciemnego; Wound (16/10/4) — biel/szarości jak sylwetka.
+const animalValueColor = (v: string): { bg: string; ring?: boolean } => {
+  const map: Record<string, { bg: string; ring?: boolean }> = {
+    '20': { bg: '#D9A400' }, '14': { bg: '#F2C94C' }, '8': { bg: '#F8E08E' },
+    '16': { bg: '#ffffff', ring: true }, '10': { bg: '#d1d5db' }, '4': { bg: '#9ca3af' },
+    M: { bg: '#581c87' },
+  };
+  return map[v] ?? { bg: '#ffffff', ring: true };
 };
 
 interface Prior { score: number; arrows: number; ts: number }
@@ -126,7 +138,10 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   // --- Rozkład trafień ---
   const counts = new Map<string, number>();
   ends.forEach(e => e.arrows?.forEach((v: string) => { if (v) counts.set(v, (counts.get(v) || 0) + 1); }));
-  const hits = VALUE_ORDER.filter(v => counts.get(v)).map(v => ({ v, n: counts.get(v)! }));
+  // [ANIMAL ROUND] Wartości zwierząt (20…4) mają własną kolejność i kolory.
+  const animal = isAnimalRound({ distance });
+  const hits = (animal ? ANIMAL_VALUE_ORDER : VALUE_ORDER).filter(v => counts.get(v)).map(v => ({ v, n: counts.get(v)! }));
+  const colorOf = (v: string) => (animal ? animalValueColor(v) : valueColor(v));
 
   return (
     <div className="tb-card tb-d3 border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 w-full">
@@ -194,13 +209,13 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
           <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mt-2 mb-1">{t('scoring.bilanz.hits')}</p>
           <div className="flex h-3 rounded-full overflow-hidden border border-gray-200">
             {hits.map(h => {
-              const c = valueColor(h.v);
+              const c = colorOf(h.v);
               return <div key={h.v} style={{ width: `${(h.n / all.count) * 100}%`, backgroundColor: c.bg }} className={c.ring ? 'border-r border-gray-200' : ''} />;
             })}
           </div>
           <div className="flex flex-wrap gap-x-2.5 gap-y-0.5 mt-1.5">
             {hits.map(h => {
-              const c = valueColor(h.v);
+              const c = colorOf(h.v);
               return (
                 <span key={h.v} className="flex items-center gap-1 text-[10px] font-bold text-gray-500 tabular-nums">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: c.bg, boxShadow: c.ring ? 'inset 0 0 0 1px #d1d5db' : undefined }} />

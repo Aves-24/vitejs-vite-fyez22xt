@@ -116,7 +116,8 @@ export type RankWorld = 'field' | 'ifaa';
 /** Świat rangi dla sesji: 'target' (tarcze WA), 'field', 'ifaa' albo null (dmuchawka). */
 export function rankWorldOf(s: { bowClass?: string | null; targetType?: string | null }): 'target' | RankWorld | null {
   const g: StatsGroup = statsGroupOf({ bowClass: s.bowClass, targetType: s.targetType || '' });
-  return g === 'blowgun' ? null : g;
+  // [ANIMAL ROUND] Runda zwierzęca bez rangi (inna skala, brak modelu handicapu).
+  return g === 'blowgun' || g === 'animal' ? null : g;
 }
 
 /** Zapisane pola rangi danego świata (do rankFromStored). */

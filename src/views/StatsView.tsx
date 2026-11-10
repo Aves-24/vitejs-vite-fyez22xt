@@ -14,6 +14,8 @@ import LockedCard from '../components/scoring/LockedCard';
 import SessionBilanz from '../components/scoring/SessionBilanz';
 import TrendCard from '../components/scoring/TrendCard';
 import TargetCard from '../components/scoring/TargetCard';
+import AnimalCard from '../components/scoring/AnimalCard';
+import { isAnimalRound } from '../config/animalRound';
 import { rankBowOf } from '../utils/rankEngine';
 import { BLOWGUN_DISCIPLINE } from '../config/equipmentSetups';
 import ProStatsView from '../components/ProStatsView';
@@ -876,7 +878,8 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
 
                       {/* Jedna duża tarcza jak po treningu; heatmapa w karcie zamiast okienka.
                           [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
-                      <TargetCard
+                      {/* [ANIMAL ROUND] Trefferquote zamiast tarczy. */}
+                      {isAnimalRound(selectedSession) ? <AnimalCard key={selectedSession.id} ends={currentEnds} storageKey="stats-animal" /> : <TargetCard
                         key={selectedSession.id}
                         parcours={!!(selectedSession as any)?.parcours}
                         ends={currentEnds}
@@ -887,7 +890,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         sightHint={sessionHasSight}
                         heatmap
                         storageKey="stats-target"
-                      />
+                      />}
                       {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
                       {/* Eksport: PDF dla każdego w oknie analizy, CSV tylko PRO (ExportPanel). */}

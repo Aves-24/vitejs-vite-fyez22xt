@@ -95,10 +95,18 @@ const version = hash.digest('hex').slice(0, 12);
 const fontHash = createHash('sha256');
 for (const f of allFiles.filter((f) => f.startsWith('fonts/'))) fontHash.update(readFileSync(join(DIST, f)));
 
+// [ANIMAL ROUND 2026-11-10] Obrysy zwierząt (public/animals/, ~105 KB gzip) — jak
+// fonty: NIE w precache ani WARM (strzelcom WA niepotrzebne), pobierane dopiero
+// w trybie zwierząt (src/config/animals/loadOutlines.ts) i trzymane w trwałym
+// cache z hashem treści — przeżywają deploy, więc w lesie bez zasięgu są.
+const animalHash = createHash('sha256');
+for (const f of allFiles.filter((f) => f.startsWith('animals/'))) animalHash.update(readFileSync(join(DIST, f)));
+
 const sw = `/* GROT-X service worker — generowany przez scripts/generate-sw.mjs. NIE EDYTOWAĆ RĘCZNIE. */
 const VERSION = '${version}';
 const CACHE = 'grotx-' + VERSION;
 const FONT_CACHE = 'grotx-fonts-${fontHash.digest('hex').slice(0, 12)}'; // trwały, ale rusza się z trescia
+const ANIMAL_CACHE = 'grotx-animals-${animalHash.digest('hex').slice(0, 12)}'; // trwały, tylko w trybie zwierząt
 const PRECACHE = ${JSON.stringify(urls, null, 1)};
 const WARM = ${JSON.stringify(warm, null, 1)};
 const ICON_FONT = '/fonts/material-symbols-outlined.woff2';
@@ -168,7 +176,7 @@ self.addEventListener('activate', (e) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k.startsWith('grotx-') && k !== CACHE && k !== FONT_CACHE)
+          .filter((k) => k.startsWith('grotx-') && k !== CACHE && k !== FONT_CACHE && k !== ANIMAL_CACHE)
           .map((k) => caches.delete(k))
       )
     )
@@ -218,9 +226,10 @@ self.addEventListener('fetch', (e) => {
 
   // Fonty: cache-first do trwałego cache'u (lazy fill przy pierwszym użyciu).
   // Poza precache, bo Roboto-*.ttf (2 x 147 KB) potrzebuje tylko eksport PDF.
-  if (url.pathname.startsWith('/fonts/')) {
+  // [ANIMAL ROUND] Obrysy zwierząt — ten sam schemat w osobnym trwałym cache.
+  if (url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/animals/')) {
     e.respondWith(
-      caches.open(FONT_CACHE).then((c) =>
+      caches.open(url.pathname.startsWith('/animals/') ? ANIMAL_CACHE : FONT_CACHE).then((c) =>
         c.match(req, { ignoreVary: true }).then(
           (hit) =>
             hit ||

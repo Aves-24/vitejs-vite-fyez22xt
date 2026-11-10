@@ -27,6 +27,7 @@ import { WA_FIELD20_FACE } from './targets/waField20Triple';
 import { VEGAS_FACE } from './targets/vegas';
 import { IFAA_FIELD_FACES, IFAA_INDOOR_FACE, IFAA_INDOOR5_FACE } from './targets/ifaa';
 import { IFAA_EXPERT_FACES } from './targets/ifaaExpert';
+import { IFAA_ANIMAL_FACE } from './targets/ifaaAnimal';
 import type { FaceSpotSpec } from './spotGeometry';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
@@ -90,7 +91,7 @@ export interface TargetFace {
    * liczą się we własnej skali (`config/statsGroups.ts`). Brak = tarcza WA.
    * Takie tarcze pokazujemy wyłącznie przy zestawie ustawionym na „Feld”.
    */
-  statsGroup?: 'field' | 'ifaa';
+  statsGroup?: 'field' | 'ifaa' | 'animal';
   /**
    * [SPOTY 2026-11-09] Własny układ/kolory/strefy spotów (Vegas, teren 20 cm).
    * Brak = klasyczny spot WA w układzie z `layout`. Patrz `config/spotGeometry.ts`.
@@ -198,6 +199,8 @@ export const TARGET_FACES: readonly TargetFace[] = [
   IFAA_INDOOR5_FACE,
   // [IFAA EXPERT] Field z liniami pośrednimi, 5–1 — targets/ifaaExpert.ts.
   ...IFAA_EXPERT_FACES,
+  // [ANIMAL ROUND] Zwierzę: Kill/Wound/Miss, bez geometrii — targets/ifaaAnimal.ts.
+  IFAA_ANIMAL_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */

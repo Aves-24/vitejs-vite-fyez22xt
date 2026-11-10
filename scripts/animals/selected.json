@@ -1,0 +1,632 @@
+[
+ {
+  "name": "Rothirsch",
+  "id": "cc03f5c2-933f-4c40-9c64-7f8727556fdb",
+  "vector": "https://images.phylopic.org/images/cc03f5c2-933f-4c40-9c64-7f8727556fdb/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Hirschkuh",
+  "id": "61e74aaf-60f0-40a9-b9d4-44bef0b5b9f9",
+  "vector": "https://images.phylopic.org/images/61e74aaf-60f0-40a9-b9d4-44bef0b5b9f9/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Abby Weber"
+ },
+ {
+  "name": "Rehbock",
+  "id": "b36a215a-adb3-445d-b364-1e63dddd6950",
+  "vector": "https://images.phylopic.org/images/b36a215a-adb3-445d-b364-1e63dddd6950/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Ricke",
+  "id": "1a8006a1-f578-4dd2-963b-c659208bf9ab",
+  "vector": "https://images.phylopic.org/images/1a8006a1-f578-4dd2-963b-c659208bf9ab/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Damhirsch",
+  "id": "054cc266-c746-4037-b257-54b973aa5e53",
+  "vector": "https://images.phylopic.org/images/054cc266-c746-4037-b257-54b973aa5e53/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Elch",
+  "id": "1a20a65d-1342-4833-a9dd-1611b9fb383c",
+  "vector": "https://images.phylopic.org/images/1a20a65d-1342-4833-a9dd-1611b9fb383c/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "T. Michael Keesey"
+ },
+ {
+  "name": "Rentier",
+  "id": "e60cd072-d9ce-4d13-a79c-aa3d8086d37a",
+  "vector": "https://images.phylopic.org/images/e60cd072-d9ce-4d13-a79c-aa3d8086d37a/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "Ando"
+ },
+ {
+  "name": "Weißwedelhirsch",
+  "id": "4b474bdd-24e0-428d-b1f0-6d221ffc6367",
+  "vector": "https://images.phylopic.org/images/4b474bdd-24e0-428d-b1f0-6d221ffc6367/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Abby Weber"
+ },
+ {
+  "name": "Wapiti",
+  "id": "b960d496-81f5-43a1-9acd-159bfa3d7b79",
+  "vector": "https://images.phylopic.org/images/b960d496-81f5-43a1-9acd-159bfa3d7b79/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Richard Rich"
+ },
+ {
+  "name": "Gabelbock",
+  "id": "26f9f4f5-135c-42e2-959a-9d27848b33d7",
+  "vector": "https://images.phylopic.org/images/26f9f4f5-135c-42e2-959a-9d27848b33d7/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Caleb M. Gordon"
+ },
+ {
+  "name": "Wildschwein",
+  "id": "5cf39625-0de7-4ffe-a28f-9c88670af448",
+  "vector": "https://images.phylopic.org/images/5cf39625-0de7-4ffe-a28f-9c88670af448/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Kai Caspar"
+ },
+ {
+  "name": "Warzenschwein",
+  "id": "b1a641cd-25df-4dd0-865f-1a2728bd267e",
+  "vector": "https://images.phylopic.org/images/b1a641cd-25df-4dd0-865f-1a2728bd267e/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Fuchs",
+  "id": "3e1e7a08-a0d8-45f8-b5ef-731da951f048",
+  "vector": "https://images.phylopic.org/images/3e1e7a08-a0d8-45f8-b5ef-731da951f048/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Polarfuchs",
+  "id": "8e5dfa51-961d-48be-acda-fd7a00f0e565",
+  "vector": "https://images.phylopic.org/images/8e5dfa51-961d-48be-acda-fd7a00f0e565/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Wolf",
+  "id": "f0c6c94e-9d13-427c-82e6-5687a97aab08",
+  "vector": "https://images.phylopic.org/images/f0c6c94e-9d13-427c-82e6-5687a97aab08/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Kojote",
+  "id": "d451e353-585a-4543-84e7-7ef2f90aa407",
+  "vector": "https://images.phylopic.org/images/d451e353-585a-4543-84e7-7ef2f90aa407/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Patricia Holroyd"
+ },
+ {
+  "name": "Hyäne",
+  "id": "49b72776-1f99-442b-a084-65f402cdbd69",
+  "vector": "https://images.phylopic.org/images/49b72776-1f99-442b-a084-65f402cdbd69/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Braunbär",
+  "id": "5629fae2-1da6-479d-bfeb-08a59a58121a",
+  "vector": "https://images.phylopic.org/images/5629fae2-1da6-479d-bfeb-08a59a58121a/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Bär stehend",
+  "id": "aa777f28-3110-400c-89c5-2d615fb909a8",
+  "vector": "https://images.phylopic.org/images/aa777f28-3110-400c-89c5-2d615fb909a8/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Abby Weber"
+ },
+ {
+  "name": "Schwarzbär",
+  "id": "369a7880-4798-41bf-851a-ec5da17fafa3",
+  "vector": "https://images.phylopic.org/images/369a7880-4798-41bf-851a-ec5da17fafa3/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Eisbär",
+  "id": "35fbff4d-c0e6-4c53-9f27-f0a6ecbe7720",
+  "vector": "https://images.phylopic.org/images/35fbff4d-c0e6-4c53-9f27-f0a6ecbe7720/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Panda",
+  "id": "887ea34b-b62a-4126-9e98-434d6000dd0c",
+  "vector": "https://images.phylopic.org/images/887ea34b-b62a-4126-9e98-434d6000dd0c/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Luchs",
+  "id": "27a2173a-5903-46fc-83c5-29ed7f421046",
+  "vector": "https://images.phylopic.org/images/27a2173a-5903-46fc-83c5-29ed7f421046/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Wildkatze",
+  "id": "cc22d71c-a014-41a9-aaf1-5f2cffad6121",
+  "vector": "https://images.phylopic.org/images/cc22d71c-a014-41a9-aaf1-5f2cffad6121/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Puma",
+  "id": "3f8eff77-2868-4121-8d7d-a55ebdd49e04",
+  "vector": "https://images.phylopic.org/images/3f8eff77-2868-4121-8d7d-a55ebdd49e04/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "An Ignorant Atheist"
+ },
+ {
+  "name": "Löwe",
+  "id": "cb70ae6c-345f-4aaf-a262-1e5eeac67400",
+  "vector": "https://images.phylopic.org/images/cb70ae6c-345f-4aaf-a262-1e5eeac67400/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Tiger",
+  "id": "f55a2c9f-c106-4dbb-97a8-63bc76e1c8fb",
+  "vector": "https://images.phylopic.org/images/f55a2c9f-c106-4dbb-97a8-63bc76e1c8fb/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Leopard",
+  "id": "78dbe564-bcba-4dc3-8bdc-fb95fc288580",
+  "vector": "https://images.phylopic.org/images/78dbe564-bcba-4dc3-8bdc-fb95fc288580/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Säbelzahntiger",
+  "id": "4fd1c790-178d-4f00-a558-542e974ae6af",
+  "vector": "https://images.phylopic.org/images/4fd1c790-178d-4f00-a558-542e974ae6af/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Gämse",
+  "id": "15223f03-8122-441a-9f06-dbc8d9129403",
+  "vector": "https://images.phylopic.org/images/15223f03-8122-441a-9f06-dbc8d9129403/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "Pearson Scott Foresman"
+ },
+ {
+  "name": "Steinbock",
+  "id": "2b07a361-5d1b-4bb9-a61e-a7708cf57ecb",
+  "vector": "https://images.phylopic.org/images/2b07a361-5d1b-4bb9-a61e-a7708cf57ecb/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Mufflon",
+  "id": "cbea1964-89bf-4ce1-99b0-58fe0f9170b3",
+  "vector": "https://images.phylopic.org/images/cbea1964-89bf-4ce1-99b0-58fe0f9170b3/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Dickhornschaf",
+  "id": "b7344c53-6115-49cf-836d-ae71cc3853a8",
+  "vector": "https://images.phylopic.org/images/b7344c53-6115-49cf-836d-ae71cc3853a8/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Scott Hartman"
+ },
+ {
+  "name": "Schneeziege",
+  "id": "5474bc8a-939f-4e9f-bd4a-7b012111009d",
+  "vector": "https://images.phylopic.org/images/5474bc8a-939f-4e9f-bd4a-7b012111009d/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Abby Weber"
+ },
+ {
+  "name": "Wisent",
+  "id": "3d1dc9ef-d190-4b54-86f5-4ad6f2c4b3a7",
+  "vector": "https://images.phylopic.org/images/3d1dc9ef-d190-4b54-86f5-4ad6f2c4b3a7/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Bison",
+  "id": "dbf2f035-6c04-4c4f-a9aa-f01a1e35ea9c",
+  "vector": "https://images.phylopic.org/images/dbf2f035-6c04-4c4f-a9aa-f01a1e35ea9c/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Caleb M. Gordon"
+ },
+ {
+  "name": "Moschusochse",
+  "id": "2238533e-7b2c-4497-a414-eaece410cb88",
+  "vector": "https://images.phylopic.org/images/2238533e-7b2c-4497-a414-eaece410cb88/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Laura Barbero-Palacios"
+ },
+ {
+  "name": "Kaffernbüffel",
+  "id": "65c4a9b3-dcde-4f0f-9a1f-8d71e74be9ec",
+  "vector": "https://images.phylopic.org/images/65c4a9b3-dcde-4f0f-9a1f-8d71e74be9ec/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "An Ignorant Atheist"
+ },
+ {
+  "name": "Gnu",
+  "id": "a1076575-f207-4226-bd63-94b2e1707b32",
+  "vector": "https://images.phylopic.org/images/a1076575-f207-4226-bd63-94b2e1707b32/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "Jan A. Venter, Herbert H. T. Prins, David A. Balfour & Rob Slotow (vectorized by T. Michael Keesey)"
+ },
+ {
+  "name": "Impala",
+  "id": "e07d1491-1d85-4c47-9f7d-075ea57bf0c5",
+  "vector": "https://images.phylopic.org/images/e07d1491-1d85-4c47-9f7d-075ea57bf0c5/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "[unknown]"
+ },
+ {
+  "name": "Oryx",
+  "id": "8a6e967b-ff17-416d-9829-58957585b0c9",
+  "vector": "https://images.phylopic.org/images/8a6e967b-ff17-416d-9829-58957585b0c9/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "Jan A. Venter, Herbert H. T. Prins, David A. Balfour & Rob Slotow (vectorized by T. Michael Keesey)"
+ },
+ {
+  "name": "Zebra",
+  "id": "f7d817d0-d733-493d-bd4a-3f178e0760a8",
+  "vector": "https://images.phylopic.org/images/f7d817d0-d733-493d-bd4a-3f178e0760a8/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Andy Wilson"
+ },
+ {
+  "name": "Kamel",
+  "id": "93c5e5b0-6606-4e10-97e8-699156c57042",
+  "vector": "https://images.phylopic.org/images/93c5e5b0-6606-4e10-97e8-699156c57042/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Katy Lawler"
+ },
+ {
+  "name": "Lama",
+  "id": "aca9eeb8-21bc-4315-a351-17c1c1169801",
+  "vector": "https://images.phylopic.org/images/aca9eeb8-21bc-4315-a351-17c1c1169801/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Mozillian"
+ },
+ {
+  "name": "Elefant",
+  "id": "910d853a-1a15-4953-a1d3-b81208994d35",
+  "vector": "https://images.phylopic.org/images/910d853a-1a15-4953-a1d3-b81208994d35/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Chuanixn Yu"
+ },
+ {
+  "name": "Mammut",
+  "id": "6f0acd79-1f7d-402f-8679-dc3036b1a504",
+  "vector": "https://images.phylopic.org/images/6f0acd79-1f7d-402f-8679-dc3036b1a504/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Amy Beauvois"
+ },
+ {
+  "name": "Nashorn",
+  "id": "7f867be1-815c-4fe4-a341-be7c22970890",
+  "vector": "https://images.phylopic.org/images/7f867be1-815c-4fe4-a341-be7c22970890/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Kai Caspar"
+ },
+ {
+  "name": "Wollnashorn",
+  "id": "e6d3526b-9ce9-4144-96e0-b2587b4c6a74",
+  "vector": "https://images.phylopic.org/images/e6d3526b-9ce9-4144-96e0-b2587b4c6a74/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Flusspferd",
+  "id": "e130f877-a96c-48d8-9f26-bb131021397f",
+  "vector": "https://images.phylopic.org/images/e130f877-a96c-48d8-9f26-bb131021397f/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "An Ignorant Atheist"
+ },
+ {
+  "name": "Gorilla",
+  "id": "d9af529d-e426-4c7a-922a-562d57a7872e",
+  "vector": "https://images.phylopic.org/images/d9af529d-e426-4c7a-922a-562d57a7872e/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "T. Michael Keesey (after Colin M. L. Burnett)"
+ },
+ {
+  "name": "Känguru",
+  "id": "624e3d80-cba2-4465-8f3a-c9ae4025198b",
+  "vector": "https://images.phylopic.org/images/624e3d80-cba2-4465-8f3a-c9ae4025198b/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Michael Scroggie"
+ },
+ {
+  "name": "Feldhase",
+  "id": "9ab9aa41-a1b2-4def-84e9-b86de786064a",
+  "vector": "https://images.phylopic.org/images/9ab9aa41-a1b2-4def-84e9-b86de786064a/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Kaninchen",
+  "id": "ad7d2a9d-ef0d-46f2-895d-7c67bb8e6355",
+  "vector": "https://images.phylopic.org/images/ad7d2a9d-ef0d-46f2-895d-7c67bb8e6355/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Eichhörnchen",
+  "id": "23c700c9-e695-404a-8d0c-146e1fc4bada",
+  "vector": "https://images.phylopic.org/images/23c700c9-e695-404a-8d0c-146e1fc4bada/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Biber",
+  "id": "0b9b783b-b537-4fa6-b387-a9ca2d3f7a12",
+  "vector": "https://images.phylopic.org/images/0b9b783b-b537-4fa6-b387-a9ca2d3f7a12/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Dachs",
+  "id": "a1c1c74f-131e-40da-97fe-836e6292b697",
+  "vector": "https://images.phylopic.org/images/a1c1c74f-131e-40da-97fe-836e6292b697/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Waschbär",
+  "id": "5dca4757-56a5-4321-a3ed-08731046c4e9",
+  "vector": "https://images.phylopic.org/images/5dca4757-56a5-4321-a3ed-08731046c4e9/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Baummarder",
+  "id": "f8fc9e61-5863-48bb-ba18-1cbbac95ad61",
+  "vector": "https://images.phylopic.org/images/f8fc9e61-5863-48bb-ba18-1cbbac95ad61/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Margot Michaud"
+ },
+ {
+  "name": "Fischotter",
+  "id": "08055f3e-98ee-4d01-9f9c-89aaeb1d0440",
+  "vector": "https://images.phylopic.org/images/08055f3e-98ee-4d01-9f9c-89aaeb1d0440/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ferran Sayol"
+ },
+ {
+  "name": "Vielfraß",
+  "id": "1f9bbb79-f060-47c1-9954-ea78812d3b91",
+  "vector": "https://images.phylopic.org/images/1f9bbb79-f060-47c1-9954-ea78812d3b91/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Igel",
+  "id": "6ecff71e-fcfc-4cb9-b773-9e6e21607587",
+  "vector": "https://images.phylopic.org/images/6ecff71e-fcfc-4cb9-b773-9e6e21607587/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Truthahn",
+  "id": "10d068f3-e9c8-4b0c-8edd-38b613181985",
+  "vector": "https://images.phylopic.org/images/10d068f3-e9c8-4b0c-8edd-38b613181985/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Gabriela Palomo-Munoz"
+ },
+ {
+  "name": "Fasan",
+  "id": "8b720ff5-8e5a-4640-babc-cc30d6495a84",
+  "vector": "https://images.phylopic.org/images/8b720ff5-8e5a-4640-babc-cc30d6495a84/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Mattia Menchetti"
+ },
+ {
+  "name": "Auerhahn",
+  "id": "9fba9ee7-a98b-450f-919c-1ead510b3db6",
+  "vector": "https://images.phylopic.org/images/9fba9ee7-a98b-450f-919c-1ead510b3db6/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Mario Quevedo"
+ },
+ {
+  "name": "Hahn",
+  "id": "2de1c95c-7e1f-429b-9c08-17f0a27d176f",
+  "vector": "https://images.phylopic.org/images/2de1c95c-7e1f-429b-9c08-17f0a27d176f/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Henne",
+  "id": "aff847b0-ecbd-4d41-98ce-665921a6d96e",
+  "vector": "https://images.phylopic.org/images/aff847b0-ecbd-4d41-98ce-665921a6d96e/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Stockente",
+  "id": "f562234a-9b05-439c-aad5-0ea83ed4c553",
+  "vector": "https://images.phylopic.org/images/f562234a-9b05-439c-aad5-0ea83ed4c553/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Caleb M. Gordon"
+ },
+ {
+  "name": "Graugans",
+  "id": "9e1e3fd7-6571-4751-928d-0d8938fd3292",
+  "vector": "https://images.phylopic.org/images/9e1e3fd7-6571-4751-928d-0d8938fd3292/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Laura Barbero-Palacios"
+ },
+ {
+  "name": "Graureiher",
+  "id": "c91c655d-a2d6-485d-8702-b3143e1eaf81",
+  "vector": "https://images.phylopic.org/images/c91c655d-a2d6-485d-8702-b3143e1eaf81/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "Nina Skinner"
+ },
+ {
+  "name": "Storch",
+  "id": "0f0f45a7-06d8-416b-9b82-87140ad37307",
+  "vector": "https://images.phylopic.org/images/0f0f45a7-06d8-416b-9b82-87140ad37307/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Mathieu Pélissié"
+ },
+ {
+  "name": "Strauß",
+  "id": "31789d9c-30e0-4f40-8c21-6f76cd5d339b",
+  "vector": "https://images.phylopic.org/images/31789d9c-30e0-4f40-8c21-6f76cd5d339b/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "Marie Attard"
+ },
+ {
+  "name": "Uhu",
+  "id": "d7d457c1-4c08-4e7e-9af4-f537020c2775",
+  "vector": "https://images.phylopic.org/images/d7d457c1-4c08-4e7e-9af4-f537020c2775/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/mark/1.0/",
+  "attribution": "the von Wright brothers"
+ },
+ {
+  "name": "Waldkauz",
+  "id": "a9628703-8bc2-4fd6-bf3f-2fa706b380dd",
+  "vector": "https://images.phylopic.org/images/a9628703-8bc2-4fd6-bf3f-2fa706b380dd/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Caroline Legg"
+ },
+ {
+  "name": "Adler sitzend",
+  "id": "b2b60a18-fd7d-49b2-a15d-54a62cdcac6b",
+  "vector": "https://images.phylopic.org/images/b2b60a18-fd7d-49b2-a15d-54a62cdcac6b/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Anthony Caravaggi"
+ },
+ {
+  "name": "Adler fliegend",
+  "id": "20f92e20-e65b-4efd-b40f-b3aa8fde6011",
+  "vector": "https://images.phylopic.org/images/20f92e20-e65b-4efd-b40f-b3aa8fde6011/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Patricia Holroyd"
+ },
+ {
+  "name": "Mäusebussard",
+  "id": "ffc0b03a-9606-4d5a-9b2e-4eda2d63c85b",
+  "vector": "https://images.phylopic.org/images/ffc0b03a-9606-4d5a-9b2e-4eda2d63c85b/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "ChrBar"
+ },
+ {
+  "name": "Kolkrabe",
+  "id": "73ae2599-c13c-45a9-811d-5c75ef7c8037",
+  "vector": "https://images.phylopic.org/images/73ae2599-c13c-45a9-811d-5c75ef7c8037/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Caleb M. Gordon"
+ },
+ {
+  "name": "Elster",
+  "id": "1f3bf322-4ca3-402f-80c9-0260843de5e4",
+  "vector": "https://images.phylopic.org/images/1f3bf322-4ca3-402f-80c9-0260843de5e4/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Guillaume Dera"
+ },
+ {
+  "name": "Ringeltaube",
+  "id": "2537ef77-46e5-47c8-864e-f126cd37a109",
+  "vector": "https://images.phylopic.org/images/2537ef77-46e5-47c8-864e-f126cd37a109/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Andy Wilson"
+ },
+ {
+  "name": "Alligator",
+  "id": "9ae2be6e-95fa-4514-955e-130236fc07b7",
+  "vector": "https://images.phylopic.org/images/9ae2be6e-95fa-4514-955e-130236fc07b7/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Ananth Srinivas"
+ },
+ {
+  "name": "Krokodil",
+  "id": "1746c09a-b19d-4c86-bd05-184868caacbe",
+  "vector": "https://images.phylopic.org/images/1746c09a-b19d-4c86-bd05-184868caacbe/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/4.0/",
+  "attribution": "Photograph by Caleb M. Gordon of YPM.HERR.008198, a fluid-preserved C. niloticus juvenile specimen at the Yale Peabody Museum."
+ },
+ {
+  "name": "Komodowaran",
+  "id": "ce6a78bc-3ef1-4d60-ab40-113eb84c7802",
+  "vector": "https://images.phylopic.org/images/ce6a78bc-3ef1-4d60-ab40-113eb84c7802/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Steven Traver"
+ },
+ {
+  "name": "Schildkröte",
+  "id": "5170633b-b867-4c98-acc0-fbb823fc0aaa",
+  "vector": "https://images.phylopic.org/images/5170633b-b867-4c98-acc0-fbb823fc0aaa/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Carola Mauel"
+ },
+ {
+  "name": "Frosch",
+  "id": "e73c5c1c-7727-4687-bf0b-3957343edfc3",
+  "vector": "https://images.phylopic.org/images/e73c5c1c-7727-4687-bf0b-3957343edfc3/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Beth Reinke"
+ },
+ {
+  "name": "Feuersalamander",
+  "id": "0a948f02-6e35-42d5-a835-b9360f450d39",
+  "vector": "https://images.phylopic.org/images/0a948f02-6e35-42d5-a835-b9360f450d39/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Beth Reinke"
+ },
+ {
+  "name": "T-Rex",
+  "id": "6a38b924-85c4-46b6-a04a-0e53f2f4d77f",
+  "vector": "https://images.phylopic.org/images/6a38b924-85c4-46b6-a04a-0e53f2f4d77f/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Manuel Brea Lueiro"
+ },
+ {
+  "name": "Triceratops",
+  "id": "57d2507a-be74-453b-8522-f6993b2fc401",
+  "vector": "https://images.phylopic.org/images/57d2507a-be74-453b-8522-f6993b2fc401/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Richard Rich"
+ },
+ {
+  "name": "Stegosaurus",
+  "id": "173f44e3-2db7-4c98-b41f-6ab58093a145",
+  "vector": "https://images.phylopic.org/images/173f44e3-2db7-4c98-b41f-6ab58093a145/vector.svg",
+  "license": "https://creativecommons.org/licenses/by/3.0/",
+  "attribution": "Andrew A. Farke"
+ },
+ {
+  "name": "Velociraptor",
+  "id": "fc9271c1-c59d-41bf-941e-9c5a084169c7",
+  "vector": "https://images.phylopic.org/images/fc9271c1-c59d-41bf-941e-9c5a084169c7/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Itai Fein"
+ },
+ {
+  "name": "Pteranodon",
+  "id": "0433aae5-9d7b-4a19-9de3-767c38ed9412",
+  "vector": "https://images.phylopic.org/images/0433aae5-9d7b-4a19-9de3-767c38ed9412/vector.svg",
+  "license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "attribution": "Scott Hartman"
+ }
+]

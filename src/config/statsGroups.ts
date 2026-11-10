@@ -72,8 +72,9 @@ export function zoneIndexOf(v: unknown, g: StatsGroup = 'target'): number | null
   const n = v === 'X' ? (g === 'field' ? 6 : g === 'ifaa' ? 5 : 10) : parseInt(String(v), 10);
   if (isNaN(n)) return null;
   if (n <= 0) return 5;
-  // Zwierzę: Kill (20/16/12) = złoto, Wound (18/14/10) = biały.
-  if (g === 'animal') return n === 20 || n === 16 || n === 12 ? 0 : 4;
+  // Zwierzę: strefa zależy od formatu i numeru strzały (config/animalRound hitOf),
+  // nie od samej wartości — tu jej nie znamy, więc bez przypisania.
+  if (g === 'animal') return null;
   if (g === 'field') return n >= 5 ? 0 : 3;
   // IFAA: 5 = środek (najlepsza strefa), 4 = pierścień wewnętrzny, 3 = zewnętrzny; 2/1 tylko Indoor/Expert.
   if (g === 'ifaa') return n >= 5 ? 0 : n === 4 ? 1 : n === 3 ? 2 : 3;

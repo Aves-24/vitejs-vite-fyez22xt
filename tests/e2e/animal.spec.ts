@@ -21,7 +21,9 @@ test('Animal Round: Kill 20 / Miss+Wound 14 / 3×Miss 0, nazwy zwierząt, Treffe
   await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
   // Zwierzęta = kafelek obok dystansów (bez ustawiania dystansu).
   await page.getByTestId('animal-tile').click();
-  await expect(page.getByText(/Bis zu 3 Pfeile pro Tier/)).toBeVisible();
+  // Domyślnie IFAA (Kill 20/16/12, Wound 18/14/10).
+  await expect(page.getByTestId('animal-format').getByRole('radio', { name: 'IFAA Tiere' })).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByText(/bis zu 3 Pfeile pro Tier/)).toBeVisible();
   // Tarcza/celownik i Parcours dotyczą dystansu — przy zwierzętach ich nie ma.
   await expect(page.getByTestId('parcours-toggle')).toHaveCount(0);
   await page.getByRole('button', { name: 'Training', exact: true }).click();
@@ -204,4 +206,60 @@ test('Strecken in Einstellungen: Strecke anlegen (Tiere, Umriss PRO), Kachel in 
   await expect(bar).toContainText('Tier 1/3');
   await expect(bar.getByRole('combobox', { name: 'Tier' })).toHaveValue('Reh');
   await expectNoErrors(page, errors, 'Strecken-Editor');
+});
+
+test('DBSV 3D: Jagdrunde 1 Pfeil (Kill 15 / Körper 12, Miss schließt), Waldrunde 15/10/5 – 12/7/2, Format gemerkt', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Dbsv');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+
+  // Jagdrunde.
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('animal-tile').click();
+  const fmt = page.getByTestId('animal-format');
+  await fmt.getByRole('radio', { name: 'DBSV Jagd' }).click();
+  await expect(fmt).toContainText('nur 1 Pfeil pro Tier');
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  const keypad = page.getByTestId('animal-keypad');
+  const bar = page.getByTestId('animal-bar');
+  await expect(keypad.getByRole('button', { name: 'Kill 15' })).toBeVisible();
+  await expect(keypad.getByRole('button', { name: 'Körper 12' })).toBeVisible();
+  await keypad.getByRole('button', { name: 'Kill 15' }).click();
+  await page.waitForTimeout(800);
+  await keypad.getByRole('button', { name: 'Miss' }).click(); // 1 strzała — Miss zamyka
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 3/28');
+  await keypad.getByRole('button', { name: 'Körper 12' }).click();
+  await page.waitForTimeout(800);
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*27/);
+  await page.screenshot({ path: test.info().outputPath('dbsv-jagd.png') });
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 27/ })).toBeVisible();
+  await syncWrites(page);
+  const s = (await adminListDocs(request, `users/${uid}/sessions`))[0].fields;
+  expect(s.targetType.stringValue).toBe('DBSV 3D Jagdrunde');
+  expect(s.ends.arrayValue.values.map((v: any) => v.mapValue.fields.arrows.arrayValue.values.map((a: any) => a.stringValue).join(','))).toEqual(['15', 'M', '12']);
+
+  // Waldrunde — format zapamiętany (Jagd), przełączamy na Wald.
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('animal-tile').click();
+  await expect(fmt.getByRole('radio', { name: 'DBSV Jagd' })).toHaveAttribute('aria-checked', 'true');
+  await fmt.getByRole('radio', { name: 'DBSV Wald' }).click();
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  await keypad.getByRole('button', { name: 'Miss' }).click();
+  await expect(keypad.getByRole('button', { name: 'Kill 10' })).toBeVisible();
+  await expect(keypad.getByRole('button', { name: 'Körper 7' })).toBeVisible();
+  await keypad.getByRole('button', { name: 'Körper 7' }).click();
+  await page.waitForTimeout(800);
+  await expect(bar).toContainText('Tier 2/28');
+  await page.getByRole('button', { name: /Statistiken anzeigen/ }).click();
+  await expect(page.getByTestId('animal-card')).toContainText('Körper');
+  await expectNoErrors(page, errors, 'DBSV');
 });

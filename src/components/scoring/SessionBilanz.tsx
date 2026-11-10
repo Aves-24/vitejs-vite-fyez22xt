@@ -6,7 +6,7 @@ import { getStats } from '../../utils/endStats';
 import { handicapOfSession } from '../../utils/rankEngine';
 import { countBad } from '../../utils/badShots';
 import { xPointsFor } from '../../utils/arrowPoints';
-import { isAnimalRound } from '../../config/animalRound';
+import { isAnimalRound, animalFormatOf, type AnimalFormat } from '../../config/animalRound';
 
 // [PODSUMOWANIE TRENINGU] Karta „Bilanz” nad przyciskiem zapisu (2026-10-29):
 // wynik, porównanie z ostatnimi treningami na tym dystansie i tarczy, rundy
@@ -34,15 +34,18 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
   return map[v] ? { bg: map[v] } : { bg: '#ffffff', ring: true };
 };
 
-const ANIMAL_VALUE_ORDER = ['20', '16', '12', '18', '14', '10', 'M'];
-// Kill (20/16/12) — złoto od ciemnego; Wound (18/14/10) — biel/szarości jak sylwetka.
-const animalValueColor = (v: string): { bg: string; ring?: boolean } => {
-  const map: Record<string, { bg: string; ring?: boolean }> = {
-    '20': { bg: '#D9A400' }, '16': { bg: '#F2C94C' }, '12': { bg: '#F8E08E' },
-    '18': { bg: '#ffffff', ring: true }, '14': { bg: '#d1d5db' }, '10': { bg: '#9ca3af' },
-    M: { bg: '#581c87' },
-  };
-  return map[v] ?? { bg: '#ffffff', ring: true };
+// [ANIMAL ROUND] Kolejność i kolory wg formatu: Kill — złoto od ciemnego,
+// Wound/Körper — biel i szarości jak sylwetka. Wartość jest unikalna w obrębie
+// formatu (IFAA 20/16/12 + 18/14/10, DBSV 15/10/5 + 12/7/2).
+const KILL_SHADES = ['#D9A400', '#F2C94C', '#F8E08E'];
+const WOUND_SHADES: { bg: string; ring?: boolean }[] = [{ bg: '#ffffff', ring: true }, { bg: '#d1d5db' }, { bg: '#9ca3af' }];
+const animalValueOrder = (f: AnimalFormat) => [...f.K.map(String), ...f.W.map(String), 'M'];
+const animalValueColor = (f: AnimalFormat, v: string): { bg: string; ring?: boolean } => {
+  if (v === 'M') return { bg: '#581c87' };
+  const k = f.K.map(String).indexOf(v);
+  if (k >= 0) return { bg: KILL_SHADES[k] };
+  const w = f.W.map(String).indexOf(v);
+  return w >= 0 ? WOUND_SHADES[w] : { bg: '#ffffff', ring: true };
 };
 
 interface Prior { score: number; arrows: number; ts: number }
@@ -140,8 +143,9 @@ export default function SessionBilanz({ userId, ends, roundSize, distance, dista
   ends.forEach(e => e.arrows?.forEach((v: string) => { if (v) counts.set(v, (counts.get(v) || 0) + 1); }));
   // [ANIMAL ROUND] Wartości zwierząt (20…4) mają własną kolejność i kolory.
   const animal = isAnimalRound({ distance });
-  const hits = (animal ? ANIMAL_VALUE_ORDER : VALUE_ORDER).filter(v => counts.get(v)).map(v => ({ v, n: counts.get(v)! }));
-  const colorOf = (v: string) => (animal ? animalValueColor(v) : valueColor(v));
+  const af = animalFormatOf(targetType);
+  const hits = (animal ? animalValueOrder(af) : VALUE_ORDER).filter(v => counts.get(v)).map(v => ({ v, n: counts.get(v)! }));
+  const colorOf = (v: string) => (animal ? animalValueColor(af, v) : valueColor(v));
 
   return (
     <div className="tb-card tb-d3 border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 w-full">

@@ -35,7 +35,7 @@ import { toggleBad, sortedRawIndices } from '../utils/badShots';
 import { fmtNum } from '../utils/formatNumber';
 import { clearHomeStatsCache } from '../config/statsGroups';
 import { isParcours } from '../config/parcours';
-import { isAnimalRound, animalPoints, stationDone, animalSummary, type AnimalHit } from '../config/animalRound';
+import { isAnimalRound, animalPoints, stationDone, animalSummary, animalFormatOf, type AnimalHit } from '../config/animalRound';
 import AnimalKeypad from '../components/scoring/AnimalKeypad';
 import AnimalCard from '../components/scoring/AnimalCard';
 import CourseSaveCard from '../components/scoring/CourseSaveCard';
@@ -98,6 +98,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   // [ANIMAL ROUND 2026-11-10] Zwierzęta: Kill/Wound/Miss, do 3 strzał na stanowisko,
   // pierwsze trafienie zamyka stanowisko. Nazwa zwierzęcia wpisywana na trasie.
   const animal = !battleId && isAnimalRound({ distance });
+  // [DBSV] Format rundy z tarczy sesji: IFAA (3 strzały, 20…10) / DBSV Wald (3, 15…2) / DBSV Jagd (1, 15/12).
+  const animalFmt = animalFormatOf(sessionTargetType);
   const [endAnimal, setEndAnimal] = useState('');
   // Obrys zwierzęcia (PRO) i zapisana trasa wybrana w Vorbereitung (utils/courses).
   const [endOutline, setEndOutline] = useState('');
@@ -422,8 +424,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
   // [ANIMAL ROUND] Strzała = punkty z numeru strzały (Kill/Wound) albo M.
   const addAnimalShot = (hit: AnimalHit | 'M') => {
-    if (inputArrows.length >= arrowsPerEnd || stationDone(inputArrows)) return; // zamyka się samo
-    const v = hit === 'M' ? 'M' : String(animalPoints(inputArrows.length, hit));
+    if (inputArrows.length >= arrowsPerEnd || stationDone(inputArrows, animalFmt)) return; // zamyka się samo
+    const v = hit === 'M' ? 'M' : String(animalPoints(inputArrows.length, hit, animalFmt));
     setInputArrows([...inputArrows, v]);
     setInputCoordinates([...inputCoordinates, { x: null, y: null, spotId: null }]);
   };
@@ -534,7 +536,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
   useEffect(() => {
     let timeoutId: any;
     // [ANIMAL ROUND] Stanowisko zamyka też pierwsze trafienie (nie trzeba 3 strzał).
-    if (inputArrows.length === arrowsPerEnd || (animal && inputArrows.length > 0 && stationDone(inputArrows))) {
+    if (inputArrows.length === arrowsPerEnd || (animal && inputArrows.length > 0 && stationDone(inputArrows, animalFmt))) {
       timeoutId = setTimeout(() => {
         commitEnd(inputArrows, inputCoordinates);
         setInputArrows([]);
@@ -1084,7 +1086,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
 
       {animal && isShooting && (
         <div className="flex bg-white mx-2 rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex-1 min-h-[200px] max-h-[380px] p-2">
-          <AnimalKeypad arrowIndex={inputArrows.length} onShot={addAnimalShot} onUndo={undo} />
+          <AnimalKeypad arrowIndex={inputArrows.length} onShot={addAnimalShot} onUndo={undo} format={animalFmt} />
         </div>
       )}
 
@@ -1264,11 +1266,11 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           </div>
           {animal ? (() => {
             // [ANIMAL ROUND] Zamiast X/10/9 i średniej na strzałę: Kill/Wound i średnia na zwierzę.
-            const as = animalSummary(submittedEnds);
+            const as = animalSummary(submittedEnds, animalFmt);
             return (
               <>
                 <div>
-                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.kills')}/{t('animal.wounds')}</span>
+                  <span className="text-[8px] block font-black opacity-60 uppercase tracking-widest leading-tight">{t('animal.kills')}/{t(animalFmt.woundKey)}</span>
                   <span className="text-sm font-black leading-tight">{as.kills}/{as.wounds}</span>
                 </div>
                 <div>
@@ -1336,7 +1338,7 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
               <CourseSaveCard userId={userId} ends={submittedEnds} course={course} isPro={isPro} onSaved={setCourse} />
             )}
             {animal
-              ? <AnimalCard ends={submittedEnds} />
+              ? <AnimalCard ends={submittedEnds} targetType={sessionTargetType} />
               : <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={parcours ? (submittedEnds[0]?.targetType || targetType) : targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} parcours={parcours} />}
 
             {AI_ENABLED && submittedEnds.length >= 6 && (

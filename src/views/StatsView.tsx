@@ -879,7 +879,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       {/* Jedna duża tarcza jak po treningu; heatmapa w karcie zamiast okienka.
                           [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
                       {/* [ANIMAL ROUND] Trefferquote zamiast tarczy. */}
-                      {isAnimalRound(selectedSession) ? <AnimalCard key={selectedSession.id} ends={currentEnds} storageKey="stats-animal" /> : <TargetCard
+                      {isAnimalRound(selectedSession) ? <AnimalCard key={selectedSession.id} ends={currentEnds} targetType={selectedSession.targetType} storageKey="stats-animal" /> : <TargetCard
                         key={selectedSession.id}
                         parcours={!!(selectedSession as any)?.parcours}
                         ends={currentEnds}

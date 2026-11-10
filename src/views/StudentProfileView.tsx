@@ -325,7 +325,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
                 beforeTs={ms || undefined}
               />
               <TrendCard ends={ends} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!session.arrowColors} storageKey="coach-trend" />
-              {isAnimalRound(session) ? <AnimalCard ends={ends} storageKey="coach-animal" /> : <TargetCard
+              {isAnimalRound(session) ? <AnimalCard ends={ends} targetType={session.targetType} storageKey="coach-animal" /> : <TargetCard
                 ends={ends}
                 roundSize={roundSize}
                 targetType={targetType}

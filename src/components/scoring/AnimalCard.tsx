@@ -1,20 +1,21 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import SummaryCard from './SummaryCard';
-import { animalSummary, stationResult } from '../../config/animalRound';
+import { animalSummary, stationResult, animalFormatOf } from '../../config/animalRound';
 import { fmtNum } from '../../utils/formatNumber';
 
 // [ANIMAL ROUND 2026-11-10] „Trefferquote” zamiast Trefferbild — przy zwierzętach
 // liczy się, KTÓRĄ strzałą padło trafienie i czy w Kill, a nie miejsce na rysunku.
 // Wspólna dla ekranu po treningu, Statystyk i profilu ucznia.
-export default function AnimalCard({ ends, storageKey = 'sum-animal' }: { ends: any[]; storageKey?: string }) {
+export default function AnimalCard({ ends, targetType, storageKey = 'sum-animal' }: { ends: any[]; targetType?: string | null; storageKey?: string }) {
   const { t } = useTranslation();
-  const s = animalSummary(ends);
+  // Format z tarczy sesji (IFAA / DBSV Wald / DBSV Jagd) — strefa z numeru strzały.
+  const f = animalFormatOf(targetType);
+  const s = animalSummary(ends, f);
   const pct = (n: number) => (s.stations ? Math.round((n / s.stations) * 100) : 0);
   const bars: { label: string; n: number; cls: string }[] = [
-    { label: t('animal.byArrow', { n: 1 }), n: s.byArrow[0], cls: 'bg-[#0a3a2a]' },
-    { label: t('animal.byArrow', { n: 2 }), n: s.byArrow[1], cls: 'bg-emerald-600' },
-    { label: t('animal.byArrow', { n: 3 }), n: s.byArrow[2], cls: 'bg-emerald-400' },
+    // Jagdrunde (1 strzała) — tylko „1. strzałą” i „bez trafienia”.
+    ...['bg-[#0a3a2a]', 'bg-emerald-600', 'bg-emerald-400'].slice(0, f.maxArrows).map((cls, i) => ({ label: t('animal.byArrow', { n: i + 1 }), n: s.byArrow[i], cls })),
     { label: t('animal.misses'), n: s.misses, cls: 'bg-indigo-900' },
   ];
   return (
@@ -31,13 +32,13 @@ export default function AnimalCard({ ends, storageKey = 'sum-animal' }: { ends: 
         ))}
         <div className="grid grid-cols-3 gap-1.5 pt-2">
           <Stat label={t('animal.kills')} value={String(s.kills)} cls="bg-[#F2C94C] text-[#333]" />
-          <Stat label={t('animal.wounds')} value={String(s.wounds)} cls="bg-white border border-gray-200 text-[#333]" />
+          <Stat label={t(f.woundKey)} value={String(s.wounds)} cls="bg-white border border-gray-200 text-[#333]" />
           <Stat label={t('animal.perStation')} value={fmtNum(s.perStation, 1)} cls="bg-[#cce6dc] text-[#0a3a2a]" />
         </div>
         {/* Lista stanowisk z nazwami — które zwierzę sprawiło kłopot. */}
         <div className="pt-2 grid grid-cols-2 gap-x-3 gap-y-0.5">
           {ends.map((e, i) => {
-            const r = stationResult(e.rawArrows || e.arrows);
+            const r = stationResult(e.rawArrows || e.arrows, f);
             return (
               <div key={i} className="flex items-center gap-1.5 text-[10px] font-bold text-gray-500 min-w-0">
                 <span className="w-5 shrink-0 text-gray-400">{i + 1}</span>

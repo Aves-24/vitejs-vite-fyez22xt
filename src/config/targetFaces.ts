@@ -28,6 +28,7 @@ import { VEGAS_FACE } from './targets/vegas';
 import { IFAA_FIELD_FACES, IFAA_INDOOR_FACE, IFAA_INDOOR5_FACE } from './targets/ifaa';
 import { IFAA_EXPERT_FACES } from './targets/ifaaExpert';
 import { IFAA_ANIMAL_FACE } from './targets/ifaaAnimal';
+import { DBSV_WALD_FACE, DBSV_JAGD_FACE } from './targets/dbsv3d';
 import type { FaceSpotSpec } from './spotGeometry';
 // `isBlowgun` mieszka w equipmentSetups (czysty config bez zaleznosci), wiec
 // ten import NIE tworzy cyklu — tamten plik nie wie o tarczach.
@@ -201,6 +202,9 @@ export const TARGET_FACES: readonly TargetFace[] = [
   ...IFAA_EXPERT_FACES,
   // [ANIMAL ROUND] Zwierzę: Kill/Wound/Miss, bez geometrii — targets/ifaaAnimal.ts.
   IFAA_ANIMAL_FACE,
+  // [DBSV 3D] Wald- (3 strzały) i Jagdrunde (1 strzała), Kill/Körper — targets/dbsv3d.ts.
+  DBSV_WALD_FACE,
+  DBSV_JAGD_FACE,
 ];
 
 /** Tarcza domyślna — używana, gdy sesja nie ma typu albo string jest nieznany. */

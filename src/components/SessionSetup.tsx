@@ -16,8 +16,7 @@ import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, di
 import { fieldFaceForMeters } from '../config/targets/waField';
 import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import { PARCOURS_DISTANCE, PARCOURS_DISTANCE_ID } from '../config/parcours';
-import { ANIMAL_DISTANCE, ANIMAL_DISTANCE_ID, ANIMAL_STATIONS } from '../config/animalRound';
-import { IFAA_ANIMAL_FACE_ID } from '../config/targets/ifaaAnimal';
+import { ANIMAL_DISTANCE, ANIMAL_DISTANCE_ID, ANIMAL_STATIONS, ANIMAL_FORMATS, animalFormatById } from '../config/animalRound';
 import { listCourses, selectedCourseKey, type Course } from '../utils/courses';
 import { PLANNED_ENDS, SHORT_END_OPTIONS } from '../utils/partialSession';
 import ViewHeader from './ViewHeader';
@@ -271,7 +270,11 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const [parcoursOn, setParcoursOn] = useState(false);
   const parcoursActive = canParcours && parcoursOn && !animalActive;
   const startDistance = () => (animalActive ? ANIMAL_DISTANCE : parcoursActive ? PARCOURS_DISTANCE : selectedDistance);
-  const startTarget = () => (animalActive ? IFAA_ANIMAL_FACE_ID : selectedTarget);
+  // [DBSV] Format rundy zwierzęcej (IFAA / DBSV Wald / DBSV Jagd) — zapamiętany na urządzeniu.
+  const [animalFmtId, setAnimalFmtId] = useState<string>(() => { try { return localStorage.getItem(`grotX_animalFormat_${userId}`) || 'ifaa'; } catch { return 'ifaa'; } });
+  const animalFmt = animalFormatById(animalFmtId);
+  const pickAnimalFmt = (id: string) => { setAnimalFmtId(id); try { localStorage.setItem(`grotX_animalFormat_${userId}`, id); } catch { /* prywatne okno */ } };
+  const startTarget = () => (animalActive ? animalFmt.faceId : selectedTarget);
   // [ANIMAL ROUND] Zapisane trasy: wybrana wypełnia nazwy zwierząt i liczbę stanowisk.
   const [courses, setCourses] = useState<Course[]>([]);
   useEffect(() => {
@@ -480,7 +483,24 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                 </button>
               )}
             </div>
-            {animalActive && <p className="text-[10px] font-bold text-gray-400 mt-2">{t('animal.toggleHint')}</p>}
+            {animalActive && (
+              <div className="mt-2" data-testid="animal-format">
+                <div className="flex gap-1" role="radiogroup" aria-label={t('animal.format')}>
+                  {ANIMAL_FORMATS.map(f => (
+                    <button
+                      key={f.id}
+                      role="radio"
+                      aria-checked={animalFmt.id === f.id}
+                      onClick={() => pickAnimalFmt(f.id)}
+                      className={`flex-1 min-w-0 py-1.5 px-1 rounded-lg border text-[11px] font-black truncate transition-all ${animalFmt.id === f.id ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}
+                    >
+                      {t(`animal.fmt.${f.id}`)}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[10px] font-bold text-gray-400 mt-1.5">{t(`animal.fmtHint.${animalFmt.id}`)}</p>
+              </div>
+            )}
           </div>
 
           {/* Tarcza + nastawy celownika w jednej linii; ołówek otwiera ten sam edytor. */}

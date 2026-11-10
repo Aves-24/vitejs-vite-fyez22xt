@@ -263,6 +263,12 @@ export interface EquipmentSetup {
   note?: string;
   createdAt?: string;
   updatedAt?: string;
+  /**
+   * [UKRYJ 2026-11-10] Zestaw ukryty (przekreślone oko w Ustawieniach): nie widać
+   * go na Home, w Vorbereitung ani w wyborze zestawu, ale zostaje zapisany ze
+   * sprzętem, Wartung i treningami. Ukryty zestaw nigdy nie jest aktywny.
+   */
+  hidden?: boolean;
 }
 
 export const SETUP_NOTE_MAX = 100;
@@ -403,9 +409,25 @@ export function buildMigrationPayload(
   };
 }
 
-/** Aktywny zestaw, z sensownym zachowaniem gdy `activeSetupId` wskazuje w pustkę. */
+/** Zestawy widoczne (bez ukrytych). Gdyby wszystkie były ukryte — wszystkie (aplikacja musi mieć zestaw). */
+export function visibleSetups<T extends { hidden?: boolean }>(setups: readonly T[] | null | undefined): T[] {
+  const all = setups ? [...setups] : [];
+  const vis = all.filter(s => !s.hidden);
+  return vis.length > 0 ? vis : all;
+}
+
+/** Czy można ukryć zestaw: zostaje co najmniej jeden widoczny. */
+export const canHideSetup = (setups: readonly { id: string; hidden?: boolean }[], id: string): boolean =>
+  setups.some(s => s.id !== id && !s.hidden);
+
+/**
+ * Aktywny zestaw, z sensownym zachowaniem gdy `activeSetupId` wskazuje w pustkę
+ * albo na ukryty zestaw (wtedy pierwszy widoczny).
+ */
 export function resolveActiveSetup(userData: UserDocLike): EquipmentSetup | null {
   const setups = Array.isArray(userData?.setups) ? userData.setups : [];
   if (setups.length === 0) return null;
-  return setups.find(s => s.id === userData?.activeSetupId) ?? setups[0];
+  const found = setups.find(s => s.id === userData?.activeSetupId);
+  if (found && !found.hidden) return found;
+  return visibleSetups(setups)[0] ?? setups[0];
 }

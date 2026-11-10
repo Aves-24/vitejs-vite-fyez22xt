@@ -21,6 +21,8 @@ import {
   SHOOTING_STYLES,
   styleOfSetup,
   isBlowgun,
+  visibleSetups,
+  canHideSetup,
 } from '../../config/equipmentSetups';
 
 /**
@@ -66,7 +68,10 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   const maintenanceAtOpen = useRef('');
 
   const limit = setupLimitFor(isPremium);
-  const active = setups.find(s => s.id === activeSetupId) ?? setups[0];
+  // [UKRYJ] Aktywny nigdy nie jest ukryty (ukryte zestawy są w osobnym wierszu).
+  const shown = visibleSetups(setups);
+  const hiddenSetups = setups.filter(s => s.hidden && shown.some(v => v.id !== s.id));
+  const active = shown.find(s => s.id === activeSetupId) ?? shown[0];
   // [KOLORY] Zestawy sprzed 2026-09-10 nie mają koloru — dostają pierwszy wolny.
   const colors = resolveSetupColors(setups);
 
@@ -142,7 +147,23 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     if (id === DEFAULT_SETUP_ID || setups.length <= 1) return;
     const next = setups.filter(s => s.id !== id);
     onSetupsChange(next);
-    if (activeSetupId === id) onActiveSetupChange(next[0].id);
+    if (activeSetupId === id) onActiveSetupChange((visibleSetups(next)[0] ?? next[0]).id);
+  };
+
+  /** [UKRYJ] Ukrywa zestaw (zostaje zapisany) i przełącza na pierwszy widoczny. */
+  const hideActive = () => {
+    if (!canHideSetup(setups, active.id)) return;
+    const next = setups.map(s => (s.id === active.id ? { ...s, hidden: true, updatedAt: new Date().toISOString() } : s));
+    onSetupsChange(next);
+    onActiveSetupChange((visibleSetups(next)[0] ?? next[0]).id);
+  };
+  /** Przywraca ukryty zestaw (nie przełącza na niego). */
+  const showSetup = (id: string) => {
+    onSetupsChange(setups.map(s => {
+      if (s.id !== id) return s;
+      const { hidden: _h, ...rest } = s;
+      return { ...rest, updatedAt: new Date().toISOString() } as EquipmentSetup;
+    }));
   };
 
   const setupToDelete = setups.find(s => s.id === confirmDeleteId) ?? null;
@@ -327,7 +348,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
 
         <div className="flex gap-1 overflow-x-auto hide-scrollbar">
-          {setups.map(s => (
+          {shown.map(s => (
             <button
               key={s.id}
               onClick={() => onActiveSetupChange(s.id)}
@@ -338,6 +359,27 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
             </button>
           ))}
         </div>
+        {/* [UKRYJ] Ukryte zestawy: nie widać ich na stronie głównej, ale są zapisane. */}
+        {hiddenSetups.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-gray-100" data-testid="hidden-setups">
+            <span className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{t('settings.equipment.hiddenTitle')}</span>
+            <div className="flex gap-1 flex-wrap">
+              {hiddenSetups.map(s => (
+                <button
+                  key={s.id}
+                  onClick={() => showSetup(s.id)}
+                  aria-label={t('settings.equipment.showSetup', { name: s.name })}
+                  className="px-2.5 py-1.5 rounded-xl text-[10px] font-black whitespace-nowrap border border-dashed border-gray-300 text-gray-400 flex items-center gap-1.5 active:scale-95 transition-all"
+                >
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0 opacity-50" style={{ backgroundColor: setupColorHex(colors.get(s.id)) }} />
+                  {s.name}
+                  <span className="material-symbols-outlined text-[14px]">visibility</span>
+                </button>
+              ))}
+            </div>
+            <span className="block text-[9px] font-bold text-gray-400 mt-1">{t('settings.equipment.hiddenHint')}</span>
+          </div>
+        )}
       </div>
 
       {/* Nazwa + dyscyplina zestawu */}
@@ -367,6 +409,18 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                 </span>
               )}
             </button>
+            {/* [UKRYJ] Przekreślone oko: znika z Home i Vorbereitung, zapis zostaje. */}
+            {canHideSetup(setups, active.id) && (
+              <button
+                onClick={hideActive}
+                aria-label={t('settings.equipment.hideSetup')}
+                title={t('settings.equipment.hideSetup')}
+                data-testid="hide-setup"
+                className="px-3 rounded-xl bg-gray-100 text-[#0a3a2a] active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">visibility_off</span>
+              </button>
+            )}
             {active.id !== DEFAULT_SETUP_ID && setups.length > 1 && (
               <button
                 onClick={() => setConfirmDeleteId(active.id)}

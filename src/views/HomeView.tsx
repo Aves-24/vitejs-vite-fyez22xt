@@ -30,7 +30,7 @@ import BattleCard from '../components/BattleCard';
 import BattleRankingModal from '../components/BattleRankingModal';
 import { zonesOf, ringLabels, ZONE_COLORS } from '../utils/zones';
 import { statsGroupOf, statsGroupOfSetup, clearHomeStatsCache, homeStatsCacheKey, scaleMaxOf, type StatsGroup } from '../config/statsGroups';
-import { resolveActiveSetup, styleOfSetup, isBlowgun, asBowType, sanitizeSetups, buildMigrationPayload, type EquipmentSetup, type ShootingStyle } from '../config/equipmentSetups';
+import { resolveActiveSetup, visibleSetups, styleOfSetup, isBlowgun, asBowType, sanitizeSetups, buildMigrationPayload, type EquipmentSetup, type ShootingStyle } from '../config/equipmentSetups';
 import { invalidateSetupStamp } from '../utils/setupStamp';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
@@ -41,7 +41,7 @@ const PLAN_ICON = { free: 'diamond', pro: 'diamond', days: 'hourglass_top' } as 
 /** [PRZEŁĄCZNIK ŚWIATA] Style zestawów łuczniczych (bez dmuchawki), bez powtórzeń. */
 const worldsOfSetups = (d: any): string[] => {
   const list: EquipmentSetup[] = Array.isArray(d?.setups) ? d.setups : [];
-  return Array.from(new Set(list.filter(s => !isBlowgun(s.discipline)).map(s => styleOfSetup(s))));
+  return Array.from(new Set(visibleSetups(list).filter(s => !isBlowgun(s.discipline)).map(s => styleOfSetup(s))));
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -951,7 +951,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const setups: EquipmentSetup[] = Array.isArray(base.setups) ? base.setups : [];
     const active = resolveActiveSetup(base);
     if (!active || styleOfSetup(active) === style) return;
-    const match = setups.find(s => !isBlowgun(s.discipline) && styleOfSetup(s) === style);
+    const match = visibleSetups(setups).find(s => !isBlowgun(s.discipline) && styleOfSetup(s) === style);
     let patch: Record<string, unknown>;
     let next: any;
     if (match) {

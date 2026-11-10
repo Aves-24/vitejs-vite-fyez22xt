@@ -11,7 +11,7 @@ import { settleWrite, userDocCacheFirst } from '../utils/offlineWrite';
 import { FocusStrip, FocusChoiceChips, focusTitle } from './tagebuch/FocusCard';
 import { selectableTargetIdsFor, resolveTargetFace } from '../config/targetFaces';
 import { TargetThumbnail } from './targets/TargetThumbnail';
-import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex, styleOfSetup } from '../config/equipmentSetups';
+import { EquipmentSetup, asBowType, resolveSetupColors, setupColorHex, styleOfSetup, visibleSetups } from '../config/equipmentSetups';
 import { UserDistance, displayDistance, distancesForSetup, fallbackTargetFor, distanceMeters } from '../config/distances';
 import { fieldFaceForMeters } from '../config/targets/waField';
 import { ifaaFaceForMeters } from '../config/targets/ifaa';
@@ -69,7 +69,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // Blowgun 20cm (wykryte testem e2e 2026-11-05). Przyciski startu i tak
   // są zablokowane bez wybranego dystansu.
   const [profileLoaded, setProfileLoaded] = useState(false);
-  const activeSetup = setups.find(s => s.id === activeSetupId) ?? setups[0];
+  // [UKRYJ] Ukryty zestaw nie bywa aktywny ani nie pokazuje się w wyborze (Ustawienia).
+  const shownSetups = visibleSetups(setups);
+  const activeSetup = shownSetups.find(s => s.id === activeSetupId) ?? shownSetups[0];
   const setupColors = useMemo(() => resolveSetupColors(setups), [setups]);
   // [DMUCHAWKA] Dyscyplina aktywnego zestawu — decyduje, które tarcze w ogóle
   // pokazujemy. Bez tego łucznik mógł wybrać tarczę dmuchawki i jego sesja
@@ -138,8 +140,8 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   // z rury. Dopóki profil się ładuje, lista jest pełna — filtr ma zawężać
   // wybór, a nie migać pustką przy każdym wejściu.
   const distanceOptions = useMemo(
-    () => distancesForSetup(activeDistances, setups, activeSetupId, legacyBowType),
-    [activeDistances, setups, activeSetupId, legacyBowType],
+    () => distancesForSetup(activeDistances, setups, activeSetup?.id ?? activeSetupId, legacyBowType),
+    [activeDistances, setups, activeSetup?.id, activeSetupId, legacyBowType],
   );
 
   /**
@@ -407,9 +409,9 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           <div className="px-3 pt-2.5 pb-2.5">
             {/* [KOLORY] Zestawy — klik pokazuje dystanse zestawu i robi go aktywnym.
                 Także przy jednym zestawie: widać, z czego się strzela (dawniej pigułka nad paskiem). */}
-            {setups.length > 0 && (
+            {shownSetups.length > 0 && (
               <div className="flex gap-1.5 flex-wrap mb-2">
-                {setups.map(s => {
+                {shownSetups.map(s => {
                   const on = s.id === activeSetup?.id;
                   return (
                     <button

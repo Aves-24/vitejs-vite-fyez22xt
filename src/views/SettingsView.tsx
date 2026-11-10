@@ -35,6 +35,7 @@ import { selectableTargetIdsFor } from '../config/targetFaces';
 import { TargetThumbnail } from '../components/targets/TargetThumbnail';
 import { TargetPickerSheet } from '../components/targets/TargetPickerSheet';
 import { styleOfSetup } from '../config/equipmentSetups';
+import CoursesSection from '../components/settings/CoursesSection';
 import { fieldFaceForMeters } from '../config/targets/waField';
 import { ifaaFaceForMeters } from '../config/targets/ifaa';
 import EquipmentSection from '../components/settings/EquipmentSection';
@@ -808,6 +809,8 @@ export default function SettingsView({
                 </button>
               </div>
             )}
+            {/* [ANIMAL ROUND] Trasy (zwierzęta/cele) — tylko gdy jest zestaw IFAA. */}
+            {setups.some(s => styleOfSetup(s) === 'ifaa') && <CoursesSection userId={userId} isPro={hasPro} />}
           </div>
         )}
 

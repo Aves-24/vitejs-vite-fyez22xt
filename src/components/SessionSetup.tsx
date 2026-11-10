@@ -262,23 +262,25 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
   const canParcours = resolveTargetFace(selectedTarget).statsGroup === 'ifaa';
   // [ANIMAL ROUND 2026-11-10] Druga runda trasy IFAA — zwierzęta, Kill/Wound/Miss.
   // Parcours i Animal wykluczają się (jeden przełącznik zdejmuje drugi).
-  const [fieldMode, setFieldMode] = useState<'none' | 'parcours' | 'animal'>('none');
-  const parcoursOn = fieldMode === 'parcours';
-  const animalOn = fieldMode === 'animal';
-  const parcoursActive = canParcours && parcoursOn;
-  const animalActive = canParcours && animalOn;
+  // [ANIMAL ROUND] Zwierzęta wybiera się kafelkiem obok dystansów (user 2026-11-10:
+  // „jako dystans wybrać parcours”) — bez ustawionego dystansu. 'animal' = nowa
+  // trasa, inaczej id zapisanej trasy (Ustawienia → Distanzen → Strecken).
+  const isIfaaSetup = style === 'ifaa';
+  const [animalPick, setAnimalPick] = useState<string | null>(null);
+  const animalActive = isIfaaSetup && animalPick !== null;
+  const [parcoursOn, setParcoursOn] = useState(false);
+  const parcoursActive = canParcours && parcoursOn && !animalActive;
   const startDistance = () => (animalActive ? ANIMAL_DISTANCE : parcoursActive ? PARCOURS_DISTANCE : selectedDistance);
   const startTarget = () => (animalActive ? IFAA_ANIMAL_FACE_ID : selectedTarget);
   // [ANIMAL ROUND] Zapisane trasy: wybrana wypełnia nazwy zwierząt i liczbę stanowisk.
   const [courses, setCourses] = useState<Course[]>([]);
-  const [courseId, setCourseId] = useState<string>('');
   useEffect(() => {
-    if (!animalOn || !userId) return;
+    if (!isIfaaSetup || !userId) return;
     let alive = true;
     listCourses(userId).then(cs => { if (alive) setCourses(cs); }).catch(() => {});
     return () => { alive = false; };
-  }, [animalOn, userId]);
-  const course = courses.find(c => c.id === courseId) || null;
+  }, [isIfaaSetup, userId]);
+  const course = courses.find(c => c.id === animalPick) || null;
   const rememberCourse = () => {
     try {
       if (animalActive && course) localStorage.setItem(selectedCourseKey(userId), JSON.stringify(course));
@@ -434,12 +436,12 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
             )}
             <div className="grid grid-cols-3 gap-1.5" aria-label={t('setup.selectDistance')}>
               {distanceOptions.map((d) => {
-                const on = selectedId === d.id;
+                const on = selectedId === d.id && !animalActive;
                 return (
                   <button
                     key={d.id}
-                    onClick={() => updateSelection(d.id)}
-                    aria-pressed={on}
+                    onClick={() => { updateSelection(d.id); setAnimalPick(null); }}
+                    aria-pressed={on && !animalActive}
                     className={`py-2 rounded-xl transition-all active:scale-95 border min-w-0 ${on ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-white border-gray-200 text-gray-500'}`}
                   >
                     {/* [C25] Etykieta drugą linijką — „18m barebow” nie mieści się w jednej. */}
@@ -448,11 +450,41 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
                   </button>
                 );
               })}
+              {/* [ANIMAL ROUND] Zwierzęta i zapisane trasy jako „dystanse”. */}
+              {isIfaaSetup && [{ id: 'animal', icon: 'eco', title: t('animal.tile'), sub: t('animal.tileSub') }, ...courses.map(c => ({ id: c.id, icon: 'distance', title: c.name, sub: t('animal.stations', { n: c.stations.length }) }))].map(x => {
+                const on = animalPick === x.id;
+                return (
+                  <button
+                    key={x.id}
+                    onClick={() => setAnimalPick(x.id)}
+                    aria-pressed={on}
+                    data-testid={x.id === 'animal' ? 'animal-tile' : 'course-tile'}
+                    className={`py-2 rounded-xl transition-all active:scale-95 border min-w-0 ${on ? 'bg-[#0a3a2a] border-[#0a3a2a] text-white' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}
+                  >
+                    <span className={`flex items-center justify-center gap-1 text-[13px] leading-none truncate px-1 ${on ? 'font-black' : 'font-bold'}`}>
+                      <span className="material-symbols-outlined text-[14px]">{x.icon}</span>
+                      <span className="truncate">{x.title}</span>
+                    </span>
+                    <span className="block text-[10px] font-bold opacity-70 mt-0.5 truncate px-1">{x.sub}</span>
+                  </button>
+                );
+              })}
+              {isIfaaSetup && (
+                <button
+                  onClick={() => onNavigate?.('SETTINGS', 'VISIER')}
+                  className="py-2 rounded-xl border border-dashed border-emerald-300 text-emerald-700 active:scale-95 min-w-0"
+                  data-testid="course-new-tile"
+                >
+                  <span className="block text-[13px] font-black leading-none">+</span>
+                  <span className="block text-[10px] font-bold mt-0.5 truncate px-1">{t('animal.tileNew')}</span>
+                </button>
+              )}
             </div>
+            {animalActive && <p className="text-[10px] font-bold text-gray-400 mt-2">{t('animal.toggleHint')}</p>}
           </div>
 
           {/* Tarcza + nastawy celownika w jednej linii; ołówek otwiera ten sam edytor. */}
-          {selectedId && (
+          {selectedId && !animalActive && (
             <button onClick={openSightEditor} className="w-full border-t border-t-gray-100 px-3 py-2 flex items-center gap-2.5 text-left active:bg-gray-50 transition-colors">
               <TargetThumbnail targetType={selectedTarget} className="w-8 h-8 shrink-0" />
               <span className="flex-1 min-w-0">
@@ -472,46 +504,24 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
           )}
 
           {/* [IFAA] Format z tarczy jak na zawodach — bez skracania. */}
-          {selectedId && faceRound && (
+          {selectedId && faceRound && !animalActive && (
             <div className="border-t border-t-gray-100 px-3 py-2 flex items-center gap-2" data-testid="face-round">
               <span className="flex-1 text-[13px] font-bold text-gray-500">{t('setup.endsLabel')}</span>
               <span className="text-[14px] font-black text-[#0a3a2a]">{faceRound.ends} × {faceRound.arrowsPerEnd} {t('common.arrows')}</span>
             </div>
           )}
           {/* [PARCOURS] Przełącznik rundy terenowej (każda tarcza inny dystans). */}
-          {selectedId && canParcours && (
+          {selectedId && canParcours && !animalActive && (
             <div className="border-t border-t-gray-100 px-3 py-2">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={parcoursOn} onChange={e => setFieldMode(e.target.checked ? 'parcours' : 'none')} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0" data-testid="parcours-toggle" />
+                <input type="checkbox" checked={parcoursOn} onChange={e => setParcoursOn(e.target.checked)} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0" data-testid="parcours-toggle" />
                 <span className="flex-1 text-[13px] font-black text-[#0a3a2a]">{t('parcours.toggle')}</span>
               </label>
               {parcoursOn && <p className="text-[10px] font-bold text-gray-400 mt-1 ml-7">{t('parcours.toggleHint')}</p>}
-              {/* [ANIMAL ROUND] Zwierzęta: do 3 strzał, liczy się pierwsze trafienie. */}
-              <label className="flex items-center gap-2 cursor-pointer mt-2">
-                <input type="checkbox" checked={animalOn} onChange={e => setFieldMode(e.target.checked ? 'animal' : 'none')} className="w-5 h-5 rounded border-gray-300 text-[#0a3a2a] focus:ring-0" data-testid="animal-toggle" />
-                <span className="flex-1 text-[13px] font-black text-[#0a3a2a]">{t('animal.toggle')}</span>
-              </label>
-              {animalOn && <p className="text-[10px] font-bold text-gray-400 mt-1 ml-7">{t('animal.toggleHint')}</p>}
-              {/* [ANIMAL ROUND] Zapisana trasa — nazwy zwierząt wypełnią się same. */}
-              {animalOn && (
-                <label className="flex items-center gap-2 mt-2 ml-7">
-                  <span className="text-[11px] font-bold text-gray-500 shrink-0">{t('animal.course')}</span>
-                  <select
-                    value={courseId}
-                    onChange={e => setCourseId(e.target.value)}
-                    aria-label={t('animal.course')}
-                    data-testid="course-select"
-                    className="flex-1 min-w-0 h-8 px-2 bg-gray-50 rounded-md text-[12px] font-bold text-[#0a3a2a] border border-gray-100 outline-none"
-                  >
-                    <option value="">{t('animal.newCourse')}</option>
-                    {courses.map(c => <option key={c.id} value={c.id}>{c.name} ({c.stations.length})</option>)}
-                  </select>
-                </label>
-              )}
             </div>
           )}
           {/* Passen — zawsze widoczne, zwinięte; rozwija 6/8/10/12. */}
-          {selectedId && !faceRound && (
+          {selectedId && !faceRound && !animalActive && (
             <div className="border-t border-t-gray-100 px-3 py-2">
               <div className="flex items-center gap-2">
                 <button
@@ -634,7 +644,7 @@ export default function SessionSetup({ userId, activeDistances, onStartSession, 
               <div className="relative -top-7 w-20 shrink-0 flex flex-col items-center z-50">
                 <button
                   onClick={handleStartClick}
-                  disabled={!selectedDistance}
+                  disabled={!selectedDistance && !animalActive}
                   aria-label={t('nav.training')}
                   className="w-16 h-16 bg-[#F2C94C] shadow-[#F2C94C]/30 rounded-full shadow-lg border-4 border-white flex items-center justify-center active:scale-90 transition-all relative overflow-hidden disabled:opacity-50"
                 >

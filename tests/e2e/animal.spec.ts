@@ -19,10 +19,11 @@ test('Animal Round: Kill 20 / Miss+Wound 10 / 3×Miss 0, nazwy zwierząt, Treffe
 
   await page.goto('/');
   await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
-  await page.getByTestId('animal-toggle').check();
+  // Zwierzęta = kafelek obok dystansów (bez ustawiania dystansu).
+  await page.getByTestId('animal-tile').click();
   await expect(page.getByText(/Bis zu 3 Pfeile pro Tier/)).toBeVisible();
-  // Parcours i Animal wykluczają się.
-  await expect(page.getByTestId('parcours-toggle')).not.toBeChecked();
+  // Tarcza/celownik i Parcours dotyczą dystansu — przy zwierzętach ich nie ma.
+  await expect(page.getByTestId('parcours-toggle')).toHaveCount(0);
   await page.getByRole('button', { name: 'Training', exact: true }).click();
 
   const bar = page.getByTestId('animal-bar');
@@ -86,7 +87,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   test.setTimeout(240_000);
   const errors = watchErrors(page);
   const outlineRequests: string[] = [];
-  page.on('request', r => { if (r.url().includes('/animals/')) outlineRequests.push(r.url()); });
+  page.on('request', r => { if (new URL(r.url()).pathname === '/animals/outlines.json') outlineRequests.push(r.url()); });
   const uid = await registerUser(page, 'Trasa');
   await nav(page, 'Einst.').click();
   await settingsTab(page, 'AUSRÜSTUNG').click();
@@ -100,8 +101,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   // Runda 1: dwa zwierzęta, drugie z obrysem z paczki.
   await page.goto('/');
   await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
-  await page.getByTestId('animal-toggle').check();
-  await expect(page.getByTestId('course-select')).toHaveValue('');
+  await page.getByTestId('animal-tile').click();
   await page.getByRole('button', { name: 'Training', exact: true }).click();
   const bar = page.getByTestId('animal-bar');
   const keypad = page.getByTestId('animal-keypad');
@@ -134,8 +134,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
 
   // Runda 2 z trasą: nazwy i obrys wypełnione, liczba stanowisk z trasy.
   await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
-  await page.getByTestId('animal-toggle').check();
-  await page.getByTestId('course-select').selectOption({ label: 'Waldkurs (2)' });
+  await page.getByTestId('course-tile').filter({ hasText: 'Waldkurs' }).click();
   await page.getByRole('button', { name: 'Training', exact: true }).click();
   await expect(bar).toContainText('Tier 1/2');
   await expect(name).toHaveValue('Hirsch');
@@ -156,4 +155,53 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   const c2 = (await adminListDocs(request, `users/${uid}/courses`))[0].fields.stations.arrayValue.values.map((v: any) => v.mapValue.fields.name.stringValue);
   expect(c2).toEqual(['Hirsch', 'Bär']);
   await expectNoErrors(page, errors, 'Animal Strecke');
+});
+
+test('Strecken in Einstellungen: Strecke anlegen (Tiere, Umriss PRO), Kachel in Vorbereitung, Training mit eingetragenen Tieren', async ({ page, request }) => {
+  test.setTimeout(240_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Editor');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+  await adminPatchDoc(request, `users/${uid}`, { trialEndsAt: Date.now() + 30 * 86_400_000 }); // PRO
+
+  // Vorbereitung → „+ Strecke anlegen” prowadzi do Ustawień → Distanzen.
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('course-new-tile').click();
+  const section = page.getByTestId('courses-section');
+  await expect(section).toBeVisible();
+  await section.getByTestId('course-add').click();
+  const ed = page.getByRole('dialog', { name: 'Strecke bearbeiten' });
+  await ed.getByRole('textbox', { name: 'Name der Strecke' }).fill('Hausstrecke');
+  await ed.getByRole('textbox', { name: 'Station 1' }).fill('Reh');
+  await ed.getByRole('textbox', { name: 'Station 2' }).fill('Luchs');
+  // Station 3: Umriss wybrany z paczki — pusta nazwa bierze nazwę obrysu.
+  await ed.getByRole('button', { name: 'Umriss des Tiers' }).nth(2).click();
+  const picker = page.getByRole('dialog', { name: 'Umriss des Tiers' });
+  await picker.getByRole('textbox', { name: 'Tier suchen' }).fill('Wolf');
+  await picker.getByRole('button', { name: /^Wolf/ }).first().click();
+  await expect(ed.getByRole('textbox', { name: 'Station 3' })).toHaveValue('Wolf');
+  await ed.getByRole('button', { name: 'Station 4 löschen' }).click();
+  await page.screenshot({ path: test.info().outputPath('course-editor.png') });
+  await ed.getByTestId('course-editor-save').click();
+  await expect(section).toContainText('Hausstrecke');
+  await expect(section).toContainText('3 Tiere');
+  await syncWrites(page);
+  const st = (await adminListDocs(request, `users/${uid}/courses`))[0].fields.stations.arrayValue.values.map((v: any) => [v.mapValue.fields.name.stringValue, v.mapValue.fields.outlineId?.stringValue]);
+  expect(st).toEqual([['Reh', undefined], ['Luchs', undefined], ['Wolf', 'wolf']]);
+
+  // Kafelek trasy w Vorbereitung → trening z wpisanymi zwierzętami.
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('course-tile').filter({ hasText: 'Hausstrecke' }).click();
+  await page.screenshot({ path: test.info().outputPath('setup-tiles.png') });
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  const bar = page.getByTestId('animal-bar');
+  await expect(bar).toContainText('Tier 1/3');
+  await expect(bar.getByRole('combobox', { name: 'Tier' })).toHaveValue('Reh');
+  await expectNoErrors(page, errors, 'Strecken-Editor');
 });

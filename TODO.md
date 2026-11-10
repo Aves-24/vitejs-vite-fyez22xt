@@ -45,7 +45,7 @@
       Przed kodowaniem sprawdzić w aktualnym WA Book 4 (PDF z extranetu się
       nie pobrał) linie i cienki X.
 
-- [x] ✅ ZROBIONE 2026-11-09 (0c64c61): `targets/ifaa.ts`, zestaw „IFAA”, świat 'ifaa' (skala 5), format zawodów 4×28 / 5×12, 4-Spot/5-Spot w spotGeometry. 2026-11-09 DOROBIONE: Expert Field (777d9bb, `targets/ifaaExpert.ts`), licznik X (X-ring 0,1 D = 5 pkt + licznik; na Field wymiar X przyjęty jak w Indoor — regulamin nie podaje), jednostki m/yd/ft (0aba04f), Parcours = runda terenowa z tarczą i dystansem per seria + handicap wielodystansowy (Archery GB). NIE zrobione: Animal Round (tarcze zwierzęce, 1 strzała z 3 kołków), Hunter/Expert dla WA Field, Trefferbild w Parcours (ukryte).
+- [x] ✅ ZROBIONE 2026-11-09 (0c64c61): `targets/ifaa.ts`, zestaw „IFAA”, świat 'ifaa' (skala 5), format zawodów 4×28 / 5×12, 4-Spot/5-Spot w spotGeometry. 2026-11-09 DOROBIONE: Expert Field (777d9bb, `targets/ifaaExpert.ts`), licznik X (X-ring 0,1 D = 5 pkt + licznik; na Field wymiar X przyjęty jak w Indoor — regulamin nie podaje), jednostki m/yd/ft (0aba04f), Parcours = runda terenowa z tarczą i dystansem per seria + handicap wielodystansowy (Archery GB). NIE zrobione: Animal Round (tarcze zwierzęce, 1 strzała z 3 kołków), Hunter/Expert dla WA Field. Trefferbild w Parcours ZROBIONE 2026-11-10 (d8927c1): kropki przeskalowane na tarczę wzorcową.
       **Rodzina tarcz IFAA / DFBV** (2026-11-09, user znalazł na
       bogensportwelt.de → „Overlays FITA sport”): Indoor 40 cm niebieska
       (+ 5-Spot w kształcie X), Field 20 (4-Spot 2×2) / 35 / 50 / 65 cm

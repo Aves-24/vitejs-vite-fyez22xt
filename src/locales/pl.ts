@@ -356,7 +356,7 @@ export const components = {
   },
   animal: {
     toggle: "Animal Round (zwierzęta)",
-    toggleHint: "Do 3 strzał na zwierzę, liczy się pierwsze trafienie: Kill 20/14/8, Wound 16/10/4 (28 zwierząt).",
+    toggleHint: "Do 3 strzał na zwierzę, liczy się pierwsze trafienie: Kill 20/16/12, Wound 18/14/10 (IFAA).",
     station: "Zwierzę {{n}}/{{total}}",
     name: "Zwierzę",
     namePlaceholder: "Nazwa zwierzęcia (np. jeleń)",

@@ -34,12 +34,12 @@ const valueColor = (v: string): { bg: string; ring?: boolean } => {
   return map[v] ? { bg: map[v] } : { bg: '#ffffff', ring: true };
 };
 
-const ANIMAL_VALUE_ORDER = ['20', '14', '8', '16', '10', '4', 'M'];
-// Kill (20/14/8) — złoto od ciemnego; Wound (16/10/4) — biel/szarości jak sylwetka.
+const ANIMAL_VALUE_ORDER = ['20', '16', '12', '18', '14', '10', 'M'];
+// Kill (20/16/12) — złoto od ciemnego; Wound (18/14/10) — biel/szarości jak sylwetka.
 const animalValueColor = (v: string): { bg: string; ring?: boolean } => {
   const map: Record<string, { bg: string; ring?: boolean }> = {
-    '20': { bg: '#D9A400' }, '14': { bg: '#F2C94C' }, '8': { bg: '#F8E08E' },
-    '16': { bg: '#ffffff', ring: true }, '10': { bg: '#d1d5db' }, '4': { bg: '#9ca3af' },
+    '20': { bg: '#D9A400' }, '16': { bg: '#F2C94C' }, '12': { bg: '#F8E08E' },
+    '18': { bg: '#ffffff', ring: true }, '14': { bg: '#d1d5db' }, '10': { bg: '#9ca3af' },
     M: { bg: '#581c87' },
   };
   return map[v] ?? { bg: '#ffffff', ring: true };

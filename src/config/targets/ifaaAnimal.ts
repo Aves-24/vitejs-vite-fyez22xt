@@ -4,7 +4,7 @@ import type { TargetFace } from '../targetFaces';
  * [ANIMAL ROUND 2026-11-10] Tarcza „zwierzę” IFAA — osobny plik (zasada usera:
  * nowa tarcza = nowy plik). Nie ma geometrii: każde zwierzę na trasie jest
  * inne, więc wpisuje się przyciskami Kill / Wound / Miss (config/animalRound.ts),
- * a nie klikiem w rysunek. Wartość strzały = punkty (20/16, 14/10, 8/4).
+ * a nie klikiem w rysunek. Wartość strzały = punkty (IFAA: 20/18, 16/14, 12/10).
  *
  * Bez `pickOrder` — nie pojawia się na listach tarcz dystansów; włącza się
  * przełącznikiem „Animal Round” w Vorbereitung przy zestawie IFAA.
@@ -23,6 +23,6 @@ export const IFAA_ANIMAL_FACE: TargetFace = {
   scorable: true,
   statsGroup: 'animal',
   // Kill (środek) złoty, Wound (reszta zwierzęcia) biały.
-  keyColors: { '20': 'gold', '14': 'gold', '8': 'gold', '16': 'white', '10': 'white', '4': 'white' },
+  keyColors: { '20': 'gold', '16': 'gold', '12': 'gold', '18': 'white', '14': 'white', '10': 'white' },
   round: { arrowsPerEnd: 3, ends: 28 },
 };

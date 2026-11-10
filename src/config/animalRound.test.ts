@@ -6,24 +6,24 @@ import { IFAA_ANIMAL_FACE_ID } from './targets/ifaaAnimal';
 import { selectableTargetIds } from './targetFaces';
 
 describe('animal round', () => {
-  it('punkty: 20/16, 14/10, 8/4, dalej 0', () => {
-    expect([0, 1, 2, 3].map(i => animalPoints(i, 'K'))).toEqual([20, 14, 8, 0]);
-    expect([0, 1, 2].map(i => animalPoints(i, 'W'))).toEqual([16, 10, 4]);
+  it('punkty IFAA: 20/18, 16/14, 12/10, dalej 0', () => {
+    expect([0, 1, 2, 3].map(i => animalPoints(i, 'K'))).toEqual([20, 16, 12, 0]);
+    expect([0, 1, 2].map(i => animalPoints(i, 'W'))).toEqual([18, 14, 10]);
   });
 
   it('wynik stanowiska i zamknięcie', () => {
-    expect(stationResult(['M', '14'])).toEqual({ arrow: 2, hit: 'K', points: 14 });
-    expect(stationResult(['16'])).toEqual({ arrow: 1, hit: 'W', points: 16 });
+    expect(stationResult(['M', '16'])).toEqual({ arrow: 2, hit: 'K', points: 16 });
+    expect(stationResult(['18'])).toEqual({ arrow: 1, hit: 'W', points: 18 });
     expect(stationResult(['M', 'M', 'M'])).toBeNull();
     expect(stationDone(['M'])).toBe(false);
-    expect(stationDone(['M', '10'])).toBe(true);
+    expect(stationDone(['M', '14'])).toBe(true);
     expect(stationDone(['M', 'M', 'M'])).toBe(true);
   });
 
   it('Trefferquote', () => {
-    const s = animalSummary([{ arrows: ['20'] }, { arrows: ['M', '10'] }, { arrows: ['M', 'M', 'M'] }, { arrows: ['M', 'M', '8'] }]);
-    expect(s).toMatchObject({ stations: 4, score: 38, byArrow: [1, 1, 1], kills: 2, wounds: 1, misses: 1 });
-    expect(s.perStation).toBe(9.5);
+    const s = animalSummary([{ arrows: ['20'] }, { arrows: ['M', '14'] }, { arrows: ['M', 'M', 'M'] }, { arrows: ['M', 'M', '12'] }]);
+    expect(s).toMatchObject({ stations: 4, score: 46, byArrow: [1, 1, 1], kills: 2, wounds: 1, misses: 1 });
+    expect(s.perStation).toBe(11.5);
   });
 
   it('osobny świat, bez rangi i handicapu, nie na listach tarcz', () => {

@@ -7,7 +7,7 @@ test.beforeEach(async ({ request }) => resetEmulators(request));
 
 const settingsTab = (page: Page, name: string) => page.getByRole('main').getByRole('button', { name, exact: true });
 
-test('Animal Round: Kill 20 / Miss+Wound 10 / 3×Miss 0, nazwy zwierząt, Trefferquote', async ({ page, request }) => {
+test('Animal Round: Kill 20 / Miss+Wound 14 / 3×Miss 0, nazwy zwierząt, Trefferquote', async ({ page, request }) => {
   test.setTimeout(180_000);
   const errors = watchErrors(page);
   const uid = await registerUser(page, 'Animal');
@@ -37,9 +37,9 @@ test('Animal Round: Kill 20 / Miss+Wound 10 / 3×Miss 0, nazwy zwierząt, Treffe
   await expect(bar.getByRole('combobox', { name: 'Tier' })).toHaveValue('');
   await bar.getByRole('combobox', { name: 'Tier' }).fill('Fuchs');
   await keypad.getByRole('button', { name: 'Miss' }).click();
-  // Druga strzała: Kill 14 / Wound 10.
-  await expect(keypad.getByRole('button', { name: 'Wound 10' })).toBeVisible();
-  await keypad.getByRole('button', { name: 'Wound 10' }).click();
+  // Druga strzała: Kill 16 / Wound 14 (IFAA).
+  await expect(keypad.getByRole('button', { name: 'Wound 14' })).toBeVisible();
+  await keypad.getByRole('button', { name: 'Wound 14' }).click();
   await page.waitForTimeout(800);
 
   await expect(bar).toContainText('Tier 3/28');
@@ -50,22 +50,22 @@ test('Animal Round: Kill 20 / Miss+Wound 10 / 3×Miss 0, nazwy zwierząt, Treffe
 
   const table = page.getByTestId('ends-table');
   await expect(table).toContainText(/1 Hirsch\s*20/);
-  await expect(table).toContainText(/2 Fuchs\s*M\s*10/);
-  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*30/);
+  await expect(table).toContainText(/2 Fuchs\s*M\s*14/);
+  await expect(page.getByRole('main')).toContainText(/Gesamtringzahl\s*34/);
   await page.screenshot({ path: test.info().outputPath('animal-scoring.png') });
 
   await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
   await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
-  await expect(page.getByRole('button', { name: /^Zuletzt 30/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Zuletzt 34/ })).toBeVisible();
   await syncWrites(page);
 
   const s = (await adminListDocs(request, `users/${uid}/sessions`))[0].fields;
   expect(s.distance.stringValue).toBe('Animal');
   expect(s.targetType.stringValue).toBe('IFAA Animal');
-  expect(Number(s.score.integerValue)).toBe(30);
+  expect(Number(s.score.integerValue)).toBe(34);
   const ends = s.ends.arrayValue.values.map((v: any) => v.mapValue.fields);
   expect(ends.map((e: any) => [e.animal?.stringValue, e.arrows.arrayValue.values.map((a: any) => a.stringValue).join(',')])).toEqual([
-    ['Hirsch', '20'], ['Fuchs', 'M,10'], ['Bär', 'M,M,M'],
+    ['Hirsch', '20'], ['Fuchs', 'M,14'], ['Bär', 'M,M,M'],
   ]);
   // Bez rangi: profil bez rankWorlds.animal i bez handicapu z tej sesji.
   const user = (await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))!.fields;
@@ -115,7 +115,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   await picker.getByRole('button', { name: /Wildschwein/ }).click();
   await expect(name).toHaveValue('Wildschwein'); // pusta nazwa → nazwa obrysu
   expect(outlineRequests.some(u => u.endsWith('/animals/outlines.json'))).toBe(true);
-  await keypad.getByRole('button', { name: 'Wound 16' }).click();
+  await keypad.getByRole('button', { name: 'Wound 18' }).click();
   await page.waitForTimeout(800);
 
   // Zapis trasy z podsumowania.
@@ -130,7 +130,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   expect(st).toEqual([['Hirsch', undefined], ['Wildschwein', 'wild-boar']]);
   await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
   await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
-  await expect(page.getByRole('button', { name: /^Zuletzt 36/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Zuletzt 38/ })).toBeVisible();
 
   // Runda 2 z trasą: nazwy i obrys wypełnione, liczba stanowisk z trasy.
   await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
@@ -139,7 +139,7 @@ test('Animal Round: zapis trasy, kolejna runda z wpisanymi zwierzętami, obrys P
   await expect(bar).toContainText('Tier 1/2');
   await expect(name).toHaveValue('Hirsch');
   await keypad.getByRole('button', { name: 'Miss' }).click();
-  await keypad.getByRole('button', { name: 'Kill 14' }).click();
+  await keypad.getByRole('button', { name: 'Kill 16' }).click();
   await page.waitForTimeout(800);
   await expect(bar).toContainText('Tier 2/2');
   await expect(name).toHaveValue('Wildschwein');

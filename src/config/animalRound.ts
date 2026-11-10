@@ -5,11 +5,15 @@
  * stanowisko kończy PIERWSZE trafienie. Punkty zależą od numeru strzały
  * i strefy: Kill (środek) / Wound (reszta sylwetki):
  *
- *   1. strzała 20 / 16,  2. strzała 14 / 10,  3. strzała 8 / 4,  3 × Miss = 0.
+ *   1. strzała 20 / 18,  2. strzała 16 / 14,  3. strzała 12 / 10,  3 × Miss = 0.
  *
- * Zapis jak każda seria: `arrows` = strzały w kolejności (np. ['M', '14']),
+ * Źródło (2026-11-10): IFAA Archers' Handbook 2021, Animal Round — tabela
+ * KILL/WOUND oraz „A maximum of three shots is allowed, but an archer shoots
+ * only until a hit is made.” Grupy 1–2: trzy kołki (walk-up), 3–4: jeden kołek.
+ *
+ * Zapis jak każda seria: `arrows` = strzały w kolejności (np. ['M', '16']),
  * więc sumy, wznowienie i eksport działają bez zmian. Kill/Wound wynika
- * z wartości (20/14/8 = Kill). Nazwa zwierzęcia i obrys są na serii
+ * z wartości (20/16/12 = Kill). Nazwa zwierzęcia i obrys są na serii
  * (`animal`, `outlineId`) — nazwy wpisuje się samemu (decyzja usera).
  */
 export const ANIMAL_DISTANCE = 'Animal';
@@ -21,13 +25,13 @@ export const isAnimalRound = (s?: { distance?: string | null } | null): boolean 
 
 export type AnimalHit = 'K' | 'W';
 
-const POINTS: Record<AnimalHit, readonly number[]> = { K: [20, 14, 8], W: [16, 10, 4] };
+const POINTS: Record<AnimalHit, readonly number[]> = { K: [20, 16, 12], W: [18, 14, 10] };
 
 /** Punkty za trafienie strzałą nr `arrowIndex` (0-based); poza 3. strzałą 0. */
 export const animalPoints = (arrowIndex: number, hit: AnimalHit): number => POINTS[hit][arrowIndex] ?? 0;
 
-const KILL = new Set(['20', '14', '8']);
-const WOUND = new Set(['16', '10', '4']);
+const KILL = new Set(['20', '16', '12']);
+const WOUND = new Set(['18', '14', '10']);
 export const isKill = (v?: string | null) => !!v && KILL.has(v);
 export const isWound = (v?: string | null) => !!v && WOUND.has(v);
 

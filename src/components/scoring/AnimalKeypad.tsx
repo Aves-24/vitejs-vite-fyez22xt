@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { animalPoints, ANIMAL_MAX_ARROWS, type AnimalHit } from '../../config/animalRound';
 
 // [ANIMAL ROUND 2026-11-10] Trzy duże przyciski zamiast klawiatury z punktami:
-// Kill / Wound / Miss. Punkty wynikają z numeru strzały (20/14/8, 16/10/4),
+// Kill / Wound / Miss. Punkty wynikają z numeru strzały (IFAA: Kill 20/16/12, Wound 18/14/10),
 // więc na przycisku widać, ile da TA strzała. Trafienie zamyka stanowisko.
 export default function AnimalKeypad({ arrowIndex, onShot, onUndo }: {
   arrowIndex: number;

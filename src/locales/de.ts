@@ -342,7 +342,7 @@ export const components = {
   },
   animal: {
     toggle: "Animal Round (Tiere)",
-    toggleHint: "Bis zu 3 Pfeile pro Tier, es zählt der erste Treffer: Kill 20/14/8, Wound 16/10/4 (28 Tiere).",
+    toggleHint: "Bis zu 3 Pfeile pro Tier, es zählt der erste Treffer: Kill 20/16/12, Wound 18/14/10 (IFAA).",
     station: "Tier {{n}}/{{total}}",
     name: "Tier",
     namePlaceholder: "Name des Tiers (z. B. Hirsch)",

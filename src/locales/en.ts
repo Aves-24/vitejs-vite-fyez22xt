@@ -342,7 +342,7 @@ export const components = {
   },
   animal: {
     toggle: "Animal Round",
-    toggleHint: "Up to 3 arrows per animal, the first hit counts: kill 20/14/8, wound 16/10/4 (28 animals).",
+    toggleHint: "Up to 3 arrows per animal, the first hit counts: kill 20/16/12, wound 18/14/10 (IFAA).",
     station: "Animal {{n}}/{{total}}",
     name: "Animal",
     namePlaceholder: "Animal name (e.g. deer)",

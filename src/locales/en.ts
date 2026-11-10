@@ -52,6 +52,7 @@ export const components = {
     colorFilter: "Shooting order",
     colorFilterAll: "All",
     targetCard: "Hit plot",
+    scaledNote: "All course targets scaled to one size – rings match, centimetres don't.",
     viewAll: "All",
     focusResult: {
       title: "Focus achieved?",
@@ -112,6 +113,7 @@ export const components = {
       title: "Group",
       centered: "Centered",
       offset: "{{cm}} cm {{dir}}",
+      offsetDir: "Drifts {{dir}}",
       size: "⌀ {{cm}} cm (80% of arrows)",
       axis: { vert: "Stretched vertically", horiz: "Stretched horizontally" },
       axisHint: { vert: "check draw force, opening or anchor", horiz: "check wind or fingers on the string" },

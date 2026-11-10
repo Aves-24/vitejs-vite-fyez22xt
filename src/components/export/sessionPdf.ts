@@ -9,6 +9,7 @@ import { handicapOfSession } from '../../utils/rankEngine';
 import { arrowColorAt } from '../../config/arrowColors';
 import { isFullFace, isSpotFace, friendlyTargetName, resolveTargetFace } from '../../config/targetFaces';
 import { spotGeometryOf } from '../../config/spotGeometry';
+import { parcoursTargetView } from '../../config/parcoursTarget';
 import { sessionDistanceLabel } from '../../config/distances';
 import { xPointsFor } from '../../utils/arrowPoints';
 
@@ -186,18 +187,21 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
   }
 
   // --- TREFFERBILD ---
-  const hasDots = ends.some(e => (e.dots || []).some((d: any) => d?.x != null && d?.y != null));
+  // [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget).
+  const tv = session.parcours ? parcoursTargetView(ends, o.targetType) : { targetType: o.targetType, ends };
+  const tbType = tv.targetType, tbEnds = tv.ends;
+  const hasDots = tbEnds.some(e => (e.dots || []).some((d: any) => d?.x != null && d?.y != null));
   if (hasDots) {
     doc.setFont('Roboto', 'bold'); doc.setFontSize(10); doc.setTextColor(...FOREST);
     doc.text(t('scoring.targetCard'), colR, yR); yR += 3;
-    const full = isFullFace(o.targetType);
+    const full = isFullFace(tbType);
     const size = colRW * (full ? 0.8 : 0.62);
     const sc = size / 300;
     const ox = colR + (colRW - size) / 2, oy = yR;
     const P = (vx: number, vy: number): [number, number] => [ox + vx * sc, oy + vy * sc];
     doc.setLineWidth(0.15);
-    const pdfFace = resolveTargetFace(o.targetType);
-    const pdfSpot = pdfFace.spot ? spotGeometryOf(o.targetType) : null;
+    const pdfFace = resolveTargetFace(tbType);
+    const pdfSpot = pdfFace.spot ? spotGeometryOf(tbType) : null;
     if (full && pdfFace.zones) {
       // [FELD] Tarcze z jawnymi strefami (teren 6–1) — pierścienie z katalogu.
       pdfFace.rings.forEach(rg => { doc.setFillColor(...hexRgb(rg.fill)); doc.setDrawColor(...hexRgb(rg.stroke)); const [cx, cy] = P(150, 150); doc.circle(cx, cy, rg.r * sc, 'FD'); });
@@ -207,7 +211,7 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
     } else if (full) {
       const rings: Array<[number, RGB, RGB]> = [[150, RING.white, [60, 60, 60]], [135, RING.white, [60, 60, 60]], [120, RING.black, [255, 255, 255]], [105, RING.black, [255, 255, 255]], [90, RING.blue, [60, 60, 60]], [75, RING.blue, [60, 60, 60]], [60, RING.red, [60, 60, 60]], [45, RING.red, [60, 60, 60]], [30, RING.gold, [60, 60, 60]], [15, RING.gold, [60, 60, 60]], [7.5, RING.gold, [60, 60, 60]]];
       rings.forEach(([r, fill, stroke]) => { doc.setFillColor(...fill); doc.setDrawColor(...stroke); const [cx, cy] = P(150, 150); doc.circle(cx, cy, r * sc, 'FD'); });
-    } else if (isSpotFace(o.targetType)) {
+    } else if (isSpotFace(tbType)) {
       const spot = (vx: number, vy: number) => {
         ([[62.5, RING.blue], [50, RING.red], [37.5, RING.red], [25, RING.gold], [12.5, RING.gold], [6.25, RING.gold]] as Array<[number, RGB]>)
           .forEach(([r, fill]) => { doc.setFillColor(...fill); doc.setDrawColor(60, 60, 60); const [cx, cy] = P(vx, vy); doc.circle(cx, cy, r * sc, 'FD'); });
@@ -215,7 +219,7 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
       [66, 200, 333].forEach(vy => { spot(75, vy); spot(225, vy); });
     }
     // Strzały: kolor strzały (tryb kolorów), inaczej biała; zły strzał = pusty czerwony obrys.
-    ends.forEach(e => (e.dots || []).forEach((d: any, i: number) => {
+    tbEnds.forEach(e => (e.dots || []).forEach((d: any, i: number) => {
       if (d?.x == null || d?.y == null) return;
       const [cx, cy] = P(d.x, d.y);
       if (d.bad) { doc.setDrawColor(220, 38, 38); doc.setLineWidth(0.3); doc.circle(cx, cy, 1.1, 'S'); doc.setLineWidth(0.15); return; }
@@ -223,7 +227,7 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
       doc.setFillColor(...(ac ? hexRgb(ac.hex) : [255, 255, 255] as RGB)); doc.setDrawColor(...FOREST);
       doc.circle(cx, cy, 1.1, 'FD');
     }));
-    const g = groupStats(ends, o.targetType);
+    const g = groupStats(tbEnds, tbType);
     if (g?.svg) {
       const [gx, gy] = P(g.svg.cx, g.svg.cy);
       doc.setDrawColor(...FOREST); doc.setLineWidth(0.35); doc.setLineDashPattern([1, 0.8], 0);
@@ -234,10 +238,10 @@ export function buildSessionPdf(doc: jsPDF, session: any, o: SessionPdfOptions):
     if (g) {
       const dir = t(`stats.arrowColors.dir.${directionKey(g.dxCm, g.dyCm)}`);
       const lines = [
-        g.offsetRings < GROUP_CENTER_RINGS ? t('scoring.group.centered') : t('scoring.group.offset', { cm: Math.round(Math.hypot(g.dxCm, g.dyCm)), dir }),
-        t('scoring.group.size', { cm: Math.round(g.diameterCm) }),
+        g.offsetRings < GROUP_CENTER_RINGS ? t('scoring.group.centered') : session.parcours ? t('scoring.group.offsetDir', { dir }) : t('scoring.group.offset', { cm: Math.round(Math.hypot(g.dxCm, g.dyCm)), dir }),
+        session.parcours ? t('scoring.scaledNote') : t('scoring.group.size', { cm: Math.round(g.diameterCm) }),
         ...(g.axis ? [`${t(`scoring.group.axis.${g.axis}`)} · ${t(`scoring.group.axisHint.${g.axis}`)}`] : []),
-        ...(o.sightHint && g.n >= 12 && g.offsetRings >= 0.5 ? [t('scoring.sight.move', { dir })] : []),
+        ...(o.sightHint && !session.parcours && g.n >= 12 && g.offsetRings >= 0.5 ? [t('scoring.sight.move', { dir })] : []),
       ];
       doc.setFont('Roboto', 'bold'); doc.setFontSize(7); doc.setTextColor(...GREY);
       doc.text(t('scoring.group.title').toUpperCase(), colR, yR); yR += 3.5;

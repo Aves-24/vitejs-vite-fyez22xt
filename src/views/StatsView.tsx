@@ -875,9 +875,10 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                       <TrendCard ends={currentEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} arrowColors={!!selectedSession?.arrowColors} storageKey="stats-trend" />
 
                       {/* Jedna duża tarcza jak po treningu; heatmapa w karcie zamiast okienka.
-                          [PARCOURS] Bez tarczy — strzały z różnych tarcz na jednym rysunku nic nie mówią. */}
-                      {!(selectedSession as any)?.parcours && <TargetCard
+                          [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
+                      <TargetCard
                         key={selectedSession.id}
+                        parcours={!!(selectedSession as any)?.parcours}
                         ends={currentEnds}
                         roundSize={roundSize}
                         targetType={displayTargetType}
@@ -886,7 +887,7 @@ export default function StatsView({ userId, onNavigate, initialDate, initialSess
                         sightHint={sessionHasSight}
                         heatmap
                         storageKey="stats-target"
-                      />}
+                      />
                       {AI_ENABLED && <CoachAIPanel userId={targetUserId} totalScore={selectedSession.score || 0} arrowCount={selectedSession.arrows || 1} accuracy={(((selectedSession.score || 0) / ((selectedSession.arrows || 1) * 10)) * 100).toFixed(1)} />}
 
                       {/* Eksport: PDF dla każdego w oknie analizy, CSV tylko PRO (ExportPanel). */}

@@ -33,7 +33,9 @@ const AXIS_ICON = { vert: 'height', horiz: 'width' } as const;
 // sightHint — łuk z celownikiem (recurve/compound): pod grupą podpowiedź korekty celownika
 // plainDots — wszystkie kropki na żółto (przytrzymany przycisk: kolory strzał chwilowo off)
 // aside — kolumna obok tarczy (pionowy filtr strzał z przełącznikiem „wszystkie żółte”)
-export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside }: any) {
+// scaled — [PARCOURS] kropki z tarcz różnej wielkości sprowadzone do jednej: grupa
+// tylko jako kierunek (cm nic nie znaczą), bez korekty celownika (różne dystanse)
+export default function RoundTargetSummary({ title, ends, highlightedEnd, startIndex = 0, targetType = 'Full', onHeatmapClick, arrowColors, showGroup, colorFilter = null, bare = false, sightHint = false, plainDots = false, aside, scaled = false }: any) {
   const { t, i18n } = useTranslation();
   const [info, setInfo] = useState<null | 'axis' | 'offset'>(null);
   const isFullFace = isFullFaceType(targetType);
@@ -51,7 +53,7 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
   // [KOREKTA CELOWNIKA] Tylko gdy łuk ma celownik (sightHint), dla całej rundy
   // (nie jednej serii ani jednego koloru — za mało strzał), przy wyraźnym
   // przesunięciu. Zasada: celownik idzie za strzałą (grupa w prawo → celownik w prawo).
-  const showSight = !!sightHint && !!group && !filtering && localSel < 0
+  const showSight = !!sightHint && !scaled && !!group && !filtering && localSel < 0
     && group.n >= SIGHT_MIN_DOTS && group.offsetRings >= SIGHT_MIN_RINGS;
   const cross = group?.svg
     ? `M ${group.svg.cx - 7} ${group.svg.cy} H ${group.svg.cx + 7} M ${group.svg.cx} ${group.svg.cy - 7} V ${group.svg.cy + 7}`
@@ -189,10 +191,13 @@ export default function RoundTargetSummary({ title, ends, highlightedEnd, startI
           <span className="flex items-center gap-1.5 text-[#0a3a2a] font-black">
             {group.offsetRings < GROUP_CENTER_RINGS
               ? t('scoring.group.centered')
-              : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
+              : scaled
+                ? t('scoring.group.offsetDir', { dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })
+                : t('scoring.group.offset', { cm: cm(Math.hypot(group.dxCm, group.dyCm)), dir: t(`stats.arrowColors.dir.${directionKey(group.dxCm, group.dyCm)}`) })}
             {group.offsetRings >= GROUP_CENTER_RINGS && <InfoDot onClick={() => setInfo('offset')} label={t('scoring.group.offsetInfo.title')} />}
           </span>
-          <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>
+          {!scaled && <span className="block">{t('scoring.group.size', { cm: cm(group.diameterCm) })}</span>}
+          {scaled && <span className="block text-[9px] text-gray-400" data-testid="parcours-scaled-note">{t('scoring.scaledNote')}</span>}
           {/* Oś błędu (trener 2026-10-29) — nie przy pojedynczej serii ani filtrze koloru. */}
           {group.axis && localSel < 0 && !filtering && (
             <span className="flex items-center gap-1 mt-1 text-[#0a3a2a]">

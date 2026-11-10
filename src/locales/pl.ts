@@ -52,6 +52,7 @@ export const components = {
     colorFilter: "Kolejność strzelania",
     colorFilterAll: "Wszystkie",
     targetCard: "Obraz trafień",
+    scaledNote: "Wszystkie tarcze parkuru sprowadzone do jednej wielkości – pierścienie się zgadzają, centymetry nie.",
     viewAll: "Całość",
     focusResult: {
       title: "Fokus zrealizowany?",
@@ -112,6 +113,7 @@ export const components = {
       title: "Grupa",
       centered: "W środku",
       offset: "{{cm}} cm {{dir}}",
+      offsetDir: "Przesunięta {{dir}}",
       size: "⌀ {{cm}} cm (80% strzał)",
       axis: { vert: "Rozciągnięta pionowo", horiz: "Rozciągnięta poziomo" },
       axisHint: { vert: "sprawdź siłę, otwarcie lub zakotwiczenie", horiz: "sprawdź wiatr lub palce na cięciwie" },

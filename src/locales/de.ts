@@ -52,6 +52,7 @@ export const components = {
     colorFilter: "Schussreihenfolge",
     colorFilterAll: "Alle",
     targetCard: "Trefferbild",
+    scaledNote: "Alle Scheiben des Parcours auf eine Größe gebracht – die Ringe passen, Zentimeter nicht.",
     viewAll: "Gesamt",
     focusResult: {
       title: "Fokus umgesetzt?",
@@ -112,6 +113,7 @@ export const components = {
       title: "Gruppe",
       centered: "Sitzt mittig",
       offset: "{{cm}} cm {{dir}}",
+      offsetDir: "Tendenz {{dir}}",
       size: "⌀ {{cm}} cm (80 % der Pfeile)",
       axis: { vert: "Vertikal gestreckt", horiz: "Horizontal gestreckt" },
       axisHint: { vert: "Kraft, Öffnen oder Anker prüfen", horiz: "Wind oder Finger an der Sehne prüfen" },

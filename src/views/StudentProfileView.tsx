@@ -330,6 +330,7 @@ function SessionDetail({ session, studentId, coachId, onNoteSaved, pro, studentN
                 arrowColors={!!session.arrowColors}
                 highlightedEnd={highlightedEnd}
                 sightHint={hasSight}
+                parcours={!!session.parcours}
                 heatmap
                 storageKey="coach-target"
               />

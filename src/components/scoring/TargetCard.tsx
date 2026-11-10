@@ -4,6 +4,7 @@ import SummaryCard from './SummaryCard';
 import ArrowColorFilter from './ArrowColorFilter';
 import RoundTargetSummary from '../RoundTargetSummary';
 import HeatmapTarget from '../HeatmapTarget';
+import { parcoursTargetView } from '../../config/parcoursTarget';
 
 // [PODSUMOWANIE TRENINGU] Karta „Trefferbild” — wspólna dla ekranu po treningu
 // i Statystyk (user 2026-10-29). Jedna duża tarcza z Gesamt / R1 / R2 w nagłówku,
@@ -12,8 +13,9 @@ import HeatmapTarget from '../HeatmapTarget';
 
 type View = 'all' | 1 | 2;
 
-export default function TargetCard({ ends, roundSize, targetType, arrowColors, highlightedEnd, sightHint, heatmap = false, storageKey = 'sum-target' }: {
+export default function TargetCard({ ends: rawEnds, roundSize, targetType: rawTargetType, arrowColors, highlightedEnd, sightHint, heatmap = false, storageKey = 'sum-target', parcours = false }: {
   ends: any[];
+  parcours?: boolean;  // [PARCOURS] serie z różnych tarcz → jedna tarcza wzorcowa (config/parcoursTarget)
   roundSize: number;
   targetType: string;
   arrowColors?: boolean;
@@ -27,6 +29,10 @@ export default function TargetCard({ ends, roundSize, targetType, arrowColors, h
   const [colorFilter, setColorFilter] = useState<number | null>(null);
   const [plainDots, setPlainDots] = useState(false);
   const [heat, setHeat] = useState(false);
+
+  const pv = useMemo(() => (parcours ? parcoursTargetView(rawEnds, rawTargetType) : null), [parcours, rawEnds, rawTargetType]);
+  const ends = pv ? pv.ends : rawEnds;
+  const targetType = pv ? pv.targetType : rawTargetType;
 
   const r1 = ends.slice(0, roundSize);
   const r2 = ends.slice(roundSize);
@@ -105,6 +111,7 @@ export default function TargetCard({ ends, roundSize, targetType, arrowColors, h
           colorFilter={colorFilter}
           showGroup
           sightHint={sightHint}
+          scaled={parcours}
           plainDots={plainDots}
           aside={aside}
         />

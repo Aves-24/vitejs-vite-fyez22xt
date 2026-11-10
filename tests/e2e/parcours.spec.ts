@@ -61,14 +61,75 @@ test('Parcours: tarcza 1 = 50 cm / 50 yd, tarcza 2 = 35 cm / 25 yd, zapis per se
     ['25yd', 'IFAA Field 35cm'],
   ]);
 
-  // Statystyki dnia: bez Trefferbild, bez błędów; dystans „Parcours”.
+  // Statystyki dnia: dystans „Parcours”, Trefferbild na tarczy wzorcowej (2026-11-10).
   await nav(page, 'Stats').click();
   await page.getByRole('main').getByRole('button', { name: 'Täglich', exact: true }).click();
   await page.waitForTimeout(1500);
   await expect(page.getByRole('main')).toContainText('Parcours');
-  await expect(page.getByText('Trefferbild', { exact: false })).toHaveCount(0);
+  await expect(page.getByText('Trefferbild', { exact: true }).first()).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('parcours-stats.png'), fullPage: true });
   await expectNoErrors(page, errors, 'Parcours');
+});
+
+/** Punkt z układu tarczy (viewBox) → piksele ekranu na tarczy do wpisywania. */
+async function clickSvg(page: Page, x: number, y: number) {
+  const p = await page.evaluate(([sx, sy]) => {
+    const svg = document.querySelector('main svg[viewBox="0 -4 300 408"]') as SVGSVGElement;
+    const pt = svg.createSVGPoint(); pt.x = sx; pt.y = sy;
+    const s = pt.matrixTransform(svg.getScreenCTM()!);
+    return { x: s.x, y: s.y };
+  }, [x, y]);
+  await page.mouse.click(p.x, p.y);
+}
+
+// Kropki (nie pierścienie) na tarczy Trefferbild — tylko one mają fill-opacity.
+const hitDots = (page: Page) => page.evaluate(() =>
+  Array.from(document.querySelectorAll('main svg[viewBox="0 0 300 300"] circle[fill-opacity]'))
+    .map(c => ({ x: +c.getAttribute('cx')!, y: +c.getAttribute('cy')! })));
+
+test('Parcours Trefferbild: 4-Spot 20 cm przeskalowany na tarczę pełną (środek tarczki = środek tarczy)', async ({ page, request }) => {
+  test.setTimeout(180_000);
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'ParcTb');
+  await nav(page, 'Einst.').click();
+  await settingsTab(page, 'AUSRÜSTUNG').click();
+  await page.getByRole('radio', { name: 'IFAA', exact: true }).click();
+  await page.getByRole('button', { name: 'verified_user Speichern & Aktualisieren' }).click();
+  await expect.poll(async () => JSON.stringify((await adminListDocs(request, 'users')).find(u => u.name.endsWith(uid))?.fields?.setups ?? {}), { timeout: 15_000 }).toContain('"ifaa"');
+
+  await page.goto('/');
+  await page.getByRole('navigation').getByRole('button', { name: 'target' }).click();
+  await page.getByTestId('parcours-toggle').check();
+  await page.getByRole('button', { name: 'Training', exact: true }).click();
+  const bar = page.getByTestId('parcours-bar');
+  await bar.getByRole('radio', { name: 'IFAA Field 20cm 4-Spot', exact: true }).click();
+  await bar.getByRole('spinbutton', { name: 'Distanz' }).fill('10');
+  await page.getByText('Auflage', { exact: true }).click();
+  // Środki tarczek (r 66): X X X, czwarta 25 w prawo od środka = 4.
+  await clickSvg(page, 80, 125);
+  await clickSvg(page, 220, 125);
+  await clickSvg(page, 220, 275);
+  await clickSvg(page, 80 + 25, 275);
+  await expect(page.getByRole('main')).toContainText(/P1\s*X\s*X\s*X\s*4\s*19/);
+  await page.waitForTimeout(800);
+
+  const near = (d: { x: number; y: number }, x: number, y: number) => Math.hypot(d.x - x, d.y - y) < 3;
+  await page.getByRole('button', { name: 'Trainingseinheit speichern' }).click();
+  await page.getByRole('button', { name: /^Als unvollständig markieren/ }).click();
+  await expect(page.getByRole('button', { name: /^Zuletzt 19/ })).toBeVisible();
+  await syncWrites(page);
+
+  // Statystyki: tarcza pełna (wzorzec 35 cm), kropki przeliczone ze spotów.
+  await nav(page, 'Stats').click();
+  await page.getByRole('main').getByRole('button', { name: 'Täglich', exact: true }).click();
+  await page.waitForTimeout(1500);
+  await expect(page.getByTestId('parcours-scaled-note')).toBeVisible();
+  const statDots = await hitDots(page);
+  expect(statDots).toHaveLength(4);
+  expect(statDots.filter(d => near(d, 150, 150))).toHaveLength(3);
+  expect(statDots.filter(d => near(d, 150 + 25 * 150 / 66, 150))).toHaveLength(1);
+  await page.screenshot({ path: test.info().outputPath('parcours-trefferbild-stats.png'), fullPage: true });
+  await expectNoErrors(page, errors, 'Parcours Trefferbild');
 });
 
 test('długa runda (14 tarcz): tabela nie nachodzi na notatki, bieżąca seria widoczna', async ({ page, request }) => {

@@ -1195,7 +1195,8 @@ export default function ScoringView({ userId, distance = "70m", distanceId, dist
           <div className="mx-2 mt-4 space-y-3 animate-fade-in-up">
             {/* TREND + wybrana seria, potem TREFFERBILD — wspólne karty z Statystykami (components/scoring). */}
             <TrendCard ends={submittedEnds} highlighted={highlightedEnd} onPick={setHighlightedEnd} roundSize={roundSize} plannedEnds={plannedEnds} arrowColors={arrowColors} />
-            {!parcours && <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} />}
+            {/* [PARCOURS] Tarcze różnej wielkości przeskalowane do jednej (config/parcoursTarget). */}
+            <TargetCard ends={submittedEnds} roundSize={roundSize} targetType={parcours ? (submittedEnds[0]?.targetType || targetType) : targetType} arrowColors={arrowColors} highlightedEnd={highlightedEnd} sightHint={hasSight} parcours={parcours} />
 
             {AI_ENABLED && submittedEnds.length >= 6 && (
               <CoachAIPanel userId={userId} totalScore={globalStats.score} arrowCount={globalStats.count} accuracy={((globalStats.score / (globalStats.count * 10)) * 100).toFixed(1)} />

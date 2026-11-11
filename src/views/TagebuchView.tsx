@@ -1058,7 +1058,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
   // Najbliższe terminy: dwa pierwsze + każdy nowy plan trenera.
   const nextEvents = useMemo(() => {
     const shown = upcoming.filter((ev, i) => i < 2 || (ev.isCoach && isNew('coach_plan', ev.id)));
-    return shown.slice(0, 4);
+    return shown.slice(0, 3); // max 3 (user 2026-11-11)
   }, [upcoming, isNew]);
 
   const nextOpenKey = `grotx_tbNextOpen_${userId}`;

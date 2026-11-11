@@ -153,7 +153,7 @@ const EVENT_STYLE: Record<EventKind, { row: string; icon: string; iconName: stri
 };
 // Cienki pasek koloru w „Najbliższych terminach” — te same kolory co paski na Home.
 const NEXT_PILL: Record<EventKind, string> = {
-  tournament: 'bg-[#0a3a2a]', other: 'bg-blue-900', led: 'bg-rose-400', fromCoach: 'bg-violet-400',
+  tournament: 'border-l-[#0a3a2a]', other: 'border-l-blue-900', led: 'border-l-rose-400', fromCoach: 'border-l-violet-400',
 };
 
 type TimelineItem =
@@ -1245,34 +1245,37 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             (user, 2026-09-15). Kolory tekstu celowo spoza remapów ciemnego
             motywu, żeby na żółtym zostały ciemne w obu motywach. */}
         {nextEvents.length > 0 && (
-          // Klamra: gruby ciemnozielony pasek z lewej spina nagłówek i terminy (user 2026-11-11).
-          <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 border-l-[5px] border-l-[#0a3a2a]" data-testid="tb-next">
+          // Jak „Nächste Termine” na Home (user 2026-11-11): nagłówek nad kartą,
+          // klamrę tworzą paski koloru rodzaju z lewej każdego wiersza.
+          <div data-testid="tb-next">
             {/* Zwijane (user 2026-10-15) — stan zapamiętany w telefonie. Ikona kalendarza
                 z prawej otwiera cały kalendarz (osobny przycisk — bez zagnieżdżania). */}
-            <div className="flex items-center bg-[#0a3a2a]/[0.06]">
+            <div className="flex items-center px-1 mb-1.5">
               <button
                 onClick={toggleNextOpen}
-                className="flex-1 min-w-0 flex items-center gap-2 pl-3 pr-1 py-2 text-left active:bg-gray-50 transition-colors"
+                className="flex-1 min-w-0 flex items-center gap-1 text-left active:opacity-60"
                 aria-expanded={nextOpen}
               >
-                <span className={`material-symbols-outlined text-[18px] text-gray-500 transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
-                <span className="flex-1 min-w-0 truncate text-[12px] font-black text-[#0a3a2a]">
+                <span className="min-w-0 truncate text-[12px] font-bold text-gray-500">
                   {nextEvents.length === 1 ? t('tagebuch.nextOne') : t('tagebuch.nextMany', { count: nextEvents.length })}
                 </span>
+                <span className={`material-symbols-outlined text-[16px] text-gray-400 transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
                 {!nextOpen && nextEvents.some(ev => ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id)) && <NewBadge />}
               </button>
               <button
                 onClick={() => onNavigate('CALENDAR')}
-                className="shrink-0 w-10 h-9 flex items-center justify-center text-[#0a3a2a] active:opacity-60"
+                className="shrink-0 text-[12px] font-bold text-[#0a3a2a] flex items-center gap-0.5 active:opacity-60"
                 aria-label={t('tagebuch.openCalendar')}
                 data-testid="tb-next-calendar"
               >
-                <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+                <span className="material-symbols-outlined text-[16px]">calendar_month</span>
+                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
               </button>
             </div>
+            {nextOpen && <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
             {/* Wiersze jak „Nächste Termine” na Home (user 2026-11-11): białe, kolor
                 rodzaju tylko jako cienki pasek, data w kolumnie, HEUTE/MORGEN pod nią. */}
-            {nextOpen && nextEvents.map(ev => {
+            {nextEvents.map((ev, i) => {
               const d = new Date(`${ev.date}T12:00:00`);
               const now = new Date();
               const rel = ev.date === ymd(now) ? t('coachToday.today')
@@ -1282,9 +1285,8 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
               <button
                 key={ev.id}
                 onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${isT ? 'py-2.5' : 'py-2'} bg-white text-left border-t border-t-gray-100 active:bg-gray-50 transition-colors`}
+                className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${isT ? 'py-2.5' : 'py-2'} bg-white text-left border-l-4 ${NEXT_PILL[ev.kind]} ${i > 0 ? 'border-t border-t-gray-100' : ''} active:bg-gray-50 transition-colors`}
               >
-                <span className={`w-1 h-6 rounded-full shrink-0 ${NEXT_PILL[ev.kind]}`} />
                 <span className={`relative w-11 shrink-0 text-[12px] ${isT ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
                   {isNaN(d.getTime()) ? ev.date : `${d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace(/\.$/, '')} ${d.getDate()}.`}
                   {rel && <span className="absolute left-0 top-full -mt-0.5 text-[9px] leading-none font-black uppercase tracking-wide text-amber-600 whitespace-nowrap">{rel}</span>}
@@ -1304,6 +1306,7 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
               </button>
               );
             })}
+            </div>}
           </div>
         )}
 

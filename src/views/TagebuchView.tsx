@@ -151,6 +151,10 @@ const EVENT_STYLE: Record<EventKind, { row: string; icon: string; iconName: stri
   led: { row: 'bg-rose-50 border-rose-100 active:bg-rose-100', icon: 'text-rose-600', iconName: 'sports', text: 'text-rose-950', sub: 'text-rose-700' },
   fromCoach: { row: 'bg-violet-50 border-violet-100 active:bg-violet-100', icon: 'text-violet-600', iconName: 'group', text: 'text-violet-950', sub: 'text-violet-700' },
 };
+// Cienki pasek koloru w „Najbliższych terminach” — te same kolory co paski na Home.
+const NEXT_PILL: Record<EventKind, string> = {
+  tournament: 'bg-[#0a3a2a]', other: 'bg-blue-900', led: 'bg-rose-400', fromCoach: 'bg-violet-400',
+};
 
 type TimelineItem =
   | { kind: 'session'; id: string; ts: number; session: TbSession; linked: TbPrivateNote[]; nested?: boolean }
@@ -1070,15 +1074,6 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
     return !o;
   });
 
-  const eventDateLabel = (dateStr: string) => {
-    const now = new Date();
-    if (dateStr === ymd(now)) return t('tagebuch.today');
-    if (dateStr === ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))) return t('tagebuch.tomorrow');
-    const d = new Date(`${dateStr}T00:00:00`);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'short' });
-  };
-
   // Przewinięcie do wpisu z powiadomienia (sesja / wpis trenera).
   const [flashId, setFlashId] = useState<string | null>(null);
   useEffect(() => {
@@ -1275,24 +1270,37 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
                 <span className="material-symbols-outlined text-[20px]">calendar_month</span>
               </button>
             </div>
+            {/* Wiersze jak „Nächste Termine” na Home (user 2026-11-11): białe, kolor
+                rodzaju tylko jako cienki pasek, data w kolumnie, HEUTE/MORGEN pod nią. */}
             {nextOpen && nextEvents.map(ev => {
-              const st = EVENT_STYLE[ev.kind];
+              const d = new Date(`${ev.date}T12:00:00`);
+              const now = new Date();
+              const rel = ev.date === ymd(now) ? t('coachToday.today')
+                : ev.date === ymd(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)) ? t('coachToday.tomorrow') : '';
+              const isT = ev.kind === 'tournament';
               return (
               <button
                 key={ev.id}
                 onClick={() => onNavigate('CALENDAR', undefined, ev.id)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 text-left border-t transition-colors ${st.row}`}
+                className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${isT ? 'py-2.5' : 'py-2'} bg-white text-left border-t border-t-gray-100 active:bg-gray-50 transition-colors`}
               >
-                <span className={`material-symbols-outlined text-[20px] shrink-0 ${st.icon}`}>{st.iconName}</span>
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[12px] font-bold truncate ${st.text}`}>
-                    {eventDateLabel(ev.date)}{ev.time ? ` ${ev.time}` : ''} · {ev.title}
-                    {ev.kind === 'led' && <span className={`font-medium ${st.sub}`}> · {t('tagebuch.filterLed')}</span>}
-                    {ev.kind === 'fromCoach' && <span className={`font-medium ${st.sub}`}> · {t('tagebuch.fromCoach')}</span>}
-                  </p>
-                </div>
+                <span className={`w-1 h-6 rounded-full shrink-0 ${NEXT_PILL[ev.kind]}`} />
+                <span className={`relative w-11 shrink-0 text-[12px] ${isT ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
+                  {isNaN(d.getTime()) ? ev.date : `${d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace(/\.$/, '')} ${d.getDate()}.`}
+                  {rel && <span className="absolute left-0 top-full -mt-0.5 text-[9px] leading-none font-black uppercase tracking-wide text-amber-600 whitespace-nowrap">{rel}</span>}
+                </span>
+                {isT && (
+                  <span className="w-6 h-6 rounded-full bg-[#fed33e] flex items-center justify-center shrink-0">
+                    <span className="material-symbols-outlined text-[15px] text-[#0a3a2a]">emoji_events</span>
+                  </span>
+                )}
+                <span className="flex-1 min-w-0 text-[14px] font-bold text-[#0a3a2a] truncate">
+                  {ev.title}
+                  {ev.kind === 'led' && <span className="text-[11px] font-bold text-gray-400"> · {t('tagebuch.filterLed')}</span>}
+                  {ev.kind === 'fromCoach' && <span className="text-[11px] font-bold text-gray-400"> · {t('tagebuch.fromCoach')}</span>}
+                </span>
                 {ev.kind === 'fromCoach' && isNew('coach_plan', ev.id) && <NewBadge />}
-                <span className={`material-symbols-outlined text-[18px] shrink-0 ${st.sub}`}>chevron_right</span>
+                {ev.time && <span className="shrink-0 text-[11px] font-bold text-gray-400">{ev.time}</span>}
               </button>
               );
             })}

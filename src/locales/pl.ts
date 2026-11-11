@@ -906,6 +906,8 @@ export const views = {
     trainedSince: "Trenowali: {{count}}",
     nothingNew: "Nic nowego.",
     weekOverview: "Przegląd tygodnia",
+    rosterFocus: "{{count}} z fokusem",
+    rosterInactive: "{{count}} nieaktywnych 14+ dni",
     weekOf: "z {{total}} trenowało",
     weekUp: "{{count}} lepiej",
     weekDown: "{{count}} słabiej",

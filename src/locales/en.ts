@@ -892,6 +892,8 @@ export const views = {
     trainedSince: "Trained: {{count}}",
     nothingNew: "Nothing new.",
     weekOverview: "Weekly overview",
+    rosterFocus: "{{count}} with focus",
+    rosterInactive: "{{count}} inactive 14+ days",
     weekOf: "of {{total}} trained",
     weekUp: "{{count}} better",
     weekDown: "{{count}} weaker",

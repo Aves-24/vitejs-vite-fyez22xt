@@ -555,7 +555,6 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Heute: dzień ostatniego minionego treningu (YYYY-MM-DD); null = brak,
   // undefined = jeszcze się ładuje. Od niego liczy się „seit dem letzten Training”.
   const [lastTrainingDate, setLastTrainingDate] = useState<string | null | undefined>(undefined);
-  const [isRosterOpen, setIsRosterOpen] = useState(false);
   // Odliczanie „in 1:30 h” na karcie dzisiejszego treningu.
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [isNewTrainingsOpen, setIsNewTrainingsOpen] = useState(false);
@@ -2583,7 +2582,6 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           {/* A: odprawa przed dzisiejszym treningiem */}
           {todayEv && (() => {
             const roster = rosterOf(todayEv).slice().sort((a, b) => rosterRank(a) - rosterRank(b));
-            const shown = isRosterOpen ? roster : roster.slice(0, 5);
             const cd = countdown(todayEv);
             const topics = topicsLine(todayEv);
             return (
@@ -2602,36 +2600,30 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                 <div className="border-t border-gray-100 px-3.5 py-2">
                   <p className="text-[12px] font-bold text-gray-400 mb-1">{t('coachToday.rosterTitle', { count: roster.length })}</p>
                   {roster.length === 0 && <p className="text-[13px] font-bold text-gray-400 py-1">{t('coachToday.noRoster')}</p>}
-                  {shown.map(s => {
-                    const fc = studentFocus[s.id];
-                    const initials = `${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase();
-                    return (
+                  {/* Skład jako siatka kółek (user 2026-11-11): 14 osób w 2 rzędach, obwódka = forma z tygodnia, klik = szybki podgląd. */}
+                  <div className="grid grid-cols-7 gap-y-2 justify-items-center">
+                    {roster.map(s => (
                       <button
                         key={s.id}
                         type="button"
                         onClick={() => setSheetStudentId(s.id)}
-                        className="w-full flex items-center gap-2.5 py-1.5 text-left active:scale-[0.98] transition-all"
+                        title={`${s.firstName || ''} ${s.lastName || ''}`.trim()}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black active:scale-90 transition-all ${RING_CLASS[ringOf(s)]}`}
                       >
-                        <div className="w-8 h-8 rounded-full bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 text-[11px] font-black text-[#0a3a2a]">{initials || '?'}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-black text-[#0a3a2a] leading-tight truncate">{s.firstName || t('coachDashboard.defaultStudentName')} {s.lastName || ''}</p>
-                          <p className="text-[12px] font-bold truncate">
-                            {isInactive(s)
-                              ? <span className="text-amber-700">{getTimeSinceLastActivity(s.exactLastActivity || 0)}</span>
-                              : fc?.focus
-                                ? <span className="text-amber-800">{t('coachLog.typeGoal')}: {focusTitle(fc.focus, t)}</span>
-                                : <span className="text-gray-400">{t('coachToday.noFocus')}</span>}
-                          </p>
-                        </div>
-                        {trend(s)}
+                        {`${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase() || '?'}
                       </button>
+                    ))}
+                  </div>
+                  {roster.length > 0 && (() => {
+                    const withFocus = roster.filter(s => studentFocus[s.id]?.focus).length;
+                    const inactive = roster.filter(isInactive).length;
+                    return (
+                      <p className="text-[12px] font-bold text-amber-800 mt-2.5">
+                        {t('coachToday.rosterFocus', { count: withFocus })}
+                        {inactive > 0 && <span className="text-gray-400"> · {t('coachToday.rosterInactive', { count: inactive })}</span>}
+                      </p>
                     );
-                  })}
-                  {roster.length > 5 && (
-                    <button type="button" onClick={() => setIsRosterOpen(o => !o)} className="w-full py-1.5 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all">
-                      {isRosterOpen ? t('coachToday.showLess') : t('coachToday.rosterMore', { count: roster.length - 5 })}
-                    </button>
-                  )}
+                  })()}
                 </div>
               </section>
             );

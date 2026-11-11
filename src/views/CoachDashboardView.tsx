@@ -548,6 +548,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // „Gesehen” przy każdym wpisie „Seit dem letzten Training” (user 2026-11-11); log = archiwum 14 dni.
   const [ackLog, setAckLog] = useState<AckEntry[]>([]);
   const [isAckArchiveOpen, setIsAckArchiveOpen] = useState(false);
+  // Filtr Wochenübersicht z etykiet (↑ / ↓ / bez wpisu); null = zwykła lista.
+  const [weekFilter, setWeekFilter] = useState<'up' | 'down' | 'none' | null>(null);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   // Heute: dzień ostatniego minionego treningu (YYYY-MM-DD); null = brak,
@@ -2496,8 +2498,20 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const trainedSince = students
           .filter(s => (s.exactLastActivity || 0) >= since && !ackKeys.has(`tr_${s.id}_${s.exactLastActivity || 0}`) && (todayEv || (s.exactLastActivity || 0) < startOfToday))
           .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
-        const sinceUp = trainedSince.filter(s => formCompare[s.id]?.dir === 'up').length;
-        const sinceDown = trainedSince.filter(s => formCompare[s.id]?.dir === 'down').length;
+        // Wochenübersicht: kto w ogóle coś zapisał w 7 dni (bez względu na ✓) — podsumowanie i kółka.
+        const weekIds = new Set(students.filter(s => (s.exactLastActivity || 0) >= since).map(s => s.id));
+        const ringOf = (s: any): 'down' | 'up' | 'flat' | 'none' =>
+          !weekIds.has(s.id) ? 'none' : formCompare[s.id]?.dir ?? 'flat';
+        const RING_RANK = { down: 0, up: 1, flat: 2, none: 3 } as const;
+        const RING_CLASS = {
+          down: 'bg-white border-[2.5px] border-orange-400 text-[#0a3a2a]',
+          up: 'bg-white border-[2.5px] border-emerald-500 text-[#0a3a2a]',
+          flat: 'bg-white border-[2.5px] border-gray-300 text-[#0a3a2a]',
+          none: 'bg-gray-100 border-2 border-dashed border-gray-300 text-gray-400',
+        } as const;
+        const weekGrid = students.slice().sort((a, b) => RING_RANK[ringOf(a)] - RING_RANK[ringOf(b)]);
+        const weekCount = { up: 0, down: 0, flat: 0, none: 0 };
+        for (const s of students) weekCount[ringOf(s)]++;
         const hasSince = unread.length > 0 || newStudentIds.length > 0 || trainedSince.length > 0
           || unseenMilestones.length > 0;
 
@@ -2517,7 +2531,10 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           const c = formCompare[s.id];
           return c ? (
             <span className={`inline-flex items-center text-[13px] font-black ${c.dir === 'up' ? 'text-emerald-600' : 'text-orange-500'}`}>
-              <span className="material-symbols-outlined text-[16px]">{TREND_ICON[c.dir]}</span>{c.now}
+              {/* Ta sama liczba strzał → widać skalę „512 → 488”; inaczej sama strzałka. */}
+              {c.prevArrows === c.nowArrows
+                ? <><span className="text-gray-400 font-bold">{c.prev}</span><span className="mx-0.5">→</span>{c.now}</>
+                : <><span className="material-symbols-outlined text-[16px]">{TREND_ICON[c.dir]}</span>{c.now}</>}
             </span>
           ) : s.lastSessionScore > 0 ? <span className="text-[13px] font-black text-gray-400">{s.lastSessionScore}</span> : null;
         };
@@ -2711,7 +2728,59 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                   })}
                 </div>
               )}
-              {!hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
+              {/* Podsumowanie tygodnia: liczba, etykiety-filtry, kółka (kółka tylko bez treningu dziś — inaczej są w karcie). */}
+              {students.length > 0 && (
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-3">
+                  <p className="flex items-baseline gap-1.5">
+                    <span className="text-[24px] font-black text-[#0a3a2a] leading-none">{weekIds.size}</span>
+                    <span className="text-[14px] font-bold text-gray-500">{t('coachToday.weekOf', { total: students.length })}</span>
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {([
+                      ['up', weekCount.up, 'text-emerald-700', 'trending_up', t('coachToday.weekUp', { count: weekCount.up })],
+                      ['down', weekCount.down, 'text-orange-700', 'trending_down', t('coachToday.weekDown', { count: weekCount.down })],
+                      ['none', weekCount.none, 'text-gray-500', null, t('coachToday.weekNone', { count: weekCount.none })],
+                    ] as const).filter(([, n]) => n > 0).map(([key, , color, icon, text]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setWeekFilter(f => (f === key ? null : key))}
+                        className={`inline-flex items-center gap-0.5 text-[12px] font-black rounded-full px-2.5 py-1 border active:scale-95 transition-all ${weekFilter === key ? 'bg-[#0a3a2a] text-white border-[#0a3a2a]' : `bg-white border-gray-200 ${color}`}`}
+                      >
+                        {icon && <span className="material-symbols-outlined text-[15px]">{icon}</span>}
+                        {text}
+                      </button>
+                    ))}
+                  </div>
+                  {!todayEv && (
+                    <div className="grid grid-cols-7 gap-y-2 justify-items-center mt-3">
+                      {weekGrid.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setSheetStudentId(s.id)}
+                          title={`${s.firstName || ''} ${s.lastName || ''}`.trim()}
+                          className={`w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black active:scale-90 transition-all ${RING_CLASS[ringOf(s)]}`}
+                        >
+                          {`${s.firstName?.[0] || ''}${s.lastName?.[0] || ''}`.toUpperCase() || '?'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              {/* Filtr z etykiety: sami uczniowie danej grupy, bez reszty listy. */}
+              {weekFilter && students.filter(s => ringOf(s) === weekFilter).map(s => renderMiniStudentRow(
+                s,
+                <span className="text-gray-500">
+                  {s.exactLastActivity ? getTimeSinceLastActivity(s.exactLastActivity) : t('coachToday.weekNoEntry')}
+                </span>,
+                RING_CLASS[ringOf(s)],
+                weekFilter === 'none' ? undefined : trend(s),
+                plain,
+              ))}
+              {!weekFilter && !hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
+              {!weekFilter && <>
               {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
               {newStudentIds.length > 0 && (
                 <button
@@ -2733,51 +2802,51 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                 undefined,
                 { ...plain, onOpen: () => setOpenMessageStudentId(s.id) },
               ))}
-              {trainedSince.length > 0 && (
-                <>
-                  <p className="text-[12px] font-bold text-gray-400 px-1 pt-1 flex items-center gap-2">
-                    {t('coachToday.trainedSince', { count: trainedSince.length })}
-                    {sinceUp > 0 && <span className="inline-flex items-center text-emerald-600"><span className="material-symbols-outlined text-[14px]">trending_up</span>{sinceUp}</span>}
-                    {sinceDown > 0 && <span className="inline-flex items-center text-orange-500"><span className="material-symbols-outlined text-[14px]">trending_down</span>{sinceDown}</span>}
-                  </p>
-                  {cap(trainedSince, isMilestonesOpen).map(s => renderMiniStudentRow(
-                    s,
-                    <span className="text-gray-500">
-                      {getTimeSinceLastActivity(s.exactLastActivity || 0)}{lastSessionDetails(s) && ` · ${lastSessionDetails(s)}`}
-                    </span>,
-                    'bg-gray-50 text-[#0a3a2a] border-gray-100',
-                    <>
-                      {trend(s)}
-                      {ackBtn(() => ackEntry({
-                        key: `tr_${s.id}_${s.exactLastActivity || 0}`,
-                        sid: s.id,
-                        text: [
-                          new Date(s.exactLastActivity || 0).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }),
-                          lastSessionDetails(s),
-                        ].filter(Boolean).join(' · '),
-                      }))}
-                    </>,
-                    plain,
-                  ))}
-                  {more(trainedSince.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}
-                </>
-              )}
-              {unseenMilestones.map(m => (
-                <React.Fragment key={`${m.student.id}_${m.id}`}>
-                  {renderMiniStudentRow(
-                    m.student,
-                    <span className="text-[#8B6508]">
-                      <span className="material-symbols-outlined text-[14px] align-[-3px]">star</span>{' '}
-                      {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
-                      <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
-                      {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
-                    </span>,
-                    'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
-                    ackBtn(() => ackEntry({ key: `ms_${milestoneKey(m)}`, sid: m.student.id, text: `★ ${m.title || m.text || ''}` }, m)),
-                    { ...plain, onOpen: () => openMilestone(m) },
-                  )}
-                </React.Fragment>
-              ))}
+              {(() => {
+                // Kolejność wg ważności (user 2026-11-11): spadki, kamienie milowe, wzrosty, reszta.
+                const trainRow = (s: any) => renderMiniStudentRow(
+                  s,
+                  <span className="text-gray-500">
+                    {getTimeSinceLastActivity(s.exactLastActivity || 0)}{lastSessionDetails(s) && ` · ${lastSessionDetails(s)}`}
+                  </span>,
+                  RING_CLASS[ringOf(s)],
+                  <>
+                    {trend(s)}
+                    {ackBtn(() => ackEntry({
+                      key: `tr_${s.id}_${s.exactLastActivity || 0}`,
+                      sid: s.id,
+                      text: [
+                        new Date(s.exactLastActivity || 0).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }),
+                        lastSessionDetails(s),
+                      ].filter(Boolean).join(' · '),
+                    }))}
+                  </>,
+                  plain,
+                );
+                const msRow = (m: StudentMilestone) => (
+                  <React.Fragment key={`${m.student.id}_${m.id}`}>
+                    {renderMiniStudentRow(
+                      m.student,
+                      <span className="text-[#8B6508]">
+                        <span className="material-symbols-outlined text-[14px] align-[-3px]">star</span>{' '}
+                        {/* Tytuł pogrubiony, opis po nim (user 2026-10-23); starsze bez tytułu — sam tekst. */}
+                        <span className="font-black text-[#0a3a2a]">{m.title || m.text}</span>
+                        {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
+                      </span>,
+                      'bg-white border-[2.5px] border-[#fed33e] text-[#0a3a2a]',
+                      ackBtn(() => ackEntry({ key: `ms_${milestoneKey(m)}`, sid: m.student.id, text: `★ ${m.title || m.text || ''}` }, m)),
+                      { ...plain, onOpen: () => openMilestone(m) },
+                    )}
+                  </React.Fragment>
+                );
+                const rows = [
+                  ...trainedSince.filter(s => ringOf(s) === 'down').map(trainRow),
+                  ...unseenMilestones.map(msRow),
+                  ...trainedSince.filter(s => ringOf(s) !== 'down').sort((a, b) => RING_RANK[ringOf(a)] - RING_RANK[ringOf(b)]).map(trainRow),
+                ];
+                return <>{cap(rows, isMilestonesOpen)}{more(rows.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}</>;
+              })()}
+              </>}
               {/* Przyszłe starty uczniów nie należą do „od ostatniego treningu” — są w Termine. */}
             </section>
           )}

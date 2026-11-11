@@ -220,7 +220,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     findDistanceEntry(tournamentDistances, { distance: '70m' }) ?? tournamentDistances[0];
 
   const todayObj = new Date();
-  const todayStr = todayObj.toISOString().split('T')[0];
+  // Klucz dnia lokalnie (nie UTC) — po północy w DE toISOString dawał jeszcze wczoraj.
+  const localKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = localKey(todayObj);
+  const tomorrowStr = localKey(new Date(todayObj.getFullYear(), todayObj.getMonth(), todayObj.getDate() + 1));
   const LIVE_CUTOFF = new Date(todayObj.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   useEffect(() => {
@@ -779,6 +782,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   ) => {
     const d = new Date(`${event.date}T12:00:00`);
     const isToday = event.date === todayStr;
+    const rel = isToday ? t('coachToday.today') : event.date === tomorrowStr ? t('coachToday.tomorrow') : '';
     return (
       <div key={event.id} className={isToday ? 'tb-today' : undefined}>
       <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center`}>
@@ -787,7 +791,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           onClick={() => setViewingEvent(event)}
           className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
         >
-          <div className={`w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
+          <div className={`relative w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
+            {/* „Heute”/„Morgen” absolutnie pod polem daty — wiersz nie rośnie (2026-11-11). */}
+            {rel && (
+              <span className="absolute left-1/2 -translate-x-1/2 top-full text-[9px] leading-none font-black uppercase tracking-wide text-amber-600 whitespace-nowrap" data-testid="calendar-event-rel">{rel}</span>
+            )}
             {event.date ? (
               <>
                 <span className={`block text-[10px] font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(currentLocale, { weekday: 'short' }).replace('.', '')}</span>

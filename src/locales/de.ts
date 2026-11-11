@@ -893,6 +893,7 @@ export const views = {
     sinceWeek: "Letzte 7 Tage",
     trainedSince: "Haben trainiert: {{count}}",
     nothingNew: "Nichts Neues.",
+    ackSince: "Gesehen",
     unreadMessage: "Neue Nachricht",
     inactiveLine: "Ohne Training seit {{days}}+ Tagen: {{count}}",
     showAll: "Alle {{count}} anzeigen",

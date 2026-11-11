@@ -542,6 +542,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
   // jak coachSeenStudents: odhaczenie na telefonie gaśnie też na laptopie.
   const [seenMilestones, setSeenMilestones] = useState<string[]>([]);
+  // „Gesehen” w „Seit dem letzten Training”: treningi do tej chwili znikają z listy (user 2026-11-11).
+  const [seenTrainingsAt, setSeenTrainingsAt] = useState(0);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   // Heute: dzień ostatniego minionego treningu (YYYY-MM-DD); null = brak,
@@ -705,6 +707,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         setStudentSince(data.coachStudentSince && typeof data.coachStudentSince === 'object' ? data.coachStudentSince : {});
         
         setSeenMilestones(Array.isArray(data.coachSeenMilestones) ? data.coachSeenMilestones : []);
+        setSeenTrainingsAt(typeof data.coachSeenTrainingsAt === 'number' ? data.coachSeenTrainingsAt : 0);
         // Grupy (skład, plan, tematy) przychodzą z groups/ — subskrypcja niżej.
 
         const studentIds = data.students || [];
@@ -1746,6 +1749,15 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       .catch(e => console.error('Zapis przeczytanych kamieni milowych:', e));
     setSheetStudentId(m.student.id);
   };
+  // Odhacza całą listę „od ostatniego treningu”: treningi i kamienie milowe.
+  const ackSince = () => {
+    const at = Date.now();
+    const next = [...new Set(studentMilestones.map(milestoneKey))];
+    setSeenTrainingsAt(at);
+    setSeenMilestones(next);
+    setDoc(doc(db, 'users', userId), { coachSeenTrainingsAt: at, coachSeenMilestones: next }, { merge: true })
+      .catch(e => console.error('Zapis „Gesehen”:', e));
+  };
 
   // opts.focus=false — bez linijki fokusu (kamienie milowe: user 2026-10-23
   // „po co tam fokus”); opts.plainSub — opis zwykłym tekstem, nie wersalikami.
@@ -2463,7 +2475,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const unread = students.filter(s => unreadStudentIds.has(s.id));
         // W stanie B dzisiejsi są już wyżej, w „Heute trainiert”.
         const trainedSince = students
-          .filter(s => (s.exactLastActivity || 0) >= since && (todayEv || (s.exactLastActivity || 0) < startOfToday))
+          .filter(s => (s.exactLastActivity || 0) >= since && (s.exactLastActivity || 0) > seenTrainingsAt && (todayEv || (s.exactLastActivity || 0) < startOfToday))
           .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
         const sinceUp = trainedSince.filter(s => formCompare[s.id]?.dir === 'up').length;
         const sinceDown = trainedSince.filter(s => formCompare[s.id]?.dir === 'down').length;
@@ -2643,7 +2655,16 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           {/* Od ostatniego treningu grupy (albo z 7 dni, gdy go jeszcze nie było) */}
           {!isLoading && lastTrainingDate !== undefined && (
             <section className="space-y-1.5 border-l-[3px] border-[#0a3a2a]/25 pl-2.5">
-              {label(sinceLabel)}
+              {label(sinceLabel, (trainedSince.length > 0 || unseenMilestones.length > 0) && (
+                <button
+                  type="button"
+                  onClick={ackSince}
+                  className="flex items-center gap-1 text-[12px] font-black text-[#0a3a2a] bg-white border border-gray-200 rounded-full px-2.5 py-1 active:scale-95 transition-all"
+                >
+                  <span className="material-symbols-outlined text-[16px]">done_all</span>
+                  {t('coachToday.ackSince')}
+                </button>
+              ))}
               {!hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
               {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
               {newStudentIds.length > 0 && (

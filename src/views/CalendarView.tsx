@@ -792,9 +792,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
         >
           <div className={`relative w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
-            {/* „Heute”/„Morgen” absolutnie pod polem daty — wiersz nie rośnie (2026-11-11). */}
+            {/* „Heute”/„Morgen” jako żółta plakietka na dolnej krawędzi pola daty —
+                czytelna i wiersz nie rośnie (user 2026-11-11). */}
             {rel && (
-              <span className="absolute left-1/2 -translate-x-1/2 top-full text-[9px] leading-none font-black uppercase tracking-wide text-amber-600 whitespace-nowrap" data-testid="calendar-event-rel">{rel}</span>
+              <span className="absolute left-1/2 bottom-0 -translate-x-1/2 translate-y-1/2 px-1 py-[2px] rounded bg-[#fed33e] text-[#0a3a2a] text-[8px] leading-none font-black uppercase tracking-wide whitespace-nowrap shadow-sm" data-testid="calendar-event-rel">{rel}</span>
             )}
             {event.date ? (
               <>
@@ -805,6 +806,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <span className="material-symbols-outlined text-[22px] text-gray-300">radio_button_unchecked</span>
             )}
           </div>
+          {/* Puchar przy zawodach — jak na Home (user 2026-11-11). */}
+          {stripe === 'tb-tourney' && (
+            <span className="w-7 h-7 -ml-1 rounded-full bg-[#fed33e] flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[17px] text-[#0a3a2a]">emoji_events</span>
+            </span>
+          )}
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-black text-[#0a3a2a] leading-tight truncate">
               {event.title}{event.time && <span className="font-bold text-gray-500"> · {event.time}</span>}

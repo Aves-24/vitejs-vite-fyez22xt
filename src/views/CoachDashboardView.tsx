@@ -31,7 +31,7 @@ import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopic
 import GroupTrainingHistory from '../components/GroupTrainingHistory';
 import { dayKeyOf } from '../utils/focus';
 import { planTopicShift } from '../utils/topicShift';
-import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, prevOccurrence, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
+import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSchedule, sortSlots, upcomingOccurrences, listOccurrences, occurrenceKey, scheduleForSave } from '../utils/groupSchedule';
 
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useBackClose, navOverlayValue } from '../hooks/useBackClose';
@@ -2472,13 +2472,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         // Najpierw ci, na których trzeba zwrócić uwagę: spadek formy, potem dawno bez treningu.
         const rosterRank = (s: any) => formCompare[s.id]?.dir === 'down' ? 0 : isInactive(s) ? 1 : 2;
 
-        // Ostatni trening: późniejszy z kalendarza i z planu grup.
-        const lastDay = [lastTrainingDate, ...coachGroups.map(g => prevOccurrence(g.schedule, todayKey))]
-          .filter((d): d is string => !!d).sort().pop() || null;
-        const since = lastDay ? new Date(`${lastDay}T00:00:00`).getTime() : nowTick - 7 * DAY_MS;
-        const sinceLabel = lastDay
-          ? t('coachToday.sinceTraining', { day: new Date(`${lastDay}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }) })
-          : t('coachToday.sinceWeek');
+        // Wochenübersicht: zawsze ostatnie 7 dni (user 2026-11-11) — odhaczone ✓ znikają, reszta wisi max tydzień.
+        const since = nowTick - 7 * DAY_MS;
+        const sinceLabel = t('coachToday.weekOverview');
         const ackKeys = new Set(ackLog.map(e => e.key));
         const recentAcks = ackLog.filter(e => e.at > nowTick - 14 * DAY_MS).sort((a, b) => b.at - a.at);
         const ackBtn = (onAck: () => void) => (

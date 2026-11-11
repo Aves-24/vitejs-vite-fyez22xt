@@ -894,6 +894,7 @@ export const views = {
     trainedSince: "Trained: {{count}}",
     nothingNew: "Nothing new.",
     ackSince: "Seen",
+    ackArchive: "Seen · 14 days",
     unreadMessage: "New message",
     inactiveLine: "No training for {{days}}+ days: {{count}}",
     showAll: "Show all {{count}}",

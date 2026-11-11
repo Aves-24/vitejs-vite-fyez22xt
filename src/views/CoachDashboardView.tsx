@@ -197,6 +197,9 @@ async function loadFormCompare(coachId: string, students: any[]): Promise<Record
 
 interface StudentTournament { title: string; date: string; names: string[] }
 
+/** Wpis odhaczony „Gesehen” — `text` zapisany w chwili odhaczenia (archiwum 14 dni). */
+interface AckEntry { key: string; sid: string; text: string; at: number }
+
 const STUDENT_TOURNAMENT_TTL = 30 * 60 * 1000;
 
 /** Ile startów podopiecznych mieści rozwinięta sekcja — tyle, co terminy. */
@@ -542,8 +545,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
   // jak coachSeenStudents: odhaczenie na telefonie gaśnie też na laptopie.
   const [seenMilestones, setSeenMilestones] = useState<string[]>([]);
-  // „Gesehen” w „Seit dem letzten Training”: treningi do tej chwili znikają z listy (user 2026-11-11).
-  const [seenTrainingsAt, setSeenTrainingsAt] = useState(0);
+  // „Gesehen” przy każdym wpisie „Seit dem letzten Training” (user 2026-11-11); log = archiwum 14 dni.
+  const [ackLog, setAckLog] = useState<AckEntry[]>([]);
+  const [isAckArchiveOpen, setIsAckArchiveOpen] = useState(false);
   // Lista uczniów zawężona do tych bez treningu od INACTIVE_DAYS (pasek u góry).
   const [inactiveOnly, setInactiveOnly] = useState(false);
   // Heute: dzień ostatniego minionego treningu (YYYY-MM-DD); null = brak,
@@ -707,7 +711,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         setStudentSince(data.coachStudentSince && typeof data.coachStudentSince === 'object' ? data.coachStudentSince : {});
         
         setSeenMilestones(Array.isArray(data.coachSeenMilestones) ? data.coachSeenMilestones : []);
-        setSeenTrainingsAt(typeof data.coachSeenTrainingsAt === 'number' ? data.coachSeenTrainingsAt : 0);
+        setAckLog(Array.isArray(data.coachAckLog) ? data.coachAckLog : []);
         // Grupy (skład, plan, tematy) przychodzą z groups/ — subskrypcja niżej.
 
         const studentIds = data.students || [];
@@ -1749,13 +1753,19 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       .catch(e => console.error('Zapis przeczytanych kamieni milowych:', e));
     setSheetStudentId(m.student.id);
   };
-  // Odhacza całą listę „od ostatniego treningu”: treningi i kamienie milowe.
-  const ackSince = () => {
-    const at = Date.now();
-    const next = [...new Set(studentMilestones.map(milestoneKey))];
-    setSeenTrainingsAt(at);
-    setSeenMilestones(next);
-    setDoc(doc(db, 'users', userId), { coachSeenTrainingsAt: at, coachSeenMilestones: next }, { merge: true })
+  // Odhacza jeden wpis; log trzyma 14 dni (archiwum „Gesehen”).
+  const ackEntry = (entry: Omit<AckEntry, 'at'>, milestone?: StudentMilestone) => {
+    const now = Date.now();
+    const log = [...ackLog.filter(e => e.at > now - 14 * DAY_MS && e.key !== entry.key), { ...entry, at: now }];
+    setAckLog(log);
+    const patch: Record<string, unknown> = { coachAckLog: log };
+    if (milestone) {
+      const live = new Set(studentMilestones.map(milestoneKey));
+      const next = [...new Set([...seenMilestones.filter(k => live.has(k)), milestoneKey(milestone)])];
+      setSeenMilestones(next);
+      patch.coachSeenMilestones = next;
+    }
+    setDoc(doc(db, 'users', userId), patch, { merge: true })
       .catch(e => console.error('Zapis „Gesehen”:', e));
   };
 
@@ -2469,13 +2479,26 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const sinceLabel = lastDay
           ? t('coachToday.sinceTraining', { day: new Date(`${lastDay}T00:00:00`).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }) })
           : t('coachToday.sinceWeek');
+        const ackKeys = new Set(ackLog.map(e => e.key));
+        const recentAcks = ackLog.filter(e => e.at > nowTick - 14 * DAY_MS).sort((a, b) => b.at - a.at);
+        const ackBtn = (onAck: () => void) => (
+          <button
+            type="button"
+            onClick={onAck}
+            aria-label={t('coachToday.ackSince')}
+            title={t('coachToday.ackSince')}
+            className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 border border-gray-200 active:scale-90 active:bg-emerald-50 active:text-emerald-600 transition-all"
+          >
+            <span className="material-symbols-outlined text-[20px]">check</span>
+          </button>
+        );
         const trainedToday = students
           .filter(s => (s.exactLastActivity || 0) >= startOfToday)
           .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
         const unread = students.filter(s => unreadStudentIds.has(s.id));
         // W stanie B dzisiejsi są już wyżej, w „Heute trainiert”.
         const trainedSince = students
-          .filter(s => (s.exactLastActivity || 0) >= since && (s.exactLastActivity || 0) > seenTrainingsAt && (todayEv || (s.exactLastActivity || 0) < startOfToday))
+          .filter(s => (s.exactLastActivity || 0) >= since && !ackKeys.has(`tr_${s.id}_${s.exactLastActivity || 0}`) && (todayEv || (s.exactLastActivity || 0) < startOfToday))
           .sort((a, b) => (b.exactLastActivity || 0) - (a.exactLastActivity || 0));
         const sinceUp = trainedSince.filter(s => formCompare[s.id]?.dir === 'up').length;
         const sinceDown = trainedSince.filter(s => formCompare[s.id]?.dir === 'down').length;
@@ -2655,16 +2678,43 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           {/* Od ostatniego treningu grupy (albo z 7 dni, gdy go jeszcze nie było) */}
           {!isLoading && lastTrainingDate !== undefined && (
             <section className="space-y-1.5 border-l-[3px] border-[#0a3a2a]/25 pl-2.5">
-              {label(sinceLabel, (trainedSince.length > 0 || unseenMilestones.length > 0) && (
+              {label(sinceLabel, recentAcks.length > 0 && (
                 <button
                   type="button"
-                  onClick={ackSince}
-                  className="flex items-center gap-1 text-[12px] font-black text-[#0a3a2a] bg-white border border-gray-200 rounded-full px-2.5 py-1 active:scale-95 transition-all"
+                  onClick={() => setIsAckArchiveOpen(o => !o)}
+                  aria-label={t('coachToday.ackArchive')}
+                  title={t('coachToday.ackArchive')}
+                  className={`w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition-all ${isAckArchiveOpen ? 'bg-[#0a3a2a] text-white' : 'text-gray-400'}`}
                 >
-                  <span className="material-symbols-outlined text-[16px]">done_all</span>
-                  {t('coachToday.ackSince')}
+                  <span className="material-symbols-outlined text-[20px]">inventory_2</span>
                 </button>
               ))}
+              {/* Archiwum „Gesehen” z 14 dni — klik = karta ucznia. */}
+              {isAckArchiveOpen && recentAcks.length > 0 && (
+                <div className="bg-gray-50 rounded-xl border border-gray-100 p-2 space-y-1">
+                  <p className="text-[11px] font-black text-gray-500 uppercase tracking-wider px-1">{t('coachToday.ackArchive')}</p>
+                  {recentAcks.map(e => {
+                    const s = students.find(x => x.id === e.sid);
+                    return (
+                      <button
+                        key={e.key}
+                        type="button"
+                        onClick={() => s && setSheetStudentId(s.id)}
+                        className="w-full flex items-center gap-2 px-1 py-1.5 text-left active:scale-[0.98] transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-emerald-600 shrink-0">check</span>
+                        <span className="flex-1 min-w-0 text-[12px] font-bold text-gray-600 truncate">
+                          <span className="font-black text-[#0a3a2a]">{s ? `${s.firstName || ''} ${s.lastName || ''}`.trim() : '—'}</span>
+                          {e.text && ` · ${e.text}`}
+                        </span>
+                        <span className="text-[11px] font-bold text-gray-400 shrink-0">
+                          {new Date(e.at).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric' })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {!hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
               {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
               {newStudentIds.length > 0 && (
@@ -2700,7 +2750,17 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                       {getTimeSinceLastActivity(s.exactLastActivity || 0)}{lastSessionDetails(s) && ` · ${lastSessionDetails(s)}`}
                     </span>,
                     'bg-gray-50 text-[#0a3a2a] border-gray-100',
-                    trend(s),
+                    <>
+                      {trend(s)}
+                      {ackBtn(() => ackEntry({
+                        key: `tr_${s.id}_${s.exactLastActivity || 0}`,
+                        sid: s.id,
+                        text: [
+                          new Date(s.exactLastActivity || 0).toLocaleDateString(i18n.language, { weekday: 'short', day: 'numeric', month: 'numeric' }),
+                          lastSessionDetails(s),
+                        ].filter(Boolean).join(' · '),
+                      }))}
+                    </>,
                     plain,
                   ))}
                   {more(trainedSince.length, isMilestonesOpen, () => setIsMilestonesOpen(o => !o))}
@@ -2717,7 +2777,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                       {m.title && m.text && <span className="text-gray-500"> — {m.text}</span>}
                     </span>,
                     'bg-[#fed33e]/20 text-[#8B6508] border-[#fed33e]/50',
-                    undefined,
+                    ackBtn(() => ackEntry({ key: `ms_${milestoneKey(m)}`, sid: m.student.id, text: `★ ${m.title || m.text || ''}` }, m)),
                     { ...plain, onOpen: () => openMilestone(m) },
                   )}
                 </React.Fragment>

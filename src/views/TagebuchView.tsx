@@ -1250,20 +1250,31 @@ export default function TagebuchView({ userId, onBack, onNavigate, onNavigateToS
             (user, 2026-09-15). Kolory tekstu celowo spoza remapów ciemnego
             motywu, żeby na żółtym zostały ciemne w obu motywach. */}
         {nextEvents.length > 0 && (
-          <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100">
-            {/* Zwijane (user 2026-10-15) — stan zapamiętany w telefonie. */}
-            <button
-              onClick={toggleNextOpen}
-              className="w-full flex items-center gap-2 px-3 py-1.5 bg-white text-left active:bg-gray-50 transition-colors"
-              aria-expanded={nextOpen}
-            >
-              <span className="material-symbols-outlined text-[16px] text-[#0a3a2a]">event</span>
-              <span className="flex-1 text-[9px] font-black text-gray-500 uppercase tracking-widest">
-                {t('tagebuch.next')} · {nextEvents.length}
-              </span>
-              {!nextOpen && nextEvents.some(ev => ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id)) && <NewBadge />}
-              <span className={`material-symbols-outlined text-[18px] text-gray-400 transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
-            </button>
+          // Klamra: gruby ciemnozielony pasek z lewej spina nagłówek i terminy (user 2026-11-11).
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 border-l-[5px] border-l-[#0a3a2a]" data-testid="tb-next">
+            {/* Zwijane (user 2026-10-15) — stan zapamiętany w telefonie. Ikona kalendarza
+                z prawej otwiera cały kalendarz (osobny przycisk — bez zagnieżdżania). */}
+            <div className="flex items-center bg-[#0a3a2a]/[0.06]">
+              <button
+                onClick={toggleNextOpen}
+                className="flex-1 min-w-0 flex items-center gap-2 pl-3 pr-1 py-2 text-left active:bg-gray-50 transition-colors"
+                aria-expanded={nextOpen}
+              >
+                <span className={`material-symbols-outlined text-[18px] text-gray-500 transition-transform ${nextOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                <span className="flex-1 min-w-0 truncate text-[12px] font-black text-[#0a3a2a]">
+                  {nextEvents.length === 1 ? t('tagebuch.nextOne') : t('tagebuch.nextMany', { count: nextEvents.length })}
+                </span>
+                {!nextOpen && nextEvents.some(ev => ev.isCoach && !ev.isLed && isNew('coach_plan', ev.id)) && <NewBadge />}
+              </button>
+              <button
+                onClick={() => onNavigate('CALENDAR')}
+                className="shrink-0 w-10 h-9 flex items-center justify-center text-[#0a3a2a] active:opacity-60"
+                aria-label={t('tagebuch.openCalendar')}
+                data-testid="tb-next-calendar"
+              >
+                <span className="material-symbols-outlined text-[20px]">calendar_month</span>
+              </button>
+            </div>
             {nextOpen && nextEvents.map(ev => {
               const st = EVENT_STYLE[ev.kind];
               return (

@@ -1246,10 +1246,18 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // ─── [HOME 2026-11-06] „Nächste Termine”: jedna lista po dacie ─────────────
   // Zawody, Wartung i To-do zawsze; reszta (Inne, terminy trenera, od trenera)
   // dopełnia do 4 według daty. Kolor tylko na pasku (słownik kolorów).
-  type HomeRow = { key: string; kind: 'tournament' | 'maint' | 'todo' | 'coachSent' | 'coachReceived' | 'other'; when: number; dayLabel: string; title: string; meta: string; stripe: string; icon?: string; iconCls?: string; onClick: () => void };
+  type HomeRow = { key: string; kind: 'tournament' | 'maint' | 'todo' | 'coachSent' | 'coachReceived' | 'other'; when: number; dayLabel: string; rel?: string; title: string; meta: string; stripe: string; icon?: string; iconCls?: string; onClick: () => void };
   const dayLabelOf = (date: string) => {
     const d = new Date(date);
     return isNaN(d.getTime()) ? '' : `${d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace(/\.$/, '')} ${d.getDate()}.`;
+  };
+  // „Heute”/„Morgen” pod datą (2026-11-11) — porównanie po kluczu dnia, bez stref.
+  const relOf = (date: string) => {
+    const key = (date || '').slice(0, 10);
+    const now = new Date();
+    if (key === dayKeyOfDate(now)) return t('coachToday.today');
+    if (key === dayKeyOfDate(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))) return t('coachToday.tomorrow');
+    return '';
   };
   const whenOf = (date: string, time?: string) => {
     const d = new Date(date);
@@ -1264,7 +1272,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const rest: HomeRow[] = [];
     if (nextTournament) always.push({
       key: `t_${nextTournament.id}`, kind: 'tournament', when: whenOf(nextTournament.date, nextTournament.time),
-      dayLabel: dayLabelOf(nextTournament.date), title: nextTournament.title,
+      dayLabel: dayLabelOf(nextTournament.date), rel: relOf(nextTournament.date), title: nextTournament.title,
       meta: getDaysUntil(nextTournament.date), stripe: 'border-l-[#0a3a2a]',
       onClick: () => onGoToCalendar(nextTournament.id),
     });
@@ -1281,7 +1289,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     });
     if (nextOtherEvent) rest.push({
       key: `o_${nextOtherEvent.id}`, kind: 'other', when: whenOf(nextOtherEvent.date, nextOtherEvent.time),
-      dayLabel: dayLabelOf(nextOtherEvent.date), title: nextOtherEvent.title,
+      dayLabel: dayLabelOf(nextOtherEvent.date), rel: relOf(nextOtherEvent.date), title: nextOtherEvent.title,
       meta: nextOtherEvent.time || nextOtherEvent.address || '', stripe: 'border-l-blue-900',
       onClick: () => onGoToCalendar(nextOtherEvent.id),
     });
@@ -1300,7 +1308,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     const nextCoach: any = [nextTrainerSent, ...planNext].filter(Boolean).sort(byWhen)[0] || null;
     if (nextCoach) rest.push({
       key: `c_${nextCoach.id}`, kind: 'coachSent', when: whenOf(nextCoach.date, nextCoach.time),
-      dayLabel: dayLabelOf(nextCoach.date), title: nextCoach.title, meta: nextCoach.time || t('calendar.wholeDay'),
+      dayLabel: dayLabelOf(nextCoach.date), rel: relOf(nextCoach.date), title: nextCoach.title, meta: nextCoach.time || t('calendar.wholeDay'),
       stripe: 'border-l-rose-400',
       // Trening z planu grupy otwiera grupę na ten dzień w panelu trenera.
       onClick: () => (nextCoach.scheduledGroupId
@@ -1309,7 +1317,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
     });
     if (nextTrainerReceived) rest.push({
       key: `r_${nextTrainerReceived.id}`, kind: 'coachReceived', when: whenOf(nextTrainerReceived.date, nextTrainerReceived.time),
-      dayLabel: dayLabelOf(nextTrainerReceived.date), title: nextTrainerReceived.title,
+      dayLabel: dayLabelOf(nextTrainerReceived.date), rel: relOf(nextTrainerReceived.date), title: nextTrainerReceived.title,
       meta: nextTrainerReceived.time || t('calendar.wholeDay'), stripe: 'border-l-violet-400',
       onClick: () => onGoToCalendar(nextTrainerReceived.id),
     });
@@ -1624,10 +1632,14 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   onClick={row.onClick}
                   className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${row.kind === 'tournament' ? 'py-2.5' : 'py-2'} text-left border-l-4 ${row.stripe} ${i > 0 ? 'border-t border-t-gray-100' : ''} active:bg-gray-50 transition-colors`}
                 >
-                  <span className={`w-11 shrink-0 text-[12px] ${row.kind === 'tournament' ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
+                  <span className={`relative w-11 shrink-0 text-[12px] ${row.kind === 'tournament' ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
                     {row.icon
                       ? <span className={`material-symbols-outlined text-[18px] align-middle ${row.iconCls}`}>{row.icon}</span>
                       : row.dayLabel}
+                    {/* Absolutnie pod datą — wiersz nie rośnie. */}
+                    {!row.icon && row.rel && (
+                      <span className="absolute left-0 top-full -mt-0.5 text-[9px] leading-none font-black uppercase tracking-wide text-amber-600 whitespace-nowrap" data-testid="home-event-rel">{row.rel}</span>
+                    )}
                   </span>
                   {row.kind === 'tournament' && (
                     <span className="w-6 h-6 rounded-full bg-[#fed33e] flex items-center justify-center shrink-0">

@@ -2468,7 +2468,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const sinceUp = trainedSince.filter(s => formCompare[s.id]?.dir === 'up').length;
         const sinceDown = trainedSince.filter(s => formCompare[s.id]?.dir === 'down').length;
         const hasSince = unread.length > 0 || newStudentIds.length > 0 || trainedSince.length > 0
-          || unseenMilestones.length > 0 || studentTournaments.length > 0;
+          || unseenMilestones.length > 0;
 
         const label = (text: string, right?: React.ReactNode) => (
           <div className="flex items-center justify-between mb-2 px-1">
@@ -2642,7 +2642,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
 
           {/* Od ostatniego treningu grupy (albo z 7 dni, gdy go jeszcze nie było) */}
           {!isLoading && lastTrainingDate !== undefined && (
-            <section className="space-y-1.5">
+            <section className="space-y-1.5 border-l-[3px] border-[#0a3a2a]/25 pl-2.5">
               {label(sinceLabel)}
               {!hasSince && <p className="text-[13px] font-bold text-gray-400 px-1">{t('coachToday.nothingNew')}</p>}
               {/* [C37] Nowy uczeń — dawniej kropka na przycisku „Schüler”. */}
@@ -2701,26 +2701,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                   )}
                 </React.Fragment>
               ))}
-              {studentTournaments.map(tour => {
-                const d = eventDate(tour);
-                return (
-                  <div
-                    key={`${tour.date}|${tour.title}`}
-                    className="flex items-center gap-2.5 bg-white rounded-xl px-2.5 py-2 shadow-sm border border-gray-100"
-                  >
-                    <div className="bg-[#fed33e]/20 rounded-lg text-center min-w-[42px] px-1.5 py-1 shrink-0">
-                      <span className="block text-[10px] font-black uppercase leading-none mb-0.5 text-[#8B6508]">{d.toLocaleDateString(i18n.language, { month: 'short' })}</span>
-                      <span className="block text-[16px] font-black leading-none text-[#0a3a2a]">{d.getDate()}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-black text-[#0a3a2a] text-[14px] leading-tight truncate">{tour.title}</p>
-                      <p className="text-[12px] font-bold text-[#8B6508] mt-0.5 truncate first-letter:uppercase">
-                        {dayLabel(d)} · {tour.names.join(', ')}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+              {/* Przyszłe starty uczniów nie należą do „od ostatniego treningu” — są w Termine. */}
             </section>
           )}
 

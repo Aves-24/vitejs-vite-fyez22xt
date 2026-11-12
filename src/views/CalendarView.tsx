@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { fetchCoachGroups, studentGroupMapOf } from '../utils/coachGroups';
 import { listOccurrences } from '../utils/groupSchedule';
+import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
 import { createPortal } from 'react-dom'; 
@@ -137,7 +138,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: unknown}[]>([]);
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: unknown, topics?: GroupTopicsByDay}[]>([]);
+  // [MONAT] Okienko tematu treningu otwarte z trójkącika (grupa + dzień).
+  const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string } | null>(null);
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>([]);
 
@@ -677,12 +680,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
   // Treningi grup z planu w widocznym miesiącu (user 2026-11-12): trójkącik w prawym górnym rogu dnia.
-  const planDays = new Set<string>();
+  // dzień → grupy z treningiem z planu (pierwsza dostaje okienko tematu po kliknięciu trójkącika)
+  const planDays = new Map<string, string[]>();
   {
     const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
     const from = formatDateStr(y, m, 1);
     const to = formatDateStr(m === 11 ? y + 1 : y, (m + 1) % 12, 1);
-    for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.add(o.date);
+    for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.set(o.date, [...(planDays.get(o.date) || []), g.id]);
   }
 
   const upcomingEvents = events.filter(e => e.date >= todayStr);
@@ -927,8 +931,19 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const hasMirroredTrainer = dayEvents.some(e => e.category === 'Trener' && e.isMirrored);
                 const hasTrainer = hasOwnTrainer || hasMirroredTrainer;
                 const isToday = dateStr === todayStr;
-                const planTri = planDays.has(dateStr) && (
-                  <span aria-hidden className={`absolute top-0 right-0 w-0 h-0 border-t-[9px] border-l-[9px] border-l-transparent z-10 ${dayEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
+                // Trójkącik = trening grupy z planu; zielony w rogu = temat już zapisany. Klik = okienko tematu.
+                const planGroups = planDays.get(dateStr) || [];
+                const topicGroup = planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
+                const planTri = planGroups.length > 0 && (
+                  <span
+                    role="button"
+                    aria-label={t('calendar.planTopic')}
+                    onClick={e => { e.stopPropagation(); setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr }); }}
+                    className="absolute top-0 right-0 w-[18px] h-[18px] z-10"
+                  >
+                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[10px] border-l-[10px] border-l-transparent ${dayEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
+                    {topicGroup && <span className="absolute top-0 right-0 w-0 h-0 border-t-[5px] border-l-[5px] border-l-transparent border-t-emerald-500" />}
+                  </span>
                 );
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
@@ -1897,6 +1912,26 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         .animate-fade-in-up { animation: fadeInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
+      {/* [MONAT] Temat treningu z trójkącika — to samo okienko co w Termine (Liste). */}
+      {topicEdit && (() => {
+        const g = coachGroups.find(x => x.id === topicEdit.groupId);
+        if (!g) return null;
+        return (
+          <GroupTopicPanel
+            key={`${topicEdit.groupId}_${topicEdit.date}`}
+            modalOnly
+            autoOpenDay={topicEdit.date}
+            onModalClose={() => setTopicEdit(null)}
+            groupId={g.id}
+            groupName={g.name}
+            members={coachStudentsList.filter(s => (studentGroupMap[s.id] || []).includes(g.id))}
+            coachId={userId}
+            topics={g.topics || {}}
+            onChanged={next => setCoachGroups(prev => prev.map(x => (x.id === g.id ? { ...x, topics: next } : x)))}
+            showToast={msg => window.alert(msg)}
+          />
+        );
+      })()}
     </div>
   );
 }

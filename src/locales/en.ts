@@ -1436,6 +1436,7 @@ export const views = {
     formTrainerName: "Description or topic",
     collapseTrainer: "Collapse coach list",
     noEvents: "No upcoming events",
+    planTopic: "Training topic",
     upcomingTournaments: "Upcoming Tournaments",
     trainingsAndOthers: "Training Sessions & Other",
     history: "Competition History",

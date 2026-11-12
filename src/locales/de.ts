@@ -1436,6 +1436,7 @@ export const views = {
     formTrainerName: "Beschreibung oder Thema",
     collapseTrainer: "Trainerliste einklappen",
     noEvents: "Keine kommenden Termine",
+    planTopic: "Trainingsthema",
     upcomingTournaments: "Kommende Turniere",
     trainingsAndOthers: "Trainingseinheiten & Sonstiges",
     history: "Wettkampf-Archiv",

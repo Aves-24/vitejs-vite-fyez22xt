@@ -1457,6 +1457,7 @@ export const views = {
     formTrainerName: "Opis albo temat",
     collapseTrainer: "Zwiń listę trenerską",
     noEvents: "Brak nadchodzących planów",
+    planTopic: "Temat treningu",
     upcomingTournaments: "Nadchodzące Zawody",
     trainingsAndOthers: "Treningi i Inne",
     history: "Historia Startów",

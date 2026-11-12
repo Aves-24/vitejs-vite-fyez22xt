@@ -2868,7 +2868,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const startOfToday = new Date().setHours(0, 0, 0, 0);
         const toKey = dayKeyOf(startOfToday + (termineWeeks * 7 + 0.5) * DAY_MS);
         const inRange = (d: string) => d >= todayKey && d < toKey;
-        type Item = { key: string; date: string; time?: string; title: string; sub?: string; kind: 'plan' | 'event' | 'tour' | 'private'; stripe: string; cancelled?: boolean; onOpen?: () => void; occ?: { groupId: string; time: string } };
+        type Item = { key: string; date: string; time?: string; title: string; sub?: string; kind: 'plan' | 'event' | 'tour' | 'private'; stripe: string; cancelled?: boolean; hasTopic?: boolean; onOpen?: () => void; occ?: { groupId: string; time: string } };
 
         const ownEvents = allUpcoming.filter(e => e.category === 'Trener' && !e.isMirrored && inRange(e.date));
         const items: Item[] = [];
@@ -2883,6 +2883,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             items.push({
               key: `plan_${g.id}_${o.date}_${o.time}`, date: o.date, time: o.time, title: g.name, kind: 'plan', stripe: 'tb-led',
               cancelled: o.cancelled,
+              hasTopic: !!topic,
               sub: o.cancelled
                 ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
                 : [o.place, topic].filter(Boolean).join(' · '),
@@ -3009,7 +3010,14 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                   return (
                     // [TERMINE 2026-10-30] Karta jak w dzienniku: tytuł do 2 linii (bez ucinania
                     // w pół słowa), godzina i opis w osobnej linii pod nim (user: „brzydko ucina”).
-                    <div key={it.key} className={`flex items-center tb-card border rounded-l-md rounded-r-2xl ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
+                    <div key={it.key} className={`relative overflow-hidden flex items-center tb-card border rounded-l-md rounded-r-2xl ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
+                      {/* Znak treningu z planu jak w Monat (user 2026-11-12): różowy, zielona obwódka = temat zapisany. */}
+                      {it.kind === 'plan' && !it.cancelled && (
+                        <span aria-hidden className="pointer-events-none">
+                          {it.hasTopic && <span className="absolute top-0 right-0 w-0 h-0 border-t-[20px] border-l-[20px] border-l-transparent border-t-emerald-500 z-10" />}
+                          <span className="absolute top-0 right-0 w-0 h-0 border-t-[15px] border-l-[15px] border-l-transparent border-t-rose-500 z-10" />
+                        </span>
+                      )}
                       <button
                         type="button"
                         onClick={it.onOpen}

@@ -165,6 +165,7 @@ export default function CoachStudentSheet({
         coachTopics: note.coachTopics || [],
       });
       setSnap(s => s && s.note ? { ...s, note: { ...s.note, coachNote: text, coachEditCount: edits } } : s);
+      setHandledNow(true);
       setReply('');
       setEditing(false);
       // Dzwonek u ucznia — jak w profilu ucznia, tylko przy pierwszej notatce.
@@ -189,6 +190,12 @@ export default function CoachStudentSheet({
     setSaving(false);
   };
 
+  // Odhaczone / z odpowiedzią przestaje „czekać” (user 2026-11-12) — chowamy przy następnym otwarciu,
+  // a w tej wizycie zostaje widoczne, żeby trener zobaczył efekt kliknięcia.
+  const [handledNow, setHandledNow] = useState(false);
+  useEffect(() => { setHandledNow(false); }, [student.id]);
+  const noteWaiting = !!snap?.note && (handledNow || (!snap.note.coachSeenAt && !snap.note.coachNote));
+
   // Trener przeczytał, ale nie chce nic pisać — ✓ zamiast odpowiedzi.
   const markSeen = async () => {
     const note = snap?.note;
@@ -201,6 +208,7 @@ export default function CoachStudentSheet({
         coachSeenBy: coachId,
       });
       setSnap(s => s && s.note ? { ...s, note: { ...s.note, coachSeenAt: Date.now() } } : s);
+      setHandledNow(true);
     } catch (e) {
       console.error('Karta ucznia: błąd odhaczenia notatki', e);
       setSaveError(true);
@@ -301,7 +309,7 @@ export default function CoachStudentSheet({
         )}
 
         {/* ── 1. CZEKA NA CIEBIE: ostatnia notatka ucznia + odpowiedź (komentarz do treningu) */}
-        {snap?.note && (
+        {noteWaiting && snap?.note && (
           <>
             <Section icon="chat" label={t('coachSheet.secWaiting')} />
             <div className={`${CARD_SHAPE} ${noteIsTech ? 'tb-tech' : 'tb-d2'} ${CARD_PAD}`}>

@@ -193,6 +193,7 @@ export default function CoachStudentSheet({
   // Odhaczone / z odpowiedzią przestaje „czekać” (user 2026-11-12) — chowamy przy następnym otwarciu,
   // a w tej wizycie zostaje widoczne, żeby trener zobaczył efekt kliknięcia.
   const [handledNow, setHandledNow] = useState(false);
+  const noteWaiting = !!snap?.note && (handledNow || (!snap.note.coachSeenAt && !snap.note.coachNote));
   useEffect(() => { setHandledNow(false); setArchiveOpen(false); }, [student.id]);
   // Archiwum: 5 ostatnich notatek ucznia, które trener odhaczył lub skomentował (z już wczytanych 28 dni).
   const [archiveOpen, setArchiveOpen] = useState(false);
@@ -200,7 +201,6 @@ export default function CoachStudentSheet({
     .filter(s => s.note && (s.coachSeenAt || s.coachNote) && !(noteWaiting && s.id === snap?.note?.id))
     .sort((a, b) => b.ts - a.ts)
     .slice(0, 5);
-  const noteWaiting = !!snap?.note && (handledNow || (!snap.note.coachSeenAt && !snap.note.coachNote));
 
   // Trener przeczytał, ale nie chce nic pisać — ✓ zamiast odpowiedzi.
   const markSeen = async () => {

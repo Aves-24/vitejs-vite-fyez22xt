@@ -1456,6 +1456,7 @@ export const views = {
     openGroupTopic: "Otwórz grupę {{name}} w panelu trenera",
     formTrainerName: "Opis albo temat",
     collapseTrainer: "Zwiń listę trenerską",
+    collapse: "Zwiń",
     noEvents: "Brak nadchodzących planów",
     planTopic: "Temat treningu",
     upcomingTournaments: "Nadchodzące Zawody",

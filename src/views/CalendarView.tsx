@@ -866,6 +866,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     </button>
   );
 
+  // Zwijanie — w tym samym miejscu co „+N” (pierwszy wpis rozwiniętej listy).
+  const lessButton = (onClick: () => void) => (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={t('calendar.collapse')}
+      className="w-10 h-10 mr-1 shrink-0 rounded-full flex items-center justify-center text-white bg-[#0a3a2a] active:scale-90 transition-all"
+    >
+      <span className="material-symbols-outlined text-[22px]">expand_less</span>
+    </button>
+  );
+
   return (
     <div className="flex flex-col h-full bg-[#fcfdfe] pb-32">
 
@@ -1065,7 +1077,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTournaments.length > 0 && (
-              <div className="space-y-1">
+              <div className={`space-y-1${showAllTournaments && upcomingTournaments.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
 
                 {visibleTournaments.map((event, index) => {
                   const isLastVisible = !showAllTournaments && index === visibleTournaments.length - 1;
@@ -1078,23 +1090,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     badge: event.id === nextTournamentId
                       ? <span className="text-[10px] font-black text-[#5d4a00] bg-[#fed33e] rounded-full px-2 py-0.5 shrink-0">{t('calendar.nextStart')}</span>
                       : <span className="material-symbols-outlined text-[18px] text-[#0a3a2a]/60 shrink-0">emoji_events</span>,
-                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllTournaments(true)) : undefined,
+                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllTournaments(true)) : showAllTournaments && index === 0 && upcomingTournaments.length > 1 ? lessButton(() => setShowAllTournaments(false)) : undefined,
                   });
                 })}
-                
-                {showAllTournaments && upcomingTournaments.length > 1 && (
-                  <button
-                    onClick={() => setShowAllTournaments(false)}
-                    className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseTournaments')}
-                  </button>
-                )}
               </div>
             )}
 
             {upcomingOthers.length > 0 && (
-              <div className="space-y-1">
+              <div className={`space-y-1${showAllOthers && upcomingOthers.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
 
                 {visibleOthers.map((event, index) => {
                   const isLastVisible = !showAllOthers && index === visibleOthers.length - 1;
@@ -1104,18 +1107,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     stripe: 'tb-other',
                     label: t('calendar.tabOther'),
                     sub: event.address || undefined,
-                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllOthers(true)) : undefined,
+                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllOthers(true)) : showAllOthers && index === 0 && upcomingOthers.length > 1 ? lessButton(() => setShowAllOthers(false)) : undefined,
                   });
                 })}
-
-                {showAllOthers && upcomingOthers.length > 1 && (
-                  <button
-                    onClick={() => setShowAllOthers(false)}
-                    className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseOthers')}
-                  </button>
-                )}
               </div>
             )}
 
@@ -1124,7 +1118,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               { events: upcomingTrainerSent, visible: visibleTrainerSent, showAll: showAllTrainerSent, setShowAll: setShowAllTrainerSent, isReceived: false },
             ] as const).map(({ events: trainerEvents, visible, showAll, setShowAll, isReceived }) => (
               trainerEvents.length > 0 && (
-                <div className="space-y-1" key={isReceived ? 'received' : 'sent'}>
+                <div className={`space-y-1${showAll && trainerEvents.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`} key={isReceived ? 'received' : 'sent'}>
 
                   {visible.map((event, index) => {
                     const isLastVisible = !showAll && index === visible.length - 1;
@@ -1144,18 +1138,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       stripe: isReceived ? 'tb-topic' : 'tb-led',
                       label: isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
                       sub: [event.address, recipients].filter(Boolean).join(' · ') || undefined,
-                      right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAll(true)) : undefined,
+                      right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAll(true)) : showAll && index === 0 && trainerEvents.length > 1 ? lessButton(() => setShowAll(false)) : undefined,
                     });
                   })}
-
-                  {showAll && trainerEvents.length > 1 && (
-                    <button
-                      onClick={() => setShowAll(false)}
-                      className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseTrainer')}
-                    </button>
-                  )}
                 </div>
               )
             ))}

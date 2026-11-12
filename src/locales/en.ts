@@ -1435,6 +1435,7 @@ export const views = {
     openGroupTopic: "Open group {{name}} in the coach panel",
     formTrainerName: "Description or topic",
     collapseTrainer: "Collapse coach list",
+    collapse: "Collapse",
     noEvents: "No upcoming events",
     planTopic: "Training topic",
     upcomingTournaments: "Upcoming Tournaments",

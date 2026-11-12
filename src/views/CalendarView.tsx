@@ -1311,6 +1311,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <span className="w-3 h-3 rounded-full bg-rose-500 flex-shrink-0" />
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTrainerSent', 'Terminy jako trener')}</span>
             </div>
+            {/* [TRÓJKĄCIK 2026-11-12] Tylko u trenera: róg = trening grupy z planu, zielona obwódka = temat zapisany. */}
+            {isCoach && ([false, true] as const).map(topic => (
+              <div key={String(topic)} className="flex items-center gap-2">
+                <span className="relative w-4 h-4 rounded-[4px] border border-gray-200 bg-white overflow-hidden flex-shrink-0"><PlanCorner hasTopic={topic} size={9} /></span>
+                <span className="text-[10px] font-bold text-gray-500">{t(topic ? 'calendar.legendPlanTopic' : 'calendar.legendPlan')}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>

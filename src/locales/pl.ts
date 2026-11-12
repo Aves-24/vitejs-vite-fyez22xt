@@ -1514,6 +1514,8 @@ export const views = {
     legendOther: "Inne",
     legendTrainerReceived: "Moje terminy od trenera",
     legendTrainerSent: "Terminy jako trener",
+    legendPlan: "Trening grupy (plan)",
+    legendPlanTopic: "Trening z tematem",
     days: ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
   },
   profile: {

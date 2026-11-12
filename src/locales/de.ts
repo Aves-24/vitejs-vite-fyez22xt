@@ -824,6 +824,7 @@ export const views = {
     list: "Liste",
     month: "Monat",
     showPrivate: "Meine privaten Termine zeigen",
+    showStarts: "Wettkämpfe meiner Schüler zeigen",
     plan: "Training",
     showPlan: "Regelmäßige Trainings der Gruppen zeigen",
     private: "Privat",

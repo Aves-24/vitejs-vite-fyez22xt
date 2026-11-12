@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { Fragment, useState, useEffect, useRef, useMemo } from 'react';
 import { createNotification } from '../services/notificationService';
 import { buildAnnouncementNotification } from '../utils/notificationTypes';
 import { db, auth } from '../firebase';
@@ -195,20 +195,18 @@ async function loadFormCompare(coachId: string, students: any[]): Promise<Record
   return data;
 }
 
-interface StudentTournament { title: string; date: string; names: string[] }
+interface StudentTournament { title: string; date: string; names: string[]; ids: string[] }
 
 /** Wpis odhaczony „Gesehen” — `text` zapisany w chwili odhaczenia (archiwum 14 dni). */
 interface AckEntry { key: string; sid: string; text: string; at: number }
 
 const STUDENT_TOURNAMENT_TTL = 30 * 60 * 1000;
 
-/** Ile startów podopiecznych mieści rozwinięta sekcja — tyle, co terminy. */
-const STUDENT_TOURNAMENTS_SHOWN = 3;
 
 /**
- * Najbliższe starty podopiecznych, rosnąco po dacie. Zwinięta sekcja pokazuje
- * pierwszy, rozwinięta — do `STUDENT_TOURNAMENTS_SHOWN` (życzenie usera
- * 2026-09-10: jak „Najbliższe terminy"). Uczniowie jadący na to samo (ta sama
+ * Nadchodzące starty podopiecznych, rosnąco po dacie — wszystkie (do 15 na
+ * ucznia), Termine przycina je do swojego zakresu tygodni (przełącznik
+ * „Starts”, user 2026-11-12). Uczniowie jadący na to samo (ta sama
  * data i nazwa) są zebrani w jeden wpis. Zapytanie na ucznia — dlatego wynik
  * leży 30 min w pamięci, unieważniany zmianą listy uczniów.
  * `limit(15)`, nie filtr kategorii w zapytaniu: stare terminy nie mają
@@ -268,7 +266,7 @@ async function loadStudentMilestones(coachId: string, students: any[]): Promise<
 }
 
 async function loadStudentTournaments(coachId: string, students: any[]): Promise<StudentTournament[]> {
-  const key = `grotX_studentTournaments_${coachId}`;
+  const key = `grotX_studentTournaments2_${coachId}`; // 2: z id uczniów, bez limitu 3
   const ids = students.map(s => s.id).sort().join(',');
   try {
     const raw = localStorage.getItem(key);
@@ -299,12 +297,11 @@ async function loadStudentTournaments(coachId: string, students: any[]): Promise
     const k = `${h.date}|${h.title.trim().toLowerCase()}`;
     const name = `${h.student.firstName || ''} ${h.student.lastName ? h.student.lastName[0] + '.' : ''}`.trim();
     const g = groups.get(k);
-    if (g) { if (!g.names.includes(name)) g.names.push(name); }
-    else groups.set(k, { title: h.title, date: h.date, names: [name] });
+    if (g) { if (!g.ids.includes(h.student.id)) { g.ids.push(h.student.id); g.names.push(name); } }
+    else groups.set(k, { title: h.title, date: h.date, names: [name], ids: [h.student.id] });
   }
   const data = [...groups.values()]
-    .sort((a, b) => a.date.localeCompare(b.date) || b.names.length - a.names.length)
-    .slice(0, STUDENT_TOURNAMENTS_SHOWN);
+    .sort((a, b) => a.date.localeCompare(b.date) || b.names.length - a.names.length);
   try {
     localStorage.setItem(key, JSON.stringify({ ids, data, expiresAt: Date.now() + STUDENT_TOURNAMENT_TTL }));
   } catch { /* ignore */ }
@@ -401,6 +398,12 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   const [showPlan, setShowPlan] = useState(() => {
     try { return localStorage.getItem('grotX_coachShowPlan') !== '0'; } catch { return true; }
   });
+  // Starty podopiecznych w Termine — domyślnie widoczne, da się ukryć (user 2026-11-12).
+  const [showStarts, setShowStarts] = useState(() => {
+    try { return localStorage.getItem('grotX_coachShowStarts') !== '0'; } catch { return true; }
+  });
+  // Start kilku uczniów rozwinięty do wyboru (klucz wiersza).
+  const [tourPickKey, setTourPickKey] = useState<string | null>(null);
   const studentGroupMap = useMemo(() => studentGroupMapOf(coachGroups), [coachGroups]);
   // Limit grup liczy tylko te, które trener założył (współprowadzone się nie liczą).
   const ownGroupCount = coachGroups.filter(g => g.ownerId === userId).length;
@@ -540,6 +543,17 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Wszystkie nadchodzące terminy trenera (każda kategoria) — dla zakładki Termine.
   const [allUpcoming, setAllUpcoming] = useState<any[]>([]);
   const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
+  // Starty podopiecznych czytane tylko przy włączonym „Starts” — wyłączone nie kosztują odczytów.
+  const studentIdsKey = students.map(s => s.id).sort().join(',');
+  useEffect(() => {
+    if (!showStarts || !studentIdsKey) { setStudentTournaments([]); return; }
+    let alive = true;
+    loadStudentTournaments(userId, students)
+      .then(d => { if (alive) setStudentTournaments(d); })
+      .catch(() => { if (alive) setStudentTournaments([]); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, showStarts, studentIdsKey]);
   const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
@@ -782,10 +796,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             if (stillLinked.length !== seen.length) void saveSeenStudents(userId, stillLinked);
           }
 
-          // Bez await — turniej podopiecznych nie blokuje listy uczniów.
-          loadStudentTournaments(userId, studentsData)
-            .then(setStudentTournaments)
-            .catch(() => setStudentTournaments([]));
+          // Starty podopiecznych — osobny efekt, tylko przy włączonym „Starts”.
           loadStudentMilestones(userId, studentsData)
             .then(setStudentMilestones)
             .catch(() => setStudentMilestones([]));
@@ -1817,6 +1828,11 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
     const next = !showPrivate;
     setShowPrivate(next);
     saveShowPrivate(next);
+  };
+  const toggleStarts = () => {
+    const next = !showStarts;
+    setShowStarts(next);
+    try { localStorage.setItem('grotX_coachShowStarts', next ? '1' : '0'); } catch { /* ignore */ }
   };
 
   // [EINSTELLUNGEN] Klocki sekcji ustawień: tytuł bloku i wiersz-przycisk.
@@ -2876,7 +2892,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         const startOfToday = new Date().setHours(0, 0, 0, 0);
         const toKey = dayKeyOf(startOfToday + (termineWeeks * 7 + 0.5) * DAY_MS);
         const inRange = (d: string) => d >= todayKey && d < toKey;
-        type Item = { key: string; date: string; time?: string; title: string; sub?: string; kind: 'plan' | 'event' | 'tour' | 'private'; stripe: string; cancelled?: boolean; hasTopic?: boolean; onOpen?: () => void; occ?: { groupId: string; time: string } };
+        type Item = { key: string; date: string; time?: string; title: string; sub?: string; kind: 'plan' | 'event' | 'tour' | 'private'; stripe: string; cancelled?: boolean; hasTopic?: boolean; onOpen?: () => void; occ?: { groupId: string; time: string }; pick?: { id: string; name: string }[] };
 
         const ownEvents = allUpcoming.filter(e => e.category === 'Trener' && !e.isMirrored && inRange(e.date));
         const items: Item[] = [];
@@ -2915,8 +2931,15 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
               : () => onNavigate('CALENDAR', undefined, e.id),
           });
         }
-        for (const tour of studentTournaments.filter(x => inRange(x.date))) {
-          items.push({ key: `tour_${tour.date}_${tour.title}`, date: tour.date, title: tour.title, kind: 'tour', stripe: 'border-l-[#fed33e]', sub: tour.names.join(', ') });
+        // Starty uczniów (przełącznik „Starts”): klik → profil ucznia; kilku uczniów → wybór pod wierszem.
+        for (const tour of showStarts ? studentTournaments.filter(x => inRange(x.date)) : []) {
+          const key = `tour_${tour.date}_${tour.title}`;
+          const pick = tour.ids.map((id, i) => ({ id, name: tour.names[i] }));
+          items.push({
+            key, date: tour.date, title: tour.title, kind: 'tour', stripe: 'border-l-[#fed33e]', sub: tour.names.join(', '),
+            pick: pick.length > 1 ? pick : undefined,
+            onOpen: pick.length === 1 ? () => setSheetStudentId(pick[0].id) : () => setTourPickKey(k => (k === key ? null : key)),
+          });
         }
         if (showPrivate) {
           // Kolory ze słownika: zawody ciemnozielone, „Inne” granat, od mojego trenera fiolet.
@@ -2945,7 +2968,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           return t('coachTermine.weekOf', { date: new Date(`${mon}T12:00:00`).toLocaleDateString(i18n.language, { day: 'numeric', month: 'numeric' }) });
         };
         // Pierwszy odbywający się termin wyróżniony, reszta lekko przygaszona (user 2026-10-26).
-        const firstKey = items.find(it => !it.cancelled)?.key;
+        // Start ucznia nie jest „moim” terminem — wyróżnienie dostaje pierwszy własny (user 2026-11-12).
+        const firstKey = items.find(it => !it.cancelled && it.kind !== 'tour')?.key;
         const weeks: { mon: string; list: Item[] }[] = [];
         for (const it of items) {
           const mon = mondayKey(it.date);
@@ -2970,33 +2994,31 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             {/* [TERMINE] Lista i miesiąc to jeden ekran — przełącznik zamiast osobnego kalendarza. */}
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <TermineViewToggle value="LIST" onChange={v => (onSwitchTermine ? onSwitchTermine(v) : onNavigate('CALENDAR'))} />
-              <div className="flex items-center gap-2">
-              {/* Stałe treningi grup — przełącznik jak „Privat” (user 2026-10-27). */}
-              <button
-                type="button"
-                aria-pressed={showPlan}
-                title={t('coachTermine.showPlan')}
-                onClick={togglePlan}
-                className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
-                  showPlan ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">{showPlan ? 'visibility' : 'visibility_off'}</span>
-                {t('coachTermine.plan')}
-              </button>
-              {/* Prywatne terminy obok trenerskich — mały przełącznik (user 2026-10-26). */}
-              <button
-                type="button"
-                aria-pressed={showPrivate}
-                title={t('coachTermine.showPrivate')}
-                onClick={togglePrivate}
-                className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
-                  showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
-                }`}
-              >
-                <span className="material-symbols-outlined text-[16px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
-                {t('coachTermine.private')}
-              </button>
+              {/* Co pokazać obok własnych terminów: stałe treningi grup (2026-10-27), prywatne
+                  (2026-10-26), starty uczniów (2026-11-12). Same ikonki — trzy podpisy nie mieszczą
+                  się na telefonie obok Liste/Monat; wyłączone = szare i przekreślone. */}
+              <div className="flex items-center gap-1.5">
+                {([
+                  { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
+                  { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
+                  { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts' },
+                ]).map(b => (
+                  <button
+                    key={b.testId}
+                    type="button"
+                    data-testid={b.testId}
+                    aria-pressed={b.on}
+                    aria-label={b.label}
+                    title={b.label}
+                    onClick={b.toggle}
+                    className={`relative w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all border ${
+                      b.on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">{b.icon}</span>
+                    {!b.on && <span aria-hidden className="absolute w-[22px] h-[2px] bg-gray-400 rotate-45 rounded-full" />}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -3017,7 +3039,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                   return (
                     // [TERMINE 2026-10-30] Karta jak w dzienniku: tytuł do 2 linii (bez ucinania
                     // w pół słowa), godzina i opis w osobnej linii pod nim (user: „brzydko ucina”).
-                    <div key={it.key} className={`relative overflow-hidden flex items-center tb-card border rounded-l-md rounded-r-2xl ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
+                    <Fragment key={it.key}>
+                    <div className={`relative overflow-hidden flex items-center tb-card border rounded-l-md rounded-r-2xl ${it.stripe} ${first ? 'shadow-md' : 'shadow-sm'} ${it.cancelled ? 'opacity-50' : first ? '' : 'opacity-[0.85]'}`}>
                       {/* Znak treningu z planu jak w Monat (user 2026-11-12): różowy, zielona obwódka = temat zapisany. */}
                       {it.kind === 'plan' && !it.cancelled && (
                         <span aria-hidden className="pointer-events-none">
@@ -3041,7 +3064,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                               {it.title}
                             </p>
                             {it.kind === 'plan' && !it.cancelled && <span className="mt-0.5 text-[9px] font-black uppercase tracking-widest text-gray-400 bg-gray-50 rounded-full px-2 py-0.5 shrink-0">{t('coachTermine.planTag')}</span>}
-                            {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">emoji_events</span>}
+                            {it.kind === 'tour' && <span className="material-symbols-outlined text-[18px] text-[#b8860b] shrink-0">{it.pick ? (tourPickKey === it.key ? 'expand_less' : 'group') : 'emoji_events'}</span>}
                           </div>
                           {(it.time || it.sub) && (
                             <p className={`text-[12px] font-bold mt-0.5 leading-snug flex items-start gap-1 ${it.cancelled ? 'text-red-500' : it.kind === 'tour' ? 'text-[#8B6508]' : 'text-gray-500'}`}>
@@ -3068,6 +3091,22 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                         </button>
                       )}
                     </div>
+                    {/* Start kilku uczniów: po kliknięciu imiona do wyboru, każde otwiera profil. */}
+                    {it.pick && tourPickKey === it.key && (
+                      <div className="flex flex-wrap gap-1.5 pl-3 pt-1.5 pb-1">
+                        {it.pick.map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => { setTourPickKey(null); setSheetStudentId(p.id); }}
+                            className="py-1.5 px-3 rounded-full bg-[#fed33e]/30 border border-[#fed33e] text-[12px] font-black text-[#5d4a00] active:scale-95 transition-all"
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    </Fragment>
                   );
                 })}
               </section>

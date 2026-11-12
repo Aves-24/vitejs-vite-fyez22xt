@@ -824,6 +824,7 @@ export const views = {
     list: "List",
     month: "Month",
     showPrivate: "Show my private events",
+    showStarts: "Show my students’ competitions",
     plan: "Training",
     showPlan: "Show the groups' regular trainings",
     private: "Private",

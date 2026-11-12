@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Browser } from '@playwright/test';
-import { resetEmulators, registerUser, linkCoachAndStudent, watchErrors, expectNoErrors, newUserPage, closeUserPages, syncWrites, adminListDocs } from './helpers';
+import { resetEmulators, registerUser, linkCoachAndStudent, watchErrors, expectNoErrors, newUserPage, closeUserPages, syncWrites, adminListDocs, adminPatchDoc } from './helpers';
 
 // Termine trenera: stały trening „alle 2 Wochen” i odwołanie z przesunięciem
 // tematów (każdy temat rusza o jeden termin dalej).
@@ -129,4 +129,40 @@ test('„Gesehen”: trener odhacza notatkę ucznia, uczeń widzi, że przeczyta
   if (!(await seen.first().isVisible().catch(() => false))) await entry.click();
   await expect(seen.first()).toBeVisible();
   await expectNoErrors(student, studentErrors, 'uczeń: przeczytana');
+});
+
+// Przełącznik „Starts” (2026-11-12): start ucznia w Termine, klik → karta ucznia,
+// wyłączony znika i zostaje wyłączony po przeładowaniu.
+test('starty uczniów: widoczne, klikalne, przełącznik zapamiętany', async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  const coach = await newUserPage(browser);
+  const student = await newUserPage(browser);
+  const coachErrors = watchErrors(coach);
+  await registerUser(coach, 'Trenerka');
+  const sid = await registerUser(student, 'Uczen');
+  // Start zapisany przed połączeniem — trener czyta go przy pierwszym wczytaniu uczniów.
+  await adminPatchDoc(request, `users/${sid}/tournaments/e2eStart`, { title: 'Hallenmeisterschaft', date: iso(plusDays(3)), category: 'Turniej' });
+  await linkCoachAndStudent(coach, student, sid, 'Trenerka');
+
+  await coachNav(coach, 'event_note Termine').click();
+  const row = coach.getByRole('button', { name: /Hallenmeisterschaft/ });
+  await expect(row).toBeVisible();
+  await row.click();
+  await expect(coach.getByText('Vollständiges Schülerprofil')).toBeVisible();
+  await coach.goBack(); // useBackClose zamyka kartę ucznia
+  await expect(coach.getByText('Vollständiges Schülerprofil')).toHaveCount(0);
+
+  await coachNav(coach, 'event_note Termine').click();
+  const toggle = coach.getByTestId('termine-toggle-starts');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await toggle.click();
+  await expect(coach.getByRole('button', { name: /Hallenmeisterschaft/ })).toHaveCount(0);
+
+  await coach.reload();
+  // Po przeładowaniu apka startuje w trybie zawodnika — wejście do panelu trenera.
+  await coach.getByRole('navigation').getByRole('button', { name: 'sports Trainer' }).click();
+  await coachNav(coach, 'event_note Termine').click();
+  await expect(coach.getByTestId('termine-toggle-starts')).toHaveAttribute('aria-pressed', 'false');
+  await expect(coach.getByRole('button', { name: /Hallenmeisterschaft/ })).toHaveCount(0);
+  await expectNoErrors(coach, coachErrors, 'Termine: starty');
 });

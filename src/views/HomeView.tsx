@@ -32,6 +32,7 @@ import { zonesOf, ringLabels, ZONE_COLORS } from '../utils/zones';
 import { statsGroupOf, statsGroupOfSetup, clearHomeStatsCache, homeStatsCacheKey, scaleMaxOf, type StatsGroup } from '../config/statsGroups';
 import { resolveActiveSetup, visibleSetups, styleOfSetup, isBlowgun, asBowType, sanitizeSetups, buildMigrationPayload, type EquipmentSetup, type ShootingStyle } from '../config/equipmentSetups';
 import { invalidateSetupStamp } from '../utils/setupStamp';
+import PlanCorner from '../components/PlanCorner';
 // [HOME MENU] Schreiber-Training — wejście przeniesione z Einstellungen do żółtego menu.
 const SchreiberGame = lazyWithRetry(() => import('../components/schreiber/SchreiberGame'));
 
@@ -1246,7 +1247,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
   // ─── [HOME 2026-11-06] „Nächste Termine”: jedna lista po dacie ─────────────
   // Zawody, Wartung i To-do zawsze; reszta (Inne, terminy trenera, od trenera)
   // dopełnia do 4 według daty. Kolor tylko na pasku (słownik kolorów).
-  type HomeRow = { key: string; kind: 'tournament' | 'maint' | 'todo' | 'coachSent' | 'coachReceived' | 'other'; when: number; dayLabel: string; rel?: string; title: string; meta: string; stripe: string; icon?: string; iconCls?: string; onClick: () => void };
+  type HomeRow = { key: string; kind: 'tournament' | 'maint' | 'todo' | 'coachSent' | 'coachReceived' | 'other'; when: number; dayLabel: string; rel?: string; title: string; meta: string; stripe: string; icon?: string; iconCls?: string; plan?: { hasTopic: boolean }; onClick: () => void };
   const dayLabelOf = (date: string) => {
     const d = new Date(date);
     return isNaN(d.getTime()) ? '' : `${d.toLocaleDateString(i18n.language, { weekday: 'short' }).replace(/\.$/, '')} ${d.getDate()}.`;
@@ -1310,6 +1311,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       key: `c_${nextCoach.id}`, kind: 'coachSent', when: whenOf(nextCoach.date, nextCoach.time),
       dayLabel: dayLabelOf(nextCoach.date), rel: relOf(nextCoach.date), title: nextCoach.title, meta: nextCoach.time || t('calendar.wholeDay'),
       stripe: 'border-l-rose-400',
+      plan: (nextCoach.scheduledGroupId || nextCoach.trainingTopicGroupId) ? { hasTopic: !!nextCoach.trainingTopicGroupId || !!coachGroupsHome.find((g: any) => g.id === nextCoach.scheduledGroupId)?.topics?.[nextCoach.date] } : undefined,
       // [ŚCIEŻKI 2026-11-12] Trening grupy (z planu albo termin tematu) → okienko tematu, jak wszędzie.
       onClick: () => ((nextCoach.scheduledGroupId || nextCoach.trainingTopicGroupId)
         ? onNavigate?.('COACH', 'TOPIC', `${nextCoach.scheduledGroupId || nextCoach.trainingTopicGroupId}@${nextCoach.date}`)
@@ -1630,7 +1632,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                 <button
                   key={row.key}
                   onClick={row.onClick}
-                  className={`w-full flex items-center gap-2 pl-2.5 pr-3 ${row.kind === 'tournament' ? 'py-2.5' : 'py-2'} text-left border-l-4 ${row.stripe} ${i > 0 ? 'border-t border-t-gray-100' : ''} active:bg-gray-50 transition-colors`}
+                  className={`relative overflow-hidden w-full flex items-center gap-2 pl-2.5 pr-3 ${row.kind === 'tournament' ? 'py-2.5' : 'py-2'} text-left border-l-4 ${row.stripe} ${i > 0 ? 'border-t border-t-gray-100' : ''} active:bg-gray-50 transition-colors`}
                 >
                   <span className={`relative w-11 shrink-0 text-[12px] ${row.kind === 'tournament' ? 'font-black text-[#0a3a2a]' : 'font-bold text-gray-500'}`}>
                     {row.icon
@@ -1650,6 +1652,7 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
                   {row.kind === 'tournament'
                     ? <span className="shrink-0 text-[11px] font-black bg-[#0a3a2a] text-[#fed33e] rounded-md px-1.5 py-0.5 whitespace-nowrap">{row.meta}</span>
                     : row.meta ? <span className="shrink-0 max-w-[40%] truncate text-[11px] font-bold text-gray-400">{row.meta}</span> : null}
+                  {row.plan && <PlanCorner hasTopic={row.plan.hasTopic} size={12} />}
                 </button>
               ))}
               {/* Plan grupy ucznia (lustro groupPlans/) — wiersze z fioletowym paskiem. */}

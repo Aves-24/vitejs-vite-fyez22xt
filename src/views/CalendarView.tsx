@@ -29,6 +29,7 @@ import { topicLabel } from '../constants/trainingTopics';
 import { groupIcon } from '../constants/groupIcons';
 import { useBackClose } from '../hooks/useBackClose';
 import TermineViewToggle from '../components/TermineViewToggle';
+import PlanCorner from '../components/PlanCorner';
 import { getShowPrivate, saveShowPrivate, type TermineView } from '../utils/termineView';
 
 interface Event {
@@ -796,12 +797,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     const d = new Date(`${event.date}T12:00:00`);
     const isToday = event.date === todayStr;
     const rel = isToday ? t('coachToday.today') : event.date === tomorrowStr ? t('coachToday.tomorrow') : '';
+    // [TRÓJKĄCIK 2026-11-12] Termin tematu treningu grupy → róg jak w Monat; klik = okienko tematu.
+    const planGid = event.category === 'Trener' && !event.isMirrored ? event.trainingTopicGroupId : undefined;
     return (
       <div key={event.id} className={isToday ? 'tb-today' : undefined}>
-      <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center`}>
+      <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center ${planGid ? 'relative overflow-hidden' : ''}`}>
+        {planGid && <PlanCorner hasTopic />}
         <button
           type="button"
-          onClick={() => setViewingEvent(event)}
+          onClick={() => (planGid && event.date ? setTopicEdit({ groupId: planGid, date: event.date }) : setViewingEvent(event))}
           className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
         >
           <div className={`relative w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>

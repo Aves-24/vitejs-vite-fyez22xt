@@ -543,17 +543,18 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Wszystkie nadchodzące terminy trenera (każda kategoria) — dla zakładki Termine.
   const [allUpcoming, setAllUpcoming] = useState<any[]>([]);
   const [studentTournaments, setStudentTournaments] = useState<StudentTournament[]>([]);
-  // Starty podopiecznych czytane tylko przy włączonym „Starts” — wyłączone nie kosztują odczytów.
+  // Starty podopiecznych czytane zawsze (30 min w pamięci telefonu): bez nich nie wiadomo,
+  // czy pokazać ikonkę „Starts” — gdy nikt nie ma startu, jej nie ma (user 2026-11-12).
   const studentIdsKey = students.map(s => s.id).sort().join(',');
   useEffect(() => {
-    if (!showStarts || !studentIdsKey) { setStudentTournaments([]); return; }
+    if (!studentIdsKey) { setStudentTournaments([]); return; }
     let alive = true;
     loadStudentTournaments(userId, students)
       .then(d => { if (alive) setStudentTournaments(d); })
       .catch(() => { if (alive) setStudentTournaments([]); });
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, showStarts, studentIdsKey]);
+  }, [userId, studentIdsKey]);
   const [studentMilestones, setStudentMilestones] = useState<StudentMilestone[]>([]);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   // Przeczytane kamienie milowe (`studentId_noteId`) — w dokumencie trenera,
@@ -3001,8 +3002,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                 {([
                   { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
                   { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
-                  { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts' },
-                ]).map(b => (
+                  { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: studentTournaments.length === 0 },
+                ]).filter(b => !b.hidden).map(b => (
                   <button
                     key={b.testId}
                     type="button"

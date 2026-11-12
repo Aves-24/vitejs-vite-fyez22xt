@@ -57,6 +57,9 @@ test('rytm co 2 tygodnie + odwołanie z przesunięciem tematów', async ({ brows
   // Termine (4 tygodnie): tylko 2 treningi — dziś i za 14 dni.
   await coachNav(coach, 'event_note Termine').click();
   await expect(coach.getByRole('button', { name: /Kader Plan schedule 23:30/ })).toHaveCount(2);
+  // Żaden uczeń nie ma startu → ikonki „Starts” nie ma (user 2026-11-12).
+  await expect(coach.getByTestId('termine-toggle-plan')).toBeVisible();
+  await expect(coach.getByTestId('termine-toggle-starts')).toHaveCount(0);
 
   // Tematy: dziś „Anker” i za 2 tygodnie „Schulter tief”.
   await addTopic(coach, today, 'Anker');

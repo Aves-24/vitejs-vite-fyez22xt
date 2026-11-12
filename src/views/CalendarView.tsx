@@ -802,7 +802,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   // Od 2026-11-01 jak karty dziennika (tb-card) — dzisiejszy wpis z grubszym paskiem.
   const renderEventRow = (
     event: Event,
-    { stripe, label, sub, badge, right }: { stripe: string; label: string; sub?: string; badge?: React.ReactNode; right?: React.ReactNode },
+    { stripe, label, sub, badge, right, first }: { stripe: string; label: string; sub?: string; badge?: React.ReactNode; right?: React.ReactNode; first?: boolean },
   ) => {
     const d = new Date(`${event.date}T12:00:00`);
     const isToday = event.date === todayStr;
@@ -811,12 +811,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     const planGid = event.category === 'Trener' && !event.isMirrored ? event.trainingTopicGroupId : undefined;
     return (
       <div key={event.id} className={isToday ? 'tb-today' : undefined}>
-      <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center ${planGid ? 'relative overflow-hidden' : ''}`}>
+      <div className={`tb-card ${stripe} relative overflow-hidden flex items-center ${first ? '' : 'border-t'}`}>
         {planGid && <PlanCorner hasTopic={!(event as any).planOnly} />}
         <button
           type="button"
           onClick={() => (planGid && event.date ? setTopicEdit({ groupId: planGid, date: event.date }) : setViewingEvent(event))}
-          className="flex-1 min-w-0 flex items-center gap-3 px-3 py-2.5 text-left active:scale-[0.99] transition-all"
+          className={`flex-1 min-w-0 flex items-center gap-3 px-3 ${first ? 'pt-4 pb-2.5' : 'py-2.5'} text-left active:bg-gray-50 transition-all`}
         >
           <div className={`relative w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
             {/* „Heute”/„Morgen” jako żółta plakietka na dolnej krawędzi pola daty —
@@ -855,19 +855,23 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     );
   };
 
-  // Nagłówek rodzaju (nazwa · liczba) — cały jest przyciskiem: rozwija i zwija listę. W wierszach nazwy już nie ma.
-  const groupHeader = (label: string, count: number, open: boolean, onToggle: () => void) => (
-    <button
-      type="button"
-      onClick={onToggle}
-      aria-expanded={open}
-      className="w-full flex items-center justify-between pl-2 pr-1 py-0.5 rounded-xl active:bg-gray-100 transition-all"
-    >
-      <span className="text-[11px] font-black uppercase tracking-wide text-gray-500">{label} <span className="text-gray-400">· {count}</span></span>
-      <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${open ? 'text-white bg-[#0a3a2a]' : 'text-[#0a3a2a] bg-gray-100'}`}>
-        <span className="material-symbols-outlined text-[22px]">{open ? 'expand_less' : 'expand_more'}</span>
-      </span>
-    </button>
+  // [LISTA 2026-11-12] Jeden rodzaj terminów = jedna karta jak „Nächste Termine” na Home: wiersze z paskiem,
+  // 1 px linii między nimi; nagłówek-pigułka nachodzi na pierwszy wpis i (przy >1) rozwija/zwija listę.
+  const groupCard = (key: string, label: string, dot: string, count: number, open: boolean, onToggle: () => void, rows: React.ReactNode) => (
+    <div key={key} className="relative">
+      <button
+        type="button"
+        onClick={count > 1 ? onToggle : undefined}
+        aria-expanded={count > 1 ? open : undefined}
+        className={`absolute -top-3 left-3 z-10 h-6 pl-2 ${count > 1 ? 'pr-1' : 'pr-2.5'} flex items-center gap-1.5 rounded-full bg-white border border-gray-200 shadow-sm text-[10px] font-black uppercase tracking-wider text-[#0a3a2a] ${count > 1 ? 'active:scale-95' : 'cursor-default'} transition-all`}
+      >
+        <span className={`w-2 h-2 rounded-full ${dot}`} />
+        {label}
+        <span className="font-bold text-gray-400">{count}</span>
+        {count > 1 && <span className="material-symbols-outlined text-[16px] text-gray-500 -ml-0.5">{open ? 'expand_less' : 'expand_more'}</span>}
+      </button>
+      <div className="rounded-2xl border border-gray-100 shadow-sm overflow-hidden bg-white">{rows}</div>
+    </div>
   );
 
   return (
@@ -1045,89 +1049,76 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             <p className="font-bold text-[10px] uppercase tracking-widest">{t('calendar.noEvents')}</p>
           </div>
         ) : (
-          <>
-            {todoEvents.length > 0 && (
-              <div className="space-y-1">
-                {todoEvents.map(event => renderEventRow(event, {
-                  stripe: event.maintenanceGroup ? MAINTENANCE_STRIPE : 'tb-todo',
-                  label: event.maintenanceGroup
-                    ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
-                    : t('calendar.todoSection'),
-                  sub: event.note || undefined,
-                  right: (
-                    <button
-                      type="button"
-                      // [WARTUNG] Lista czynności — ptaszek otwiera ją, a nie odhacza wszystko w ciemno.
-                      onClick={() => (event.maintenanceGroup ? setViewingEvent(event) : markTodoComplete(event.id))}
-                      className="w-10 h-10 mr-1 shrink-0 rounded-full bg-emerald-500 text-white flex items-center justify-center active:scale-90 transition-all"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">check</span>
-                    </button>
-                  ),
-                }))}
-              </div>
+          <div className="space-y-6 pt-4 pb-1">
+            {todoEvents.length > 0 && groupCard('todo', t('calendar.todoSection'), 'bg-emerald-400', todoEvents.length, true, () => {},
+              todoEvents.map((event, i) => renderEventRow(event, {
+                first: i === 0,
+                stripe: event.maintenanceGroup ? MAINTENANCE_STRIPE : 'tb-todo',
+                label: event.maintenanceGroup
+                  ? t('maintenance.calendar.dueBy', { date: new Date(`${event.maintenanceGroup.due}T12:00:00`).toLocaleDateString(currentLocale, { day: 'numeric', month: 'short' }) })
+                  : '',
+                sub: event.note || undefined,
+                right: (
+                  <button
+                    type="button"
+                    // [WARTUNG] Lista czynności — ptaszek otwiera ją, a nie odhacza wszystko w ciemno.
+                    onClick={() => (event.maintenanceGroup ? setViewingEvent(event) : markTodoComplete(event.id))}
+                    className="w-10 h-10 mr-1 shrink-0 rounded-full bg-emerald-500 text-white flex items-center justify-center active:scale-90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">check</span>
+                  </button>
+                ),
+              }))
             )}
 
-            {upcomingTournaments.length > 0 && (
-              <div className={`space-y-1${upcomingTournaments.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
-                {upcomingTournaments.length > 1 && groupHeader(t('calendar.legendTournament', 'Turniej'), upcomingTournaments.length, showAllTournaments, () => setShowAllTournaments(!showAllTournaments))}
-                {visibleTournaments.map((event) => {
-
-                  return renderEventRow(event, {
-                    stripe: 'tb-tourney',
-                    label: upcomingTournaments.length > 1 ? '' : t('calendar.legendTournament', 'Turniej'),
-                    sub: event.distance ? sessionDistanceLabel(event) : undefined,
-                    badge: event.id === nextTournamentId
-                      ? <span className="text-[10px] font-black text-[#5d4a00] bg-[#fed33e] rounded-full px-2 py-0.5 shrink-0">{t('calendar.nextStart')}</span>
-                      : <span className="material-symbols-outlined text-[18px] text-[#0a3a2a]/60 shrink-0">emoji_events</span>,
-                  });
-                })}
-              </div>
+            {upcomingTournaments.length > 0 && groupCard('tourney', t('calendar.legendTournament', 'Turniej'), 'bg-[#0a3a2a]', upcomingTournaments.length, showAllTournaments, () => setShowAllTournaments(!showAllTournaments),
+              visibleTournaments.map((event, i) => renderEventRow(event, {
+                first: i === 0,
+                stripe: 'tb-tourney',
+                label: '',
+                sub: event.distance ? sessionDistanceLabel(event) : undefined,
+                badge: event.id === nextTournamentId
+                  ? <span className="text-[10px] font-black text-[#5d4a00] bg-[#fed33e] rounded-full px-2 py-0.5 shrink-0">{t('calendar.nextStart')}</span>
+                  : <span className="material-symbols-outlined text-[18px] text-[#0a3a2a]/60 shrink-0">emoji_events</span>,
+              }))
             )}
 
-            {upcomingOthers.length > 0 && (
-              <div className={`space-y-1${upcomingOthers.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
-                {upcomingOthers.length > 1 && groupHeader(t('calendar.tabOther'), upcomingOthers.length, showAllOthers, () => setShowAllOthers(!showAllOthers))}
-                {visibleOthers.map((event) => {
-
-                  return renderEventRow(event, {
-                    stripe: 'tb-other',
-                    label: upcomingOthers.length > 1 ? '' : t('calendar.tabOther'),
-                    sub: event.address || undefined,
-                  });
-                })}
-              </div>
+            {upcomingOthers.length > 0 && groupCard('other', t('calendar.tabOther'), 'bg-blue-900', upcomingOthers.length, showAllOthers, () => setShowAllOthers(!showAllOthers),
+              visibleOthers.map((event, i) => renderEventRow(event, {
+                first: i === 0,
+                stripe: 'tb-other',
+                label: '',
+                sub: event.address || undefined,
+              }))
             )}
 
             {([
               { events: upcomingTrainerReceived, visible: visibleTrainerReceived, showAll: showAllTrainerReceived, setShowAll: setShowAllTrainerReceived, isReceived: true },
               { events: upcomingTrainerSent, visible: visibleTrainerSent, showAll: showAllTrainerSent, setShowAll: setShowAllTrainerSent, isReceived: false },
             ] as const).map(({ events: trainerEvents, visible, showAll, setShowAll, isReceived }) => (
-              trainerEvents.length > 0 && (
-                <div className={`space-y-1${trainerEvents.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`} key={isReceived ? 'received' : 'sent'}>
-                  {trainerEvents.length > 1 && groupHeader(isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'), trainerEvents.length, showAll, () => setShowAll(!showAll))}
-                  {visible.map((event) => {
-
-                    // Wysłane przez trenera: komu — jak „sub” w liście Termine.
-                    const recipients = isCoach && !isReceived
-                      ? ((!event.coachStudents || event.coachStudents === 'all')
-                          ? t('calendar.trainerAllStudents')
-                          : (event.coachStudents as string[])
-                              .map(sid => coachStudentsList.find(cs => cs.id === sid))
-                              .filter(Boolean)
-                              .map(s => `${s!.firstName} ${s!.lastName}`)
-                              .join(', '))
-                      : '';
-                    return renderEventRow(event, {
-                      stripe: isReceived ? 'tb-topic' : 'tb-led',
-                      label: trainerEvents.length > 1 ? '' : isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
-                      sub: [event.address, recipients].filter(Boolean).join(' · ') || undefined,
-                    });
-                  })}
-                </div>
-              )
+              trainerEvents.length > 0 && groupCard(isReceived ? 'received' : 'sent',
+                isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
+                isReceived ? 'bg-violet-500' : 'bg-rose-500', trainerEvents.length, showAll, () => setShowAll(!showAll),
+                visible.map((event, i) => {
+                  // Wysłane przez trenera: komu — jak „sub” w liście Termine.
+                  const recipients = isCoach && !isReceived
+                    ? ((!event.coachStudents || event.coachStudents === 'all')
+                        ? t('calendar.trainerAllStudents')
+                        : (event.coachStudents as string[])
+                            .map(sid => coachStudentsList.find(cs => cs.id === sid))
+                            .filter(Boolean)
+                            .map(s => `${s!.firstName} ${s!.lastName}`)
+                            .join(', '))
+                    : '';
+                  return renderEventRow(event, {
+                    first: i === 0,
+                    stripe: isReceived ? 'tb-topic' : 'tb-led',
+                    label: '',
+                    sub: [event.address, recipients].filter(Boolean).join(' · ') || undefined,
+                  });
+                }))
             ))}
-          </>
+          </div>
         )}
 
         {/* ─── ARCHIWA ─────────────────────────────────────────── */}

@@ -855,26 +855,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     );
   };
 
-  // „+N” przy ostatnim widocznym wpisie danej kategorii — rozwija resztę.
-  const moreButton = (hiddenCount: number, onClick: () => void) => (
+  // Nagłówek rodzaju (nazwa · liczba) — cały jest przyciskiem: rozwija i zwija listę. W wierszach nazwy już nie ma.
+  const groupHeader = (label: string, count: number, open: boolean, onToggle: () => void) => (
     <button
       type="button"
-      onClick={onClick}
-      className="w-10 h-10 mr-1 shrink-0 rounded-full flex items-center justify-center gap-0.5 text-[#0a3a2a] bg-gray-50 active:scale-90 transition-all"
+      onClick={onToggle}
+      aria-expanded={open}
+      className="w-full flex items-center justify-between pl-2 pr-1 py-0.5 rounded-xl active:bg-gray-100 transition-all"
     >
-      <span className="text-[12px] font-black">+{hiddenCount}</span>
-    </button>
-  );
-
-  // Zwijanie — w tym samym miejscu co „+N” (pierwszy wpis rozwiniętej listy).
-  const lessButton = (onClick: () => void) => (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={t('calendar.collapse')}
-      className="w-10 h-10 mr-1 shrink-0 rounded-full flex items-center justify-center text-white bg-[#0a3a2a] active:scale-90 transition-all"
-    >
-      <span className="material-symbols-outlined text-[22px]">expand_less</span>
+      <span className="text-[11px] font-black uppercase tracking-wide text-gray-500">{label} <span className="text-gray-400">· {count}</span></span>
+      <span className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center ${open ? 'text-white bg-[#0a3a2a]' : 'text-[#0a3a2a] bg-gray-100'}`}>
+        <span className="material-symbols-outlined text-[22px]">{open ? 'expand_less' : 'expand_more'}</span>
+      </span>
     </button>
   );
 
@@ -1077,37 +1069,31 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             )}
 
             {upcomingTournaments.length > 0 && (
-              <div className={`space-y-1${showAllTournaments && upcomingTournaments.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
-
-                {visibleTournaments.map((event, index) => {
-                  const isLastVisible = !showAllTournaments && index === visibleTournaments.length - 1;
-                  const hiddenCount = upcomingTournaments.length - visibleTournaments.length;
+              <div className={`space-y-1${upcomingTournaments.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
+                {upcomingTournaments.length > 1 && groupHeader(t('calendar.legendTournament', 'Turniej'), upcomingTournaments.length, showAllTournaments, () => setShowAllTournaments(!showAllTournaments))}
+                {visibleTournaments.map((event) => {
 
                   return renderEventRow(event, {
                     stripe: 'tb-tourney',
-                    label: t('calendar.legendTournament', 'Turniej'),
+                    label: upcomingTournaments.length > 1 ? '' : t('calendar.legendTournament', 'Turniej'),
                     sub: event.distance ? sessionDistanceLabel(event) : undefined,
                     badge: event.id === nextTournamentId
                       ? <span className="text-[10px] font-black text-[#5d4a00] bg-[#fed33e] rounded-full px-2 py-0.5 shrink-0">{t('calendar.nextStart')}</span>
                       : <span className="material-symbols-outlined text-[18px] text-[#0a3a2a]/60 shrink-0">emoji_events</span>,
-                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllTournaments(true)) : showAllTournaments && index === 0 && upcomingTournaments.length > 1 ? lessButton(() => setShowAllTournaments(false)) : undefined,
                   });
                 })}
               </div>
             )}
 
             {upcomingOthers.length > 0 && (
-              <div className={`space-y-1${showAllOthers && upcomingOthers.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
-
-                {visibleOthers.map((event, index) => {
-                  const isLastVisible = !showAllOthers && index === visibleOthers.length - 1;
-                  const hiddenCount = upcomingOthers.length - visibleOthers.length;
+              <div className={`space-y-1${upcomingOthers.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`}>
+                {upcomingOthers.length > 1 && groupHeader(t('calendar.tabOther'), upcomingOthers.length, showAllOthers, () => setShowAllOthers(!showAllOthers))}
+                {visibleOthers.map((event) => {
 
                   return renderEventRow(event, {
                     stripe: 'tb-other',
-                    label: t('calendar.tabOther'),
+                    label: upcomingOthers.length > 1 ? '' : t('calendar.tabOther'),
                     sub: event.address || undefined,
-                    right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAllOthers(true)) : showAllOthers && index === 0 && upcomingOthers.length > 1 ? lessButton(() => setShowAllOthers(false)) : undefined,
                   });
                 })}
               </div>
@@ -1118,11 +1104,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               { events: upcomingTrainerSent, visible: visibleTrainerSent, showAll: showAllTrainerSent, setShowAll: setShowAllTrainerSent, isReceived: false },
             ] as const).map(({ events: trainerEvents, visible, showAll, setShowAll, isReceived }) => (
               trainerEvents.length > 0 && (
-                <div className={`space-y-1${showAll && trainerEvents.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`} key={isReceived ? 'received' : 'sent'}>
-
-                  {visible.map((event, index) => {
-                    const isLastVisible = !showAll && index === visible.length - 1;
-                    const hiddenCount = trainerEvents.length - visible.length;
+                <div className={`space-y-1${trainerEvents.length > 1 ? ' p-1 rounded-[20px] border-2 border-gray-200 bg-gray-50/70' : ''}`} key={isReceived ? 'received' : 'sent'}>
+                  {trainerEvents.length > 1 && groupHeader(isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'), trainerEvents.length, showAll, () => setShowAll(!showAll))}
+                  {visible.map((event) => {
 
                     // Wysłane przez trenera: komu — jak „sub” w liście Termine.
                     const recipients = isCoach && !isReceived
@@ -1136,9 +1120,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       : '';
                     return renderEventRow(event, {
                       stripe: isReceived ? 'tb-topic' : 'tb-led',
-                      label: isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
+                      label: trainerEvents.length > 1 ? '' : isReceived ? t('calendar.legendTrainerReceived') : t('calendar.legendTrainerSent'),
                       sub: [event.address, recipients].filter(Boolean).join(' · ') || undefined,
-                      right: isLastVisible && hiddenCount > 0 ? moreButton(hiddenCount, () => setShowAll(true)) : showAll && index === 0 && trainerEvents.length > 1 ? lessButton(() => setShowAll(false)) : undefined,
                     });
                   })}
                 </div>

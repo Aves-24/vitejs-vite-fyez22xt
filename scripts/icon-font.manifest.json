@@ -75,6 +75,7 @@
   "event_available",
   "event_busy",
   "event_note",
+  "event_repeat",
   "expand_circle_up",
   "expand_less",
   "expand_more",

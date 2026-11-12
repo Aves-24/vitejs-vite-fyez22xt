@@ -147,6 +147,7 @@ test('starty uczniów: widoczne, klikalne, przełącznik zapamiętany', async ({
   await coachNav(coach, 'event_note Termine').click();
   const row = coach.getByRole('button', { name: /Hallenmeisterschaft/ });
   await expect(row).toBeVisible();
+  if (process.env.SHOT) await coach.screenshot({ path: process.env.SHOT });
   await row.click();
   await expect(coach.getByText('Vollständiges Schülerprofil')).toBeVisible();
   await coach.goBack(); // useBackClose zamyka kartę ucznia

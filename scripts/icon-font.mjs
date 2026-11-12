@@ -118,6 +118,9 @@ function check() {
       if (/^[a-z][a-z0-9_]*$/.test(bare)) used.add(bare);
       for (const lit of span[1].matchAll(/['"]([a-z][a-z0-9_]*)['"]/g)) used.add(lit[1]);
     }
+    // Ikona podana w danych (`icon: 'event_repeat'`) i wstawiona jako {b.icon} —
+    // span jej nie zobaczy (2026-11-12: przełączniki Termine, ikonka jako tekst).
+    for (const lit of s.matchAll(/\bicon\s*:\s*['"]([a-z][a-z0-9_]*)['"]/g)) used.add(lit[1]);
   }
   // `loading` nie jest nazwa Material Symbols i nigdy nia nie byla — renderuje
   // sie jako tekst tak samo w pelnym foncie i w subsetcie (StatsView.tsx).

@@ -924,25 +924,29 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   ...todoEvents.filter(e => e.maintenanceGroup?.due === dateStr),
                 ];
                 
-                const hasTournament = dayEvents.some(e => e.category === 'Turniej' || !e.category);
-                const hasOther = dayEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
-                const hasMaintenance = dayEvents.some(e => e.maintenanceGroup);
-                const hasOwnTrainer = dayEvents.some(e => e.category === 'Trener' && !e.isMirrored);
-                const hasMirroredTrainer = dayEvents.some(e => e.category === 'Trener' && e.isMirrored);
-                const hasTrainer = hasOwnTrainer || hasMirroredTrainer;
-                const isToday = dateStr === todayStr;
-                // Trójkącik = trening grupy z planu; zielony w rogu = temat już zapisany. Klik = okienko tematu.
+                // Trening grupy z planu = sam trójkącik w rogu, bez wypełnienia dnia (user 2026-11-12).
+                // Termin tematu w kalendarzu to tylko cień treningu z planu — nie koloruje dnia.
                 const planGroups = planDays.get(dateStr) || [];
-                const topicGroup = planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
+                const isPlanShadow = (e: Event) => e.category === 'Trener' && !e.isMirrored && !!e.trainingTopicGroupId && planGroups.includes(e.trainingTopicGroupId);
+                const colorEvents = dayEvents.filter(e => !isPlanShadow(e));
+                const hasTournament = colorEvents.some(e => e.category === 'Turniej' || !e.category);
+                const hasOther = colorEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
+                const hasMaintenance = colorEvents.some(e => e.maintenanceGroup);
+                const hasOwnTrainer = colorEvents.some(e => e.category === 'Trener' && !e.isMirrored);
+                const hasMirroredTrainer = colorEvents.some(e => e.category === 'Trener' && e.isMirrored);
+                const isToday = dateStr === todayStr;
+                // Temat zapisany (w grupie albo jako termin tematu) → zielona obwódka trójkącika.
+                const topicGroup = dayEvents.find(isPlanShadow)?.trainingTopicGroupId
+                  || planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
                 const planTri = planGroups.length > 0 && (
                   <span
                     role="button"
                     aria-label={t('calendar.planTopic')}
                     onClick={e => { e.stopPropagation(); setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr }); }}
-                    className="absolute top-0 right-0 w-[18px] h-[18px] z-10"
+                    className="absolute top-0 right-0 w-[20px] h-[20px] z-10"
                   >
-                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[10px] border-l-[10px] border-l-transparent ${dayEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
-                    {topicGroup && <span className="absolute top-0 right-0 w-0 h-0 border-t-[5px] border-l-[5px] border-l-transparent border-t-emerald-500" />}
+                    {topicGroup && <span className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-l-transparent border-t-emerald-500" />}
+                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent ${colorEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
                   </span>
                 );
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;

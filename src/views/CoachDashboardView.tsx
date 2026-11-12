@@ -665,6 +665,13 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Z kalendarza (termin tematu treningu): Grupy + ta grupa rozwinięta, przewinięta do widoku.
   useEffect(() => {
     if (!pendingOpenGroupId || coachGroups.length === 0) return;
+    // [ŚCIEŻKI 2026-11-12] „topic:grupa@dzień” (z Home) — okienko tematu nad Übersicht.
+    if (pendingOpenGroupId.startsWith('topic:')) {
+      const [gid, d] = pendingOpenGroupId.slice(6).split('@');
+      if (gid && d && coachGroups.some(g => g.id === gid)) setTopicEdit({ groupId: gid, date: d });
+      onClearPendingGroup?.();
+      return;
+    }
     // „grupa@YYYY-MM-DD” — z terminarza na konkretny dzień treningu.
     const [id, day] = pendingOpenGroupId.split('@');
     if (coachGroups.some(g => g.id === id)) {
@@ -2442,8 +2449,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         // tematu → grupa na ten dzień; zwykły termin → kalendarz.
         const openEv = (ev: any) => {
           const gid = ev.scheduledGroupId || ev.trainingTopicGroupId;
-          if (gid && coachGroupTopics[gid]?.[ev.date]) setTopicEdit({ groupId: gid, date: ev.date });
-          else if (ev.scheduledGroupId) onNavigate('COACH', 'GROUP', `${ev.scheduledGroupId}@${ev.date}`);
+          // [ŚCIEŻKI 2026-11-12] Trening grupy (z planu albo termin tematu) → zawsze okienko tematu.
+          // Dawniej zależało od tego, czy tematy już się wczytały (raz okienko, raz kalendarz).
+          if (gid) setTopicEdit({ groupId: gid, date: ev.date });
           else onNavigate('CALENDAR', undefined, ev.id);
         };
         const dayLabel = (d: Date) => {
@@ -2887,9 +2895,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
               sub: o.cancelled
                 ? [t('coachTermine.cancelled'), o.note].filter(Boolean).join(' · ')
                 : [o.place, topic].filter(Boolean).join(' · '),
-              onOpen: topic
-                ? () => setTopicEdit({ groupId: g.id, date: o.date })
-                : () => onNavigate('COACH', 'GROUP', `${g.id}@${o.date}`),
+              // [ŚCIEŻKI 2026-11-12] Zawsze okienko tematu; grupa na ten dzień — przyciskiem w okienku.
+              onOpen: () => setTopicEdit({ groupId: g.id, date: o.date }),
               occ: { groupId: g.id, time: o.time },
             });
           }
@@ -3095,6 +3102,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             modalOnly
             autoOpenDay={topicEdit.date}
             onModalClose={() => setTopicEdit(null)}
+            // Przejście po zamknięciu okienka — jego „wstecz” w historii nie może cofnąć nowego ekranu.
+            onOpenGroup={day => { setTopicEdit(null); setTimeout(() => onNavigate('COACH', 'GROUP', `${g.id}@${day}`), 350); }}
             groupId={g.id}
             groupName={g.name}
             members={studentsOfGroup(g.id)}

@@ -2438,6 +2438,8 @@ export const views = {
     groupTopicSave: "Speichern",
     groupTopicTodayClosed: "Heute · Training beendet",
     groupTopicEdit: "Thema bearbeiten",
+    groupTopicPast: "Training ist vorbei – ein neues Thema kann nicht mehr gespeichert werden.",
+    groupTopicOpenGroup: "Gruppe {{name}} an diesem Tag öffnen",
     groupTopicPlanned: "Geplant",
     groupTopicAdd: "Thema",
     groupTopicAddFor: "Thema für {{day}}",

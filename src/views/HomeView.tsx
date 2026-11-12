@@ -1310,9 +1310,9 @@ export default function HomeView({ userId, isCoach, onGoToCalendar, onGoToStats,
       key: `c_${nextCoach.id}`, kind: 'coachSent', when: whenOf(nextCoach.date, nextCoach.time),
       dayLabel: dayLabelOf(nextCoach.date), rel: relOf(nextCoach.date), title: nextCoach.title, meta: nextCoach.time || t('calendar.wholeDay'),
       stripe: 'border-l-rose-400',
-      // Trening z planu grupy otwiera grupę na ten dzień w panelu trenera.
-      onClick: () => (nextCoach.scheduledGroupId
-        ? onNavigate?.('COACH', 'GROUP', `${nextCoach.scheduledGroupId}@${nextCoach.date}`)
+      // [ŚCIEŻKI 2026-11-12] Trening grupy (z planu albo termin tematu) → okienko tematu, jak wszędzie.
+      onClick: () => ((nextCoach.scheduledGroupId || nextCoach.trainingTopicGroupId)
+        ? onNavigate?.('COACH', 'TOPIC', `${nextCoach.scheduledGroupId || nextCoach.trainingTopicGroupId}@${nextCoach.date}`)
         : onGoToCalendar(nextCoach.id)),
     });
     if (nextTrainerReceived) rest.push({

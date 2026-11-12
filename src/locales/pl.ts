@@ -2473,6 +2473,8 @@ export const views = {
     groupTopicSave: "Zapisz",
     groupTopicTodayClosed: "Dziś · trening zakończony",
     groupTopicEdit: "Edytuj temat",
+    groupTopicPast: "Trening już minął – nowego tematu nie można zapisać.",
+    groupTopicOpenGroup: "Otwórz grupę {{name}} w tym dniu",
     groupTopicPlanned: "Zaplanowane",
     groupTopicAdd: "Temat",
     groupTopicAddFor: "Temat na {{day}}",

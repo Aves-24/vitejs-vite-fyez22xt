@@ -122,7 +122,6 @@ async function probeAll(coach: Page, phase: string, out: string[]) {
 }
 
 test('ścieżki do treningu z planu: bez tematu i z tematem', async ({ browser }) => {
-  test.skip(!!process.env.CI, 'sonda ścieżek (2,5 min) — uruchamiana ręcznie, nie w CI');
   test.setTimeout(480_000);
   const { coach, errors } = await coachWithGroup(browser);
   const out: string[] = [];
@@ -146,6 +145,18 @@ test('ścieżki do treningu z planu: bez tematu i z tematem', async ({ browser }
 
   await probeAll(coach, 'Z TEMATEM', out);
 
+  // „Gruppe öffnen” w okienku → ekran grupy na ten dzień.
+  await step(coach, out, 'Z TEMATEM | okienko → Gruppe öffnen', [
+    () => coachNav(coach, 'event_note Termine').click({ timeout: 10000 }),
+    () => coach.getByRole('button', { name: 'Liste' }).click({ timeout: 10000 }),
+    () => coach.getByRole('button', { name: /Kader Plan/ }).first().click({ timeout: 10000 }),
+    () => coach.getByRole('button', { name: /Gruppe Kader an diesem Tag öffnen/ }).click({ timeout: 10000 }),
+  ]);
+
   console.log('\n=== CELE ŚCIEŻEK ===\n' + out.join('\n') + '\n');
+  // [ŚCIEŻKI 2026-11-12] Jeden cel: okienko tematu — nowy bez tematu (i w dniu przeszłym), edycja z tematem.
+  const expected = (l: string) => /Gruppe öffnen/.test(l) ? /GROUP/
+    : l.startsWith('BEZ') || /dzień przeszły/.test(l) ? /TOPIC_NEW/ : /TOPIC_EDIT/;
+  expect(out.filter(l => !expected(l).test(l))).toEqual([]);
   await expectNoErrors(coach, errors, 'ścieżki do treningu z planu');
 });

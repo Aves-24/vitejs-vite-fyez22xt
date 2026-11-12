@@ -950,13 +950,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     <span className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent border-t-rose-500" />
                   </span>
                 );
+                // [ŚCIEŻKI 2026-11-12] Dzień, w którym jest tylko trening z planu → okienko tematu (jak trójkącik),
+                // a nie formularz nowego terminu. Z innymi terminami — lista dnia jak dotąd.
+                const onDay = () => (planGroups.length > 0 && colorEvents.length === 0
+                  ? setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr })
+                  : handleDayClick(dateStr, dayEvents));
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
                   return (
                     <button
                       key={day}
-                      onClick={() => handleDayClick(dateStr, dayEvents)}
+                      onClick={onDay}
                       className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                     >
                       <div className="w-full h-full rounded-[10px] overflow-hidden flex flex-col relative">
@@ -1000,7 +1005,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 return (
                   <button
                     key={day}
-                    onClick={() => handleDayClick(dateStr, dayEvents)}
+                    onClick={onDay}
                     className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                   >
                     <div className={`relative overflow-hidden w-full h-full flex items-center justify-center rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
@@ -1676,7 +1681,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                const g = coachGroups.find(x => x.id === viewingEvent.trainingTopicGroupId);
                return g ? (
                  <button
-                   onClick={() => { closeViewingModal(false); onNavigate?.('COACH', 'GROUP', g.id); }}
+                   onClick={() => { closeViewingModal(false); onNavigate?.('COACH', 'GROUP', `${g.id}@${viewingEvent.date}`); }}
                    className="w-full mb-3 flex items-center gap-2.5 tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm pl-2 pr-3 py-2.5 text-left active:scale-[0.98] transition-all"
                  >
                    <span className="tb-icon w-8 h-8 rounded-lg flex items-center justify-center shrink-0">
@@ -1927,6 +1932,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             modalOnly
             autoOpenDay={topicEdit.date}
             onModalClose={() => setTopicEdit(null)}
+            onOpenGroup={day => { setTopicEdit(null); setTimeout(() => onNavigate?.('COACH', 'GROUP', `${g.id}@${day}`), 350); }}
             groupId={g.id}
             groupName={g.name}
             members={coachStudentsList.filter(s => (studentGroupMap[s.id] || []).includes(g.id))}

@@ -548,6 +548,9 @@ export default function App() {
       setOpenNewTrainerEvent(tab === 'NEW_TRAINER_EVENT');
     } else if (view === 'COACH' && tab === 'GROUP') {
       setPendingOpenGroupId(extraData || null);
+    } else if (view === 'COACH' && tab === 'TOPIC') {
+      // [ŚCIEŻKI 2026-11-12] Trening grupy z Home → okienko tematu nad Übersicht.
+      setPendingOpenGroupId(extraData ? `topic:${extraData}` : null);
     } else if (view === 'MY_COACH' || view === 'COACH') {
       setPendingMessageSenderId(extraData || null);
       if (view === 'MY_COACH') {

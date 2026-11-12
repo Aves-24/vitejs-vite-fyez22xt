@@ -157,7 +157,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, onAddMembers, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, part, defaultDay }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, onAddMembers, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, onOpenGroup, part, defaultDay }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -177,6 +177,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   modalOnly?: boolean;
   autoOpenDay?: string;
   onModalClose?: () => void;
+  /** [ŚCIEŻKI 2026-11-12] „Gruppe öffnen” w okienku — ekran grupy na ten dzień. */
+  onOpenGroup?: (day: string) => void;
   /** [GRUPA] Zakładka ekranu grupy: 'training' (temat, zaplanowane) albo 'history' (historia). */
   part?: 'training' | 'history';
   /** Dzień, na który „+ Thema” otwiera okienko — najbliższy trening z planu grupy. */
@@ -596,6 +598,10 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 </div>
               </div>
             )}
+            {/* Dzień minął, tematu nie było — nowego już nie zapiszemy (user 2026-11-12: bez ślepego zaułka). */}
+            {!modal.edit && !byDay[modal.day] && modal.day < today && (
+              <p className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 mt-2 shrink-0">{t('coachDashboard.groupTopicPast')}</p>
+            )}
             <div className="flex gap-2 mt-3 shrink-0">
               <button
                 onClick={() => (modal.edit ? edit(byDay[modal.day], modalBase) : create(modal.day, modalBase))}
@@ -619,6 +625,17 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
                 </button>
               )}
             </div>
+            {onOpenGroup && (
+              <button
+                type="button"
+                onClick={() => { const d = modal.day; setModal(null); onOpenGroup(d); }}
+                className="mt-2 shrink-0 w-full flex items-center justify-center gap-1.5 py-2.5 text-[12px] font-black text-[#0a3a2a] active:scale-95 transition-all"
+              >
+                <span className="material-symbols-outlined text-[18px]">folder_shared</span>
+                {t('coachDashboard.groupTopicOpenGroup', { name: groupName })}
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            )}
           </div>
         </div>,
         document.body,

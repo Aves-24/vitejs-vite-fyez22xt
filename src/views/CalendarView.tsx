@@ -764,7 +764,17 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   // [WARTUNG] Zrobiony wpis konserwacji to nie „nadchodzący termin” — siedzi w archiwum (Aufgaben).
   const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne' && !e.maintenanceGroup);
   const upcomingTrainerReceived = upcomingEvents.filter(e => e.category === 'Trener' && e.isMirrored);
-  const upcomingTrainerSent = upcomingEvents.filter(e => e.category === 'Trener' && !e.isMirrored);
+  // [TRÓJKĄCIK 2026-11-12] Treningi grup z planu na 4 tygodnie — bez tematu też na liście (dzień z terminem tematu już tam jest).
+  const planRows: Event[] = (() => {
+    const d = new Date(`${todayStr}T12:00:00`); d.setDate(d.getDate() + 28);
+    const to = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    const topicDays = new Set(events.filter(e => e.category === 'Trener' && !e.isMirrored && e.trainingTopicGroupId).map(e => `${e.trainingTopicGroupId}@${e.date}`));
+    return coachGroups.flatMap(g => listOccurrences(g.schedule, todayStr, to)
+      .filter(o => !o.cancelled && !topicDays.has(`${g.id}@${o.date}`))
+      .map(o => ({ id: `plan_${g.id}_${o.date}`, title: g.name, date: o.date, time: o.time, address: (o as any).place || '', category: 'Trener', isMirrored: false, trainingTopicGroupId: g.id, coachStudents: [], planOnly: true } as unknown as Event)));
+  })();
+  const upcomingTrainerSent = [...upcomingEvents.filter(e => e.category === 'Trener' && !e.isMirrored), ...planRows]
+    .sort((a, b) => `${a.date} ${a.time || '99:99'}`.localeCompare(`${b.date} ${b.time || '99:99'}`));
 
   const nextTournamentId = upcomingTournaments.length > 0 ? upcomingTournaments[0].id : null;
 
@@ -802,7 +812,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     return (
       <div key={event.id} className={isToday ? 'tb-today' : undefined}>
       <div className={`tb-card ${stripe} border rounded-l-md rounded-r-2xl shadow-sm flex items-center ${planGid ? 'relative overflow-hidden' : ''}`}>
-        {planGid && <PlanCorner hasTopic />}
+        {planGid && <PlanCorner hasTopic={!(event as any).planOnly} />}
         <button
           type="button"
           onClick={() => (planGid && event.date ? setTopicEdit({ groupId: planGid, date: event.date }) : setViewingEvent(event))}
@@ -1025,7 +1035,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
 
-        {todoEvents.length === 0 && upcomingEvents.length === 0 ? (
+        {todoEvents.length === 0 && upcomingEvents.length === 0 && planRows.length === 0 ? (
           <div className="text-center py-10 text-gray-300 flex flex-col items-center">
             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
             <p className="font-bold text-[10px] uppercase tracking-widest">{t('calendar.noEvents')}</p>

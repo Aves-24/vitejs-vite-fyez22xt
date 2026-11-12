@@ -1085,9 +1085,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllTournaments && upcomingTournaments.length > 1 && (
                   <button
                     onClick={() => setShowAllTournaments(false)}
-                    className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                    className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
                   >
-                    {t('calendar.collapseTournaments')}
+                    <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseTournaments')}
                   </button>
                 )}
               </div>
@@ -1111,9 +1111,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 {showAllOthers && upcomingOthers.length > 1 && (
                   <button
                     onClick={() => setShowAllOthers(false)}
-                    className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                    className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
                   >
-                    {t('calendar.collapseOthers')}
+                    <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseOthers')}
                   </button>
                 )}
               </div>
@@ -1151,9 +1151,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   {showAll && trainerEvents.length > 1 && (
                     <button
                       onClick={() => setShowAll(false)}
-                      className="w-full py-2 text-gray-400 font-black text-[9px] uppercase tracking-widest rounded-lg active:bg-gray-100 active:scale-95 transition-all mt-0.5"
+                      className="w-full mt-1 py-2 flex items-center justify-center gap-1 rounded-xl bg-gray-100 text-[#0a3a2a] font-black text-[11px] uppercase tracking-wide active:scale-95 transition-all"
                     >
-                      {t('calendar.collapseTrainer')}
+                      <span className="material-symbols-outlined text-[18px]">expand_less</span>{t('calendar.collapseTrainer')}
                     </button>
                   )}
                 </div>

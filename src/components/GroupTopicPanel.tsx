@@ -450,14 +450,21 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
 
   const modalEl = modal && createPortal(
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[500000] flex items-center justify-center p-4 animate-fade-in" onClick={() => setModal(null)}>
-          <div className="bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-3 mb-3 shrink-0">
+          <div className="relative overflow-hidden bg-white rounded-[32px] p-6 w-full max-w-[400px] shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            {/* Ten sam znak co w kalendarzu Monat (user 2026-11-12): różowy = trening z planu, zielona obwódka = temat już zapisany. */}
+            {(modal.edit || !!byDay[modal.day]) && <span aria-hidden className="absolute top-0 right-0 w-0 h-0 border-t-[44px] border-l-[44px] border-l-transparent border-t-emerald-500" />}
+            <span aria-hidden className="absolute top-0 right-0 w-0 h-0 border-t-[34px] border-l-[34px] border-l-transparent border-t-rose-500" />
+            <div className="flex items-center gap-3 mb-3 shrink-0 pr-6">
               <div className="w-10 h-10 rounded-full bg-[#0a3a2a] flex items-center justify-center shrink-0">
                 <span className="material-symbols-outlined text-white">sports</span>
               </div>
-              <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
-                {t(modal.edit ? 'coachDashboard.groupTopicEdit' : 'coachDashboard.groupTopicModalTitle')}
-              </h2>
+              <div className="min-w-0">
+                <h2 className="text-xl font-black text-[#0a3a2a] leading-none">
+                  {t(modal.edit ? 'coachDashboard.groupTopicEdit' : 'coachDashboard.groupTopicModalTitle')}
+                </h2>
+                {/* Do której grupy (user 2026-11-12) */}
+                <p className="text-[12px] font-bold text-gray-500 mt-1 truncate">{groupName}</p>
+              </div>
             </div>
             <div className="overflow-y-auto flex-1 space-y-3 pr-1 pb-2 hide-scrollbar">
               {!modal.edit && <p className="text-[10px] font-bold text-gray-500 leading-snug">{t('coachDashboard.groupTopicModalHint')}</p>}

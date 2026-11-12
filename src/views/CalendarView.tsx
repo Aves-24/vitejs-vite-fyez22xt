@@ -945,8 +945,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     onClick={e => { e.stopPropagation(); setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr }); }}
                     className="absolute top-0 right-0 w-[20px] h-[20px] z-10"
                   >
-                    {topicGroup && <span className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-l-transparent border-t-emerald-500" />}
-                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent ${colorEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
+                    {/* Zawsze różowy; na kolorowym dniu biała obwódka, żeby był widoczny; temat = zielona obwódka. */}
+                    {(topicGroup || colorEvents.length > 0) && <span className={`absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-l-transparent ${topicGroup ? 'border-t-emerald-500' : 'border-t-white'}`} />}
+                    <span className="absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent border-t-rose-500" />
                   </span>
                 );
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;

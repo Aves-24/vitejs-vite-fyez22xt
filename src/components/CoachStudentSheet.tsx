@@ -193,7 +193,13 @@ export default function CoachStudentSheet({
   // Odhaczone / z odpowiedzią przestaje „czekać” (user 2026-11-12) — chowamy przy następnym otwarciu,
   // a w tej wizycie zostaje widoczne, żeby trener zobaczył efekt kliknięcia.
   const [handledNow, setHandledNow] = useState(false);
-  useEffect(() => { setHandledNow(false); }, [student.id]);
+  useEffect(() => { setHandledNow(false); setArchiveOpen(false); }, [student.id]);
+  // Archiwum: 5 ostatnich notatek ucznia, które trener odhaczył lub skomentował (z już wczytanych 28 dni).
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const handledNotes = (rawSessions as any[])
+    .filter(s => s.note && (s.coachSeenAt || s.coachNote) && !(noteWaiting && s.id === snap?.note?.id))
+    .sort((a, b) => b.ts - a.ts)
+    .slice(0, 5);
   const noteWaiting = !!snap?.note && (handledNow || (!snap.note.coachSeenAt && !snap.note.coachNote));
 
   // Trener przeczytał, ale nie chce nic pisać — ✓ zamiast odpowiedzi.
@@ -392,6 +398,36 @@ export default function CoachStudentSheet({
               </EntryRow>
             </div>
           </>
+        )}
+
+        {/* Archiwum odhaczonych / skomentowanych notatek (user 2026-11-12) */}
+        {handledNotes.length > 0 && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={() => setArchiveOpen(o => !o)}
+              className="flex items-center gap-1.5 text-[12px] font-black text-gray-500 px-1 active:scale-95 transition-all"
+            >
+              <span className="material-symbols-outlined text-[18px]">inventory_2</span>
+              {t('coachSheet.archiveBtn', { count: handledNotes.length })}
+              <span className="material-symbols-outlined text-[18px]">{archiveOpen ? 'expand_less' : 'expand_more'}</span>
+            </button>
+            {archiveOpen && (
+              <div className="mt-1.5 bg-gray-50 border border-gray-100 rounded-xl p-2.5 space-y-2.5">
+                {handledNotes.map((n: any) => (
+                  <div key={n.id} className="text-[12px] leading-snug">
+                    <p className="text-[10px] font-black text-gray-400">{fmtDate(n.ts)}</p>
+                    <p className="font-bold text-[#0a3a2a] break-words">„{n.note}”</p>
+                    {n.coachNote
+                      ? <p className="font-bold text-amber-800 break-words mt-0.5">↳ {n.coachNote}</p>
+                      : <p className="flex items-center gap-1 text-[10px] font-black text-emerald-700 mt-0.5">
+                          <span className="material-symbols-outlined text-[14px]">done_all</span>{t('coachSheet.seenDone')}
+                        </p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ── 2. AKTUELL: fokus, najbliższy start, kamienie milowe */}

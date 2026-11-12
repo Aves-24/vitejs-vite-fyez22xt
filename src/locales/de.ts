@@ -2505,6 +2505,7 @@ export const views = {
   coachSheet: {
     curveNeedsTwo: "Kurve ab 2 Trainings",
     secWaiting: "Wartet auf dich",
+    archiveBtn: "Erledigte Notizen ({{count}})",
     secNow: "Aktuell",
     studentWroteKind: "{{name}} schreibt",
     focusOf: "Fokus von {{name}}",

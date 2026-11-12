@@ -2542,6 +2542,7 @@ export const views = {
   coachSheet: {
     curveNeedsTwo: "Krzywa od 2 treningów",
     secWaiting: "Czeka na Ciebie",
+    archiveBtn: "Załatwione notatki ({{count}})",
     secNow: "Aktualnie",
     studentWroteKind: "{{name}} pisze",
     focusOf: "Fokus: {{name}}",

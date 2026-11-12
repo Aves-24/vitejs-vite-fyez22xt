@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { fetchCoachGroups, studentGroupMapOf } from '../utils/coachGroups';
+import { listOccurrences } from '../utils/groupSchedule';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
 import { createPortal } from 'react-dom'; 
@@ -136,7 +137,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
-  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string}[]>([]);
+  const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: unknown}[]>([]);
   const [studentGroupMap, setStudentGroupMap] = useState<Record<string, string[]>>({});
   const [newCoachStudents, setNewCoachStudents] = useState<'all' | string[]>([]);
 
@@ -675,6 +676,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const formatDateStr = (year: number, month: number, day: number) => {
     return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   };
+  // Treningi grup z planu w widocznym miesiącu (user 2026-11-12): trójkącik w prawym górnym rogu dnia.
+  const planDays = new Set<string>();
+  {
+    const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+    const from = formatDateStr(y, m, 1);
+    const to = formatDateStr(m === 11 ? y + 1 : y, (m + 1) % 12, 1);
+    for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.add(o.date);
+  }
 
   const upcomingEvents = events.filter(e => e.date >= todayStr);
 
@@ -918,6 +927,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const hasMirroredTrainer = dayEvents.some(e => e.category === 'Trener' && e.isMirrored);
                 const hasTrainer = hasOwnTrainer || hasMirroredTrainer;
                 const isToday = dateStr === todayStr;
+                const planTri = planDays.has(dateStr) && (
+                  <span aria-hidden className={`absolute top-0 right-0 w-0 h-0 border-t-[9px] border-l-[9px] border-l-transparent z-10 ${dayEvents.length ? 'border-t-white' : 'border-t-rose-500'}`} />
+                );
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
@@ -933,6 +945,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         {hasMaintenance && <div className={`${MAINTENANCE_BG} flex-1`} />}
                         {hasOwnTrainer && <div className="bg-rose-500 flex-1" />}
                         {hasMirroredTrainer && <div className="bg-violet-500 flex-1" />}
+                        {planTri}
                         <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[11px] drop-shadow">
                           {day}
                         </span>
@@ -970,7 +983,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     onClick={() => handleDayClick(dateStr, dayEvents)}
                     className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <div className={`w-full h-full flex items-center justify-center rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
+                    <div className={`relative overflow-hidden w-full h-full flex items-center justify-center rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
+                      {planTri}
                       {day}
                     </div>
                   </button>

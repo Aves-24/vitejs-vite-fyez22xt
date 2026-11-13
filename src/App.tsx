@@ -712,19 +712,21 @@ export default function App() {
     </button>
   );
 
-  // Przełącznik trybu: zawsze ostatni, za kreską, ikona na kolorze trybu, do którego prowadzi.
+  // Przełącznik trybu: pigułka nad prawym końcem paska (user 2026-11-13) — zwalnia
+  // miejsce w pasku, a palec trafia tam gdzie wcześniej, tylko trochę wyżej.
+  // Ikona na kolorze trybu, do którego prowadzi. Zostaje w <nav> (e2e szukają go tam).
   const navModeSwitch = (icon: string, label: string, pill: string, onClick: () => void) => (
-    <>
-      <span aria-hidden="true" className="w-px h-8 bg-gray-200 shrink-0" />
-      <button onClick={onClick} className={`${NAV_SLOT} text-gray-500`}>
-        <span className={`${NAV_ICON} ${pill}`}>{icon}</span>
-        <span className={`${NAV_LABEL} font-bold`}>{label}</span>
-      </button>
-    </>
+    <button
+      onClick={onClick}
+      className="absolute right-2 bottom-full mb-2 flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full bg-white border border-gray-200 shadow-[0_4px_12px_rgba(0,0,0,0.12)] text-gray-600 active:scale-95 transition-all z-10"
+    >
+      <span className={`material-symbols-outlined text-[18px] leading-none w-7 h-7 rounded-full flex items-center justify-center ${pill}`}>{icon}</span>
+      <span className="text-[11px] font-black leading-none whitespace-nowrap">{label}</span>
+    </button>
   );
 
   // Wspólna rama: biały pasek 80 px z cieniem; zawodnik ma wcięcie pod żółty przycisk.
-  const navFrame = (ariaLabel: string, notch: boolean, children: React.ReactNode) => (
+  const navFrame = (ariaLabel: string, notch: boolean, children: React.ReactNode, modeSwitch?: React.ReactNode) => (
     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-[100]">
       <nav aria-label={ariaLabel} className="relative h-20 w-full px-1">
         <svg viewBox="0 0 390 80" preserveAspectRatio="none" className="absolute inset-0 w-full h-full pointer-events-none" style={{filter:'drop-shadow(0 -6px 16px rgba(0,0,0,0.08))'}}>
@@ -732,6 +734,7 @@ export default function App() {
         </svg>
         {!notch && <div aria-hidden="true" className="absolute top-0 inset-x-0 h-[3px] bg-rose-400" />}
         <div className="flex items-center h-full w-full relative">{children}</div>
+        {modeSwitch}
       </nav>
       <div className="bg-white" style={{height:'env(safe-area-inset-bottom)'}}/>
     </div>
@@ -746,10 +749,9 @@ export default function App() {
         {navButton('coach', 'groups', 'folder_shared', t('nav.coachGroups'), currentView === 'COACH' && coachSection === 'GROUPS', () => handleNavigate('COACH', 'GROUPS'))}
         {/* Rzadkie rzeczy trenera: uczniowie, grupy, stały trening, konto (user 2026-10-27). */}
         {navButton('coach', 'settings', 'settings', t('nav.settings'), currentView === 'COACH' && coachSection === 'SETTINGS', () => handleNavigate('COACH', 'SETTINGS'))}
-        {navModeSwitch('target', t('nav.archerMode'), 'bg-[#F2C94C] text-[#0a3a2a]', () => handleNavigate('HOME'))}
       </div>
     </>
-  ));
+  ), navModeSwitch('target', t('nav.archerMode'), 'bg-[#F2C94C] text-[#0a3a2a]', () => handleNavigate('HOME')));
 
   const renderBottomNav = () => {
     const hiddenViews: AppView[] = ['SETUP', 'BATTLE_LOBBY', 'BATTLE_HISTORY', 'SCORING', 'ANNOUNCEMENTS', 'ADMIN', 'STUDENT_PROFILE', 'WORLD_LEADERBOARD', 'DELAY_MIRROR'];
@@ -802,10 +804,9 @@ export default function App() {
         <div className="flex flex-1 items-center h-full">
           {navButton('archer', 'stats', 'analytics', t('nav.stats'), currentView === 'STATS', () => handleNavigate('STATS'))}
           {navButton('archer', 'settings', 'tune', t('nav.settings'), currentView === 'SETTINGS', () => handleNavigate('SETTINGS'))}
-          {isCoach && navModeSwitch('sports', t('nav.coach'), 'bg-[#0a3a2a] text-[#fed33e]', () => handleNavigate('COACH'))}
         </div>
       </>
-    ));
+    ), isCoach ? navModeSwitch('sports', t('nav.coach'), 'bg-[#0a3a2a] text-[#fed33e]', () => handleNavigate('COACH')) : undefined);
   };
 
   if (!isAuthLoading && !user) return <><AuthView /><MoveNotice hidden={false} /></>;

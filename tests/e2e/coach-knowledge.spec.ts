@@ -86,6 +86,20 @@ test('Wissen: temat z planu, kopiowanie linku i link do następnego treningu', a
   // Szukajka na liście.
   await coach.getByRole('button', { name: 'Zurück', exact: true }).click();
   await coach.screenshot({ path: 'test-results/wissen/list.png' });
+
+  // Podkategorie: klik w kategorię rozwija jej tematy, też te bez treningów.
+  await coach.getByRole('button', { name: /Zielen & Expansion/ }).click();
+  await expect(coach.getByRole('button', { name: 'Klickerkontrolle 2×' })).toBeVisible();
+  await expect(coach.getByRole('button', { name: 'Atemtechnik', exact: true })).toBeVisible();
+  await coach.screenshot({ path: 'test-results/wissen/subtopics.png' });
+  await coach.getByRole('button', { name: 'Atemtechnik', exact: true }).click();
+  await expect(coach.getByRole('heading', { name: 'Atemtechnik' })).toBeVisible();
+  await expect(coach.getByText('Noch keine Trainings zu diesem Thema.')).toBeVisible();
+  await coach.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await coach.getByRole('button', { name: 'Klickerkontrolle 2×' }).click();
+  await expect(coach.getByText('Klicker halten')).toBeVisible();
+  await coach.getByRole('button', { name: 'Zurück', exact: true }).click();
+  await coach.getByRole('button', { name: /Alle/ }).first().click();
   await coach.getByPlaceholder('Thema, Link oder Notiz suchen').fill('rücken');
   await expect(coach.getByRole('button', { name: /Klickerkontrolle/ })).toBeVisible();
   await coach.getByPlaceholder('Thema, Link oder Notiz suchen').fill('xyz');

@@ -2351,6 +2351,7 @@ export const views = {
     trainingsCount_other: "{{count}} Trainings",
     links: "Links",
     noLinks: "Noch keine Links zu diesem Thema.",
+    noTrainings: "Noch keine Trainings zu diesem Thema.",
     usedTimes_one: "{{count}}× verwendet",
     usedTimes_other: "{{count}}× verwendet",
     lastUsed: "zuletzt {{date}}",

@@ -53,8 +53,19 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
 
   const linkCount = useMemo(() => kb.reduce((n, k) => n + k.links.length, 0), [kb]);
   const filtered = kb.filter(k => (cat === 'all' || k.cat === cat) && matchesKnowledge(k, label(k.topic), query));
-  const cats = [...CAT_ORDER, NO_TOPIC_CAT].filter(c => kb.some(k => k.cat === c));
-  const current = openTopic !== null ? kb.find(k => k.topic === openTopic) : undefined;
+  // Kategorie zawsze wszystkie (jak w pickerze); „bez tematu” tylko gdy coś tam jest.
+  const cats = [...CAT_ORDER, ...(kb.some(k => k.cat === NO_TOPIC_CAT) ? [NO_TOPIC_CAT] : [])];
+  // [PODKATEGORIE] (user 2026-11-13) Klik w kategorię rozwija jej tematy do kliknięcia —
+  // także te, których jeszcze nie było na treningu (wyszarzone).
+  const subtopicsOf = (c: string): string[] => {
+    const builtin = TRAINING_TOPICS.find(x => x.id === c)?.subtopics.map(x => x.id) ?? [];
+    const custom = customTopics.filter(x => x.cat === c).map(x => x.id);
+    const used = kb.filter(k => k.cat === c).map(k => k.topic);
+    return [...new Set([...builtin, ...custom, ...used])];
+  };
+  const kbOf = (topic: string) => kb.find(k => k.topic === topic);
+  const current: KnowledgeTopic | undefined = openTopic === null ? undefined
+    : kbOf(openTopic) ?? { topic: openTopic, cat: catOf(openTopic), links: [], trainings: [], lastDay: '' };
 
   const copy = async (url: string) => {
     try {
@@ -156,6 +167,7 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
 
         <section>
           <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2">{t('coachKnowledge.trainings')}</h3>
+          {current.trainings.length === 0 && <p className="text-[12px] font-bold text-gray-400 ml-1">{t('coachKnowledge.noTrainings')}</p>}
           <ol className="relative pl-5 space-y-2 before:content-[''] before:absolute before:left-[7px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
             {current.trainings.map(tr => {
               const key = `${tr.groupId}_${tr.day}`;
@@ -259,14 +271,29 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
           </button>
         )}
       </label>
-      {cats.length > 1 && (
-        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar -mx-5 px-5">
-          {['all', ...cats].map(c => (
-            <button key={c} onClick={() => setCat(c)} aria-pressed={cat === c}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all ${cat === c ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}>
-              {c === 'all' ? t('coachKnowledge.all') : catLabel(c)}
-            </button>
-          ))}
+      <div className="flex gap-1.5 overflow-x-auto hide-scrollbar -mx-5 px-5">
+        {['all', ...cats].map(c => (
+          <button key={c} onClick={() => setCat(cat === c && c !== 'all' ? 'all' : c)} aria-pressed={cat === c}
+            className={`shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black border transition-all ${cat === c ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'}`}>
+            {c === 'all' ? t('coachKnowledge.all') : catLabel(c)}
+            {c !== 'all' && c !== NO_TOPIC_CAT && (
+              <span className="material-symbols-outlined text-[16px] -mr-1">{cat === c ? 'expand_less' : 'expand_more'}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {cat !== 'all' && cat !== NO_TOPIC_CAT && (
+        <div className="flex flex-wrap gap-1.5 bg-gray-50 border border-gray-100 rounded-2xl p-2.5 animate-fade-in">
+          {subtopicsOf(cat).map(id => {
+            const k = kbOf(id);
+            return (
+              <button key={id} onClick={() => setOpenTopic(id)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-black border active:scale-95 transition-all ${k ? 'bg-white text-[#0a3a2a] border-gray-200 shadow-sm' : 'bg-transparent text-gray-400 border-dashed border-gray-300'}`}>
+                {label(id)}
+                {k && <span className="text-[10px] font-black text-rose-500 tabular-nums">{k.trainings.length}×</span>}
+              </button>
+            );
+          })}
         </div>
       )}
       {filtered.length === 0 ? (

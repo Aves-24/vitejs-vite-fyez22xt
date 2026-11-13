@@ -157,7 +157,7 @@ export function TopicMemberList({ members, gt, status, onAssign, saving, onOpenS
   );
 }
 
-export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, onAddMembers, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, onOpenGroup, part, defaultDay }: {
+export default function GroupTopicPanel({ groupId, groupName, members, coachId, topics: byDay, onChanged, showToast, onOpenStudent, onAddMembers, renderHistory, focusDay, onClearFocusDay, modalOnly, autoOpenDay, onModalClose, onOpenGroup, part, defaultDay, prefill }: {
   groupId: string;
   groupName: string;
   members: any[];
@@ -183,6 +183,8 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   part?: 'training' | 'history';
   /** Dzień, na który „+ Thema” otwiera okienko — najbliższy trening z planu grupy. */
   defaultDay?: string;
+  /** [WISSEN] Okienko z autoOpenDay od razu z tym linkiem (pierwsze wolne miejsce) i — przy nowym treningu — tematem. */
+  prefill?: { url: string; title: string; topic: string };
 }) {
   const { t, i18n } = useTranslation();
   const [modal, setModal] = useState<{ day: string; edit: boolean } | null>(null);
@@ -382,7 +384,17 @@ export default function GroupTopicPanel({ groupId, groupName, members, coachId, 
   useEffect(() => {
     if (!autoOpenDay || autoOpenedRef.current) return;
     autoOpenedRef.current = true;
-    openModal(autoOpenDay, byDay[autoOpenDay]);
+    const gt = byDay[autoOpenDay];
+    openModal(autoOpenDay, gt);
+    if (prefill) {
+      const links = [0, 1, 2].map(i => gt?.links?.[i] ?? '');
+      const slot = links.indexOf('');
+      if (!links.includes(prefill.url) && slot >= 0) {
+        setLinkInputs(links.map((l, i) => (i === slot ? prefill.url : l)));
+        setLinkTitleInputs([0, 1, 2].map(i => (i === slot ? prefill.title : gt?.linkTitles?.[i] ?? '')));
+      }
+      if (!gt && prefill.topic) setPickedTopics([prefill.topic]);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenDay]);
 

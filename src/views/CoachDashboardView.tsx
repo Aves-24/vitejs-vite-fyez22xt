@@ -15,6 +15,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { createPortal } from 'react-dom';
 import StudentMessageSheet from '../components/StudentMessageSheet';
 import ViewHeader from '../components/ViewHeader';
+import CoachKnowledge from '../components/CoachKnowledge';
 import { getPublicProfile } from '../utils/publicProfile';
 import { loadUpcomingEvents } from '../utils/upcomingEvents';
 import { effectiveCoachLimit } from '../utils/coachAccess';
@@ -324,7 +325,7 @@ interface CoachDashboardViewProps {
   /** [TERMINE] Przełącznik Liste/Monat — podmienia widok bez kroku w historii. */
   onSwitchTermine?: (v: TermineView) => void;
   /** Zakładka trybu trenera z dolnego menu: Heute albo Schüler (z Gruppen). */
-  section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'SETTINGS';
+  section?: 'TODAY' | 'EVENTS' | 'ATHLETES' | 'GROUPS' | 'KNOWLEDGE' | 'SETTINGS';
 }
 
 export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitchTermine, pendingOpenStudentId, onClearPending, pendingOpenGroupId, onClearPendingGroup, section = 'TODAY' }: CoachDashboardViewProps) {
@@ -421,7 +422,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // [TERMINE] Grupa otwarta z terminarza na konkretny (przyszły) trening.
   const [groupFocusDay, setGroupFocusDay] = useState<{ groupId: string; day: string } | null>(null);
   // [TERMINE] Okienko tematu treningu otwarte z terminarza (grupa + dzień).
-  const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string } | null>(null);
+  const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string; prefill?: { url: string; title: string; topic: string } } | null>(null);
   const [coachGroupTopics, setCoachGroupTopics] = useState<Record<string, GroupTopicsByDay>>({});
   useEffect(() => {
     if (!userId) return;
@@ -2420,7 +2421,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
         // Z Schüler/Gruppen strzałka wraca do Übersicht, z Übersicht — do trybu zawodnika.
         onBack={() => (section === 'GROUPS' && activeGroup !== 'ALL' ? closeGroup()
           : section === 'TODAY' ? (onBack || onNavigate)('HOME') : (onBack || onNavigate)('COACH', 'TODAY'))}
-        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : section === 'SETTINGS' ? t('coachSettings.title') : t('coachDashboard.subtitle')}
+        title={section === 'ATHLETES' ? t('nav.coachAthletes') : section === 'GROUPS' ? t('nav.coachGroups') : section === 'EVENTS' ? t('nav.coachEvents') : section === 'SETTINGS' ? t('coachSettings.title') : section === 'KNOWLEDGE' ? t('nav.coachKnowledge') : t('coachDashboard.subtitle')}
         hideLogo
       />
 
@@ -3122,6 +3123,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
             key={`${topicEdit.groupId}_${topicEdit.date}`}
             modalOnly
             autoOpenDay={topicEdit.date}
+            prefill={topicEdit.prefill}
             onModalClose={() => setTopicEdit(null)}
             // Przejście po zamknięciu okienka — jego „wstecz” w historii nie może cofnąć nowego ekranu.
             onOpenGroup={day => { setTopicEdit(null); setTimeout(() => onNavigate('COACH', 'GROUP', `${g.id}@${day}`), 350); }}
@@ -3316,6 +3318,15 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
           user 2026-10-27): uczniowie i miejsca, grupy z planem, terminy, konto.
           Okna (skaner, grupa, plan, usuwanie) to te same co wcześniej. */}
       {section === 'SETTINGS' && renderSettings()}
+
+      {/* [WISSEN] Baza wiedzy: tematy z planów grup, linki i dawne treningi. */}
+      {section === 'KNOWLEDGE' && (
+        <CoachKnowledge
+          groups={coachGroups}
+          showToast={showToast}
+          onAddToTraining={x => setTopicEdit({ groupId: x.groupId, date: x.day, prefill: { url: x.link.url, title: x.link.title, topic: x.topic } })}
+        />
+      )}
 
       {/* Zakładka UCZNIOWIE — sama lista, bez paska grup */}
       {section === 'ATHLETES' && (

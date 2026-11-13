@@ -985,11 +985,17 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const tourneyIcon = coachMode && anyTournament;
                 // Start ucznia: mniejszy złoty puchar obok mojego (user 2026-11-13).
                 const dayStarts = startsByDay.get(dateStr) || [];
-                const trophies = (onColor: boolean) => (tourneyIcon || dayStarts.length > 0) && (
-                  <span className="flex items-end justify-center gap-[1px] leading-none">
-                    {tourneyIcon && <span className={`material-symbols-outlined text-[12px] leading-none ${onColor ? 'text-white' : 'text-[#0a3a2a]'}`}>emoji_events</span>}
-                    {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
-                  </span>
+                // Mój start: puchar w żółtym kółku pod numerem; start ucznia: mały złoty puchar
+                // przy prawej krawędzi dnia (user 2026-11-13).
+                const trophies = (onColor: boolean) => (
+                  <>
+                    {tourneyIcon && (
+                      <span data-testid="own-start-trophy" className="mt-[1px] w-[15px] h-[15px] rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center shadow-sm">
+                        <span className="material-symbols-outlined text-[11px] leading-none">emoji_events</span>
+                      </span>
+                    )}
+                    {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`absolute right-[2px] top-1/2 -translate-y-1/2 material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
+                  </>
                 );
                 const hasTournament = anyTournament && !coachMode;
                 const hasOther = colorEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
@@ -1295,7 +1301,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2">
               {coachMode
-                ? <span className="material-symbols-outlined text-[14px] w-3 text-[#0a3a2a] flex-shrink-0 leading-none">emoji_events</span>
+                ? <span className="w-[15px] h-[15px] rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined text-[11px] leading-none">emoji_events</span></span>
                 : <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />}
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTournament', 'Turniej')}</span>
             </div>

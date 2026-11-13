@@ -992,18 +992,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         document.body,
       )}
 
-      {/* [PRYWATNY KALENDARZ 2026-11-13] Trener, który sam jest uczniem innego trenera (i każdy, kto
-          należy do grupy): ikonki tylko gdy mają co filtrować — zwykły strzelec bez roli i bez grupy
-          ich nie widzi w ogóle. */}
-      {!coachMode && (isCoach || memberPlans.length > 0) && (
-        <div className="px-4 mt-4 flex items-center justify-end gap-2 flex-wrap shrink-0">
-          <TermineFilterToggles filters={[
-            { on: showAsTrainer, toggle: toggleAsTrainer, icon: 'event_repeat', label: t('calendar.showAsTrainer'), onText: t('calendar.hint_asTrainerOn'), offText: t('calendar.hint_asTrainerOff'), testId: 'cal-toggle-as-trainer', hidden: !isCoach },
-            { on: showMyGroup, toggle: toggleMyGroup, icon: 'groups', label: t('calendar.showMyGroup'), onText: t('calendar.hint_myGroupOn'), offText: t('calendar.hint_myGroupOff'), testId: 'cal-toggle-my-group', hidden: memberPlans.length === 0 },
-          ]} />
-        </div>
-      )}
-
       {/* [TERMINE] U trenera miesiąc to drugi widok ekranu Termine — ten sam przełącznik co na liście. */}
       {coachMode && (
         <div className="px-4 mt-4 flex items-center justify-between gap-2 flex-wrap shrink-0">
@@ -1018,15 +1006,31 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
       <div className="px-4 mt-4 mb-2 shrink-0">
         <div className="bg-white rounded-[24px] border border-gray-100 px-3 py-2.5 shadow-sm">
-           <div className="flex justify-between items-center mb-1.5 px-1">
-             <button onClick={prevMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
-             <h3 className="font-black text-[#0a3a2a] uppercase tracking-widest text-[10px]">
-                {calendarDate.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
-             </h3>
-             <div className="flex items-center gap-1">
-               <button onClick={nextMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
-             </div>
-           </div>
+           {/* [PRYWATNY KALENDARZ 2026-11-13] Ikonki „Als Trainer” / „Meine Gruppe” w wierszu miesiąca
+               (user: nie obniżać kalendarza) — tylko gdy jest co filtrować; zwykły strzelec ich nie ma. */}
+           {(() => {
+             const monthNav = (
+               <>
+                 <button onClick={prevMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_left</span></button>
+                 <h3 className="font-black text-[#0a3a2a] uppercase tracking-widest text-[10px]">
+                    {calendarDate.toLocaleDateString(currentLocale, { month: 'long', year: 'numeric' })}
+                 </h3>
+                 <button onClick={nextMonth} className="p-1 text-gray-400 active:scale-90"><span className="material-symbols-outlined text-[18px]">chevron_right</span></button>
+               </>
+             );
+             if (coachMode || !(isCoach || memberPlans.length > 0)) {
+               return <div className="flex justify-between items-center mb-1.5 px-1">{monthNav}</div>;
+             }
+             return (
+               <div className="flex justify-between items-center mb-1.5 px-1 gap-2">
+                 <div className="flex items-center gap-1 min-w-0">{monthNav}</div>
+                 <TermineFilterToggles size="sm" filters={[
+                   { on: showAsTrainer, toggle: toggleAsTrainer, icon: 'event_repeat', label: t('calendar.showAsTrainer'), onText: t('calendar.hint_asTrainerOn'), offText: t('calendar.hint_asTrainerOff'), testId: 'cal-toggle-as-trainer', hidden: !isCoach },
+                   { on: showMyGroup, toggle: toggleMyGroup, icon: 'groups', label: t('calendar.showMyGroup'), onText: t('calendar.hint_myGroupOn'), offText: t('calendar.hint_myGroupOff'), testId: 'cal-toggle-my-group', hidden: memberPlans.length === 0 },
+                 ]} />
+               </div>
+             );
+           })()}
            
            <div className="grid grid-cols-7 gap-1 text-center mb-1">
              {dayNames.map(d => (

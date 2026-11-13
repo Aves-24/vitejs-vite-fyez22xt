@@ -18,7 +18,8 @@ export interface TermineFilter {
 
 const HINT_MS = 2200;
 
-export default function TermineFilterToggles({ filters }: { filters: TermineFilter[] }) {
+/** `sm` — mniejsze, do wiersza z nazwą miesiąca w prywatnym kalendarzu (user 2026-11-13). */
+export default function TermineFilterToggles({ filters, size = 'md' }: { filters: TermineFilter[]; size?: 'md' | 'sm' }) {
   const [hint, setHint] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
@@ -42,12 +43,12 @@ export default function TermineFilterToggles({ filters }: { filters: TermineFilt
           aria-label={b.label}
           title={b.label}
           onClick={() => click(b)}
-          className={`relative w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all border ${
+          className={`relative ${size === 'sm' ? 'w-8 h-8 rounded-lg' : 'w-9 h-9 rounded-xl'} flex items-center justify-center active:scale-95 transition-all border ${
             b.on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'
           }`}
         >
-          <span className="material-symbols-outlined text-[18px]">{b.icon}</span>
-          {!b.on && <span aria-hidden className="absolute w-[22px] h-[2px] bg-gray-400 rotate-45 rounded-full" />}
+          <span className={`material-symbols-outlined ${size === 'sm' ? 'text-[16px]' : 'text-[18px]'}`}>{b.icon}</span>
+          {!b.on && <span aria-hidden className={`absolute ${size === 'sm' ? 'w-[19px]' : 'w-[22px]'} h-[2px] bg-gray-400 rotate-45 rounded-full`} />}
         </button>
       ))}
       {hint && (

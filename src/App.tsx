@@ -933,7 +933,7 @@ export default function App() {
         
         {currentView === 'BATTLE_HISTORY' && <BattleHistoryView userId={user?.uid || ''} onBack={() => handleNavigate('HOME')} />}
         {currentView === 'WORLD_LEADERBOARD' && <WorldLeaderboardView userLevel={userLevel} onBack={() => handleNavigate('HOME')} />}
-        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData) => handleNavigate(view as AppView, tab, extraData)} onBack={(view, tab) => handleBack(view as AppView, tab)} onSwitchTermine={handleSwitchTermine} onDeepLinkDone={navBack} />}
+        {currentView === 'CALENDAR' && <CalendarView userId={user?.uid || ''} coachMode={coachMode && isCoach} focusedEventId={focusedEventId} clearFocusedEvent={() => setFocusedEventId(null)} openNewTrainerEvent={openNewTrainerEvent} clearOpenNewTrainerEvent={() => setOpenNewTrainerEvent(false)} onNavigate={(view, tab, extraData, studentId) => handleNavigate(view as AppView, tab, extraData, studentId)} onBack={(view, tab) => handleBack(view as AppView, tab)} onSwitchTermine={handleSwitchTermine} onDeepLinkDone={navBack} />}
         
         {currentView === 'STATS' && (
           <StatsView

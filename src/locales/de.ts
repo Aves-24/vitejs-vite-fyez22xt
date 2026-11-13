@@ -1492,6 +1492,8 @@ export const views = {
     formPastTournaments: "Deine bisherigen Wettkämpfe",
     legend: "Legende",
     legendTournament: "Wettkampf",
+    legendStudentStart: "Wettkampf Schüler",
+    studentStartTag: "Wettkampf von Schülern",
     legendOther: "Sonstiges",
     legendTrainerReceived: "Termine vom Trainer",
     legendTrainerSent: "Termine als Trainer",

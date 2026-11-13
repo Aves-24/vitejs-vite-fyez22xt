@@ -30,7 +30,8 @@ import { groupIcon } from '../constants/groupIcons';
 import { useBackClose } from '../hooks/useBackClose';
 import TermineViewToggle from '../components/TermineViewToggle';
 import PlanCorner from '../components/PlanCorner';
-import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, type TermineView } from '../utils/termineView';
+import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, getShowStarts, saveShowStarts, type TermineView } from '../utils/termineView';
+import { loadStudentStartsInRange, type StudentStart } from '../utils/studentStarts';
 import TermineFilterToggles from '../components/TermineFilterToggles';
 
 interface Event {
@@ -97,7 +98,7 @@ interface CalendarViewProps {
   /** Wejście z pulpitu trenera („+"): od razu nowy termin w kategorii Trener. */
   openNewTrainerEvent?: boolean;
   clearOpenNewTrainerEvent?: () => void;
-  onNavigate?: (view: string, tab?: string, extraData?: string) => void;
+  onNavigate?: (view: string, tab?: string, extraData?: string, studentId?: string) => void;
   /** [TERMINE] Otwarty z panelu trenera („Monat”): powrót i przycisk listy prowadzą do Termine. */
   coachMode?: boolean;
   /** [WSTECZ] Strzałka nagłówka: cofa do poprzedniego wpisu historii, gdy to on jest rodzicem. */
@@ -124,6 +125,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showPlanState, setShowPlan] = useState(getShowPlan);
   const showPlan = !coachMode || showPlanState;
   const togglePlan = () => { const next = !showPlanState; setShowPlan(next); saveShowPlan(next); };
+  // Starty uczniów — ten sam przełącznik co w Liste; ikonka tylko, gdy w miesiącu jest jakiś start.
+  const [showStarts, setShowStarts] = useState(getShowStarts);
+  const toggleStarts = () => { const next = !showStarts; setShowStarts(next); saveShowStarts(next); };
+  const [monthStarts, setMonthStarts] = useState<StudentStart[]>([]);
   const events = useMemo(() => {
     const liveIds = new Set(liveEvents.map(e => e.id));
     const all = [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
@@ -134,6 +139,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
   const [dayPickerEvents, setDayPickerEvents] = useState<Event[]>([]);
   const [dayPickerDate, setDayPickerDate] = useState<string>('');
+  // Starty uczniów w okienku dnia (Monat u trenera).
+  const [dayPickerStarts, setDayPickerStarts] = useState<StudentStart[]>([]);
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -144,6 +151,21 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
+  // Czytamy zawsze u trenera (nawet przy wyłączonym przełączniku) — inaczej nie wiadomo, czy pokazać ikonkę.
+  const startsMonthKey = `${calendarDate.getFullYear()}-${calendarDate.getMonth()}`;
+  useEffect(() => {
+    if (!coachMode || coachStudentsList.length === 0) { setMonthStarts([]); return; }
+    const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const from = `${y}-${pad(m + 1)}-01`;
+    const to = m === 11 ? `${y + 1}-01-01` : `${y}-${pad(m + 2)}-01`;
+    let alive = true;
+    loadStudentStartsInRange(coachStudentsList, from, to)
+      .then(d => { if (alive) setMonthStarts(d); })
+      .catch(() => { if (alive) setMonthStarts([]); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coachMode, coachStudentsList, startsMonthKey]);
   const [coachGroups, setCoachGroups] = useState<{id: string, name: string, icon?: string, schedule?: unknown, topics?: GroupTopicsByDay}[]>([]);
   // [MONAT] Okienko tematu treningu otwarte z trójkącika (grupa + dzień).
   const [topicEdit, setTopicEdit] = useState<{ groupId: string; date: string } | null>(null);
@@ -402,7 +424,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   useBackClose(showForm && !deepFormRef.current, () => { setShowForm(false); resetForm(); });
   useBackClose(showScoreInput, () => setShowScoreInput(false));
   useBackClose(!!showDeleteConfirm, () => setShowDeleteConfirm(null));
-  useBackClose(dayPickerEvents.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); });
+  useBackClose(dayPickerEvents.length > 0 || dayPickerStarts.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); });
 
   // `leave` = false, gdy zaraz i tak przechodzimy gdzie indziej (statystyki, grupa).
   const closeViewingModal = (leave = true) => {
@@ -461,8 +483,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     clearOpenNewTrainerEvent?.();
   }, [openNewTrainerEvent, isCoach]);
 
-  const handleDayClick = (dateStr: string, dayEvents: Event[]) => {
-    if (dayEvents.length === 0) {
+  const handleDayClick = (dateStr: string, dayEvents: Event[], dayStarts: StudentStart[] = []) => {
+    // Start ucznia tego dnia → zawsze okienko dnia (start nie ma własnego podglądu terminu).
+    if (dayStarts.length > 0) {
+      setDayPickerEvents(dayEvents);
+      setDayPickerStarts(dayStarts);
+      setDayPickerDate(dateStr);
+    } else if (dayEvents.length === 0) {
       setDayPickerEvents([]);
       setDayPickerDate('');
       resetForm(dateStr);
@@ -695,6 +722,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.set(o.date, [...(planDays.get(o.date) || []), g.id]);
   }
 
+  // [TERMINE MONAT 2026-11-13] Starty uczniów w widocznym miesiącu — mniejszy złoty puchar w dniu.
+  const startsByDay = new Map<string, StudentStart[]>();
+  if (coachMode && showStarts) for (const st of monthStarts) startsByDay.set(st.date, [...(startsByDay.get(st.date) || []), st]);
+
   const upcomingEvents = events.filter(e => e.date >= todayStr);
 
   const getArchiveCutoff = (type: 'turniej' | 'other') => {
@@ -907,6 +938,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <TermineFilterToggles filters={[
             { on: showPlanState, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
             { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
+            { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: monthStarts.length === 0 },
           ]} />
         </div>
       )}
@@ -951,6 +983,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const anyTournament = colorEvents.some(e => e.category === 'Turniej' || !e.category);
                 // U trenera zawody = puchar pod numerem dnia zamiast zielonego tła (user 2026-11-13).
                 const tourneyIcon = coachMode && anyTournament;
+                // Start ucznia: mniejszy złoty puchar obok mojego (user 2026-11-13).
+                const dayStarts = startsByDay.get(dateStr) || [];
+                const trophies = (onColor: boolean) => (tourneyIcon || dayStarts.length > 0) && (
+                  <span className="flex items-end justify-center gap-[1px] leading-none">
+                    {tourneyIcon && <span className={`material-symbols-outlined text-[12px] leading-none ${onColor ? 'text-white' : 'text-[#0a3a2a]'}`}>emoji_events</span>}
+                    {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
+                  </span>
+                );
                 const hasTournament = anyTournament && !coachMode;
                 const hasOther = colorEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
                 const hasMaintenance = colorEvents.some(e => e.maintenanceGroup);
@@ -974,9 +1014,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 );
                 // [ŚCIEŻKI 2026-11-12] Dzień, w którym jest tylko trening z planu → okienko tematu (jak trójkącik),
                 // a nie formularz nowego terminu. Z innymi terminami — lista dnia jak dotąd.
-                const onDay = () => (showPlan && planGroups.length > 0 && colorEvents.length === 0
+                const onDay = () => (showPlan && planGroups.length > 0 && colorEvents.length === 0 && dayStarts.length === 0
                   ? setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr })
-                  : handleDayClick(dateStr, dayEvents));
+                  : handleDayClick(dateStr, dayEvents, dayStarts));
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
@@ -995,7 +1035,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         {planTri}
                         <span className="absolute inset-0 flex flex-col items-center justify-center leading-none text-white font-black text-[11px] drop-shadow">
                           {day}
-                          {tourneyIcon && <span className="material-symbols-outlined text-[12px] leading-none">emoji_events</span>}
+                          {trophies(true)}
                         </span>
                       </div>
                     </button>
@@ -1035,7 +1075,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     <div className={`relative overflow-hidden w-full h-full flex flex-col items-center justify-center leading-none rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
                       {planTri}
                       {day}
-                      {tourneyIcon && <span className={`material-symbols-outlined text-[12px] leading-none ${coloredDay ? 'text-white' : 'text-[#0a3a2a]'}`}>emoji_events</span>}
+                      {trophies(coloredDay)}
                     </div>
                   </button>
                 )
@@ -1259,6 +1299,12 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 : <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />}
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTournament', 'Turniej')}</span>
             </div>
+            {coachMode && (
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[12px] w-3 text-[#b8860b] flex-shrink-0 leading-none text-center">emoji_events</span>
+                <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendStudentStart')}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <span className="w-3 h-3 rounded-full bg-blue-900 flex-shrink-0" />
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendOther', 'Inne')}</span>
@@ -1544,18 +1590,42 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       )}
 
-      {dayPickerEvents.length > 0 && (
+      {(dayPickerEvents.length > 0 || dayPickerStarts.length > 0) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-black text-[#0a3a2a]">
                 {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
               </h2>
-              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <div className="space-y-2">
+              {/* Starty uczniów tego dnia: żółty pasek i złoty puchar jak w Liste; imię → profil ucznia. */}
+              {dayPickerStarts.map(st => (
+                <div key={`${st.date}_${st.title}`} className="tb-card border-l-[#fed33e] border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-start gap-2.5 pl-2 pr-3 py-2.5">
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-[#fed33e]/25">
+                    <span className="material-symbols-outlined text-[18px] text-[#b8860b]">emoji_events</span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-widest leading-tight text-[#8B6508]">{t('calendar.studentStartTag')}</p>
+                    <p className="font-black text-[13px] leading-snug text-[#0a3a2a] break-words">{st.title}</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {st.ids.map((id, i) => (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); onNavigate?.('STUDENT_PROFILE', undefined, undefined, id); }}
+                          className="py-1 px-2.5 rounded-full bg-[#fed33e]/30 border border-[#fed33e] text-[12px] font-black text-[#5d4a00] active:scale-95 transition-all"
+                        >
+                          {st.names[i]}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
               {dayPickerEvents.map(ev => (
                 <button
                   key={ev.id}

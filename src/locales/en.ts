@@ -1492,6 +1492,8 @@ export const views = {
     formPastTournaments: "Your previous tournaments",
     legend: "Legend",
     legendTournament: "Tournament",
+    legendStudentStart: "Student competition",
+    studentStartTag: "Students’ competition",
     legendOther: "Other",
     legendTrainerReceived: "My appointments from coach",
     legendTrainerSent: "Appointments as coach",

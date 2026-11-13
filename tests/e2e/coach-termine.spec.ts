@@ -180,6 +180,7 @@ test('Monat: ikonki jak w Liste, zawody jako puchar', async ({ browser, request 
   const cid = await registerUser(coach, 'Trenerka');
   const sid = await registerUser(student, 'Uczen');
   await adminPatchDoc(request, `users/${cid}/tournaments/ownStart`, { title: 'Kreismeisterschaft', date: iso(new Date()), category: 'Turniej' });
+  await adminPatchDoc(request, `users/${sid}/tournaments/stuStart`, { title: 'Bezirksmeisterschaft', date: iso(new Date()), category: 'Turniej' });
   await linkCoachAndStudent(coach, student, sid, 'Trenerka');
 
   await coachNav(coach, 'event_note Termine').click();
@@ -189,12 +190,24 @@ test('Monat: ikonki jak w Liste, zawody jako puchar', async ({ browser, request 
   await expect(coach.getByTestId('termine-toggle-plan')).toBeVisible();
   await expect(coach.getByTestId('termine-toggle-private')).toHaveAttribute('aria-pressed', 'true');
   const day = new Date(); // dziś — zawsze w pokazanym miesiącu
-  const cellName = `${day.getDate()} emoji_events`;
+  const cellName = `${day.getDate()} emoji_events emoji_events`;
   await expect(coach.getByRole('button', { name: cellName, exact: true })).toBeVisible();
   if (process.env.SHOT2) await coach.screenshot({ path: process.env.SHOT2 });
 
   // Privat wyłączony → prywatne zawody znikają z siatki.
   await coach.getByTestId('termine-toggle-private').click();
   await expect(coach.getByRole('button', { name: cellName, exact: true })).toHaveCount(0);
+  // Start ucznia: mały złoty puchar; klik w dzień → okienko z imieniem → profil ucznia.
+  await expect(coach.getByTestId('student-start-trophy')).toHaveCount(1);
+  await coach.getByRole('button', { name: `${day.getDate()} emoji_events`, exact: true }).click();
+  await expect(coach.getByText('Bezirksmeisterschaft')).toBeVisible();
+  if (process.env.SHOT3) await coach.screenshot({ path: process.env.SHOT3 });
+  await coach.getByRole('button', { name: 'Uczen', exact: true }).click();
+  await expect(coach.getByText('Schülerprofil')).toBeVisible();
+  await coach.goBack();
+
+  // Starts wyłączony → puchar ucznia znika, ikonka zostaje (w miesiącu jest start).
+  await coach.getByTestId('termine-toggle-starts').click();
+  await expect(coach.getByTestId('student-start-trophy')).toHaveCount(0);
   await expectNoErrors(coach, coachErrors, 'Monat');
 });

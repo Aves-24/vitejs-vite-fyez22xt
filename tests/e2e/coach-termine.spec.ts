@@ -260,3 +260,81 @@ test('uczeń: treningi grupy w kalendarzu, odwołany z powodem', async ({ browse
   await expectNoErrors(coach, coachErrors, 'trener: odwołanie');
   await expectNoErrors(student, studentErrors, 'uczeń: kalendarz grupy');
 });
+
+// [PRYWATNY KALENDARZ 2026-11-13] Trener, który sam jest uczniem innego trenera: dwa osobne
+// przełączniki w JEGO prywatnym kalendarzu — „Als Trainer” (różowe: własne terminy jako trener)
+// i „Meine Gruppe” (fioletowe: trening grupy, do której należy). Zwykły strzelec bez roli i bez
+// grupy nie widzi żadnej ikonki.
+test('prywatny kalendarz: Als Trainer / Meine Gruppe osobno, zwykły strzelec bez ikonek', async ({ browser, request }) => {
+  test.setTimeout(150_000);
+  const mainCoach = await newUserPage(browser);
+  const me = await newUserPage(browser); // trener, który jest też uczniem mainCoach
+  const plain = await newUserPage(browser); // zwykły strzelec, bez roli i bez grupy
+  const meErrors = watchErrors(me);
+  await registerUser(mainCoach, 'GlownyTrener');
+  const meId = await registerUser(me, 'JaTrener');
+  await registerUser(plain, 'Prosty');
+  await linkCoachAndStudent(mainCoach, me, meId, 'GlownyTrener');
+
+  // mainCoach: grupa „Liga” z „JaTrener” jako członkiem + stały trening dziś.
+  await mainCoach.getByRole('navigation').getByRole('button', { name: 'folder_shared Gruppen' }).click();
+  await mainCoach.getByRole('button', { name: 'Gruppe erstellen' }).click();
+  await mainCoach.getByPlaceholder('Z.B. Anfänger, Kader...').fill('Liga');
+  await mainCoach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await mainCoach.getByRole('button', { name: 'person_add Hinzufügen' }).click();
+  await mainCoach.getByRole('button', { name: 'check JaTrener' }).click();
+  await mainCoach.getByRole('button', { name: 'Hinzufügen (1)' }).click();
+  await expect(mainCoach.getByRole('button', { name: /folder_shared Liga 1 Schüler/ })).toBeVisible();
+  const today = new Date();
+  await mainCoach.getByRole('button', { name: /Regelmäßiges Training/ }).click();
+  await mainCoach.getByRole('combobox', { name: 'Termine' }).selectOption({ label: today.toLocaleDateString('de-DE', { weekday: 'long' }) });
+  await mainCoach.getByRole('textbox', { name: 'Uhrzeit' }).fill('19:00');
+  await mainCoach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(mainCoach.getByText('Trainingszeit gespeichert')).toBeVisible();
+  await syncWrites(mainCoach);
+
+  // Prosty strzelec bez roli i bez grupy: w kalendarzu nie ma żadnej z tych ikonek.
+  await plain.getByRole('navigation').getByRole('button', { name: /Kalender$/ }).click();
+  await expect(plain.getByTestId('cal-toggle-as-trainer')).toHaveCount(0);
+  await expect(plain.getByTestId('cal-toggle-my-group')).toHaveCount(0);
+
+  // „me” zostaje też trenerem (Trainermodus) i wraca do swojego, prywatnego kalendarza.
+  await me.getByRole('navigation').getByRole('button', { name: /Einst\.$/ }).click();
+  await me.getByRole('button', { name: /^TRAINER/ }).click();
+  await me.getByRole('button', { name: /Trainermodus aktivieren/ }).click();
+  await expect(me.getByText(/Plätze: 0\/1/)).toBeVisible();
+  // Wejście do panelu trenera, a stamtąd od razu z powrotem do trybu zawodnika (przełącznik na dole).
+  await me.getByRole('navigation').getByRole('button', { name: 'sports Trainer' }).click();
+  await me.getByRole('navigation').getByRole('button', { name: /Schütze$/ }).click();
+
+  // Własny (różowy) termin jako trener — bezpośrednio w bazie, jak przy ręcznym zapisie w formularzu.
+  await adminPatchDoc(request, `users/${meId}/tournaments/ownTrainerEvent`, { title: 'Vereinstraining', date: iso(today), category: 'Trener', type: 'Trener' });
+
+  await me.reload();
+  await me.getByRole('navigation').getByRole('button', { name: /Kalender$/ }).click();
+  await expect(me.getByTestId('cal-toggle-as-trainer')).toHaveAttribute('aria-pressed', 'true');
+  await expect(me.getByTestId('cal-toggle-my-group')).toHaveAttribute('aria-pressed', 'true');
+  await expect(me.getByTestId('group-training-row').first()).toContainText('Liga');
+  await expect(me.getByText('Vereinstraining')).toBeVisible();
+  if (process.env.SHOT8) await me.screenshot({ path: process.env.SHOT8 });
+
+  // „Als Trainer” wyłączony: mój termin znika, trening grupy (od GlownyTrener) zostaje.
+  await me.getByTestId('cal-toggle-as-trainer').click();
+  await expect(me.getByTestId('termine-filter-hint')).toHaveText('Ohne Termine als Trainer');
+  await expect(me.getByText('Vereinstraining')).toHaveCount(0);
+  await expect(me.getByTestId('group-training-row').first()).toContainText('Liga');
+  await me.getByTestId('cal-toggle-as-trainer').click();
+  await expect(me.getByText('Vereinstraining')).toBeVisible();
+
+  // „Meine Gruppe” wyłączony: trening grupy znika, mój termin zostaje.
+  await me.getByTestId('cal-toggle-my-group').click();
+  await expect(me.getByTestId('termine-filter-hint')).toHaveText('Ohne Gruppentraining');
+  await expect(me.getByTestId('group-training-row')).toHaveCount(0);
+  await expect(me.getByTestId('member-plan-tri')).toHaveCount(0);
+  await expect(me.getByText('Vereinstraining')).toBeVisible();
+  if (process.env.SHOT9) await me.screenshot({ path: process.env.SHOT9 });
+  await me.getByTestId('cal-toggle-my-group').click();
+  await expect(me.getByTestId('group-training-row').first()).toContainText('Liga');
+
+  await expectNoErrors(me, meErrors, 'prywatny kalendarz');
+});

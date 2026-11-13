@@ -42,3 +42,24 @@ export function getShowStarts(): boolean {
 export function saveShowStarts(v: boolean) {
   try { localStorage.setItem(STARTS_KEY, v ? '1' : '0'); } catch { /* ignore */ }
 }
+
+// Prywatny kalendarz: trener-uczeń widzi własne terminy trenerskie i plan grupy,
+// do której należy — osobne przełączniki od tych w Termine trenera (user 2026-11-13).
+const AS_TRAINER_KEY = 'grotX_calShowAsTrainer';
+const MY_GROUP_KEY = 'grotX_calShowMyGroup';
+
+export function getShowAsTrainer(): boolean {
+  try { return localStorage.getItem(AS_TRAINER_KEY) !== '0'; } catch { return true; }
+}
+
+export function saveShowAsTrainer(v: boolean) {
+  try { localStorage.setItem(AS_TRAINER_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}
+
+export function getShowMyGroup(): boolean {
+  try { return localStorage.getItem(MY_GROUP_KEY) !== '0'; } catch { return true; }
+}
+
+export function saveShowMyGroup(v: boolean) {
+  try { localStorage.setItem(MY_GROUP_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}

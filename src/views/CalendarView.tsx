@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { db } from '../firebase';
 import { fetchCoachGroups, studentGroupMapOf } from '../utils/coachGroups';
-import { listOccurrences } from '../utils/groupSchedule';
+import { listOccurrences, planStart } from '../utils/groupSchedule';
 import GroupTopicPanel, { type GroupTopicsByDay } from '../components/GroupTopicPanel';
 import { collection, query, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, where, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useTranslation } from 'react-i18next'; 
@@ -30,7 +30,7 @@ import { groupIcon } from '../constants/groupIcons';
 import { useBackClose } from '../hooks/useBackClose';
 import TermineViewToggle from '../components/TermineViewToggle';
 import PlanCorner from '../components/PlanCorner';
-import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, getShowStarts, saveShowStarts, type TermineView } from '../utils/termineView';
+import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, getShowStarts, saveShowStarts, getShowAsTrainer, saveShowAsTrainer, getShowMyGroup, saveShowMyGroup, type TermineView } from '../utils/termineView';
 import { loadStudentStartsInRange, type StudentStart } from '../utils/studentStarts';
 import { subscribeMyGroupPlans, type GroupPlan } from '../utils/groupPlans';
 import type { Occurrence } from '../utils/groupSchedule';
@@ -122,14 +122,23 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   // wstecz — starsze miesiące dociągamy dopiero, gdy kalendarz tam zajdzie.
   const [liveEvents, setEvents] = useState<Event[]>([]);
   const [olderEvents, setOlderEvents] = useState<Event[]>([]);
+  // Przeniesione wyżej: potrzebne w `events` (prywatny kalendarz, przełącznik "Als Trainer").
+  const [isCoach, setIsCoach] = useState(false);
   // [TERMINE] „Privat” jak na liście trenera: wyłączony = tylko moje terminy trenerskie.
   const [showPrivate, setShowPrivate] = useState(getShowPrivate);
   const hidePrivate = coachMode && !showPrivate;
   const togglePrivate = () => { const next = !showPrivate; setShowPrivate(next); saveShowPrivate(next); };
   // Stałe treningi grup — ten sam przełącznik co w Liste (user 2026-11-13); tylko u trenera.
   const [showPlanState, setShowPlan] = useState(getShowPlan);
-  const showPlan = !coachMode || showPlanState;
   const togglePlan = () => { const next = !showPlanState; setShowPlan(next); saveShowPlan(next); };
+  // [PRYWATNY KALENDARZ 2026-11-13] Trener, który sam jest uczniem innego trenera: osobne
+  // przełączniki "Als Trainer" (różowe: moje grupy z planu + terminy wysłane jako trener) i
+  // "Meine Gruppe" (fioletowe: trening grupy, do której należę) — inaczej kalendarz jest nawalony.
+  const [showAsTrainer, setShowAsTrainer] = useState(getShowAsTrainer);
+  const toggleAsTrainer = () => { const next = !showAsTrainer; setShowAsTrainer(next); saveShowAsTrainer(next); };
+  const [showMyGroup, setShowMyGroup] = useState(getShowMyGroup);
+  const toggleMyGroup = () => { const next = !showMyGroup; setShowMyGroup(next); saveShowMyGroup(next); };
+  const showPlan = coachMode ? showPlanState : showAsTrainer;
   // Starty uczniów — ten sam przełącznik co w Liste; ikonka tylko, gdy w miesiącu jest jakiś start.
   const [showStarts, setShowStarts] = useState(getShowStarts);
   const toggleStarts = () => { const next = !showStarts; setShowStarts(next); saveShowStarts(next); };
@@ -137,8 +146,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const events = useMemo(() => {
     const liveIds = new Set(liveEvents.map(e => e.id));
     const all = [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
-    return hidePrivate ? all.filter(e => e.category === 'Trener' && !e.isMirrored) : all;
-  }, [liveEvents, olderEvents, hidePrivate]);
+    if (hidePrivate) return all.filter(e => e.category === 'Trener' && !e.isMirrored);
+    // Prywatny kalendarz, "Als Trainer" wyłączony: chowamy własne terminy trenerskie (user 2026-11-13).
+    if (!coachMode && isCoach && !showAsTrainer) return all.filter(e => !(e.category === 'Trener' && !e.isMirrored));
+    return all;
+  }, [liveEvents, olderEvents, hidePrivate, coachMode, isCoach, showAsTrainer]);
   const [showForm, setShowForm] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [viewingEvent, setViewingEvent] = useState<Event | null>(null);
@@ -164,7 +176,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
   const [calendarDate, setCalendarDate] = useState(new Date());
 
-  const [isCoach, setIsCoach] = useState(false);
   const [coachStudentsList, setCoachStudentsList] = useState<CoachStudent[]>([]);
   // Czytamy zawsze u trenera (nawet przy wyłączonym przełączniku) — inaczej nie wiadomo, czy pokazać ikonkę.
   const startsMonthKey = `${calendarDate.getFullYear()}-${calendarDate.getMonth()}`;
@@ -731,6 +742,15 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   };
   // Treningi grup z planu w widocznym miesiącu (user 2026-11-12): trójkącik w prawym górnym rogu dnia.
   // dzień → grupy z treningiem z planu (pierwsza dostaje okienko tematu po kliknięciu trójkącika)
+  // Kalendarz: bez treningów sprzed założenia planu (user 2026-11-13).
+  const planOccurrences = (raw: unknown, from: string, to: string) => {
+    const start = planStart(raw);
+    return listOccurrences(raw, start && start > from ? start : from, to);
+  };
+  // Własny trójkącik trenera (i edycja tematu) — zawsze, bez `since`: `since` chroni tylko
+  // kalendarz UCZNIA przed treningami sprzed założenia planu, nie blokuje trenerowi wstecznego
+  // uzupełnienia tematu na dniu, zanim plan formalnie zapisał datę startu (user 2026-11-13 —
+  // test „dzień przeszły” pokazał, że to by popsuło istniejącą ścieżkę).
   const planDays = new Map<string, string[]>();
   {
     const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
@@ -739,18 +759,20 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.set(o.date, [...(planDays.get(o.date) || []), g.id]);
   }
   // [PLAN UCZNIA 2026-11-13] Treningi moich grup w widocznym miesiącu — z odwołanymi (szary róg).
+  // Przełącznik "Meine Gruppe" w prywatnym kalendarzu — w coachMode zawsze pełna lista (pusta i tak, bo memberPlans wtedy nieczytane).
+  const visibleMemberPlans = coachMode || showMyGroup ? memberPlans : [];
   const memberDays = new Map<string, MemberOcc[]>();
   {
     const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
     const from = formatDateStr(y, m, 1);
     const to = formatDateStr(m === 11 ? y + 1 : y, (m + 1) % 12, 1);
-    for (const p of memberPlans) for (const o of listOccurrences(p.schedule, from, to)) memberDays.set(o.date, [...(memberDays.get(o.date) || []), { plan: p, occ: o }]);
+    for (const p of visibleMemberPlans) for (const o of planOccurrences(p.schedule, from, to)) memberDays.set(o.date, [...(memberDays.get(o.date) || []), { plan: p, occ: o }]);
   }
   // Pod kalendarzem: treningi moich grup na 4 tygodnie (odwołane też — z powodem).
   const memberUpcoming: MemberOcc[] = (() => {
     const d = new Date(`${todayStr}T12:00:00`); d.setDate(d.getDate() + 28);
     const to = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
-    return memberPlans.flatMap(p => listOccurrences(p.schedule, todayStr, to).map(occ => ({ plan: p, occ })))
+    return visibleMemberPlans.flatMap(p => planOccurrences(p.schedule, todayStr, to).map(occ => ({ plan: p, occ })))
       .sort((a, b) => `${a.occ.date} ${a.occ.time}`.localeCompare(`${b.occ.date} ${b.occ.time}`));
   })();
   const openMemberDay = (date: string) => {
@@ -968,6 +990,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <span className="material-symbols-outlined text-[26px]">add</span>
         </button>,
         document.body,
+      )}
+
+      {/* [PRYWATNY KALENDARZ 2026-11-13] Trener, który sam jest uczniem innego trenera (i każdy, kto
+          należy do grupy): ikonki tylko gdy mają co filtrować — zwykły strzelec bez roli i bez grupy
+          ich nie widzi w ogóle. */}
+      {!coachMode && (isCoach || memberPlans.length > 0) && (
+        <div className="px-4 mt-4 flex items-center justify-end gap-2 flex-wrap shrink-0">
+          <TermineFilterToggles filters={[
+            { on: showAsTrainer, toggle: toggleAsTrainer, icon: 'event_repeat', label: t('calendar.showAsTrainer'), onText: t('calendar.hint_asTrainerOn'), offText: t('calendar.hint_asTrainerOff'), testId: 'cal-toggle-as-trainer', hidden: !isCoach },
+            { on: showMyGroup, toggle: toggleMyGroup, icon: 'groups', label: t('calendar.showMyGroup'), onText: t('calendar.hint_myGroupOn'), offText: t('calendar.hint_myGroupOff'), testId: 'cal-toggle-my-group', hidden: memberPlans.length === 0 },
+          ]} />
+        </div>
       )}
 
       {/* [TERMINE] U trenera miesiąc to drugi widok ekranu Termine — ten sam przełącznik co na liście. */}

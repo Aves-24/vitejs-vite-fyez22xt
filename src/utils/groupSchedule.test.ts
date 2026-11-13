@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { occursOn, timesOn, nextOccurrence, prevOccurrence, upcomingOccurrences, listOccurrences, scheduleForSave, isValidSchedule, normalizeSchedule, sortSlots, type GroupSchedule } from './groupSchedule';
+import { occursOn, timesOn, nextOccurrence, prevOccurrence, upcomingOccurrences, listOccurrences, scheduleForSave, isValidSchedule, normalizeSchedule, sortSlots, planStart, type GroupSchedule } from './groupSchedule';
 
 // 2026-10-28 to środa, 2026-10-31 sobota.
 const wed: GroupSchedule = { slots: [{ day: 3, time: '18:00' }], every: 1, anchor: '2026-10-28' };
@@ -114,5 +114,20 @@ describe('groupSchedule', () => {
   it('sloty od poniedziałku, niedziela na końcu, bez duplikatów', () => {
     expect(sortSlots([{ day: 0, time: '10:00' }, { day: 3, time: '18:00' }, { day: 1, time: '17:00' }, { day: 3, time: '18:00' }]))
       .toEqual([{ day: 1, time: '17:00' }, { day: 3, time: '18:00' }, { day: 0, time: '10:00' }]);
+  });
+
+  it('since: metadana o starcie planu — przechodzi przez zapis, planOn jej samo NIE filtruje', () => {
+    // `planOn`/`listOccurrences` liczą czysty szablon, niezależnie od `since` — trener wstecznie
+    // uzupełnia temat na dniu sprzed zapisania planu. `since` filtruje tylko tam, gdzie wywołujący
+    // sam przytnie `from` (kalendarz UCZNIA, patrz CalendarView „planOccurrences”).
+    const s: GroupSchedule = { ...wed, since: '2026-11-04' };
+    expect(listOccurrences(s, '2026-10-26', '2026-11-12').map(o => o.date)).toEqual(['2026-10-28', '2026-11-04', '2026-11-11']);
+    expect(occursOn(s, '2026-10-28')).toBe(true);
+    expect(scheduleForSave(normalizeSchedule(s)!, '2026-11-04').since).toBe('2026-11-04');
+    expect(planStart(s)).toBe('2026-11-04');
+    expect(planStart(wed)).toBe('2026-10-28'); // stary plan bez `since`: od kotwicy
+    // Tak przycina kalendarz ucznia: `from` podniesione do `since`, reszta bez zmian.
+    const clampedFrom = (planStart(s) as string) > '2026-10-26' ? planStart(s)! : '2026-10-26';
+    expect(listOccurrences(s, clampedFrom, '2026-11-12').map(o => o.date)).toEqual(['2026-11-04', '2026-11-11']);
   });
 });

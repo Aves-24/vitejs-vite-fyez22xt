@@ -40,6 +40,12 @@ export interface GroupSchedule {
   cancelled?: Record<string, string>;
   /** Przerwy, np. ferie. */
   breaks?: ScheduleBreak[];
+  /**
+   * Od kiedy plan obowiązuje (YYYY-MM-DD) — wcześniej treningów nie było (user 2026-11-13:
+   * kalendarz nie może udawać treningów sprzed założenia planu). Stare plany bez tego pola:
+   * kalendarz liczy od `anchor` (planStart), reszta bez ograniczenia; przy edycji planu pole się zapisuje.
+   */
+  since?: string;
 }
 
 export interface Occurrence {
@@ -93,6 +99,7 @@ export function normalizeSchedule(raw: unknown): GroupSchedule | null {
     : [];
   return {
     slots: clean, every: x.every, anchor: x.anchor as string,
+    ...(typeof x.since === 'string' && DATE_RE.test(x.since) ? { since: x.since } : {}),
     ...(cancelled && Object.keys(cancelled).length ? { cancelled } : {}),
     ...(breaks.length ? { breaks } : {}),
   };
@@ -111,7 +118,13 @@ export function sortSlots(slots: ScheduleSlot[]): ScheduleSlot[] {
     .sort((a, b) => weekPos(a.day) - weekPos(b.day) || a.time.localeCompare(b.time));
 }
 
-/** Wszystkie treningi z planu tego dnia (po godzinie), odwołane oznaczone. */
+/**
+ * Wszystkie treningi z planu tego dnia (po godzinie), odwołane oznaczone.
+ * Czysta matematyka szablonu — NIE sprawdza `since` (2026-11-13): to metadana do
+ * interpretacji przez wywołującego (patrz `planStart`), bo trener wstecznie
+ * uzupełnia temat na dniu sprzed zapisania planu, a tylko kalendarz UCZNIA ma
+ * nie pokazywać treningów sprzed jego założenia.
+ */
 function planOn(s: GroupSchedule, dayKey: string): Occurrence[] {
   if (s.every === 2) {
     const weeks = Math.round((mondayOf(dayKey).getTime() - mondayOf(s.anchor).getTime()) / (7 * DAY_MS));
@@ -199,7 +212,14 @@ export function scheduleForSave(s: GroupSchedule, todayKey: string): GroupSchedu
   return {
     slots: s.slots.map(x => ({ day: x.day, time: x.time, ...(x.place ? { place: x.place } : {}) })),
     every: s.every, anchor: s.anchor,
+    ...(s.since ? { since: s.since } : {}),
     ...(Object.keys(cancelled).length ? { cancelled } : {}),
     ...(breaks.length ? { breaks } : {}),
   };
+}
+
+/** Pierwszy dzień planu do pokazania w kalendarzu: `since`, a w starych planach kotwica. */
+export function planStart(raw: unknown): string | null {
+  const s = normalizeSchedule(raw);
+  return s ? (s.since || s.anchor) : null;
 }

@@ -1410,6 +1410,8 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
       // Kotwica „co 2 tygodnie” zostaje przy edycji, żeby rytm się nie przesunął.
       draft.anchor = prev && prev.every === schedEvery ? prev.anchor
         : upcomingOccurrences({ ...draft, every: 1 }, draft.anchor, 1, 7)[0]?.date || draft.anchor;
+      // Plan obowiązuje od pierwszego zapisu; przy edycji data zostaje (stare plany: od kotwicy).
+      draft.since = prev ? (prev.since || prev.anchor) : dayKeyOf(Date.now());
       const norm = normalizeSchedule(draft);
       if (!norm) return;
       schedule = scheduleForSave(norm, dayKeyOf(Date.now()));

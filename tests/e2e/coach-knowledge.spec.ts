@@ -1,5 +1,5 @@
 import { test, expect, type Page, type Browser } from '@playwright/test';
-import { resetEmulators, registerUser, linkCoachAndStudent, watchErrors, expectNoErrors, newUserPage, closeUserPages } from './helpers';
+import { resetEmulators, registerUser, linkCoachAndStudent, watchErrors, expectNoErrors, newUserPage, closeUserPages, syncWrites } from './helpers';
 
 test.beforeEach(async ({ request }) => resetEmulators(request));
 test.afterEach(() => closeUserPages());
@@ -95,11 +95,43 @@ test('Wissen: temat z planu, kopiowanie linku i link do następnego treningu', a
   await coach.getByRole('button', { name: 'Atemtechnik', exact: true }).click();
   await expect(coach.getByRole('heading', { name: 'Atemtechnik' })).toBeVisible();
   await expect(coach.getByText('Noch keine Trainings zu diesem Thema.')).toBeVisible();
+
+  // Własny link do tematu bez treningu: „+ Link”, potem użycie na treningu.
+  await coach.getByRole('button', { name: 'add Link', exact: true }).click();
+  await coach.getByPlaceholder('https://… (YouTube oder Webseite)').fill('https://example.com/atem');
+  await coach.getByPlaceholder('Titel (optional)').fill('Atmen beim Auszug');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByText('Atmen beim Auszug')).toBeVisible();
+  await expect(coach.getByText('Noch nicht im Training verwendet')).toBeVisible();
+  // Duplikat w tym samym temacie zablokowany.
+  await coach.getByRole('button', { name: 'add Link', exact: true }).click();
+  await coach.getByPlaceholder('https://… (YouTube oder Webseite)').fill('example.com/atem');
+  await expect(coach.getByText('Dieser Link ist bei diesem Thema schon da.')).toBeVisible();
+  await coach.getByRole('button', { name: 'Abbrechen' }).click();
+  // Drugi link — i usunięcie (dwa kroki).
+  await coach.getByRole('button', { name: 'add Link', exact: true }).click();
+  await coach.getByPlaceholder('https://… (YouTube oder Webseite)').fill('https://example.com/weg');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByText('https://example.com/weg')).toBeVisible();
+  await coach.getByRole('button', { name: 'Link löschen' }).first().click();
+  await coach.getByRole('button', { name: 'Löschen?' }).click();
+  await expect(coach.getByText('https://example.com/weg')).toBeHidden();
+  // Użycie: dziś jest już trening (Klicker wiederholen) — link trafia do niego.
+  await coach.getByRole('button', { name: 'add Ins nächste Training' }).click();
+  await expect(coach.getByPlaceholder('https://… (YouTube oder Webseite)').nth(1)).toHaveValue('https://example.com/atem');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByRole('heading', { name: 'Thema bearbeiten' })).toBeHidden();
+  await expect(coach.getByText('1× verwendet')).toBeVisible();
+  await expect(coach.getByText('Noch nicht im Training verwendet')).toBeHidden();
+  await coach.screenshot({ path: 'test-results/wissen/own-link.png' });
+  // Po przeładowaniu zapisany link dalej jest (Firestore, nie pamięć).
+  await syncWrites(coach);
   await coach.getByRole('button', { name: 'Zurück', exact: true }).click();
   await coach.getByRole('button', { name: 'Klickerkontrolle 2×' }).click();
   await expect(coach.getByText('Klicker halten')).toBeVisible();
   await coach.getByRole('button', { name: 'Zurück', exact: true }).click();
   await coach.getByRole('button', { name: /Alle/ }).first().click();
+  await expect(coach.getByRole('button', { name: /Atemtechnik/ })).toBeVisible();
   await coach.getByPlaceholder('Thema, Link oder Notiz suchen').fill('rücken');
   await expect(coach.getByRole('button', { name: /Klickerkontrolle/ })).toBeVisible();
   await coach.getByPlaceholder('Thema, Link oder Notiz suchen').fill('xyz');

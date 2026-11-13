@@ -27,6 +27,8 @@ const OWNED_SUBCOLLECTIONS = [
   'tournaments', 'privateNotes', 'sessionNotes', 'notifications', 'studentMessages',
   // [PRYWATNE NOTATKI TRENERA 2026-10-30] wpisy trenera „nur für mich” o uczniach
   'coachStudentNotes',
+  // [WISSEN 2026-11-13] linki trenera zapisane w bazie wiedzy
+  'knowledgeLinks',
 ];
 
 const PrivacySection: React.FC<PrivacySectionProps> = ({ userId }) => {

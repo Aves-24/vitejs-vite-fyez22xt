@@ -642,6 +642,25 @@ service cloud.firestore {
       allow read, write: if isSelf(uid) || isAdmin();
     }
 
+    // ─── /users/{uid}/knowledgeLinks/{linkId} ───────────────────
+    //  [WISSEN 2026-11-13] Linki trenera zapisane do tematu treningu w bazie
+    //  wiedzy (bez treningu). Tylko właściciel. Limit liczby pilnuje klient
+    //  (KNOWLEDGE_LINKS_MAX) — reguła pilnuje kształtu i rozmiaru.
+    //  LUSTRO: src/utils/knowledgeLinks.ts.
+    match /users/{uid}/knowledgeLinks/{linkId} {
+      allow read, delete: if isSelf(uid) || isAdmin();
+      allow create, update: if isSelf(uid) && validKnowledgeLink(request.resource.data);
+    }
+
+    function validKnowledgeLink(d) {
+      return d.keys().hasOnly(['topic', 'url', 'title', 'createdAt'])
+        && d.keys().hasAll(['topic', 'url', 'createdAt'])
+        && d.topic is string && d.topic.size() >= 1 && d.topic.size() <= 60
+        && d.url is string && d.url.size() <= 500 && d.url.matches('^https?://.+')
+        && d.get('title', '') is string && d.get('title', '').size() <= 120
+        && d.createdAt is number;
+    }
+
     // ─── /users/{uid}/courses/{courseId} ────────────────────────
     //  [ANIMAL ROUND 2026-11-10] Zapisane trasy (parcours): nazwa + stanowiska
     //  (nazwa zwierzęcia, opcjonalny obrys). Tylko właściciel. Limit FREE (1 trasa)

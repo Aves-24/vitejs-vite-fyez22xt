@@ -1676,3 +1676,33 @@ test('TRASY: kształt — bez obcych pól, nazwa ≤ 60, ≤ 60 stanowisk, nie p
   await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, stations: [] }));
   await assertFails(setDoc(doc(alice(), 'users/alice/courses/c1'), { ...COURSE, stations: Array.from({ length: 61 }, () => ({ name: 'a' })) }));
 });
+
+// ─── [WISSEN 2026-11-13] Linki w bazie wiedzy users/{uid}/knowledgeLinks ───
+const KLINK = { topic: 'klicker', url: 'https://example.com/a', title: 'Drill', createdAt: 1 };
+
+test('WISSEN: właściciel zapisuje, czyta i kasuje swój link', async () => {
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice/knowledgeLinks/k1'), KLINK));
+  await assertSucceeds(setDoc(doc(alice(), 'users/alice/knowledgeLinks/k2'), { topic: 'c:Gummiband', url: 'http://x.de', createdAt: 2 }));
+  await assertSucceeds(getDocs(collection(alice(), 'users/alice/knowledgeLinks')));
+  await assertSucceeds(deleteDoc(doc(alice(), 'users/alice/knowledgeLinks/k1')));
+});
+
+test('WISSEN: uczeń, obcy i niezalogowany nie czytają ani nie piszą', async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'users/coach1/knowledgeLinks/k1'), KLINK));
+  await assertFails(getDoc(doc(alice(), 'users/coach1/knowledgeLinks/k1')));
+  await assertFails(getDocs(collection(bob(), 'users/coach1/knowledgeLinks')));
+  await assertFails(getDoc(doc(unauth(), 'users/coach1/knowledgeLinks/k1')));
+  await assertFails(setDoc(doc(bob(), 'users/coach1/knowledgeLinks/k2'), KLINK));
+  await assertFails(deleteDoc(doc(alice(), 'users/coach1/knowledgeLinks/k1')));
+});
+
+test('WISSEN: kształt — bez obcych pól, tylko http(s), limity długości', async () => {
+  const p = 'users/alice/knowledgeLinks/k1';
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, isPremium: true }));
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, url: 'javascript:alert(1)' }));
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, url: 'https://' + 'a'.repeat(500) }));
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, title: 'x'.repeat(121) }));
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, topic: '' }));
+  await assertFails(setDoc(doc(alice(), p), { ...KLINK, topic: 'x'.repeat(61) }));
+  await assertFails(setDoc(doc(alice(), p), { topic: 'klicker', url: 'https://a.de' }));
+});

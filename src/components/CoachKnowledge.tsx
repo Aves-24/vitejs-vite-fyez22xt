@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { TRAINING_TOPICS, CUSTOM_CATEGORY_ID, topicLabel } from '../constants/trainingTopics';
@@ -6,14 +6,18 @@ import { useCustomTopics } from '../hooks/useCustomTopics';
 import { useBackClose } from '../hooks/useBackClose';
 import { buildKnowledge, matchesKnowledge, NO_TOPIC, type KnowledgeLink, type KnowledgeTopic } from '../utils/knowledgeBase';
 import { upcomingOccurrences } from '../utils/groupSchedule';
-import { dayKeyOf, TOPIC_LINKS_MAX } from '../utils/focus';
+import { dayKeyOf, normalizeTopicLink, TOPIC_LINKS_MAX, TOPIC_LINK_MAX_LEN, TOPIC_LINK_TITLE_MAX } from '../utils/focus';
+import { addKnowledgeLink, removeKnowledgeLink, subscribeKnowledgeLinks, KNOWLEDGE_LINKS_MAX } from '../utils/knowledgeLinks';
+import type { SavedLink } from '../utils/knowledgeBase';
+import { auth } from '../firebase';
 import { isYouTube } from './TopicLinks';
 import type { CoachGroup } from '../utils/coachGroups';
 
 // [WISSEN] (user 2026-11-13) Baza wiedzy w menu trenera: tematy treningów
 // (kategorie jak w pickerze), przy temacie linki z „Kopieren” i „Ins nächste
 // Training” oraz treningi, na których temat był — z tym, co trener wtedy pisał.
-// Dane z planów grup (utils/knowledgeBase) — nic nowego nie zapisujemy.
+// Dane z planów grup (utils/knowledgeBase) + własne linki trenera „+ Link”
+// (utils/knowledgeLinks) — przy każdym linku kiedy i ile razy był na treningu.
 
 const CAT_ORDER = [...TRAINING_TOPICS.map(c => c.id), CUSTOM_CATEGORY_ID];
 const BUILTIN_CAT = new Map(TRAINING_TOPICS.flatMap(c => c.subtopics.map(s => [s.id, c.id] as const)));
@@ -38,13 +42,24 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
   const [pick, setPick] = useState<KnowledgeLink | null>(null);
   useBackClose(openTopic !== null, () => setOpenTopic(null), { key: 'knowledgeTopic', value: openTopic });
   useBackClose(!!pick, () => setPick(null));
+  // [WŁASNE LINKI] zapisane przez trenera do tematu.
+  const uid = auth.currentUser?.uid || '';
+  const [saved, setSaved] = useState<SavedLink[]>([]);
+  useEffect(() => (uid ? subscribeKnowledgeLinks(uid, setSaved) : undefined), [uid]);
+  const [adding, setAdding] = useState(false);
+  const [newUrl, setNewUrl] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [savingLink, setSavingLink] = useState(false);
+  const [delAsk, setDelAsk] = useState<string | null>(null);
+  const [usesOpen, setUsesOpen] = useState<Record<string, boolean>>({});
+  useEffect(() => { setAdding(false); setNewUrl(''); setNewTitle(''); setDelAsk(null); }, [openTopic]);
 
   const catOf = useMemo(() => {
     const custom = new Map(customTopics.map(c => [c.id, c.cat]));
     return (topic: string) => topic === NO_TOPIC ? NO_TOPIC_CAT
       : BUILTIN_CAT.get(topic) ?? custom.get(topic) ?? CUSTOM_CATEGORY_ID;
   }, [customTopics]);
-  const kb = useMemo(() => buildKnowledge(groups, catOf), [groups, catOf]);
+  const kb = useMemo(() => buildKnowledge(groups, catOf, saved), [groups, catOf, saved]);
   const label = (topic: string) => topic === NO_TOPIC ? t('coachKnowledge.noTopic') : topicLabel(topic, t);
   const catLabel = (c: string) => c === NO_TOPIC_CAT ? t('coachKnowledge.noTopic') : t(`sessionSetup.topicCat_${c}`);
   const fmtDay = (day: string, long = false) => new Date(`${day}T12:00:00`).toLocaleDateString(i18n.language,
@@ -94,17 +109,32 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
     setPick(link);
   };
 
+  const newLink = newUrl.trim() ? normalizeTopicLink(newUrl) : '';
+  const newDup = !!newLink && !!current?.links.some(l => l.url === newLink);
+  const saveLink = async () => {
+    if (!current || !newLink || newDup || savingLink) return;
+    if (saved.length >= KNOWLEDGE_LINKS_MAX) { showToast(t('coachKnowledge.linksLimit', { max: KNOWLEDGE_LINKS_MAX })); return; }
+    setSavingLink(true);
+    try {
+      await addKnowledgeLink(uid, current.topic, newLink, newTitle);
+      setAdding(false); setNewUrl(''); setNewTitle('');
+      showToast(t('coachKnowledge.linkSaved'));
+    } catch (e) {
+      console.error('Wissen: zapis linku', e);
+      showToast(t('coachKnowledge.linkSaveError'));
+    }
+    setSavingLink(false);
+  };
+  const deleteLink = async (id: string) => {
+    setDelAsk(null);
+    try { await removeKnowledgeLink(uid, id); showToast(t('coachKnowledge.linkDeleted')); } catch (e) {
+      console.error('Wissen: usuwanie linku', e);
+      showToast(t('coachKnowledge.linkSaveError'));
+    }
+  };
+
   const hostOf = (url: string) => { try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return url; } };
 
-  if (kb.length === 0) {
-    return (
-      <div className="text-center py-10 bg-gray-50 rounded-3xl border border-dashed border-gray-200 mt-2 px-6">
-        <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">local_library</span>
-        <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('coachKnowledge.emptyTitle')}</p>
-        <p className="text-[12px] font-bold text-gray-400 leading-snug">{t('coachKnowledge.emptyText')}</p>
-      </div>
-    );
-  }
 
   // ─── Ekran tematu ───────────────────────────────────────────────
   if (current) {
@@ -124,9 +154,39 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
         </div>
 
         <section>
-          <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-2">
-            {t('coachKnowledge.links')} ({current.links.length})
-          </h3>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">
+              {t('coachKnowledge.links')} ({current.links.length})
+            </h3>
+            {current.topic !== NO_TOPIC && !adding && (
+              <button onClick={() => setAdding(true)}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-black bg-rose-50 text-rose-600 active:scale-95 transition-all">
+                <span className="material-symbols-outlined text-[16px]">add</span>{t('coachKnowledge.addLink')}
+              </button>
+            )}
+          </div>
+          {adding && (
+            <div className="bg-white border-2 border-rose-200 rounded-2xl p-3 mb-2 space-y-2">
+              <input value={newUrl} onChange={e => setNewUrl(e.target.value)} type="url" inputMode="url" autoCapitalize="off" autoCorrect="off"
+                maxLength={TOPIC_LINK_MAX_LEN} autoFocus placeholder={t('coachKnowledge.urlPlaceholder')}
+                className={`w-full bg-white border rounded-lg p-2.5 text-[12px] font-bold text-[#333] outline-none focus:border-[#0a3a2a] ${newLink === null ? 'border-red-400' : 'border-gray-200'}`} />
+              {newLink === null && <p className="text-[10px] font-bold text-red-500">{t('coachDashboard.groupTopicLinkInvalid')}</p>}
+              {newDup && <p className="text-[10px] font-bold text-red-500">{t('coachKnowledge.linkExists')}</p>}
+              <input value={newTitle} onChange={e => setNewTitle(e.target.value)} maxLength={TOPIC_LINK_TITLE_MAX}
+                placeholder={t('coachKnowledge.titlePlaceholder')}
+                className="w-full bg-white border border-gray-200 rounded-lg p-2.5 text-[12px] font-bold text-[#333] outline-none focus:border-[#0a3a2a]" />
+              <div className="flex gap-2">
+                <button onClick={saveLink} disabled={!newLink || newDup || savingLink}
+                  className="flex-1 py-2.5 bg-[#0a3a2a] text-[#fed33e] rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95 disabled:opacity-40">
+                  {t('coachKnowledge.saveLink')}
+                </button>
+                <button onClick={() => { setAdding(false); setNewUrl(''); setNewTitle(''); }}
+                  className="px-4 py-2.5 bg-gray-100 text-gray-500 rounded-xl font-black text-[11px] uppercase tracking-widest active:scale-95">
+                  {t('common.cancel')}
+                </button>
+              </div>
+            </div>
+          )}
           {current.links.length === 0 ? (
             <p className="text-[12px] font-bold text-gray-400 ml-1">{t('coachKnowledge.noLinks')}</p>
           ) : (
@@ -142,9 +202,26 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
                       <span className="block text-[10px] font-bold text-gray-400 break-all mt-0.5">{l.url}</span>
                     </span>
                   </a>
-                  <p className="text-[10px] font-bold text-gray-400 mt-1.5 ml-7">
-                    {t('coachKnowledge.usedTimes', { count: l.count })} · {t('coachKnowledge.lastUsed', { date: fmtDay(l.lastDay) })}
-                  </p>
+                  {/* Kiedy i ile razy był na treningu (user 2026-11-13). */}
+                  {l.count === 0 ? (
+                    <p className="text-[10px] font-black text-rose-500 mt-1.5 ml-7">{t('coachKnowledge.neverUsed')}</p>
+                  ) : (
+                    <div className="mt-1.5 ml-7">
+                      <p className="text-[10px] font-black text-[#0a3a2a]">{t('coachKnowledge.usedTimes', { count: l.count })}</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {(usesOpen[l.url] ? l.uses : l.uses.slice(0, 3)).map((u, i) => (
+                          <span key={i} className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-100 rounded-md px-1.5 py-0.5 tabular-nums">
+                            {fmtDay(u.day)}{groups.length > 1 ? ` · ${u.groupName}` : ''}
+                          </span>
+                        ))}
+                        {l.uses.length > 3 && (
+                          <button onClick={() => setUsesOpen(o => ({ ...o, [l.url]: !o[l.url] }))} className="text-[10px] font-black text-rose-500 px-1">
+                            {usesOpen[l.url] ? t('coachKnowledge.less') : `+${l.uses.length - 3}`}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   <div className="flex gap-2 mt-2 ml-7">
                     <button onClick={() => copy(l.url)}
                       className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[11px] font-black active:scale-95 transition-all ${copied === l.url ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-[#0a3a2a]'}`}>
@@ -158,6 +235,17 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
                         <span className="truncate">{t('coachKnowledge.addToNext')}</span>
                       </button>
                     )}
+                    {l.savedId && (delAsk === l.savedId ? (
+                      <button onClick={() => deleteLink(l.savedId!)}
+                        className="ml-auto px-3 py-1.5 rounded-xl text-[11px] font-black bg-red-600 text-white active:scale-95">
+                        {t('coachKnowledge.deleteConfirm')}
+                      </button>
+                    ) : (
+                      <button onClick={() => setDelAsk(l.savedId!)} aria-label={t('coachKnowledge.deleteLink')}
+                        className="ml-auto w-8 h-8 shrink-0 rounded-lg text-red-400 flex items-center justify-center active:scale-90">
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -244,7 +332,7 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
       className="w-full flex items-center gap-3 bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm text-left active:scale-[0.98] transition-all">
       <span className="min-w-0 flex-1">
         <span className="block text-[14px] font-black leading-snug break-words text-[#0a3a2a]">{label(k.topic)}</span>
-        <span className="block text-[10px] font-bold text-gray-400 mt-0.5">{t('coachKnowledge.lastTraining', { date: fmtDay(k.lastDay) })}</span>
+        <span className="block text-[10px] font-bold text-gray-400 mt-0.5">{k.lastDay ? t('coachKnowledge.lastTraining', { date: fmtDay(k.lastDay) }) : t('coachKnowledge.noTrainingYet')}</span>
       </span>
       {k.links.length > 0 && (
         <span className="flex items-center gap-0.5 text-[11px] font-black text-rose-500 bg-rose-50 rounded-full px-2 py-0.5 shrink-0 tabular-nums">
@@ -296,7 +384,13 @@ export default function CoachKnowledge({ groups, showToast, onAddToTraining }: {
           })}
         </div>
       )}
-      {filtered.length === 0 ? (
+      {kb.length === 0 ? (
+        <div className="text-center py-8 bg-gray-50 rounded-3xl border border-dashed border-gray-200 px-6">
+          <span className="material-symbols-outlined text-4xl text-gray-300 mb-2 block">local_library</span>
+          <p className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-2">{t('coachKnowledge.emptyTitle')}</p>
+          <p className="text-[12px] font-bold text-gray-400 leading-snug">{t('coachKnowledge.emptyText')}</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <p className="text-center text-[12px] font-bold text-gray-400 py-8">{t('coachKnowledge.nothingFound')}</p>
       ) : (
         [...CAT_ORDER, NO_TOPIC_CAT].map(c => {

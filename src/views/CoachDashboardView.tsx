@@ -36,7 +36,8 @@ import { type GroupSchedule, type ScheduleSlot, type ScheduleBreak, normalizeSch
 import { formatViewerAgeCategory } from '../utils/privateProfile';
 import { useBackClose, navOverlayValue } from '../hooks/useBackClose';
 import TermineViewToggle from '../components/TermineViewToggle';
-import { getShowPrivate, saveShowPrivate, type TermineView } from '../utils/termineView';
+import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, getShowStarts, saveShowStarts, type TermineView } from '../utils/termineView';
+import TermineFilterToggles from '../components/TermineFilterToggles';
 
 /** Po tylu dniach bez treningu uczeń trafia do paska „wypada z rytmu". */
 const INACTIVE_DAYS = 14;
@@ -395,13 +396,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   // Prywatne terminy obok trenerskich — kolizje widać od razu (pomysł usera 2026-10-26).
   const [showPrivate, setShowPrivate] = useState(getShowPrivate);
   // Stałe treningi grup w Termine — domyślnie widoczne, da się ukryć (user 2026-10-27).
-  const [showPlan, setShowPlan] = useState(() => {
-    try { return localStorage.getItem('grotX_coachShowPlan') !== '0'; } catch { return true; }
-  });
+  const [showPlan, setShowPlan] = useState(getShowPlan);
   // Starty podopiecznych w Termine — domyślnie widoczne, da się ukryć (user 2026-11-12).
-  const [showStarts, setShowStarts] = useState(() => {
-    try { return localStorage.getItem('grotX_coachShowStarts') !== '0'; } catch { return true; }
-  });
+  const [showStarts, setShowStarts] = useState(getShowStarts);
   // Start kilku uczniów rozwinięty do wyboru (klucz wiersza).
   const [tourPickKey, setTourPickKey] = useState<string | null>(null);
   const studentGroupMap = useMemo(() => studentGroupMapOf(coachGroups), [coachGroups]);
@@ -1823,7 +1820,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   const togglePlan = () => {
     const next = !showPlan;
     setShowPlan(next);
-    try { localStorage.setItem('grotX_coachShowPlan', next ? '1' : '0'); } catch { /* ignore */ }
+    saveShowPlan(next);
   };
   const togglePrivate = () => {
     const next = !showPrivate;
@@ -1833,7 +1830,7 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
   const toggleStarts = () => {
     const next = !showStarts;
     setShowStarts(next);
-    try { localStorage.setItem('grotX_coachShowStarts', next ? '1' : '0'); } catch { /* ignore */ }
+    saveShowStarts(next);
   };
 
   // [EINSTELLUNGEN] Klocki sekcji ustawień: tytuł bloku i wiersz-przycisk.
@@ -2998,29 +2995,11 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
               {/* Co pokazać obok własnych terminów: stałe treningi grup (2026-10-27), prywatne
                   (2026-10-26), starty uczniów (2026-11-12). Same ikonki — trzy podpisy nie mieszczą
                   się na telefonie obok Liste/Monat; wyłączone = szare i przekreślone. */}
-              <div className="flex items-center gap-1.5">
-                {([
-                  { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
-                  { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
-                  { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: studentTournaments.length === 0 },
-                ]).filter(b => !b.hidden).map(b => (
-                  <button
-                    key={b.testId}
-                    type="button"
-                    data-testid={b.testId}
-                    aria-pressed={b.on}
-                    aria-label={b.label}
-                    title={b.label}
-                    onClick={b.toggle}
-                    className={`relative w-9 h-9 rounded-xl flex items-center justify-center active:scale-95 transition-all border ${
-                      b.on ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-400 border-gray-200'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">{b.icon}</span>
-                    {!b.on && <span aria-hidden className="absolute w-[22px] h-[2px] bg-gray-400 rotate-45 rounded-full" />}
-                  </button>
-                ))}
-              </div>
+              <TermineFilterToggles filters={[
+                { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
+                { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
+                { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: studentTournaments.length === 0 },
+              ]} />
             </div>
 
             {upcomingCoachEvents === null ? (

@@ -22,3 +22,23 @@ export function getShowPrivate(): boolean {
 export function saveShowPrivate(v: boolean) {
   try { localStorage.setItem(PRIVATE_KEY, v ? '1' : '0'); } catch { /* ignore */ }
 }
+
+// Stałe treningi grup i starty uczniów — też wspólne dla Liste i Monat (user 2026-11-13).
+const PLAN_KEY = 'grotX_coachShowPlan';
+const STARTS_KEY = 'grotX_coachShowStarts';
+
+export function getShowPlan(): boolean {
+  try { return localStorage.getItem(PLAN_KEY) !== '0'; } catch { return true; }
+}
+
+export function saveShowPlan(v: boolean) {
+  try { localStorage.setItem(PLAN_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}
+
+export function getShowStarts(): boolean {
+  try { return localStorage.getItem(STARTS_KEY) !== '0'; } catch { return true; }
+}
+
+export function saveShowStarts(v: boolean) {
+  try { localStorage.setItem(STARTS_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+}

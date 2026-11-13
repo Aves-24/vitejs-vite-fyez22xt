@@ -170,3 +170,31 @@ test('starty uczniów: widoczne, klikalne, przełącznik zapamiętany', async ({
   await expect(coach.getByRole('button', { name: /Hallenmeisterschaft/ })).toHaveCount(0);
   await expectNoErrors(coach, coachErrors, 'Termine: starty');
 });
+
+// Monat u trenera (2026-11-13): te same ikonki co w Liste, wspólny stan; własne zawody = puchar w dniu.
+test('Monat: ikonki jak w Liste, zawody jako puchar', async ({ browser, request }) => {
+  test.setTimeout(120_000);
+  const coach = await newUserPage(browser);
+  const student = await newUserPage(browser);
+  const coachErrors = watchErrors(coach);
+  const cid = await registerUser(coach, 'Trenerka');
+  const sid = await registerUser(student, 'Uczen');
+  await adminPatchDoc(request, `users/${cid}/tournaments/ownStart`, { title: 'Kreismeisterschaft', date: iso(new Date()), category: 'Turniej' });
+  await linkCoachAndStudent(coach, student, sid, 'Trenerka');
+
+  await coachNav(coach, 'event_note Termine').click();
+  // Privat w Liste włączony → w Monat też włączony (wspólny stan).
+  await coach.getByTestId('termine-toggle-private').click();
+  await coach.getByRole('button', { name: /Monat/ }).click();
+  await expect(coach.getByTestId('termine-toggle-plan')).toBeVisible();
+  await expect(coach.getByTestId('termine-toggle-private')).toHaveAttribute('aria-pressed', 'true');
+  const day = new Date(); // dziś — zawsze w pokazanym miesiącu
+  const cellName = `${day.getDate()} emoji_events`;
+  await expect(coach.getByRole('button', { name: cellName, exact: true })).toBeVisible();
+  if (process.env.SHOT2) await coach.screenshot({ path: process.env.SHOT2 });
+
+  // Privat wyłączony → prywatne zawody znikają z siatki.
+  await coach.getByTestId('termine-toggle-private').click();
+  await expect(coach.getByRole('button', { name: cellName, exact: true })).toHaveCount(0);
+  await expectNoErrors(coach, coachErrors, 'Monat');
+});

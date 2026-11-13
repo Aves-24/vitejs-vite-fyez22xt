@@ -30,7 +30,8 @@ import { groupIcon } from '../constants/groupIcons';
 import { useBackClose } from '../hooks/useBackClose';
 import TermineViewToggle from '../components/TermineViewToggle';
 import PlanCorner from '../components/PlanCorner';
-import { getShowPrivate, saveShowPrivate, type TermineView } from '../utils/termineView';
+import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, type TermineView } from '../utils/termineView';
+import TermineFilterToggles from '../components/TermineFilterToggles';
 
 interface Event {
   id: string;
@@ -119,6 +120,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [showPrivate, setShowPrivate] = useState(getShowPrivate);
   const hidePrivate = coachMode && !showPrivate;
   const togglePrivate = () => { const next = !showPrivate; setShowPrivate(next); saveShowPrivate(next); };
+  // Stałe treningi grup — ten sam przełącznik co w Liste (user 2026-11-13); tylko u trenera.
+  const [showPlanState, setShowPlan] = useState(getShowPlan);
+  const showPlan = !coachMode || showPlanState;
+  const togglePlan = () => { const next = !showPlanState; setShowPlan(next); saveShowPlan(next); };
   const events = useMemo(() => {
     const liveIds = new Set(liveEvents.map(e => e.id));
     const all = [...olderEvents.filter(e => !liveIds.has(e.id)), ...liveEvents];
@@ -765,7 +770,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const upcomingOthers = upcomingEvents.filter(e => e.category === 'Inne' && !e.maintenanceGroup);
   const upcomingTrainerReceived = upcomingEvents.filter(e => e.category === 'Trener' && e.isMirrored);
   // [TRÓJKĄCIK 2026-11-12] Treningi grup z planu na 4 tygodnie — bez tematu też na liście (dzień z terminem tematu już tam jest).
-  const planRows: Event[] = (() => {
+  const planRows: Event[] = !showPlan ? [] : (() => {
     const d = new Date(`${todayStr}T12:00:00`); d.setDate(d.getDate() + 28);
     const to = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
     const topicDays = new Set(events.filter(e => e.category === 'Trener' && !e.isMirrored && e.trainingTopicGroupId).map(e => `${e.trainingTopicGroupId}@${e.date}`));
@@ -899,18 +904,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
       {coachMode && (
         <div className="px-4 mt-4 flex items-center justify-between gap-2 flex-wrap shrink-0">
           <TermineViewToggle value="MONTH" onChange={v => (onSwitchTermine ? onSwitchTermine(v) : onNavigate?.('COACH', 'EVENTS'))} />
-          <button
-            type="button"
-            aria-pressed={showPrivate}
-            title={t('coachTermine.showPrivate')}
-            onClick={togglePrivate}
-            className={`py-2 px-2.5 rounded-xl text-[12px] font-black flex items-center gap-1 active:scale-95 transition-all border ${
-              showPrivate ? 'bg-[#0a3a2a] text-[#fed33e] border-[#0a3a2a]' : 'bg-white text-gray-500 border-gray-200'
-            }`}
-          >
-            <span className="material-symbols-outlined text-[16px]">{showPrivate ? 'visibility' : 'visibility_off'}</span>
-            {t('coachTermine.private')}
-          </button>
+          <TermineFilterToggles filters={[
+            { on: showPlanState, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
+            { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
+          ]} />
         </div>
       )}
 
@@ -951,7 +948,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const planGroups = planDays.get(dateStr) || [];
                 const isPlanShadow = (e: Event) => e.category === 'Trener' && !e.isMirrored && !!e.trainingTopicGroupId && planGroups.includes(e.trainingTopicGroupId);
                 const colorEvents = dayEvents.filter(e => !isPlanShadow(e));
-                const hasTournament = colorEvents.some(e => e.category === 'Turniej' || !e.category);
+                const anyTournament = colorEvents.some(e => e.category === 'Turniej' || !e.category);
+                // U trenera zawody = puchar pod numerem dnia zamiast zielonego tła (user 2026-11-13).
+                const tourneyIcon = coachMode && anyTournament;
+                const hasTournament = anyTournament && !coachMode;
                 const hasOther = colorEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
                 const hasMaintenance = colorEvents.some(e => e.maintenanceGroup);
                 const hasOwnTrainer = colorEvents.some(e => e.category === 'Trener' && !e.isMirrored);
@@ -960,7 +960,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 // Temat zapisany (w grupie albo jako termin tematu) → zielona obwódka trójkącika.
                 const topicGroup = dayEvents.find(isPlanShadow)?.trainingTopicGroupId
                   || planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
-                const planTri = planGroups.length > 0 && (
+                const planTri = showPlan && planGroups.length > 0 && (
                   <span
                     role="button"
                     aria-label={t('calendar.planTopic')}
@@ -974,7 +974,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 );
                 // [ŚCIEŻKI 2026-11-12] Dzień, w którym jest tylko trening z planu → okienko tematu (jak trójkącik),
                 // a nie formularz nowego terminu. Z innymi terminami — lista dnia jak dotąd.
-                const onDay = () => (planGroups.length > 0 && colorEvents.length === 0
+                const onDay = () => (showPlan && planGroups.length > 0 && colorEvents.length === 0
                   ? setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr })
                   : handleDayClick(dateStr, dayEvents));
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
@@ -993,14 +993,16 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         {hasOwnTrainer && <div className="bg-rose-500 flex-1" />}
                         {hasMirroredTrainer && <div className="bg-violet-500 flex-1" />}
                         {planTri}
-                        <span className="absolute inset-0 flex items-center justify-center text-white font-black text-[11px] drop-shadow">
+                        <span className="absolute inset-0 flex flex-col items-center justify-center leading-none text-white font-black text-[11px] drop-shadow">
                           {day}
+                          {tourneyIcon && <span className="material-symbols-outlined text-[12px] leading-none">emoji_events</span>}
                         </span>
                       </div>
                     </button>
                   );
                 }
 
+                const coloredDay = hasOther || hasMaintenance || hasOwnTrainer || hasMirroredTrainer;
                 let bgClass = "bg-gray-50/50";
                 let textClass = "text-gray-500";
 
@@ -1030,9 +1032,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     onClick={onDay}
                     className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                   >
-                    <div className={`relative overflow-hidden w-full h-full flex items-center justify-center rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
+                    <div className={`relative overflow-hidden w-full h-full flex flex-col items-center justify-center leading-none rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
                       {planTri}
                       {day}
+                      {tourneyIcon && <span className={`material-symbols-outlined text-[12px] leading-none ${coloredDay ? 'text-white' : 'text-[#0a3a2a]'}`}>emoji_events</span>}
                     </div>
                   </button>
                 )
@@ -1251,7 +1254,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">{t('calendar.legend', 'Legenda')}</p>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />
+              {coachMode
+                ? <span className="material-symbols-outlined text-[14px] w-3 text-[#0a3a2a] flex-shrink-0 leading-none">emoji_events</span>
+                : <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />}
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTournament', 'Turniej')}</span>
             </div>
             <div className="flex items-center gap-2">

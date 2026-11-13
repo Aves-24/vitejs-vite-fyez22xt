@@ -1084,16 +1084,18 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   || planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
                 // Trening mojej grupy (uczeń): fioletowy róg, odwołany — szary; bez osobnego kliknięcia.
                 const memberOn = (memberDays.get(dateStr) || []).some(x => !x.occ.cancelled);
-                const memberTri = (memberDays.get(dateStr) || []).length > 0 && !(showPlan && planGroups.length > 0) && (
-                  <span role="img" aria-label={memberOn ? t('calendar.legendGroupTraining') : t('calendar.legendGroupCancelled')} data-testid={memberOn ? 'member-plan-tri' : 'member-plan-tri-cancelled'} className="absolute top-0 right-0 w-[20px] h-[20px] z-10 pointer-events-none">
-                    {colorEvents.length > 0 && <span className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-l-transparent border-t-white" />}
-                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent ${memberOn ? 'border-t-violet-500' : 'border-t-gray-400'}`} />
+                // Lewy górny róg (user 2026-11-13): różowy róg mojej grupy jest po prawej — oba widać naraz.
+                const memberTri = (memberDays.get(dateStr) || []).length > 0 && (
+                  <span role="img" aria-label={memberOn ? t('calendar.legendGroupTraining') : t('calendar.legendGroupCancelled')} data-testid={memberOn ? 'member-plan-tri' : 'member-plan-tri-cancelled'} className="absolute top-0 left-0 w-[20px] h-[20px] z-10 pointer-events-none">
+                    {colorEvents.length > 0 && <span className="absolute top-0 left-0 w-0 h-0 border-t-[16px] border-r-[16px] border-r-transparent border-t-white" />}
+                    <span className={`absolute top-0 left-0 w-0 h-0 border-t-[12px] border-r-[12px] border-r-transparent ${memberOn ? 'border-t-violet-500' : 'border-t-gray-400'}`} />
                   </span>
                 );
                 const planTri = showPlan && planGroups.length > 0 && (
                   <span
                     role="button"
                     aria-label={t('calendar.planTopic')}
+                    data-testid="own-plan-tri"
                     // Bez osobnej akcji: klik idzie do dnia (onDay) — na małym polu trudno trafić w róg (user 2026-11-13).
                     className="absolute top-0 right-0 w-[20px] h-[20px] z-10"
                   >
@@ -1456,7 +1458,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
             {/* Uczeń w grupie: fioletowy róg = trening grupy, szary = odwołany. */}
             {memberPlans.length > 0 && (['violet', 'gray'] as const).map(c => (
               <div key={c} className="flex items-center gap-2">
-                <span className="relative w-4 h-4 rounded-[4px] border border-gray-200 bg-white overflow-hidden flex-shrink-0"><PlanCorner hasTopic={false} size={9} color={c} /></span>
+                <span className="relative w-4 h-4 rounded-[4px] border border-gray-200 bg-white overflow-hidden flex-shrink-0"><PlanCorner hasTopic={false} size={9} color={c} side="left" /></span>
                 <span className="text-[10px] font-bold text-gray-500">{t(c === 'violet' ? 'calendar.legendGroupTraining' : 'calendar.legendGroupCancelled')}</span>
               </div>
             ))}

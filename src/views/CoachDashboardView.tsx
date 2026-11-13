@@ -2996,9 +2996,9 @@ export default function CoachDashboardView({ userId, onNavigate, onBack, onSwitc
                   (2026-10-26), starty uczniów (2026-11-12). Same ikonki — trzy podpisy nie mieszczą
                   się na telefonie obok Liste/Monat; wyłączone = szare i przekreślone. */}
               <TermineFilterToggles filters={[
-                { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
-                { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
-                { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: studentTournaments.length === 0 },
+                { on: showPlan, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), onText: t('coachTermine.hint_planOn'), offText: t('coachTermine.hint_planOff'), testId: 'termine-toggle-plan' },
+                { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), onText: t('coachTermine.hint_privOn'), offText: t('coachTermine.hint_privOff'), testId: 'termine-toggle-private' },
+                { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), onText: t('coachTermine.hint_startsOn'), offText: t('coachTermine.hint_startsOff'), testId: 'termine-toggle-starts', hidden: studentTournaments.length === 0 },
               ]} />
             </div>
 

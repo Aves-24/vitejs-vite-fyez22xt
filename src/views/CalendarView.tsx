@@ -141,6 +141,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [dayPickerDate, setDayPickerDate] = useState<string>('');
   // Starty uczniów w okienku dnia (Monat u trenera).
   const [dayPickerStarts, setDayPickerStarts] = useState<StudentStart[]>([]);
+  // Treningi grup z planu w okienku dnia (id grup).
+  const [dayPickerPlans, setDayPickerPlans] = useState<string[]>([]);
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -424,7 +426,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   useBackClose(showForm && !deepFormRef.current, () => { setShowForm(false); resetForm(); });
   useBackClose(showScoreInput, () => setShowScoreInput(false));
   useBackClose(!!showDeleteConfirm, () => setShowDeleteConfirm(null));
-  useBackClose(dayPickerEvents.length > 0 || dayPickerStarts.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); });
+  useBackClose(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); });
 
   // `leave` = false, gdy zaraz i tak przechodzimy gdzie indziej (statystyki, grupa).
   const closeViewingModal = (leave = true) => {
@@ -504,8 +506,10 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     }
   };
 
-  const handleEditViewing = () => {
-    if (!viewingEvent) return;
+  const handleEditViewing = () => { if (viewingEvent) startEdit(viewingEvent); };
+  // Edycja terminu — z podglądu albo prosto z okienka dnia (ołówek).
+  const startEdit = (viewingEvent: Event) => {
+    setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]);
     setEditingEventId(viewingEvent.id);
     setNewCategory(viewingEvent.category || 'Turniej');
     setNewTitle(viewingEvent.title);
@@ -936,9 +940,9 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         <div className="px-4 mt-4 flex items-center justify-between gap-2 flex-wrap shrink-0">
           <TermineViewToggle value="MONTH" onChange={v => (onSwitchTermine ? onSwitchTermine(v) : onNavigate?.('COACH', 'EVENTS'))} />
           <TermineFilterToggles filters={[
-            { on: showPlanState, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), testId: 'termine-toggle-plan' },
-            { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), testId: 'termine-toggle-private' },
-            { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), testId: 'termine-toggle-starts', hidden: monthStarts.length === 0 },
+            { on: showPlanState, toggle: togglePlan, icon: 'event_repeat', label: t('coachTermine.showPlan'), onText: t('coachTermine.hint_planOn'), offText: t('coachTermine.hint_planOff'), testId: 'termine-toggle-plan' },
+            { on: showPrivate, toggle: togglePrivate, icon: 'lock', label: t('coachTermine.showPrivate'), onText: t('coachTermine.hint_privOn'), offText: t('coachTermine.hint_privOff'), testId: 'termine-toggle-private' },
+            { on: showStarts, toggle: toggleStarts, icon: 'emoji_events', label: t('coachTermine.showStarts'), onText: t('coachTermine.hint_startsOn'), offText: t('coachTermine.hint_startsOff'), testId: 'termine-toggle-starts', hidden: monthStarts.length === 0 },
           ]} />
         </div>
       )}
@@ -994,7 +998,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         <span className="material-symbols-outlined text-[11px] leading-none">emoji_events</span>
                       </span>
                     )}
-                    {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`absolute right-[2px] top-1/2 -translate-y-1/2 material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
+                    {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`absolute right-[3px] bottom-[2px] material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
                   </>
                 );
                 const hasTournament = anyTournament && !coachMode;
@@ -1010,7 +1014,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   <span
                     role="button"
                     aria-label={t('calendar.planTopic')}
-                    onClick={e => { e.stopPropagation(); setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr }); }}
+                    // Bez osobnej akcji: klik idzie do dnia (onDay) — na małym polu trudno trafić w róg (user 2026-11-13).
                     className="absolute top-0 right-0 w-[20px] h-[20px] z-10"
                   >
                     {/* Zawsze różowy; na kolorowym dniu biała obwódka, żeby był widoczny; temat = zielona obwódka. */}
@@ -1020,9 +1024,19 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 );
                 // [ŚCIEŻKI 2026-11-12] Dzień, w którym jest tylko trening z planu → okienko tematu (jak trójkącik),
                 // a nie formularz nowego terminu. Z innymi terminami — lista dnia jak dotąd.
-                const onDay = () => (showPlan && planGroups.length > 0 && colorEvents.length === 0 && dayStarts.length === 0
-                  ? setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr })
-                  : handleDayClick(dateStr, dayEvents, dayStarts));
+                // [DZIEŃ 2026-11-13] Jedna rzecz w dniu → od razu ona; kilka → okienko wyboru dnia
+                // (trening z planu, terminy, starty uczniów), bo w małe pole trudno trafić palcem.
+                const dayPlans = showPlan ? planGroups : [];
+                const dayCount = dayPlans.length + colorEvents.length + dayStarts.length;
+                const onDay = () => {
+                  if (dayCount === 0) return handleDayClick(dateStr, dayEvents);
+                  if (dayCount === 1 && dayPlans.length === 1) return setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr });
+                  if (dayCount === 1 && colorEvents.length === 1) return handleDayClick(dateStr, colorEvents);
+                  setDayPickerEvents(colorEvents);
+                  setDayPickerStarts(dayStarts);
+                  setDayPickerPlans(dayPlans);
+                  setDayPickerDate(dateStr);
+                };
                 const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
@@ -1596,18 +1610,48 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       )}
 
-      {(dayPickerEvents.length > 0 || dayPickerStarts.length > 0) && (
+      {(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-black text-[#0a3a2a]">
                 {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
               </h2>
-              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {/* Treningi grup z planu: klik → okienko tematu (podgląd i edycja tematu). */}
+              {dayPickerPlans.map(gid => {
+                const g = coachGroups.find(x => x.id === gid);
+                const next = new Date(`${dayPickerDate}T12:00:00`); next.setDate(next.getDate() + 1);
+                const occ = listOccurrences(g?.schedule, dayPickerDate, formatDateStr(next.getFullYear(), next.getMonth(), next.getDate()))[0];
+                const tp: any = g?.topics?.[dayPickerDate];
+                const topic = tp ? (tp.text || tp.topic || '') : '';
+                return (
+                  <button
+                    key={`plan_${gid}`}
+                    type="button"
+                    data-testid="day-picker-plan"
+                    onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setTopicEdit({ groupId: gid, date: dayPickerDate }); }}
+                    className="relative overflow-hidden tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 active:scale-[0.98] transition-all text-left"
+                  >
+                    <span aria-hidden className="pointer-events-none"><PlanCorner hasTopic={!!topic} size={12} /></span>
+                    <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 tb-icon">
+                      <span className="material-symbols-outlined text-[18px] text-rose-500">{groupIcon(g)}</span>
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[9px] font-black uppercase tracking-widest leading-tight text-rose-500">
+                        {t('calendar.legendPlan')}{occ?.time ? ` • ${occ.time}` : ''}
+                      </p>
+                      <p className="font-black text-[13px] leading-snug truncate text-[#0a3a2a]">{g?.name || ''}</p>
+                      {topic && <p className="text-[11px] font-bold text-gray-500 leading-snug truncate">{topic}</p>}
+                    </div>
+                    <span className="material-symbols-outlined text-lg text-gray-300">chevron_right</span>
+                  </button>
+                );
+              })}
               {/* Starty uczniów tego dnia: żółty pasek i złoty puchar jak w Liste; imię → profil ucznia. */}
               {dayPickerStarts.map(st => (
                 <div key={`${st.date}_${st.title}`} className="tb-card border-l-[#fed33e] border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-start gap-2.5 pl-2 pr-3 py-2.5">
@@ -1622,7 +1666,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         <button
                           key={id}
                           type="button"
-                          onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); onNavigate?.('STUDENT_PROFILE', undefined, undefined, id); }}
+                          onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); onNavigate?.('STUDENT_PROFILE', undefined, undefined, id); }}
                           className="py-1 px-2.5 rounded-full bg-[#fed33e]/30 border border-[#fed33e] text-[12px] font-black text-[#5d4a00] active:scale-95 transition-all"
                         >
                           {st.names[i]}
@@ -1633,10 +1677,11 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 </div>
               ))}
               {dayPickerEvents.map(ev => (
+                <div key={ev.id} className={`tb-card ${stripeOf(ev)} border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center`}>
                 <button
-                  key={ev.id}
+                  type="button"
                   onClick={() => { setViewingEvent(ev); }}
-                  className={`tb-card ${stripeOf(ev)} border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 active:scale-[0.98] transition-all text-left`}
+                  className="flex-1 min-w-0 flex items-center gap-2.5 pl-2 pr-2 py-2.5 active:scale-[0.98] transition-all text-left"
                 >
                   <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${ev.category === 'Turniej' || !ev.category ? 'tb-tourney-icon' : 'tb-icon'}`}>
                     <span className={`material-symbols-outlined text-[18px] ${ev.maintenanceGroup ? 'text-[#8B5E3C]' : ev.category === 'Turniej' || !ev.category ? 'tb-tourney-accent' : ev.category === 'Trener' ? (ev.isMirrored ? 'text-violet-500' : 'text-rose-500') : 'text-blue-900'}`}>
@@ -1650,8 +1695,22 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     </p>
                     <p className="font-black text-[13px] leading-snug truncate text-[#0a3a2a]">{ev.title}</p>
                   </div>
-                  <span className="material-symbols-outlined text-lg text-gray-300">chevron_right</span>
+                  <span className="material-symbols-outlined text-lg text-gray-300">visibility</span>
                 </button>
+                {/* Bearbeiten od razu z okienka dnia (Wartung ma własne okienko z listą czynności). */}
+                {!ev.maintenanceGroup && (
+                  <button
+                    type="button"
+                    data-testid="day-picker-edit"
+                    onClick={() => startEdit(ev)}
+                    aria-label={t('calendar.modalEdit')}
+                    title={t('calendar.modalEdit')}
+                    className="w-10 h-10 mr-1 shrink-0 rounded-full bg-gray-100 text-[#0a3a2a] flex items-center justify-center active:scale-90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                  </button>
+                )}
+                </div>
               ))}
             </div>
           </div>

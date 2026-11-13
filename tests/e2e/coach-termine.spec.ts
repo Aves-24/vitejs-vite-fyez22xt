@@ -192,10 +192,21 @@ test('Monat: ikonki jak w Liste, zawody jako puchar', async ({ browser, request 
   const day = new Date(); // dziś — zawsze w pokazanym miesiącu
   const cellName = `${day.getDate()} emoji_events emoji_events`;
   await expect(coach.getByRole('button', { name: cellName, exact: true })).toBeVisible();
+  // Kilka rzeczy w dniu → okienko wyboru: mój start z ołówkiem (Bearbeiten) i start ucznia.
+  await coach.getByRole('button', { name: cellName, exact: true }).click();
+  await expect(coach.getByText('Bezirksmeisterschaft')).toBeVisible();
+  await expect(coach.getByTestId('day-picker-edit')).toHaveCount(1);
   if (process.env.SHOT2) await coach.screenshot({ path: process.env.SHOT2 });
+  await coach.getByTestId('day-picker-edit').click();
+  await expect(coach.getByRole('textbox').first()).toBeVisible(); // formularz edycji
+  await coach.goBack();
+  await expect(coach.getByTestId('day-picker-edit')).toHaveCount(0);
 
-  // Privat wyłączony → prywatne zawody znikają z siatki.
+  // Privat wyłączony → prywatne zawody znikają z siatki; na chwilę dymek z opisem.
   await coach.getByTestId('termine-toggle-private').click();
+  await expect(coach.getByTestId('termine-filter-hint')).toHaveText('Nur Termine als Trainer');
+  if (process.env.SHOT4) await coach.screenshot({ path: process.env.SHOT4 });
+  await expect(coach.getByTestId('termine-filter-hint')).toHaveCount(0, { timeout: 5000 });
   await expect(coach.getByRole('button', { name: cellName, exact: true })).toHaveCount(0);
   // Start ucznia: mały złoty puchar; klik w dzień → okienko z imieniem → profil ucznia.
   await expect(coach.getByTestId('student-start-trophy')).toHaveCount(1);

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, reloadAfterSync } from './helpers';
+import { resetEmulators, registerUser, nav, watchErrors, expectNoErrors, reloadAfterSync, adminPatchDoc } from './helpers';
 
 // Ścieżki zawodnika z zapisem do bazy: fokus, trening techniczny, licznik
 // strzał, notatka/kamień milowy w Tagebuchu, termin zawodów w Kalendarzu.
@@ -106,4 +106,23 @@ test('termin zawodów w Kalendarzu', async ({ page }) => {
   await nav(page, 'Kalender').click();
   await expect(page.getByRole('main')).toContainText('Hallen-Cup');
   await expectNoErrors(page, errors, 'termin');
+});
+
+// Kalendarz zawodnika (2026-11-13): zawody = puchar w żółtym kółku (bez zielonego tła),
+// dzień z kilkoma terminami → okienko dnia z podglądem i ołówkiem.
+test('kalendarz: puchar zawodów i okienko dnia z kilkoma terminami', async ({ page, request }) => {
+  const errors = watchErrors(page);
+  const uid = await registerUser(page, 'Kalender');
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  await adminPatchDoc(request, `users/${uid}/tournaments/own`, { title: 'Stadtmeisterschaft', date: today, category: 'Turniej' });
+  await adminPatchDoc(request, `users/${uid}/tournaments/other`, { title: 'Sehne tauschen', date: today, category: 'Inne' });
+  await nav(page, 'Kalender').click();
+  await expect(page.getByTestId('own-start-trophy')).toHaveCount(1);
+  await page.getByRole('button', { name: `${d.getDate()} emoji_events`, exact: true }).click();
+  await expect(page.getByTestId('day-picker-edit')).toHaveCount(2);
+  if (process.env.SHOT5) await page.screenshot({ path: process.env.SHOT5 });
+  await page.getByTestId('day-picker-edit').first().click();
+  await expect(page.getByRole('textbox').first()).toBeVisible();
+  await expectNoErrors(page, errors, 'kalendarz');
 });

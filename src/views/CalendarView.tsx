@@ -985,8 +985,8 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 const isPlanShadow = (e: Event) => e.category === 'Trener' && !e.isMirrored && !!e.trainingTopicGroupId && planGroups.includes(e.trainingTopicGroupId);
                 const colorEvents = dayEvents.filter(e => !isPlanShadow(e));
                 const anyTournament = colorEvents.some(e => e.category === 'Turniej' || !e.category);
-                // U trenera zawody = puchar pod numerem dnia zamiast zielonego tła (user 2026-11-13).
-                const tourneyIcon = coachMode && anyTournament;
+                // Zawody = puchar w żółtym kółku pod numerem dnia zamiast zielonego tła (trener 2026-11-13, potem wszyscy).
+                const tourneyIcon = anyTournament; // także u zawodnika (user 2026-11-13)
                 // Start ucznia: mniejszy złoty puchar obok mojego (user 2026-11-13).
                 const dayStarts = startsByDay.get(dateStr) || [];
                 // Mój start: puchar w żółtym kółku pod numerem; start ucznia: mały złoty puchar
@@ -1001,7 +1001,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     {dayStarts.length > 0 && <span data-testid="student-start-trophy" className={`absolute right-[3px] bottom-[2px] material-symbols-outlined text-[10px] leading-none ${onColor ? 'text-[#fed33e]' : 'text-[#b8860b]'}`}>emoji_events</span>}
                   </>
                 );
-                const hasTournament = anyTournament && !coachMode;
                 const hasOther = colorEvents.some(e => e.category === 'Inne' && !e.maintenanceGroup);
                 const hasMaintenance = colorEvents.some(e => e.maintenanceGroup);
                 const hasOwnTrainer = colorEvents.some(e => e.category === 'Trener' && !e.isMirrored);
@@ -1037,7 +1036,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   setDayPickerPlans(dayPlans);
                   setDayPickerDate(dateStr);
                 };
-                const typeCount = [hasTournament, hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
+                const typeCount = [hasOther, hasMaintenance, hasOwnTrainer, hasMirroredTrainer].filter(Boolean).length;
 
                 if (typeCount > 1) {
                   return (
@@ -1047,7 +1046,6 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                       className="h-[34px] flex items-center justify-center active:scale-90 transition-transform"
                     >
                       <div className="w-full h-full rounded-[10px] overflow-hidden flex flex-col relative">
-                        {hasTournament && <div className="bg-[#0a3a2a] flex-1" />}
                         {hasOther && <div className="bg-blue-900 flex-1" />}
                         {hasMaintenance && <div className={`${MAINTENANCE_BG} flex-1`} />}
                         {hasOwnTrainer && <div className="bg-rose-500 flex-1" />}
@@ -1066,10 +1064,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 let bgClass = "bg-gray-50/50";
                 let textClass = "text-gray-500";
 
-                if (hasTournament) {
-                  bgClass = "bg-[#0a3a2a] shadow-sm";
-                  textClass = "text-white font-black";
-                } else if (hasOther) {
+                if (hasOther) {
                   bgClass = "bg-blue-900 shadow-sm";
                   textClass = "text-white font-black";
                 } else if (hasMaintenance) {
@@ -1314,9 +1309,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
           <p className="text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3">{t('calendar.legend', 'Legenda')}</p>
           <div className="grid grid-cols-2 gap-2">
             <div className="flex items-center gap-2">
-              {coachMode
-                ? <span className="w-[15px] h-[15px] rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined text-[11px] leading-none">emoji_events</span></span>
-                : <span className="w-3 h-3 rounded-full bg-[#0a3a2a] flex-shrink-0" />}
+              <span className="w-[15px] h-[15px] rounded-full bg-[#fed33e] text-[#0a3a2a] flex items-center justify-center flex-shrink-0"><span className="material-symbols-outlined text-[11px] leading-none">emoji_events</span></span>
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTournament', 'Turniej')}</span>
             </div>
             {coachMode && (

@@ -1499,6 +1499,8 @@ export const views = {
     legend: "Legend",
     legendTournament: "Tournament",
     legendStudentStart: "Student competition",
+    legendGroupTraining: "Group training",
+    legendGroupCancelled: "Group training (cancelled)",
     studentStartTag: "Students’ competition",
     legendOther: "Other",
     legendTrainerReceived: "My appointments from coach",

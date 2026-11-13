@@ -1499,6 +1499,8 @@ export const views = {
     legend: "Legende",
     legendTournament: "Wettkampf",
     legendStudentStart: "Wettkampf Schüler",
+    legendGroupTraining: "Gruppentraining",
+    legendGroupCancelled: "Gruppentraining (abgesagt)",
     studentStartTag: "Wettkampf von Schülern",
     legendOther: "Sonstiges",
     legendTrainerReceived: "Termine vom Trainer",

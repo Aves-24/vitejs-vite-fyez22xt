@@ -32,6 +32,8 @@ import TermineViewToggle from '../components/TermineViewToggle';
 import PlanCorner from '../components/PlanCorner';
 import { getShowPrivate, saveShowPrivate, getShowPlan, saveShowPlan, getShowStarts, saveShowStarts, type TermineView } from '../utils/termineView';
 import { loadStudentStartsInRange, type StudentStart } from '../utils/studentStarts';
+import { subscribeMyGroupPlans, type GroupPlan } from '../utils/groupPlans';
+import type { Occurrence } from '../utils/groupSchedule';
 import TermineFilterToggles from '../components/TermineFilterToggles';
 
 interface Event {
@@ -76,6 +78,9 @@ const stripeOf = (e: { category?: string; isMirrored?: boolean; maintenanceGroup
   : e.category === 'Trener' ? (e.isMirrored ? 'tb-topic' : 'tb-led')
   : e.todo || e.wasATodo ? 'tb-todo'
   : 'tb-other';
+
+/** Jeden trening z planu grupy ucznia (może być odwołany). */
+interface MemberOcc { plan: GroupPlan; occ: Occurrence }
 
 interface CoachStudent {
   id: string;
@@ -143,6 +148,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const [dayPickerStarts, setDayPickerStarts] = useState<StudentStart[]>([]);
   // Treningi grup z planu w okienku dnia (id grup).
   const [dayPickerPlans, setDayPickerPlans] = useState<string[]>([]);
+  // [PLAN UCZNIA 2026-11-13] Treningi grup, do których należę (z lustra groupPlans/) — tylko do podglądu.
+  const [dayPickerMember, setDayPickerMember] = useState<MemberOcc[]>([]);
+  const [memberPlans, setMemberPlans] = useState<GroupPlan[]>([]);
+  const [showAllGroupTraining, setShowAllGroupTraining] = useState(false);
+  useEffect(() => {
+    if (coachMode || !userId) { setMemberPlans([]); return; }
+    return subscribeMyGroupPlans(userId, setMemberPlans);
+  }, [coachMode, userId]);
   
   // STAN DLA NOWEGO FORMULARZA WYNIKÓW:
   const [showScoreInput, setShowScoreInput] = useState(false);
@@ -426,7 +439,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   useBackClose(showForm && !deepFormRef.current, () => { setShowForm(false); resetForm(); });
   useBackClose(showScoreInput, () => setShowScoreInput(false));
   useBackClose(!!showDeleteConfirm, () => setShowDeleteConfirm(null));
-  useBackClose(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); });
+  useBackClose(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0 || dayPickerMember.length > 0, () => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setDayPickerMember([]); });
 
   // `leave` = false, gdy zaraz i tak przechodzimy gdzie indziej (statystyki, grupa).
   const closeViewingModal = (leave = true) => {
@@ -509,7 +522,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
   const handleEditViewing = () => { if (viewingEvent) startEdit(viewingEvent); };
   // Edycja terminu — z podglądu albo prosto z okienka dnia (ołówek).
   const startEdit = (viewingEvent: Event) => {
-    setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]);
+    setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setDayPickerMember([]);
     setEditingEventId(viewingEvent.id);
     setNewCategory(viewingEvent.category || 'Turniej');
     setNewTitle(viewingEvent.title);
@@ -725,6 +738,28 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
     const to = formatDateStr(m === 11 ? y + 1 : y, (m + 1) % 12, 1);
     for (const g of coachGroups) for (const o of listOccurrences(g.schedule, from, to)) if (!o.cancelled) planDays.set(o.date, [...(planDays.get(o.date) || []), g.id]);
   }
+  // [PLAN UCZNIA 2026-11-13] Treningi moich grup w widocznym miesiącu — z odwołanymi (szary róg).
+  const memberDays = new Map<string, MemberOcc[]>();
+  {
+    const y = calendarDate.getFullYear(), m = calendarDate.getMonth();
+    const from = formatDateStr(y, m, 1);
+    const to = formatDateStr(m === 11 ? y + 1 : y, (m + 1) % 12, 1);
+    for (const p of memberPlans) for (const o of listOccurrences(p.schedule, from, to)) memberDays.set(o.date, [...(memberDays.get(o.date) || []), { plan: p, occ: o }]);
+  }
+  // Pod kalendarzem: treningi moich grup na 4 tygodnie (odwołane też — z powodem).
+  const memberUpcoming: MemberOcc[] = (() => {
+    const d = new Date(`${todayStr}T12:00:00`); d.setDate(d.getDate() + 28);
+    const to = formatDateStr(d.getFullYear(), d.getMonth(), d.getDate());
+    return memberPlans.flatMap(p => listOccurrences(p.schedule, todayStr, to).map(occ => ({ plan: p, occ })))
+      .sort((a, b) => `${a.occ.date} ${a.occ.time}`.localeCompare(`${b.occ.date} ${b.occ.time}`));
+  })();
+  const openMemberDay = (date: string) => {
+    setDayPickerEvents(events.filter(e => e.date === date));
+    setDayPickerStarts([]);
+    setDayPickerPlans([]);
+    setDayPickerMember(memberDays.get(date) || memberUpcoming.filter(x => x.occ.date === date));
+    setDayPickerDate(date);
+  };
 
   // [TERMINE MONAT 2026-11-13] Starty uczniów w widocznym miesiącu — mniejszy złoty puchar w dniu.
   const startsByDay = new Map<string, StudentStart[]>();
@@ -1009,6 +1044,14 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 // Temat zapisany (w grupie albo jako termin tematu) → zielona obwódka trójkącika.
                 const topicGroup = dayEvents.find(isPlanShadow)?.trainingTopicGroupId
                   || planGroups.find(id => { const tp: any = coachGroups.find(g => g.id === id)?.topics?.[dateStr]; return tp && (tp.text || tp.topic); });
+                // Trening mojej grupy (uczeń): fioletowy róg, odwołany — szary; bez osobnego kliknięcia.
+                const memberOn = (memberDays.get(dateStr) || []).some(x => !x.occ.cancelled);
+                const memberTri = (memberDays.get(dateStr) || []).length > 0 && !(showPlan && planGroups.length > 0) && (
+                  <span role="img" aria-label={memberOn ? t('calendar.legendGroupTraining') : t('calendar.legendGroupCancelled')} data-testid={memberOn ? 'member-plan-tri' : 'member-plan-tri-cancelled'} className="absolute top-0 right-0 w-[20px] h-[20px] z-10 pointer-events-none">
+                    {colorEvents.length > 0 && <span className="absolute top-0 right-0 w-0 h-0 border-t-[16px] border-l-[16px] border-l-transparent border-t-white" />}
+                    <span className={`absolute top-0 right-0 w-0 h-0 border-t-[12px] border-l-[12px] border-l-transparent ${memberOn ? 'border-t-violet-500' : 'border-t-gray-400'}`} />
+                  </span>
+                );
                 const planTri = showPlan && planGroups.length > 0 && (
                   <span
                     role="button"
@@ -1026,11 +1069,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                 // [DZIEŃ 2026-11-13] Jedna rzecz w dniu → od razu ona; kilka → okienko wyboru dnia
                 // (trening z planu, terminy, starty uczniów), bo w małe pole trudno trafić palcem.
                 const dayPlans = showPlan ? planGroups : [];
-                const dayCount = dayPlans.length + colorEvents.length + dayStarts.length;
+                const dayMember = memberDays.get(dateStr) || [];
+                const dayCount = dayPlans.length + colorEvents.length + dayStarts.length + dayMember.length;
                 const onDay = () => {
                   if (dayCount === 0) return handleDayClick(dateStr, dayEvents);
                   if (dayCount === 1 && dayPlans.length === 1) return setTopicEdit({ groupId: topicGroup || planGroups[0], date: dateStr });
                   if (dayCount === 1 && colorEvents.length === 1) return handleDayClick(dateStr, colorEvents);
+                  setDayPickerMember(dayMember);
                   setDayPickerEvents(colorEvents);
                   setDayPickerStarts(dayStarts);
                   setDayPickerPlans(dayPlans);
@@ -1051,6 +1096,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         {hasOwnTrainer && <div className="bg-rose-500 flex-1" />}
                         {hasMirroredTrainer && <div className="bg-violet-500 flex-1" />}
                         {planTri}
+                        {memberTri}
                         <span className="absolute inset-0 flex flex-col items-center justify-center leading-none text-white font-black text-[11px] drop-shadow">
                           {day}
                           {trophies(true)}
@@ -1089,6 +1135,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   >
                     <div className={`relative overflow-hidden w-full h-full flex flex-col items-center justify-center leading-none rounded-[10px] text-[11px] transition-all ${bgClass} ${textClass}`}>
                       {planTri}
+                      {memberTri}
                       {day}
                       {trophies(coloredDay)}
                     </div>
@@ -1101,7 +1148,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
 
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
 
-        {todoEvents.length === 0 && upcomingEvents.length === 0 && planRows.length === 0 ? (
+        {todoEvents.length === 0 && upcomingEvents.length === 0 && planRows.length === 0 && memberUpcoming.length === 0 ? (
           <div className="text-center py-10 text-gray-300 flex flex-col items-center">
             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">event_busy</span>
             <p className="font-bold text-[10px] uppercase tracking-widest">{t('calendar.noEvents')}</p>
@@ -1176,6 +1223,40 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                   });
                 }))
             ))}
+
+            {/* [PLAN UCZNIA 2026-11-13] Treningi moich grup na 4 tygodnie; klik → okienko dnia. */}
+            {memberUpcoming.length > 0 && groupCard('groupTraining', t('calendar.legendGroupTraining'), 'bg-violet-500', memberUpcoming.length, showAllGroupTraining, () => setShowAllGroupTraining(!showAllGroupTraining),
+              (showAllGroupTraining ? memberUpcoming : memberUpcoming.slice(0, 1)).map(({ plan, occ }, i) => {
+                const d = new Date(`${occ.date}T12:00:00`);
+                const isToday = occ.date === todayStr;
+                return (
+                  <div key={`gt_${plan.groupId}_${occ.date}_${occ.time}`} className={isToday ? 'tb-today' : undefined}>
+                    <div className={`tb-card tb-topic relative overflow-hidden flex items-center ${i === 0 ? '' : 'border-t'} ${occ.cancelled ? 'opacity-70' : ''}`}>
+                      <PlanCorner hasTopic={false} color={occ.cancelled ? 'gray' : 'violet'} />
+                      <button
+                        type="button"
+                        data-testid="group-training-row"
+                        onClick={() => openMemberDay(occ.date)}
+                        className={`flex-1 min-w-0 flex items-center gap-3 px-3 ${i === 0 ? 'pt-4 pb-2.5' : 'py-2.5'} text-left active:bg-gray-50 transition-all`}
+                      >
+                        <div className={`w-11 text-center shrink-0 rounded-lg py-1 ${isToday ? 'bg-[#0a3a2a] text-[#fed33e]' : ''}`}>
+                          <span className={`block text-[10px] font-black uppercase leading-none ${isToday ? '' : 'text-gray-400'}`}>{d.toLocaleDateString(currentLocale, { weekday: 'short' }).replace('.', '')}</span>
+                          <span className={`block text-[17px] font-black leading-tight ${isToday ? '' : 'text-[#0a3a2a]'}`}>{d.getDate()}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[14px] font-black text-[#0a3a2a] leading-tight truncate ${occ.cancelled ? 'line-through' : ''}`}>
+                            {plan.name}{occ.time && <span className="font-bold text-gray-500"> · {occ.time}</span>}
+                          </p>
+                          <p className={`text-[12px] font-bold truncate mt-0.5 ${occ.cancelled ? 'text-red-500' : 'text-gray-500'}`}>
+                            {occ.cancelled ? [t('coachTermine.cancelled'), occ.note].filter(Boolean).join(' · ') : (occ.place || ' ')}
+                          </p>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         )}
 
@@ -1334,6 +1415,13 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
               <span className="w-3 h-3 rounded-full bg-rose-500 flex-shrink-0" />
               <span className="text-[10px] font-bold text-gray-500">{t('calendar.legendTrainerSent', 'Terminy jako trener')}</span>
             </div>
+            {/* Uczeń w grupie: fioletowy róg = trening grupy, szary = odwołany. */}
+            {memberPlans.length > 0 && (['violet', 'gray'] as const).map(c => (
+              <div key={c} className="flex items-center gap-2">
+                <span className="relative w-4 h-4 rounded-[4px] border border-gray-200 bg-white overflow-hidden flex-shrink-0"><PlanCorner hasTopic={false} size={9} color={c} /></span>
+                <span className="text-[10px] font-bold text-gray-500">{t(c === 'violet' ? 'calendar.legendGroupTraining' : 'calendar.legendGroupCancelled')}</span>
+              </div>
+            ))}
             {/* [TRÓJKĄCIK 2026-11-12] Tylko u trenera: róg = trening grupy z planu, zielona obwódka = temat zapisany. */}
             {isCoach && ([false, true] as const).map(topic => (
               <div key={String(topic)} className="flex items-center gap-2">
@@ -1603,18 +1691,36 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
         </div>
       )}
 
-      {(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0) && (
+      {(dayPickerEvents.length > 0 || dayPickerStarts.length > 0 || dayPickerPlans.length > 0 || dayPickerMember.length > 0) && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-start justify-center pt-24 px-4">
           <div className="bg-white w-full max-w-sm rounded-[32px] p-5 shadow-2xl animate-fade-in-up">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-base font-black text-[#0a3a2a]">
                 {new Date(dayPickerDate).toLocaleDateString(currentLocale, { day: 'numeric', month: 'long' })}
               </h2>
-              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
+              <button onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setDayPickerMember([]); }} className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center active:scale-90 transition-all">
                 <span className="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
             <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              {/* Treningi moich grup (uczeń): tylko podgląd — grupa, godzina, miejsce; odwołany z powodem. */}
+              {dayPickerMember.map(({ plan, occ }) => (
+                <div key={`member_${plan.groupId}_${occ.time}`} data-testid="day-picker-member" className={`relative overflow-hidden tb-card tb-topic border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 ${occ.cancelled ? 'opacity-70' : ''}`}>
+                  <PlanCorner hasTopic={false} size={12} color={occ.cancelled ? 'gray' : 'violet'} />
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 tb-icon">
+                    <span className="material-symbols-outlined text-[18px] text-violet-500">{plan.icon || 'groups'}</span>
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[9px] font-black uppercase tracking-widest leading-tight text-violet-500">
+                      {t('calendar.legendGroupTraining')}{occ.time ? ` • ${occ.time}` : ''}
+                    </p>
+                    <p className={`font-black text-[13px] leading-snug truncate text-[#0a3a2a] ${occ.cancelled ? 'line-through' : ''}`}>{plan.name}</p>
+                    {occ.cancelled
+                      ? <p className="text-[11px] font-black text-red-500 leading-snug">{[t('coachTermine.cancelled'), occ.note].filter(Boolean).join(' · ')}</p>
+                      : occ.place && <p className="text-[11px] font-bold text-gray-500 leading-snug truncate">{occ.place}</p>}
+                  </div>
+                </div>
+              ))}
               {/* Treningi grup z planu: klik → okienko tematu (podgląd i edycja tematu). */}
               {dayPickerPlans.map(gid => {
                 const g = coachGroups.find(x => x.id === gid);
@@ -1627,7 +1733,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                     key={`plan_${gid}`}
                     type="button"
                     data-testid="day-picker-plan"
-                    onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setTopicEdit({ groupId: gid, date: dayPickerDate }); }}
+                    onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setDayPickerMember([]); setTopicEdit({ groupId: gid, date: dayPickerDate }); }}
                     className="relative overflow-hidden tb-card tb-led border rounded-l-md rounded-r-2xl shadow-sm w-full flex items-center gap-2.5 pl-2 pr-3 py-2.5 active:scale-[0.98] transition-all text-left"
                   >
                     <span aria-hidden className="pointer-events-none"><PlanCorner hasTopic={!!topic} size={12} /></span>
@@ -1659,7 +1765,7 @@ export default function CalendarView({ userId, focusedEventId, clearFocusedEvent
                         <button
                           key={id}
                           type="button"
-                          onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); onNavigate?.('STUDENT_PROFILE', undefined, undefined, id); }}
+                          onClick={() => { setDayPickerEvents([]); setDayPickerDate(''); setDayPickerStarts([]); setDayPickerPlans([]); setDayPickerMember([]); onNavigate?.('STUDENT_PROFILE', undefined, undefined, id); }}
                           className="py-1 px-2.5 rounded-full bg-[#fed33e]/30 border border-[#fed33e] text-[12px] font-black text-[#5d4a00] active:scale-95 transition-all"
                         >
                           {st.names[i]}

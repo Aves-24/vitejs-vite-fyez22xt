@@ -222,3 +222,41 @@ test('Monat: ikonki jak w Liste, zawody jako puchar', async ({ browser, request 
   await expect(coach.getByTestId('student-start-trophy')).toHaveCount(0);
   await expectNoErrors(coach, coachErrors, 'Monat');
 });
+
+// Plan grupy w kalendarzu ucznia (2026-11-13): fioletowy róg + karta „Gruppentraining”;
+// po odwołaniu przez trenera — szary róg i „Abgesagt · powód”.
+test('uczeń: treningi grupy w kalendarzu, odwołany z powodem', async ({ browser }) => {
+  test.setTimeout(150_000);
+  const { coach, student, coachErrors, studentErrors } = await coachWithGroup(browser);
+  const today = new Date();
+  await coach.getByRole('button', { name: /Regelmäßiges Training/ }).click();
+  await coach.getByRole('combobox', { name: 'Termine' }).selectOption({ label: today.toLocaleDateString('de-DE', { weekday: 'long' }) });
+  await coach.getByRole('textbox', { name: 'Uhrzeit' }).fill('23:30');
+  await coach.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(coach.getByText('Trainingszeit gespeichert')).toBeVisible();
+  await syncWrites(coach);
+
+  await student.reload();
+  await student.getByRole('navigation').getByRole('button', { name: /Kalender$/ }).click();
+  await expect(student.getByTestId('member-plan-tri').first()).toBeVisible();
+  await expect(student.getByTestId('group-training-row').first()).toContainText('Kader');
+  await student.getByTestId('group-training-row').first().click();
+  await expect(student.getByTestId('day-picker-member')).toContainText('23:30');
+  if (process.env.SHOT6) await student.screenshot({ path: process.env.SHOT6 });
+  await student.goBack();
+
+  // Trener odwołuje dzisiejszy trening z powodem.
+  await coachNav(coach, 'event_note Termine').click();
+  await coach.getByRole('button', { name: 'Absagen' }).first().click();
+  await coach.getByPlaceholder(/Grund/).fill('Halle belegt');
+  await coach.getByRole('button', { name: /^Absagen/ }).last().click();
+  await expect(coach.getByRole('button', { name: /23:30 · Abgesagt/ })).toBeVisible();
+  await syncWrites(coach);
+
+  // Lustro planu uaktualnia się na żywo — bez przeładowania.
+  await expect(student.getByTestId('member-plan-tri-cancelled').first()).toBeVisible({ timeout: 15_000 });
+  await expect(student.getByTestId('group-training-row').first()).toContainText('Abgesagt · Halle belegt');
+  if (process.env.SHOT7) await student.screenshot({ path: process.env.SHOT7 });
+  await expectNoErrors(coach, coachErrors, 'trener: odwołanie');
+  await expectNoErrors(student, studentErrors, 'uczeń: kalendarz grupy');
+});
